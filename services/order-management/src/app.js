@@ -61,11 +61,11 @@ class App {
 
   initializeRoutes() {
     // API routes
-    this.app.use("/api/auth", authController.router);
-    this.app.use("/api/platforms", platformController.router);
-    this.app.use("/api/orders", orderController.router);
-    this.app.use("/api/shipping", shippingController.router);
-    this.app.use("/api/csv", require("./controllers/csv-controller").router);
+    this.app.use("/api/auth", require("./controllers/auth-controller"));
+    this.app.use("/api/platforms", require("./controllers/platform-controller"));
+    this.app.use("/api/orders", require("./controllers/order-controller"));
+    this.app.use("/api/shipping", require("./controllers/shipping-controller"));
+    this.app.use("/api/csv", require("./controllers/csv-controller"));
 
     // Health check route
     this.app.get("/health", (req, res) => {
@@ -107,11 +107,11 @@ class App {
   async connectToDatabase() {
     try {
       // Use syncDatabase instead
-      await require('./models/index').syncDatabase();
-      logger.info('Database connection established successfully.');
+      await require("./models/index").syncDatabase();
+      logger.info("Database connection established successfully.");
       return true;
     } catch (error) {
-      logger.error('Unable to connect to database:', error);
+      logger.error("Unable to connect to database:", error);
       return false;
     }
   }

@@ -4,7 +4,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const platformConnectionController = require('../controllers/platformConnectionController');
-const { authenticateToken } = require('../middleware/authMiddleware');
+const { authenticateToken } = require('../middleware/auth-middleware');
 
 const router = express.Router();
 
