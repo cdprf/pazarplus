@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Line } from 'react-chartjs-2';
+import { Line } from 'react-chartjs';
 import axios from 'axios';
 import { Spinner } from 'react-bootstrap';
 import { 

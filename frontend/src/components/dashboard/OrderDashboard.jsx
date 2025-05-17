@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // src/client/components/OrderDashboard.jsx
 
 import React, { useState, useEffect } from 'react';
@@ -50,29 +51,8 @@ const OrderDashboard = () => {
   const [carriers, setCarriers] = useState([]);
   const [cancelReason, setCancelReason] = useState('');
   
-  // Initial data fetch
-  useEffect(() => {
-    fetchCarriers();
-    fetchOrders();
-  }, [page, size, statusFilter, platformFilter, startDate, endDate]);
-  
-  // Fetch carrier list
-  const fetchCarriers = async () => {
-    try {
-      const response = await axios.get('/api/shipping/carriers');
-      if (response.data.success) {
-        setCarriers(response.data.data);
-        if (response.data.data.length > 0) {
-          setCarrier(response.data.data[0].id);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch carriers:', error);
-    }
-  };
-  
   // Fetch orders with pagination and filters
-  const fetchOrders = async () => {
+  const fetchOrders = React.useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -120,6 +100,27 @@ const OrderDashboard = () => {
       console.error('Error fetching orders:', error);
     } finally {
       setLoading(false);
+    }
+  }, [page, size, searchTerm, statusFilter, platformFilter, startDate, endDate]);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchCarriers();
+    fetchOrders();
+  }, [page, size, statusFilter, platformFilter, startDate, endDate, fetchOrders]);
+  
+  // Fetch carrier list
+  const fetchCarriers = async () => {
+    try {
+      const response = await axios.get('/api/shipping/carriers');
+      if (response.data.success) {
+        setCarriers(response.data.data);
+        if (response.data.data.length > 0) {
+          setCarrier(response.data.data[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch carriers:', error);
     }
   };
   

@@ -1,4 +1,4 @@
-// src/app.js
+// src/app.js - FIXED
 
 const express = require("express");
 const cors = require("cors");
@@ -8,11 +8,6 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const compression = require("compression");
 const logger = require("./utils/logger");
-const { sequelize } = require("./models/index");
-const authController = require("./controllers/auth-controller");
-const platformController = require("./controllers/platform-controller");
-const orderController = require("./controllers/order-controller");
-const shippingController = require("./controllers/shipping-controller");
 
 class App {
   constructor() {
@@ -61,12 +56,13 @@ class App {
 
   initializeRoutes() {
     try {
-      // API routes
+      // API routes - FIXED to use the router exports from each module
       this.app.use("/api/auth", require("./routes/authRoutes"));
       this.app.use("/api/platforms", require("./controllers/platform-controller"));
-      this.app.use("/api/orders", require("./routes/orderRoutes"));
-      this.app.use("/api/shipping", require("./routes/shippingRoutes"));
+      this.app.use("/api/orders", require("./controllers/order-controller"));
+      this.app.use("/api/shipping", require("./controllers/shipping-controller"));
       this.app.use("/api/csv", require("./controllers/csv-controller"));
+      this.app.use("/api/export", require("./controllers/export-controller"));
 
       // Health check route
       this.app.get("/health", (req, res) => {
@@ -78,12 +74,7 @@ class App {
         });
       });
 
-      // Fallback route for SPA
-      this.app.get("*", (req, res) => {
-        res.sendFile(path.join(__dirname, "../public/index.html"));
-      });
-
-      // Fallback route for SPA
+      // Fallback route for SPA - removed duplicate
       this.app.get("*", (req, res) => {
         res.sendFile(path.join(__dirname, "../public/index.html"));
       });
