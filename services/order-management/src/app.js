@@ -3,10 +3,19 @@ const cors = require("cors");
 const morgan = require("morgan");
 const path = require("path");
 const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
 const compression = require("compression");
 const logger = require("./utils/logger");
 const config = require("./config/app");
+const { apiLimiter, authLimiter, syncLimiter } = require('./middleware/rate-limit');
+const authRoutes = require('./routes/authRoutes');
+const orderRoutes = require('./routes/orderRoutes');
+const platformRoutes = require('./routes/platformRoutes');
+const shippingRoutes = require('./routes/shippingRoutes');
+const exportRoutes = require('./routes/exportRoutes');
+const csvRoutes = require('./routes/csvRoutes');
+const { authenticateToken } = require('./middleware/auth-middleware');
+const { errorHandler } = require('./middleware/error-handler');
+const { sequelize } = require('./models');
 
 class App {
   constructor() {
@@ -22,8 +31,8 @@ class App {
     // CORS configuration - must be before other middleware
     this.app.use(cors({
       origin: process.env.NODE_ENV === 'development' 
-        ? ['http://localhost:3000']
-        : [process.env.FRONTEND_URL],
+        ? 'http://localhost:3000'  // Allow frontend dev server
+        : process.env.FRONTEND_URL,
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: [
@@ -47,20 +56,6 @@ class App {
       crossOriginResourcePolicy: { policy: "cross-origin" }
     }));
 
-    // Rate limiting - more permissive in development
-    const limiter = rateLimit({
-      windowMs: process.env.NODE_ENV === 'development' 
-        ? 1 * 60 * 1000 // 1 minute in development
-        : 15 * 60 * 1000, // 15 minutes in production
-      max: process.env.NODE_ENV === 'development'
-        ? 500 // 500 requests per minute in development
-        : 100, // 100 requests per 15 minutes in production
-      message: "Too many requests from this IP, please try again later",
-      standardHeaders: true,
-      legacyHeaders: false
-    });
-    this.app.use("/api/", limiter);
-
     // Parse JSON bodies
     this.app.use(express.json());
 
@@ -79,17 +74,28 @@ class App {
 
     // Serve static files
     this.app.use(express.static(path.join(__dirname, "../public")));
+
+    // Apply rate limiting to all routes
+    this.app.use(apiLimiter);
   }
 
   initializeRoutes() {
     try {
-      // API routes
-      this.app.use("/api/auth", require("./routes/authRoutes"));
-      this.app.use("/api/platforms", require("./routes/platformRoutes"));
-      this.app.use("/api/orders", require("./routes/orderRoutes"));
-      this.app.use("/api/shipping", require("./routes/shippingRoutes"));
-      this.app.use("/api/csv", require("./routes/csvRoutes"));
-      this.app.use("/api/export", require("./routes/exportRoutes"));
+      // Public routes with auth rate limiting
+      this.app.use('/api/auth', authLimiter, authRoutes);
+
+      // Protected routes
+      this.app.use(authenticateToken);
+      
+      // Apply sync rate limiting to sync endpoints
+      this.app.use('/api/orders/sync', syncLimiter);
+      
+      // Register other routes
+      this.app.use('/api/orders', orderRoutes);
+      this.app.use('/api/platforms', platformRoutes);
+      this.app.use('/api/shipping', shippingRoutes);
+      this.app.use('/api/export', exportRoutes);
+      this.app.use('/api/csv', csvRoutes);
 
       // Health check route
       this.app.get("/health", (req, res) => {
@@ -131,6 +137,21 @@ class App {
         error: process.env.NODE_ENV === "development" ? err.stack : undefined,
       });
     });
+
+    // Global error handling middleware
+    this.app.use(errorHandler);
+
+    // Handle uncaught exceptions
+    process.on('uncaughtException', (error) => {
+      logger.error('Uncaught Exception:', error);
+      process.exit(1);
+    });
+
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', (error) => {
+      logger.error('Unhandled Rejection:', error);
+      process.exit(1);
+    });
   }
 
   async connectToDatabase() {
@@ -141,6 +162,16 @@ class App {
     } catch (error) {
       logger.error("Unable to connect to database:", error);
       return false;
+    }
+  }
+
+  async closeDatabase() {
+    try {
+      await sequelize.close();
+      logger.info('Database connection closed successfully.');
+    } catch (error) {
+      logger.error('Error closing database connection:', error);
+      throw error;
     }
   }
 

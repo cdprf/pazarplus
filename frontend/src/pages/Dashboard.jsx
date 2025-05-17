@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { Row, Col, Card, Button, ListGroup, Badge, Spinner } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { 
@@ -14,6 +14,11 @@ import axios from 'axios';
 import { AlertContext } from '../context/AlertContext';
 import PlatformStatusCard from '../components/dashboard/PlatformStatusCard';
 import OrdersChart from '../components/dashboard/OrdersChart';
+import wsService from '../services/WebSocketService';
+import { orderService } from '../services/api/orderService';
+import { platformService } from '../services/api/platformService';
+import ErrorBoundary from '../components/ErrorBoundary';
+import { ApiError } from '../utils/apiErrorHandler';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -32,36 +37,49 @@ const Dashboard = () => {
   const [platformConnections, setPlatformConnections] = useState([]);
   const [syncingPlatforms, setSyncingPlatforms] = useState([]);
   const [syncingAll, setSyncingAll] = useState(false);
+  const [wsReconnectAttempts, setWsReconnectAttempts] = useState(0);
+  const MAX_RECONNECT_ATTEMPTS = 5;
+  const RECONNECT_INTERVAL = 5000;
+  const wsRef = useRef(null);
   
   const { error: showError, success } = useContext(AlertContext);
 
   // Fetch dashboard data function wrapped in useCallback
-  const fetchDashboardData = React.useCallback(async (showLoadingState = true) => {
+  const fetchDashboardData = useCallback(async (showLoadingState = true) => {
     try {
       if (showLoadingState) {
         setLoading(true);
       }
       
-      const [statsRes, recentOrdersRes, platformsRes] = await Promise.all([
-        axios.get('/orders/stats'),
-        axios.get('/orders?page=0&size=5&sortBy=orderDate&sortOrder=DESC'),
-        axios.get('/platforms/connections')
+      const [statsData, ordersData, platformsData] = await Promise.all([
+        orderService.getOrderStats(),
+        orderService.getOrders({
+          page: 0,
+          size: 5,
+          sortBy: 'orderDate',
+          sortOrder: 'DESC'
+        }),
+        platformService.getPlatformConnections() // Fixed method name to match what's in platformService
       ]);
       
-      if (statsRes.data.success) {
-        setStats(statsRes.data.data);
+      if (statsData.success) {
+        setStats(statsData.data);
       }
       
-      if (recentOrdersRes.data.success) {
-        setRecentOrders(recentOrdersRes.data.data);
+      if (ordersData.success) {
+        setRecentOrders(ordersData.data.orders);
       }
       
-      if (platformsRes.data.success) {
-        setPlatformConnections(platformsRes.data.data);
+      if (platformsData.success) {
+        setPlatformConnections(platformsData.data);
       }
     } catch (err) {
-      console.error('Failed to fetch dashboard data', err);
-      showError('Failed to load dashboard data. Please try again.');
+      if (err instanceof ApiError) {
+        showError(err.message);
+      } else {
+        showError('Failed to load dashboard data. Please try again.');
+      }
+      console.error('Failed to fetch dashboard data:', err);
     } finally {
       if (showLoadingState) {
         setLoading(false);
@@ -72,11 +90,25 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDashboardData();
 
+    // Set up WebSocket event listeners
+    const removeOrderListener = wsService.addEventListener('ORDER_CREATED', () => fetchDashboardData(false));
+    const removeUpdateListener = wsService.addEventListener('ORDER_UPDATED', () => fetchDashboardData(false));
+    const removeCancelListener = wsService.addEventListener('ORDER_CANCELLED', () => fetchDashboardData(false));
+    const removePlatformListener = wsService.addEventListener('PLATFORM_STATUS_CHANGED', () => fetchDashboardData(false));
+
+    // Refresh every 5 minutes as backup
     const refreshInterval = setInterval(() => {
       fetchDashboardData(false);
     }, 300000);
 
-    return () => clearInterval(refreshInterval);
+    // Cleanup
+    return () => {
+      removeOrderListener();
+      removeUpdateListener();
+      removeCancelListener();
+      removePlatformListener();
+      clearInterval(refreshInterval);
+    };
   }, [fetchDashboardData]);
 
   // Sync orders from platform
@@ -84,21 +116,22 @@ const Dashboard = () => {
     try {
       setSyncingPlatforms(prev => [...prev, connectionId]);
       
-      const res = await axios.post(`/orders/sync/${connectionId}`, {
+      const result = await orderService.syncOrders(connectionId, {
         startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
         endDate: new Date().toISOString()
       });
       
-      if (res.data.success) {
-        // Refresh all dashboard data at once
+      if (result.success) {
         await fetchDashboardData(false);
         success('Orders synchronized successfully');
-      } else {
-        showError(res.data.message || 'Failed to sync orders');
       }
     } catch (err) {
-      console.error('Failed to sync orders', err);
-      showError('Failed to sync orders. Please try again.');
+      if (err instanceof ApiError) {
+        showError(err.message);
+      } else {
+        showError('Failed to sync orders. Please try again.');
+      }
+      console.error('Failed to sync orders:', err);
     } finally {
       setSyncingPlatforms(prev => prev.filter(id => id !== connectionId));
     }
@@ -122,7 +155,7 @@ const Dashboard = () => {
         setSyncingPlatforms(prev => [...prev, platform.id]);
         
         try {
-          await axios.post(`/orders/sync/${platform.id}`, {
+          await orderService.syncOrders(platform.id, {
             startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
             endDate: new Date().toISOString()
           });
@@ -135,8 +168,12 @@ const Dashboard = () => {
       await fetchDashboardData(false);
       success('All platforms synchronized successfully');
     } catch (err) {
-      console.error('Failed to sync all platforms', err);
-      showError('Failed to sync one or more platforms. Please try individual syncs.');
+      if (err instanceof ApiError) {
+        showError(err.message);
+      } else {
+        showError('Failed to sync one or more platforms. Please try individual syncs.');
+      }
+      console.error('Failed to sync all platforms:', err);
     } finally {
       setSyncingAll(false);
     }
@@ -303,7 +340,9 @@ const Dashboard = () => {
               <h5 className="mb-0">Order Trends</h5>
             </Card.Header>
             <Card.Body>
-              <OrdersChart />
+              <ErrorBoundary fallbackMessage="Failed to load order trends chart">
+                <OrdersChart />
+              </ErrorBoundary>
             </Card.Body>
           </Card>
           

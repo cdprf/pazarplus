@@ -1,190 +1,222 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
+import { useNavigate } from 'react-router-dom';
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // eslint-disable-next-line no-unused-vars
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshPromise = React.useRef(null);
+  const navigate = useNavigate();
 
-  const bypassLogin = async () => {
-    // Set a pre-defined admin user
-    const adminUser = {
-      id: 'admin-user',
-      fullName: 'Admin User',
-      email: 'admin@pazar.plus',
-      isAdmin: true
-    };
-
-    // Set the user in state
-    setUser(adminUser);
-    
-    // Set a dummy token
-    const dummyToken = 'admin-dev-token';
-    localStorage.setItem('token', dummyToken);
-    setToken(dummyToken);
-    
-    // Set axios headers
-    axios.defaults.headers.common['Authorization'] = `Bearer ${dummyToken}`;
-    
-    // Set loading to false
-    setLoading(false);
-  };
-
-  // Set auth token in axios headers
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
+  const refreshAccessToken = useCallback(async () => {
+    // Ensure we only make one refresh request at a time
+    if (refreshPromise.current) {
+      return refreshPromise.current;
     }
-  }, [token]);
 
-  // Load user data if token exists
-  useEffect(() => {
-    const loadUser = async () => {
-
-      const isDevMode = process.env.NODE_ENV === 'development';
-      const bypassAuth = process.env.REACT_APP_BYPASS_AUTH === 'true';
+    try {
+      setIsRefreshing(true);
+      const refreshToken = localStorage.getItem('refreshToken');
       
-      if (isDevMode && bypassAuth) {
-        bypassLogin();
-        return;
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
       }
 
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+      refreshPromise.current = axios.post('/auth/refresh-token', { refreshToken });
+      const response = await refreshPromise.current;
 
+      if (response.data.success) {
+        const { token, refreshToken: newRefreshToken } = response.data;
+        localStorage.setItem('token', token);
+        localStorage.setItem('refreshToken', newRefreshToken);
+        
+        // Update axios default header
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        // Update user state
+        setCurrentUser(jwtDecode(token));
+        setError(null);
+        return token;
+      } else {
+        throw new Error(response.data.message || 'Failed to refresh token');
+      }
+    } catch (err) {
+      // If refresh fails, log the user out
+      console.error('Failed to refresh token:', err);
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      setCurrentUser(null);
+      setError('Session expired. Please login again.');
+      navigate('/login');
+      throw err;
+    } finally {
+      setIsRefreshing(false);
+      refreshPromise.current = null;
+    }
+  }, [navigate]);
+
+  // Setup axios interceptor for token refresh
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        
+        // If error is 401 and not from the auth endpoints and not already retried
+        if (
+          error.response?.status === 401 &&
+          !originalRequest._retry &&
+          !originalRequest.url?.includes('/auth/login') &&
+          !originalRequest.url?.includes('/auth/refresh-token')
+        ) {
+          originalRequest._retry = true;
+          
+          try {
+            const token = await refreshAccessToken();
+            originalRequest.headers['Authorization'] = `Bearer ${token}`;
+            return axios(originalRequest);
+          } catch (refreshError) {
+            // Let the error propagate after failed refresh
+            return Promise.reject(refreshError);
+          }
+        }
+        
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      // Clean up interceptor on unmount
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, [refreshAccessToken]);
+
+  // Check for existing token on mount
+  useEffect(() => {
+    const initAuth = async () => {
       try {
-        const res = await axios.get('/auth/me');
-        if (res.data.success) {
-          setUser(res.data.user);
-        } else {
-          // Invalid token
-          localStorage.removeItem('token');
-          setToken(null);
-          setError('Session expired. Please login again.');
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        
+        if (token) {
+          // Check if token is expired
+          const decodedToken = jwtDecode(token);
+          const currentTime = Date.now() / 1000;
+          
+          if (decodedToken.exp < currentTime) {
+            // Token is expired, try to refresh
+            await refreshAccessToken();
+          } else {
+            // Token is valid
+            setCurrentUser(decodedToken);
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          }
         }
       } catch (err) {
-        console.error('Failed to load user', err);
+        console.error('Auth initialization error:', err);
+        // Clear invalid auth state
         localStorage.removeItem('token');
-        setToken(null);
+        localStorage.removeItem('refreshToken');
+        setCurrentUser(null);
         setError('Authentication failed. Please login again.');
       } finally {
         setLoading(false);
       }
     };
 
-    loadUser();
-  }, [token]);
+    initAuth();
+  }, [refreshAccessToken]);
 
-  // Login user
-  const login = async (email, password) => {
+  const login = useCallback(async (credentials) => {
     try {
+      setLoading(true);
       setError(null);
-      const res = await axios.post('/auth/login', { email, password });
       
-      if (res.data.success) {
-        localStorage.setItem('token', res.data.token);
-        setToken(res.data.token);
-        setUser(res.data.user);
+      const response = await axios.post('/auth/login', credentials);
+      
+      if (response.data.success) {
+        const { token, refreshToken } = response.data;
+        localStorage.setItem('token', token);
+        localStorage.setItem('refreshToken', refreshToken);
+        
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        const user = jwtDecode(token);
+        setCurrentUser(user);
+        navigate('/dashboard');
         return true;
       } else {
-        setError(res.data.message || 'Login failed');
+        setError(response.data.message || 'Login failed');
         return false;
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred during login');
+      const errorMessage = err.response?.data?.message || 'Login failed';
+      setError(errorMessage);
       return false;
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [navigate]);
 
-  // Register user
-  const register = async (userData) => {
+  const register = useCallback(async (userData) => {
     try {
+      setLoading(true);
       setError(null);
-      const res = await axios.post('/auth/register', userData);
       
-      if (res.data.success) {
-        localStorage.setItem('token', res.data.token);
-        setToken(res.data.token);
-        setUser(res.data.user);
+      const response = await axios.post('/auth/register', userData);
+      
+      if (response.data.success) {
+        // Automatically log in after registration
+        await login({
+          email: userData.email,
+          password: userData.password
+        });
         return true;
       } else {
-        setError(res.data.message || 'Registration failed');
+        setError(response.data.message || 'Registration failed');
         return false;
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred during registration');
+      const errorMessage = err.response?.data?.message || 'Registration failed';
+      setError(errorMessage);
       return false;
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [login]);
 
-  // Logout user
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
-  };
+    localStorage.removeItem('refreshToken');
+    delete axios.defaults.headers.common['Authorization'];
+    setCurrentUser(null);
+    navigate('/login');
+  }, [navigate]);
 
-  // Update user profile
-  const updateProfile = async (userData) => {
-    try {
-      setError(null);
-      const res = await axios.put('/auth/profile', userData);
-      
-      if (res.data.success) {
-        setUser(res.data.user);
-        return true;
-      } else {
-        setError(res.data.message || 'Failed to update profile');
-        return false;
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred while updating profile');
-      return false;
-    }
-  };
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
 
-  // Change password
-  const changePassword = async (currentPassword, newPassword) => {
-    try {
-      setError(null);
-      const res = await axios.put('/auth/change-password', { currentPassword, newPassword });
-      
-      if (res.data.success) {
-        return true;
-      } else {
-        setError(res.data.message || 'Failed to change password');
-        return false;
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred while changing password');
-      return false;
-    }
+  const value = {
+    currentUser,
+    isAuthenticated: !!currentUser,
+    loading,
+    error,
+    login,
+    register,
+    logout,
+    clearError,
+    refreshToken: refreshAccessToken
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        loading,
-        error,
-        isAuthenticated: !!user,
-        bypassLogin,
-        login,
-        register,
-        logout,
-        updateProfile,
-        changePassword,
-        setError
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

@@ -297,7 +297,7 @@ class TrendyolService {
       let totalSyncedOrders = 0;
       
       while (hasMoreOrders) {
-        const response = await this.fetchOrders(params);
+        const response = await this.retryRequest(() => this.fetchOrders(params));
         
         if (!response.success || !response.data || response.data.length === 0) {
           hasMoreOrders = false;

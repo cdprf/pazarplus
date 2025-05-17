@@ -1,120 +1,74 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Chart as ChartJS, 
-  CategoryScale, 
-  LinearScale, 
-  PointElement, 
-  LineElement, 
-  Title, 
-  Tooltip, 
+import React, { useState, useRef } from 'react';
+import { ButtonGroup, Button } from 'react-bootstrap';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
   Legend,
   Filler
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
-import axios from 'axios';
-import { Spinner, ButtonGroup, Button } from 'react-bootstrap';
+import { formatInTimeZone } from 'date-fns-tz';
+import { parseISO } from 'date-fns';
+import LoadingState from '../shared/LoadingState';
+import { useOrderTrends } from '../../hooks/useOrders';
 
 // Register ChartJS components
 ChartJS.register(
-  CategoryScale, 
-  LinearScale, 
-  PointElement, 
-  LineElement, 
-  Title, 
-  Tooltip, 
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
   Legend,
   Filler
 );
 
 const OrdersChart = () => {
-  const [chartData, setChartData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [period, setPeriod] = useState('week');
-  
-  const fetchOrderStats = useCallback(async (showLoadingState = true) => {
-    try {
-      if (showLoadingState) {
-        setLoading(true);
-      }
-      
-      // Calculate date range based on period
-      const endDate = new Date();
-      let startDate = new Date();
-      
-      if (period === 'week') {
-        startDate.setDate(startDate.getDate() - 7);
-      } else if (period === 'month') {
-        startDate.setMonth(startDate.getMonth() - 1);
-      } else if (period === 'year') {
-        startDate.setFullYear(startDate.getFullYear() - 1);
-      }
-      
-      const response = await axios.get('/orders/stats/trend', {
-        params: {
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          groupBy: period === 'year' ? 'month' : 'day'
-        }
-      });
-      
-      if (response.data.success) {
-        const data = response.data.data;
-        
-        const labels = data.map(item => {
-          const date = new Date(item.date);
-          if (period === 'year') {
-            return date.toLocaleString('default', { month: 'short' });
-          } else {
-            return date.toLocaleDateString('default', { month: 'short', day: 'numeric' });
-          }
-        });
-        
-        setChartData({
-          labels,
-          datasets: [
-            {
-              label: 'New Orders',
-              data: data.map(item => item.newOrders),
-              borderColor: '#4e73df',
-              backgroundColor: 'rgba(78, 115, 223, 0.05)',
-              fill: true,
-              tension: 0.4
-            },
-            {
-              label: 'Shipped Orders',
-              data: data.map(item => item.shippedOrders),
-              borderColor: '#1cc88a',
-              backgroundColor: 'rgba(28, 200, 138, 0.05)',
-              fill: true,
-              tension: 0.4
-            }
-          ]
-        });
-        setError(null);
-      } else {
-        setError(response.data.message || 'Failed to fetch order statistics');
-      }
-    } catch (err) {
-      console.error('Failed to fetch order statistics', err);
-      setError('Failed to load chart data');
-    } finally {
-      if (showLoadingState) {
-        setLoading(false);
-      }
-    }
-  }, [period]);
+  const chartRef = useRef(null);
+  const { data, isLoading, error } = useOrderTrends(period);
 
-  useEffect(() => {
-    fetchOrderStats();
+  const formatDate = (dateString, period) => {
+    const date = parseISO(dateString);
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     
-    const refreshInterval = setInterval(() => {
-      fetchOrderStats(false);
-    }, 300000);
+    if (period === 'year') {
+      return formatInTimeZone(date, userTimeZone, 'MMM yyyy');
+    } else if (period === 'month') {
+      return formatInTimeZone(date, userTimeZone, 'MMM d');
+    } else {
+      return formatInTimeZone(date, userTimeZone, 'MMM d, HH:mm');
+    }
+  };
 
-    return () => clearInterval(refreshInterval);
-  }, [fetchOrderStats]);
-  
+  const chartData = data ? {
+    labels: data.map(item => formatDate(item.date, period)),
+    datasets: [
+      {
+        label: 'New Orders',
+        data: data.map(item => item.newOrders),
+        borderColor: '#4e73df',
+        backgroundColor: 'rgba(78, 115, 223, 0.05)',
+        fill: true,
+        tension: 0.4
+      },
+      {
+        label: 'Shipped Orders',
+        data: data.map(item => item.shippedOrders),
+        borderColor: '#1cc88a',
+        backgroundColor: 'rgba(28, 200, 138, 0.05)',
+        fill: true,
+        tension: 0.4
+      }
+    ]
+  } : null;
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -125,6 +79,10 @@ const OrdersChart = () => {
       tooltip: {
         mode: 'index',
         intersect: false,
+        callbacks: {
+          title: (context) => context[0].label,
+          label: (context) => `${context.dataset.label}: ${context.parsed.y}`
+        }
       }
     },
     hover: {
@@ -138,6 +96,10 @@ const OrdersChart = () => {
           precision: 0
         }
       }
+    },
+    animation: {
+      duration: 750,
+      easing: 'easeInOutQuart'
     }
   };
 
@@ -166,25 +128,21 @@ const OrdersChart = () => {
         </ButtonGroup>
       </div>
 
-      {loading ? (
-        <div className="text-center p-5">
-          <Spinner animation="border" role="status" variant="primary">
-            <span className="visually-hidden">Loading...</span>
-          </Spinner>
-        </div>
-      ) : error ? (
-        <div className="text-center p-5 text-danger">
-          <p>{error}</p>
-        </div>
-      ) : !chartData ? (
-        <div className="text-center p-5 text-muted">
-          <p>No data available</p>
-        </div>
-      ) : (
-        <div style={{ height: '300px' }}>
-          <Line data={chartData} options={options} />
-        </div>
-      )}
+      <LoadingState
+        loading={isLoading}
+        error={error}
+        loadingMessage="Loading chart data..."
+      >
+        {chartData ? (
+          <div style={{ height: '300px' }}>
+            <Line ref={chartRef} data={chartData} options={options} />
+          </div>
+        ) : (
+          <div className="text-center p-5 text-muted">
+            <p>No data available</p>
+          </div>
+        )}
+      </LoadingState>
     </div>
   );
 };

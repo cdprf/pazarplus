@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 // frontend/src/pages/PlatformConnections.jsx
 
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { 
   Card, 
   Table, 
@@ -58,11 +58,7 @@ const PlatformConnections = () => {
   const { success, error } = useContext(AlertContext);
   
   // Fetch connections
-  useEffect(() => {
-    fetchConnections();
-  }, []);
-  
-  const fetchConnections = async () => {
+  const fetchConnections = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -79,7 +75,11 @@ const PlatformConnections = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [error]);
+  
+  useEffect(() => {
+    fetchConnections();
+  }, [fetchConnections]);
   
   // Handle form changes
   const handleChange = (e) => {

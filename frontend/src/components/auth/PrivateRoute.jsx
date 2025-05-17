@@ -1,16 +1,29 @@
 // frontend/src/components/auth/PrivateRoute.jsx
 
-import React, { useContext } from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useContext, useEffect } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Spinner } from 'react-bootstrap';
 import { AuthContext } from '../../context/AuthContext';
 
 const PrivateRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useContext(AuthContext);
+  const { isAuthenticated, loading, user } = useContext(AuthContext);
+  const location = useLocation();
 
-  // Check if we're in development mode and should bypass authentication
-  const bypassAuth = process.env.NODE_ENV === 'development' && 
-                     process.env.REACT_APP_BYPASS_AUTH === 'true';
+  // Check development mode security
+  const isDev = process.env.NODE_ENV === 'development';
+  const isDevMode = process.env.REACT_APP_DEV_MODE === 'true';
+  const isDevUser = user?.devMode === true;
+  const hasValidDevPermissions = user?.permissions?.length > 0;
+  const bypassAuth = isDev && isDevMode && isDevUser && hasValidDevPermissions;
+
+  // Generate state parameter for dev mode authentication
+  useEffect(() => {
+    if (isDev && isDevMode && !isAuthenticated) {
+      const state = btoa(crypto.getRandomValues(new Uint8Array(16)));
+      sessionStorage.setItem('devModeState', state);
+      sessionStorage.setItem('devModeReturnTo', location.pathname);
+    }
+  }, [isDev, isDevMode, isAuthenticated, location]);
 
   if (loading) {
     return (
@@ -23,11 +36,14 @@ const PrivateRoute = ({ children }) => {
     );
   }
 
-  if (bypassAuth) {
-    return children;
+  if (!isAuthenticated && !bypassAuth) {
+    // Store the attempted URL for redirecting after login
+    sessionStorage.setItem('returnTo', location.pathname);
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (!isAuthenticated) {
+  // For dev mode, verify required permissions exist
+  if (bypassAuth && !user?.permissions?.includes('view_dashboard')) {
     return <Navigate to="/login" replace />;
   }
 

@@ -3,6 +3,7 @@
 
 import React from 'react';
 import OrderDashboard from '../components/dashboard/OrderDashboard';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { Card } from 'react-bootstrap';
 
 const OrderList = () => {
@@ -10,7 +11,9 @@ const OrderList = () => {
     <div className="order-list">
       <h2 className="mb-4">Orders</h2>
       
-      <OrderDashboard />
+      <ErrorBoundary fallbackMessage="Failed to load orders dashboard">
+        <OrderDashboard />
+      </ErrorBoundary>
     </div>
   );
 };

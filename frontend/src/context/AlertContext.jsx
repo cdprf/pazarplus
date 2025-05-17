@@ -1,4 +1,4 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useState, useCallback } from 'react';
 import { Toast, ToastContainer } from 'react-bootstrap';
 
 export const AlertContext = createContext();
@@ -6,77 +6,110 @@ export const AlertContext = createContext();
 export const AlertProvider = ({ children }) => {
   const [alerts, setAlerts] = useState([]);
 
-  // Add alert
-  const addAlert = (message, type = 'info', timeout = 5000) => {
-    const id = Date.now();
-    const newAlert = { id, message, type, timeout };
-    
-    setAlerts(prevAlerts => [...prevAlerts, newAlert]);
-    
-    // Auto-dismiss alert after timeout
-    if (timeout > 0) {
-      setTimeout(() => removeAlert(id), timeout);
-    }
-    
-    return id;
+  // Create a unique ID for each alert
+  const generateId = () => {
+    return `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   };
 
-  // Remove alert
-  const removeAlert = (id) => {
-    setAlerts(prevAlerts => prevAlerts.filter(alert => alert.id !== id));
-  };
+  // Add success alert
+  const success = useCallback((message, options = {}) => {
+    const newAlert = {
+      id: generateId(),
+      type: 'success',
+      message,
+      autoHide: options.autoHide !== false,
+      delay: options.delay || 3000
+    };
+    setAlerts(prev => [...prev, newAlert]);
+    return newAlert.id;
+  }, []);
 
-  // Success alert shorthand
-  const success = (message, timeout = 5000) => {
-    return addAlert(message, 'success', timeout);
-  };
+  // Add error alert
+  const error = useCallback((message, options = {}) => {
+    const newAlert = {
+      id: generateId(),
+      type: 'danger',
+      message,
+      autoHide: options.autoHide !== false,
+      delay: options.delay || 5000
+    };
+    setAlerts(prev => [...prev, newAlert]);
+    return newAlert.id;
+  }, []);
 
-  // Error alert shorthand
-  const error = (message, timeout = 8000) => {
-    return addAlert(message, 'danger', timeout);
-  };
+  // Add warning alert
+  const warning = useCallback((message, options = {}) => {
+    const newAlert = {
+      id: generateId(),
+      type: 'warning',
+      message,
+      autoHide: options.autoHide !== false,
+      delay: options.delay || 4000
+    };
+    setAlerts(prev => [...prev, newAlert]);
+    return newAlert.id;
+  }, []);
 
-  // Warning alert shorthand
-  const warning = (message, timeout = 6000) => {
-    return addAlert(message, 'warning', timeout);
-  };
+  // Add info alert
+  const info = useCallback((message, options = {}) => {
+    const newAlert = {
+      id: generateId(),
+      type: 'info',
+      message,
+      autoHide: options.autoHide !== false,
+      delay: options.delay || 3000
+    };
+    setAlerts(prev => [...prev, newAlert]);
+    return newAlert.id;
+  }, []);
 
-  // Info alert shorthand
-  const info = (message, timeout = 5000) => {
-    return addAlert(message, 'info', timeout);
+  // Remove alert by ID
+  const removeAlert = useCallback((id) => {
+    setAlerts(prev => prev.filter(alert => alert.id !== id));
+  }, []);
+
+  // Clear all alerts
+  const clearAlerts = useCallback(() => {
+    setAlerts([]);
+  }, []);
+
+  // Create context value
+  const value = {
+    alerts,
+    success,
+    error,
+    warning,
+    info,
+    removeAlert,
+    clearAlerts
   };
 
   return (
-    <AlertContext.Provider
-      value={{
-        addAlert,
-        removeAlert,
-        success,
-        error,
-        warning,
-        info
-      }}
-    >
+    <AlertContext.Provider value={value}>
       {children}
-      
-      <ToastContainer position="top-end" className="p-3" style={{ zIndex: 1070 }}>
-        {alerts.map(alert => (
-          <Toast 
-            key={alert.id} 
+      <ToastContainer 
+        className="p-3" 
+        position="top-end"
+        style={{ zIndex: 9999 }}
+      >
+        {alerts.map((alert) => (
+          <Toast
+            key={alert.id}
             bg={alert.type}
             onClose={() => removeAlert(alert.id)}
-            delay={alert.timeout}
-            autohide={alert.timeout > 0}
+            show={true}
+            delay={alert.delay}
+            autohide={alert.autoHide}
           >
-            <Toast.Header>
+            <Toast.Header closeButton={true}>
               <strong className="me-auto">
-                {alert.type === 'success' && 'Success!'}
-                {alert.type === 'danger' && 'Error!'}
-                {alert.type === 'warning' && 'Warning!'}
+                {alert.type === 'success' && 'Success'}
+                {alert.type === 'danger' && 'Error'}
+                {alert.type === 'warning' && 'Warning'}
                 {alert.type === 'info' && 'Information'}
               </strong>
             </Toast.Header>
-            <Toast.Body className={['success', 'info'].includes(alert.type) ? 'text-dark' : 'text-white'}>
+            <Toast.Body className={alert.type === 'danger' || alert.type === 'warning' ? 'text-white' : ''}>
               {alert.message}
             </Toast.Body>
           </Toast>

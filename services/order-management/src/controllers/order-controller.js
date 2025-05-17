@@ -2,6 +2,7 @@ const express = require('express');
 const { Order, OrderItem, ShippingDetail, Product, User, Platform } = require('../models');
 const platformServiceFactory = require('../services/platforms/platformServiceFactory');
 const logger = require('../utils/logger');
+const wsService = require('../services/websocketService');
 
 // Controller functions
 async function getAllOrders(req, res) {
@@ -67,6 +68,29 @@ async function getAllOrders(req, res) {
   }
 }
 
+async function createOrder(req, res) {
+  try {
+    // ...existing validation and creation code...
+    
+    const order = await Order.create(orderData);
+    
+    // Notify connected clients about the new order
+    wsService.notifyNewOrder(order);
+    
+    return res.status(201).json({
+      success: true,
+      data: order
+    });
+  } catch (error) {
+    logger.error('Error creating order:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error creating order',
+      error: error.message
+    });
+  }
+}
+
 async function getOrderById(req, res) {
   try {
     const { id } = req.params;
@@ -95,6 +119,37 @@ async function getOrderById(req, res) {
     return res.status(500).json({
       success: false,
       message: 'Error fetching order details',
+      error: error.message
+    });
+  }
+}
+
+async function updateOrder(req, res) {
+  try {
+    const { id } = req.params;
+    const order = await Order.findByPk(id);
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+    
+    await order.update(req.body);
+    
+    // Notify connected clients about the order update
+    wsService.notifyOrderUpdate(order);
+    
+    return res.status(200).json({
+      success: true,
+      data: order
+    });
+  } catch (error) {
+    logger.error('Error updating order:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error updating order',
       error: error.message
     });
   }
@@ -150,25 +205,21 @@ async function cancelOrder(req, res) {
       });
     }
     
-    // Soft delete the order
-    order.status = 'CANCELLED';
-    order.cancellationReason = reason || 'No reason provided';
-    order.cancellationDate = new Date();
+    await order.update({
+      status: 'cancelled',
+      cancellationReason: reason,
+      cancelledAt: new Date()
+    });
     
-    await order.save();
+    // Notify connected clients about the order cancellation
+    wsService.notifyOrderCancellation(order);
     
     return res.status(200).json({
       success: true,
-      message: 'Order cancelled successfully',
-      data: {
-        id: order.id,
-        status: order.status,
-        cancellationReason: order.cancellationReason,
-        cancellationDate: order.cancellationDate
-      }
+      data: order
     });
   } catch (error) {
-    logger.error(`Error cancelling order ${req.params.id}:`, error);
+    logger.error('Error cancelling order:', error);
     return res.status(500).json({
       success: false,
       message: 'Error cancelling order',
@@ -398,7 +449,9 @@ async function getOrderStats(req, res) {
 
 module.exports = {
   getAllOrders,
+  createOrder,
   getOrderById,
+  updateOrder,
   updateOrderStatus,
   cancelOrder,
   syncOrders,

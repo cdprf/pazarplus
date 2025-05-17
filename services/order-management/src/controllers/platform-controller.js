@@ -4,6 +4,8 @@ const router = express.Router();
 const { PlatformConnection } = require("../models/platform-connection.model");
 const PlatformServiceFactory = require("../services/platforms/platformServiceFactory");
 const { authenticateToken } = require("../middleware/auth-middleware");
+const { Platform } = require('../models');
+const wsService = require('../services/websocketService');
 
 const logger = require("../utils/logger");
 
@@ -230,6 +232,117 @@ async function getPlatformTypes(req, res) {
   }
 }
 
+async function getPlatformConnections(req, res) {
+  try {
+    const connections = await Platform.findAll({
+      where: { userId: req.user.id }
+    });
+    
+    return res.status(200).json({
+      success: true,
+      data: connections
+    });
+  } catch (error) {
+    logger.error('Error fetching platform connections:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching platform connections',
+      error: error.message
+    });
+  }
+}
+
+async function updatePlatformStatus(req, res) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const platform = await Platform.findByPk(id);
+    
+    if (!platform) {
+      return res.status(404).json({
+        success: false,
+        message: 'Platform connection not found'
+      });
+    }
+
+    await platform.update({ status });
+    
+    // Notify connected clients about platform status change
+    wsService.notifyPlatformStatusChange(platform);
+
+    return res.status(200).json({
+      success: true,
+      data: platform
+    });
+  } catch (error) {
+    logger.error('Error updating platform status:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error updating platform status',
+      error: error.message
+    });
+  }
+}
+
+async function createPlatformConnection(req, res) {
+  try {
+    const connectionData = {
+      ...req.body,
+      userId: req.user.id,
+      status: 'active'
+    };
+
+    const platform = await Platform.create(connectionData);
+    
+    // Notify connected clients about new platform connection
+    wsService.notifyPlatformStatusChange(platform);
+
+    return res.status(201).json({
+      success: true,
+      data: platform
+    });
+  } catch (error) {
+    logger.error('Error creating platform connection:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error creating platform connection',
+      error: error.message
+    });
+  }
+}
+
+async function deletePlatformConnection(req, res) {
+  try {
+    const { id } = req.params;
+    
+    const platform = await Platform.findByPk(id);
+    
+    if (!platform) {
+      return res.status(404).json({
+        success: false,
+        message: 'Platform connection not found'
+      });
+    }
+
+    await platform.destroy();
+    
+    // Notify connected clients about platform removal
+    wsService.notifyPlatformStatusChange({ id, status: 'removed' });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Platform connection deleted successfully'
+    });
+  } catch (error) {
+    logger.error('Error deleting platform connection:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error deleting platform connection',
+      error: error.message
+    });
+  }
+}
 
 module.exports = {
   createConnection,
@@ -238,5 +351,9 @@ module.exports = {
   updateConnection,
   deleteConnection,
   testConnection,
-  getPlatformTypes
+  getPlatformTypes,
+  getPlatformConnections,
+  updatePlatformStatus,
+  createPlatformConnection,
+  deletePlatformConnection
 };
