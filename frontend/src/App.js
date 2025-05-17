@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Container } from 'react-bootstrap';
 
@@ -36,6 +36,20 @@ function App() {
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+
+  const isDev = process.env.NODE_ENV === 'development';
+  const devMode = process.env.REACT_APP_DEV_MODE === 'true';
+
+  // If in dev mode with direct access enabled, create a fake authenticated state
+  useEffect(() => {
+    if (isDev && devMode && window.location.pathname === '/dev-admin') {
+      // Set a fake authentication token
+      localStorage.setItem('token', 'dev-admin-token');
+      
+      // If needed, create other local storage items for development
+      localStorage.setItem('dev_mode', 'true');
+    }
+  }, [isDev, devMode]);
 
   return (
     <AuthProvider>

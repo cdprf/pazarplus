@@ -9,6 +9,30 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const bypassLogin = async () => {
+    // Set a pre-defined admin user
+    const adminUser = {
+      id: 'admin-user',
+      fullName: 'Admin User',
+      email: 'admin@pazar.plus',
+      isAdmin: true
+    };
+
+    // Set the user in state
+    setUser(adminUser);
+    
+    // Set a dummy token
+    const dummyToken = 'admin-dev-token';
+    localStorage.setItem('token', dummyToken);
+    setToken(dummyToken);
+    
+    // Set axios headers
+    axios.defaults.headers.common['Authorization'] = `Bearer ${dummyToken}`;
+    
+    // Set loading to false
+    setLoading(false);
+  };
+
   // Set auth token in axios headers
   useEffect(() => {
     if (token) {
@@ -21,6 +45,15 @@ export const AuthProvider = ({ children }) => {
   // Load user data if token exists
   useEffect(() => {
     const loadUser = async () => {
+
+      const isDevMode = process.env.NODE_ENV === 'development';
+      const bypassAuth = process.env.REACT_APP_BYPASS_AUTH === 'true';
+      
+      if (isDevMode && bypassAuth) {
+        bypassLogin();
+        return;
+      }
+
       if (!token) {
         setLoading(false);
         return;
@@ -143,6 +176,7 @@ export const AuthProvider = ({ children }) => {
         loading,
         error,
         isAuthenticated: !!user,
+        bypassLogin,
         login,
         register,
         logout,

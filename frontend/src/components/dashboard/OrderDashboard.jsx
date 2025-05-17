@@ -16,7 +16,7 @@ import {
   Spinner,
   Alert
 } from 'react-bootstrap';
-import { Search, Filter, Calendar, Package, Truck, X, Download, ArrowClockwise } from 'react-bootstrap-icons';
+import { Search, Filter, Calendar, Box, Truck, X, Download, ArrowClockwise } from 'react-bootstrap-icons';
 import axios from 'axios';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -540,7 +540,7 @@ const OrderDashboard = () => {
             </div>
           ) : orders.length === 0 ? (
             <div className="text-center p-5">
-              <Package size={48} className="mb-3 text-secondary" />
+              <Box size={48} className="mb-3 text-secondary" />
               <h5>No Orders Found</h5>
               <p className="text-muted">
                 Try changing your filters or sync new orders from your platforms.

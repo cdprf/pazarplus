@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // src/client/pages/ImportCSV.jsx
 
 import React, { useState, useEffect, useContext } from 'react';

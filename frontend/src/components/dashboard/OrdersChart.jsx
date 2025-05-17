@@ -1,7 +1,6 @@
+// Complete Fixed OrdersChart.jsx Component
+
 import React, { useState, useEffect } from 'react';
-import { Line } from 'react-chartjs';
-import axios from 'axios';
-import { Spinner } from 'react-bootstrap';
 import { 
   Chart as ChartJS, 
   CategoryScale, 
@@ -13,6 +12,9 @@ import {
   Legend,
   Filler
 } from 'chart.js';
+import { Line } from 'react-chartjs-2'; // Updated to react-chartjs-2
+import axios from 'axios';
+import { Spinner } from 'react-bootstrap';
 
 // Register ChartJS components
 ChartJS.register(
