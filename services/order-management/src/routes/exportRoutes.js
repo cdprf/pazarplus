@@ -1,9 +1,8 @@
 const express = require('express');
+const router = express.Router();
 const exportController = require('../controllers/export-controller');
 
-const router = express.Router();
-
-// Map controller routes to router
-router.use('/', exportController.router);
+// Use the controller router directly
+router.use('/', exportController);
 
 module.exports = router;

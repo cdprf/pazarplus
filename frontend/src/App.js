@@ -6,6 +6,7 @@ import { Container } from 'react-bootstrap';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import PrivateRoute from './components/auth/PrivateRoute';
+import DevAdmin from './components/auth/DevAdmin';
 
 // Layout components
 import Navbar from './components/layout/Navbar';
@@ -62,6 +63,7 @@ function App() {
               <main className={`main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
                 <Container fluid>
                   <Routes>
+                    <Route path="/dev-admin" element={isDev && devMode ? <DevAdmin /> : <Navigate to="/login" />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />

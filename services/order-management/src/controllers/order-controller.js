@@ -1,15 +1,7 @@
 const express = require('express');
-const router = express.Router();
 const { Order, OrderItem, ShippingDetail, Product, User, Platform } = require('../models');
 const platformServiceFactory = require('../services/platforms/platformServiceFactory');
 const logger = require('../utils/logger');
-
-// Define routes
-router.get('/', getAllOrders);
-router.get('/:id', getOrderById);
-router.put('/:id/status', updateOrderStatus);
-router.delete('/:id', cancelOrder);
-router.post('/sync', syncOrders);
 
 // Controller functions
 async function getAllOrders(req, res) {
@@ -364,4 +356,51 @@ async function syncOrders(req, res) {
   }
 }
 
-module.exports = router;
+async function getOrderStats(req, res) {
+  try {
+    const [newOrders, processingOrders, shippedOrders, totalOrders] = await Promise.all([
+      Order.count({ where: { status: 'new' } }),
+      Order.count({ where: { status: 'processing' } }),
+      Order.count({ where: { status: 'shipped' } }),
+      Order.count()
+    ]);
+
+    // Get platform connection stats
+    const platforms = await Platform.findAndCountAll({
+      attributes: ['status']
+    });
+
+    const platformStats = {
+      active: platforms.rows.filter(p => p.status === 'active').length,
+      error: platforms.rows.filter(p => p.status === 'error').length,
+      total: platforms.count
+    };
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        newOrders,
+        processingOrders,
+        shippedOrders,
+        totalOrders,
+        platforms: platformStats
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching order stats:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching order stats',
+      error: error.message
+    });
+  }
+}
+
+module.exports = {
+  getAllOrders,
+  getOrderById,
+  updateOrderStatus,
+  cancelOrder,
+  syncOrders,
+  getOrderStats
+};

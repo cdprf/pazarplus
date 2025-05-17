@@ -1,9 +1,8 @@
 const express = require('express');
+const router = express.Router();
 const csvController = require('../controllers/csv-controller');
 
-const router = express.Router();
-
-// Map controller routes to router
-router.use('/', csvController.router);
+// Use the controller router directly
+router.use('/', csvController);
 
 module.exports = router;

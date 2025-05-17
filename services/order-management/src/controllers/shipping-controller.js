@@ -1,31 +1,13 @@
 // src/controllers/shipping-controller.js
 
 const express = require('express');
-const router = express.Router();
 const pdfGenerator = require('../services/pdfGenerator');
 const orderProcessorService = require('../services/orderProcessorService');
 const { Order } = require('../models/Order');
 const { ShippingDetail } = require('../models/ShippingDetail');
-const { authenticateToken } = require('../middleware/auth-middleware');
 const logger = require('../utils/logger');
 const fs = require('fs');
 const path = require('path');
-
-
-
-
-// Apply authentication middleware to all shipping routes
-router.use(authenticateToken);
-
-// Shipping label generation routes
-router.post('/labels/generate', generateShippingLabel);
-router.post('/labels/bulk', generateBulkShippingLabels);
-router.get('/labels/:id', getShippingLabel);
-
-// Shipping status routes
-router.post('/mark-shipped', markAsShipped);
-router.get('/carriers', getSupportedCarriers);
-  
 
 async function generateShippingLabel(req, res) {
   try {
@@ -250,5 +232,10 @@ async function getSupportedCarriers(req, res) {
   }
 }
 
-
-module.exports = router;
+module.exports = {
+  generateShippingLabel,
+  generateBulkShippingLabels,
+  getShippingLabel,
+  markAsShipped,
+  getSupportedCarriers
+};

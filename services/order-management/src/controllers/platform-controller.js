@@ -231,4 +231,12 @@ async function getPlatformTypes(req, res) {
 }
 
 
-module.exports = router;
+module.exports = {
+  createConnection,
+  getConnections,
+  getConnection, 
+  updateConnection,
+  deleteConnection,
+  testConnection,
+  getPlatformTypes
+};

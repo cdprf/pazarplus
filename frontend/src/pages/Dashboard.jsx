@@ -31,46 +31,54 @@ const Dashboard = () => {
   const [recentOrders, setRecentOrders] = useState([]);
   const [platformConnections, setPlatformConnections] = useState([]);
   const [syncingPlatforms, setSyncingPlatforms] = useState([]);
+  const [syncingAll, setSyncingAll] = useState(false);
   
-  const { error } = useContext(AlertContext);
-  
-  // Fetch dashboard data
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
+  const { error: showError, success } = useContext(AlertContext);
+
+  // Fetch dashboard data function wrapped in useCallback
+  const fetchDashboardData = React.useCallback(async (showLoadingState = true) => {
+    try {
+      if (showLoadingState) {
         setLoading(true);
-        
-        // Fetch order stats
-        const statsRes = await axios.get('/orders/stats');
-        
-        // Fetch recent orders
-        const recentOrdersRes = await axios.get('/orders?page=0&size=5&sortBy=orderDate&sortOrder=DESC');
-        
-        // Fetch platform connections
-        const platformsRes = await axios.get('/platforms/connections');
-        
-        if (statsRes.data.success) {
-          setStats(statsRes.data.data);
-        }
-        
-        if (recentOrdersRes.data.success) {
-          setRecentOrders(recentOrdersRes.data.data);
-        }
-        
-        if (platformsRes.data.success) {
-          setPlatformConnections(platformsRes.data.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch dashboard data', err);
-        error('Failed to load dashboard data. Please try again.');
-      } finally {
+      }
+      
+      const [statsRes, recentOrdersRes, platformsRes] = await Promise.all([
+        axios.get('/orders/stats'),
+        axios.get('/orders?page=0&size=5&sortBy=orderDate&sortOrder=DESC'),
+        axios.get('/platforms/connections')
+      ]);
+      
+      if (statsRes.data.success) {
+        setStats(statsRes.data.data);
+      }
+      
+      if (recentOrdersRes.data.success) {
+        setRecentOrders(recentOrdersRes.data.data);
+      }
+      
+      if (platformsRes.data.success) {
+        setPlatformConnections(platformsRes.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch dashboard data', err);
+      showError('Failed to load dashboard data. Please try again.');
+    } finally {
+      if (showLoadingState) {
         setLoading(false);
       }
-    };
-    
+    }
+  }, [showError]); // Add showError as dependency
+
+  useEffect(() => {
     fetchDashboardData();
-  }, [error]);
-  
+
+    const refreshInterval = setInterval(() => {
+      fetchDashboardData(false);
+    }, 300000);
+
+    return () => clearInterval(refreshInterval);
+  }, [fetchDashboardData]);
+
   // Sync orders from platform
   const syncPlatform = async (connectionId) => {
     try {
@@ -82,28 +90,58 @@ const Dashboard = () => {
       });
       
       if (res.data.success) {
-        // Refresh dashboard data
-        const statsRes = await axios.get('/orders/stats');
-        const recentOrdersRes = await axios.get('/orders?page=0&size=5&sortBy=orderDate&sortOrder=DESC');
-        
-        if (statsRes.data.success) {
-          setStats(statsRes.data.data);
-        }
-        
-        if (recentOrdersRes.data.success) {
-          setRecentOrders(recentOrdersRes.data.data);
-        }
+        // Refresh all dashboard data at once
+        await fetchDashboardData(false);
+        success('Orders synchronized successfully');
       } else {
-        error(res.data.message || 'Failed to sync orders');
+        showError(res.data.message || 'Failed to sync orders');
       }
     } catch (err) {
       console.error('Failed to sync orders', err);
-      error('Failed to sync orders. Please try again.');
+      showError('Failed to sync orders. Please try again.');
     } finally {
       setSyncingPlatforms(prev => prev.filter(id => id !== connectionId));
     }
   };
-  
+
+  // Sync all platforms
+  const syncAllPlatforms = async () => {
+    try {
+      setSyncingAll(true);
+      
+      // Get active platform connections
+      const activePlatforms = platformConnections.filter(p => p.status === 'active');
+      
+      if (activePlatforms.length === 0) {
+        showError('No active platforms to sync');
+        return;
+      }
+
+      // Sync all platforms in sequence to avoid overwhelming the system
+      for (const platform of activePlatforms) {
+        setSyncingPlatforms(prev => [...prev, platform.id]);
+        
+        try {
+          await axios.post(`/orders/sync/${platform.id}`, {
+            startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+            endDate: new Date().toISOString()
+          });
+        } finally {
+          setSyncingPlatforms(prev => prev.filter(id => id !== platform.id));
+        }
+      }
+
+      // Refresh dashboard data after all syncs complete
+      await fetchDashboardData(false);
+      success('All platforms synchronized successfully');
+    } catch (err) {
+      console.error('Failed to sync all platforms', err);
+      showError('Failed to sync one or more platforms. Please try individual syncs.');
+    } finally {
+      setSyncingAll(false);
+    }
+  };
+
   // Get badge color for order status
   const getStatusBadge = (status) => {
     switch (status) {
@@ -149,7 +187,33 @@ const Dashboard = () => {
   
   return (
     <div className="dashboard">
-      <h2 className="mb-4">Dashboard</h2>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>Dashboard</h2>
+        <Button 
+          variant="primary"
+          onClick={syncAllPlatforms}
+          disabled={syncingAll}
+        >
+          {syncingAll ? (
+            <>
+              <Spinner
+                as="span"
+                animation="border"
+                size="sm"
+                role="status"
+                aria-hidden="true"
+                className="me-2"
+              />
+              Syncing All Platforms...
+            </>
+          ) : (
+            <>
+              <FaSync className="me-2" />
+              Sync All Platforms
+            </>
+          )}
+        </Button>
+      </div>
       
       {/* Stats Cards */}
       <Row className="mb-4">

@@ -1,13 +1,16 @@
 // auth controller.js
+const express = require('express');
+const router = express.Router();
 const bcrypt = require('bcrypt');
 const { User } = require('../models');
 const { generateTokens } = require('../middleware/auth-middleware');
 const { validationResult } = require('express-validator');
+const jwt = require('jsonwebtoken');
 
 /**
  * Register a new user
  */
-exports.register = async (req, res) => {
+router.post('/register', async (req, res) => {
   try {
     // Validate request data
     const errors = validationResult(req);
@@ -15,7 +18,7 @@ exports.register = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password, firstName, lastName, companyName } = req.body;
+    const { email, password, fullName, companyName } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
@@ -31,8 +34,7 @@ exports.register = async (req, res) => {
     const user = await User.create({
       email,
       password: hashedPassword,
-      firstName,
-      lastName,
+      fullName,
       companyName,
       role: 'user', // Default role
       isActive: true
@@ -45,8 +47,7 @@ exports.register = async (req, res) => {
     const userResponse = {
       id: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      fullName: user.fullName,
       companyName: user.companyName,
       role: user.role
     };
@@ -60,12 +61,12 @@ exports.register = async (req, res) => {
     console.error('Registration error:', error);
     res.status(500).json({ message: 'Server error during registration' });
   }
-};
+});
 
 /**
  * Log in an existing user
  */
-exports.login = async (req, res) => {
+router.post('/login', async (req, res) => {
   try {
     // Validate request data
     const errors = validationResult(req);
@@ -99,8 +100,7 @@ exports.login = async (req, res) => {
     const userResponse = {
       id: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      fullName: user.fullName,
       companyName: user.companyName,
       role: user.role
     };
@@ -114,12 +114,82 @@ exports.login = async (req, res) => {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Server error during login' });
   }
-};
+});
+
+/**
+ * Get current authenticated user
+ */
+router.get('/me', async (req, res) => {
+  try {
+    // Get user ID from token
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ 
+        success: false,
+        message: 'No token provided' 
+      });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Get user data
+    const user = await User.findByPk(decoded.id, {
+      attributes: { exclude: ['password'] }
+    });
+
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'User account is inactive' 
+      });
+    }
+
+    // Return user data
+    res.json({ 
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        companyName: user.companyName,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ 
+        success: false,
+        message: 'Token expired' 
+      });
+    }
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ 
+        success: false,
+        message: 'Invalid token' 
+      });
+    }
+    
+    console.error('Get me error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error retrieving user data' 
+    });
+  }
+});
 
 /**
  * Get current user profile
  */
-exports.getProfile = async (req, res) => {
+router.get('/profile', async (req, res) => {
   try {
     // Get user ID from JWT
     const userId = req.user.id;
@@ -138,12 +208,12 @@ exports.getProfile = async (req, res) => {
     console.error('Get profile error:', error);
     res.status(500).json({ message: 'Server error retrieving profile' });
   }
-};
+});
 
 /**
  * Update user password
  */
-exports.updatePassword = async (req, res) => {
+router.put('/update-password', async (req, res) => {
   try {
     // Validate request data
     const errors = validationResult(req);
@@ -179,14 +249,16 @@ exports.updatePassword = async (req, res) => {
     console.error('Update password error:', error);
     res.status(500).json({ message: 'Server error updating password' });
   }
-};
+});
 
 /**
  * Log out - client side action, but we can invalidate refresh tokens in the future
  */
-exports.logout = async (req, res) => {
+router.post('/logout', async (req, res) => {
   // For now, this is just a stub for future token invalidation logic
   // In a real implementation, you would invalidate the refresh token
   
   res.json({ message: 'Logged out successfully' });
-};
+});
+
+module.exports = router;

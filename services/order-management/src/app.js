@@ -1,5 +1,3 @@
-// src/app.js - FIXED
-
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
@@ -8,11 +6,12 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const compression = require("compression");
 const logger = require("./utils/logger");
+const config = require("./config/app");
 
 class App {
   constructor() {
     this.app = express();
-    this.port = process.env.PORT || 3000;
+    this.port = config.port;
 
     this.initializeMiddlewares();
     this.initializeRoutes();
@@ -20,14 +19,45 @@ class App {
   }
 
   initializeMiddlewares() {
-    // Security middlewares
-    this.app.use(helmet());
+    // CORS configuration - must be before other middleware
+    this.app.use(cors({
+      origin: process.env.NODE_ENV === 'development' 
+        ? ['http://localhost:3000']
+        : [process.env.FRONTEND_URL],
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: [
+        'Content-Type', 
+        'Authorization', 
+        'X-Requested-With',
+        'Accept',
+        'Origin'
+      ],
+      exposedHeaders: ['Content-Range', 'X-Content-Range'],
+      preflightContinue: false,
+      optionsSuccessStatus: 204
+    }));
 
-    // Rate limiting
+    // Security middlewares
+    this.app.use(helmet({
+      // Disable CSP to allow frontend development
+      contentSecurityPolicy: process.env.NODE_ENV === 'development' ? false : true,
+      // Allow cross-origin requests
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: "cross-origin" }
+    }));
+
+    // Rate limiting - more permissive in development
     const limiter = rateLimit({
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 100, // limit each IP to 100 requests per windowMs
+      windowMs: process.env.NODE_ENV === 'development' 
+        ? 1 * 60 * 1000 // 1 minute in development
+        : 15 * 60 * 1000, // 15 minutes in production
+      max: process.env.NODE_ENV === 'development'
+        ? 500 // 500 requests per minute in development
+        : 100, // 100 requests per 15 minutes in production
       message: "Too many requests from this IP, please try again later",
+      standardHeaders: true,
+      legacyHeaders: false
     });
     this.app.use("/api/", limiter);
 
@@ -36,9 +66,6 @@ class App {
 
     // Parse URL-encoded bodies
     this.app.use(express.urlencoded({ extended: true }));
-
-    // Enable CORS
-    this.app.use(cors());
 
     // HTTP request logging
     this.app.use(
@@ -56,13 +83,13 @@ class App {
 
   initializeRoutes() {
     try {
-      // API routes - FIXED to use the router exports from each module
+      // API routes
       this.app.use("/api/auth", require("./routes/authRoutes"));
-      this.app.use("/api/platforms", require("./controllers/platform-controller"));
-      this.app.use("/api/orders", require("./controllers/order-controller"));
-      this.app.use("/api/shipping", require("./controllers/shipping-controller"));
-      this.app.use("/api/csv", require("./controllers/csv-controller"));
-      this.app.use("/api/export", require("./controllers/export-controller"));
+      this.app.use("/api/platforms", require("./routes/platformRoutes"));
+      this.app.use("/api/orders", require("./routes/orderRoutes"));
+      this.app.use("/api/shipping", require("./routes/shippingRoutes"));
+      this.app.use("/api/csv", require("./routes/csvRoutes"));
+      this.app.use("/api/export", require("./routes/exportRoutes"));
 
       // Health check route
       this.app.get("/health", (req, res) => {
@@ -74,20 +101,20 @@ class App {
         });
       });
 
-      // Fallback route for SPA - removed duplicate
+      // SPA fallback route
       this.app.get("*", (req, res) => {
         res.sendFile(path.join(__dirname, "../public/index.html"));
       });
+
     } catch (error) {
       logger.error("Error initializing routes:", error);
       throw new Error("Failed to initialize routes");
     }
   }
 
-  // Error handling middleware
   initializeErrorHandling() {
     // 404 handler
-    this.app.use((req, res, next) => {
+    this.app.use((req, res) => {
       res.status(404).json({
         success: false,
         message: "Resource not found",
@@ -101,14 +128,13 @@ class App {
       res.status(err.status || 500).json({
         success: false,
         message: err.message || "Internal server error",
-        error: process.env.NODE_ENV === "production" ? undefined : err.stack,
+        error: process.env.NODE_ENV === "development" ? err.stack : undefined,
       });
     });
   }
 
   async connectToDatabase() {
     try {
-      // Use syncDatabase instead
       await require("./models/index").syncDatabase();
       logger.info("Database connection established successfully.");
       return true;
@@ -119,9 +145,26 @@ class App {
   }
 
   listen() {
-    this.app.listen(this.port, () => {
-      logger.info(`Server is running on port ${this.port}`);
+    return new Promise((resolve, reject) => {
+      try {
+        const server = this.app.listen(this.port, '0.0.0.0', () => {
+          logger.info(`Server is running on port ${this.port}`);
+          resolve(server);
+        });
+
+        server.on('error', (error) => {
+          logger.error(`Server error: ${error.message}`);
+          reject(error);
+        });
+      } catch (error) {
+        logger.error(`Failed to start server: ${error.message}`);
+        reject(error);
+      }
     });
+  }
+
+  getApp() {
+    return this.app;
   }
 }
 
