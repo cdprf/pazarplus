@@ -60,29 +60,40 @@ class App {
   }
 
   initializeRoutes() {
-    // API routes
-    this.app.use("/api/auth", require("./controllers/auth-controller"));
-    this.app.use("/api/platforms", require("./controllers/platform-controller"));
-    this.app.use("/api/orders", require("./controllers/order-controller"));
-    this.app.use("/api/shipping", require("./controllers/shipping-controller"));
-    this.app.use("/api/csv", require("./controllers/csv-controller"));
+    try {
+      // API routes
+      this.app.use("/api/auth", require("./routes/authRoutes"));
+      this.app.use("/api/platforms", require("./controllers/platform-controller"));
+      this.app.use("/api/orders", require("./routes/orderRoutes"));
+      this.app.use("/api/shipping", require("./routes/shippingRoutes"));
+      this.app.use("/api/csv", require("./controllers/csv-controller"));
 
-    // Health check route
-    this.app.get("/health", (req, res) => {
-      res.status(200).json({
-        status: "healthy",
-        service: "order-management-service",
-        version: process.env.npm_package_version || "1.0.0",
-        timestamp: new Date().toISOString(),
+      // Health check route
+      this.app.get("/health", (req, res) => {
+        res.status(200).json({
+          status: "healthy",
+          service: "order-management-service",
+          version: process.env.npm_package_version || "1.0.0",
+          timestamp: new Date().toISOString(),
+        });
       });
-    });
 
-    // Fallback route for SPA
-    this.app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "../public/index.html"));
-    });
+      // Fallback route for SPA
+      this.app.get("*", (req, res) => {
+        res.sendFile(path.join(__dirname, "../public/index.html"));
+      });
+
+      // Fallback route for SPA
+      this.app.get("*", (req, res) => {
+        res.sendFile(path.join(__dirname, "../public/index.html"));
+      });
+    } catch (error) {
+      logger.error("Error initializing routes:", error);
+      throw new Error("Failed to initialize routes");
+    }
   }
 
+  // Error handling middleware
   initializeErrorHandling() {
     // 404 handler
     this.app.use((req, res, next) => {

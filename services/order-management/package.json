@@ -4,6 +4,7 @@
   "description": "Order management service for Pazar Plus, handling order processing, shipping, and tracking.",
   "main": "src/server.js",
   "scripts": {
+    "prestart": "node src/scripts/prestart.js",
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "lint": "eslint src/",

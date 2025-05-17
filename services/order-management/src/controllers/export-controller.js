@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const exportService = require('../services/exportService');
 const { authenticateToken } = require('../middleware/auth-middleware');
-console.log('authenticateToken:', authenticateToken); 
+
 const logger = require('../utils/logger');
 
 

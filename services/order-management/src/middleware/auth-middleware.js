@@ -7,7 +7,7 @@ const { User } = require('../models');
 
 // JWT secret should be in environment variables in production
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key-for-development';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 
 /**
  * Generates JWT tokens for authenticated users

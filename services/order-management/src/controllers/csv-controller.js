@@ -5,7 +5,7 @@ const router = express.Router();
 const multer = require('multer');
 const PlatformServiceFactory = require('../services/platforms/platformServiceFactory');
 const { authenticateToken } = require('../middleware/auth-middleware');
-console.log('authenticateToken:', authenticateToken); 
+
 const logger = require('../utils/logger');
 
 // Configure multer for in-memory storage

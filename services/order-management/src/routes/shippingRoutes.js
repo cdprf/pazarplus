@@ -1,44 +1,15 @@
-// routes/shippingRoutes.js
-
+// src/routes/shippingRoutes.js
 const express = require('express');
 const router = express.Router();
-const shippingController = require('../controllers/shippingController');
-const authMiddleware = require('../middleware/auth');
+const shippingController = require('../controllers/shipping-controller');
+const { authenticateToken } = require('../middleware/auth-middleware');
 
-/**
- * Shipping Routes
- * Handles routes related to shipping management
- */
+router.use(authenticateToken);
 
-// Apply authentication middleware to all shipping routes
-router.use(authMiddleware.authenticate);
-
-/**
- * @route   POST /api/shipping
- * @desc    Create shipping label
- * @access  Private
- */
-router.post('/', shippingController.createShippingLabel);
-
-/**
- * @route   GET /api/shipping/:id
- * @desc    Get shipping details by ID
- * @access  Private
- */
-router.get('/:id', shippingController.getShippingDetails);
-
-/**
- * @route   PUT /api/shipping/:id
- * @desc    Update shipping status
- * @access  Private
- */
-router.put('/:id', shippingController.updateShippingStatus);
-
-/**
- * @route   POST /api/shipping/batch
- * @desc    Batch process multiple shipments
- * @access  Private
- */
-router.post('/batch', shippingController.batchProcessShipments);
+router.post('/labels/generate', shippingController.generateShippingLabel);
+router.post('/labels/bulk', shippingController.generateBulkShippingLabels);
+router.get('/labels/:id', shippingController.getShippingLabel);
+router.post('/mark-shipped', shippingController.markAsShipped);
+router.get('/carriers', shippingController.getSupportedCarriers);
 
 module.exports = router;

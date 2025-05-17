@@ -4,7 +4,7 @@ const router = express.Router();
 const { PlatformConnection } = require("../models/platform-connection.model");
 const PlatformServiceFactory = require("../services/platforms/platformServiceFactory");
 const { authenticateToken } = require("../middleware/auth-middleware");
-console.log('authenticateToken:', authenticateToken); 
+
 const logger = require("../utils/logger");
 
 

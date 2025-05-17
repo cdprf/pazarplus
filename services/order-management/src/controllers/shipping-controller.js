@@ -7,7 +7,6 @@ const orderProcessorService = require('../services/orderProcessorService');
 const { Order } = require('../models/Order');
 const { ShippingDetail } = require('../models/ShippingDetail');
 const { authenticateToken } = require('../middleware/auth-middleware');
-console.log('authenticateToken:', authenticateToken); 
 const logger = require('../utils/logger');
 const fs = require('fs');
 const path = require('path');

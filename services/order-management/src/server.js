@@ -7,10 +7,15 @@ const App = require('./app');
 const logger = require('./utils/logger');
 
 async function startServer() {
-  const app = new App();
-  
   try {
+    console.log('Starting application...');
+    console.log('Environment:', process.env.NODE_ENV);
+    console.log('JWT Secret defined:', !!process.env.JWT_SECRET);
+
+    const app = new App();
+
     // Connect to database
+    console.log('Connecting to database...');
     const dbConnected = await app.connectToDatabase();
     
     if (!dbConnected) {
@@ -19,6 +24,7 @@ async function startServer() {
     }
     
     // Start server
+    console.log('Starting server...');
     app.listen();
   } catch (error) {
     logger.error(`Failed to start server: ${error.message}`, { error });
@@ -27,16 +33,12 @@ async function startServer() {
 }
 
 // Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  logger.error(`Uncaught Exception: ${error.message}`, { error });
+process.on('uncaughtException', (reason, promise) => {
+  logger.error(`Uncaught Rejection at:` , promise);
+  logger.error(`Reason: ${reason}`);
   process.exit(1);
 });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
-});
 
 // Start the server
 startServer();
