@@ -5,12 +5,12 @@ const { sequelize } = require('../config/database');
 
 const PlatformConnection = sequelize.define('PlatformConnection', {
   id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
   },
   userId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: false
   },
   platformType: {
@@ -26,30 +26,16 @@ const PlatformConnection = sequelize.define('PlatformConnection', {
     allowNull: false
   },
   credentials: {
-    type: DataTypes.TEXT,
-    allowNull: false,
-    get() {
-      const rawValue = this.getDataValue('credentials');
-      return rawValue ? JSON.parse(rawValue) : null;
-    },
-    set(value) {
-      this.setDataValue('credentials', JSON.stringify(value));
-    }
+    type: DataTypes.JSON,
+    allowNull: false
   },
   status: {
     type: DataTypes.STRING,
     defaultValue: 'pending'
   },
   settings: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-    get() {
-      const rawValue = this.getDataValue('settings');
-      return rawValue ? JSON.parse(rawValue) : null;
-    },
-    set(value) {
-      this.setDataValue('settings', JSON.stringify(value));
-    }
+    type: DataTypes.JSON,
+    allowNull: true
   },
   isActive: {
     type: DataTypes.BOOLEAN,
@@ -66,5 +52,11 @@ const PlatformConnection = sequelize.define('PlatformConnection', {
 }, {
   timestamps: true
 });
+
+// Add association method
+PlatformConnection.associate = function(models) {
+  PlatformConnection.belongsTo(models.User, { foreignKey: 'userId' });
+  PlatformConnection.hasMany(models.Order, { foreignKey: 'platformId' });
+};
 
 module.exports = PlatformConnection;

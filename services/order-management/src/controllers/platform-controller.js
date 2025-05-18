@@ -52,7 +52,7 @@ async function createConnection(req, res) {
       platformType,
       platformName: name, // Add platformName field
       name,
-      credentials: JSON.stringify(credentials),
+      credentials: credentials, // No need to stringify since model type is JSON
       status: "pending",
     });
     return res.status(201).json({
@@ -135,7 +135,7 @@ async function updateConnection(req, res) {
     const updates = {};
     if (name) updates.name = name;
     if (platformName) updates.platformName = platformName;
-    if (credentials) updates.credentials = JSON.stringify(credentials);
+    if (credentials) updates.credentials = credentials; // No need to stringify since model type is JSON
     if (status) updates.status = status;
     
     await connection.update(updates);
@@ -361,6 +361,16 @@ async function createPlatformConnection(req, res) {
       // Use name as platformName if platformName is not provided
       platformName: req.body.platformName || req.body.name
     };
+
+    // If credentials is a string, parse it to ensure it's stored as JSON
+    if (connectionData.credentials && typeof connectionData.credentials === 'string') {
+      try {
+        connectionData.credentials = JSON.parse(connectionData.credentials);
+      } catch (e) {
+        // If it's not valid JSON, leave it as is
+        logger.warn(`Failed to parse credentials as JSON: ${e.message}`);
+      }
+    }
 
     const platform = await PlatformConnection.create(connectionData);
     

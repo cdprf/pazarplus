@@ -213,14 +213,23 @@ export const orderService = {
   },
 
   // Sync orders from external platforms
-  async syncOrders(params = {}) {
+  async syncOrders(platformId, dateRange = {}) {
     try {
-      const { platformId, dateRange } = params;
-      const response = await axios.post(`${BASE_URL}/sync`, {
-        platformId,
-        dateRange
-      }, getHeaders());
-      return response.data;
+      // If a specific platform ID is provided, use the platform-specific endpoint
+      if (platformId) {
+        const response = await axios.post(`${BASE_URL}/sync/${platformId}`, 
+          dateRange, 
+          getHeaders()
+        );
+        return response.data;
+      } else {
+        // Otherwise use the general sync endpoint
+        const response = await axios.post(`${BASE_URL}/sync`, {
+          platformId,
+          dateRange
+        }, getHeaders());
+        return response.data;
+      }
     } catch (error) {
       throw handleApiError(error);
     }

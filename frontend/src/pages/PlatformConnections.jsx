@@ -315,60 +315,95 @@ const PlatformConnections = () => {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       }
       
+      // Show sync is starting
+      success(`Starting order sync. This may take a moment...`);
+      
       const response = await axios.post(`/orders/sync/${connectionId}`, {
         startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // Last 7 days
         endDate: new Date().toISOString()
       });
       
       if (response.data.success) {
-        success(`Successfully synced ${response.data.data?.count || 0} orders`);
+        // Check if we have information about skipped/duplicate orders
+        const newOrders = response.data.data?.count || 0;
+        const skippedOrders = response.data.data?.skipped || 0;
+        
+        let message = `Successfully synced ${newOrders} orders`;
+        if (skippedOrders > 0) {
+          message += ` (${skippedOrders} duplicate orders were skipped)`;
+        }
+        
+        success(message);
+        
+        // Refresh the connection to update lastSyncAt time
+        fetchConnections();
       } else {
         error(response.data.message || 'Failed to sync orders');
       }
     } catch (err) {
       console.error('Error syncing orders:', err);
-      error(err.response?.data?.message || 'Failed to sync orders');
+      
+      // Handle duplicate order error more gracefully
+      if (err.response?.data?.error?.name === 'SequelizeUniqueConstraintError') {
+        error('Orders are already synced. Try again later or with a different date range.');
+      } else {
+        error(err.response?.data?.message || 'Failed to sync orders. Check server logs for details.');
+      }
     }
   };
   
   // Handle edit click
-  const handleEditClick = (connection) => {
+  const handleEditClick = async (connection) => {
     setSelectedConnection(connection);
-    
-    // Parse the credentials from the connection object
-    let apiKey = '';
-    let apiSecret = '';
-    let storeId = '';
-    
+
     try {
-      // Check if credentials is already an object or needs to be parsed
-      const credentials = typeof connection.credentials === 'string' 
-        ? JSON.parse(connection.credentials) 
-        : connection.credentials;
-      
-      // Extract values from credentials
-      apiKey = credentials.apiKey || '';
-      apiSecret = credentials.apiSecret || '';
-      
-      // Extract storeId/sellerId based on platform type
-      if (connection.platformType === 'trendyol') {
-        storeId = credentials.sellerId || '';
+      const token = localStorage.getItem('token');
+      if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await axios.get(`/platforms/connections/${connection.id}`);
+
+      if (response.data.success) {
+        const connectionData = response.data.data;
+
+        let apiKey = '';
+        let apiSecret = '';
+        let storeId = '';
+
+        try {
+          const credentials = typeof connectionData.credentials === 'string'
+            ? JSON.parse(connectionData.credentials)
+            : connectionData.credentials;
+
+          apiKey = credentials.apiKey || '';
+          apiSecret = credentials.apiSecret || '';
+
+          if (connectionData.platformType === 'trendyol') {
+            storeId = credentials.sellerId || '';
+          } else {
+            storeId = credentials.storeId || '';
+          }
+        } catch (err) {
+          console.error('Error parsing connection credentials:', err);
+        }
+
+        setFormData({
+          name: connectionData.name,
+          platformType: connectionData.platformType,
+          apiKey: apiKey,
+          apiSecret: apiSecret,
+          storeId: storeId,
+          isActive: connectionData.status === 'active',
+        });
       } else {
-        storeId = credentials.storeId || '';
+        error('Failed to load connection details');
       }
     } catch (err) {
-      console.error('Error parsing connection credentials:', err);
+      console.error('Error loading connection details:', err);
+      error('Failed to load connection details');
     }
-    
-    setFormData({
-      name: connection.name,
-      platformType: connection.platformType,
-      apiKey: apiKey,
-      apiSecret: apiSecret,
-      storeId: storeId,
-      isActive: connection.status === 'active'
-    });
-    
+
     setShowEditModal(true);
   };
   

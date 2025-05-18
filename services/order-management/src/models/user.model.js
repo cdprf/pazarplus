@@ -7,9 +7,9 @@ const bcrypt = require('bcrypt');
 
 const User = sequelize.define('User', {
   id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
   },
   email: {
     type: DataTypes.STRING,
@@ -55,6 +55,13 @@ const User = sequelize.define('User', {
 // Instance method to check password
 User.prototype.validPassword = async function(password) {
   return await bcrypt.compare(password, this.password);
+};
+
+// Add association method
+User.associate = function(models) {
+  User.hasMany(models.PlatformConnection, { foreignKey: 'userId' });
+  User.hasMany(models.Order, { foreignKey: 'userId' });
+  User.hasMany(models.Product, { foreignKey: 'userId' });
 };
 
 module.exports = User;

@@ -408,6 +408,95 @@ async function syncOrders(req, res) {
   }
 }
 
+/**
+ * Sync orders for a specific platform by ID
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ */
+async function syncOrdersByPlatform(req, res) {
+  try {
+    const { id } = req.params; // Platform connection ID
+    const userId = req.user.id; // Get user ID from auth middleware
+    
+    // Find the platform connection
+    const platformConnection = await PlatformConnection.findOne({
+      where: {
+        id: id,
+        userId: userId
+      }
+    });
+    
+    if (!platformConnection) {
+      return res.status(404).json({
+        success: false,
+        message: `Platform connection with ID ${id} not found or doesn't belong to the user`
+      });
+    }
+    
+    // Get the platform service factory
+    const platformService = await platformServiceFactory.createService(id);
+    
+    if (!platformService) {
+      return res.status(400).json({
+        success: false,
+        message: `Unsupported platform type: ${platformConnection.platformType}`
+      });
+    }
+    
+    // Set date range for sync
+    const now = new Date();
+    const startDate = req.body.startDate 
+      ? new Date(req.body.startDate) 
+      : new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)); // Default to last 7 days
+    
+    const endDate = req.body.endDate 
+      ? new Date(req.body.endDate) 
+      : now;
+    
+    // Sync orders from the platform
+    let syncResult;
+    try {
+      syncResult = await platformService.syncOrdersFromDate(startDate, endDate);
+    } catch (syncError) {
+      logger.error(`Error during sync operation: ${syncError.message}`, { error: syncError });
+      
+      // Check if this is a duplicate order error (SequelizeUniqueConstraintError)
+      if (syncError.name === 'SequelizeUniqueConstraintError') {
+        return res.status(409).json({
+          success: false,
+          message: 'Some orders are already synced and could not be imported again',
+          error: {
+            name: 'SequelizeUniqueConstraintError',
+            fields: syncError.fields
+          }
+        });
+      }
+      
+      throw syncError; // Re-throw other errors to be caught by the outer catch block
+    }
+    
+    // Update platform connection last sync time
+    await platformConnection.update({
+      lastSyncAt: now
+    });
+    
+    // Successful sync
+    return res.status(200).json({
+      success: true,
+      message: `Successfully synced orders from ${platformConnection.name}`,
+      data: syncResult
+    });
+    
+  } catch (error) {
+    logger.error(`Error syncing orders from platform connection ${req.params.id}:`, error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error syncing orders',
+      error: error.message
+    });
+  }
+}
+
 async function getOrderStats(req, res) {
   try {
     const [newOrders, processingOrders, shippedOrders, totalOrders] = await Promise.all([
@@ -779,7 +868,8 @@ module.exports = {
   updateOrderStatus,
   cancelOrder,
   syncOrders,
+  syncOrdersByPlatform,
   getOrderStats,
-  importHepsiburadaOrder, // Add this function to the exports
-  getOrderTrends // Add this function to the exports
+  importHepsiburadaOrder,
+  getOrderTrends
 };

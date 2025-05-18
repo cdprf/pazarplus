@@ -28,7 +28,10 @@ module.exports = (sequelize, DataTypes) => {
       },
       customerEmail: {
         type: DataTypes.STRING,
-        allowNull: true
+        allowNull: true,
+        validate: {
+          isEmail: true
+        }
       },
       customerPhone: {
         type: DataTypes.STRING,
@@ -91,6 +94,15 @@ module.exports = (sequelize, DataTypes) => {
     }, {
       tableName: 'orders',
       timestamps: true,
+      hooks: {
+        beforeUpdate: (order) => {
+          // If this is a sync-related update and lastSyncedAt isn't explicitly set
+          if (!order.changed('lastSyncedAt') && 
+              (order.changed('status') || order.changed('rawData'))) {
+            order.lastSyncedAt = new Date();
+          }
+        }
+      },
       indexes: [
         {
           unique: true,

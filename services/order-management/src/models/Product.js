@@ -131,7 +131,10 @@ module.exports = (sequelize, DataTypes) => {
   
     Product.associate = (models) => {
       Product.belongsTo(models.User, { foreignKey: 'userId' });
-      Product.hasMany(models.ProductVariant, { foreignKey: 'productId' });
+      // Only create relationship with ProductVariant if it exists
+      if (models.ProductVariant) {
+        Product.hasMany(models.ProductVariant, { foreignKey: 'productId' });
+      }
       Product.hasMany(models.OrderItem, { foreignKey: 'productId' });
       // Add additional associations as needed
     };

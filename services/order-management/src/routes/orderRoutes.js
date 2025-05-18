@@ -202,6 +202,33 @@ router.post('/sync', orderController.syncOrders);
 
 /**
  * @swagger
+ * /api/orders/sync/{id}:
+ *   post:
+ *     summary: Sync orders from a specific platform
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Platform Connection ID
+ *     responses:
+ *       200:
+ *         description: Orders synced successfully
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       404:
+ *         description: Platform connection not found
+ *       500:
+ *         description: Server error
+ */
+router.post('/sync/:id', orderController.syncOrdersByPlatform);
+
+/**
+ * @swagger
  * /api/orders/import/hepsiburada:
  *   post:
  *     summary: Import orders from Hepsiburada
