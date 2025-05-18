@@ -56,7 +56,7 @@ const PlatformConnection = sequelize.define('PlatformConnection', {
 // Add association method
 PlatformConnection.associate = function(models) {
   PlatformConnection.belongsTo(models.User, { foreignKey: 'userId' });
-  PlatformConnection.hasMany(models.Order, { foreignKey: 'platformId' });
+  PlatformConnection.hasMany(models.Order, { foreignKey: 'connectionId' });
 };
 
 module.exports = PlatformConnection;

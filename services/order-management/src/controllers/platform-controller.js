@@ -21,6 +21,16 @@ router.post("/connections/:id/test", testConnection);
 router.post("/connections/test", testNewConnection);
 router.get("/connections/:id/products", getProductsByConnection);
 
+// Add new Trendyol-specific endpoints
+router.get("/connections/:id/order/:orderNumber", getOrderById);
+router.get("/connections/:id/order/:orderNumber/shipment-packages", getOrderShipmentPackages);
+router.post("/connections/:id/order/:orderNumber/shipment-packages", createShipmentPackage);
+router.get("/connections/:id/claims", getClaims);
+router.get("/connections/:id/shipping-providers", getShippingProviders);
+router.get("/connections/:id/settlements", getSettlements);
+router.post("/connections/:id/batch-requests", createBatchRequest);
+router.get("/connections/:id/batch-requests/:batchRequestId", getBatchRequestStatus);
+
 // Platform type routes
 router.get("/types", getPlatformTypes);
 
@@ -477,6 +487,421 @@ async function getProductsByConnection(req, res) {
   }
 }
 
+/**
+ * Get single order details from Trendyol by order number
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+async function getOrderById(req, res) {
+  try {
+    const connection = await PlatformConnection.findOne({
+      where: { id: req.params.id, userId: req.user.id },
+    });
+    
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "Platform connection not found",
+      });
+    }
+
+    if (connection.platformType.toLowerCase() !== 'trendyol') {
+      return res.status(400).json({
+        success: false,
+        message: `This endpoint is only supported for Trendyol platform`,
+      });
+    }
+    
+    const { orderNumber } = req.params;
+    
+    // Create platform service instance
+    const platformService = await PlatformServiceFactory.createService(
+      connection.id
+    );
+    
+    // Get order details
+    const result = await platformService.getOrderById(orderNumber);
+    
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    logger.error(`Failed to fetch order details: ${error.message}`, {
+      error,
+    });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch order details",
+      error: error.message,
+    });
+  }
+}
+
+/**
+ * Get shipment packages for an order from Trendyol
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+async function getOrderShipmentPackages(req, res) {
+  try {
+    const connection = await PlatformConnection.findOne({
+      where: { id: req.params.id, userId: req.user.id },
+    });
+    
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "Platform connection not found",
+      });
+    }
+
+    if (connection.platformType.toLowerCase() !== 'trendyol') {
+      return res.status(400).json({
+        success: false,
+        message: `This endpoint is only supported for Trendyol platform`,
+      });
+    }
+    
+    const { orderNumber } = req.params;
+    
+    // Create platform service instance
+    const platformService = await PlatformServiceFactory.createService(
+      connection.id
+    );
+    
+    // Get shipment packages
+    const result = await platformService.getOrderShipmentPackages(orderNumber);
+    
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    logger.error(`Failed to fetch shipment packages: ${error.message}`, {
+      error,
+    });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch shipment packages",
+      error: error.message,
+    });
+  }
+}
+
+/**
+ * Create a shipment package for a Trendyol order
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+async function createShipmentPackage(req, res) {
+  try {
+    const connection = await PlatformConnection.findOne({
+      where: { id: req.params.id, userId: req.user.id },
+    });
+    
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "Platform connection not found",
+      });
+    }
+
+    if (connection.platformType.toLowerCase() !== 'trendyol') {
+      return res.status(400).json({
+        success: false,
+        message: `This endpoint is only supported for Trendyol platform`,
+      });
+    }
+    
+    const { orderNumber } = req.params;
+    const packageDetails = req.body;
+    
+    // Create platform service instance
+    const platformService = await PlatformServiceFactory.createService(
+      connection.id
+    );
+    
+    // Create shipment package
+    const result = await platformService.createShipmentPackage(orderNumber, packageDetails);
+    
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    logger.error(`Failed to create shipment package: ${error.message}`, {
+      error,
+    });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create shipment package",
+      error: error.message,
+    });
+  }
+}
+
+/**
+ * Get claims for a Trendyol connection
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+async function getClaims(req, res) {
+  try {
+    const connection = await PlatformConnection.findOne({
+      where: { id: req.params.id, userId: req.user.id },
+    });
+    
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "Platform connection not found",
+      });
+    }
+
+    if (connection.platformType.toLowerCase() !== 'trendyol') {
+      return res.status(400).json({
+        success: false,
+        message: `This endpoint is only supported for Trendyol platform`,
+      });
+    }
+    
+    // Parse query parameters
+    const page = parseInt(req.query.page) || 0;
+    const size = parseInt(req.query.size) || 50;
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
+    
+    // Create platform service instance
+    const platformService = await PlatformServiceFactory.createService(
+      connection.id
+    );
+    
+    // Get claims
+    const result = await platformService.getClaims({
+      page,
+      size,
+      startDate,
+      endDate
+    });
+    
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    logger.error(`Failed to fetch claims: ${error.message}`, {
+      error,
+    });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch claims",
+      error: error.message,
+    });
+  }
+}
+
+/**
+ * Get shipping providers for a Trendyol connection
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+async function getShippingProviders(req, res) {
+  try {
+    const connection = await PlatformConnection.findOne({
+      where: { id: req.params.id, userId: req.user.id },
+    });
+    
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "Platform connection not found",
+      });
+    }
+
+    if (connection.platformType.toLowerCase() !== 'trendyol') {
+      return res.status(400).json({
+        success: false,
+        message: `This endpoint is only supported for Trendyol platform`,
+      });
+    }
+    
+    // Create platform service instance
+    const platformService = await PlatformServiceFactory.createService(
+      connection.id
+    );
+    
+    // Get shipping providers
+    const result = await platformService.getShippingProviders();
+    
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    logger.error(`Failed to fetch shipping providers: ${error.message}`, {
+      error,
+    });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch shipping providers",
+      error: error.message,
+    });
+  }
+}
+
+/**
+ * Get settlements for a Trendyol connection
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+async function getSettlements(req, res) {
+  try {
+    const connection = await PlatformConnection.findOne({
+      where: { id: req.params.id, userId: req.user.id },
+    });
+    
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "Platform connection not found",
+      });
+    }
+
+    if (connection.platformType.toLowerCase() !== 'trendyol') {
+      return res.status(400).json({
+        success: false,
+        message: `This endpoint is only supported for Trendyol platform`,
+      });
+    }
+    
+    // Parse query parameters
+    const page = parseInt(req.query.page) || 0;
+    const size = parseInt(req.query.size) || 50;
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
+    
+    // Create platform service instance
+    const platformService = await PlatformServiceFactory.createService(
+      connection.id
+    );
+    
+    // Get settlements
+    const result = await platformService.getSettlements({
+      page,
+      size,
+      startDate,
+      endDate
+    });
+    
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    logger.error(`Failed to fetch settlements: ${error.message}`, {
+      error,
+    });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch settlements",
+      error: error.message,
+    });
+  }
+}
+
+/**
+ * Create a batch request for Trendyol operations
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+async function createBatchRequest(req, res) {
+  try {
+    const connection = await PlatformConnection.findOne({
+      where: { id: req.params.id, userId: req.user.id },
+    });
+    
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "Platform connection not found",
+      });
+    }
+
+    if (connection.platformType.toLowerCase() !== 'trendyol') {
+      return res.status(400).json({
+        success: false,
+        message: `This endpoint is only supported for Trendyol platform`,
+      });
+    }
+    
+    const { type, items } = req.body;
+    
+    if (!type || !items) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required parameters: type and items",
+      });
+    }
+    
+    // Create platform service instance
+    const platformService = await PlatformServiceFactory.createService(
+      connection.id
+    );
+    
+    // Create batch request
+    const result = await platformService.createBatchRequest(type, items);
+    
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    logger.error(`Failed to create batch request: ${error.message}`, {
+      error,
+    });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create batch request",
+      error: error.message,
+    });
+  }
+}
+
+/**
+ * Get status of a batch request from Trendyol
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+async function getBatchRequestStatus(req, res) {
+  try {
+    const connection = await PlatformConnection.findOne({
+      where: { id: req.params.id, userId: req.user.id },
+    });
+    
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "Platform connection not found",
+      });
+    }
+
+    if (connection.platformType.toLowerCase() !== 'trendyol') {
+      return res.status(400).json({
+        success: false,
+        message: `This endpoint is only supported for Trendyol platform`,
+      });
+    }
+    
+    const { batchRequestId } = req.params;
+    
+    if (!batchRequestId) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required parameter: batchRequestId",
+      });
+    }
+    
+    // Create platform service instance
+    const platformService = await PlatformServiceFactory.createService(
+      connection.id
+    );
+    
+    // Get batch request status
+    const result = await platformService.getBatchRequestStatus(batchRequestId);
+    
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    logger.error(`Failed to get batch request status: ${error.message}`, {
+      error,
+    });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get batch request status",
+      error: error.message,
+    });
+  }
+}
+
 module.exports = {
   createConnection,
   getConnections,
@@ -490,5 +915,13 @@ module.exports = {
   updatePlatformStatus,
   createPlatformConnection,
   deletePlatformConnection,
-  getProductsByConnection
+  getProductsByConnection,
+  getOrderById,
+  getOrderShipmentPackages,
+  createShipmentPackage,
+  getClaims,
+  getShippingProviders,
+  getSettlements,
+  createBatchRequest,
+  getBatchRequestStatus
 };

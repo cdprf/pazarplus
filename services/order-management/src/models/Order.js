@@ -13,10 +13,15 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         comment: 'Order ID from the external platform'
       },
-      platformId: {
+      platformType: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        comment: 'Type of platform (e.g., trendyol, hepsiburada)'
+      },
+      connectionId: {
         type: DataTypes.UUID,
         allowNull: false,
-        comment: 'Reference to the platform this order came from'
+        comment: 'Reference to the specific platform connection instance'
       },
       userId: {
         type: DataTypes.UUID,
@@ -106,10 +111,13 @@ module.exports = (sequelize, DataTypes) => {
       indexes: [
         {
           unique: true,
-          fields: ['externalOrderId', 'platformId']
+          fields: ['externalOrderId', 'connectionId']
         },
         {
           fields: ['userId']
+        },
+        {
+          fields: ['platformType']
         },
         {
           fields: ['status']
@@ -122,9 +130,24 @@ module.exports = (sequelize, DataTypes) => {
   
     Order.associate = (models) => {
       Order.belongsTo(models.User, { foreignKey: 'userId' });
-      Order.belongsTo(models.PlatformConnection, { foreignKey: 'platformId' });
+      Order.belongsTo(models.PlatformConnection, { foreignKey: 'connectionId' });
       Order.hasOne(models.ShippingDetail, { foreignKey: 'orderId' });
       Order.hasMany(models.OrderItem, { foreignKey: 'orderId' });
+      
+      // Platform-specific associations
+      if (models.TrendyolOrder) {
+        Order.hasOne(models.TrendyolOrder, { 
+          foreignKey: 'orderId',
+          as: 'trendyolDetails'
+        });
+      }
+      
+      if (models.HepsiburadaOrder) {
+        Order.hasOne(models.HepsiburadaOrder, { 
+          foreignKey: 'orderId',
+          as: 'hepsiburadaDetails'
+        });
+      }
     };
   
     return Order;

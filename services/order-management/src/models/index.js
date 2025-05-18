@@ -9,12 +9,16 @@ const ShippingDetailModel = require('./ShippingDetail');
 const ProductModel = require('./Product');
 const User = require('./user.model');
 const PlatformConnection = require('./platform-connection.model');
+const TrendyolOrderModel = require('./TrendyolOrder');
+const HepsiburadaOrderModel = require('./HepsiburadaOrder');
 
 // Initialize models
 const Order = OrderModel(sequelize, DataTypes);
 const OrderItem = OrderItemModel(sequelize, DataTypes);
 const ShippingDetail = ShippingDetailModel(sequelize, DataTypes);
 const Product = ProductModel(sequelize, DataTypes);
+const TrendyolOrder = TrendyolOrderModel(sequelize, DataTypes);
+const HepsiburadaOrder = HepsiburadaOrderModel(sequelize, DataTypes);
 
 // Create models object
 const models = {
@@ -23,7 +27,9 @@ const models = {
   Order,
   OrderItem,
   ShippingDetail,
-  Product
+  Product,
+  TrendyolOrder,
+  HepsiburadaOrder
 };
 
 // Call associate methods if they exist
