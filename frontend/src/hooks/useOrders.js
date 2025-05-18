@@ -294,3 +294,22 @@ export const useOrderTrends = (params = {}) => {
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
 };
+
+/**
+ * Hook to import Hepsiburada orders directly
+ */
+export const useImportHepsiburadaOrder = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ orderData, connectionId }) => 
+      orderService.importHepsiburadaOrder(orderData, connectionId),
+    onSuccess: (data) => {
+      if (data.success) {
+        // Invalidate orders list to show the newly imported order
+        queryClient.invalidateQueries({ queryKey: ['orders'] });
+        queryClient.invalidateQueries({ queryKey: ['orderStats'] });
+      }
+    }
+  });
+};

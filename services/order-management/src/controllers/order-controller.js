@@ -1,8 +1,9 @@
 const express = require('express');
-const { Order, OrderItem, ShippingDetail, Product, User, Platform } = require('../models');
+const { Order, OrderItem, ShippingDetail, Product, User, PlatformConnection } = require('../models');
 const platformServiceFactory = require('../services/platforms/platformServiceFactory');
 const logger = require('../utils/logger');
 const wsService = require('../services/websocketService');
+const { Op } = require('sequelize'); // Add Sequelize operators import
 
 // Controller functions
 async function getAllOrders(req, res) {
@@ -25,10 +26,10 @@ async function getAllOrders(req, res) {
     if (platform) where.platformId = platform;
     if (customerId) where.customerId = customerId;
     
-    // Apply date range filter if provided
+    // Apply date range filter if provided - using proper Sequelize operator syntax
     if (startDate && endDate) {
       where.orderDate = {
-        $between: [new Date(startDate), new Date(endDate)]
+        [Op.between]: [new Date(startDate), new Date(endDate)]
       };
     }
     
@@ -40,7 +41,7 @@ async function getAllOrders(req, res) {
       include: [
         { model: OrderItem, include: [Product] },
         { model: ShippingDetail },
-        { model: Platform }
+        { model: PlatformConnection } // Changed from Platform to PlatformConnection
       ],
       order: [['orderDate', 'DESC']],
       distinct: true
@@ -99,7 +100,7 @@ async function getOrderById(req, res) {
       include: [
         { model: OrderItem, include: [Product] },
         { model: ShippingDetail },
-        { model: Platform }
+        { model: PlatformConnection } // Changed from Platform to PlatformConnection
       ]
     });
     
@@ -244,14 +245,14 @@ async function syncOrders(req, res) {
     // Get all platforms for the user if platformIds not specified
     let platforms;
     if (platformIds && platformIds.length > 0) {
-      platforms = await Platform.findAll({
+      platforms = await PlatformConnection.findAll({ // Changed from Platform to PlatformConnection
         where: {
           id: platformIds,
           userId
         }
       });
     } else {
-      platforms = await Platform.findAll({
+      platforms = await PlatformConnection.findAll({ // Changed from Platform to PlatformConnection
         where: { userId }
       });
     }
@@ -417,7 +418,7 @@ async function getOrderStats(req, res) {
     ]);
 
     // Get platform connection stats
-    const platforms = await Platform.findAndCountAll({
+    const platforms = await PlatformConnection.findAndCountAll({ // Changed from Platform to PlatformConnection
       attributes: ['status']
     });
 
@@ -447,6 +448,329 @@ async function getOrderStats(req, res) {
   }
 }
 
+/**
+ * Import a direct Hepsiburada order payload
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ */
+async function importHepsiburadaOrder(req, res) {
+  try {
+    const orderData = req.body;
+    const { connectionId } = req.query;
+    
+    if (!orderData || !orderData.orderId || !orderData.orderNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid order data: Missing required fields'
+      });
+    }
+    
+    if (!connectionId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Platform connection ID is required'
+      });
+    }
+
+    // Get the Hepsiburada service for this connection
+    const HepsiburadaService = require('../services/platforms/hepsiburada/hepsiburada-service');
+    const hepsiburadaService = new HepsiburadaService(connectionId);
+    
+    // Process the order data
+    const result = await hepsiburadaService.processDirectOrderPayload(orderData);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    // Notify via websocket about the new order
+    if (result.data) {
+      wsService.notifyNewOrder(result.data);
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Order imported successfully',
+      data: result.data
+    });
+    
+  } catch (error) {
+    logger.error(`Failed to import Hepsiburada order: ${error.message}`, { error, userId: req.user.id });
+    
+    return res.status(500).json({
+      success: false,
+      message: `Failed to import order: ${error.message}`,
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Get order trends data for charts
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ */
+async function getOrderTrends(req, res) {
+  try {
+    const { period = 'week', platform, compareWithPrevious = 'true' } = req.query;
+    const shouldCompare = compareWithPrevious === 'true';
+    
+    // Determine date ranges based on the period
+    const now = new Date();
+    let startDate, endDate;
+    let previousStartDate, previousEndDate;
+    let groupByFormat;
+    
+    switch (period) {
+      case 'year':
+        // Last 12 months
+        startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        previousStartDate = new Date(now.getFullYear() - 1, now.getMonth() - 11, 1);
+        previousEndDate = new Date(now.getFullYear() - 1, now.getMonth() + 1, 0);
+        groupByFormat = 'month'; // Group by month
+        break;
+        
+      case 'month':
+        // Last 30 days
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+        endDate = now;
+        previousStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 59);
+        previousEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
+        groupByFormat = 'day'; // Group by day
+        break;
+        
+      default: // week
+        // Last 7 days
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+        endDate = now;
+        previousStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 13);
+        previousEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+        groupByFormat = 'day'; // Group by day
+    }
+    
+    // Set times to beginning/end of day for consistent comparisons
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+    
+    if (shouldCompare) {
+      previousStartDate.setHours(0, 0, 0, 0);
+      previousEndDate.setHours(23, 59, 59, 999);
+    }
+    
+    // Prepare the where clause
+    const where = {
+      orderDate: {
+        [Op.between]: [startDate, endDate]
+      }
+    };
+    
+    // Add platform filter if provided
+    if (platform) {
+      where.platformId = platform;
+    }
+    
+    // Fetch orders for the current period
+    const orders = await Order.findAll({
+      where,
+      attributes: [
+        'id', 
+        'orderDate', 
+        'status',
+        'totalAmount'
+      ],
+      order: [['orderDate', 'ASC']]
+    });
+    
+    // Group orders by date
+    const groupedData = groupOrdersByDate(orders, groupByFormat);
+    
+    // Process previous period if comparison is requested
+    let previousGroupedData = null;
+    if (shouldCompare) {
+      const previousWhere = { ...where };
+      previousWhere.orderDate = {
+        [Op.between]: [previousStartDate, previousEndDate]
+      };
+      
+      const previousOrders = await Order.findAll({
+        where: previousWhere,
+        attributes: [
+          'id', 
+          'orderDate', 
+          'status',
+          'totalAmount'
+        ],
+        order: [['orderDate', 'ASC']]
+      });
+      
+      previousGroupedData = groupOrdersByDate(previousOrders, groupByFormat);
+    }
+    
+    // Format the response data
+    const trendData = formatTrendData(groupedData, previousGroupedData, period);
+    
+    return res.status(200).json({
+      success: true,
+      data: trendData
+    });
+    
+  } catch (error) {
+    logger.error(`Failed to get order trends: ${error.message}`, { error });
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to get order trends',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Group orders by date according to the specified format
+ * @param {Array} orders - The array of orders
+ * @param {String} groupByFormat - The date format to group by ('day' or 'month')
+ * @returns {Object} - Grouped orders by date
+ */
+function groupOrdersByDate(orders, groupByFormat) {
+  const grouped = {};
+  
+  orders.forEach(order => {
+    const date = new Date(order.orderDate);
+    let key;
+    
+    if (groupByFormat === 'month') {
+      // Format: YYYY-MM (2023-01 for January 2023)
+      key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    } else {
+      // Format: YYYY-MM-DD
+      key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+    
+    if (!grouped[key]) {
+      grouped[key] = {
+        date: key,
+        newOrders: 0,
+        shippedOrders: 0,
+        totalOrders: 0,
+        revenue: 0
+      };
+    }
+    
+    grouped[key].totalOrders++;
+    
+    if (order.status === 'new') {
+      grouped[key].newOrders++;
+    } else if (order.status === 'shipped') {
+      grouped[key].shippedOrders++;
+    }
+    
+    // Add to revenue
+    if (order.totalAmount) {
+      grouped[key].revenue += parseFloat(order.totalAmount) || 0;
+    }
+  });
+  
+  return grouped;
+}
+
+/**
+ * Format trend data for response
+ * @param {Object} currentData - Grouped data for current period
+ * @param {Object} previousData - Grouped data for previous period (optional)
+ * @param {String} period - The time period ('week', 'month', 'year')
+ * @returns {Array} - Formatted trend data
+ */
+function formatTrendData(currentData, previousData, period) {
+  const result = [];
+  
+  // Get all dates in the range
+  const dates = getDateRange(period);
+  
+  // Fill in the data for each date
+  dates.forEach(dateStr => {
+    const data = {
+      date: dateStr,
+      newOrders: (currentData[dateStr]?.newOrders || 0),
+      shippedOrders: (currentData[dateStr]?.shippedOrders || 0),
+      totalOrders: (currentData[dateStr]?.totalOrders || 0),
+      revenue: (currentData[dateStr]?.revenue || 0).toFixed(2)
+    };
+    
+    // Add previous period data if available
+    if (previousData) {
+      const previousIndex = Object.keys(previousData).findIndex(d => 
+        d.substring(5) === dateStr.substring(5)
+      );
+      
+      if (previousIndex !== -1) {
+        const prevKey = Object.keys(previousData)[previousIndex];
+        data.previousNewOrders = previousData[prevKey]?.newOrders || 0;
+        data.previousShippedOrders = previousData[prevKey]?.shippedOrders || 0;
+        data.previousTotalOrders = previousData[prevKey]?.totalOrders || 0;
+        data.previousRevenue = (previousData[prevKey]?.revenue || 0).toFixed(2);
+      } else {
+        data.previousNewOrders = 0;
+        data.previousShippedOrders = 0;
+        data.previousTotalOrders = 0;
+        data.previousRevenue = 0;
+      }
+    }
+    
+    result.push(data);
+  });
+  
+  return result;
+}
+
+/**
+ * Generate a date range array based on the period
+ * @param {String} period - The time period ('week', 'month', 'year')
+ * @returns {Array} - Array of date strings
+ */
+function getDateRange(period) {
+  const result = [];
+  const today = new Date();
+  let start, end, dateFormat;
+  
+  switch (period) {
+    case 'year':
+      start = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+      end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      dateFormat = 'month';
+      break;
+    case 'month':
+      start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29);
+      end = today;
+      dateFormat = 'day';
+      break;
+    default: // week
+      start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
+      end = today;
+      dateFormat = 'day';
+  }
+  
+  // Set to beginning of day
+  start.setHours(0, 0, 0, 0);
+  
+  const current = new Date(start);
+  
+  while (current <= end) {
+    let dateStr;
+    
+    if (dateFormat === 'month') {
+      dateStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+      current.setMonth(current.getMonth() + 1);
+    } else {
+      dateStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
+      current.setDate(current.getDate() + 1);
+    }
+    
+    result.push(dateStr);
+  }
+  
+  return result;
+}
+
 module.exports = {
   getAllOrders,
   createOrder,
@@ -455,5 +779,7 @@ module.exports = {
   updateOrderStatus,
   cancelOrder,
   syncOrders,
-  getOrderStats
+  getOrderStats,
+  importHepsiburadaOrder, // Add this function to the exports
+  getOrderTrends // Add this function to the exports
 };

@@ -6,6 +6,8 @@ const helmet = require("helmet");
 const compression = require("compression");
 const logger = require("./utils/logger");
 const config = require("./config/app");
+const { initializeSwagger } = require('./config/swagger');
+const applyTestToken = require('./middleware/dev-test-auth');
 const { apiLimiter, authLimiter, syncLimiter } = require('./middleware/rate-limit');
 const authRoutes = require('./routes/authRoutes');
 const orderRoutes = require('./routes/orderRoutes');
@@ -13,25 +15,18 @@ const platformRoutes = require('./routes/platformRoutes');
 const shippingRoutes = require('./routes/shippingRoutes');
 const exportRoutes = require('./routes/exportRoutes');
 const csvRoutes = require('./routes/csvRoutes');
+const proxyRoutes = require('./routes/proxyRoutes');
 const { authenticateToken } = require('./middleware/auth-middleware');
 const { errorHandler } = require('./middleware/error-handler');
-const { sequelize } = require('./models');
+const { sequelize, User } = require('./models');
 
 class App {
   constructor() {
     this.app = express();
     this.port = config.port;
-
-    this.initializeMiddlewares();
-    this.initializeRoutes();
-    this.initializeErrorHandling();
-  }
-
-  initializeMiddlewares() {
-    // CORS configuration - must be before other middleware
-    this.app.use(cors({
+    this.corsOptions = {
       origin: process.env.NODE_ENV === 'development' 
-        ? 'http://localhost:3000'  // Allow frontend dev server
+        ? ['http://localhost:3000', 'http://127.0.0.1:3000']  // Allow frontend dev server with multiple origins
         : process.env.FRONTEND_URL,
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -40,14 +35,35 @@ class App {
         'Authorization', 
         'X-Requested-With',
         'Accept',
-        'Origin'
+        'Origin',
+        'x-dev-mode'  // Allow our dev mode header
       ],
       exposedHeaders: ['Content-Range', 'X-Content-Range'],
       preflightContinue: false,
       optionsSuccessStatus: 204
-    }));
+    };
 
-    // Security middlewares
+    this.initializeMiddlewares();
+    this.initializeRoutes();
+    this.initializeErrorHandling();
+  }
+
+  initializeMiddlewares() {
+    // CORS configuration - must be before other middleware
+
+    // Apply CORS middleware
+    this.app.use(cors(this.corsOptions));
+    
+    // Handle OPTIONS preflight requests explicitly
+    this.app.options('*', cors(this.corsOptions));
+
+    // Apply test token middleware in development environment
+    if (process.env.NODE_ENV === 'development') {
+      this.app.use(applyTestToken);
+      logger.info('Development mode: Test token authentication enabled');
+    }
+
+    // Security middlewares with appropriate settings for development
     this.app.use(helmet({
       // Disable CSP to allow frontend development
       contentSecurityPolicy: process.env.NODE_ENV === 'development' ? false : true,
@@ -81,11 +97,41 @@ class App {
 
   initializeRoutes() {
     try {
+      // Handle OPTIONS requests for CORS preflight
+      this.app.options('*', cors(this.corsOptions));
+      
+      // API Documentation - Initialize Swagger UI with automatic test token
+      initializeSwagger(this.app);
+      
       // Public routes with auth rate limiting
       this.app.use('/api/auth', authLimiter, authRoutes);
 
-      // Protected routes
-      this.app.use(authenticateToken);
+      // Health check route - keep this public
+      this.app.get("/health", (req, res) => {
+        res.status(200).json({
+          status: "healthy",
+          service: "order-management-service",
+          version: process.env.npm_package_version || "1.0.0",
+          timestamp: new Date().toISOString(),
+        });
+      });
+
+      // Debug route for development only - to check auth status
+      if (process.env.NODE_ENV === 'development') {
+        this.app.get("/api/debug/auth-status", (req, res) => {
+          res.status(200).json({
+            success: true,
+            isAuthenticated: !!req.isUsingTestToken,
+            hasAuthHeader: !!req.headers.authorization,
+            authHeader: req.headers.authorization ? 'Bearer ****' : null,
+            user: req.user || null,
+            timestamp: new Date().toISOString(),
+          });
+        });
+      }
+
+      // Protected routes - all other API routes require authentication
+      this.app.use('/api', authenticateToken);
       
       // Apply sync rate limiting to sync endpoints
       this.app.use('/api/orders/sync', syncLimiter);
@@ -96,19 +142,14 @@ class App {
       this.app.use('/api/shipping', shippingRoutes);
       this.app.use('/api/export', exportRoutes);
       this.app.use('/api/csv', csvRoutes);
+      this.app.use('/api/proxy', proxyRoutes);
 
-      // Health check route
-      this.app.get("/health", (req, res) => {
-        res.status(200).json({
-          status: "healthy",
-          service: "order-management-service",
-          version: process.env.npm_package_version || "1.0.0",
-          timestamp: new Date().toISOString(),
-        });
-      });
-
-      // SPA fallback route
-      this.app.get("*", (req, res) => {
+      // SPA fallback route - only catch routes that aren't handled by the API or other specific routes
+      this.app.get("*", (req, res, next) => {
+        // Skip API routes and API documentation routes
+        if (req.path.startsWith('/api') || req.path.startsWith('/api-docs')) {
+          return next();
+        }
         res.sendFile(path.join(__dirname, "../public/index.html"));
       });
 
@@ -199,4 +240,46 @@ class App {
   }
 }
 
-module.exports = App;
+// Updated initializeApp function to handle database sync better
+const initializeApp = async () => {
+  try {
+    logger.info('Starting application initialization...');
+
+    // First authenticate to check database connection
+    await sequelize.authenticate();
+    logger.info('Database connection established successfully.');
+    
+    // Use a safer approach for database synchronization
+    // In development, use sync with force: false, alter: false to prevent dropping tables
+    // This ensures foreign key constraints won't be violated
+    await sequelize.sync({ force: false, alter: false }); 
+    logger.info('Database synchronized safely.');
+
+    // For development environment, ensure dev user exists
+    if (process.env.NODE_ENV === 'development') {
+      const devUserEmail = 'dev@example.com';
+      let devUser = await User.findOne({ where: { email: devUserEmail } });
+      if (!devUser) {
+        devUser = await User.create({
+          email: devUserEmail,
+          password: 'devpassword123', // Provide a default password
+          fullName: 'Development User',
+          companyName: 'Dev Co',
+          role: 'admin' // Ensure this role is valid
+        });
+        logger.info(`Development user created: ${devUser.email} with ID ${devUser.id}`);
+      } else {
+        logger.info(`Development user found: ${devUser.email} with ID ${devUser.id}`);
+      }
+    }
+
+    logger.info('Application initialization completed successfully');
+    return true;
+
+  } catch (error) {
+    logger.error('Failed to initialize the application:', error);
+    process.exit(1); // Exit if essential initialization fails
+  }
+};
+
+module.exports = { App, initializeApp };

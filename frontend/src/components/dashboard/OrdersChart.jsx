@@ -33,6 +33,9 @@ const OrdersChart = () => {
   const [period, setPeriod] = useState('week');
   const chartRef = useRef(null);
   const { data, isLoading, error } = useOrderTrends(period);
+  
+  // Process error to ensure it's a string
+  const errorMessage = error ? (error.message || error.toString()) : null;
 
   const formatDate = (dateString, period) => {
     const date = parseISO(dateString);
@@ -130,7 +133,7 @@ const OrdersChart = () => {
 
       <LoadingState
         loading={isLoading}
-        error={error}
+        error={errorMessage}
         loadingMessage="Loading chart data..."
       >
         {chartData ? (

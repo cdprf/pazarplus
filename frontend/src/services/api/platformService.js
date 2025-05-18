@@ -1,8 +1,28 @@
 import axios from 'axios';
 import { handleApiError } from '../../utils/apiErrorHandler';
 
+// Use environment variable or fall back to the correct backend URL (port 3001)
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 const BASE_URL = `${API_URL}/platforms`;
+
+// Add development mode headers when in development environment
+const getHeaders = () => {
+  // Start with default headers
+  const headers = {};
+  
+  // Add development mode header when in development environment
+  if (process.env.NODE_ENV === 'development') {
+    headers['x-dev-mode'] = 'true';
+  }
+  
+  // Add authentication token from localStorage if available
+  const token = localStorage.getItem('token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return { headers };
+};
 
 /**
  * Service for platform connection operations
@@ -14,7 +34,7 @@ const platformService = {
    */
   getPlatformConnections: async () => {
     try {
-      const response = await axios.get(BASE_URL);
+      const response = await axios.get(BASE_URL, getHeaders());
       return response.data;
     } catch (error) {
       throw handleApiError(error);
@@ -28,7 +48,7 @@ const platformService = {
    */
   getPlatformConnection: async (platformId) => {
     try {
-      const response = await axios.get(`${BASE_URL}/${platformId}`);
+      const response = await axios.get(`${BASE_URL}/${platformId}`, getHeaders());
       return response.data;
     } catch (error) {
       throw handleApiError(error, 'Failed to fetch platform connection details');
@@ -42,7 +62,7 @@ const platformService = {
    */
   checkPlatformStatus: async (platformId) => {
     try {
-      const response = await axios.get(`${BASE_URL}/${platformId}/status`);
+      const response = await axios.get(`${BASE_URL}/${platformId}/status`, getHeaders());
       return response.data;
     } catch (error) {
       throw handleApiError(error, 'Failed to check platform status');
@@ -56,7 +76,7 @@ const platformService = {
    */
   addPlatformConnection: async (connectionData) => {
     try {
-      const response = await axios.post(BASE_URL, connectionData);
+      const response = await axios.post(BASE_URL, connectionData, getHeaders());
       return response.data;
     } catch (error) {
       throw handleApiError(error, 'Failed to add platform connection');
@@ -71,7 +91,7 @@ const platformService = {
    */
   updatePlatformConnection: async (platformId, connectionData) => {
     try {
-      const response = await axios.put(`${BASE_URL}/${platformId}`, connectionData);
+      const response = await axios.put(`${BASE_URL}/${platformId}`, connectionData, getHeaders());
       return response.data;
     } catch (error) {
       throw handleApiError(error, 'Failed to update platform connection');
@@ -85,7 +105,7 @@ const platformService = {
    */
   deletePlatformConnection: async (platformId) => {
     try {
-      const response = await axios.delete(`${BASE_URL}/${platformId}`);
+      const response = await axios.delete(`${BASE_URL}/${platformId}`, getHeaders());
       return response.data;
     } catch (error) {
       throw handleApiError(error, 'Failed to delete platform connection');
@@ -99,7 +119,7 @@ const platformService = {
    */
   syncPlatformData: async (platformId) => {
     try {
-      const response = await axios.post(`${BASE_URL}/${platformId}/sync`);
+      const response = await axios.post(`${BASE_URL}/${platformId}/sync`, null, getHeaders());
       return response.data;
     } catch (error) {
       throw handleApiError(error, 'Failed to sync platform data');
@@ -112,7 +132,7 @@ const platformService = {
    */
   getAvailablePlatforms: async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/available`);
+      const response = await axios.get(`${BASE_URL}/available`, getHeaders());
       return response.data;
     } catch (error) {
       throw handleApiError(error, 'Failed to fetch available platforms');

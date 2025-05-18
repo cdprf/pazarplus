@@ -74,8 +74,16 @@ export const handleApiError = (error) => {
     );
   }
   
-  // Handle network errors
+  // Handle network errors, which include CORS errors
   if (error.request) {
+    // Check for CORS related errors
+    if (error.message && error.message.includes('Network Error')) {
+      return new ApiError(
+        'Cross-Origin Request Blocked: The server may not support CORS or the server is unreachable. Please check your API configuration.',
+        0
+      );
+    }
+    
     return new ApiError(
       'Unable to connect to server. Please check your internet connection.',
       0

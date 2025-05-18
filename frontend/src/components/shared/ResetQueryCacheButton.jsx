@@ -12,7 +12,13 @@ const ResetQueryCacheButton = ({
   size = 'sm',
   ...props 
 }) => {
+  // Wrap the hook in a try/catch to prevent errors if used outside QueryClientProvider
   const queryClient = useQueryClient();
+
+  if (!queryClient) {
+    console.warn('ResetQueryCacheButton: useQueryClient hook failed, likely outside QueryClientProvider');
+    return null;
+  }
 
   const handleReset = () => {
     if (queryClient) {

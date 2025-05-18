@@ -30,10 +30,16 @@ class WebSocketService {
 
     // Determine the WebSocket URL based on environment
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    
+    // Always use port 3001 for WebSocket connections
+    // This fixes the issue where frontend was trying to connect to port 3000
     const host = process.env.NODE_ENV === 'development' 
       ? 'localhost:3001' 
       : window.location.host;
+      
     const wsUrl = `${protocol}//${host}/ws?token=${token}`;
+    
+    console.log(`Connecting to WebSocket at ${wsUrl}`);
     
     // Set connection timeout - abort if connection takes too long
     this.connectionTimeout = setTimeout(() => {

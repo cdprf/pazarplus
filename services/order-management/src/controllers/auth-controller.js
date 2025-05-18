@@ -8,7 +8,64 @@ const { validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
 
 /**
- * Register a new user
+ * @swagger
+ * tags:
+ *   name: Authentication
+ *   description: User authentication endpoints
+ */
+
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 minLength: 6
+ *               fullName:
+ *                 type: string
+ *               companyName:
+ *                 type: string
+ *             example:
+ *               email: "test@example.com"
+ *               password: "Password123"
+ *               fullName: "Test User"
+ *               companyName: "Test Company"
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                 token:
+ *                   type: string
+ *       400:
+ *         description: Validation error
+ *       409:
+ *         description: User already exists
+ *       500:
+ *         description: Server error
  */
 router.post('/register', async (req, res) => {
   try {
@@ -64,7 +121,51 @@ router.post('/register', async (req, res) => {
 });
 
 /**
- * Log in an existing user
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: Log in an existing user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 format: password
+ *             example:
+ *               email: "test@example.com"
+ *               password: "Password123"
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                 token:
+ *                   type: string
+ *                   description: JWT token to use for authenticated requests
+ *       401:
+ *         description: Invalid credentials
+ *       403:
+ *         description: Account is inactive
+ *       500:
+ *         description: Server error
  */
 router.post('/login', async (req, res) => {
   try {

@@ -1,0 +1,114 @@
+
+    /* Custom styling for Swagger UI */
+    .swagger-ui .topbar { 
+      background-color: #2c3e50; 
+    }
+    .swagger-ui .info .title { 
+      color: #2c3e50; 
+    }
+    
+    /* Authorize button styling */
+    .swagger-ui .auth-wrapper .authorize {
+      background-color: #27ae60;
+      color: white;
+      border-color: #27ae60;
+      border-radius: 4px;
+      padding: 6px 15px;
+      transition: all 0.3s;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .swagger-ui .auth-wrapper .authorize svg {
+      fill: white;
+      margin-right: 8px;
+    }
+    
+    .swagger-ui .auth-wrapper .authorize:hover {
+      background-color: #219653;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .swagger-ui .auth-wrapper .authorize:active {
+      transform: translateY(1px);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    /* Loading spinner */
+    @keyframes spinner {
+      to {transform: rotate(360deg);}
+    }
+    
+    .swagger-ui .auth-wrapper .authorize.loading svg {
+      display: none;
+    }
+    
+    .swagger-ui .auth-wrapper .authorize.loading::before {
+      content: "";
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      border-top-color: transparent;
+      animation: spinner 0.8s linear infinite;
+      margin-right: 8px;
+    }
+    
+    /* Success state */
+    .swagger-ui .auth-wrapper .authorize.success {
+      background-color: #2c3e50;
+    }
+    
+    /* Hide modal elements */
+    .swagger-ui .dialog-ux .modal-ux-inner {
+      display: none !important;
+    }
+    
+    .swagger-ui .dialog-ux .backdrop-ux {
+      display: none !important;
+    }
+    
+    /* Toast notification */
+    .auth-toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      background: #27ae60;
+      color: white;
+      border-radius: 4px;
+      font-weight: bold;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      display: flex;
+      align-items: center;
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: all 0.3s ease-out;
+    }
+    
+    .auth-toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .auth-toast.success::before {
+      content: "✓";
+      margin-right: 8px;
+      font-size: 16px;
+    }
+    
+    .auth-toast.error {
+      background: #e74c3c;
+    }
+    
+    .auth-toast.error::before {
+      content: "✕";
+      margin-right: 8px;
+      font-size: 16px;
+    }
+  

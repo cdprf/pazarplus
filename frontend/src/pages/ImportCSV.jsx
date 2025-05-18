@@ -671,6 +671,17 @@ const ImportCSV = () => {
     <div className="import-csv">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>Import CSV</h2>
+        
+        <div>
+          <Button 
+            variant="outline-danger"
+            href="/import/hepsiburada"
+            className="me-2"
+          >
+            <FaUpload className="me-2" />
+            Import Hepsiburada Order
+          </Button>
+        </div>
       </div>
       
       {/* Progress Steps */}

@@ -105,17 +105,35 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem('token');
         
         if (token) {
-          // Check if token is expired
-          const decodedToken = jwtDecode(token);
-          const currentTime = Date.now() / 1000;
-          
-          if (decodedToken.exp < currentTime) {
-            // Token is expired, try to refresh
-            await refreshAccessToken();
-          } else {
-            // Token is valid
-            setCurrentUser(decodedToken);
+          // Verify token has the correct format before decoding
+          if (token === 'dev-admin-token' || token === 'dev-mode-token') {
+            // Handle dev tokens differently
+            const devUser = {
+              id: 'dev-user-id',
+              email: 'dev@example.com',
+              fullName: 'Development User',
+              devMode: true,
+              permissions: ['view_dashboard', 'admin', 'edit_orders', 'view_orders'],
+              exp: Math.floor(Date.now() / 1000) + 86400 // Expires in 24 hours
+            };
+            setCurrentUser(devUser);
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          } else if (token.split('.').length === 3) {
+            // Only attempt to decode valid JWT tokens (should have 3 parts)
+            const decodedToken = jwtDecode(token);
+            const currentTime = Date.now() / 1000;
+            
+            if (decodedToken.exp < currentTime) {
+              // Token is expired, try to refresh
+              await refreshAccessToken();
+            } else {
+              // Token is valid
+              setCurrentUser(decodedToken);
+              axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            }
+          } else {
+            // Invalid token format
+            throw new Error('Invalid token format');
           }
         }
       } catch (err) {
@@ -202,6 +220,50 @@ export const AuthProvider = ({ children }) => {
   const clearError = useCallback(() => {
     setError(null);
   }, []);
+  
+  // Development mode bypass login
+  const bypassLogin = useCallback(async () => {
+    // Only allow in development mode
+    if (process.env.NODE_ENV !== 'development' || process.env.REACT_APP_DEV_MODE !== 'true') {
+      setError('Development mode access denied');
+      return false;
+    }
+    
+    try {
+      setLoading(true);
+      
+      // Create a fake development user with necessary permissions
+      const devUser = {
+        id: 'dev-user-id',
+        email: 'dev@example.com',
+        fullName: 'Development User',
+        devMode: true,
+        permissions: ['view_dashboard', 'admin', 'edit_orders', 'view_orders'],
+        exp: Math.floor(Date.now() / 1000) + 86400 // Expires in 24 hours
+      };
+      
+      // Store fake token in localStorage
+      const fakeToken = 'dev-mode-token';
+      localStorage.setItem('token', fakeToken);
+      localStorage.setItem('refreshToken', 'dev-mode-refresh-token');
+      
+      // Set axios headers for API calls
+      axios.defaults.headers.common['Authorization'] = `Bearer ${fakeToken}`;
+      // Add development mode header
+      axios.defaults.headers.common['x-dev-mode'] = 'true';
+      
+      // Set current user
+      setCurrentUser(devUser);
+      
+      return true;
+    } catch (err) {
+      console.error('Development bypass login failed:', err);
+      setError('Development mode login failed');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const value = {
     currentUser,
@@ -212,7 +274,8 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     clearError,
-    refreshToken: refreshAccessToken
+    refreshToken: refreshAccessToken,
+    bypassLogin
   };
 
   return (

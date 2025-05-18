@@ -2,15 +2,14 @@
 
 const axios = require('axios');
 const crypto = require('crypto');
-const { Order } = require('../../../models/Order');
-const { OrderItem } = require('../../../models/OrderItem');
-const { ShippingDetail } = require('../../../models/ShippingDetail');
-const { PlatformConnection } = require('../../../models/platform-connection.model');
+// Fix model imports to use the centralized models index file
+const { Order, OrderItem, ShippingDetail, PlatformConnection } = require('../../../models');
 const logger = require('../../../utils/logger');
 
 class TrendyolService {
-  constructor(connectionId) {
+  constructor(connectionId, directCredentials = null) {
     this.connectionId = connectionId;
+    this.directCredentials = directCredentials;
     this.connection = null;
     this.apiUrl = 'https://api.trendyol.com/sapigw';
     this.axiosInstance = null;
@@ -18,10 +17,17 @@ class TrendyolService {
 
   async initialize() {
     try {
-      this.connection = await PlatformConnection.findByPk(this.connectionId);
-      
-      if (!this.connection) {
-        throw new Error(`Platform connection with ID ${this.connectionId} not found`);
+      // If we're testing with direct credentials (no connection ID)
+      if (this.directCredentials) {
+        // Skip finding the connection in the database
+        this.connection = { credentials: JSON.stringify(this.directCredentials) };
+      } else {
+        // Find connection by ID in the database
+        this.connection = await PlatformConnection.findByPk(this.connectionId);
+        
+        if (!this.connection) {
+          throw new Error(`Platform connection with ID ${this.connectionId} not found`);
+        }
       }
 
       const { apiKey, apiSecret } = this.decryptCredentials(this.connection.credentials);
@@ -31,7 +37,7 @@ class TrendyolService {
         headers: {
           'Authorization': `Basic ${Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')}`,
           'Content-Type': 'application/json',
-          'User-Agent': 'Pazar+ Order Management System'
+          'User-Agent': '120101 - SelfIntegration' // Updated user agent based on Trendyol requirements
         },
         timeout: 30000
       });
@@ -65,10 +71,19 @@ class TrendyolService {
   async testConnection() {
     try {
       await this.initialize();
-      const { sellerId } = this.decryptCredentials(this.connection.credentials);
+      const credentials = this.decryptCredentials(this.connection.credentials);
+      
+      // Check if sellerId exists in the credentials
+      if (!credentials.sellerId) {
+        return {
+          success: false,
+          message: 'Connection failed: Seller ID is missing from credentials',
+          error: 'Missing required parameter: sellerId'
+        };
+      }
       
       // Test the connection by fetching a small amount of data
-      const response = await this.axiosInstance.get(`/suppliers/${sellerId}/orders`, {
+      const response = await this.axiosInstance.get(`/suppliers/${credentials.sellerId}/orders`, {
         params: {
           startDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
           endDate: new Date().toISOString(),
@@ -106,7 +121,9 @@ class TrendyolService {
         startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
         endDate: new Date().toISOString(),
         page: 0,
-        size: 100,
+        size: 50,
+        orderByField: 'PackageLastModifiedDate',
+        orderByDirection: 'DESC',
         status: 'Created,Picking,Invoiced,Shipped'
       };
       
@@ -357,6 +374,74 @@ class TrendyolService {
     
     // If we've exhausted retries
     throw lastError;
+  }
+
+  /**
+   * Fetch products from Trendyol
+   * @param {Object} params - Query parameters
+   * @returns {Promise<Object>} Result containing product data
+   */
+  async fetchProducts(params = {}) {
+    try {
+      await this.initialize();
+      const credentials = this.decryptCredentials(this.connection.credentials);
+      
+      // Check if sellerId exists in the credentials
+      if (!credentials.sellerId) {
+        return {
+          success: false,
+          message: 'Product fetch failed: Seller ID is missing from credentials',
+          error: 'Missing required parameter: sellerId',
+          data: []
+        };
+      }
+      
+      const defaultParams = {
+        size: 50,
+        page: 0
+      };
+      
+      const queryParams = { ...defaultParams, ...params };
+      
+      // Use the products endpoint similar to the example
+      const response = await this.retryRequest(() => 
+        this.axiosInstance.get(`/integration/product/sellers/${credentials.sellerId}/products`, { 
+          params: queryParams 
+        })
+      );
+      
+      if (!response.data || !response.data.content) {
+        return {
+          success: false,
+          message: 'No product data returned from Trendyol',
+          data: []
+        };
+      }
+      
+      return {
+        success: true,
+        message: `Successfully fetched ${response.data.content.length} products from Trendyol`,
+        data: response.data.content,
+        pagination: {
+          page: response.data.number || 0,
+          size: response.data.size || queryParams.size,
+          totalPages: response.data.totalPages || 1,
+          totalElements: response.data.totalElements || response.data.content.length
+        }
+      };
+    } catch (error) {
+      logger.error(`Failed to fetch products from Trendyol: ${error.message}`, { 
+        error, 
+        connectionId: this.connectionId 
+      });
+      
+      return {
+        success: false,
+        message: `Failed to fetch products: ${error.message}`,
+        error: error.response?.data || error.message,
+        data: []
+      };
+    }
   }
 }
 

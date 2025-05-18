@@ -3,37 +3,32 @@
 // and defines basic routes. It also handles error responses and starts the server.
 
 require('dotenv').config();
-const express = require('express');
 const http = require('http');
-const App = require('./app');
+const { App, initializeApp } = require('./app'); // Modified import
 const wsService = require('./services/websocketService');
 const logger = require('./utils/logger');
+// const ensureTestUser = require('./scripts/ensure-test-user'); // Removed, initializeApp handles this
 
 async function startServer() {
   try {
-    console.log('Starting application...');
-    console.log('Environment:', process.env.NODE_ENV);
-    console.log('JWT Secret defined:', !!process.env.JWT_SECRET);
+    logger.info('Starting application...'); // Changed from console.log to logger.info
+    logger.info(`Environment: ${process.env.NODE_ENV}`);
+    logger.info(`JWT Secret defined: ${!!process.env.JWT_SECRET}`);
 
-    const app = new App();
+    const app = new App(); // Instantiates the App class
     const server = http.createServer(app.getApp());
 
-    // Connect to database
-    console.log('Connecting to database...');
-    const dbConnected = await app.connectToDatabase();
-    
-    if (!dbConnected) {
-      logger.error('Failed to connect to database. Exiting application.');
-      process.exit(1);
-    }
-    
+    // Initialize application (DB connection, sync, dev user creation)
+    logger.info('Initializing application components...');
+    await initializeApp(); // Added: Call the initializeApp function from app.js
+
     // Initialize WebSocket service
     wsService.initialize(server);
 
     const PORT = process.env.PORT || 3001;
 
     // Start server
-    console.log('Starting server...');
+    logger.info('Starting server...');
     server.listen(PORT, () => {
       logger.info(`Server is running on port ${PORT}`);
     });

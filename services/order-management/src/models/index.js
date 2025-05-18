@@ -51,6 +51,7 @@ const syncDatabase = async (force = false) => {
 };
 
 module.exports = {
+  sequelize, // Added sequelize to exports
   User,
   PlatformConnection,
   Order,

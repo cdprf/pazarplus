@@ -3,6 +3,41 @@ import PropTypes from 'prop-types';
 import { Alert, Button } from 'react-bootstrap';
 import { useQueryClient } from '@tanstack/react-query';
 
+// Separate ResetQueryCacheButton into a standalone component
+const ResetQueryCacheButton = ({ onReset }) => {
+  // Add try-catch to handle case when QueryClient is not available
+  try {
+    const queryClient = useQueryClient();
+    
+    const handleReset = () => {
+      // Clear the React Query cache
+      queryClient.clear();
+      // Then reset the error boundary
+      if (onReset) onReset();
+    };
+    
+    return (
+      <Button 
+        variant="outline-danger" 
+        onClick={handleReset}
+      >
+        Reset Data & Try Again
+      </Button>
+    );
+  } catch (error) {
+    console.warn('QueryClient not available:', error);
+    // Return a button that just calls onReset without clearing cache
+    return onReset ? (
+      <Button 
+        variant="outline-danger" 
+        onClick={onReset}
+      >
+        Try Again
+      </Button>
+    ) : null;
+  }
+};
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -85,27 +120,6 @@ class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
-
-// Component to reset React Query cache
-const ResetQueryCacheButton = ({ onReset }) => {
-  const queryClient = useQueryClient();
-  
-  const handleReset = () => {
-    // Clear the React Query cache
-    queryClient.clear();
-    // Then reset the error boundary
-    onReset();
-  };
-  
-  return (
-    <Button 
-      variant="outline-danger" 
-      onClick={handleReset}
-    >
-      Reset Data & Try Again
-    </Button>
-  );
-};
 
 ErrorBoundary.propTypes = {
   children: PropTypes.node.isRequired,

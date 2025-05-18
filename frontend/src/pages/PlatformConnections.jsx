@@ -29,6 +29,10 @@ import {
 } from 'react-icons/fa';
 import axios from 'axios';
 import { AlertContext } from '../context/AlertContext';
+import { useAuth } from '../hooks/useAuth';
+
+// Set the base URL for API requests
+axios.defaults.baseURL = 'http://localhost:3001/api';
 
 const PlatformConnections = () => {
   const [loading, setLoading] = useState(true);
@@ -56,12 +60,21 @@ const PlatformConnections = () => {
   ]);
   
   const { success, error } = useContext(AlertContext);
+  const { isAuthenticated } = useAuth();
   
   // Fetch connections
   const fetchConnections = useCallback(async () => {
     try {
       setLoading(true);
       
+      // Ensure we have the authentication token in headers
+      const token = localStorage.getItem('token');
+      if (token) {
+        // Make sure we're using the correct format: "Bearer TOKEN"
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+      
+      // Updated endpoint to match backend routes
       const response = await axios.get('/platforms/connections');
       
       if (response.data.success) {
@@ -78,8 +91,10 @@ const PlatformConnections = () => {
   }, [error]);
   
   useEffect(() => {
-    fetchConnections();
-  }, [fetchConnections]);
+    if (isAuthenticated) {
+      fetchConnections();
+    }
+  }, [fetchConnections, isAuthenticated]);
   
   // Handle form changes
   const handleChange = (e) => {
@@ -110,7 +125,31 @@ const PlatformConnections = () => {
       setTestLoading(true);
       setTestResult(null);
       
-      const response = await axios.post('/platforms/test-connection', formData);
+      // Ensure authentication token is set
+      const token = localStorage.getItem('token');
+      if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+      
+      // Format the data correctly for the new test endpoint
+      const testData = {
+        platformType: formData.platformType,
+        credentials: {
+          apiKey: formData.apiKey,
+          apiSecret: formData.apiSecret,
+          storeId: formData.storeId || undefined
+        }
+      };
+      
+      let response;
+      
+      // If we're editing an existing connection, use the existing connection test endpoint
+      if (selectedConnection) {
+        response = await axios.post(`/platforms/connections/${selectedConnection.id}/test`, testData);
+      } else {
+        // For new connections, use the test endpoint for new connections
+        response = await axios.post(`/platforms/connections/test`, testData);
+      }
       
       setTestResult(response.data);
     } catch (err) {
@@ -131,7 +170,26 @@ const PlatformConnections = () => {
     try {
       setModalLoading(true);
       
-      const response = await axios.post('/platforms/connections', formData);
+      // Ensure authentication token is set
+      const token = localStorage.getItem('token');
+      if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+      
+      // Format the data according to what the backend expects
+      const connectionData = {
+        platformType: formData.platformType,
+        name: formData.name,
+        platformName: formData.name, // Add platformName field to match backend requirement
+        credentials: {
+          apiKey: formData.apiKey,
+          apiSecret: formData.apiSecret,
+          storeId: formData.storeId || undefined
+        },
+        status: formData.isActive ? 'active' : 'inactive'
+      };
+      
+      const response = await axios.post('/platforms/connections', connectionData);
       
       if (response.data.success) {
         setShowAddModal(false);
@@ -156,7 +214,25 @@ const PlatformConnections = () => {
     try {
       setModalLoading(true);
       
-      const response = await axios.put(`/platforms/connections/${selectedConnection.id}`, formData);
+      // Ensure authentication token is set
+      const token = localStorage.getItem('token');
+      if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+      
+      // Format data properly for update, including platformName
+      const updateData = {
+        name: formData.name,
+        platformName: formData.name, // Ensure platformName is updated along with name
+        credentials: {
+          apiKey: formData.apiKey,
+          apiSecret: formData.apiSecret,
+          storeId: formData.storeId || undefined
+        },
+        status: formData.isActive ? 'active' : 'inactive'
+      };
+      
+      const response = await axios.put(`/platforms/connections/${selectedConnection.id}`, updateData);
       
       if (response.data.success) {
         setShowEditModal(false);
@@ -179,6 +255,12 @@ const PlatformConnections = () => {
     try {
       setModalLoading(true);
       
+      // Ensure authentication token is set
+      const token = localStorage.getItem('token');
+      if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await axios.delete(`/platforms/connections/${selectedConnection.id}`);
       
       if (response.data.success) {
@@ -200,6 +282,12 @@ const PlatformConnections = () => {
   // Sync orders
   const syncOrders = async (connectionId) => {
     try {
+      // Ensure authentication token is set
+      const token = localStorage.getItem('token');
+      if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await axios.post(`/orders/sync/${connectionId}`, {
         startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // Last 7 days
         endDate: new Date().toISOString()

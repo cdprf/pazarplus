@@ -12,15 +12,15 @@ const PrivateRoute = ({ children }) => {
   // Check development mode security
   const isDev = process.env.NODE_ENV === 'development';
   const isDevMode = process.env.REACT_APP_DEV_MODE === 'true';
+  
+  // Simplified dev mode check - if we're in dev mode and user has devMode flag set
   const isDevUser = user?.devMode === true;
-  const hasValidDevPermissions = user?.permissions?.length > 0;
-  const bypassAuth = isDev && isDevMode && isDevUser && hasValidDevPermissions;
+  const bypassAuth = isDev && isDevMode && isDevUser;
 
   // Generate state parameter for dev mode authentication
   useEffect(() => {
     if (isDev && isDevMode && !isAuthenticated) {
-      const state = btoa(crypto.getRandomValues(new Uint8Array(16)));
-      sessionStorage.setItem('devModeState', state);
+      // Store the current path to redirect back after auth
       sessionStorage.setItem('devModeReturnTo', location.pathname);
     }
   }, [isDev, isDevMode, isAuthenticated, location]);
@@ -42,11 +42,9 @@ const PrivateRoute = ({ children }) => {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  // For dev mode, verify required permissions exist
-  if (bypassAuth && !user?.permissions?.includes('view_dashboard')) {
-    return <Navigate to="/login" replace />;
-  }
-
+  // We no longer need to verify specific permissions in dev mode
+  // Just accept any authenticated dev user
+  
   return children;
 };
 

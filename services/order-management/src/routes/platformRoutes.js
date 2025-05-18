@@ -8,6 +8,12 @@ const router = express.Router();
 // All platform routes should be protected
 router.use(authenticateToken);
 
+// Direct platform routes - adding these to fix 404 errors
+router.get('/', platformController.getPlatformConnections);
+router.post('/', platformController.createPlatformConnection);
+router.put('/:id', platformController.updatePlatformStatus);
+router.delete('/:id', platformController.deletePlatformConnection);
+
 // Platform routes with validation
 router.get('/connections', platformController.getConnections);
 router.get('/connections/:id', platformController.getConnection);

@@ -13,7 +13,15 @@ const PlatformConnection = sequelize.define('PlatformConnection', {
     type: DataTypes.INTEGER,
     allowNull: false
   },
+  platformType: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
   platformName: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  name: {
     type: DataTypes.STRING,
     allowNull: false
   },
@@ -27,6 +35,10 @@ const PlatformConnection = sequelize.define('PlatformConnection', {
     set(value) {
       this.setDataValue('credentials', JSON.stringify(value));
     }
+  },
+  status: {
+    type: DataTypes.STRING,
+    defaultValue: 'pending'
   },
   settings: {
     type: DataTypes.TEXT,

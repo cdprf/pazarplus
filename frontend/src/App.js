@@ -23,6 +23,9 @@ import ImportCSV from './pages/ImportCSV';
 import ExportData from './pages/ExportData';
 import Settings from './pages/Settings';
 
+// Import-specific components
+import ImportHepsiburada from './pages/import/ImportHepsiburada';
+
 // Context providers
 import { AuthProvider } from './context/AuthContext';
 import { AlertProvider } from './context/AlertContext';
@@ -87,6 +90,7 @@ function App() {
                         <Route path="/orders/:id" element={<PrivateRoute><OrderDetail /></PrivateRoute>} />
                         <Route path="/platforms" element={<PrivateRoute><PlatformConnections /></PrivateRoute>} />
                         <Route path="/import" element={<PrivateRoute><ImportCSV /></PrivateRoute>} />
+                        <Route path="/import/hepsiburada" element={<PrivateRoute><ImportHepsiburada /></PrivateRoute>} />
                         <Route path="/export" element={<PrivateRoute><ExportData /></PrivateRoute>} />
                         <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />

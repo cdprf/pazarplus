@@ -1,14 +1,12 @@
 // services/order-management/src/controllers/platform-controller.js
 const express = require("express");
-const router = express.Router();
-const { PlatformConnection } = require("../models/platform-connection.model");
+const { PlatformConnection, User } = require("../models"); // Added User model
 const PlatformServiceFactory = require("../services/platforms/platformServiceFactory");
 const { authenticateToken } = require("../middleware/auth-middleware");
-const { Platform } = require('../models');
 const wsService = require('../services/websocketService');
-
 const logger = require("../utils/logger");
 
+const router = express.Router();
 
 // Apply authentication middleware to all platform routes
 router.use(authenticateToken);
@@ -20,17 +18,39 @@ router.get("/connections/:id", getConnection);
 router.put("/connections/:id", updateConnection);
 router.delete("/connections/:id", deleteConnection);
 router.post("/connections/:id/test", testConnection);
+router.post("/connections/test", testNewConnection);
+router.get("/connections/:id/products", getProductsByConnection);
 
 // Platform type routes
 router.get("/types", getPlatformTypes);
 
-
+// Platform connection management functions
 async function createConnection(req, res) {
   try {
     const { platformType, name, credentials } = req.body;
+
+    if (!req.user || !req.user.id) {
+      logger.error('User ID not found in request. Cannot create platform connection.');
+      return res.status(401).json({ // Unauthorized
+        success: false,
+        message: 'User authentication error. Cannot create platform connection.',
+      });
+    }
+
+    // Verify user exists in the database
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      logger.error(`User with ID ${req.user.id} not found. Cannot create platform connection.`);
+      return res.status(400).json({
+        success: false,
+        message: `User with ID ${req.user.id} not found. Cannot create platform connection.`,
+      });
+    }
+
     const connection = await PlatformConnection.create({
       userId: req.user.id,
       platformType,
+      platformName: name, // Add platformName field
       name,
       credentials: JSON.stringify(credentials),
       status: "pending",
@@ -111,10 +131,13 @@ async function updateConnection(req, res) {
         message: "Platform connection not found",
       });
     }
-    const { name, credentials } = req.body;
+    const { name, platformName, credentials, status } = req.body;
     const updates = {};
     if (name) updates.name = name;
+    if (platformName) updates.platformName = platformName;
     if (credentials) updates.credentials = JSON.stringify(credentials);
+    if (status) updates.status = status;
+    
     await connection.update(updates);
     return res.status(200).json({
       success: true,
@@ -189,6 +212,30 @@ async function testConnection(req, res) {
   }
 }
 
+async function testNewConnection(req, res) {
+  try {
+    const { platformType, credentials } = req.body;
+    
+    // Create a temporary platform service without saving to database
+    const platformService = PlatformServiceFactory.createServiceByType(
+      platformType,
+      credentials
+    );
+    
+    const result = await platformService.testConnection();
+    return res.status(200).json(result);
+  } catch (error) {
+    logger.error(`Failed to test new platform connection: ${error.message}`, {
+      error,
+    });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to test platform connection",
+      error: error.message,
+    });
+  }
+}
+
 async function getPlatformTypes(req, res) {
   try {
     // List of supported platform types
@@ -232,9 +279,10 @@ async function getPlatformTypes(req, res) {
   }
 }
 
+// Direct platform access functions - these were added for the root routes
 async function getPlatformConnections(req, res) {
   try {
-    const connections = await Platform.findAll({
+    const connections = await PlatformConnection.findAll({
       where: { userId: req.user.id }
     });
     
@@ -257,7 +305,7 @@ async function updatePlatformStatus(req, res) {
     const { id } = req.params;
     const { status } = req.body;
 
-    const platform = await Platform.findByPk(id);
+    const platform = await PlatformConnection.findByPk(id);
     
     if (!platform) {
       return res.status(404).json({
@@ -287,13 +335,34 @@ async function updatePlatformStatus(req, res) {
 
 async function createPlatformConnection(req, res) {
   try {
+    if (!req.user || !req.user.id) {
+      logger.error('User ID not found in request. Cannot create platform connection.');
+      return res.status(401).json({ // Unauthorized
+        success: false,
+        message: 'User authentication error. Cannot create platform connection.',
+      });
+    }
+
+    // Verify user exists in the database
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      logger.error(`User with ID ${req.user.id} not found. Cannot create platform connection.`);
+      return res.status(400).json({
+        success: false,
+        message: `User with ID ${req.user.id} not found. Cannot create platform connection.`,
+      });
+    }
+
+    // Make sure platformName is included
     const connectionData = {
       ...req.body,
       userId: req.user.id,
-      status: 'active'
+      status: 'active',
+      // Use name as platformName if platformName is not provided
+      platformName: req.body.platformName || req.body.name
     };
 
-    const platform = await Platform.create(connectionData);
+    const platform = await PlatformConnection.create(connectionData);
     
     // Notify connected clients about new platform connection
     wsService.notifyPlatformStatusChange(platform);
@@ -316,7 +385,7 @@ async function deletePlatformConnection(req, res) {
   try {
     const { id } = req.params;
     
-    const platform = await Platform.findByPk(id);
+    const platform = await PlatformConnection.findByPk(id);
     
     if (!platform) {
       return res.status(404).json({
@@ -344,6 +413,60 @@ async function deletePlatformConnection(req, res) {
   }
 }
 
+/**
+ * Get products from a platform connection
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+async function getProductsByConnection(req, res) {
+  try {
+    const connection = await PlatformConnection.findOne({
+      where: { id: req.params.id, userId: req.user.id },
+    });
+    
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "Platform connection not found",
+      });
+    }
+
+    // Only support Trendyol for now
+    if (connection.platformType.toLowerCase() !== 'trendyol') {
+      return res.status(400).json({
+        success: false,
+        message: `Product fetching is not supported for ${connection.platformType} platform`,
+      });
+    }
+    
+    // Parse query parameters
+    const page = parseInt(req.query.page) || 0;
+    const size = parseInt(req.query.size) || 50;
+    
+    // Create platform service instance
+    const platformService = await PlatformServiceFactory.createService(
+      connection.id
+    );
+    
+    // Fetch products
+    const result = await platformService.fetchProducts({
+      page, 
+      size
+    });
+    
+    return res.status(result.success ? 200 : 400).json(result);
+  } catch (error) {
+    logger.error(`Failed to fetch platform products: ${error.message}`, {
+      error,
+    });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch platform products",
+      error: error.message,
+    });
+  }
+}
+
 module.exports = {
   createConnection,
   getConnections,
@@ -351,9 +474,11 @@ module.exports = {
   updateConnection,
   deleteConnection,
   testConnection,
+  testNewConnection,
   getPlatformTypes,
   getPlatformConnections,
   updatePlatformStatus,
   createPlatformConnection,
-  deletePlatformConnection
+  deletePlatformConnection,
+  getProductsByConnection
 };

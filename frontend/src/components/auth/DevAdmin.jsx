@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useContext, useCallback, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Spinner } from 'react-bootstrap';
@@ -24,22 +25,18 @@ const DevAdmin = () => {
         throw new Error('Development mode is not enabled');
       }
 
-      // Verify state parameter to prevent CSRF
-      const params = new URLSearchParams(location.search);
-      const state = params.get('state');
-      const storedState = sessionStorage.getItem('devModeState');
-      
-      if (!state || state !== storedState) {
-        throw new Error('Invalid state parameter');
-      }
-
+      // Less strict validation in dev mode - don't require state parameter 
+      // just proceed with authentication
       await bypassLogin();
-      sessionStorage.removeItem('devModeState'); // Clean up
-      setIsSettingUp(false);
+      
+      // Clean up any existing state
+      sessionStorage.removeItem('devModeState');
       
       // Get return URL from state or default to dashboard
       const returnTo = sessionStorage.getItem('devModeReturnTo') || '/dashboard';
       sessionStorage.removeItem('devModeReturnTo'); // Clean up
+      
+      setIsSettingUp(false);
       
       // Use replace to prevent back navigation after login
       navigate(returnTo, { replace: true });
@@ -50,7 +47,7 @@ const DevAdmin = () => {
       // Redirect to login on error
       navigate('/login', { replace: true });
     }
-  }, [bypassLogin, navigate, location, isSettingUp]);
+  }, [bypassLogin, navigate, isSettingUp]);
 
   useEffect(() => {
     setupDevMode();
