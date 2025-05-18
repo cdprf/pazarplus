@@ -30,14 +30,21 @@ class TrendyolService {
         }
       }
 
-      const { apiKey, apiSecret } = this.decryptCredentials(this.connection.credentials);
+      const { apiKey, apiSecret, sellerId } = this.decryptCredentials(this.connection.credentials);
+      
+      // Log for debugging
+      logger.debug(`Initializing Trendyol service with apiKey: ${apiKey.substring(0, 5)}..., sellerId: ${sellerId}`);
+      
+      // Format the auth credentials according to Trendyol's requirements
+      // Trendyol requires the apiKey (supplierId) and apiSecret in Basic auth format
+      const authString = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
       
       this.axiosInstance = axios.create({
         baseURL: this.apiUrl,
         headers: {
-          'Authorization': `Basic ${Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')}`,
+          'Authorization': `Basic ${authString}`,
           'Content-Type': 'application/json',
-          'User-Agent': '120101 - SelfIntegration' // Updated user agent based on Trendyol requirements
+          'User-Agent': '120101 - SelfIntegration' // Required by Trendyol
         },
         timeout: 30000
       });
@@ -82,25 +89,65 @@ class TrendyolService {
         };
       }
       
-      // Test the connection by fetching a small amount of data
-      const response = await this.axiosInstance.get(`/suppliers/${credentials.sellerId}/orders`, {
-        params: {
-          startDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          endDate: new Date().toISOString(),
-          page: 0,
-          size: 1
+      logger.debug(`Testing Trendyol connection for sellerId: ${credentials.sellerId}`);
+      
+      try {
+        // Format dates as timestamps in milliseconds, which is what Trendyol expects
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const now = new Date();
+        
+        // Convert to epoch timestamps (milliseconds)
+        const startDateTs = yesterday.getTime();
+        const endDateTs = now.getTime();
+        
+        logger.debug(`Using date range timestamps: ${startDateTs} to ${endDateTs}`);
+        
+        // Test the connection with timestamp date formatting
+        const response = await this.axiosInstance.get(`/suppliers/${credentials.sellerId}/orders`, {
+          params: {
+            startDate: startDateTs,
+            endDate: endDateTs,
+            page: 0,
+            size: 1
+          }
+        });
+        
+        logger.debug(`Connection test successful: ${JSON.stringify(response.data).substring(0, 100)}...`);
+        
+        return {
+          success: true,
+          message: 'Connection successful',
+          data: {
+            platform: 'trendyol',
+            connectionId: this.connectionId,
+            status: 'active'
+          }
+        };
+      } catch (requestError) {
+        // Enhanced error handling with more details
+        logger.error('Trendyol API request failed', {
+          error: requestError.message,
+          status: requestError.response?.status,
+          data: requestError.response?.data,
+          headers: requestError.config?.headers,
+          url: requestError.config?.url,
+          params: requestError.config?.params
+        });
+        
+        // Check for specific error conditions in the response
+        const errorData = requestError.response?.data;
+        let errorMessage = requestError.message;
+        
+        if (errorData) {
+          if (typeof errorData === 'object' && errorData.message) {
+            errorMessage = errorData.message;
+          } else if (typeof errorData === 'string') {
+            errorMessage = errorData;
+          }
         }
-      });
-
-      return {
-        success: true,
-        message: 'Connection successful',
-        data: {
-          platform: 'trendyol',
-          connectionId: this.connectionId,
-          status: 'active'
-        }
-      };
+        
+        throw new Error(errorMessage);
+      }
     } catch (error) {
       logger.error(`Trendyol connection test failed: ${error.message}`, { error, connectionId: this.connectionId });
       
@@ -117,9 +164,17 @@ class TrendyolService {
       await this.initialize();
       const { sellerId } = this.decryptCredentials(this.connection.credentials);
       
+      // Format dates as timestamps (epoch time in milliseconds)
+      const defaultEndDate = new Date();
+      const defaultStartDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      
+      // Convert to timestamp format (milliseconds since epoch)
+      const startDateTs = params.startDate ? new Date(params.startDate).getTime() : defaultStartDate.getTime();
+      const endDateTs = params.endDate ? new Date(params.endDate).getTime() : defaultEndDate.getTime();
+      
       const defaultParams = {
-        startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        endDate: new Date().toISOString(),
+        startDate: startDateTs,
+        endDate: endDateTs,
         page: 0,
         size: 50,
         orderByField: 'PackageLastModifiedDate',
@@ -128,6 +183,7 @@ class TrendyolService {
       };
       
       const queryParams = { ...defaultParams, ...params };
+      logger.debug(`Fetching Trendyol orders with params: ${JSON.stringify(queryParams)}`);
       
       const response = await this.retryRequest(() => 
         this.axiosInstance.get(`/suppliers/${sellerId}/orders`, { params: queryParams })
@@ -303,9 +359,13 @@ class TrendyolService {
       await this.initialize();
       const { sellerId } = this.decryptCredentials(this.connection.credentials);
       
+      // Convert dates to timestamps (milliseconds)
+      const startDateTs = new Date(startDate).getTime();
+      const endDateTs = new Date(endDate).getTime();
+      
       const params = {
-        startDate: new Date(startDate).toISOString(),
-        endDate: new Date(endDate).toISOString(),
+        startDate: startDateTs,
+        endDate: endDateTs,
         page: 0,
         size: 100
       };

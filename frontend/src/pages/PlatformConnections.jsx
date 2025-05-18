@@ -131,14 +131,23 @@ const PlatformConnections = () => {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       }
       
-      // Format the data correctly for the new test endpoint
+      // Format credentials with the correct fields based on platform type
+      let credentials = {
+        apiKey: formData.apiKey,
+        apiSecret: formData.apiSecret
+      };
+      
+      // Handle platform-specific credentials
+      if (formData.platformType === 'trendyol') {
+        credentials.sellerId = formData.storeId; // Use storeId field as sellerId for Trendyol
+      } else {
+        credentials.storeId = formData.storeId; // Use storeId as-is for other platforms
+      }
+      
+      // Format the data correctly for the test endpoint
       const testData = {
         platformType: formData.platformType,
-        credentials: {
-          apiKey: formData.apiKey,
-          apiSecret: formData.apiSecret,
-          storeId: formData.storeId || undefined
-        }
+        credentials: credentials
       };
       
       let response;
@@ -176,16 +185,25 @@ const PlatformConnections = () => {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       }
       
+      // Format credentials with the correct fields based on platform type
+      let credentials = {
+        apiKey: formData.apiKey,
+        apiSecret: formData.apiSecret
+      };
+      
+      // Handle platform-specific credentials
+      if (formData.platformType === 'trendyol') {
+        credentials.sellerId = formData.storeId; // Use storeId field as sellerId for Trendyol
+      } else {
+        credentials.storeId = formData.storeId; // Use storeId as-is for other platforms
+      }
+      
       // Format the data according to what the backend expects
       const connectionData = {
         platformType: formData.platformType,
         name: formData.name,
         platformName: formData.name, // Add platformName field to match backend requirement
-        credentials: {
-          apiKey: formData.apiKey,
-          apiSecret: formData.apiSecret,
-          storeId: formData.storeId || undefined
-        },
+        credentials: credentials,
         status: formData.isActive ? 'active' : 'inactive'
       };
       
@@ -220,15 +238,24 @@ const PlatformConnections = () => {
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       }
       
+      // Format credentials with the correct fields based on platform type
+      let credentials = {
+        apiKey: formData.apiKey,
+        apiSecret: formData.apiSecret
+      };
+      
+      // Handle platform-specific credentials
+      if (formData.platformType === 'trendyol') {
+        credentials.sellerId = formData.storeId; // Use storeId field as sellerId for Trendyol
+      } else {
+        credentials.storeId = formData.storeId; // Use storeId as-is for other platforms
+      }
+      
       // Format data properly for update, including platformName
       const updateData = {
         name: formData.name,
         platformName: formData.name, // Ensure platformName is updated along with name
-        credentials: {
-          apiKey: formData.apiKey,
-          apiSecret: formData.apiSecret,
-          storeId: formData.storeId || undefined
-        },
+        credentials: credentials,
         status: formData.isActive ? 'active' : 'inactive'
       };
       
@@ -307,14 +334,41 @@ const PlatformConnections = () => {
   // Handle edit click
   const handleEditClick = (connection) => {
     setSelectedConnection(connection);
+    
+    // Parse the credentials from the connection object
+    let apiKey = '';
+    let apiSecret = '';
+    let storeId = '';
+    
+    try {
+      // Check if credentials is already an object or needs to be parsed
+      const credentials = typeof connection.credentials === 'string' 
+        ? JSON.parse(connection.credentials) 
+        : connection.credentials;
+      
+      // Extract values from credentials
+      apiKey = credentials.apiKey || '';
+      apiSecret = credentials.apiSecret || '';
+      
+      // Extract storeId/sellerId based on platform type
+      if (connection.platformType === 'trendyol') {
+        storeId = credentials.sellerId || '';
+      } else {
+        storeId = credentials.storeId || '';
+      }
+    } catch (err) {
+      console.error('Error parsing connection credentials:', err);
+    }
+    
     setFormData({
       name: connection.name,
       platformType: connection.platformType,
-      apiKey: connection.apiKey || '',
-      apiSecret: connection.apiSecret || '',
-      storeId: connection.storeId || '',
+      apiKey: apiKey,
+      apiSecret: apiSecret,
+      storeId: storeId,
       isActive: connection.status === 'active'
     });
+    
     setShowEditModal(true);
   };
   
