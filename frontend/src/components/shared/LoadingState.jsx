@@ -23,10 +23,15 @@ const LoadingState = ({
   }
 
   if (error) {
+    // Convert error object to string if necessary
+    const errorMessage = typeof error === 'object' 
+      ? (error instanceof Error ? error.message : JSON.stringify(error)) 
+      : error;
+      
     return errorFallback || (
       <div className={`p-4 ${center ? 'text-center' : ''}`}>
         <div className="text-danger">
-          <p>{error}</p>
+          <p>{errorMessage}</p>
         </div>
       </div>
     );

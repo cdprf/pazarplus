@@ -123,7 +123,8 @@ export const orderService = {
   // Get order statistics/metrics
   async getOrderStatistics(params = {}) {
     try {
-      const response = await axios.get(`${BASE_URL}/statistics`, { 
+      // Use stats endpoint instead of statistics since that's what's available in the backend
+      const response = await axios.get(`${BASE_URL}/stats`, { 
         params,
         ...getHeaders()
       });

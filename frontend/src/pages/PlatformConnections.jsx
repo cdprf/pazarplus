@@ -659,7 +659,11 @@ const PlatformConnections = () => {
             {testResult && (
               <Alert variant={testResult.success ? 'success' : 'danger'} className="mt-3">
                 {testResult.success ? <FaCheck className="me-2" /> : <FaExclamationTriangle className="me-2" />}
-                {testResult.message}
+                {typeof testResult.message === 'object' ? 
+                  (testResult.message instanceof Error ? 
+                    testResult.message.toString() : 
+                    JSON.stringify(testResult.message)) : 
+                  testResult.message}
               </Alert>
             )}
           </Form>
@@ -835,7 +839,11 @@ const PlatformConnections = () => {
             {testResult && (
               <Alert variant={testResult.success ? 'success' : 'danger'} className="mt-3">
                 {testResult.success ? <FaCheck className="me-2" /> : <FaExclamationTriangle className="me-2" />}
-                {testResult.message}
+                {typeof testResult.message === 'object' ? 
+                  (testResult.message instanceof Error ? 
+                    testResult.message.toString() : 
+                    JSON.stringify(testResult.message)) : 
+                  testResult.message}
               </Alert>
             )}
           </Form>
