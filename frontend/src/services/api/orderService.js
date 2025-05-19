@@ -253,5 +253,15 @@ export const orderService = {
     } catch (error) {
       throw handleApiError(error);
     }
-  }
+  },
+
+  // Get order with platform-specific details
+  async getOrderWithPlatformDetails(orderId) {
+    try {
+      const response = await axios.get(`${BASE_URL}/${orderId}/platform-details`, getHeaders());
+      return response.data;
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
 };

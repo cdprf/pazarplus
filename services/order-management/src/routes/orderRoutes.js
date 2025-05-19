@@ -238,11 +238,42 @@ router.post('/sync/:id', orderController.syncOrdersByPlatform);
  *     responses:
  *       200:
  *         description: Orders imported successfully
+ *       400:
+ *         description: Bad request - Invalid order data
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       409:
+ *         description: Conflict - Order already exists (constraint violation)
+ *       500:
+ *         description: Server error
+ */
+router.post('/import/hepsiburada', orderController.importHepsiburadaOrder);
+
+/**
+ * @swagger
+ * /api/orders/{id}/platform-details:
+ *   get:
+ *     summary: Get order details with platform-specific data
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order ID
+ *     responses:
+ *       200:
+ *         description: Order details with platform-specific data retrieved successfully
+ *       404:
+ *         description: Order not found
  *       401:
  *         description: Unauthorized - Invalid or missing token
  *       500:
  *         description: Server error
  */
-router.post('/import/hepsiburada', orderController.importHepsiburadaOrder);
+router.get('/:id/platform-details', orderController.getOrderWithPlatformDetails);
 
 module.exports = router;

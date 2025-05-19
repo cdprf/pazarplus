@@ -33,14 +33,17 @@ import {
   FaSync,
   FaCheck,
   FaCopy,
-  FaInfo
+  FaInfo,
+  FaTags
 } from 'react-icons/fa';
 import axios from 'axios';
 import { AlertContext } from '../context/AlertContext';
+import { orderService } from '../services/api/orderService';
 
 const OrderDetail = () => {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
+  const [platformDetails, setPlatformDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
@@ -63,12 +66,24 @@ const OrderDetail = () => {
         setLoading(true);
         setError(null);
         
-        const response = await axios.get(`/orders/${id}`);
+        // Fetch basic order details
+        const response = await orderService.getOrder(id);
         
-        if (response.data.success) {
-          setOrder(response.data.data);
+        if (response.success) {
+          setOrder(response.data);
+          
+          // Also fetch platform-specific details if available
+          try {
+            const platformResponse = await orderService.getOrderWithPlatformDetails(id);
+            if (platformResponse.success) {
+              setPlatformDetails(platformResponse.data);
+            }
+          } catch (platformError) {
+            console.error('Error fetching platform-specific details:', platformError);
+            // Don't set error here, as we still have basic order details
+          }
         } else {
-          setError(response.data.message || 'Failed to fetch order details');
+          setError(response.message || 'Failed to fetch order details');
         }
       } catch (err) {
         console.error('Error fetching order details:', err);
@@ -367,6 +382,12 @@ const OrderDetail = () => {
                       Order History
                     </Nav.Link>
                   </Nav.Item>
+                  <Nav.Item>
+                    <Nav.Link eventKey="platform-details">
+                      <FaTags className="me-2" />
+                      Platform Details
+                    </Nav.Link>
+                  </Nav.Item>
                 </Nav>
               </Card.Header>
               <Card.Body>
@@ -580,6 +601,188 @@ const OrderDetail = () => {
                       <Alert variant="info">
                         <FaInfo className="me-2" />
                         No status history available for this order.
+                      </Alert>
+                    )}
+                  </Tab.Pane>
+                  <Tab.Pane eventKey="platform-details">
+                    <h5 className="mb-3">Platform-Specific Details</h5>
+                    
+                    {platformDetails?.platformDetails ? (
+                      <div>
+                        <Badge bg={getPlatformBadge(platformDetails.platformDetailsType)} className="mb-3">
+                          {platformDetails.platformDetailsType}
+                        </Badge>
+                        
+                        {platformDetails.platformDetailsType === 'trendyol' && (
+                          <Row>
+                            <Col md={6}>
+                              <h6 className="mb-2">Trendyol Order Details</h6>
+                              <ListGroup variant="flush">
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Order Number</span>
+                                  <span>{platformDetails.platformDetails.orderNumber || 'N/A'}</span>
+                                </ListGroup.Item>
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Trendyol Status</span>
+                                  <span>{platformDetails.platformDetails.platformStatus || 'N/A'}</span>
+                                </ListGroup.Item>
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Cargo Provider</span>
+                                  <span>{platformDetails.platformDetails.cargoProviderName || 'N/A'}</span>
+                                </ListGroup.Item>
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Tracking Number</span>
+                                  <span>
+                                    {platformDetails.platformDetails.cargoTrackingNumber ? (
+                                      <a 
+                                        href={platformDetails.platformDetails.cargoTrackingUrl || `https://www.trendyol.com/orders/trackShipment?trackingNumber=${platformDetails.platformDetails.cargoTrackingNumber}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                      >
+                                        {platformDetails.platformDetails.cargoTrackingNumber}
+                                      </a>
+                                    ) : (
+                                      'N/A'
+                                    )}
+                                  </span>
+                                </ListGroup.Item>
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Customer Notes</span>
+                                  <span>{platformDetails.platformDetails.note || 'N/A'}</span>
+                                </ListGroup.Item>
+                              </ListGroup>
+                            </Col>
+                            
+                            <Col md={6}>
+                              <h6 className="mb-2">Trendyol Customer Info</h6>
+                              <ListGroup variant="flush">
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Customer Name</span>
+                                  <span>
+                                    {platformDetails.platformDetails.customerFirstName || ''} {platformDetails.platformDetails.customerLastName || ''}
+                                  </span>
+                                </ListGroup.Item>
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Email</span>
+                                  <span>{platformDetails.platformDetails.customerEmail || 'N/A'}</span>
+                                </ListGroup.Item>
+                              </ListGroup>
+                              
+                              {platformDetails.platformDetails.shipmentAddressJson && (
+                                <div className="mt-3">
+                                  <h6 className="mb-2">Shipment Address</h6>
+                                  <p className="card-text">
+                                    {typeof platformDetails.platformDetails.shipmentAddressJson === 'string' 
+                                      ? JSON.parse(platformDetails.platformDetails.shipmentAddressJson).fullAddress 
+                                      : platformDetails.platformDetails.shipmentAddressJson.fullAddress || 'N/A'}
+                                  </p>
+                                </div>
+                              )}
+                            </Col>
+                          </Row>
+                        )}
+                        
+                        {platformDetails.platformDetailsType === 'hepsiburada' && (
+                          <Row>
+                            <Col md={6}>
+                              <h6 className="mb-2">Hepsiburada Order Details</h6>
+                              <ListGroup variant="flush">
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Package Number</span>
+                                  <span>{platformDetails.platformDetails.packageNumber || 'N/A'}</span>
+                                </ListGroup.Item>
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Order Number</span>
+                                  <span>{platformDetails.platformDetails.orderNumber || 'N/A'}</span>
+                                </ListGroup.Item>
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Reference Number</span>
+                                  <span>{platformDetails.platformDetails.referenceNumber || 'N/A'}</span>
+                                </ListGroup.Item>
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Platform Status</span>
+                                  <span>{platformDetails.platformDetails.platformStatus || 'N/A'}</span>
+                                </ListGroup.Item>
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Payment Status</span>
+                                  <span>{platformDetails.platformDetails.paymentStatus || 'N/A'}</span>
+                                </ListGroup.Item>
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Payment Type</span>
+                                  <span>{platformDetails.platformDetails.paymentType || 'N/A'}</span>
+                                </ListGroup.Item>
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Cargo Company</span>
+                                  <span>{platformDetails.platformDetails.cargoCompany || 'N/A'}</span>
+                                </ListGroup.Item>
+                                <ListGroup.Item className="d-flex justify-content-between">
+                                  <span className="property-name">Tracking Number</span>
+                                  <span>
+                                    {platformDetails.platformDetails.cargoTrackingNumber ? (
+                                      <a 
+                                        href={platformDetails.platformDetails.cargoTrackingUrl || `https://www.hepsiburada.com/ayagina-gelsin/takip?code=${platformDetails.platformDetails.cargoTrackingNumber}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                      >
+                                        {platformDetails.platformDetails.cargoTrackingNumber}
+                                      </a>
+                                    ) : (
+                                      'N/A'
+                                    )}
+                                  </span>
+                                </ListGroup.Item>
+                              </ListGroup>
+                            </Col>
+                            
+                            <Col md={6}>
+                              <h6 className="mb-2">Addresses</h6>
+                              {platformDetails.platformDetails.shippingAddressJson && (
+                                <div className="mb-3">
+                                  <h6 className="text-muted">Shipping Address</h6>
+                                  <p className="card-text">
+                                    {typeof platformDetails.platformDetails.shippingAddressJson === 'string' 
+                                      ? JSON.parse(platformDetails.platformDetails.shippingAddressJson).name + ', ' +
+                                        JSON.parse(platformDetails.platformDetails.shippingAddressJson).address
+                                      : platformDetails.platformDetails.shippingAddressJson.name + ', ' +
+                                        platformDetails.platformDetails.shippingAddressJson.address || 'N/A'}
+                                  </p>
+                                  <p>
+                                    {typeof platformDetails.platformDetails.shippingAddressJson === 'string' 
+                                      ? JSON.parse(platformDetails.platformDetails.shippingAddressJson).city + '/' +
+                                        JSON.parse(platformDetails.platformDetails.shippingAddressJson).town
+                                      : platformDetails.platformDetails.shippingAddressJson.city + '/' +
+                                        platformDetails.platformDetails.shippingAddressJson.town || ''}
+                                  </p>
+                                </div>
+                              )}
+                              
+                              {platformDetails.platformDetails.billingAddressJson && (
+                                <div className="mb-3">
+                                  <h6 className="text-muted">Billing Address</h6>
+                                  <p className="card-text">
+                                    {typeof platformDetails.platformDetails.billingAddressJson === 'string' 
+                                      ? JSON.parse(platformDetails.platformDetails.billingAddressJson).name + ', ' +
+                                        JSON.parse(platformDetails.platformDetails.billingAddressJson).address
+                                      : platformDetails.platformDetails.billingAddressJson.name + ', ' +
+                                        platformDetails.platformDetails.billingAddressJson.address || 'N/A'}
+                                  </p>
+                                  <p>
+                                    {typeof platformDetails.platformDetails.billingAddressJson === 'string' 
+                                      ? JSON.parse(platformDetails.platformDetails.billingAddressJson).city + '/' +
+                                        JSON.parse(platformDetails.platformDetails.billingAddressJson).town
+                                      : platformDetails.platformDetails.billingAddressJson.city + '/' +
+                                        platformDetails.platformDetails.billingAddressJson.town || ''}
+                                  </p>
+                                </div>
+                              )}
+                            </Col>
+                          </Row>
+                        )}
+                      </div>
+                    ) : (
+                      <Alert variant="info">
+                        <FaInfo className="me-2" />
+                        No platform-specific details available for this order.
                       </Alert>
                     )}
                   </Tab.Pane>

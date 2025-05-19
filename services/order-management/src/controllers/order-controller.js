@@ -565,26 +565,75 @@ async function importHepsiburadaOrder(req, res) {
     const HepsiburadaService = require('../services/platforms/hepsiburada/hepsiburada-service');
     const hepsiburadaService = new HepsiburadaService(connectionId);
     
-    // Process the order data
-    const result = await hepsiburadaService.processDirectOrderPayload(orderData);
-    
-    if (!result.success) {
-      return res.status(400).json(result);
+    try {
+      // Process the order data
+      const result = await hepsiburadaService.processDirectOrderPayload(orderData);
+      
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      
+      // Notify via websocket about the new order
+      if (result.data) {
+        wsService.notifyNewOrder(result.data);
+      }
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Order imported successfully',
+        data: result.data
+      });
+    } catch (processError) {
+      // Handle unique constraint violations
+      if (processError.name === 'SequelizeUniqueConstraintError') {
+        logger.warn(`Unique constraint violation during Hepsiburada order import: ${orderData.orderNumber || orderData.orderId}`, {
+          error: processError,
+          orderNumber: orderData.orderNumber,
+          orderId: orderData.orderId,
+          connectionId: connectionId
+        });
+        
+        return res.status(409).json({
+          success: false,
+          message: 'This order already exists in the system',
+          error: {
+            name: 'SequelizeUniqueConstraintError',
+            fields: processError.fields || {},
+            orderNumber: orderData.orderNumber,
+            orderId: orderData.orderId
+          }
+        });
+      }
+      
+      // Handle other specific error for "Could not find order that caused constraint violation"
+      if (processError.message && processError.message.includes('Could not find order')) {
+        logger.error(`Order lookup failure after constraint violation: ${orderData.orderNumber || orderData.orderId}`, {
+          error: processError,
+          orderNumber: orderData.orderNumber,
+          orderId: orderData.orderId,
+          connectionId: connectionId
+        });
+        
+        return res.status(409).json({
+          success: false,
+          message: 'Order appears to exist but could not be located for update',
+          error: {
+            name: 'OrderLookupError',
+            orderNumber: orderData.orderNumber,
+            orderId: orderData.orderId
+          }
+        });
+      }
+      
+      // Re-throw other errors to be caught by outer catch
+      throw processError;
     }
-    
-    // Notify via websocket about the new order
-    if (result.data) {
-      wsService.notifyNewOrder(result.data);
-    }
-    
-    return res.status(200).json({
-      success: true,
-      message: 'Order imported successfully',
-      data: result.data
-    });
-    
   } catch (error) {
-    logger.error(`Failed to import Hepsiburada order: ${error.message}`, { error, userId: req.user.id });
+    logger.error(`Failed to import Hepsiburada order: ${error.message}`, { 
+      error, 
+      userId: req.user.id,
+      body: req.body.orderNumber || req.body.orderId
+    });
     
     return res.status(500).json({
       success: false,
@@ -860,6 +909,64 @@ function getDateRange(period) {
   return result;
 }
 
+/**
+ * Get order details with platform-specific data
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ */
+async function getOrderWithPlatformDetails(req, res) {
+  try {
+    const { id } = req.params;
+    const { TrendyolOrder, HepsiburadaOrder } = require('../models');
+    
+    // Find the order with all its associations
+    const order = await Order.findByPk(id, {
+      include: [
+        { model: OrderItem, include: [Product] },
+        { model: ShippingDetail },
+        { model: PlatformConnection },
+        { model: TrendyolOrder, as: 'trendyolDetails' },
+        { model: HepsiburadaOrder }
+      ]
+    });
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: `Order with ID ${id} not found`
+      });
+    }
+    
+    // Convert the raw order data to a more usable form
+    let orderData = order.toJSON();
+    
+    // Add a field to indicate the platform type for easier frontend handling
+    orderData.platformDetailsType = order.platformType;
+    
+    // Depending on the platform type, include the appropriate details
+    if (order.platformType === 'trendyol' && order.trendyolDetails) {
+      orderData.platformDetails = order.trendyolDetails;
+    } else if (order.platformType === 'hepsiburada' && order.HepsiburadaOrder) {
+      orderData.platformDetails = order.HepsiburadaOrder;
+    } else {
+      // If no platform-specific details found
+      orderData.platformDetails = null;
+    }
+    
+    return res.status(200).json({
+      success: true,
+      data: orderData
+    });
+  } catch (error) {
+    logger.error(`Error fetching order details with platform data ${req.params.id}:`, error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching order details',
+      error: error.message
+    });
+  }
+}
+
 module.exports = {
   getAllOrders,
   createOrder,
@@ -871,5 +978,6 @@ module.exports = {
   syncOrdersByPlatform,
   getOrderStats,
   importHepsiburadaOrder,
-  getOrderTrends
+  getOrderTrends,
+  getOrderWithPlatformDetails
 };

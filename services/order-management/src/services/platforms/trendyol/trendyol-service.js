@@ -317,9 +317,10 @@ class TrendyolService {
       
       // Process orders one by one
       for (const order of trendyolOrders) {
+        let phoneNumber;
         try {
           // Get phone number from shipment address
-          const phoneNumber = this.extractPhoneNumber(order);
+          phoneNumber = this.extractPhoneNumber(order);
           
           // Check if order already exists using our lookup map
           const existingOrder = existingOrdersMap[order.orderNumber];
@@ -349,8 +350,6 @@ class TrendyolService {
                     shippingMethod: order.cargoProviderName || existingOrder.ShippingDetail.shippingMethod
                   }, { transaction: t });
                 }
-                
-                // We're not updating order items as they typically don't change
               });
               
               // Add to updated orders list
@@ -375,166 +374,193 @@ class TrendyolService {
           }
           
           // Order doesn't exist - create a new one
-          logger.debug(`Creating new order for ${order.orderNumber}`);
-          
-          // Double-check that we don't have a duplicate order before creating
-          // This avoids race conditions when processing multiple orders in parallel
-          const duplicateCheck = await Order.findOne({
-            where: {
-              connectionId: this.connectionId,
-              externalOrderId: order.orderNumber
-            }
-          });
-          
-          if (duplicateCheck) {
-            logger.warn(`Duplicate order detected at creation time for ${order.orderNumber}, skipping`);
-            skippedOrders.push({
-              externalOrderId: order.orderNumber,
-              reason: 'Duplicate order found during final check'
-            });
-            skippedCount++;
-            continue;
-          }
-          
-          const result = await sequelize.transaction(async (t) => {
-            // Create the order record
-            const normalizedOrder = await Order.create({
-              externalOrderId: order.orderNumber,
-              platformType: platformType,
-              connectionId: this.connectionId,
-              userId: defaultUserId,
-              orderDate: order.orderDate ? new Date(parseInt(order.orderDate)) : new Date(),
-              status: this.mapOrderStatus(order.status),
-              totalAmount: order.totalPrice,
-              currency: 'TRY',
-              customerName: `${order.customerFirstName} ${order.customerLastName}`,
-              customerEmail: order.customerEmail,
-              customerPhone: phoneNumber,
-              notes: order.note || '',
-              paymentStatus: 'pending',
-              rawData: JSON.stringify(order),
-              lastSyncedAt: new Date()
-            }, { transaction: t });
+          try {
+            logger.debug(`Creating new order for ${order.orderNumber}`);
             
-            // Now create shipping detail with the order ID
-            const shippingDetail = await ShippingDetail.create({
-              orderId: normalizedOrder.id,
-              recipientName: `${order.shipmentAddress.firstName} ${order.shipmentAddress.lastName}`,
-              address1: order.shipmentAddress.address1 || '',
-              address2: '',
-              city: order.shipmentAddress.city,
-              state: order.shipmentAddress.district,
-              postalCode: order.shipmentAddress.postalCode,
-              country: 'Turkey',
-              phone: phoneNumber,
-              email: order.customerEmail || '',
-              shippingMethod: order.cargoProviderName
-            }, { transaction: t });
-            
-            // Update the order with the shipping detail ID
-            await normalizedOrder.update({
-              shippingDetailId: shippingDetail.id
-            }, { transaction: t });
-            
-            // Create order items
-            for (const item of order.lines) {
-              await OrderItem.create({
-                orderId: normalizedOrder.id,
-                externalProductId: item.productId ? item.productId.toString() : item.productCode.toString(),
-                name: item.productName,
-                sku: item.merchantSku,
-                quantity: item.quantity,
-                unitPrice: item.price,
-                totalPrice: item.price * item.quantity,
-                // If we have discount information, add it
-                discount: item.discount || 0.00,
-                // Store variant information in options if available
-                options: item.variantFeatures ? {
-                  variants: item.variantFeatures,
-                  size: item.productSize,
-                  barcode: item.barcode
-                } : null,
-                // Store full item data for reference
-                metadata: {
-                  platformData: item
-                }
+            const result = await sequelize.transaction(async (t) => {
+              // Create the order record
+              const normalizedOrder = await Order.create({
+                externalOrderId: order.orderNumber,
+                platformType: platformType,
+                connectionId: this.connectionId,
+                userId: defaultUserId,
+                orderDate: order.orderDate ? new Date(parseInt(order.orderDate)) : new Date(),
+                status: this.mapOrderStatus(order.status),
+                totalAmount: order.totalPrice,
+                currency: 'TRY',
+                customerName: `${order.customerFirstName} ${order.customerLastName}`,
+                customerEmail: order.customerEmail,
+                customerPhone: phoneNumber,
+                notes: order.note || '',
+                paymentStatus: 'pending',
+                rawData: JSON.stringify(order),
+                lastSyncedAt: new Date()
               }, { transaction: t });
-            }
-            
-            return normalizedOrder;
-          });
-          
-          // Add the result to our normalized orders
-          normalizedOrders.push(result);
-          
-          // Update our lookup map to prevent duplicate processing in this batch
-          existingOrdersMap[order.orderNumber] = result;
-          
-          successCount++;
-          logger.debug(`Successfully created new order for ${order.orderNumber}`);
-        } catch (orderError) {
-          // Check if it's a unique constraint error
-          if (orderError.name === 'SequelizeUniqueConstraintError') {
-            logger.warn(`Unique constraint violation for ${order.orderNumber}, attempting to update instead`, {
-              orderNumber: order.orderNumber,
-              connectionId: this.connectionId
+              
+              // Create Trendyol-specific order data
+              await this.createTrendyolOrderRecord(normalizedOrder.id, order, t);
+              
+              // Now create shipping detail with the order ID
+              const shippingDetail = await ShippingDetail.create({
+                orderId: normalizedOrder.id,
+                recipientName: `${order.shipmentAddress.firstName} ${order.shipmentAddress.lastName}`,
+                address1: order.shipmentAddress.address1 || '',
+                address2: '',
+                city: order.shipmentAddress.city,
+                state: order.shipmentAddress.district,
+                postalCode: order.shipmentAddress.postalCode,
+                country: 'Turkey',
+                phone: phoneNumber,
+                email: order.customerEmail || '',
+                shippingMethod: order.cargoProviderName
+              }, { transaction: t });
+              
+              // Update the order with the shipping detail ID
+              await normalizedOrder.update({
+                shippingDetailId: shippingDetail.id
+              }, { transaction: t });
+              
+              // Create order items
+              for (const item of order.lines) {
+                await OrderItem.create({
+                  orderId: normalizedOrder.id,
+                  externalProductId: item.productId ? item.productId.toString() : item.productCode.toString(),
+                  name: item.productName,
+                  sku: item.merchantSku,
+                  quantity: item.quantity,
+                  unitPrice: item.price,
+                  totalPrice: item.price * item.quantity,
+                  discount: item.discount || 0.00,
+                  options: item.variantFeatures ? {
+                    variants: item.variantFeatures,
+                    size: item.productSize,
+                    barcode: item.barcode
+                  } : null,
+                  metadata: {
+                    platformData: item
+                  }
+                }, { transaction: t });
+              }
+              
+              return normalizedOrder;
             });
             
-            // Try to update it instead since it was just created by another process
-            try {
-              // Find the existing order
-              const conflictOrder = await Order.findOne({
-                where: {
-                  connectionId: this.connectionId,
-                  externalOrderId: order.orderNumber
-                },
-                include: [{ model: ShippingDetail }]
+            // Add the result to our normalized orders
+            normalizedOrders.push(result);
+            
+            // Update our lookup map to prevent duplicate processing in this batch
+            existingOrdersMap[order.orderNumber] = result;
+            
+            successCount++;
+            logger.debug(`Successfully created new order for ${order.orderNumber}`);
+          } catch (orderError) {
+            // Check if it's a unique constraint error
+            if (orderError.name === 'SequelizeUniqueConstraintError') {
+              logger.warn(`Unique constraint violation for ${order.orderNumber}, attempting to handle`, {
+                orderNumber: order.orderNumber,
+                connectionId: this.connectionId
+              });
+
+              // Simple approach: First check if the order count is > 0
+              const orderCount = await Order.count();
+              if (orderCount === 0) {
+                // The database is empty, but we got a constraint error.
+                // This is likely a phantom record or database corruption issue.
+                logger.info(`Database has ${orderCount} orders but still got constraint violation. Cleaning up...`);
+
+                // Force cleanup any potential phantom records
+                await sequelize.query(
+                  `DELETE FROM Orders WHERE externalOrderId = ? AND connectionId = ?`,
+                  {
+                    replacements: [order.orderNumber, this.connectionId],
+                    type: sequelize.QueryTypes.DELETE
+                  }
+                );
+
+                // Try once more with a simple create
+                try {
+                  const newOrder = await this.manualCreateOrder(order, platformType, defaultUserId, phoneNumber);
+                  if (newOrder.success) {
+                    normalizedOrders.push(newOrder.order);
+                    successCount++;
+                    logger.info(`Successfully created order ${order.orderNumber} after cleanup`);
+                  } else {
+                    throw new Error(newOrder.message);
+                  }
+                } catch (retryError) {
+                  logger.error(`Failed to create order ${order.orderNumber} after cleanup: ${retryError.message}`);
+                  skippedOrders.push({
+                    externalOrderId: order.orderNumber,
+                    reason: 'Failed after cleanup: ' + retryError.message
+                  });
+                  skippedCount++;
+                }
+              } else {
+                // The database has orders, so let's try to find this one directly, and update if found
+                try {
+                  const existingOrder = await Order.findOne({
+                    where: {
+                      externalOrderId: order.orderNumber,
+                      connectionId: this.connectionId
+                    }
+                  });
+
+                  if (existingOrder) {
+                    // Simple update
+                    await existingOrder.update({
+                      status: this.mapOrderStatus(order.status),
+                      rawData: JSON.stringify(order),
+                      lastSyncedAt: new Date()
+                    });
+                    
+                    updatedOrders.push(existingOrder);
+                    updatedCount++;
+                    logger.info(`Found and updated order ${order.orderNumber} after constraint violation`);
+                  } else {
+                    // Strange situation - constraint violation but can't find the order
+                    // This might be due to a race condition, let's just skip it
+                    logger.warn(`Order ${order.orderNumber} not found despite constraint violation, skipping`);
+                    skippedOrders.push({
+                      externalOrderId: order.orderNumber,
+                      reason: 'Constraint violation but order not found'
+                    });
+                    skippedCount++;
+                  }
+                } catch (findError) {
+                  logger.error(`Error finding order ${order.orderNumber} after constraint violation: ${findError.message}`);
+                  skippedOrders.push({
+                    externalOrderId: order.orderNumber,
+                    reason: 'Error after constraint violation: ' + findError.message
+                  });
+                  skippedCount++;
+                }
+              }
+            } else {
+              // Handle other individual order errors
+              logger.error(`Failed to normalize Trendyol order ${order.orderNumber}: ${orderError.message}`, { 
+                error: orderError, 
+                orderNumber: order.orderNumber,
+                connectionId: this.connectionId 
               });
               
-              if (conflictOrder) {
-                // Update the order that caused the conflict
-                await sequelize.transaction(async (t) => {
-                  await conflictOrder.update({
-                    status: this.mapOrderStatus(order.status),
-                    rawData: JSON.stringify(order),
-                    lastSyncedAt: new Date()
-                  }, { transaction: t });
-                });
-                
-                updatedOrders.push(conflictOrder);
-                updatedCount++;
-                logger.debug(`Recovered from constraint error by updating order ${order.orderNumber}`);
-              } else {
-                // This shouldn't happen, but log it just in case
-                logger.error(`Could not find order that caused constraint violation: ${order.orderNumber}`);
-                skippedOrders.push({
-                  externalOrderId: order.orderNumber,
-                  reason: 'Unique constraint error, but order not found for update'
-                });
-                skippedCount++;
-              }
-            } catch (updateError) {
-              logger.error(`Failed to recover from unique constraint error for ${order.orderNumber}: ${updateError.message}`);
               skippedOrders.push({
                 externalOrderId: order.orderNumber,
-                reason: 'Unique constraint error recovery failed'
+                reason: orderError.message
               });
               skippedCount++;
             }
-          } else {
-            // Handle other individual order errors
-            logger.error(`Failed to normalize Trendyol order ${order.orderNumber}: ${orderError.message}`, { 
-              error: orderError, 
-              orderNumber: order.orderNumber,
-              connectionId: this.connectionId 
-            });
-            
-            skippedOrders.push({
-              externalOrderId: order.orderNumber,
-              reason: orderError.message
-            });
-            skippedCount++;
           }
+        } catch (processingError) {
+          logger.error(`Error processing order ${order.orderNumber}: ${processingError.message}`, {
+            error: processingError,
+            orderNumber: order.orderNumber
+          });
+          
+          skippedOrders.push({
+            externalOrderId: order.orderNumber,
+            reason: 'Processing error: ' + processingError.message
+          });
+          skippedCount++;
         }
       }
       
@@ -545,6 +571,132 @@ class TrendyolService {
     } catch (error) {
       logger.error(`Failed to normalize Trendyol orders: ${error.message}`, { error, connectionId: this.connectionId });
       throw error;
+    }
+  }
+
+  /**
+   * Manual order creation with extra caution for constraint violations
+   * This method tries to create an order with a sequential approach
+   * and handles failures gracefully
+   */
+  async manualCreateOrder(order, platformType, userId, incomingPhoneNumber) {
+    // initialize local phoneNumber variable
+    let phoneNumber = incomingPhoneNumber;
+    try {
+      // Make sure phoneNumber is defined
+      if (phoneNumber === undefined || phoneNumber === null) {
+        // Extract phone number again to be safe
+        phoneNumber = this.extractPhoneNumber(order) || '';
+        
+        // Add extra defensive check to ensure phoneNumber is a string
+        if (phoneNumber === undefined || phoneNumber === null) {
+          phoneNumber = '';
+        }
+      }
+      
+      // First, ensure the order doesn't already exist
+      const existingOrder = await Order.findOne({
+        where: {
+          connectionId: this.connectionId,
+          externalOrderId: order.orderNumber
+        }
+      });
+      
+      if (existingOrder) {
+        // Update it instead
+        await existingOrder.update({
+          status: this.mapOrderStatus(order.status),
+          rawData: JSON.stringify(order),
+          lastSyncedAt: new Date()
+        });
+        
+        return {
+          success: true,
+          message: 'Order updated in manual create method',
+          order: existingOrder
+        };
+      }
+      
+      // Create the order
+      const newOrder = await Order.create({
+        externalOrderId: order.orderNumber,
+        platformType: platformType,
+        connectionId: this.connectionId,
+        userId: userId,
+        orderDate: order.orderDate ? new Date(parseInt(order.orderDate)) : new Date(),
+        status: this.mapOrderStatus(order.status),
+        totalAmount: order.totalPrice,
+        currency: 'TRY',
+        customerName: `${order.customerFirstName} ${order.customerLastName}`,
+        customerEmail: order.customerEmail,
+        customerPhone: phoneNumber,
+        notes: order.note || '',
+        paymentStatus: 'pending',
+        rawData: JSON.stringify(order),
+        lastSyncedAt: new Date()
+      });
+      
+      // Create shipping detail
+      const shippingDetail = await ShippingDetail.create({
+        orderId: newOrder.id,
+        recipientName: `${order.shipmentAddress.firstName} ${order.shipmentAddress.lastName}`,
+        address1: order.shipmentAddress.address1 || '',
+        address2: '',
+        city: order.shipmentAddress.city,
+        state: order.shipmentAddress.district,
+        postalCode: order.shipmentAddress.postalCode,
+        country: 'Turkey',
+        phone: phoneNumber,
+        email: order.customerEmail || '',
+        shippingMethod: order.cargoProviderName
+      });
+      
+      // Update order with shipping detail ID
+      await newOrder.update({
+        shippingDetailId: shippingDetail.id
+      });
+      
+      // Create platform-specific order data
+      await this.createTrendyolOrderRecord(newOrder.id, order);
+      
+      // Create order items
+      for (const item of order.lines) {
+        await OrderItem.create({
+          orderId: newOrder.id,
+          externalProductId: item.productId ? item.productId.toString() : item.productCode.toString(),
+          name: item.productName,
+          sku: item.merchantSku,
+          quantity: item.quantity,
+          unitPrice: item.price,
+          totalPrice: item.price * item.quantity,
+          discount: item.discount || 0.00,
+          options: item.variantFeatures ? {
+            variants: item.variantFeatures,
+            size: item.productSize,
+            barcode: item.barcode
+          } : null,
+          metadata: {
+            platformData: item
+          }
+        });
+      }
+      
+      return {
+        success: true,
+        message: 'Order created successfully in manual create method',
+        order: newOrder
+      };
+    } catch (error) {
+      // Handle known DB errors by returning existing order without error log
+      if (error.name === 'SequelizeUniqueConstraintError' || error.name === 'SequelizeValidationError') {
+        const existed = await Order.findOne({ where: { connectionId: this.connectionId, externalOrderId: order.orderNumber } });
+        if (existed) {
+          return { success: true, message: 'Order already exists, skipped creation', order: existed };
+        }
+      }
+      // Unexpected error - log and return failure
+      logger.error(`Failed in manual creation attempt for ${order.orderNumber}: ${error.message}`, { error, orderNumber: order.orderNumber });
+      return { success: false, message: `Failed in manual create: ${error.message}`, error };
     }
   }
 
@@ -1254,6 +1406,43 @@ class TrendyolService {
         message: `Failed to get batch request status: ${error.message}`,
         error: error.response?.data || error.message
       };
+    }
+  }
+
+  /**
+   * Create a Trendyol-specific order record
+   * @param {string} orderId - The main Order record ID
+   * @param {Object} trendyolOrderData - Raw order data from Trendyol API
+   * @param {Object} transaction - Sequelize transaction object
+   * @returns {Promise<Object>} Created TrendyolOrder record
+   */
+  async createTrendyolOrderRecord(orderId, trendyolOrderData, transaction) {
+    try {
+      const { TrendyolOrder } = require('../../../models');
+
+      // Extract Trendyol-specific fields from the order data
+      return await TrendyolOrder.create({
+        orderId: orderId,
+        orderNumber: trendyolOrderData.orderNumber,
+        cargoProviderName: trendyolOrderData.cargoProviderName,
+        cargoTrackingNumber: trendyolOrderData.cargoTrackingNumber || trendyolOrderData.cargoTrackingCode,
+        cargoTrackingUrl: trendyolOrderData.cargoTrackingUrl,
+        customerFirstName: trendyolOrderData.customerFirstName,
+        customerLastName: trendyolOrderData.customerLastName,
+        customerEmail: trendyolOrderData.customerEmail,
+        shipmentAddressJson: trendyolOrderData.shipmentAddress,
+        invoiceAddressJson: trendyolOrderData.invoiceAddress,
+        deliveryAddressJson: trendyolOrderData.deliveryAddress,
+        note: trendyolOrderData.note,
+        platformStatus: trendyolOrderData.status
+      }, { transaction });
+    } catch (error) {
+      logger.error(`Failed to create TrendyolOrder record: ${error.message}`, { 
+        error, 
+        orderId,
+        orderNumber: trendyolOrderData.orderNumber 
+      });
+      throw error;
     }
   }
 }

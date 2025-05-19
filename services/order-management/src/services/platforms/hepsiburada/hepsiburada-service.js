@@ -184,6 +184,7 @@ class HepsiburadaService {
   async normalizeOrders(hepsiburadaOrders) {
     try {
       const normalizedOrders = [];
+      const { HepsiburadaOrder } = require('../../../models');
       
       for (const order of hepsiburadaOrders) {
         // Create shipping details from the order data
@@ -218,6 +219,36 @@ class HepsiburadaService {
           customerPhone: order.phoneNumber || '',
           notes: '',
           rawData: JSON.stringify(order)
+        });
+        
+        // Create Hepsiburada-specific order record
+        await HepsiburadaOrder.create({
+          orderId: normalizedOrder.id,
+          packageNumber: order.packageNumber || '',
+          merchantId: order.merchantId || this.merchantId,
+          customerId: order.customerId || '',
+          orderNumber: order.orderNumber || order.packageNumber || '',
+          referenceNumber: order.referenceNumber || '',
+          cargoCompany: order.cargoCompany || '',
+          cargoTrackingNumber: order.trackingNumber || '',
+          cargoTrackingUrl: order.cargoTrackingUrl || '',
+          paymentType: order.paymentType || '',
+          shippingAddressJson: {
+            name: order.recipientName,
+            address: order.shippingAddressDetail,
+            city: order.shippingCity,
+            town: order.shippingTown,
+            postalCode: order.shippingPostalCode
+          },
+          billingAddressJson: {
+            name: order.billingName || order.recipientName,
+            address: order.billingAddress || order.shippingAddressDetail,
+            city: order.billingCity || order.shippingCity,
+            town: order.billingTown || order.shippingTown,
+            postalCode: order.billingPostalCode
+          },
+          platformStatus: order.status || '',
+          paymentStatus: order.paymentStatus || ''
         });
         
         // Create order items
@@ -264,6 +295,7 @@ class HepsiburadaService {
         await this.initialize();
       }
       
+      const { HepsiburadaOrder, sequelize } = require('../../../models');
       let order = orderData;
       
       // If this is an order detail response (from getOrderDetails), use it directly
@@ -306,138 +338,436 @@ class HepsiburadaService {
         phoneNumber = order.phoneNumber || '';
       }
       
-      // Create shipping detail
-      const shippingDetail = await ShippingDetail.create({
-        recipientName,
-        address,
-        city,
-        state: town,
-        postalCode,
-        country: 'TR',
-        phone: phoneNumber,
-        email,
-        shippingMethod: items[0]?.cargoCompany || order.cargoCompany || ''
+      // Get order number - ensure we have a valid value
+      const platformOrderId = order.orderNumber || order.packageNumber || order.orderId || '';
+      
+      if (!platformOrderId) {
+        logger.error('Missing platform order ID in Hepsiburada order data', { orderData });
+        return {
+          success: false,
+          message: 'Missing platform order ID in order data',
+          error: 'MISSING_PLATFORM_ORDER_ID'
+        };
+      }
+      
+      logger.debug(`Processing Hepsiburada order: ${platformOrderId}`);
+      
+      // First check if this order already exists to avoid unique constraint violations
+      const existingOrder = await Order.findOne({
+        where: {
+          externalOrderId: platformOrderId,
+          connectionId: this.connectionId
+        }
       });
       
-      // Get customer name from appropriate location
-      let customerName = '';
-      if (order.customer && order.customer.name) {
-        customerName = order.customer.name;
-      } else {
-        customerName = order.customerName || recipientName;
-      }
-      
-      // Get order status from appropriate field
-      let orderStatus;
-      if (items[0] && items[0].status) {
-        orderStatus = this.mapOrderStatus(items[0].status);
-      } else if (order.status) {
-        orderStatus = this.mapOrderStatus(order.status);
-      } else if (order.paymentStatus) {
-        orderStatus = this.mapPaymentStatus(order.paymentStatus);
-      } else {
-        orderStatus = 'new';
-      }
-      
-      // Get order number
-      const platformOrderId = order.orderNumber || order.packageNumber || '';
-      
-      // Calculate total from items if not directly available
-      let totalAmount = 0;
-      let currency = 'TRY';
-      
-      if (order.totalPrice) {
-        totalAmount = parseFloat(order.totalPrice.amount) || 0;
-        currency = order.totalPrice.currency || 'TRY';
-      } else {
-        // Calculate from items
-        totalAmount = items.reduce((sum, item) => {
-          const itemTotal = parseFloat(item.totalPrice?.amount || 0);
-          return sum + itemTotal;
-        }, 0);
+      if (existingOrder) {
+        logger.info(`Order ${platformOrderId} already exists in the database, updating instead of creating.`);
         
-        // Get currency from first item
-        if (items[0] && items[0].totalPrice && items[0].totalPrice.currency) {
-          currency = items[0].totalPrice.currency;
-        }
-      }
-      
-      // Create the order record
-      const normalizedOrder = await Order.create({
-        platformOrderId,
-        platformId: this.connection.platformId,
-        connectionId: this.connectionId,
-        orderDate: new Date(order.orderDate),
-        orderStatus,
-        totalAmount,
-        currency,
-        shippingDetailId: shippingDetail.id,
-        customerName,
-        customerEmail: email,
-        customerPhone: phoneNumber,
-        notes: order.orderNote || '',
-        rawData: JSON.stringify(order)
-      });
-      
-      // Create order items
-      for (const item of items) {
-        // Get the right field names based on the format
-        const sku = item.sku || item.merchantSKU || '';
-        const name = item.name || item.productName || '';
-        const barcode = item.productBarcode || '';
-        const quantity = parseInt(item.quantity) || 1;
-        
-        // Get prices
-        let unitPrice = 0;
-        let totalPrice = 0;
-        let taxAmount = 0;
-        let taxRate = 0;
-        
-        if (item.unitPrice) {
-          unitPrice = parseFloat(item.unitPrice.amount) || 0;
-        } else if (item.price) {
-          unitPrice = parseFloat(item.price.amount) || 0;
-        }
-        
-        if (item.totalPrice) {
-          totalPrice = parseFloat(item.totalPrice.amount) || 0;
+        // Get customer name from appropriate location
+        let customerName = '';
+        if (order.customer && order.customer.name) {
+          customerName = order.customer.name;
         } else {
-          totalPrice = unitPrice * quantity;
+          customerName = order.customerName || recipientName;
         }
         
-        if (item.vat) {
-          taxAmount = parseFloat(item.vat) || 0;
+        // Get order status from appropriate field
+        let status;
+        if (items[0] && items[0].status) {
+          status = this.mapOrderStatus(items[0].status);
+        } else if (order.status) {
+          status = this.mapOrderStatus(order.status);
+        } else if (order.paymentStatus) {
+          status = this.mapPaymentStatus(order.paymentStatus);
+        } else {
+          status = 'new';
         }
         
-        if (item.vatRate) {
-          taxRate = parseFloat(item.vatRate) || 0;
-        }
-        
-        await OrderItem.create({
-          orderId: normalizedOrder.id,
-          platformProductId: item.id || item.lineItemId || '',
-          sku,
-          barcode,
-          title: name,
-          quantity,
-          unitPrice,
-          totalPrice,
-          currency: item.totalPrice?.currency || item.unitPrice?.currency || 'TRY',
-          variantInfo: item.properties ? JSON.stringify(item.properties) : null,
-          weight: item.weight || 0,
-          taxAmount,
-          taxRate,
-          rawData: JSON.stringify(item)
+        // Update the existing order
+        await sequelize.transaction(async (t) => {
+          await existingOrder.update({
+            status,
+            customerName,
+            customerEmail: email,
+            customerPhone: phoneNumber,
+            notes: order.orderNote || '',
+            rawData: JSON.stringify(order)
+          }, { transaction: t });
+          
+          // Update Hepsiburada-specific order data
+          const existingHepsiburadaOrder = await HepsiburadaOrder.findOne({
+            where: { orderId: existingOrder.id }
+          });
+          
+          if (existingHepsiburadaOrder) {
+            await existingHepsiburadaOrder.update({
+              platformStatus: order.status || items[0]?.status || '',
+              paymentStatus: order.paymentStatus || '',
+              cargoCompany: items[0]?.cargoCompany || order.cargoCompany || '',
+              cargoTrackingNumber: items[0]?.trackingNumber || order.trackingNumber || '',
+              cargoTrackingUrl: items[0]?.cargoTrackingUrl || order.cargoTrackingUrl || ''
+            }, { transaction: t });
+          } else {
+            // If Hepsiburada order record doesn't exist, create it
+            await HepsiburadaOrder.create({
+              orderId: existingOrder.id,
+              packageNumber: order.packageNumber || platformOrderId,
+              merchantId: order.merchantId || this.merchantId,
+              customerId: order.customerId || order.customer?.id || '',
+              orderNumber: platformOrderId,
+              referenceNumber: order.referenceNumber || '',
+              cargoCompany: items[0]?.cargoCompany || order.cargoCompany || '',
+              cargoTrackingNumber: items[0]?.trackingNumber || order.trackingNumber || '',
+              cargoTrackingUrl: items[0]?.cargoTrackingUrl || order.cargoTrackingUrl || '',
+              paymentType: order.paymentType || '',
+              shippingAddressJson: order.deliveryAddress || {
+                name: recipientName,
+                address: address,
+                city: city,
+                town: town,
+                postalCode: postalCode
+              },
+              billingAddressJson: order.billingAddress || {
+                name: order.billingName || recipientName,
+                address: order.billingAddress || address,
+                city: order.billingCity || city,
+                town: order.billingTown || town,
+                postalCode: order.billingPostalCode || postalCode
+              },
+              platformStatus: order.status || items[0]?.status || '',
+              paymentStatus: order.paymentStatus || ''
+            }, { transaction: t });
+          }
         });
+        
+        return {
+          success: true,
+          message: 'Order updated successfully',
+          data: existingOrder
+        };
       }
       
-      return {
-        success: true,
-        message: 'Order processed successfully',
-        data: normalizedOrder
-      };
+      try {
+        return await sequelize.transaction(async (t) => {
+          // Create shipping detail
+          const shippingDetail = await ShippingDetail.create({
+            recipientName,
+            address,
+            city,
+            state: town,
+            postalCode,
+            country: 'TR',
+            phone: phoneNumber,
+            email,
+            shippingMethod: items[0]?.cargoCompany || order.cargoCompany || ''
+          }, { transaction: t });
+          
+          // Get customer name from appropriate location
+          let customerName = '';
+          if (order.customer && order.customer.name) {
+            customerName = order.customer.name;
+          } else {
+            customerName = order.customerName || recipientName;
+          }
+          
+          // Get order status from appropriate field
+          let status;
+          if (items[0] && items[0].status) {
+            status = this.mapOrderStatus(items[0].status);
+          } else if (order.status) {
+            status = this.mapOrderStatus(order.status);
+          } else if (order.paymentStatus) {
+            status = this.mapPaymentStatus(order.paymentStatus);
+          } else {
+            status = 'new';
+          }
+          
+          // Calculate total from items if not directly available
+          let totalAmount = 0;
+          let currency = 'TRY';
+          
+          if (order.totalPrice) {
+            totalAmount = parseFloat(order.totalPrice.amount) || 0;
+            currency = order.totalPrice.currency || 'TRY';
+          } else {
+            // Calculate from items
+            totalAmount = items.reduce((sum, item) => {
+              const itemTotal = parseFloat(item.totalPrice?.amount || 0);
+              return sum + itemTotal;
+            }, 0);
+            
+            // Get currency from first item
+            if (items[0] && items[0].totalPrice && items[0].totalPrice.currency) {
+              currency = items[0].totalPrice.currency;
+            }
+          }
+          
+          // Create the order record - fix field names to match model definition
+          const normalizedOrder = await Order.create({
+            externalOrderId: platformOrderId,
+            platformType: 'hepsiburada',
+            connectionId: this.connectionId,
+            userId: this.connection.userId,
+            customerName,
+            customerEmail: email,
+            customerPhone: phoneNumber,
+            orderDate: new Date(order.orderDate || Date.now()),
+            totalAmount,
+            currency,
+            status,
+            notes: order.orderNote || '',
+            paymentStatus: order.paymentStatus || 'pending',
+            rawData: JSON.stringify(order),
+            lastSyncedAt: new Date()
+          }, { transaction: t });
+          
+          // Create Hepsiburada-specific order record
+          await HepsiburadaOrder.create({
+            orderId: normalizedOrder.id,
+            packageNumber: order.packageNumber || platformOrderId,
+            merchantId: order.merchantId || this.merchantId,
+            customerId: order.customerId || order.customer?.id || '',
+            orderNumber: platformOrderId,
+            referenceNumber: order.referenceNumber || '',
+            cargoCompany: items[0]?.cargoCompany || order.cargoCompany || '',
+            cargoTrackingNumber: items[0]?.trackingNumber || order.trackingNumber || '',
+            cargoTrackingUrl: items[0]?.cargoTrackingUrl || order.cargoTrackingUrl || '',
+            paymentType: order.paymentType || '',
+            shippingAddressJson: order.deliveryAddress || {
+              name: recipientName,
+              address: address,
+              city: city,
+              town: town,
+              postalCode: postalCode
+            },
+            billingAddressJson: order.billingAddress || {
+              name: order.billingName || recipientName,
+              address: order.billingAddress || address,
+              city: order.billingCity || city,
+              town: order.billingTown || town,
+              postalCode: order.billingPostalCode || postalCode
+            },
+            platformStatus: order.status || items[0]?.status || '',
+            paymentStatus: order.paymentStatus || ''
+          }, { transaction: t });
+          
+          // Create order items
+          for (const item of items) {
+            // Get the right field names based on the format
+            const sku = item.sku || item.merchantSKU || '';
+            const name = item.name || item.productName || '';
+            const barcode = item.productBarcode || '';
+            const quantity = parseInt(item.quantity) || 1;
+            
+            // Get prices
+            let unitPrice = 0;
+            let totalPrice = 0;
+            let taxAmount = 0;
+            let taxRate = 0;
+            
+            if (item.unitPrice) {
+              unitPrice = parseFloat(item.unitPrice.amount) || 0;
+            } else if (item.price) {
+              unitPrice = parseFloat(item.price.amount) || 0;
+            }
+            
+            if (item.totalPrice) {
+              totalPrice = parseFloat(item.totalPrice.amount) || 0;
+            } else {
+              totalPrice = unitPrice * quantity;
+            }
+            
+            if (item.vat) {
+              taxAmount = parseFloat(item.vat) || 0;
+            }
+            
+            if (item.vatRate) {
+              taxRate = parseFloat(item.vatRate) || 0;
+            }
+            
+            await OrderItem.create({
+              orderId: normalizedOrder.id,
+              externalProductId: item.id || item.lineItemId || '',
+              sku,
+              name,
+              quantity,
+              unitPrice,
+              totalPrice,
+              currency: item.totalPrice?.currency || item.unitPrice?.currency || 'TRY',
+              taxAmount,
+              taxRate,
+              rawData: JSON.stringify(item)
+            }, { transaction: t });
+          }
+          
+          return {
+            success: true,
+            message: 'Order processed successfully',
+            data: normalizedOrder
+          };
+        });
+      } catch (error) {
+        // Check if it's a unique constraint error
+        if (error.name === 'SequelizeUniqueConstraintError') {
+          logger.warn(`Unique constraint violation for ${platformOrderId}, attempting to update instead`, {
+            orderNumber: platformOrderId,
+            connectionId: this.connectionId
+          });
+          
+          // Try to find the order again - if there was a race condition, it might exist now
+          const conflictOrder = await Order.findOne({
+            where: {
+              externalOrderId: platformOrderId,
+              connectionId: this.connectionId
+            },
+            include: [{ model: ShippingDetail }]
+          });
+          
+          if (conflictOrder) {
+            logger.debug(`Found order ${platformOrderId} after constraint violation, updating it`);
+            
+            try {
+              // Update the order that caused the conflict
+              await sequelize.transaction(async (t) => {
+                // Get order status from appropriate field
+                let status;
+                if (items[0] && items[0].status) {
+                  status = this.mapOrderStatus(items[0].status);
+                } else if (order.status) {
+                  status = this.mapOrderStatus(order.status);
+                } else {
+                  status = 'new';
+                }
+                
+                await conflictOrder.update({
+                  status,
+                  rawData: JSON.stringify(order),
+                  lastSyncedAt: new Date()
+                }, { transaction: t });
+                
+                // Also update the Hepsiburada-specific order data
+                const existingHepsiburadaOrder = await HepsiburadaOrder.findOne({
+                  where: { orderId: conflictOrder.id }
+                });
+                
+                if (existingHepsiburadaOrder) {
+                  await existingHepsiburadaOrder.update({
+                    platformStatus: order.status || items[0]?.status || '',
+                    paymentStatus: order.paymentStatus || '',
+                    cargoCompany: items[0]?.cargoCompany || order.cargoCompany || '',
+                    cargoTrackingNumber: items[0]?.trackingNumber || order.trackingNumber || '',
+                    cargoTrackingUrl: items[0]?.cargoTrackingUrl || order.cargoTrackingUrl || ''
+                  }, { transaction: t });
+                } else {
+                  // If no platform-specific record exists yet, create one
+                  await HepsiburadaOrder.create({
+                    orderId: conflictOrder.id,
+                    packageNumber: order.packageNumber || platformOrderId,
+                    merchantId: order.merchantId || this.merchantId,
+                    customerId: order.customerId || order.customer?.id || '',
+                    orderNumber: platformOrderId,
+                    referenceNumber: order.referenceNumber || '',
+                    cargoCompany: items[0]?.cargoCompany || order.cargoCompany || '',
+                    cargoTrackingNumber: items[0]?.trackingNumber || order.trackingNumber || '',
+                    cargoTrackingUrl: items[0]?.cargoTrackingUrl || order.cargoTrackingUrl || '',
+                    paymentType: order.paymentType || '',
+                    shippingAddressJson: order.deliveryAddress || {
+                      name: recipientName,
+                      address: address,
+                      city: city,
+                      town: town,
+                      postalCode: postalCode
+                    },
+                    billingAddressJson: order.billingAddress || {
+                      name: order.billingName || recipientName,
+                      address: order.billingAddress || address,
+                      city: order.billingCity || city,
+                      town: order.billingTown || town,
+                      postalCode: order.billingPostalCode || postalCode
+                    },
+                    platformStatus: order.status || items[0]?.status || '',
+                    paymentStatus: order.paymentStatus || ''
+                  }, { transaction: t });
+                }
+              });
+              
+              return {
+                success: true,
+                message: 'Order updated successfully (after constraint error)',
+                data: conflictOrder
+              };
+            } catch (updateError) {
+              logger.error(`Failed to update existing order after constraint violation for ${platformOrderId}: ${updateError.message}`, {
+                error: updateError,
+                orderNumber: platformOrderId
+              });
+              throw updateError;
+            }
+          } else {
+            // We still can't find the order, which is strange because we just got a constraint violation
+            // Let's retry with a slight delay in case there's a race condition or DB replication lag
+            logger.warn(`Could not find order ${platformOrderId} after constraint violation, retrying after delay`);
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Try one more time with only the fields we know exist
+            const retryOrder = await Order.findOne({
+              where: {
+                externalOrderId: platformOrderId,
+                connectionId: this.connectionId
+              }
+            });
+            
+            if (retryOrder) {
+              logger.debug(`Found order ${platformOrderId} after retry, updating it`);
+              
+              await sequelize.transaction(async (t) => {
+                // Fetch the latest status
+                let status;
+                if (items[0] && items[0].status) {
+                  status = this.mapOrderStatus(items[0].status);
+                } else if (order.status) {
+                  status = this.mapOrderStatus(order.status);
+                } else {
+                  status = 'new';
+                }
+                
+                await retryOrder.update({ 
+                  status,
+                  rawData: JSON.stringify(order),
+                  lastSyncedAt: new Date()
+                }, { transaction: t });
+              });
+              
+              return {
+                success: true,
+                message: 'Order updated successfully (after retry)',
+                data: retryOrder
+              };
+            }
+            
+            // If we still can't find it, log the error but don't fail the whole import
+            logger.error(`Could not find order that caused constraint violation: ${platformOrderId}`, {
+              orderData: JSON.stringify(order)
+            });
+            
+            return {
+              success: false,
+              message: `Order with ID ${platformOrderId} appears to exist in the database but could not be located for update`,
+              error: 'ORDER_LOOKUP_FAILED_AFTER_CONSTRAINT_VIOLATION'
+            };
+          }
+        } else {
+          // Not a constraint error, rethrow
+          throw error;
+        }
+      }
     } catch (error) {
-      logger.error(`Failed to process direct Hepsiburada order: ${error.message}`, { error, connectionId: this.connectionId });
+      logger.error(`Failed to process direct Hepsiburada order: ${error.message}`, { 
+        error, 
+        connectionId: this.connectionId,
+        platformOrderId: order?.orderNumber || order?.packageNumber || 'unknown'
+      });
       
       return {
         success: false,

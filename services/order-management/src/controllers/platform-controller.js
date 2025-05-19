@@ -145,10 +145,32 @@ async function updateConnection(req, res) {
     const updates = {};
     if (name) updates.name = name;
     if (platformName) updates.platformName = platformName;
-    if (credentials) updates.credentials = credentials; // No need to stringify since model type is JSON
+    
+    // Handle credentials properly
+    if (credentials) {
+      // Make sure credentials are stored as an object
+      if (typeof credentials === 'string') {
+        try {
+          updates.credentials = JSON.parse(credentials);
+        } catch (e) {
+          logger.warn(`Failed to parse credentials as JSON: ${e.message}`);
+          updates.credentials = credentials;
+        }
+      } else {
+        updates.credentials = credentials;
+      }
+      
+      // Log the credentials being saved (without sensitive data)
+      logger.debug(`Updating credentials for connection ${connection.id}: Keys: ${Object.keys(updates.credentials).join(', ')}`);
+    }
+    
     if (status) updates.status = status;
     
     await connection.update(updates);
+    
+    // Log success for debugging
+    logger.info(`Platform connection ${connection.id} updated successfully`);
+    
     return res.status(200).json({
       success: true,
       message: "Platform connection updated successfully",
@@ -205,10 +227,24 @@ async function testConnection(req, res) {
         message: "Platform connection not found",
       });
     }
+    
+    // Log test connection attempt (without sensitive data)
+    logger.info(`Testing connection for ${connection.platformType} with ID ${connection.id}`);
+    logger.debug(`Connection credential keys: ${Object.keys(connection.credentials || {}).join(', ')}`);
+    
     const platformService = await PlatformServiceFactory.createService(
       connection.id
     );
+    
     const result = await platformService.testConnection();
+    
+    // Log test connection result
+    if (result.success) {
+      logger.info(`Connection test successful for ${connection.platformType} connection ${connection.id}`);
+    } else {
+      logger.warn(`Connection test failed for ${connection.platformType} connection ${connection.id}: ${result.message}`);
+    }
+    
     return res.status(200).json(result);
   } catch (error) {
     logger.error(`Failed to test platform connection: ${error.message}`, {
@@ -226,13 +262,36 @@ async function testNewConnection(req, res) {
   try {
     const { platformType, credentials } = req.body;
     
+    // Log test connection attempt (without sensitive data)
+    logger.info(`Testing new ${platformType} connection with credential keys: ${typeof credentials === 'object' ? Object.keys(credentials).join(', ') : 'none provided'}`);
+    
+    let processedCredentials = credentials;
+    
+    // Make sure credentials are in the right format
+    if (typeof credentials === 'string') {
+      try {
+        processedCredentials = JSON.parse(credentials);
+        logger.debug(`Parsed credentials from string to object with keys: ${Object.keys(processedCredentials).join(', ')}`);
+      } catch (e) {
+        logger.warn(`Failed to parse credentials as JSON: ${e.message}`);
+      }
+    }
+    
     // Create a temporary platform service without saving to database
     const platformService = PlatformServiceFactory.createServiceByType(
       platformType,
-      credentials
+      processedCredentials
     );
     
     const result = await platformService.testConnection();
+    
+    // Log test connection result
+    if (result.success) {
+      logger.info(`${platformType} connection test successful`);
+    } else {
+      logger.warn(`${platformType} connection test failed: ${result.message}`);
+    }
+    
     return res.status(200).json(result);
   } catch (error) {
     logger.error(`Failed to test new platform connection: ${error.message}`, {
