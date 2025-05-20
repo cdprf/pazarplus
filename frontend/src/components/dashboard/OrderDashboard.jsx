@@ -41,10 +41,15 @@ const OrderDashboard = () => {
         }
       });
       success('Orders synchronized successfully');
+      // Force refetch stats after sync
+      queryClient.invalidateQueries({ queryKey: ['orderStats'] });
     } catch (err) {
       showError(err.message);
     }
   };
+
+  // Add some debug console logging to help identify the issue
+  console.log('Order stats:', stats);
 
   return (
     <div className="dashboard-content">
@@ -67,18 +72,18 @@ const OrderDashboard = () => {
                 error={statsError}
                 loadingMessage="Loading statistics..."
               >
-                {stats && (
-                  <div>
+                {stats ? (
+                  <div className="stats-container">
                     <div className="stat-item mb-3">
-                      <h4>{stats.totalOrders}</h4>
+                      <h3 className="stat-number">{stats.totalOrders || 0}</h3>
                       <span className="text-muted">Total Orders</span>
                     </div>
                     <div className="stat-item mb-3">
-                      <h4>{stats.pendingOrders}</h4>
+                      <h3 className="stat-number">{stats.pendingOrders || 0}</h3>
                       <span className="text-muted">Pending Orders</span>
                     </div>
                     <div className="stat-item mb-3">
-                      <h4>{stats.shippedOrders}</h4>
+                      <h3 className="stat-number">{stats.shippedOrders || 0}</h3>
                       <span className="text-muted">Shipped Orders</span>
                     </div>
                     <div className="mt-4">
@@ -106,12 +111,46 @@ const OrderDashboard = () => {
                       </Button>
                     </div>
                   </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-muted">No statistics available</p>
+                    <Button 
+                      variant="outline-secondary" 
+                      size="sm"
+                      onClick={() => queryClient.invalidateQueries({ queryKey: ['orderStats'] })}
+                    >
+                      Refresh Statistics
+                    </Button>
+                  </div>
                 )}
               </LoadingState>
             </Card.Body>
           </Card>
         </Col>
       </Row>
+      
+      {/* Add some custom CSS for better stats display */}
+      <style jsx>{`
+        .stats-container {
+          padding: 0.5rem;
+        }
+        .stat-item {
+          padding: 1rem;
+          border-radius: 8px;
+          background-color: #f8f9fa;
+          transition: all 0.2s ease;
+        }
+        .stat-item:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .stat-number {
+          font-size: 2rem;
+          font-weight: 600;
+          margin-bottom: 0.5rem;
+          color: #3498db;
+        }
+      `}</style>
     </div>
   );
 };

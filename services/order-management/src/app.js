@@ -16,6 +16,7 @@ const shippingRoutes = require('./routes/shippingRoutes');
 const exportRoutes = require('./routes/exportRoutes');
 const csvRoutes = require('./routes/csvRoutes');
 const proxyRoutes = require('./routes/proxyRoutes');
+const settingsRoutes = require('./routes/settings-routes');
 const { authenticateToken } = require('./middleware/auth-middleware');
 const { errorHandler } = require('./middleware/error-handler');
 const { sequelize, User } = require('./models');
@@ -143,6 +144,7 @@ class App {
       this.app.use('/api/export', exportRoutes);
       this.app.use('/api/csv', csvRoutes);
       this.app.use('/api/proxy', proxyRoutes);
+      this.app.use('/api/settings', settingsRoutes);
 
       // SPA fallback route - only catch routes that aren't handled by the API or other specific routes
       this.app.get("*", (req, res, next) => {

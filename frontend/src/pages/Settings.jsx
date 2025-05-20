@@ -17,6 +17,7 @@ import {
   Toast,
   ToastContainer,
   Modal,
+  Image,
 } from "react-bootstrap";
 import {
   FaUser,
@@ -36,6 +37,8 @@ import {
   FaDollarSign,
   FaLanguage,
   FaInfo,
+  FaBuilding,
+  FaUpload,
 } from "react-icons/fa";
 import axios from "axios";
 import { AlertContext } from "../context/AlertContext";
@@ -47,6 +50,7 @@ const Settings = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [modalType, setModalType] = useState("");
   const [testEmailSent, setTestEmailSent] = useState(false);
+  const [logoPreview, setLogoPreview] = useState(null);
 
   const { success, error } = useContext(AlertContext);
   const { user, updateProfile, changePassword } = useContext(AuthContext);
@@ -65,6 +69,25 @@ const Settings = () => {
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
+  });
+
+  // Company info settings
+  const [companyInfo, setCompanyInfo] = useState({
+    name: "",
+    logo: null,
+    address: {
+      street: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      country: "",
+    },
+    taxNumber: "",
+    vatNumber: "",
+    email: "",
+    phone: "",
+    website: "",
+    additionalInfo: "",
   });
 
   // General settings
@@ -149,6 +172,17 @@ const Settings = () => {
         company: user.company || "",
         jobTitle: user.jobTitle || "",
       });
+
+      // Load company info if available
+      if (user.companyInfo) {
+        setCompanyInfo(user.companyInfo);
+        if (user.companyInfo.logo) {
+          setLogoPreview(user.companyInfo.logo);
+        }
+      }
+      
+      // Load other settings as needed
+      // ...
     }
 
     // Fetch other settings
@@ -163,6 +197,39 @@ const Settings = () => {
       ...profileData,
       [name]: value,
     });
+  };
+
+  // Handle company info form changes
+  const handleCompanyInfoChange = (e) => {
+    const { name, value } = e.target;
+    
+    if (name.includes('.')) {
+      // Handle nested properties like address.street
+      const [parent, child] = name.split('.');
+      setCompanyInfo(prev => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: value
+        }
+      }));
+    } else {
+      // Handle top-level properties
+      setCompanyInfo(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  // Handle logo upload
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result);
+        setCompanyInfo(prev => ({ ...prev, logo: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Handle password form change
@@ -340,6 +407,26 @@ const Settings = () => {
     }
   };
 
+  // Save company info
+  const saveCompanyInfo = async () => {
+    try {
+      setLoading(true);
+
+      const response = await axios.post("/settings/company", companyInfo);
+
+      if (response.data.success) {
+        success("Company information saved successfully");
+      } else {
+        error(response.data.message || "Failed to save company information");
+      }
+    } catch (err) {
+      console.error("Error saving company information:", err);
+      error("Failed to save company information. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Send test email
   const sendTestEmail = async () => {
     try {
@@ -446,6 +533,12 @@ const Settings = () => {
                     <Nav.Link eventKey="shipping" className="rounded-0">
                       <FaTruck className="me-2" />
                       Shipping
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item>
+                    <Nav.Link eventKey="company" className="rounded-0">
+                      <FaBuilding className="me-2" />
+                      Company Info
                     </Nav.Link>
                   </Nav.Item>
                 </Nav>
@@ -1077,6 +1170,255 @@ const Settings = () => {
                             <>
                               <FaSave className="me-2" />
                               Save Shipping Settings
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </Form>
+                  </Tab.Pane>
+
+                  {/* Company Info Tab */}
+                  <Tab.Pane eventKey="company">
+                    <h4 className="mb-4">Company Info</h4>
+
+                    <Form onSubmit={(e) => {
+                      e.preventDefault();
+                      saveCompanyInfo();
+                    }}>
+                      <div className="mb-4">
+                        <div className="d-flex align-items-center justify-content-center mb-3">
+                          <div className="text-center">
+                            {logoPreview ? (
+                              <div className="position-relative mb-3">
+                                <Image 
+                                  src={logoPreview} 
+                                  alt="Company Logo" 
+                                  style={{ maxHeight: "100px", maxWidth: "200px" }} 
+                                  thumbnail 
+                                />
+                                <Button 
+                                  variant="outline-danger" 
+                                  size="sm" 
+                                  className="position-absolute top-0 end-0"
+                                  onClick={() => {
+                                    setLogoPreview(null);
+                                    setCompanyInfo(prev => ({ ...prev, logo: null }));
+                                  }}
+                                >
+                                  <FaTrash />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="text-center p-3 border rounded mb-3" style={{ width: "200px" }}>
+                                <FaBuilding size={48} className="text-muted mb-2" />
+                                <p className="text-muted">No logo uploaded</p>
+                              </div>
+                            )}
+                            <Form.Group controlId="companyLogo" className="mb-3">
+                              <Form.Label>Company Logo</Form.Label>
+                              <Form.Control
+                                type="file"
+                                accept="image/*"
+                                onChange={handleLogoUpload}
+                              />
+                              <Form.Text className="text-muted">
+                                Upload your company logo (PNG or JPEG, max 2MB)
+                              </Form.Text>
+                            </Form.Group>
+                          </div>
+                        </div>
+                        
+                        <Row>
+                          <Col md={12}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Company Name</Form.Label>
+                              <Form.Control
+                                type="text"
+                                name="name"
+                                value={companyInfo.name}
+                                onChange={handleCompanyInfoChange}
+                              />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+
+                        <h5 className="mt-4 mb-3">Company Address</h5>
+                        <Row>
+                          <Col md={12}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Street Address</Form.Label>
+                              <Form.Control
+                                type="text"
+                                name="address.street"
+                                value={companyInfo.address.street}
+                                onChange={handleCompanyInfoChange}
+                              />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+
+                        <Row>
+                          <Col md={4}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>City</Form.Label>
+                              <Form.Control
+                                type="text"
+                                name="address.city"
+                                value={companyInfo.address.city}
+                                onChange={handleCompanyInfoChange}
+                              />
+                            </Form.Group>
+                          </Col>
+                          <Col md={4}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>State/Province</Form.Label>
+                              <Form.Control
+                                type="text"
+                                name="address.state"
+                                value={companyInfo.address.state}
+                                onChange={handleCompanyInfoChange}
+                              />
+                            </Form.Group>
+                          </Col>
+                          <Col md={4}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Postal Code</Form.Label>
+                              <Form.Control
+                                type="text"
+                                name="address.postalCode"
+                                value={companyInfo.address.postalCode}
+                                onChange={handleCompanyInfoChange}
+                              />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+
+                        <Row>
+                          <Col md={12}>
+                            <Form.Group className="mb-4">
+                              <Form.Label>Country</Form.Label>
+                              <Form.Select
+                                name="address.country"
+                                value={companyInfo.address.country}
+                                onChange={handleCompanyInfoChange}
+                              >
+                                <option value="">Select Country</option>
+                                <option value="TR">Turkey</option>
+                                <option value="US">United States</option>
+                                <option value="GB">United Kingdom</option>
+                                <option value="DE">Germany</option>
+                                <option value="FR">France</option>
+                              </Form.Select>
+                            </Form.Group>
+                          </Col>
+                        </Row>
+
+                        <h5 className="mt-4 mb-3">Tax Information</h5>
+                        <Row>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Tax Number</Form.Label>
+                              <Form.Control
+                                type="text"
+                                name="taxNumber"
+                                value={companyInfo.taxNumber}
+                                onChange={handleCompanyInfoChange}
+                              />
+                            </Form.Group>
+                          </Col>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>VAT Number</Form.Label>
+                              <Form.Control
+                                type="text"
+                                name="vatNumber"
+                                value={companyInfo.vatNumber}
+                                onChange={handleCompanyInfoChange}
+                              />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+
+                        <h5 className="mt-4 mb-3">Contact Information</h5>
+                        <Row>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Email</Form.Label>
+                              <Form.Control
+                                type="email"
+                                name="email"
+                                value={companyInfo.email}
+                                onChange={handleCompanyInfoChange}
+                              />
+                            </Form.Group>
+                          </Col>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Phone</Form.Label>
+                              <Form.Control
+                                type="tel"
+                                name="phone"
+                                value={companyInfo.phone}
+                                onChange={handleCompanyInfoChange}
+                              />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+
+                        <Row>
+                          <Col md={12}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Website</Form.Label>
+                              <Form.Control
+                                type="url"
+                                name="website"
+                                value={companyInfo.website}
+                                onChange={handleCompanyInfoChange}
+                                placeholder="https://"
+                              />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+
+                        <Row>
+                          <Col md={12}>
+                            <Form.Group className="mb-4">
+                              <Form.Label>Additional Information</Form.Label>
+                              <Form.Control
+                                as="textarea"
+                                rows={3}
+                                name="additionalInfo"
+                                value={companyInfo.additionalInfo}
+                                onChange={handleCompanyInfoChange}
+                                placeholder="Additional information to display on invoices and documents"
+                              />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                      </div>
+
+                      <div className="d-flex justify-content-end">
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          disabled={loading}
+                        >
+                          {loading ? (
+                            <>
+                              <Spinner
+                                as="span"
+                                animation="border"
+                                size="sm"
+                                role="status"
+                                aria-hidden="true"
+                                className="me-2"
+                              />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <FaSave className="me-2" />
+                              Save Company Info
                             </>
                           )}
                         </Button>

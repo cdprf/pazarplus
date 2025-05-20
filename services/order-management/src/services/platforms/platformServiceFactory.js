@@ -74,8 +74,8 @@ class PlatformServiceFactory {
           const HepsiburadaService = require('./hepsiburada/hepsiburada-service');
           return new HepsiburadaService(connectionId, credentials);
         case 'n11':
-          // Will be implemented in the next phase
-          throw new Error('N11 integration not implemented yet');
+          const N11Service = require('./n11/n11-service');
+          return new N11Service(connectionId, credentials);
         case 'csv':
           const CSVImporterService = require('./csv/csv-importer');
           return new CSVImporterService(connectionId, credentials);

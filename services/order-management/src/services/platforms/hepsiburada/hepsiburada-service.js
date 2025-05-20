@@ -1,72 +1,75 @@
-const axios = require('axios');
-const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { Order, OrderItem, ShippingDetail, PlatformConnection, HepsiburadaOrder, sequelize } = require('../../../models');
 const logger = require('../../../utils/logger');
+const BasePlatformService = require('../base/BasePlatformService');
 
-class HepsiburadaService {
+class HepsiburadaService extends BasePlatformService {
   constructor(connectionId) {
-    this.connectionId = connectionId;
-    this.connection = null;
+    super(connectionId);
     this.apiUrl = 'https://oms-external.hepsiburada.com';
-    this.axiosInstance = null;
+    this.merchantId = null;
   }
 
-  async initialize() {
-    try {
-      this.connection = await PlatformConnection.findByPk(this.connectionId);
-      
-      if (!this.connection) {
-        throw new Error(`Platform connection with ID ${this.connectionId} not found`);
-      }
+  /**
+   * Get the platform type
+   * @returns {string} Platform type identifier
+   */
+  getPlatformType() {
+    return 'hepsiburada';
+  }
 
-      const credentials = this.decryptCredentials(this.connection.credentials);
-      const { merchantId, apiSecret } = credentials;
-      
-      if (!merchantId || !apiSecret) {
-        throw new Error('Missing required Hepsiburada credentials. Merchant ID and API Secret are required.');
-      }
-      
-      // Create Basic auth header with merchantId:apiSecret
-      const authString = Buffer.from(`${merchantId}:${apiSecret}`).toString('base64');
-      
-      this.axiosInstance = axios.create({
-        baseURL: this.apiUrl,
-        headers: {
-          'Authorization': `Basic ${authString}`,
-          'User-Agent': 'sentosyazilim_dev',
-          'Content-Type': 'application/json'
-        },
-        timeout: 30000
-      });
-      
-      this.merchantId = merchantId;
-
-      return true;
-    } catch (error) {
-      logger.error(`Failed to initialize Hepsiburada service: ${error.message}`, { error, connectionId: this.connectionId });
-      throw new Error(`Failed to initialize Hepsiburada service: ${error.message}`);
+  /**
+   * Setup Axios instance with appropriate headers and config
+   * Implementation of abstract method from BasePlatformService
+   */
+  async setupAxiosInstance() {
+    const credentials = this.decryptCredentials(this.connection.credentials);
+    const { merchantId, apiSecret } = credentials;
+    
+    if (!merchantId || !apiSecret) {
+      throw new Error('Missing required Hepsiburada credentials. Merchant ID and API Secret are required.');
     }
+    
+    // Create Basic auth header with merchantId:apiSecret
+    const authString = Buffer.from(`${merchantId}:${apiSecret}`).toString('base64');
+    
+    this.axiosInstance = await this.createAxiosInstance({
+      baseURL: this.apiUrl,
+      headers: {
+        'Authorization': `Basic ${authString}`,
+        'User-Agent': 'sentosyazilim_dev',
+        'Content-Type': 'application/json'
+      },
+      timeout: 30000
+    });
+    
+    this.merchantId = merchantId;
+    return true;
   }
 
+  /**
+   * Create an Axios instance - helper method for setupAxiosInstance
+   * @param {Object} config - Axios configuration 
+   * @returns {Object} Axios instance
+   */
+  async createAxiosInstance(config) {
+    const axios = require('axios');
+    return axios.create(config);
+  }
+
+  /**
+   * Override decryptCredentials for Hepsiburada-specific format
+   * @param {string|object} encryptedCredentials 
+   * @returns {object} Decrypted credentials
+   */
   decryptCredentials(encryptedCredentials) {
     try {
-      // Handle both string and object credentials
-      let credentials;
-      
-      if (typeof encryptedCredentials === 'string') {
-        // If credentials are stored as a JSON string, parse them
-        credentials = JSON.parse(encryptedCredentials);
-      } else if (typeof encryptedCredentials === 'object') {
-        // If credentials are already an object, use them directly
-        credentials = encryptedCredentials;
-      } else {
-        throw new Error(`Unsupported credentials format: ${typeof encryptedCredentials}`);
-      }
+      // Use the parent implementation for basic parsing
+      const credentials = super.decryptCredentials(encryptedCredentials);
       
       // Make sure we have the required fields
-      if (!credentials.storeId || !credentials.apiKey) {
-        throw new Error('Missing required credentials: merchantId or apiKey');
+      if (!credentials.storeId && !credentials.merchantId) {
+        throw new Error('Missing required credentials: merchantId or storeId');
       }
       
       return {
@@ -75,38 +78,12 @@ class HepsiburadaService {
         apiSecret: credentials.apiSecret
       };
     } catch (error) {
-      logger.error(`Failed to decrypt credentials: ${error.message}`, { error });
+      logger.error(`Failed to decrypt Hepsiburada credentials: ${error.message}`, { error });
       throw new Error('Failed to decrypt credentials');
     }
   }
 
-  async testConnection() {
-    try {
-      await this.initialize();
-      
-      // Test the connection by fetching a small amount of data
-      const url = `/packages/merchantid/${this.merchantId}?limit=1`;
-      const response = await this.axiosInstance.get(url);
-      
-      return {
-        success: true,
-        message: 'Connection successful',
-        data: {
-          platform: 'hepsiburada',
-          connectionId: this.connectionId,
-          status: 'active'
-        }
-      };
-    } catch (error) {
-      logger.error(`Hepsiburada connection test failed: ${error.message}`, { error, connectionId: this.connectionId });
-      
-      return {
-        success: false,
-        message: `Connection failed: ${error.message}`,
-        error: error.response?.data || error.message
-      };
-    }
-  }
+  // Keep existing methods but remove duplicated ones that are already in BasePlatformService
 
   async fetchOrders(params = {}) {
     try {
@@ -813,7 +790,7 @@ class HepsiburadaService {
   }
 
   /**
-   * Extract phone number from order data
+   * Extract phone number from order data - override parent method
    * Handles various formats and null cases in Hepsiburada API responses
    * @param {Object} order - The order object from Hepsiburada API
    * @returns {string} The extracted phone number or empty string if not available
@@ -830,39 +807,16 @@ class HepsiburadaService {
       return order.deliveryAddress.phoneNumber;
     }
     
-    // Enhanced Turkish phone regex patterns for finding phone in address text
-    const phonePatterns = [
-      // Explicit markers with phone numbers
-      /(?:tel|telefon|gsm|cep|phone)[:\s]*([+0-9\s()\-]{10,15})/i,
-      // Turkish mobile format (05XX)
-      /\b(05\d{2}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2})\b/,
-      // With country code (+90 or 0090)
-      /\b(\+?90[\s-]?5\d{2}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2})\b/,
-      // Generic number pattern as fallback
-      /\b(\d{3}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2})\b/
-    ];
-    
-    // Try to find phone in addresses
-    const addressText = order.deliveryAddress?.address || order.shippingAddressDetail || '';
-    
-    // Try each pattern
-    for (const pattern of phonePatterns) {
-      const match = addressText.match(pattern);
-      if (match && match[1]) {
-        // Clean up the matched number
-        return match[1].replace(/[\s()-]/g, '').trim();
-      }
-    }
-    
-    // Try billing address as fallback
-    if (order.billingAddress && order.billingAddress.phoneNumber) {
-      return order.billingAddress.phoneNumber;
-    }
-    
-    // If no phone found, return empty string
-    return '';
+    // If none of the direct fields have a phone number, use the parent implementation
+    // which handles general regex pattern matching
+    return super.extractPhoneNumber(order);
   }
 
+  /**
+   * Map Hepsiburada order status to internal system status
+   * @param {string} hepsiburadaStatus - Platform-specific status
+   * @returns {string} Internal status
+   */
   mapOrderStatus(hepsiburadaStatus) {
     const statusMap = {
       'Open': 'new',
@@ -888,11 +842,11 @@ class HepsiburadaService {
   }
 
   /**
-   * Map Hepsiburada order status to internal system status
-   * @param {string} hepsiburadaStatus 
-   * @returns {string} Mapped internal status
+   * Map internal status to Hepsiburada status
+   * @param {string} internalStatus - Internal status
+   * @returns {string} Hepsiburada status
    */
-  mapToHepsiburadaStatus(internalStatus) {
+  mapToPlatformStatus(internalStatus) {
     const reverseStatusMap = {
       'new': 'Open',
       'processing': 'Picking',
@@ -903,6 +857,11 @@ class HepsiburadaService {
     };
     
     return reverseStatusMap[internalStatus] || 'Open';
+  }
+
+  // Alias for backward compatibility
+  mapToHepsiburadaStatus(internalStatus) {
+    return this.mapToPlatformStatus(internalStatus);
   }
 
   /**
@@ -927,7 +886,7 @@ class HepsiburadaService {
         throw new Error(`Hepsiburada order details not found for order ID ${orderId}`);
       }
       
-      const hepsiburadaStatus = this.mapToHepsiburadaStatus(newStatus);
+      const hepsiburadaStatus = this.mapToPlatformStatus(newStatus);
       
       if (!hepsiburadaStatus) {
         throw new Error(`Cannot map status '${newStatus}' to Hepsiburada status`);
@@ -1033,130 +992,7 @@ class HepsiburadaService {
     }
   }
 
-  /**
-   * Retry a request with exponential backoff
-   * @param {Function} requestFn - The request function to retry
-   * @param {number} maxRetries - Maximum number of retries
-   * @param {number} delay - Base delay in milliseconds between retries
-   * @returns {Promise<any>} - The API response
-   */
-  async retryRequest(requestFn, maxRetries = 3, delay = 1000) {
-    let retries = 0;
-    let lastError = null;
-    
-    while (retries < maxRetries) {
-      try {
-        return await requestFn();
-      } catch (error) {
-        lastError = error;
-        
-        // Check if error is retryable
-        if (error.response && (error.response.status === 429 || error.response.status >= 500)) {
-          retries++;
-          logger.warn(`Retrying Hepsiburada API request (${retries}/${maxRetries}) after error: ${error.message}`);
-          
-          // Wait before retrying with exponential backoff
-          await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, retries - 1)));
-        } else {
-          // Non-retryable error
-          throw error;
-        }
-      }
-    }
-    
-    // If we've exhausted retries
-    throw lastError;
-  }
-
-  async syncOrdersFromDate(startDate, endDate = new Date()) {
-    try {
-      await this.initialize();
-      
-      // Convert dates to ISO format if they're not already
-      const startDateStr = new Date(startDate).toISOString();
-      const endDateStr = new Date(endDate).toISOString();
-      
-      logger.debug(`Syncing Hepsiburada orders from ${startDateStr} to ${endDateStr}`);
-      
-      const params = {
-        startDate: startDateStr,
-        endDate: endDateStr,
-        offset: 0,
-        limit: 100
-      };
-      
-      let hasMoreOrders = true;
-      let totalOrders = 0;
-      let totalSuccessCount = 0;
-      
-      while (hasMoreOrders) {
-        // Fetch orders for this page
-        const url = `/packages/merchantid/${this.merchantId}`;
-        const response = await this.retryRequest(() => 
-          this.axiosInstance.get(url, { params })
-        );
-        
-        if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
-          hasMoreOrders = false;
-          continue;
-        }
-        
-        const ordersData = response.data;
-        logger.debug(`Fetched ${ordersData.length} orders from Hepsiburada for offset ${params.offset}`);
-        
-        // Process the orders one by one with enhanced error handling
-        const processedOrders = [];
-        
-        for (const orderData of ordersData) {
-          try {
-            const result = await this.processDirectOrderPayload(orderData);
-            if (result.success) {
-              processedOrders.push(result.data);
-            }
-          } catch (orderError) {
-            logger.error(`Failed to process Hepsiburada order: ${orderError.message}`, {
-              error: orderError,
-              orderNumber: orderData.packageNumber || orderData.orderNumber || 'unknown'
-            });
-            // Continue processing other orders even if this one fails
-          }
-        }
-        
-        // Update counters
-        totalOrders += ordersData.length;
-        totalSuccessCount += processedOrders.length;
-        
-        // Move to the next page
-        params.offset += params.limit;
-        
-        // Check if we've reached the end
-        if (ordersData.length < params.limit) {
-          hasMoreOrders = false;
-        }
-      }
-      
-      return {
-        success: true,
-        message: `Successfully processed ${totalSuccessCount} out of ${totalOrders} orders from Hepsiburada`,
-        data: { 
-          count: totalSuccessCount,
-          skipped: totalOrders - totalSuccessCount,
-          total: totalOrders
-        }
-      };
-    } catch (error) {
-      logger.error(`Failed to sync orders from Hepsiburada: ${error.message}`, { 
-        error, 
-        connectionId: this.connectionId 
-      });
-      
-      return {
-        success: false,
-        message: `Failed to sync orders: ${error.message}`,
-        error: error.message
-      };
-    }
-  }
+  // We're using the BasePlatformService implementation for retryRequest and syncOrdersFromDate
 }
 
 module.exports = HepsiburadaService;

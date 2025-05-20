@@ -19,6 +19,7 @@
     "date-fns-tz": "^3.2.0",
     "jwt-decode": "^4.0.0",
     "react": "^19.1.0",
+    "react-barcode": "^1.6.1",
     "react-bootstrap": "^2.10.10",
     "react-bootstrap-icons": "^1.11.6",
     "react-chartjs-2": "^5.3.0",

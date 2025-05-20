@@ -37,15 +37,29 @@ export const useOrders = (params = {}) => {
   return useQuery({
     queryKey,
     queryFn: () => orderService.getOrders(queryParams),
-    select: (data) => ({
-      orders: data.success ? data.data : [],
-      pagination: data.pagination || {
-        total: 0,
-        page: 1,
-        limit: 20,
-        pages: 1
+    select: (data) => {
+      // Ensure we're properly extracting the orders and pagination
+      if (data.success && data.data) {
+        return {
+          orders: data.data.orders || [],
+          pagination: data.data.pagination || {
+            total: 0,
+            page: 1,
+            limit: 20,
+            pages: 1
+          }
+        };
       }
-    }),
+      return {
+        orders: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 20,
+          pages: 1
+        }
+      };
+    },
     keepPreviousData: true,
     staleTime: 30000, // 30 seconds
   });

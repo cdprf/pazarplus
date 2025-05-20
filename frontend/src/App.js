@@ -18,6 +18,7 @@ import Footer from './components/layout/Footer';
 import Dashboard from './pages/Dashboard';
 import OrderList from './pages/OrderList';
 import OrderDetail from './pages/OrderDetail';
+import OrderPrint from './pages/OrderPrint';
 import PlatformConnections from './pages/PlatformConnections';
 import ImportCSV from './pages/ImportCSV';
 import ExportData from './pages/ExportData';
@@ -88,6 +89,7 @@ function App() {
                         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
                         <Route path="/orders" element={<PrivateRoute><OrderList /></PrivateRoute>} />
                         <Route path="/orders/:id" element={<PrivateRoute><OrderDetail /></PrivateRoute>} />
+                        <Route path="/orders/:id/print" element={<PrivateRoute><OrderPrint /></PrivateRoute>} />
                         <Route path="/platforms" element={<PrivateRoute><PlatformConnections /></PrivateRoute>} />
                         <Route path="/import" element={<PrivateRoute><ImportCSV /></PrivateRoute>} />
                         <Route path="/import/hepsiburada" element={<PrivateRoute><ImportHepsiburada /></PrivateRoute>} />

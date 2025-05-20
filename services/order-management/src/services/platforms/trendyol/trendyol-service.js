@@ -1,21 +1,16 @@
 // src/services/platforms/trendyol/trendyol-service.js
 
-const axios = require('axios');
-const crypto = require('crypto');
-// Fix model imports to use the centralized models index file
 const { Order, OrderItem, ShippingDetail, PlatformConnection, sequelize } = require('../../../models');
-const { Op } = require('sequelize'); // Import Op directly from sequelize
+const { Op } = require('sequelize');
 const logger = require('../../../utils/logger');
+const BasePlatformService = require('../base/BasePlatformService');
 
 // Constants for Trendyol API endpoints and configurations
 const TRENDYOL_API = {
   BASE_URL: 'https://api.trendyol.com/sapigw',
   INTEGRATION_URL: 'https://api.trendyol.com/sapigw/integration',
-  // Alternative URL for Suppliers Integration
   SUPPLIERS_URL: 'https://api.trendyol.com/sapigw/suppliers',
-  // URL for developers and testing
   MOCK_URL: 'https://api.trendyol.com/mockapi',
-  // Specific integration endpoints
   ENDPOINTS: {
     ORDERS: '/suppliers/{supplierId}/orders',
     ORDER_BY_ID: '/suppliers/{supplierId}/orders/{orderNumber}',
@@ -34,80 +29,91 @@ const TRENDYOL_API = {
  * Handles integration with Trendyol marketplace
  * @see https://developer.trendyol.com/docs
  */
-class TrendyolService {
+class TrendyolService extends BasePlatformService {
   constructor(connectionId, directCredentials = null) {
-    this.connectionId = connectionId;
+    super(connectionId);
     this.directCredentials = directCredentials;
-    this.connection = null;
     this.apiUrl = 'https://api.trendyol.com/sapigw';
-    this.axiosInstance = null;
   }
 
-  async initialize() {
-    try {
-      // If we're testing with direct credentials (no connection ID)
-      if (this.directCredentials) {
-        // Skip finding the connection in the database
-        this.connection = { credentials: JSON.stringify(this.directCredentials) };
-      } else {
-        // Find connection by ID in the database
-        this.connection = await PlatformConnection.findByPk(this.connectionId);
-        
-        if (!this.connection) {
-          throw new Error(`Platform connection with ID ${this.connectionId} not found`);
-        }
-      }
+  /**
+   * Get the platform type
+   * @returns {string} Platform type identifier
+   */
+  getPlatformType() {
+    return 'trendyol';
+  }
 
-      const { apiKey, apiSecret, sellerId } = this.decryptCredentials(this.connection.credentials);
-      
-      // Log for debugging - use safe access to prevent errors if apiKey is undefined
-      logger.debug(`Initializing Trendyol service with apiKey: ${apiKey ? apiKey.substring(0, 5) : 'undefined'}..., sellerId: ${sellerId || 'undefined'}`);
-      
-      // Validate required credentials
-      if (!apiKey || !apiSecret || !sellerId) {
-        throw new Error('Missing required Trendyol credentials. API key, API secret, and seller ID are all required.');
-      }
-      
-      // Format the auth credentials according to Trendyol's requirements
-      // Trendyol requires the apiKey (supplierId) and apiSecret in Basic auth format
-      const authString = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
-      
-      this.axiosInstance = axios.create({
-        baseURL: this.apiUrl,
-        headers: {
-          'Authorization': `Basic ${authString}`,
-          'Content-Type': 'application/json',
-          'User-Agent': '120101 - SelfIntegration' // Required by Trendyol
-        },
-        timeout: 30000
-      });
-
-      return true;
-    } catch (error) {
-      logger.error(`Failed to initialize Trendyol service: ${error.message}`, { error, connectionId: this.connectionId });
-      throw new Error(`Failed to initialize Trendyol service: ${error.message}`);
+  /**
+   * Find connection in database or use direct credentials
+   * Override to handle direct credentials case
+   * @returns {Promise<Object>} Connection object
+   */
+  async findConnection() {
+    if (this.directCredentials) {
+      // Skip finding the connection in the database for testing
+      return { credentials: JSON.stringify(this.directCredentials) };
+    } else {
+      // Use parent implementation for regular case
+      return await super.findConnection();
     }
   }
 
-  decryptCredentials(encryptedCredentials) {
-    // In a real implementation, you would decrypt the credentials using a secure method
-    // For this implementation, we'll assume the credentials are stored encrypted
-    // and this method would decrypt them
+  /**
+   * Setup Axios instance with appropriate headers and config
+   * Implementation of abstract method from BasePlatformService
+   */
+  async setupAxiosInstance() {
+    const credentials = this.decryptCredentials(this.connection.credentials);
+    const { apiKey, apiSecret, sellerId } = credentials;
     
+    // Validate required credentials
+    if (!apiKey || !apiSecret || !sellerId) {
+      throw new Error('Missing required Trendyol credentials. API key, API secret, and seller ID are all required.');
+    }
+    
+    // Format the auth credentials according to Trendyol's requirements
+    const authString = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
+    
+    const axios = require('axios');
+    this.axiosInstance = axios.create({
+      baseURL: this.apiUrl,
+      headers: {
+        'Authorization': `Basic ${authString}`,
+        'Content-Type': 'application/json',
+        'User-Agent': '120101 - SelfIntegration' // Required by Trendyol
+      },
+      timeout: 30000
+    });
+
+    return true;
+  }
+
+  /**
+   * Override decryptCredentials for Trendyol-specific format
+   * @param {string|object} encryptedCredentials 
+   * @returns {object} Decrypted credentials
+   */
+  decryptCredentials(encryptedCredentials) {
     try {
-      // Mock decryption - replace with actual decryption logic
-      const credentials = JSON.parse(encryptedCredentials);
+      // Use the parent implementation for basic parsing
+      const credentials = super.decryptCredentials(encryptedCredentials);
+      
       return {
         apiKey: credentials.apiKey,
         apiSecret: credentials.apiSecret,
         sellerId: credentials.sellerId
       };
     } catch (error) {
-      logger.error(`Failed to decrypt credentials: ${error.message}`);
+      logger.error(`Failed to decrypt Trendyol credentials: ${error.message}`, { error });
       throw new Error('Failed to decrypt credentials');
     }
   }
 
+  /**
+   * Test connection to Trendyol - override to implement Trendyol-specific test
+   * @returns {Promise<Object>} Test result
+   */
   async testConnection() {
     try {
       await this.initialize();
@@ -701,8 +707,8 @@ class TrendyolService {
   }
 
   /**
-   * Extract phone number from order data
-   * Handles various formats and null cases in Trendyol API responses
+   * Extract phone number from order data - override parent method
+   * for Trendyol-specific format
    * @param {Object} order - The order object from Trendyol API
    * @returns {string} The extracted phone number or empty string if not available
    */
@@ -713,40 +719,16 @@ class TrendyolService {
       return order.shipmentAddress.phone;
     }
     
-    // Some orders might have phone in fullAddress or other fields
-    // Look for patterns like telephone numbers in various formats
-    const fullAddress = order.shipmentAddress?.fullAddress || '';
-    
-    // Enhanced Turkish phone regex patterns
-    const phonePatterns = [
-      // Explicit markers with phone numbers
-      /(?:tel|telefon|gsm|cep|phone)[:\s]*([+0-9\s()\-]{10,15})/i,
-      // Turkish mobile format (05XX)
-      /\b(05\d{2}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2})\b/,
-      // With country code (+90 or 0090)
-      /\b(\+?90[\s-]?5\d{2}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2})\b/,
-      // Generic number pattern as fallback
-      /\b(\d{3}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2})\b/
-    ];
-    
-    // Try each pattern
-    for (const pattern of phonePatterns) {
-      const match = fullAddress.match(pattern);
-      if (match && match[1]) {
-        // Clean up the matched number
-        return match[1].replace(/[\s()-]/g, '').trim();
-      }
-    }
-    
-    // Try invoiceAddress as fallback
-    if (order.invoiceAddress && order.invoiceAddress.phone) {
-      return order.invoiceAddress.phone;
-    }
-    
-    // If no phone found, return empty string
-    return '';
+    // If direct field doesn't work, use the parent implementation
+    // which handles the general regex patterns
+    return super.extractPhoneNumber(order);
   }
 
+  /**
+   * Map Trendyol order status to internal system status
+   * @param {string} trendyolStatus - Platform-specific status
+   * @returns {string} Internal status
+   */
   mapOrderStatus(trendyolStatus) {
     const statusMap = {
       'Created': 'new',
@@ -762,6 +744,38 @@ class TrendyolService {
     return statusMap[trendyolStatus] || 'unknown';
   }
 
+  /**
+   * Map internal status to Trendyol status
+   * @param {string} internalStatus - Internal status
+   * @returns {string} Trendyol status
+   */
+  mapToPlatformStatus(internalStatus) {
+    const reverseStatusMap = {
+      'new': 'Created',
+      'processing': 'Picking',
+      'shipped': 'Shipped',
+      'delivered': 'Delivered',
+      'cancelled': 'Cancelled',
+      'returned': 'Returned',
+      'failed': 'UnDelivered'
+    };
+    
+    return reverseStatusMap[internalStatus];
+  }
+
+  /**
+   * Alias for backward compatibility
+   */
+  mapToTrendyolStatus(internalStatus) {
+    return this.mapToPlatformStatus(internalStatus);
+  }
+
+  /**
+   * Update order status on Trendyol platform
+   * @param {string} orderId - Internal order ID
+   * @param {string} newStatus - New status to set
+   * @returns {Object} - Result of the status update operation
+   */
   async updateOrderStatus(orderId, newStatus) {
     try {
       await this.initialize();
@@ -773,21 +787,22 @@ class TrendyolService {
         throw new Error(`Order with ID ${orderId} not found`);
       }
       
-      const trendyolStatus = this.mapToTrendyolStatus(newStatus);
+      const trendyolStatus = this.mapToPlatformStatus(newStatus);
       
       if (!trendyolStatus) {
         throw new Error(`Cannot map status '${newStatus}' to Trendyol status`);
       }
       
       const response = await this.retryRequest(() => 
-        this.axiosInstance.put(`/suppliers/${sellerId}/orders/${order.platformOrderId}/status`, {
+        this.axiosInstance.put(`/suppliers/${sellerId}/orders/${order.externalOrderId}/status`, {
           status: trendyolStatus
         })
       );
       
       // Update local order status
       await order.update({
-        status: newStatus // Changed from orderStatus to status to match the model
+        status: newStatus,
+        lastSyncedAt: new Date()
       });
       
       return {
@@ -804,121 +819,6 @@ class TrendyolService {
         error: error.response?.data || error.message
       };
     }
-  }
-
-  mapToTrendyolStatus(internalStatus) {
-    const reverseStatusMap = {
-      'new': 'Created',
-      'processing': 'Picking',
-      'shipped': 'Shipped',
-      'delivered': 'Delivered',
-      'cancelled': 'Cancelled',
-      'returned': 'Returned',
-      'failed': 'UnDelivered'
-    };
-    
-    return reverseStatusMap[internalStatus];
-  }
-
-  async syncOrdersFromDate(startDate, endDate = new Date()) {
-    try {
-      await this.initialize();
-      const { sellerId } = this.decryptCredentials(this.connection.credentials);
-      
-      // Convert dates to timestamps (milliseconds)
-      const startDateTs = new Date(startDate).getTime();
-      const endDateTs = new Date(endDate).getTime();
-      
-      const params = {
-        startDate: startDateTs,
-        endDate: endDateTs,
-        page: 0,
-        size: 100,
-        orderByField: 'PackageLastModifiedDate',
-        orderByDirection: 'DESC',
-        status: 'Created,Picking,Invoiced,Shipped'
-      };
-      
-      let hasMoreOrders = true;
-      let totalOrders = 0;
-      let totalSuccessCount = 0;
-      
-      while (hasMoreOrders) {
-        // Fetch orders for this page
-        const response = await this.retryRequest(() => 
-          this.axiosInstance.get(`/suppliers/${sellerId}/orders`, { params })
-        );
-        
-        if (!response.data || !response.data.content || response.data.content.length === 0) {
-          hasMoreOrders = false;
-          continue;
-        }
-        
-        const ordersData = response.data.content;
-        logger.debug(`Fetched ${ordersData.length} orders from Trendyol for page ${params.page}`);
-        
-        // Normalize the orders - this now returns an array of normalized orders
-        const normalizedOrders = await this.normalizeOrders(ordersData);
-        
-        // Update counters
-        totalOrders += ordersData.length;
-        totalSuccessCount += normalizedOrders.length;
-        
-        // Move to the next page
-        params.page += 1;
-        
-        // Check if we've reached the end
-        if (params.page >= response.data.totalPages) {
-          hasMoreOrders = false;
-        }
-      }
-      
-      return {
-        success: true,
-        message: `Successfully processed ${totalOrders} orders from Trendyol`,
-        data: { 
-          count: totalSuccessCount,
-          skipped: totalOrders - totalSuccessCount,
-          total: totalOrders
-        }
-      };
-    } catch (error) {
-      logger.error(`Failed to sync orders from Trendyol: ${error.message}`, { error, connectionId: this.connectionId });
-      
-      return {
-        success: false,
-        message: `Failed to sync orders: ${error.message}`,
-        error: error.message
-      };
-    }
-  }
-
-  async retryRequest(requestFn, maxRetries = 3, delay = 1000) {
-    let retries = 0;
-    let lastError = null;
-    
-    while (retries < maxRetries) {
-      try {
-        return await requestFn();
-      } catch (error) {
-        lastError = error;
-        
-        // Check if error is retryable
-        if (error.response && (error.response.status === 429 || error.response.status >= 500)) {
-          retries++;
-          logger.warn(`Retrying Trendyol API request (${retries}/${maxRetries}) after error: ${error.message}`);
-          
-          // Wait before retrying
-          await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, retries - 1)));
-        } else {
-          // Non-retryable error
-          throw error;
-        }
-      }
-    }
-    
-    // If we've exhausted retries
-    throw lastError;
   }
 
   /**

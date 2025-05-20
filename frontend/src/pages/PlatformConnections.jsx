@@ -34,6 +34,107 @@ import { useAuth } from '../hooks/useAuth';
 // Set the base URL for API requests
 axios.defaults.baseURL = 'http://localhost:3001/api';
 
+// Platform field configurations - maps each platform to its required fields
+const platformFieldConfigs = {
+  trendyol: {
+    fields: [
+      { name: 'apiKey', label: 'API Key', type: 'text', required: true, placeholder: 'Enter Trendyol API Key' },
+      { name: 'apiSecret', label: 'API Secret', type: 'password', required: true, placeholder: 'Enter Trendyol API Secret' },
+      { name: 'sellerId', label: 'Seller ID', type: 'text', required: true, placeholder: 'Enter Trendyol Seller ID' },
+    ],
+    description: 'Connect to Trendyol marketplace to synchronize orders and manage inventory.',
+    credentialMapping: (formData) => ({
+      apiKey: formData.apiKey,
+      apiSecret: formData.apiSecret,
+      sellerId: formData.sellerId
+    })
+  },
+  hepsiburada: {
+    fields: [
+      { name: 'apiKey', label: 'API Key', type: 'text', required: true, placeholder: 'Enter Hepsiburada API Key' },
+      { name: 'apiSecret', label: 'API Secret', type: 'password', required: true, placeholder: 'Enter Hepsiburada API Secret' },
+      { name: 'merchantId', label: 'Merchant ID', type: 'text', required: true, placeholder: 'Enter Hepsiburada Merchant ID' },
+    ],
+    description: 'Connect to Hepsiburada marketplace to synchronize orders and manage inventory.',
+    credentialMapping: (formData) => ({
+      apiKey: formData.apiKey,
+      apiSecret: formData.apiSecret,
+      merchantId: formData.merchantId
+    })
+  },
+  n11: {
+    fields: [
+      { name: 'appKey', label: 'App Key', type: 'text', required: true, placeholder: 'Enter N11 App Key' },
+      { name: 'appSecret', label: 'App Secret', type: 'password', required: true, placeholder: 'Enter N11 App Secret' }
+    ],
+    description: 'Connect to N11 marketplace using their REST API to synchronize orders and manage inventory.',
+    credentialMapping: (formData) => ({
+      appKey: formData.appKey,
+      appSecret: formData.appSecret
+    })
+  },
+  amazon: {
+    fields: [
+      { name: 'sellerCentralId', label: 'Seller Central ID', type: 'text', required: true, placeholder: 'Enter Amazon Seller Central ID' },
+      { name: 'marketplaceId', label: 'Marketplace ID', type: 'text', required: true, placeholder: 'Enter Amazon Marketplace ID' },
+      { name: 'accessKey', label: 'Access Key', type: 'text', required: true, placeholder: 'Enter Amazon MWS Access Key' },
+      { name: 'secretKey', label: 'Secret Key', type: 'password', required: true, placeholder: 'Enter Amazon MWS Secret Key' },
+      { name: 'authToken', label: 'Auth Token', type: 'password', required: true, placeholder: 'Enter MWS Auth Token' },
+    ],
+    description: 'Connect to Amazon marketplace to synchronize orders and manage inventory.',
+    credentialMapping: (formData) => ({
+      sellerCentralId: formData.sellerCentralId,
+      marketplaceId: formData.marketplaceId,
+      accessKey: formData.accessKey,
+      secretKey: formData.secretKey,
+      authToken: formData.authToken
+    })
+  },
+  etsy: {
+    fields: [
+      { name: 'shopName', label: 'Shop Name', type: 'text', required: true, placeholder: 'Enter Etsy Shop Name' },
+      { name: 'apiKey', label: 'API Key', type: 'text', required: true, placeholder: 'Enter Etsy API Key' },
+      { name: 'apiSecret', label: 'API Secret', type: 'password', required: true, placeholder: 'Enter Etsy API Secret' },
+      { name: 'accessToken', label: 'Access Token', type: 'password', required: true, placeholder: 'Enter Etsy OAuth Access Token' },
+      { name: 'refreshToken', label: 'Refresh Token', type: 'password', required: false, placeholder: 'Enter Etsy OAuth Refresh Token (optional)' },
+    ],
+    description: 'Connect to Etsy marketplace to synchronize orders and manage inventory.',
+    credentialMapping: (formData) => ({
+      shopName: formData.shopName,
+      apiKey: formData.apiKey,
+      apiSecret: formData.apiSecret,
+      accessToken: formData.accessToken,
+      refreshToken: formData.refreshToken || ''
+    })
+  },
+  shopify: {
+    fields: [
+      { name: 'shopUrl', label: 'Shop URL', type: 'text', required: true, placeholder: 'Enter Shopify Store URL (e.g., mystore.myshopify.com)' },
+      { name: 'apiKey', label: 'API Key', type: 'text', required: true, placeholder: 'Enter Shopify API Key' },
+      { name: 'apiSecret', label: 'API Secret', type: 'password', required: true, placeholder: 'Enter Shopify API Secret' },
+      { name: 'accessToken', label: 'Access Token', type: 'password', required: true, placeholder: 'Enter Shopify Access Token' },
+    ],
+    description: 'Connect to Shopify store to synchronize orders and manage inventory.',
+    credentialMapping: (formData) => ({
+      shopUrl: formData.shopUrl,
+      apiKey: formData.apiKey,
+      apiSecret: formData.apiSecret,
+      accessToken: formData.accessToken
+    })
+  },
+  csv: {
+    fields: [
+      { name: 'delimiter', label: 'CSV Delimiter', type: 'text', required: false, placeholder: 'Enter CSV delimiter (default: ,)', defaultValue: ',' },
+      { name: 'dateFormat', label: 'Date Format', type: 'text', required: false, placeholder: 'Enter date format (default: YYYY-MM-DD)', defaultValue: 'YYYY-MM-DD' },
+    ],
+    description: 'Import orders from CSV files with custom formatting.',
+    credentialMapping: (formData) => ({
+      delimiter: formData.delimiter || ',',
+      dateFormat: formData.dateFormat || 'YYYY-MM-DD'
+    })
+  }
+};
+
 const PlatformConnections = () => {
   const [loading, setLoading] = useState(true);
   const [connections, setConnections] = useState([]);
@@ -42,12 +143,10 @@ const PlatformConnections = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState(null);
+  // Initialize empty form data
   const [formData, setFormData] = useState({
     name: '',
     platformType: 'trendyol',
-    apiKey: '',
-    apiSecret: '',
-    storeId: '',
     isActive: true
   });
   const [testResult, setTestResult] = useState(null);
@@ -56,6 +155,9 @@ const PlatformConnections = () => {
     { id: 'trendyol', name: 'Trendyol', icon: '🇹🇷' },
     { id: 'hepsiburada', name: 'Hepsiburada', icon: '🔴' },
     { id: 'n11', name: 'N11', icon: '🟢' },
+    { id: 'amazon', name: 'Amazon', icon: '📦' },
+    { id: 'etsy', name: 'Etsy', icon: '🧶' },
+    { id: 'shopify', name: 'Shopify', icon: '🛒' },
     { id: 'csv', name: 'CSV Import', icon: '📊' }
   ]);
   
@@ -106,16 +208,46 @@ const PlatformConnections = () => {
     });
   };
   
+  // Handle platform type change
+  const handlePlatformTypeChange = (e) => {
+    const newPlatformType = e.target.value;
+    
+    // Keep existing basic form data
+    const newFormData = {
+      ...formData,
+      platformType: newPlatformType
+    };
+    
+    // Reset platform-specific fields to empty or default values
+    if (platformFieldConfigs[newPlatformType]) {
+      platformFieldConfigs[newPlatformType].fields.forEach(field => {
+        newFormData[field.name] = field.defaultValue || '';
+      });
+    }
+    
+    setFormData(newFormData);
+    // Clear test results when platform changes
+    setTestResult(null);
+  };
+  
   // Reset form
   const resetForm = () => {
-    setFormData({
+    // Start with basic form data
+    const newFormData = {
       name: '',
       platformType: 'trendyol',
-      apiKey: '',
-      apiSecret: '',
-      storeId: '',
       isActive: true
+    };
+    
+    // Add empty fields for all possible platform fields
+    // This ensures we don't get 'undefined' errors when switching platforms
+    Object.values(platformFieldConfigs).forEach(config => {
+      config.fields.forEach(field => {
+        newFormData[field.name] = field.defaultValue || '';
+      });
     });
+    
+    setFormData(newFormData);
     setTestResult(null);
   };
   
@@ -132,17 +264,8 @@ const PlatformConnections = () => {
       }
       
       // Format credentials with the correct fields based on platform type
-      let credentials = {
-        apiKey: formData.apiKey,
-        apiSecret: formData.apiSecret
-      };
-      
-      // Handle platform-specific credentials
-      if (formData.platformType === 'trendyol') {
-        credentials.sellerId = formData.storeId; // Use storeId field as sellerId for Trendyol
-      } else {
-        credentials.storeId = formData.storeId; // Use storeId as-is for other platforms
-      }
+      const platformConfig = platformFieldConfigs[formData.platformType];
+      const credentials = platformConfig.credentialMapping(formData);
       
       // Format the data correctly for the test endpoint
       const testData = {
@@ -186,17 +309,8 @@ const PlatformConnections = () => {
       }
       
       // Format credentials with the correct fields based on platform type
-      let credentials = {
-        apiKey: formData.apiKey,
-        apiSecret: formData.apiSecret
-      };
-      
-      // Handle platform-specific credentials
-      if (formData.platformType === 'trendyol') {
-        credentials.sellerId = formData.storeId; // Use storeId field as sellerId for Trendyol
-      } else {
-        credentials.storeId = formData.storeId; // Use storeId as-is for other platforms
-      }
+      const platformConfig = platformFieldConfigs[formData.platformType];
+      const credentials = platformConfig.credentialMapping(formData);
       
       // Format the data according to what the backend expects
       const connectionData = {
@@ -239,17 +353,8 @@ const PlatformConnections = () => {
       }
       
       // Format credentials with the correct fields based on platform type
-      let credentials = {
-        apiKey: formData.apiKey,
-        apiSecret: formData.apiSecret
-      };
-      
-      // Handle platform-specific credentials
-      if (formData.platformType === 'trendyol') {
-        credentials.sellerId = formData.storeId; // Use storeId field as sellerId for Trendyol
-      } else {
-        credentials.storeId = formData.storeId; // Use storeId as-is for other platforms
-      }
+      const platformConfig = platformFieldConfigs[formData.platformType];
+      const credentials = platformConfig.credentialMapping(formData);
       
       // Format data properly for update, including platformName
       const updateData = {
@@ -366,36 +471,44 @@ const PlatformConnections = () => {
 
       if (response.data.success) {
         const connectionData = response.data.data;
-
-        let apiKey = '';
-        let apiSecret = '';
-        let storeId = '';
+        
+        // Start with basic form data
+        const newFormData = {
+          name: connectionData.name,
+          platformType: connectionData.platformType,
+          isActive: connectionData.status === 'active'
+        };
 
         try {
           const credentials = typeof connectionData.credentials === 'string'
             ? JSON.parse(connectionData.credentials)
             : connectionData.credentials;
-
-          apiKey = credentials.apiKey || '';
-          apiSecret = credentials.apiSecret || '';
-
-          if (connectionData.platformType === 'trendyol') {
-            storeId = credentials.sellerId || '';
-          } else {
-            storeId = credentials.storeId || '';
+          
+          // Map credential fields based on platform type
+          if (connectionData.platformType && platformFieldConfigs[connectionData.platformType]) {
+            const platformConfig = platformFieldConfigs[connectionData.platformType];
+            
+            // Map each field from the credentials to the form data
+            platformConfig.fields.forEach(field => {
+              // For platform-specific field names, map them from the credentials
+              newFormData[field.name] = credentials[field.name] || '';
+            });
+            
+            // Handle special cases
+            if (connectionData.platformType === 'trendyol' && credentials.sellerId) {
+              newFormData.sellerId = credentials.sellerId;
+            } else if (connectionData.platformType === 'n11') {
+              if (credentials.appKey) newFormData.appKey = credentials.appKey;
+              if (credentials.appSecret) newFormData.appSecret = credentials.appSecret;
+            } else if (connectionData.platformType === 'hepsiburada' && credentials.merchantId) {
+              newFormData.merchantId = credentials.merchantId;
+            }
           }
         } catch (err) {
           console.error('Error parsing connection credentials:', err);
         }
 
-        setFormData({
-          name: connectionData.name,
-          platformType: connectionData.platformType,
-          apiKey: apiKey,
-          apiSecret: apiSecret,
-          storeId: storeId,
-          isActive: connectionData.status === 'active',
-        });
+        setFormData(newFormData);
       } else {
         error('Failed to load connection details');
       }
@@ -574,7 +687,7 @@ const PlatformConnections = () => {
                   <Form.Select
                     name="platformType"
                     value={formData.platformType}
-                    onChange={handleChange}
+                    onChange={handlePlatformTypeChange}
                     required
                   >
                     {platformTypes.map(platform => (
@@ -600,48 +713,19 @@ const PlatformConnections = () => {
               </Col>
             </Row>
             
-            <Form.Group className="mb-3">
-              <Form.Label>Store ID / Seller ID</Form.Label>
-              <Form.Control
-                type="text"
-                name="storeId"
-                value={formData.storeId}
-                onChange={handleChange}
-                placeholder="Enter store or seller ID"
-              />
-              <Form.Text className="text-muted">
-                This may be required for some platforms.
-              </Form.Text>
-            </Form.Group>
-            
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>API Key / Client ID</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="apiKey"
-                    value={formData.apiKey}
-                    onChange={handleChange}
-                    placeholder="Enter API key or client ID"
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>API Secret / Client Secret</Form.Label>
-                  <Form.Control
-                    type="password"
-                    name="apiSecret"
-                    value={formData.apiSecret}
-                    onChange={handleChange}
-                    placeholder="Enter API secret or client secret"
-                    required
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
+            {platformFieldConfigs[formData.platformType].fields.map(field => (
+              <Form.Group className="mb-3" key={field.name}>
+                <Form.Label>{field.label}</Form.Label>
+                <Form.Control
+                  type={field.type}
+                  name={field.name}
+                  value={formData[field.name] || ''}
+                  onChange={handleChange}
+                  placeholder={field.placeholder}
+                  required={field.required}
+                />
+              </Form.Group>
+            ))}
             
             <Form.Group className="mb-3">
               <Form.Check
@@ -777,51 +861,24 @@ const PlatformConnections = () => {
               </Col>
             </Row>
             
-            <Form.Group className="mb-3">
-              <Form.Label>Store ID / Seller ID</Form.Label>
-              <Form.Control
-                type="text"
-                name="storeId"
-                value={formData.storeId}
-                onChange={handleChange}
-                placeholder="Enter store or seller ID"
-              />
-              <Form.Text className="text-muted">
-                This may be required for some platforms.
-              </Form.Text>
-            </Form.Group>
-            
-            <Row>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>API Key / Client ID</Form.Label>
-                  <Form.Control
-                    type="text"
-                    name="apiKey"
-                    value={formData.apiKey}
-                    onChange={handleChange}
-                    placeholder="Enter API key or client ID"
-                    required
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group className="mb-3">
-                  <Form.Label>API Secret / Client Secret</Form.Label>
-                  <Form.Control
-                    type="password"
-                    name="apiSecret"
-                    value={formData.apiSecret}
-                    onChange={handleChange}
-                    placeholder="Enter API secret or client secret"
-                    required
-                  />
+            {platformFieldConfigs[formData.platformType].fields.map(field => (
+              <Form.Group className="mb-3" key={field.name}>
+                <Form.Label>{field.label}</Form.Label>
+                <Form.Control
+                  type={field.type}
+                  name={field.name}
+                  value={formData[field.name] || ''}
+                  onChange={handleChange}
+                  placeholder={field.placeholder}
+                  required={field.required}
+                />
+                {field.name === 'apiSecret' && (
                   <Form.Text className="text-muted">
                     Leave blank to keep current secret.
                   </Form.Text>
-                </Form.Group>
-              </Col>
-            </Row>
+                )}
+              </Form.Group>
+            ))}
             
             <Form.Group className="mb-3">
               <Form.Check
