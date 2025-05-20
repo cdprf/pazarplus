@@ -1,16 +1,14 @@
-// filepath: /Users/Username/Desktop/Soft/pazar+/services/order-management/src/models/platform-schema.js
-const { DataTypes } = require('sequelize');
-
 /**
- * PlatformSchema model - Stores schema definitions and mappings for platform entities
+ * Platform Schema Model
  * 
- * This model defines the structure and validation rules for platform-specific data,
- * along with mappings between platform fields and our internal data model.
+ * This model stores schema definitions for platform entities.
+ * It defines the expected fields, validation rules, and mappings
+ * between platform fields and our internal model fields.
  * 
- * @param {Sequelize} sequelize - Sequelize instance
- * @returns {Model} PlatformSchema model
+ * @date May 20, 2025
  */
-module.exports = (sequelize) => {
+
+module.exports = (sequelize, DataTypes) => {
   const PlatformSchema = sequelize.define('PlatformSchema', {
     id: {
       type: DataTypes.UUID,
@@ -20,7 +18,7 @@ module.exports = (sequelize) => {
     platformType: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: 'Type of marketplace platform (trendyol, hepsiburada, etc.)'
+      comment: 'Type of platform (e.g., trendyol, hepsiburada)'
     },
     entityType: {
       type: DataTypes.STRING,
@@ -36,28 +34,26 @@ module.exports = (sequelize) => {
     schema: {
       type: DataTypes.JSON,
       allowNull: false,
-      comment: 'JSON schema definition for validation'
+      comment: 'JSON Schema for validation'
     },
     mappings: {
       type: DataTypes.JSON,
       allowNull: true,
-      comment: 'Field mappings between platform and internal model'
+      comment: 'Field mappings between platform and internal fields'
     },
     transformations: {
       type: DataTypes.JSON,
       allowNull: true,
-      comment: 'Transformation rules for data processing'
+      comment: 'Data transformation rules'
     },
     isActive: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: true,
-      comment: 'Whether this schema is currently active'
+      defaultValue: true
     },
     description: {
       type: DataTypes.TEXT,
-      allowNull: true,
-      comment: 'Description of this schema'
+      allowNull: true
     }
   }, {
     tableName: 'platform_schemas',
@@ -72,6 +68,5 @@ module.exports = (sequelize) => {
       }
     ]
   });
-
   return PlatformSchema;
 };

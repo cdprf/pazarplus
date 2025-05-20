@@ -11,6 +11,9 @@
 const logger = require('../../utils/logger');
 const { sequelize } = require('../../config/database');
 const { QueryTypes } = require('sequelize');
+const path = require('path');
+const fs = require('fs');
+const { DataTypes } = require('sequelize');
 
 // Mapping for platform-specific tables to normalize to the generic approach
 const PLATFORM_MAPPINGS = {
@@ -55,50 +58,177 @@ const INDEXED_FIELD_MAPPINGS = {
 };
 
 async function up() {
-  const transaction = await sequelize.transaction();
-  
   try {
     logger.info('Starting migration to generic platform models');
     
-    // Check if new tables exist, create if they don't
-    await createNewTablesIfNeeded(transaction);
+    // For SQLite, we need to handle table modification differently
+    const queryInterface = sequelize.getQueryInterface();
     
-    // For each platform, migrate products and orders
-    for (const [platformType, mapping] of Object.entries(PLATFORM_MAPPINGS)) {
-      logger.info(`Migrating ${platformType} data to generic models`);
-      
-      // Create schema records for validation
-      await createPlatformSchemas(platformType, transaction);
-      
-      // Migrate products
-      await migrateEntityData(
-        platformType, 
-        'product', 
-        mapping.productTable, 
-        mapping.entityIdFields.product,
-        mapping.externalIdFields.product,
-        transaction
-      );
-      
-      // Migrate orders
-      await migrateEntityData(
-        platformType, 
-        'order', 
-        mapping.orderTable, 
-        mapping.entityIdFields.order,
-        mapping.externalIdFields.order,
-        transaction
-      );
+    // Check if backup table exists and drop it if it does
+    try {
+      await sequelize.query('DROP TABLE IF EXISTS PlatformConnections_backup;');
+    } catch (error) {
+      logger.info('No backup table to drop');
     }
     
-    logger.info('Migration to generic platform models completed successfully');
-    await transaction.commit();
+    // Create backup of existing table
+    await sequelize.query('CREATE TABLE PlatformConnections_backup AS SELECT * FROM PlatformConnections;');
     
-    return { success: true, message: 'Successfully migrated to generic platform models' };
+    // Drop the existing table
+    await queryInterface.dropTable('PlatformConnections');
+    
+    // Create new table with all columns including templateId
+    await queryInterface.createTable('PlatformConnections', {
+      id: {
+        type: sequelize.Sequelize.UUID,
+        primaryKey: true
+      },
+      userId: {
+        type: sequelize.Sequelize.UUID,
+        allowNull: false,
+        references: {
+          model: 'Users',
+          key: 'id'
+        }
+      },
+      platformType: {
+        type: sequelize.Sequelize.STRING,
+        allowNull: false
+      },
+      platformName: {
+        type: sequelize.Sequelize.STRING,
+        allowNull: false
+      },
+      name: {
+        type: sequelize.Sequelize.STRING,
+        allowNull: false
+      },
+      credentials: {
+        type: sequelize.Sequelize.JSON,
+        allowNull: false
+      },
+      status: {
+        type: sequelize.Sequelize.STRING,
+        defaultValue: 'pending'
+      },
+      settings: {
+        type: sequelize.Sequelize.JSON
+      },
+      isActive: {
+        type: sequelize.Sequelize.BOOLEAN,
+        defaultValue: true
+      },
+      lastSyncAt: {
+        type: sequelize.Sequelize.DATE
+      },
+      syncStatus: {
+        type: sequelize.Sequelize.STRING
+      },
+      templateId: {
+        type: sequelize.Sequelize.UUID,
+        allowNull: true
+      },
+      createdAt: {
+        type: sequelize.Sequelize.DATE,
+        allowNull: false
+      },
+      updatedAt: {
+        type: sequelize.Sequelize.DATE,
+        allowNull: false
+      }
+    });
+
+    // Copy data from backup table with explicit column names
+    await sequelize.query(`
+      INSERT INTO PlatformConnections (
+        id, userId, platformType, platformName, name, credentials, 
+        status, settings, isActive, lastSyncAt, syncStatus,
+        createdAt, updatedAt, templateId
+      )
+      SELECT 
+        id, userId, platformType, platformName, name, credentials,
+        status, settings, isActive, lastSyncAt, syncStatus,
+        createdAt, updatedAt, NULL as templateId
+      FROM PlatformConnections_backup
+    `);
+
+    // Drop the backup table
+    await sequelize.query('DROP TABLE PlatformConnections_backup;');
+
+    // Create all necessary indexes
+    await queryInterface.addIndex('PlatformConnections', ['userId'], {
+      name: 'platform_connections_user_id'
+    });
+    await queryInterface.addIndex('PlatformConnections', ['platformType'], {
+      name: 'platform_connections_platform_type'
+    });
+    await queryInterface.addIndex('PlatformConnections', ['status'], {
+      name: 'platform_connections_status'
+    });
+    await queryInterface.addIndex('PlatformConnections', ['isActive'], {
+      name: 'platform_connections_is_active'
+    });
+    await queryInterface.addIndex('PlatformConnections', ['lastSyncAt'], {
+      name: 'platform_connections_last_sync_at'
+    });
+    await queryInterface.addIndex('PlatformConnections', ['templateId'], {
+      name: 'platform_connections_template_id'
+    });
+
+    const transaction = await sequelize.transaction();
+    try {
+      // Check if new tables exist, create if they don't
+      await createNewTablesIfNeeded(transaction);
+      
+      // For each platform, migrate products and orders
+      for (const [platformType, mapping] of Object.entries(PLATFORM_MAPPINGS)) {
+        logger.info(`Migrating ${platformType} data to generic models`);
+      
+        // Create schema records for validation
+        await createPlatformSchemas(platformType, transaction);
+      
+        // Migrate products
+        await migrateEntityData(
+          platformType, 
+          'product', 
+          mapping.productTable, 
+          mapping.entityIdFields.product,
+          mapping.externalIdFields.product,
+          transaction
+        );
+      
+        // Migrate orders
+        await migrateEntityData(
+          platformType, 
+          'order', 
+          mapping.orderTable, 
+          mapping.entityIdFields.order,
+          mapping.externalIdFields.order,
+          transaction
+        );
+      }
+      
+      // Create index on templateId
+      try {
+        await sequelize.getQueryInterface().addIndex('PlatformConnections', ['templateId'], {
+          name: 'platform_connections_template_id',
+          transaction
+        });
+      } catch (error) {
+        // Index might already exist, which is fine
+        logger.info('templateId index may already exist:', error.message);
+      }
+      
+      logger.info('Migration to generic platform models completed successfully');
+      await transaction.commit();
+      
+      return { success: true, message: 'Successfully migrated to generic platform models' };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   } catch (error) {
     logger.error(`Migration failed: ${error.message}`, { error });
-    await transaction.rollback();
-    
     return { success: false, message: `Migration failed: ${error.message}` };
   }
 }
@@ -179,6 +309,10 @@ async function createNewTablesIfNeeded(transaction) {
       updatedAt: {
         type: sequelize.Sequelize.DATE,
         allowNull: false
+      },
+      deletedAt: {
+        type: sequelize.Sequelize.DATE,
+        allowNull: true
       }
     }, { transaction });
     
@@ -193,6 +327,7 @@ async function createNewTablesIfNeeded(transaction) {
     await sequelize.getQueryInterface().addIndex('platform_data', ['approvalStatus'], { transaction });
     await sequelize.getQueryInterface().addIndex('platform_data', ['hasError'], { transaction });
     await sequelize.getQueryInterface().addIndex('platform_data', ['lastSyncedAt'], { transaction });
+    await sequelize.getQueryInterface().addIndex('platform_data', ['deletedAt'], { transaction });
   }
   
   if (!tables.includes('platform_attributes')) {
@@ -246,6 +381,10 @@ async function createNewTablesIfNeeded(transaction) {
       updatedAt: {
         type: sequelize.Sequelize.DATE,
         allowNull: false
+      },
+      deletedAt: {
+        type: sequelize.Sequelize.DATE,
+        allowNull: true
       }
     }, { transaction });
     
@@ -257,6 +396,7 @@ async function createNewTablesIfNeeded(transaction) {
     await sequelize.getQueryInterface().addIndex('platform_attributes', ['numericValue'], { transaction });
     await sequelize.getQueryInterface().addIndex('platform_attributes', ['booleanValue'], { transaction });
     await sequelize.getQueryInterface().addIndex('platform_attributes', ['dateValue'], { transaction });
+    await sequelize.getQueryInterface().addIndex('platform_attributes', ['deletedAt'], { transaction });
   }
   
   if (!tables.includes('platform_schemas')) {
@@ -308,6 +448,10 @@ async function createNewTablesIfNeeded(transaction) {
       updatedAt: {
         type: sequelize.Sequelize.DATE,
         allowNull: false
+      },
+      deletedAt: {
+        type: sequelize.Sequelize.DATE,
+        allowNull: true
       }
     }, { transaction });
     
@@ -317,33 +461,157 @@ async function createNewTablesIfNeeded(transaction) {
       transaction
     });
     await sequelize.getQueryInterface().addIndex('platform_schemas', ['isActive'], { transaction });
+    await sequelize.getQueryInterface().addIndex('platform_schemas', ['deletedAt'], { transaction });
+  }
+  
+  if (!tables.includes('orders')) {
+    logger.info('Creating orders table');
+    await sequelize.getQueryInterface().createTable('orders', {
+      id: {
+        type: sequelize.Sequelize.UUID,
+        defaultValue: sequelize.Sequelize.UUIDV4,
+        primaryKey: true
+      },
+      userId: {
+        type: sequelize.Sequelize.UUID,
+        allowNull: false,
+        references: {
+          model: 'Users',
+          key: 'id'
+        }
+      },
+      platformType: {
+        type: sequelize.Sequelize.STRING,
+        allowNull: false
+      },
+      platformOrderId: {
+        type: sequelize.Sequelize.STRING,
+        allowNull: false
+      },
+      status: {
+        type: sequelize.Sequelize.STRING,
+        allowNull: false
+      },
+      data: {
+        type: sequelize.Sequelize.JSON,
+        allowNull: false
+      },
+      createdAt: {
+        type: sequelize.Sequelize.DATE,
+        allowNull: false
+      },
+      updatedAt: {
+        type: sequelize.Sequelize.DATE,
+        allowNull: false
+      },
+      deletedAt: {
+        type: sequelize.Sequelize.DATE,
+        allowNull: true
+      }
+    }, { transaction });
+    
+    // Add indexes
+    await sequelize.getQueryInterface().addIndex('orders', ['userId'], { transaction });
+    await sequelize.getQueryInterface().addIndex('orders', ['platformType'], { transaction });
+    await sequelize.getQueryInterface().addIndex('orders', ['platformOrderId'], { transaction });
+    await sequelize.getQueryInterface().addIndex('orders', ['status'], { transaction });
+    await sequelize.getQueryInterface().addIndex('orders', ['deletedAt'], { transaction });
   }
 }
 
 async function createPlatformSchemas(platformType, transaction) {
-  // Create schema for product
-  await sequelize.models.PlatformSchema.create({
-    platformType,
-    entityType: 'product',
-    version: '1.0.0',
-    schema: getPlatformSchema(platformType, 'product'),
-    mappings: getPlatformMapping(platformType, 'product'),
-    transformations: null,
-    isActive: true,
-    description: `Schema for ${platformType} products`
-  }, { transaction });
+  // Define the model if it doesn't exist
+  const PlatformSchema = sequelize.define('PlatformSchema', {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true
+    },
+    platformType: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    entityType: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    version: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: '1.0.0'
+    },
+    schema: {
+      type: DataTypes.JSON,
+      allowNull: false
+    },
+    mappings: {
+      type: DataTypes.JSON,
+      allowNull: true
+    },
+    transformations: {
+      type: DataTypes.JSON,
+      allowNull: true
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    }
+  }, {
+    tableName: 'platform_schemas',
+    timestamps: true
+  });
+
+  // Check if schemas already exist for this platform and entity type
+  const existingProductSchema = await PlatformSchema.findOne({
+    where: {
+      platformType,
+      entityType: 'product',
+      version: '1.0.0'
+    },
+    transaction
+  });
+
+  const existingOrderSchema = await PlatformSchema.findOne({
+    where: {
+      platformType,
+      entityType: 'order',
+      version: '1.0.0'
+    },
+    transaction
+  });
+
+  // Create schema for product if it doesn't exist
+  if (!existingProductSchema) {
+    await PlatformSchema.create({
+      platformType,
+      entityType: 'product',
+      version: '1.0.0',
+      schema: getPlatformSchema(platformType, 'product'),
+      mappings: getPlatformMapping(platformType, 'product'),
+      transformations: null,
+      isActive: true,
+      description: `Schema for ${platformType} products`
+    }, { transaction });
+  }
   
-  // Create schema for order
-  await sequelize.models.PlatformSchema.create({
-    platformType,
-    entityType: 'order',
-    version: '1.0.0',
-    schema: getPlatformSchema(platformType, 'order'),
-    mappings: getPlatformMapping(platformType, 'order'),
-    transformations: null,
-    isActive: true,
-    description: `Schema for ${platformType} orders`
-  }, { transaction });
+  // Create schema for order if it doesn't exist
+  if (!existingOrderSchema) {
+    await PlatformSchema.create({
+      platformType,
+      entityType: 'order',
+      version: '1.0.0',
+      schema: getPlatformSchema(platformType, 'order'),
+      mappings: getPlatformMapping(platformType, 'order'),
+      transformations: null,
+      isActive: true,
+      description: `Schema for ${platformType} orders`
+    }, { transaction });
+  }
 }
 
 function getPlatformSchema(platformType, entityType) {
@@ -368,6 +636,13 @@ function getPlatformMapping(platformType, entityType) {
 }
 
 async function migrateEntityData(platformType, entityType, sourceTable, entityIdField, externalIdField, transaction) {
+  // Check if source table exists first
+  const tables = await sequelize.getQueryInterface().showAllTables();
+  if (!tables.includes(sourceTable)) {
+    logger.info(`Source table ${sourceTable} does not exist, skipping migration for ${platformType} ${entityType}s`);
+    return;
+  }
+  
   // Fetch data from the source table
   const sourceData = await sequelize.query(
     `SELECT * FROM "${sourceTable}"`,

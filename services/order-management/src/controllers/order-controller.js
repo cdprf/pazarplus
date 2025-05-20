@@ -3,7 +3,7 @@ const { Order, OrderItem, ShippingDetail, Product, User, PlatformConnection } = 
 const platformServiceFactory = require('../services/platforms/platformServiceFactory');
 const logger = require('../utils/logger');
 const wsService = require('../services/websocketService');
-const { Op } = require('sequelize'); // Add Sequelize operators import
+const { Op } = require('sequelize');
 
 // Controller functions
 async function getAllOrders(req, res) {
@@ -271,7 +271,7 @@ async function syncOrders(req, res) {
     for (const platform of platforms) {
       try {
         // Get platform service
-        const platformService = platformServiceFactory.getService(platform.type);
+        const platformService = PlatformServiceFactory.getPlatformService();
         
         if (!platformService) {
           syncResults.push({
@@ -433,15 +433,8 @@ async function syncOrdersByPlatform(req, res) {
       });
     }
     
-    // Get the platform service factory
+    // Create the platform service instance using the factory
     const platformService = await platformServiceFactory.createService(id);
-    
-    if (!platformService) {
-      return res.status(400).json({
-        success: false,
-        message: `Unsupported platform type: ${platformConnection.platformType}`
-      });
-    }
     
     // Set date range for sync
     const now = new Date();
@@ -488,7 +481,9 @@ async function syncOrdersByPlatform(req, res) {
     });
     
   } catch (error) {
-    logger.error(`Error syncing orders from platform connection ${req.params.id}:`, error);
+    logger.error(`Error syncing orders from platform connection ${req.params.id}: ${error.message}`, 
+      { error, connectionId: req.params.id }
+    );
     return res.status(500).json({
       success: false,
       message: 'Error syncing orders',

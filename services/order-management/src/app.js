@@ -12,6 +12,7 @@ const { apiLimiter, authLimiter, syncLimiter } = require('./middleware/rate-limi
 const authRoutes = require('./routes/authRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const platformRoutes = require('./routes/platformRoutes');
+const platformTemplatesRoutes = require('./routes/platform-templates-routes');
 const shippingRoutes = require('./routes/shippingRoutes');
 const exportRoutes = require('./routes/exportRoutes');
 const csvRoutes = require('./routes/csvRoutes');
@@ -140,6 +141,7 @@ class App {
       // Register other routes
       this.app.use('/api/orders', orderRoutes);
       this.app.use('/api/platforms', platformRoutes);
+      this.app.use('/api/platform-templates', platformTemplatesRoutes);
       this.app.use('/api/shipping', shippingRoutes);
       this.app.use('/api/export', exportRoutes);
       this.app.use('/api/csv', csvRoutes);

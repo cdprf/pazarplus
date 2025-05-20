@@ -1,16 +1,13 @@
-// filepath: /Users/Username/Desktop/Soft/pazar+/services/order-management/src/models/platform-attribute.js
-const { DataTypes } = require('sequelize');
-
 /**
- * PlatformAttribute model - Stores searchable attributes for platform entities
+ * Platform Attribute Model
  * 
- * This model allows for efficient querying of platform-specific data based on
- * specific attributes without having to search through JSON data.
+ * This model stores searchable attributes for platform entities.
+ * It allows efficient querying across different platforms without complex JSON queries.
  * 
- * @param {Sequelize} sequelize - Sequelize instance
- * @returns {Model} PlatformAttribute model
+ * @date May 20, 2025
  */
-module.exports = (sequelize) => {
+
+module.exports = (sequelize, DataTypes) => {
   const PlatformAttribute = sequelize.define('PlatformAttribute', {
     id: {
       type: DataTypes.UUID,
@@ -20,7 +17,7 @@ module.exports = (sequelize) => {
     entityId: {
       type: DataTypes.UUID,
       allowNull: false,
-      comment: 'ID of the related entity (Product, Order, etc.)'
+      comment: 'Foreign key to the entity (Product, Order, etc.)'
     },
     entityType: {
       type: DataTypes.STRING,
@@ -30,38 +27,37 @@ module.exports = (sequelize) => {
     platformType: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: 'Type of marketplace platform (trendyol, hepsiburada, etc.)'
+      comment: 'Type of platform (e.g., trendyol, hepsiburada)'
     },
     attributeKey: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: 'Key/name of the attribute'
+      comment: 'Attribute key/name'
     },
-    // Store values in type-specific columns for efficient indexing and querying
     stringValue: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: 'String value of the attribute'
+      comment: 'String value for string attributes'
     },
     numericValue: {
       type: DataTypes.DECIMAL(15, 6),
       allowNull: true,
-      comment: 'Numeric value of the attribute'
+      comment: 'Numeric value for number attributes'
     },
     booleanValue: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
-      comment: 'Boolean value of the attribute'
+      comment: 'Boolean value for boolean attributes'
     },
     dateValue: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: 'Date value of the attribute'
+      comment: 'Date value for date/time attributes'
     },
     valueType: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: 'Type of the value (string, number, boolean, date)'
+      comment: 'Type of value (string, number, boolean, date)'
     }
   }, {
     tableName: 'platform_attributes',
@@ -91,16 +87,23 @@ module.exports = (sequelize) => {
     ]
   });
 
-  PlatformAttribute.associate = function(models) {
-    // Association with PlatformData model
-    PlatformAttribute.belongsTo(models.PlatformData, {
-      foreignKey: 'entityId',
-      constraints: false,
-      scope: {
-        entityType: sequelize.where(sequelize.col('PlatformAttribute.entityType'), '=', sequelize.col('PlatformData.entityType')),
-        platformType: sequelize.where(sequelize.col('PlatformAttribute.platformType'), '=', sequelize.col('PlatformData.platformType'))
-      }
-    });
+  // Polymorphic associations through a generic method
+  PlatformAttribute.associateWith = function(modelName, models) {
+    if (models[modelName]) {
+      models[modelName].hasMany(PlatformAttribute, {
+        foreignKey: 'entityId',
+        constraints: false,
+        scope: {
+          entityType: modelName.toLowerCase()
+        },
+        as: 'platformAttributes'
+      });
+      
+      PlatformAttribute.belongsTo(models[modelName], {
+        foreignKey: 'entityId',
+        constraints: false
+      });
+    }
   };
 
   return PlatformAttribute;

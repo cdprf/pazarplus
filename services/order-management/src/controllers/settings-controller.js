@@ -2,8 +2,11 @@ const path = require('path');
 const fs = require('fs').promises;
 const logger = require('../utils/logger');
 
-// Path to store company settings
+// Paths for different settings files
 const COMPANY_SETTINGS_PATH = path.join(__dirname, '..', '..', 'data', 'company-settings.json');
+const GENERAL_SETTINGS_PATH = path.join(__dirname, '..', '..', 'data', 'general-settings.json');
+const NOTIFICATION_SETTINGS_PATH = path.join(__dirname, '..', '..', 'data', 'notification-settings.json');
+const SHIPPING_SETTINGS_PATH = path.join(__dirname, '..', '..', 'data', 'shipping-settings.json');
 
 // Ensure directory exists
 async function ensureDirectoryExists() {
@@ -11,60 +14,80 @@ async function ensureDirectoryExists() {
   try {
     await fs.access(dir);
   } catch (err) {
-    // Directory doesn't exist, create it
     await fs.mkdir(dir, { recursive: true });
   }
 }
 
-// Initialize settings file if it doesn't exist
-async function initSettingsFile() {
+// Initialize settings file
+async function initSettingsFile(path, defaultSettings) {
   try {
-    await fs.access(COMPANY_SETTINGS_PATH);
+    await fs.access(path);
+    const data = await fs.readFile(path, 'utf8');
+    return JSON.parse(data);
   } catch (err) {
-    // File doesn't exist, create it with default values
-    const defaultSettings = {
-      companyName: 'Pazar+',
-      companyPhone: '0(555) 123 45 67',
-      companyEmail: 'support@pazar-plus.com',
-      companyWebsite: 'www.pazar-plus.com',
-      companyAddress: '',
-      companyLogo: null,
-    };
-    
     await ensureDirectoryExists();
-    await fs.writeFile(COMPANY_SETTINGS_PATH, JSON.stringify(defaultSettings, null, 2), 'utf8');
+    await fs.writeFile(path, JSON.stringify(defaultSettings, null, 2), 'utf8');
     return defaultSettings;
   }
-  
-  // File exists, read and return it
-  const data = await fs.readFile(COMPANY_SETTINGS_PATH, 'utf8');
-  return JSON.parse(data);
 }
 
-/**
- * Get company information
- */
+// Default settings
+const defaultGeneralSettings = {
+  defaultCurrency: "USD",
+  timezone: "UTC",
+  dateFormat: "MM/DD/YYYY",
+  language: "en"
+};
+
+const defaultNotificationSettings = {
+  emailNotifications: true,
+  orderConfirmations: true,
+  shipmentUpdates: true,
+  statusChanges: true,
+  dailySummary: false,
+  marketingEmails: false
+};
+
+const defaultShippingSettings = {
+  defaultCarrier: "",
+  returnAddress: {
+    name: "",
+    line1: "",
+    line2: "",
+    city: "",
+    region: "",
+    postalCode: "",
+    country: ""
+  },
+  labelSize: "letter"
+};
+
+// Company settings handlers
 exports.getCompanyInfo = async (req, res) => {
   try {
-    const companyInfo = await initSettingsFile();
+    const companyInfo = await initSettingsFile(COMPANY_SETTINGS_PATH, {
+      companyName: 'Pazar+',
+      companyPhone: '',
+      companyEmail: '',
+      companyWebsite: '',
+      companyAddress: '',
+      companyLogo: null
+    });
     
     return res.status(200).json({
       success: true,
-      data: companyInfo,
+      data: companyInfo
     });
   } catch (err) {
     logger.error('Error getting company information:', err);
     return res.status(500).json({
       success: false,
       message: 'Failed to retrieve company information',
-      error: err.message,
+      error: err.message
     });
   }
 };
 
-/**
- * Save company information
- */
 exports.saveCompanyInfo = async (req, res) => {
   try {
     const { 
@@ -85,7 +108,14 @@ exports.saveCompanyInfo = async (req, res) => {
     }
     
     // Get existing settings or initialize
-    const existingSettings = await initSettingsFile();
+    const existingSettings = await initSettingsFile(COMPANY_SETTINGS_PATH, {
+      companyName: 'Pazar+',
+      companyPhone: '',
+      companyEmail: '',
+      companyWebsite: '',
+      companyAddress: '',
+      companyLogo: null
+    });
     
     // Update settings
     const updatedSettings = {
@@ -118,9 +148,6 @@ exports.saveCompanyInfo = async (req, res) => {
   }
 };
 
-/**
- * Upload company logo
- */
 exports.uploadCompanyLogo = async (req, res) => {
   try {
     if (!req.file) {
@@ -134,7 +161,14 @@ exports.uploadCompanyLogo = async (req, res) => {
     const logoUrl = `/uploads/company-logo/${req.file.filename}`;
     
     // Get existing settings
-    const existingSettings = await initSettingsFile();
+    const existingSettings = await initSettingsFile(COMPANY_SETTINGS_PATH, {
+      companyName: 'Pazar+',
+      companyPhone: '',
+      companyEmail: '',
+      companyWebsite: '',
+      companyAddress: '',
+      companyLogo: null
+    });
     
     // Update logo
     const updatedSettings = {
@@ -157,6 +191,117 @@ exports.uploadCompanyLogo = async (req, res) => {
       success: false,
       message: 'Failed to upload company logo',
       error: err.message,
+    });
+  }
+};
+
+// General settings handlers
+exports.getGeneralSettings = async (req, res) => {
+  try {
+    const settings = await initSettingsFile(GENERAL_SETTINGS_PATH, defaultGeneralSettings);
+    return res.status(200).json({
+      success: true,
+      data: settings
+    });
+  } catch (err) {
+    logger.error('Error getting general settings:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve general settings',
+      error: err.message
+    });
+  }
+};
+
+exports.saveGeneralSettings = async (req, res) => {
+  try {
+    const settings = req.body;
+    await fs.writeFile(GENERAL_SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf8');
+    return res.status(200).json({
+      success: true,
+      message: 'General settings saved successfully',
+      data: settings
+    });
+  } catch (err) {
+    logger.error('Error saving general settings:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to save general settings',
+      error: err.message
+    });
+  }
+};
+
+// Notification settings handlers
+exports.getNotificationSettings = async (req, res) => {
+  try {
+    const settings = await initSettingsFile(NOTIFICATION_SETTINGS_PATH, defaultNotificationSettings);
+    return res.status(200).json({
+      success: true,
+      data: settings
+    });
+  } catch (err) {
+    logger.error('Error getting notification settings:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve notification settings',
+      error: err.message
+    });
+  }
+};
+
+exports.saveNotificationSettings = async (req, res) => {
+  try {
+    const settings = req.body;
+    await fs.writeFile(NOTIFICATION_SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf8');
+    return res.status(200).json({
+      success: true,
+      message: 'Notification settings saved successfully',
+      data: settings
+    });
+  } catch (err) {
+    logger.error('Error saving notification settings:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to save notification settings',
+      error: err.message
+    });
+  }
+};
+
+// Shipping settings handlers
+exports.getShippingSettings = async (req, res) => {
+  try {
+    const settings = await initSettingsFile(SHIPPING_SETTINGS_PATH, defaultShippingSettings);
+    return res.status(200).json({
+      success: true,
+      data: settings
+    });
+  } catch (err) {
+    logger.error('Error getting shipping settings:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve shipping settings',
+      error: err.message
+    });
+  }
+};
+
+exports.saveShippingSettings = async (req, res) => {
+  try {
+    const settings = req.body;
+    await fs.writeFile(SHIPPING_SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf8');
+    return res.status(200).json({
+      success: true,
+      message: 'Shipping settings saved successfully',
+      data: settings
+    });
+  } catch (err) {
+    logger.error('Error saving shipping settings:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to save shipping settings',
+      error: err.message
     });
   }
 };

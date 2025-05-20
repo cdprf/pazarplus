@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const PlatformServiceFactory = require('../services/platforms/platformServiceFactory');
+const PlatformServiceFactory = require('../services/PlatformServiceFactory');
 const { authenticateToken } = require('../middleware/auth-middleware');
 
 const logger = require('../utils/logger');

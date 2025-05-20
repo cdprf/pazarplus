@@ -4,12 +4,13 @@
  */
 const logger = require('../../../utils/logger');
 const retryRequest = require('../../../utils/apiUtils/retryRequest');
-const { Order, OrderItem, ShippingDetail, Product } = require('../../../models');
+const { Order, OrderItem, ShippingDetail, Product, PlatformConnection } = require('../../../models');
 const axios = require('axios');
 
 class BasePlatformService {
   constructor(connectionId) {
-    this.connectionId = connectionId;
+    // Handle both string IDs and object inputs
+    this.connectionId = typeof connectionId === 'object' ? connectionId.id : connectionId;
     this.connection = null;
     this.apiUrl = null;
     this.axiosInstance = null;
@@ -44,7 +45,7 @@ class BasePlatformService {
    * @returns {Promise<Object>} Platform connection
    */
   async findConnection() {
-    const PlatformConnection = require('../../../models/platform-connection.model');
+    // Use the imported PlatformConnection model directly
     return await PlatformConnection.findByPk(this.connectionId);
   }
   
@@ -136,24 +137,39 @@ class BasePlatformService {
         await this.initialize();
       }
       
-      // Format dates as ISO strings if they are Date objects
-      const formattedStartDate = startDate instanceof Date ? startDate.toISOString() : startDate;
-      const formattedEndDate = endDate instanceof Date ? endDate.toISOString() : endDate;
-
       // Get orders using the platform-specific implementation
       const options = {
-        startDate: formattedStartDate,
-        endDate: formattedEndDate
+        startDate: startDate instanceof Date ? startDate.toISOString() : startDate,
+        endDate: endDate instanceof Date ? endDate.toISOString() : endDate
       };
       
-      const orders = await this.getOrders(options);
+      const result = await this.getOrders(options);
       
-      if (!orders || orders.length === 0) {
-        logger.info(`No new orders found from ${this.getPlatformType()} for the specified date range`, {
+      // Validate orders array
+      if (!result || !Array.isArray(result)) {
+        logger.warn(`Invalid orders data returned from ${this.getPlatformType()}: ${typeof result}`, {
           connectionId: this.connectionId,
           platformType: this.getPlatformType()
         });
         
+        return {
+          success: true,
+          message: 'No valid orders data returned from platform',
+          data: {
+            count: 0,
+            skipped: 0
+          }
+        };
+      }
+      
+      const orders = result;
+      logger.info(`Retrieved ${orders.length} orders from ${this.getPlatformType()}`, {
+        connectionId: this.connectionId,
+        platformType: this.getPlatformType(),
+        orderCount: orders.length
+      });
+      
+      if (orders.length === 0) {
         return {
           success: true,
           message: 'No new orders found for the specified date range',
@@ -163,82 +179,55 @@ class BasePlatformService {
           }
         };
       }
-      
-      logger.info(`Retrieved ${orders.length} orders from ${this.getPlatformType()}`, {
-        connectionId: this.connectionId,
-        platformType: this.getPlatformType(),
-        orderCount: orders.length
-      });
 
       // Save orders to the database
       let savedCount = 0;
       let skippedCount = 0;
-      
-      const PlatformConnection = require('../../../models/platform-connection.model');
-      const Order = require('../../../models').Order;
-      const OrderItem = require('../../../models').OrderItem;
       
       for (const orderData of orders) {
         try {
           // Check if order already exists
           const existingOrder = await Order.findOne({
             where: {
-              platformOrderId: orderData.platformOrderId,
+              externalOrderId: orderData.orderNumber || orderData.platformOrderId,
               connectionId: this.connectionId
             }
           });
           
           if (existingOrder) {
-            logger.debug(`Order ${orderData.platformOrderId} already exists in the database, skipping`, {
-              connectionId: this.connectionId,
-              platformType: this.getPlatformType(),
-              orderId: orderData.platformOrderId
+            // Update the existing order's sync time
+            await existingOrder.update({
+              lastSyncedAt: new Date()
             });
-            
             skippedCount++;
             continue;
           }
           
-          // Create new order
+          // Create new order with proper validation
           const order = await Order.create({
-            platformOrderId: orderData.platformOrderId,
-            customerId: orderData.customerId,
+            externalOrderId: orderData.orderNumber || orderData.platformOrderId,
+            platformType: this.getPlatformType(),
+            connectionId: this.connectionId,
+            userId: this.connection.userId,
             customerName: orderData.customerName,
             customerEmail: orderData.customerEmail,
             customerPhone: orderData.customerPhone,
             orderDate: orderData.orderDate,
             totalAmount: orderData.totalAmount,
             status: orderData.status,
-            connectionId: this.connectionId,
-            platformDetails: orderData.platformDetails || {}
+            rawData: JSON.stringify(orderData),
+            lastSyncedAt: new Date()
           });
-          
-          // Create order items
-          if (orderData.items && orderData.items.length > 0) {
-            for (const itemData of orderData.items) {
-              await OrderItem.create({
-                orderId: order.id,
-                platformItemId: itemData.platformItemId,
-                productId: itemData.productId,
-                sku: itemData.sku,
-                name: itemData.name,
-                quantity: itemData.quantity,
-                unitPrice: itemData.unitPrice,
-                totalPrice: itemData.totalPrice,
-                status: itemData.status,
-                platformDetails: itemData.platformDetails || {}
-              });
-            }
-          }
           
           savedCount++;
         } catch (orderError) {
-          logger.error(`Failed to save order ${orderData.platformOrderId}: ${orderError.message}`, {
+          logger.error(`Failed to save order ${orderData.orderNumber || orderData.platformOrderId}: ${orderError.message}`, {
             error: orderError,
             connectionId: this.connectionId,
             platformType: this.getPlatformType(),
-            orderId: orderData.platformOrderId
+            orderId: orderData.orderNumber || orderData.platformOrderId
           });
+          skippedCount++;
         }
       }
       

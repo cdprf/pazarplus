@@ -1,0 +1,8 @@
+{
+  "emailNotifications": true,
+  "orderConfirmations": true,
+  "shipmentUpdates": true,
+  "statusChanges": true,
+  "dailySummary": false,
+  "marketingEmails": false
+}

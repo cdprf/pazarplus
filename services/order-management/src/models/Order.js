@@ -176,14 +176,7 @@ module.exports = (sequelize, DataTypes) => {
         Order.hasMany(models.FinancialTransaction, { foreignKey: 'orderId' });
       }
       
-      // Add generic platform associations
-      if (models.PlatformData) {
-        models.PlatformData.associateWith('Order', models);
-      }
-      
-      if (models.PlatformAttribute) {
-        models.PlatformAttribute.associateWith('Order', models);
-      }
+      // Removed duplicate polymorphic associations for PlatformData and PlatformAttribute. These are now handled in models/index.js only.
     };
   
     return Order;

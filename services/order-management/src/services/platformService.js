@@ -1,7 +1,7 @@
 // This file platform service is responsible for managing connections to various e-commerce platforms.
 // It provides a factory pattern to create platform-specific service instances, test connections, sync orders, and update order statuses.
 // It also includes a method to get supported platforms and their required connection parameters.
-const TrendyolService = require('./platforms/trendyolService');
+const TrendyolService = require('./platforms/trendyol/trendyol-service');
 // Import other platform services as we add them
 // const AmazonService = require('./platforms/amazonService');
 // const ShopifyService = require('./platforms/shopifyService');

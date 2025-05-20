@@ -31,18 +31,26 @@ const upload = multer({
   }
 });
 
-// GET - Retrieve company info
+// Company info routes
 router.get('/company', authMiddleware.authenticateToken, settingsController.getCompanyInfo);
-
-// POST - Save company info
 router.post('/company', authMiddleware.authenticateToken, settingsController.saveCompanyInfo);
-
-// POST - Upload company logo
 router.post(
   '/company/logo', 
   authMiddleware.authenticateToken, 
   upload.single('logo'), 
   settingsController.uploadCompanyLogo
 );
+
+// General settings routes
+router.get('/general', authMiddleware.authenticateToken, settingsController.getGeneralSettings);
+router.post('/general', authMiddleware.authenticateToken, settingsController.saveGeneralSettings);
+
+// Notification settings routes
+router.get('/notifications', authMiddleware.authenticateToken, settingsController.getNotificationSettings);
+router.post('/notifications', authMiddleware.authenticateToken, settingsController.saveNotificationSettings);
+
+// Shipping settings routes
+router.get('/shipping', authMiddleware.authenticateToken, settingsController.getShippingSettings);
+router.post('/shipping', authMiddleware.authenticateToken, settingsController.saveShippingSettings);
 
 module.exports = router;

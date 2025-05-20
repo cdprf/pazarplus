@@ -139,14 +139,7 @@ module.exports = (sequelize, DataTypes) => {
       
       Product.hasMany(models.OrderItem, { foreignKey: 'productId' });
       
-      // Add generic platform associations
-      if (models.PlatformData) {
-        models.PlatformData.associateWith('Product', models);
-      }
-      
-      if (models.PlatformAttribute) {
-        models.PlatformAttribute.associateWith('Product', models);
-      }
+      // Removed duplicate polymorphic associations for PlatformData and PlatformAttribute. These are now handled in models/index.js only.
       
       // Add inventory and price history associations
       if (models.ProductInventoryHistory) {

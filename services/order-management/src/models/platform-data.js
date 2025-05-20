@@ -1,16 +1,5 @@
-// filepath: /Users/Username/Desktop/Soft/pazar+/services/order-management/src/models/platform-data.js
-const { DataTypes } = require('sequelize');
-
-/**
- * PlatformData model - Stores platform-specific data for entities across multiple marketplaces
- * 
- * This model replaces platform-specific tables (TrendyolProduct, HepsiburadaProduct, etc.)
- * with a generic approach that can store data for any marketplace.
- * 
- * @param {Sequelize} sequelize - Sequelize instance
- * @returns {Model} PlatformData model
- */
-module.exports = (sequelize) => {
+// This file defines a generic model for storing platform-specific data
+module.exports = (sequelize, DataTypes) => {
   const PlatformData = sequelize.define('PlatformData', {
     id: {
       type: DataTypes.UUID,
@@ -20,7 +9,7 @@ module.exports = (sequelize) => {
     entityId: {
       type: DataTypes.UUID,
       allowNull: false,
-      comment: 'ID of the related entity (Product, Order, etc.)'
+      comment: 'Foreign key to the entity (Product, Order, etc.)'
     },
     entityType: {
       type: DataTypes.STRING,
@@ -30,7 +19,7 @@ module.exports = (sequelize) => {
     platformType: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: 'Type of marketplace platform (trendyol, hepsiburada, etc.)'
+      comment: 'Type of platform (e.g., trendyol, hepsiburada)'
     },
     platformEntityId: {
       type: DataTypes.STRING,
@@ -40,44 +29,43 @@ module.exports = (sequelize) => {
     data: {
       type: DataTypes.JSON,
       allowNull: false,
-      comment: 'Raw platform data in JSON format'
+      comment: 'Platform-specific data as JSON'
     },
-    // Indexed common fields for faster queries
     status: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: 'Current status in the platform'
+      comment: 'Status in the platform'
     },
     approvalStatus: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: 'Approval status for the entity'
+      comment: 'Approval status in the platform'
     },
     platformPrice: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
-      comment: 'Price in the platform (for products)'
+      comment: 'Price in the platform'
     },
     platformQuantity: {
       type: DataTypes.INTEGER,
       allowNull: true,
-      comment: 'Quantity in the platform (for products)'
+      comment: 'Quantity in the platform'
     },
     hasError: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-      comment: 'Whether there is an error with this entity in the platform'
+      comment: 'Error flag'
     },
     errorMessage: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: 'Error message if there is an error'
+      comment: 'Error message'
     },
     lastSyncedAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: 'Last time this data was synced with the platform'
+      comment: 'Last sync timestamp'
     }
   }, {
     tableName: 'platform_data',
@@ -108,26 +96,25 @@ module.exports = (sequelize) => {
     ]
   });
 
-  PlatformData.associate = function(models) {
-    // Association with Product model (for product data)
-    PlatformData.belongsTo(models.Product, {
-      foreignKey: 'entityId',
-      constraints: false,
-      as: 'Product',
-      scope: {
-        entityType: 'product'
-      }
-    });
-
-    // Association with Order model (for order data)
-    PlatformData.belongsTo(models.Order, {
-      foreignKey: 'entityId',
-      constraints: false,
-      as: 'Order',
-      scope: {
-        entityType: 'order'
-      }
-    });
+  // Polymorphic associations through a generic method
+  PlatformData.associateWith = function(modelName, models) {
+    if (models[modelName]) {
+      // Use a unique alias for each association
+      const alias = modelName.toLowerCase() + 'PlatformData';
+      models[modelName].hasMany(PlatformData, {
+        foreignKey: 'entityId',
+        constraints: false,
+        scope: {
+          entityType: modelName.toLowerCase()
+        },
+        as: alias
+      });
+      PlatformData.belongsTo(models[modelName], {
+        foreignKey: 'entityId',
+        constraints: false,
+        as: modelName.toLowerCase()
+      });
+    }
   };
 
   return PlatformData;

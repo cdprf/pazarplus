@@ -208,7 +208,6 @@ class TrendyolService extends BasePlatformService {
       const defaultStartDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       
       // Convert to timestamp format (milliseconds since epoch)
-      // Make sure we're using epoch timestamps, not ISO strings
       const startDateTs = params.startDate 
         ? (typeof params.startDate === 'string' 
             ? new Date(params.startDate).getTime() 
@@ -247,29 +246,54 @@ class TrendyolService extends BasePlatformService {
         this.axiosInstance.get(`/suppliers/${sellerId}/orders`, { params: queryParams })
       );
       
-      if (!response.data || !response.data.content) {
-        return {
-          success: false,
-          message: 'No order data returned from Trendyol',
-          data: []
-        };
+      // Make sure we handle both array and paginated response formats
+      let orders = [];
+      if (response.data) {
+        if (Array.isArray(response.data)) {
+          orders = response.data;
+        } else if (response.data.content && Array.isArray(response.data.content)) {
+          orders = response.data.content;
+        } else {
+          logger.warn('Unexpected response format from Trendyol orders API', {
+            responseType: typeof response.data,
+            hasContent: 'content' in response.data,
+            connectionId: this.connectionId,
+            responseData: JSON.stringify(response.data).substring(0, 200) // Log first 200 chars
+          });
+          return {
+            success: false,
+            message: 'Unexpected response format from Trendyol API',
+            error: 'Invalid response format',
+            data: []
+          };
+        }
       }
-      
-      const normalizedOrders = await this.normalizeOrders(response.data.content);
+
+      logger.info(`Retrieved ${orders.length} orders from Trendyol`, {
+        connectionId: this.connectionId,
+        orderCount: orders.length,
+        platformType: this.getPlatformType()
+      });
+
+      const normalizeResult = await this.normalizeOrders(orders);
       
       return {
         success: true,
-        message: `Successfully fetched ${normalizedOrders.length} orders from Trendyol`,
-        data: normalizedOrders,
-        pagination: {
-          page: response.data.number,
-          size: response.data.size,
-          totalPages: response.data.totalPages,
-          totalElements: response.data.totalElements
-        }
+        message: `Successfully fetched ${normalizeResult.data.length} orders from Trendyol`,
+        data: normalizeResult.data,
+        stats: normalizeResult.stats,
+        pagination: response.data && !Array.isArray(response.data) ? {
+          page: response.data.number !== undefined ? response.data.number : queryParams.page,
+          size: response.data.size !== undefined ? response.data.size : queryParams.size,
+          totalPages: response.data.totalPages || 1,
+          totalElements: response.data.totalElements || orders.length
+        } : undefined
       };
     } catch (error) {
-      logger.error(`Failed to fetch orders from Trendyol: ${error.message}`, { error, connectionId: this.connectionId });
+      logger.error(`Failed to fetch orders from Trendyol: ${error.message}`, { 
+        error, 
+        connectionId: this.connectionId 
+      });
       
       return {
         success: false,
@@ -281,44 +305,21 @@ class TrendyolService extends BasePlatformService {
   }
 
   async normalizeOrders(trendyolOrders) {
+    const normalizedOrders = [];
+    let successCount = 0;
+    let skippedCount = 0;
+    let updatedCount = 0;
+    
     try {
-      const normalizedOrders = [];
-      const skippedOrders = [];
-      const updatedOrders = [];
-      
-      // Get a default userId for system operations
-      const defaultUserId = process.env.DEFAULT_USER_ID || '1';
-      
-      // Add detailed logging to debug
-      logger.debug(`Normalizing ${trendyolOrders.length} Trendyol orders with connection ID: ${this.connectionId}`);
-      
-      // Track counts for reporting
-      let successCount = 0;
-      let skippedCount = 0;
-      let updatedCount = 0;
-      
-      // Get the platform connection to retrieve platform type
-      const platformConnection = await PlatformConnection.findByPk(this.connectionId);
-      if (!platformConnection) {
-        throw new Error(`Platform connection with ID ${this.connectionId} not found`);
-      }
-      
-      const platformType = platformConnection.platformType || 'trendyol';
-      logger.debug(`Using platform type: ${platformType} for connection: ${this.connectionId}`);
-      
-      // Fetch orders from this batch directly from the database with a single query
-      // This is more efficient than checking each order individually
+      // Get array of order numbers for efficient querying
       const orderNumbers = trendyolOrders.map(order => order.orderNumber);
-      
-      // Debug duplicate detection
-      logger.debug(`Checking for existing orders with connectionId=${this.connectionId} and externalOrderIds: ${JSON.stringify(orderNumbers.slice(0, 3))}... (${orderNumbers.length} total)`);
       
       // First query - fetch all orders matching our criteria
       const existingOrders = await Order.findAll({
         where: {
           connectionId: this.connectionId,
           externalOrderId: {
-            [Op.in]: orderNumbers // Use Op.in for efficient querying
+            [Op.in]: orderNumbers
           }
         },
         include: [
@@ -326,19 +327,11 @@ class TrendyolService extends BasePlatformService {
         ]
       });
       
-      logger.debug(`Found ${existingOrders.length} existing orders out of ${trendyolOrders.length} orders in this batch`);
-      
       // Map for fast lookups
       const existingOrdersMap = {};
       existingOrders.forEach(order => {
         existingOrdersMap[order.externalOrderId] = order;
       });
-      
-      // Debug the duplicate map
-      const duplicateIds = Object.keys(existingOrdersMap);
-      if (duplicateIds.length > 0) {
-        logger.debug(`Existing order IDs: ${JSON.stringify(duplicateIds.slice(0, 3))}... (${duplicateIds.length} total)`);
-      }
       
       // Process orders one by one
       for (const order of trendyolOrders) {
@@ -353,35 +346,15 @@ class TrendyolService extends BasePlatformService {
           if (existingOrder) {
             // Order exists - update it with the latest data
             try {
-              await sequelize.transaction(async (t) => {
-                // Update order data with the latest values from Trendyol
-                logger.debug(`Updating existing order ${order.orderNumber} (ID: ${existingOrder.id})`);
-                await existingOrder.update({
-                  status: this.mapOrderStatus(order.status),
-                  totalAmount: order.totalPrice || existingOrder.totalAmount,
-                  rawData: JSON.stringify(order),
-                  lastSyncedAt: new Date()
-                }, { transaction: t });
-                
-                // Update shipping details if they exist
-                if (existingOrder.ShippingDetail) {
-                  await existingOrder.ShippingDetail.update({
-                    recipientName: `${order.shipmentAddress.firstName} ${order.shipmentAddress.lastName}`,
-                    address1: order.shipmentAddress.address1 || existingOrder.ShippingDetail.address1,
-                    city: order.shipmentAddress.city,
-                    state: order.shipmentAddress.district,
-                    postalCode: order.shipmentAddress.postalCode,
-                    phone: phoneNumber || existingOrder.ShippingDetail.phone,
-                    shippingMethod: order.cargoProviderName || existingOrder.ShippingDetail.shippingMethod
-                  }, { transaction: t });
-                }
+              await existingOrder.update({
+                status: this.mapOrderStatus(order.status),
+                rawData: JSON.stringify(order),
+                lastSyncedAt: new Date()
               });
               
-              // Add to updated orders list
-              updatedOrders.push(existingOrder);
               updatedCount++;
-              
-              logger.debug(`Successfully updated existing order ${order.orderNumber}`);
+              normalizedOrders.push(existingOrder);
+              continue;
             } catch (updateError) {
               logger.error(`Failed to update existing order ${order.orderNumber}: ${updateError.message}`, {
                 error: updateError,
@@ -394,8 +367,8 @@ class TrendyolService extends BasePlatformService {
                 reason: `Update failed: ${updateError.message}`
               });
               skippedCount++;
+              continue;
             }
-            continue;
           }
           
           // Order doesn't exist - create a new one
@@ -403,68 +376,56 @@ class TrendyolService extends BasePlatformService {
             logger.debug(`Creating new order for ${order.orderNumber}`);
             
             const result = await sequelize.transaction(async (t) => {
+              // Create shipping detail first
+              const shippingDetail = await ShippingDetail.create({
+                recipientName: order.shipmentAddress.fullName || '',
+                address1: order.shipmentAddress.address1 || '',
+                address2: order.shipmentAddress.address2 || '',
+                city: order.shipmentAddress.city || '',
+                state: order.shipmentAddress.district || '',
+                postalCode: order.shipmentAddress.postalCode || '',
+                country: order.shipmentAddress.countryCode || 'TR',
+                phone: phoneNumber || '',
+                email: order.customerEmail || ''
+              }, { transaction: t });
+
               // Create the order record
               const normalizedOrder = await Order.create({
                 externalOrderId: order.orderNumber,
-                platformType: platformType,
                 connectionId: this.connectionId,
-                userId: defaultUserId,
-                orderDate: order.orderDate ? new Date(parseInt(order.orderDate)) : new Date(),
+                userId: this.connection.userId,
+                customerName: `${order.shipmentAddress.fullName}`,
+                customerEmail: order.customerEmail || '',
+                customerPhone: phoneNumber || '',
+                orderDate: new Date(order.orderDate),
                 status: this.mapOrderStatus(order.status),
                 totalAmount: order.totalPrice,
                 currency: 'TRY',
-                customerName: `${order.customerFirstName} ${order.customerLastName}`,
-                customerEmail: order.customerEmail,
-                customerPhone: phoneNumber,
+                shippingDetailId: shippingDetail.id,
                 notes: order.note || '',
                 paymentStatus: 'pending',
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date()
               }, { transaction: t });
-              
-              // Create Trendyol-specific order data
-              await this.createTrendyolOrderRecord(normalizedOrder.id, order, t);
-              
-              // Now create shipping detail with the order ID
-              const shippingDetail = await ShippingDetail.create({
-                orderId: normalizedOrder.id,
-                recipientName: `${order.shipmentAddress.firstName} ${order.shipmentAddress.lastName}`,
-                address1: order.shipmentAddress.address1 || '',
-                address2: '',
-                city: order.shipmentAddress.city,
-                state: order.shipmentAddress.district,
-                postalCode: order.shipmentAddress.postalCode,
-                country: 'Turkey',
-                phone: phoneNumber,
-                email: order.customerEmail || '',
-                shippingMethod: order.cargoProviderName
-              }, { transaction: t });
-              
-              // Update the order with the shipping detail ID
-              await normalizedOrder.update({
-                shippingDetailId: shippingDetail.id
-              }, { transaction: t });
-              
+
               // Create order items
-              for (const item of order.lines) {
-                await OrderItem.create({
-                  orderId: normalizedOrder.id,
-                  externalProductId: item.productId ? item.productId.toString() : item.productCode.toString(),
-                  name: item.productName,
-                  sku: item.merchantSku,
-                  quantity: item.quantity,
-                  unitPrice: item.price,
-                  totalPrice: item.price * item.quantity,
-                  discount: item.discount || 0.00,
-                  options: item.variantFeatures ? {
-                    variants: item.variantFeatures,
-                    size: item.productSize,
+              if (order.lines && Array.isArray(order.lines)) {
+                for (const item of order.lines) {
+                  await OrderItem.create({
+                    orderId: normalizedOrder.id,
+                    externalProductId: item.productId ? item.productId.toString() : item.productCode.toString(),
+                    name: item.productName,
+                    sku: item.merchantSku,
+                    quantity: item.quantity,
+                    unitPrice: item.price,
+                    totalPrice: item.price * item.quantity,
+                    discount: item.discount || 0.00,
+                    options: item.variantFeatures ? {
+                      variants: item.variantFeatures,
+                    } : null,
                     barcode: item.barcode
-                  } : null,
-                  metadata: {
-                    platformData: item
-                  }
-                }, { transaction: t });
+                  }, { transaction: t });
+                }
               }
               
               return normalizedOrder;
@@ -472,129 +433,46 @@ class TrendyolService extends BasePlatformService {
             
             // Add the result to our normalized orders
             normalizedOrders.push(result);
-            
-            // Update our lookup map to prevent duplicate processing in this batch
-            existingOrdersMap[order.orderNumber] = result;
-            
             successCount++;
+            
             logger.debug(`Successfully created new order for ${order.orderNumber}`);
-          } catch (orderError) {
-            // Check if it's a unique constraint error
-            if (orderError.name === 'SequelizeUniqueConstraintError') {
-              logger.warn(`Unique constraint violation for ${order.orderNumber}, attempting to handle`, {
+          } catch (error) {
+            if (error.name === 'SequelizeUniqueConstraintError') {
+              logger.warn(`Unique constraint violation for ${order.orderNumber}, skipping`, {
                 orderNumber: order.orderNumber,
                 connectionId: this.connectionId
               });
-
-              // Simple approach: First check if the order count is > 0
-              const orderCount = await Order.count();
-              if (orderCount === 0) {
-                // The database is empty, but we got a constraint error.
-                // This is likely a phantom record or database corruption issue.
-                logger.info(`Database has ${orderCount} orders but still got constraint violation. Cleaning up...`);
-
-                // Force cleanup any potential phantom records
-                await sequelize.query(
-                  `DELETE FROM Orders WHERE externalOrderId = ? AND connectionId = ?`,
-                  {
-                    replacements: [order.orderNumber, this.connectionId],
-                    type: sequelize.QueryTypes.DELETE
-                  }
-                );
-
-                // Try once more with a simple create
-                try {
-                  const newOrder = await this.manualCreateOrder(order, platformType, defaultUserId, phoneNumber);
-                  if (newOrder.success) {
-                    normalizedOrders.push(newOrder.order);
-                    successCount++;
-                    logger.info(`Successfully created order ${order.orderNumber} after cleanup`);
-                  } else {
-                    throw new Error(newOrder.message);
-                  }
-                } catch (retryError) {
-                  logger.error(`Failed to create order ${order.orderNumber} after cleanup: ${retryError.message}`);
-                  skippedOrders.push({
-                    externalOrderId: order.orderNumber,
-                    reason: 'Failed after cleanup: ' + retryError.message
-                  });
-                  skippedCount++;
-                }
-              } else {
-                // The database has orders, so let's try to find this one directly, and update if found
-                try {
-                  const existingOrder = await Order.findOne({
-                    where: {
-                      externalOrderId: order.orderNumber,
-                      connectionId: this.connectionId
-                    }
-                  });
-
-                  if (existingOrder) {
-                    // Simple update
-                    await existingOrder.update({
-                      status: this.mapOrderStatus(order.status),
-                      rawData: JSON.stringify(order),
-                      lastSyncedAt: new Date()
-                    });
-                    
-                    updatedOrders.push(existingOrder);
-                    updatedCount++;
-                    logger.info(`Found and updated order ${order.orderNumber} after constraint violation`);
-                  } else {
-                    // Strange situation - constraint violation but can't find the order
-                    // This might be due to a race condition, let's just skip it
-                    logger.warn(`Order ${order.orderNumber} not found despite constraint violation, skipping`);
-                    skippedOrders.push({
-                      externalOrderId: order.orderNumber,
-                      reason: 'Constraint violation but order not found'
-                    });
-                    skippedCount++;
-                  }
-                } catch (findError) {
-                  logger.error(`Error finding order ${order.orderNumber} after constraint violation: ${findError.message}`);
-                  skippedOrders.push({
-                    externalOrderId: order.orderNumber,
-                    reason: 'Error after constraint violation: ' + findError.message
-                  });
-                  skippedCount++;
-                }
-              }
-            } else {
-              // Handle other individual order errors
-              logger.error(`Failed to normalize Trendyol order ${order.orderNumber}: ${orderError.message}`, { 
-                error: orderError, 
-                orderNumber: order.orderNumber,
-                connectionId: this.connectionId 
-              });
-              
-              skippedOrders.push({
-                externalOrderId: order.orderNumber,
-                reason: orderError.message
-              });
               skippedCount++;
+            } else {
+              throw error;
             }
           }
-        } catch (processingError) {
-          logger.error(`Error processing order ${order.orderNumber}: ${processingError.message}`, {
-            error: processingError,
-            orderNumber: order.orderNumber
-          });
-          
-          skippedOrders.push({
-            externalOrderId: order.orderNumber,
-            reason: 'Processing error: ' + processingError.message
+        } catch (error) {
+          logger.error(`Failed to process order ${order.orderNumber}: ${error.message}`, {
+            error,
+            orderNumber: order.orderNumber,
+            connectionId: this.connectionId
           });
           skippedCount++;
         }
       }
       
-      logger.info(`Trendyol orders: ${successCount} new, ${updatedCount} updated, ${skippedCount} skipped`);
-      
-      // Return both new and updated orders
-      return [...normalizedOrders, ...updatedOrders];
+      return {
+        success: true,
+        message: `Successfully processed ${successCount} orders (${updatedCount} updated, ${skippedCount} skipped)`,
+        data: normalizedOrders,
+        stats: {
+          total: trendyolOrders.length,
+          success: successCount,
+          updated: updatedCount,
+          skipped: skippedCount
+        }
+      };
     } catch (error) {
-      logger.error(`Failed to normalize Trendyol orders: ${error.message}`, { error, connectionId: this.connectionId });
+      logger.error(`Failed to normalize orders: ${error.message}`, {
+        error,
+        connectionId: this.connectionId
+      });
       throw error;
     }
   }
@@ -761,14 +639,15 @@ class TrendyolService extends BasePlatformService {
         return [];
       }
       
-      return result.data;
+      // Return just the normalized orders array
+      return Array.isArray(result.data) ? result.data : [];
     } catch (error) {
       logger.error(`Error in getOrders method for Trendyol: ${error.message}`, {
         error,
         connectionId: this.connectionId,
         platformType: this.getPlatformType()
       });
-      throw error;
+      return []; // Return empty array instead of throwing
     }
   }
 
@@ -1372,7 +1251,7 @@ class TrendyolService extends BasePlatformService {
           error: apiError || error.message,
           data: null
         };
-      } else if (statusCode === 401 || statusCode === 403) {
+      } else if (statusCode === 401 || 403) {
         return {
           success: false,
           message: 'Authentication failed. Please check your API credentials.',
@@ -1460,7 +1339,7 @@ class TrendyolService extends BasePlatformService {
           error: apiError || error.message,
           data: []
         };
-      } else if (statusCode === 401 || statusCode === 403) {
+      } else if (statusCode === 401 || 403) {
         return {
           success: false,
           message: 'Authentication failed. Please check your API credentials.',
