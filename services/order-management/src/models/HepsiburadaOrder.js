@@ -101,6 +101,15 @@ module.exports = (sequelize, DataTypes) => {
       },
       {
         fields: ['orderNumber']
+      },
+      {
+        fields: ['createdDate']
+      },
+      {
+        fields: ['orderDate']
+      },
+      {
+        fields: ['platformStatus', 'paymentStatus']
       }
     ]
   });

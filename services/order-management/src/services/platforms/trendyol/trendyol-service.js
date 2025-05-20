@@ -208,8 +208,22 @@ class TrendyolService extends BasePlatformService {
       const defaultStartDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       
       // Convert to timestamp format (milliseconds since epoch)
-      const startDateTs = params.startDate ? new Date(params.startDate).getTime() : defaultStartDate.getTime();
-      const endDateTs = params.endDate ? new Date(params.endDate).getTime() : defaultEndDate.getTime();
+      // Make sure we're using epoch timestamps, not ISO strings
+      const startDateTs = params.startDate 
+        ? (typeof params.startDate === 'string' 
+            ? new Date(params.startDate).getTime() 
+            : params.startDate instanceof Date 
+              ? params.startDate.getTime() 
+              : params.startDate)
+        : defaultStartDate.getTime();
+      
+      const endDateTs = params.endDate 
+        ? (typeof params.endDate === 'string' 
+            ? new Date(params.endDate).getTime() 
+            : params.endDate instanceof Date 
+              ? params.endDate.getTime() 
+              : params.endDate)
+        : defaultEndDate.getTime();
       
       const defaultParams = {
         startDate: startDateTs,
@@ -222,6 +236,11 @@ class TrendyolService extends BasePlatformService {
       };
       
       const queryParams = { ...defaultParams, ...params };
+      
+      // Override any date params that may have been passed in params object
+      queryParams.startDate = startDateTs;
+      queryParams.endDate = endDateTs;
+      
       logger.debug(`Fetching Trendyol orders with params: ${JSON.stringify(queryParams)}`);
       
       const response = await this.retryRequest(() => 
@@ -725,7 +744,36 @@ class TrendyolService extends BasePlatformService {
   }
 
   /**
-   * Map Trendyol order status to internal system status
+   * Get orders from Trendyol - required implementation for BasePlatformService
+   * @param {Object} options - Options for fetching orders
+   * @returns {Promise<Array>} List of orders
+   */
+  async getOrders(options = {}) {
+    try {
+      const result = await this.fetchOrders(options);
+      
+      if (!result.success) {
+        logger.error(`Failed to get orders from Trendyol: ${result.message}`, {
+          error: result.error,
+          connectionId: this.connectionId,
+          platformType: this.getPlatformType()
+        });
+        return [];
+      }
+      
+      return result.data;
+    } catch (error) {
+      logger.error(`Error in getOrders method for Trendyol: ${error.message}`, {
+        error,
+        connectionId: this.connectionId,
+        platformType: this.getPlatformType()
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Map Trendyol order status to internal system status with logging of unknown statuses
    * @param {string} trendyolStatus - Platform-specific status
    * @returns {string} Internal status
    */
@@ -741,7 +789,31 @@ class TrendyolService extends BasePlatformService {
       'Returned': 'returned'
     };
     
-    return statusMap[trendyolStatus] || 'unknown';
+    const mappedStatus = statusMap[trendyolStatus];
+    
+    // Log unknown statuses for investigation
+    if (!mappedStatus && trendyolStatus) {
+      logger.warn(`Unknown Trendyol order status encountered: ${trendyolStatus}`, {
+        platformType: 'trendyol',
+        connectionId: this.connectionId,
+        unmappedStatus: trendyolStatus
+      });
+      
+      // Fall back to a reasonable default based on context
+      if (trendyolStatus.toLowerCase().includes('cancel')) {
+        return 'cancelled';
+      } else if (trendyolStatus.toLowerCase().includes('ship')) {
+        return 'shipped';
+      } else if (trendyolStatus.toLowerCase().includes('deliver')) {
+        return 'delivered';
+      } else if (trendyolStatus.toLowerCase().includes('return')) {
+        return 'returned';
+      }
+      
+      return 'unknown';
+    }
+    
+    return mappedStatus || 'unknown';
   }
 
   /**
@@ -824,6 +896,14 @@ class TrendyolService extends BasePlatformService {
   /**
    * Fetch products from Trendyol
    * @param {Object} params - Query parameters
+   * @param {number} [params.page=0] - Page number for pagination
+   * @param {number} [params.size=50] - Number of results per page
+   * @param {string} [params.approved] - Filter by approval status (e.g., "true", "false")
+   * @param {string} [params.barcode] - Filter by product barcode
+   * @param {string} [params.dateQueryType] - Date query type (e.g., "CREATED_DATE", "LAST_MODIFIED_DATE")
+   * @param {number} [params.startDate] - Start date in milliseconds since epoch
+   * @param {number} [params.endDate] - End date in milliseconds since epoch
+   * @param {string} [params.stockCode] - Filter by stock code
    * @returns {Promise<Object>} Result containing product data
    */
   async fetchProducts(params = {}) {
@@ -833,6 +913,7 @@ class TrendyolService extends BasePlatformService {
       
       // Check if sellerId exists in the credentials
       if (!credentials.sellerId) {
+        logger.error('Product fetch failed: Missing sellerId in credentials', { connectionId: this.connectionId });
         return {
           success: false,
           message: 'Product fetch failed: Seller ID is missing from credentials',
@@ -841,51 +922,383 @@ class TrendyolService extends BasePlatformService {
         };
       }
       
+      // Default parameters
       const defaultParams = {
         size: 50,
         page: 0
       };
       
-      const queryParams = { ...defaultParams, ...params };
+      // Validate pagination parameters
+      const page = parseInt(params.page || defaultParams.page, 10);
+      const size = parseInt(params.size || defaultParams.size, 10);
       
-      // Use the products endpoint similar to the example
+      if (isNaN(page) || page < 0) {
+        logger.warn(`Invalid page parameter: ${params.page}, using default: 0`);
+        params.page = 0;
+      }
+      
+      if (isNaN(size) || size < 1 || size > 200) {
+        logger.warn(`Invalid size parameter: ${params.size}, using default: 50`);
+        params.size = 50;
+      }
+      
+      // Build query parameters with validated values
+      const queryParams = { 
+        ...defaultParams, 
+        ...params,
+        page,
+        size 
+      };
+      
+      logger.debug(`Fetching Trendyol products with params: ${JSON.stringify(queryParams)}`);
+      
+      // Use the products endpoint with retry mechanism
       const response = await this.retryRequest(() => 
         this.axiosInstance.get(`/integration/product/sellers/${credentials.sellerId}/products`, { 
           params: queryParams 
         })
       );
       
-      if (!response.data || !response.data.content) {
+      // Validate response structure
+      if (!response.data) {
+        logger.warn('Empty response received from Trendyol products API');
         return {
           success: false,
           message: 'No product data returned from Trendyol',
           data: []
         };
       }
+
+      // Check if response has content array
+      const content = response.data.content || [];
+      
+      // Log successful API call
+      logger.info(`Successfully fetched ${content.length} products from Trendyol`, {
+        totalItems: content.length,
+        page: response.data.number || 0,
+        totalPages: response.data.totalPages || 1,
+        connectionId: this.connectionId
+      });
       
       return {
         success: true,
-        message: `Successfully fetched ${response.data.content.length} products from Trendyol`,
-        data: response.data.content,
+        message: `Successfully fetched ${content.length} products from Trendyol`,
+        data: content,
         pagination: {
-          page: response.data.number || 0,
-          size: response.data.size || queryParams.size,
+          page: response.data.number !== undefined ? response.data.number : queryParams.page,
+          size: response.data.size !== undefined ? response.data.size : queryParams.size,
           totalPages: response.data.totalPages || 1,
-          totalElements: response.data.totalElements || response.data.content.length
-        }
+          totalElements: response.data.totalElements || content.length
+        },
+        // Include raw response for debugging if needed
+        _rawResponse: process.env.NODE_ENV === 'development' ? response.data : undefined
       };
     } catch (error) {
+      // Extract specific API error information when available
+      const statusCode = error.response?.status;
+      const apiError = error.response?.data;
+      
       logger.error(`Failed to fetch products from Trendyol: ${error.message}`, { 
+        error,
+        statusCode,
+        apiError,
+        connectionId: this.connectionId 
+      });
+      
+      // Handle specific API error scenarios
+      if (statusCode === 401 || statusCode === 403) {
+        return {
+          success: false,
+          message: 'Authentication failed. Please check your API credentials.',
+          error: apiError || error.message,
+          data: []
+        };
+      } else if (statusCode === 429) {
+        return {
+          success: false,
+          message: 'Rate limit exceeded. Please try again later.',
+          error: apiError || error.message,
+          data: []
+        };
+      }
+      
+      return {
+        success: false,
+        message: `Failed to fetch products: ${error.message}`,
+        error: apiError || error.message,
+        data: []
+      };
+    }
+  }
+
+  /**
+   * Sync products from Trendyol to our database
+   * @param {Object} params - Query parameters for product fetching
+   * @returns {Promise<Object>} Result of the sync operation
+   */
+  async syncProducts(params = {}) {
+    try {
+      const { Product, TrendyolProduct } = require('../../../models');
+      const defaultUserId = process.env.DEFAULT_USER_ID || '1';
+      
+      // Fetch products from Trendyol
+      const result = await this.fetchProducts(params);
+      
+      if (!result.success) {
+        return {
+          success: false,
+          message: `Failed to fetch products from Trendyol: ${result.message}`,
+          error: result.error
+        };
+      }
+      
+      const products = result.data;
+      
+      // Statistics for reporting
+      const stats = {
+        total: products.length,
+        new: 0,
+        updated: 0,
+        skipped: 0,
+        failed: 0
+      };
+      
+      // Process each product
+      for (const trendyolProduct of products) {
+        try {
+          // Check if product already exists in our system
+          const externalProductId = trendyolProduct.productCode || trendyolProduct.id.toString();
+          
+          // Find existing Trendyol product details
+          const existingTrendyolProduct = await TrendyolProduct.findOne({
+            where: { externalProductId },
+            include: [{ model: Product }]
+          });
+          
+          if (existingTrendyolProduct) {
+            // Update existing product
+            await this.updateExistingProduct(existingTrendyolProduct, trendyolProduct);
+            stats.updated++;
+          } else {
+            // Create new product record
+            await this.createNewProduct(trendyolProduct, defaultUserId);
+            stats.new++;
+          }
+        } catch (productError) {
+          logger.error(`Error processing Trendyol product: ${productError.message}`, {
+            error: productError,
+            productId: trendyolProduct.productCode || trendyolProduct.id,
+            connectionId: this.connectionId
+          });
+          stats.failed++;
+        }
+      }
+      
+      return {
+        success: true,
+        message: `Synced ${stats.total} products from Trendyol: ${stats.new} new, ${stats.updated} updated, ${stats.failed} failed`,
+        data: stats
+      };
+    } catch (error) {
+      logger.error(`Failed to sync products from Trendyol: ${error.message}`, { 
         error, 
         connectionId: this.connectionId 
       });
       
       return {
         success: false,
-        message: `Failed to fetch products: ${error.message}`,
-        error: error.response?.data || error.message,
-        data: []
+        message: `Failed to sync products: ${error.message}`,
+        error: error.message
       };
+    }
+  }
+  
+  /**
+   * Update an existing product with data from Trendyol
+   * @param {Object} existingTrendyolProduct - Existing TrendyolProduct record
+   * @param {Object} trendyolProductData - Product data from Trendyol API
+   * @returns {Promise<Object>} Updated product
+   */
+  async updateExistingProduct(existingTrendyolProduct, trendyolProductData) {
+    try {
+      const mainProduct = existingTrendyolProduct.Product;
+      
+      // Transaction to ensure both records are updated together
+      await sequelize.transaction(async (t) => {
+        // Update main product record with latest data
+        if (mainProduct) {
+          await mainProduct.update({
+            name: trendyolProductData.title || mainProduct.name,
+            description: trendyolProductData.description || mainProduct.description,
+            price: trendyolProductData.listPrice || mainProduct.price,
+            barcode: trendyolProductData.barcode || mainProduct.barcode,
+            mainImageUrl: trendyolProductData.images && trendyolProductData.images.length > 0 
+              ? trendyolProductData.images[0] 
+              : mainProduct.mainImageUrl,
+            additionalImages: trendyolProductData.images && trendyolProductData.images.length > 1 
+              ? trendyolProductData.images.slice(1) 
+              : mainProduct.additionalImages
+          }, { transaction: t });
+        }
+        
+        // Update Trendyol-specific product data
+        await existingTrendyolProduct.update({
+          barcode: trendyolProductData.barcode,
+          stockCode: trendyolProductData.stockCode,
+          title: trendyolProductData.title,
+          categoryId: trendyolProductData.categoryId,
+          categoryName: trendyolProductData.categoryName,
+          brandId: trendyolProductData.brandId,
+          brandName: trendyolProductData.brandName,
+          vatRate: trendyolProductData.vatRate,
+          dimensionalWeight: trendyolProductData.dimensionalWeight,
+          description: trendyolProductData.description,
+          stockUnitType: trendyolProductData.stockUnitType,
+          images: trendyolProductData.images,
+          attributes: trendyolProductData.attributes,
+          variants: trendyolProductData.variants,
+          approved: trendyolProductData.approved,
+          hasError: trendyolProductData.hasError || false,
+          errorMessage: trendyolProductData.errorMessage,
+          platformListingPrice: trendyolProductData.listPrice,
+          platformSalePrice: trendyolProductData.salePrice,
+          platformStockQuantity: trendyolProductData.quantity,
+          lastSyncedAt: new Date(),
+          rawData: trendyolProductData
+        }, { transaction: t });
+      });
+      
+      logger.debug(`Updated product ${existingTrendyolProduct.externalProductId} in database`);
+      return existingTrendyolProduct;
+    } catch (error) {
+      logger.error(`Failed to update product: ${error.message}`, { 
+        error, 
+        productId: existingTrendyolProduct.externalProductId 
+      });
+      throw error;
+    }
+  }
+  
+  /**
+   * Create a new product from Trendyol data
+   * @param {Object} trendyolProductData - Product data from Trendyol API
+   * @param {string} userId - User ID to associate with the product
+   * @returns {Promise<Object>} Created product
+   */
+  async createNewProduct(trendyolProductData, userId) {
+    try {
+      const { Product, TrendyolProduct } = require('../../../models');
+      
+      // Transaction to ensure both records are created together
+      const result = await sequelize.transaction(async (t) => {
+        // Create main product record
+        const mainProduct = await Product.create({
+          userId: userId,
+          sku: trendyolProductData.stockCode || trendyolProductData.barcode,
+          name: trendyolProductData.title,
+          description: trendyolProductData.description,
+          price: trendyolProductData.listPrice || 0,
+          currency: 'TRY',
+          barcode: trendyolProductData.barcode,
+          mainImageUrl: trendyolProductData.images && trendyolProductData.images.length > 0 
+            ? trendyolProductData.images[0] 
+            : null,
+          additionalImages: trendyolProductData.images && trendyolProductData.images.length > 1 
+            ? trendyolProductData.images.slice(1) 
+            : null,
+          attributes: trendyolProductData.attributes,
+          hasVariants: trendyolProductData.variants && trendyolProductData.variants.length > 0,
+          metadata: {
+            source: 'trendyol',
+            externalProductId: trendyolProductData.productCode || trendyolProductData.id
+          }
+        }, { transaction: t });
+        
+        // Create Trendyol-specific product record
+        const trendyolProduct = await TrendyolProduct.create({
+          productId: mainProduct.id,
+          externalProductId: trendyolProductData.productCode || trendyolProductData.id.toString(),
+          barcode: trendyolProductData.barcode,
+          stockCode: trendyolProductData.stockCode,
+          title: trendyolProductData.title,
+          categoryId: trendyolProductData.categoryId,
+          categoryName: trendyolProductData.categoryName,
+          brandId: trendyolProductData.brandId,
+          brandName: trendyolProductData.brandName,
+          vatRate: trendyolProductData.vatRate,
+          dimensionalWeight: trendyolProductData.dimensionalWeight,
+          description: trendyolProductData.description,
+          stockUnitType: trendyolProductData.stockUnitType,
+          images: trendyolProductData.images,
+          attributes: trendyolProductData.attributes,
+          variants: trendyolProductData.variants,
+          approved: trendyolProductData.approved,
+          hasError: trendyolProductData.hasError || false,
+          errorMessage: trendyolProductData.errorMessage,
+          platformListingPrice: trendyolProductData.listPrice,
+          platformSalePrice: trendyolProductData.salePrice,
+          platformStockQuantity: trendyolProductData.quantity,
+          lastSyncedAt: new Date(),
+          rawData: trendyolProductData
+        }, { transaction: t });
+        
+        return { mainProduct, trendyolProduct };
+      });
+      
+      logger.debug(`Created new product ${result.trendyolProduct.externalProductId} in database`);
+      return result;
+    } catch (error) {
+      logger.error(`Failed to create product: ${error.message}`, { 
+        error, 
+        productData: {
+          title: trendyolProductData.title,
+          productCode: trendyolProductData.productCode,
+          id: trendyolProductData.id
+        }
+      });
+      throw error;
+    }
+  }
+  
+  /**
+   * Track order status change in history
+   * @param {Object} order - Order record
+   * @param {string} oldStatus - Previous status
+   * @param {string} newStatus - New status
+   * @param {string} source - Source of the change (user, system, platform)
+   * @param {string} [userId=null] - User ID who made the change (null for system changes)
+   * @param {Object} [metadata=null] - Additional metadata about the change
+   * @returns {Promise<Object>} Created history record
+   */
+  async trackOrderStatusChange(order, oldStatus, newStatus, source, userId = null, metadata = null) {
+    try {
+      const { OrderHistory } = require('../../../models');
+      
+      const historyEntry = await OrderHistory.create({
+        orderId: order.id,
+        userId: userId,
+        changeType: 'status',
+        fieldName: 'status',
+        oldValue: oldStatus,
+        newValue: newStatus,
+        source: source,
+        notes: `Order status changed from ${oldStatus} to ${newStatus}`,
+        metadata: metadata
+      });
+      
+      logger.debug(`Recorded status change history for order ${order.id}: ${oldStatus} -> ${newStatus}`);
+      return historyEntry;
+    } catch (error) {
+      logger.error(`Failed to record order history: ${error.message}`, {
+        error,
+        orderId: order.id,
+        oldStatus,
+        newStatus
+      });
+      
+      // Don't throw the error - just log it
+      // This is a non-critical operation
+      return null;
     }
   }
 
@@ -897,13 +1310,28 @@ class TrendyolService extends BasePlatformService {
   async getOrderById(orderNumber) {
     try {
       await this.initialize();
-      const { sellerId } = this.decryptCredentials(this.connection.credentials);
+      const credentials = this.decryptCredentials(this.connection.credentials);
+      
+      // Validate order number
+      if (!orderNumber) {
+        logger.error('Order fetch failed: Missing order number', { connectionId: this.connectionId });
+        return {
+          success: false,
+          message: 'Order fetch failed: Order number is required',
+          error: 'Missing required parameter: orderNumber',
+          data: null
+        };
+      }
+      
+      logger.debug(`Fetching Trendyol order details for order: ${orderNumber}`);
       
       const response = await this.retryRequest(() => 
-        this.axiosInstance.get(`/suppliers/${sellerId}/orders/${orderNumber}`)
+        this.axiosInstance.get(`/suppliers/${credentials.sellerId}/orders/${orderNumber}`)
       );
       
+      // Validate response
       if (!response.data) {
+        logger.warn(`Empty response received from Trendyol for order ${orderNumber}`);
         return {
           success: false,
           message: `No order data returned for order number ${orderNumber}`,
@@ -911,22 +1339,52 @@ class TrendyolService extends BasePlatformService {
         };
       }
       
-      return {
-        success: true,
-        message: `Successfully fetched order ${orderNumber}`,
-        data: response.data
-      };
-    } catch (error) {
-      logger.error(`Failed to fetch order details from Trendyol: ${error.message}`, {
-        error,
+      logger.info(`Successfully fetched details for order ${orderNumber}`, {
         orderNumber,
         connectionId: this.connectionId
       });
       
       return {
+        success: true,
+        message: `Successfully fetched order ${orderNumber}`,
+        data: response.data,
+        // Include raw response for debugging if needed
+        _rawResponse: process.env.NODE_ENV === 'development' ? response : undefined
+      };
+    } catch (error) {
+      // Extract specific API error information when available
+      const statusCode = error.response?.status;
+      const apiError = error.response?.data;
+      
+      logger.error(`Failed to fetch order details from Trendyol: ${error.message}`, {
+        error,
+        statusCode,
+        apiError,
+        orderNumber,
+        connectionId: this.connectionId
+      });
+      
+      // Handle specific API error scenarios
+      if (statusCode === 404) {
+        return {
+          success: false,
+          message: `Order ${orderNumber} not found on Trendyol.`,
+          error: apiError || error.message,
+          data: null
+        };
+      } else if (statusCode === 401 || statusCode === 403) {
+        return {
+          success: false,
+          message: 'Authentication failed. Please check your API credentials.',
+          error: apiError || error.message,
+          data: null
+        };
+      }
+      
+      return {
         success: false,
         message: `Failed to fetch order details: ${error.message}`,
-        error: error.response?.data || error.message,
+        error: apiError || error.message,
         data: null
       };
     }
@@ -940,13 +1398,28 @@ class TrendyolService extends BasePlatformService {
   async getOrderShipmentPackages(orderNumber) {
     try {
       await this.initialize();
-      const { sellerId } = this.decryptCredentials(this.connection.credentials);
+      const credentials = this.decryptCredentials(this.connection.credentials);
+      
+      // Validate order number
+      if (!orderNumber) {
+        logger.error('Shipment package fetch failed: Missing order number', { connectionId: this.connectionId });
+        return {
+          success: false,
+          message: 'Shipment package fetch failed: Order number is required',
+          error: 'Missing required parameter: orderNumber',
+          data: []
+        };
+      }
+      
+      logger.debug(`Fetching Trendyol shipment packages for order: ${orderNumber}`);
       
       const response = await this.retryRequest(() => 
-        this.axiosInstance.get(`/suppliers/${sellerId}/orders/${orderNumber}/shipment-packages`)
+        this.axiosInstance.get(`/suppliers/${credentials.sellerId}/orders/${orderNumber}/shipment-packages`)
       );
       
+      // Validate response
       if (!response.data) {
+        logger.warn(`Empty response received from Trendyol for order ${orderNumber} shipment packages`);
         return {
           success: false,
           message: `No shipment package data returned for order number ${orderNumber}`,
@@ -954,22 +1427,52 @@ class TrendyolService extends BasePlatformService {
         };
       }
       
-      return {
-        success: true,
-        message: `Successfully fetched shipment packages for order ${orderNumber}`,
-        data: response.data
-      };
-    } catch (error) {
-      logger.error(`Failed to fetch shipment packages from Trendyol: ${error.message}`, {
-        error,
+      logger.info(`Successfully fetched shipment packages for order ${orderNumber}`, {
         orderNumber,
         connectionId: this.connectionId
       });
       
       return {
+        success: true,
+        message: `Successfully fetched shipment packages for order ${orderNumber}`,
+        data: response.data,
+        // Include raw response for debugging if needed
+        _rawResponse: process.env.NODE_ENV === 'development' ? response.data : undefined
+      };
+    } catch (error) {
+      // Extract specific API error information when available
+      const statusCode = error.response?.status;
+      const apiError = error.response?.data;
+      
+      logger.error(`Failed to fetch shipment packages from Trendyol: ${error.message}`, {
+        error,
+        statusCode,
+        apiError,
+        orderNumber,
+        connectionId: this.connectionId
+      });
+      
+      // Handle specific API error scenarios
+      if (statusCode === 404) {
+        return {
+          success: false,
+          message: `Order ${orderNumber} not found on Trendyol.`,
+          error: apiError || error.message,
+          data: []
+        };
+      } else if (statusCode === 401 || statusCode === 403) {
+        return {
+          success: false,
+          message: 'Authentication failed. Please check your API credentials.',
+          error: apiError || error.message,
+          data: []
+        };
+      }
+      
+      return {
         success: false,
         message: `Failed to fetch shipment packages: ${error.message}`,
-        error: error.response?.data || error.message,
+        error: apiError || error.message,
         data: []
       };
     }

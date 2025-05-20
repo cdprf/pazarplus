@@ -848,20 +848,50 @@ class HepsiburadaService extends BasePlatformService {
    */
   mapToPlatformStatus(internalStatus) {
     const reverseStatusMap = {
-      'new': 'Open',
-      'processing': 'Picking',
+      'new': 'Created',
+      'processing': 'Processing',
       'shipped': 'Shipped',
       'delivered': 'Delivered',
       'cancelled': 'Cancelled',
-      'returned': 'Returned'
+      'returned': 'Returned',
+      'failed': 'UnDelivered'
     };
     
-    return reverseStatusMap[internalStatus] || 'Open';
+    return reverseStatusMap[internalStatus];
   }
 
   // Alias for backward compatibility
   mapToHepsiburadaStatus(internalStatus) {
     return this.mapToPlatformStatus(internalStatus);
+  }
+
+  /**
+   * Get orders from Hepsiburada - required implementation for BasePlatformService
+   * @param {Object} options - Options for fetching orders
+   * @returns {Promise<Array>} List of orders
+   */
+  async getOrders(options = {}) {
+    try {
+      const result = await this.fetchOrders(options);
+      
+      if (!result.success) {
+        logger.error(`Failed to get orders from Hepsiburada: ${result.message}`, {
+          error: result.error,
+          connectionId: this.connectionId,
+          platformType: this.getPlatformType()
+        });
+        return [];
+      }
+      
+      return result.data;
+    } catch (error) {
+      logger.error(`Error in getOrders method for Hepsiburada: ${error.message}`, {
+        error,
+        connectionId: this.connectionId,
+        platformType: this.getPlatformType()
+      });
+      throw error;
+    }
   }
 
   /**

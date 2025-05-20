@@ -95,6 +95,24 @@ module.exports = (sequelize, DataTypes) => {
       lastSyncedAt: {
         type: DataTypes.DATE,
         allowNull: true
+      },
+      deletedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'Used for soft deletes - when set, the order is considered deleted'
+      },
+      deletedReason: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'Reason why this order was deleted'
+      },
+      cancelledAt: {
+        type: DataTypes.DATE,
+        allowNull: true
+      },
+      cancellationReason: {
+        type: DataTypes.STRING,
+        allowNull: true
       }
     }, {
       tableName: 'orders',
@@ -124,6 +142,24 @@ module.exports = (sequelize, DataTypes) => {
         },
         {
           fields: ['orderDate']
+        },
+        {
+          fields: ['paymentStatus']
+        },
+        {
+          fields: ['deletedAt']
+        },
+        {
+          fields: ['lastSyncedAt']
+        },
+        {
+          fields: ['platformType', 'status']
+        },
+        {
+          fields: ['customerEmail']
+        },
+        {
+          fields: ['customerPhone']
         }
       ]
     });
@@ -133,20 +169,20 @@ module.exports = (sequelize, DataTypes) => {
       Order.belongsTo(models.PlatformConnection, { foreignKey: 'connectionId' });
       Order.hasOne(models.ShippingDetail, { foreignKey: 'orderId' });
       Order.hasMany(models.OrderItem, { foreignKey: 'orderId' });
+      Order.hasMany(models.OrderHistory, { foreignKey: 'orderId' });
       
-      // Platform-specific associations
-      if (models.TrendyolOrder) {
-        Order.hasOne(models.TrendyolOrder, { 
-          foreignKey: 'orderId',
-          as: 'trendyolDetails'
-        });
+      // Financial transactions association
+      if (models.FinancialTransaction) {
+        Order.hasMany(models.FinancialTransaction, { foreignKey: 'orderId' });
       }
       
-      if (models.HepsiburadaOrder) {
-        Order.hasOne(models.HepsiburadaOrder, { 
-          foreignKey: 'orderId',
-          as: 'hepsiburadaDetails'
-        });
+      // Add generic platform associations
+      if (models.PlatformData) {
+        models.PlatformData.associateWith('Order', models);
+      }
+      
+      if (models.PlatformAttribute) {
+        models.PlatformAttribute.associateWith('Order', models);
       }
     };
   

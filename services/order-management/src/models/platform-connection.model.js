@@ -30,7 +30,7 @@ const PlatformConnection = sequelize.define('PlatformConnection', {
     allowNull: false
   },
   status: {
-    type: DataTypes.STRING,
+    type: DataTypes.ENUM('pending', 'active', 'error', 'suspended', 'disconnected'),
     defaultValue: 'pending'
   },
   settings: {
@@ -48,15 +48,87 @@ const PlatformConnection = sequelize.define('PlatformConnection', {
   syncStatus: {
     type: DataTypes.STRING,
     allowNull: true
+  },
+  errorMessage: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Last error message if connection has issues'
+  },
+  templateId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    comment: 'Reference to the PlatformSettingsTemplate used for this connection'
+  },
+  webhookUrl: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Webhook URL registered with the platform'
+  },
+  webhookSecret: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Secret for webhook verification'
+  },
+  refreshToken: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'OAuth refresh token if applicable'
+  },
+  tokenExpiresAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Expiration date of the access token'
+  },
+  syncSettings: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Settings for automatic synchronization'
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['userId']
+    },
+    {
+      fields: ['platformType']
+    },
+    {
+      fields: ['status']
+    },
+    {
+      fields: ['isActive']
+    },
+    {
+      fields: ['lastSyncAt']
+    },
+    {
+      fields: ['templateId']
+    }
+  ]
 });
 
 // Add association method
 PlatformConnection.associate = function(models) {
   PlatformConnection.belongsTo(models.User, { foreignKey: 'userId' });
   PlatformConnection.hasMany(models.Order, { foreignKey: 'connectionId' });
+  
+  // Add associations to new models
+  if (models.PlatformSyncLog) {
+    PlatformConnection.hasMany(models.PlatformSyncLog, { foreignKey: 'connectionId' });
+  }
+  
+  if (models.PlatformWebhookEvent) {
+    PlatformConnection.hasMany(models.PlatformWebhookEvent, { foreignKey: 'connectionId' });
+  }
+  
+  if (models.FinancialTransaction) {
+    PlatformConnection.hasMany(models.FinancialTransaction, { foreignKey: 'platformConnectionId' });
+  }
+  
+  if (models.PlatformSettingsTemplate) {
+    PlatformConnection.belongsTo(models.PlatformSettingsTemplate, { foreignKey: 'templateId' });
+  }
 };
 
 module.exports = PlatformConnection;

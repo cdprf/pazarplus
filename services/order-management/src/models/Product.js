@@ -131,12 +131,31 @@ module.exports = (sequelize, DataTypes) => {
   
     Product.associate = (models) => {
       Product.belongsTo(models.User, { foreignKey: 'userId' });
+      
       // Only create relationship with ProductVariant if it exists
       if (models.ProductVariant) {
         Product.hasMany(models.ProductVariant, { foreignKey: 'productId' });
       }
+      
       Product.hasMany(models.OrderItem, { foreignKey: 'productId' });
-      // Add additional associations as needed
+      
+      // Add generic platform associations
+      if (models.PlatformData) {
+        models.PlatformData.associateWith('Product', models);
+      }
+      
+      if (models.PlatformAttribute) {
+        models.PlatformAttribute.associateWith('Product', models);
+      }
+      
+      // Add inventory and price history associations
+      if (models.ProductInventoryHistory) {
+        Product.hasMany(models.ProductInventoryHistory, { foreignKey: 'productId' });
+      }
+      
+      if (models.ProductPriceHistory) {
+        Product.hasMany(models.ProductPriceHistory, { foreignKey: 'productId' });
+      }
     };
   
     return Product;
