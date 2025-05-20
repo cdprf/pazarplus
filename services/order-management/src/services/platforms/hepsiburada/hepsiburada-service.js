@@ -1,9 +1,7 @@
 const axios = require('axios');
 const crypto = require('crypto');
-const { Order } = require('../../../models/Order');
-const { OrderItem } = require('../../../models/OrderItem');
-const { ShippingDetail } = require('../../../models/ShippingDetail');
-const { PlatformConnection } = require('../../../models/platform-connection.model');
+const { Op } = require('sequelize');
+const { Order, OrderItem, ShippingDetail, PlatformConnection, HepsiburadaOrder, sequelize } = require('../../../models');
 const logger = require('../../../utils/logger');
 
 class HepsiburadaService {
@@ -23,14 +21,20 @@ class HepsiburadaService {
       }
 
       const credentials = this.decryptCredentials(this.connection.credentials);
-      const { merchantId, apiKey } = credentials;
+      const { merchantId, apiSecret } = credentials;
       
-      // Set up axios instance with authentication from your snippet
+      if (!merchantId || !apiSecret) {
+        throw new Error('Missing required Hepsiburada credentials. Merchant ID and API Secret are required.');
+      }
+      
+      // Create Basic auth header with merchantId:apiSecret
+      const authString = Buffer.from(`${merchantId}:${apiSecret}`).toString('base64');
+      
       this.axiosInstance = axios.create({
         baseURL: this.apiUrl,
         headers: {
+          'Authorization': `Basic ${authString}`,
           'User-Agent': 'sentosyazilim_dev',
-          'Authorization': `Basic ${apiKey}`,
           'Content-Type': 'application/json'
         },
         timeout: 30000
@@ -47,14 +51,31 @@ class HepsiburadaService {
 
   decryptCredentials(encryptedCredentials) {
     try {
-      // Simple parse for development - in production would use proper decryption
-      const credentials = JSON.parse(encryptedCredentials);
+      // Handle both string and object credentials
+      let credentials;
+      
+      if (typeof encryptedCredentials === 'string') {
+        // If credentials are stored as a JSON string, parse them
+        credentials = JSON.parse(encryptedCredentials);
+      } else if (typeof encryptedCredentials === 'object') {
+        // If credentials are already an object, use them directly
+        credentials = encryptedCredentials;
+      } else {
+        throw new Error(`Unsupported credentials format: ${typeof encryptedCredentials}`);
+      }
+      
+      // Make sure we have the required fields
+      if (!credentials.storeId || !credentials.apiKey) {
+        throw new Error('Missing required credentials: merchantId or apiKey');
+      }
+      
       return {
-        merchantId: credentials.merchantId,
-        apiKey: credentials.apiKey
+        merchantId: credentials.storeId || credentials.merchantId,
+        apiKey: credentials.apiKey,
+        apiSecret: credentials.apiSecret
       };
     } catch (error) {
-      logger.error(`Failed to decrypt credentials: ${error.message}`);
+      logger.error(`Failed to decrypt credentials: ${error.message}`, { error });
       throw new Error('Failed to decrypt credentials');
     }
   }
@@ -184,7 +205,6 @@ class HepsiburadaService {
   async normalizeOrders(hepsiburadaOrders) {
     try {
       const normalizedOrders = [];
-      const { HepsiburadaOrder } = require('../../../models');
       
       for (const order of hepsiburadaOrders) {
         // Create shipping details from the order data
@@ -295,7 +315,6 @@ class HepsiburadaService {
         await this.initialize();
       }
       
-      const { HepsiburadaOrder, sequelize } = require('../../../models');
       let order = orderData;
       
       // If this is an order detail response (from getOrderDetails), use it directly
@@ -306,7 +325,7 @@ class HepsiburadaService {
       // If this is a package format (from fetchOrders), transform it
       else if (orderData.id && orderData.packageNumber) {
         // Fetch full order details if we only have the package info
-        const orderDetailsResponse = await this.getOrderDetails(orderData.packageNumber);
+        const orderDetailsResponse = await this.getOrderDetails(orderData.items[0].orderNumber);
         
         if (orderDetailsResponse.success && orderDetailsResponse.data) {
           order = orderDetailsResponse.data;
@@ -319,7 +338,7 @@ class HepsiburadaService {
       let recipientName, address, city, town, postalCode, email, phoneNumber;
       
       if (order.deliveryAddress) {
-        // Order detail format
+        // New order detail format
         recipientName = order.deliveryAddress.name || '';
         address = order.deliveryAddress.address || '';
         city = order.deliveryAddress.city || '';
@@ -327,6 +346,15 @@ class HepsiburadaService {
         postalCode = order.deliveryAddress.postalCode || '';
         email = order.deliveryAddress.email || '';
         phoneNumber = order.deliveryAddress.phoneNumber || '';
+      } else if (order.shippingAddress) {
+        // Older order detail format
+        recipientName = order.shippingAddress.name || '';
+        address = order.shippingAddress.address || '';
+        city = order.shippingAddress.city || '';
+        town = order.shippingAddress.town || '';
+        postalCode = order.shippingAddress.postalCode || '';
+        email = order.shippingAddress.email || '';
+        phoneNumber = order.shippingAddress.phoneNumber || '';
       } else {
         // Package format
         recipientName = order.recipientName || '';
@@ -338,8 +366,18 @@ class HepsiburadaService {
         phoneNumber = order.phoneNumber || '';
       }
       
+      // If phone number is empty, try to extract from items
+      if (!phoneNumber && items.length > 0 && items[0].shippingAddress && items[0].shippingAddress.phoneNumber) {
+        phoneNumber = items[0].shippingAddress.phoneNumber;
+      }
+      
+      // As a last resort, try to extract phone from address text using regex
+      if (!phoneNumber) {
+        phoneNumber = this.extractPhoneNumber(order);
+      }
+      
       // Get order number - ensure we have a valid value
-      const platformOrderId = order.orderNumber || order.packageNumber || order.orderId || '';
+      const platformOrderId = order.orderId || (items.length > 0 ? items[0].orderId : '') || '';
       
       if (!platformOrderId) {
         logger.error('Missing platform order ID in Hepsiburada order data', { orderData });
@@ -348,6 +386,23 @@ class HepsiburadaService {
           message: 'Missing platform order ID in order data',
           error: 'MISSING_PLATFORM_ORDER_ID'
         };
+      }
+      
+      logger.debug(`Processing Hepsiburada order: ${platformOrderId}`);
+      
+      // Process orderNote field which could be an object in new API format
+      let orderNotes = '';
+      if (order.orderNote) {
+        if (typeof order.orderNote === 'string') {
+          orderNotes = order.orderNote;
+        } else if (typeof order.orderNote === 'object') {
+          // Convert object to string representation
+          try {
+            orderNotes = JSON.stringify(order.orderNote);
+          } catch (e) {
+            orderNotes = 'Order had notes in object format';
+          }
+        }
       }
       
       logger.debug(`Processing Hepsiburada order: ${platformOrderId}`);
@@ -390,7 +445,7 @@ class HepsiburadaService {
             customerName,
             customerEmail: email,
             customerPhone: phoneNumber,
-            notes: order.orderNote || '',
+            notes: orderNotes,
             rawData: JSON.stringify(order)
           }, { transaction: t });
           
@@ -449,76 +504,49 @@ class HepsiburadaService {
       
       try {
         return await sequelize.transaction(async (t) => {
-          // Create shipping detail
+          // First create the order record - fix field names to match model definition
+          const normalizedOrder = await Order.create({
+            externalOrderId: platformOrderId,
+            platformType: 'hepsiburada',
+            connectionId: this.connectionId,
+            userId: this.connection.userId,
+            customerName: order.customer?.name || recipientName,
+            customerEmail: email,
+            customerPhone: phoneNumber,
+            orderDate: new Date(order.orderDate || Date.now()),
+            totalAmount: items.reduce((sum, item) => {
+              const itemTotal = parseFloat(item.totalPrice?.amount || 0);
+              return sum + itemTotal;
+            }, 0),
+            currency: items[0]?.totalPrice?.currency || 'TRY',
+            status: items[0]?.status ? this.mapOrderStatus(items[0].status) : 'new',
+            notes: orderNotes, // Using our processed notes variable instead of direct order.orderNote
+            paymentStatus: order.paymentStatus || 'pending',
+            rawData: JSON.stringify(order),
+            lastSyncedAt: new Date()
+          }, { transaction: t });
+          
+          // Create shipping detail with orderId and correct address field
           const shippingDetail = await ShippingDetail.create({
+            orderId: normalizedOrder.id, // Add the orderId reference
             recipientName,
-            address,
+            address1: address, // Changed from address to address1
+            address2: '', // Add empty address2
             city,
             state: town,
             postalCode,
             country: 'TR',
             phone: phoneNumber,
             email,
-            shippingMethod: items[0]?.cargoCompany || order.cargoCompany || ''
+            shippingMethod: items[0]?.cargoCompany || order.cargoCompany || '',
+            trackingNumber: items[0]?.trackingNumber || order.cargoTrackingNumber || '',
+            trackingUrl: items[0]?.cargoTrackingUrl || order.cargoTrackingUrl || '',
+            status: 'pending'
           }, { transaction: t });
           
-          // Get customer name from appropriate location
-          let customerName = '';
-          if (order.customer && order.customer.name) {
-            customerName = order.customer.name;
-          } else {
-            customerName = order.customerName || recipientName;
-          }
-          
-          // Get order status from appropriate field
-          let status;
-          if (items[0] && items[0].status) {
-            status = this.mapOrderStatus(items[0].status);
-          } else if (order.status) {
-            status = this.mapOrderStatus(order.status);
-          } else if (order.paymentStatus) {
-            status = this.mapPaymentStatus(order.paymentStatus);
-          } else {
-            status = 'new';
-          }
-          
-          // Calculate total from items if not directly available
-          let totalAmount = 0;
-          let currency = 'TRY';
-          
-          if (order.totalPrice) {
-            totalAmount = parseFloat(order.totalPrice.amount) || 0;
-            currency = order.totalPrice.currency || 'TRY';
-          } else {
-            // Calculate from items
-            totalAmount = items.reduce((sum, item) => {
-              const itemTotal = parseFloat(item.totalPrice?.amount || 0);
-              return sum + itemTotal;
-            }, 0);
-            
-            // Get currency from first item
-            if (items[0] && items[0].totalPrice && items[0].totalPrice.currency) {
-              currency = items[0].totalPrice.currency;
-            }
-          }
-          
-          // Create the order record - fix field names to match model definition
-          const normalizedOrder = await Order.create({
-            externalOrderId: platformOrderId,
-            platformType: 'hepsiburada',
-            connectionId: this.connectionId,
-            userId: this.connection.userId,
-            customerName,
-            customerEmail: email,
-            customerPhone: phoneNumber,
-            orderDate: new Date(order.orderDate || Date.now()),
-            totalAmount,
-            currency,
-            status,
-            notes: order.orderNote || '',
-            paymentStatus: order.paymentStatus || 'pending',
-            rawData: JSON.stringify(order),
-            lastSyncedAt: new Date()
+          // Update the order to reference the shipping detail
+          await normalizedOrder.update({
+            shippingDetailId: shippingDetail.id
           }, { transaction: t });
           
           // Create Hepsiburada-specific order record
@@ -526,14 +554,15 @@ class HepsiburadaService {
             orderId: normalizedOrder.id,
             packageNumber: order.packageNumber || platformOrderId,
             merchantId: order.merchantId || this.merchantId,
-            customerId: order.customerId || order.customer?.id || '',
-            orderNumber: platformOrderId,
+            customerId: order.customerId || order.customer?.customerId || '',
+            orderNumber: order.orderNumber || platformOrderId,
             referenceNumber: order.referenceNumber || '',
             cargoCompany: items[0]?.cargoCompany || order.cargoCompany || '',
             cargoTrackingNumber: items[0]?.trackingNumber || order.trackingNumber || '',
             cargoTrackingUrl: items[0]?.cargoTrackingUrl || order.cargoTrackingUrl || '',
             paymentType: order.paymentType || '',
-            shippingAddressJson: order.deliveryAddress || {
+            // Use the new fields to store detailed information
+            shippingAddressJson: order.shippingAddress || {
               name: recipientName,
               address: address,
               city: city,
@@ -547,8 +576,14 @@ class HepsiburadaService {
               town: order.billingTown || town,
               postalCode: order.billingPostalCode || postalCode
             },
+            // New fields to capture the JSON structure from API
+            deliveryAddressJson: order.deliveryAddress || null,
+            invoiceDetailsJson: order.invoice || null,
+            customerJson: order.customer || null,
             platformStatus: order.status || items[0]?.status || '',
-            paymentStatus: order.paymentStatus || ''
+            paymentStatus: order.paymentStatus || '',
+            createdDate: order.createdDate ? new Date(order.createdDate) : null,
+            orderDate: order.orderDate ? new Date(order.orderDate) : null
           }, { transaction: t });
           
           // Create order items
@@ -766,7 +801,7 @@ class HepsiburadaService {
       logger.error(`Failed to process direct Hepsiburada order: ${error.message}`, { 
         error, 
         connectionId: this.connectionId,
-        platformOrderId: order?.orderNumber || order?.packageNumber || 'unknown'
+        platformOrderId: Order?.orderNumber || Order?.packageNumber || 'unknown'
       });
       
       return {
@@ -775,6 +810,57 @@ class HepsiburadaService {
         error: error.message
       };
     }
+  }
+
+  /**
+   * Extract phone number from order data
+   * Handles various formats and null cases in Hepsiburada API responses
+   * @param {Object} order - The order object from Hepsiburada API
+   * @returns {string} The extracted phone number or empty string if not available
+   */
+  extractPhoneNumber(order) {
+    // Check various locations where phone might be available
+    // First check direct phone field
+    if (order.phoneNumber) {
+      return order.phoneNumber;
+    }
+    
+    // Check delivery address
+    if (order.deliveryAddress && order.deliveryAddress.phoneNumber) {
+      return order.deliveryAddress.phoneNumber;
+    }
+    
+    // Enhanced Turkish phone regex patterns for finding phone in address text
+    const phonePatterns = [
+      // Explicit markers with phone numbers
+      /(?:tel|telefon|gsm|cep|phone)[:\s]*([+0-9\s()\-]{10,15})/i,
+      // Turkish mobile format (05XX)
+      /\b(05\d{2}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2})\b/,
+      // With country code (+90 or 0090)
+      /\b(\+?90[\s-]?5\d{2}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2})\b/,
+      // Generic number pattern as fallback
+      /\b(\d{3}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2})\b/
+    ];
+    
+    // Try to find phone in addresses
+    const addressText = order.deliveryAddress?.address || order.shippingAddressDetail || '';
+    
+    // Try each pattern
+    for (const pattern of phonePatterns) {
+      const match = addressText.match(pattern);
+      if (match && match[1]) {
+        // Clean up the matched number
+        return match[1].replace(/[\s()-]/g, '').trim();
+      }
+    }
+    
+    // Try billing address as fallback
+    if (order.billingAddress && order.billingAddress.phoneNumber) {
+      return order.billingAddress.phoneNumber;
+    }
+    
+    // If no phone found, return empty string
+    return '';
   }
 
   mapOrderStatus(hepsiburadaStatus) {
@@ -801,6 +887,159 @@ class HepsiburadaService {
     return statusMap[paymentStatus] || 'new';
   }
 
+  /**
+   * Map Hepsiburada order status to internal system status
+   * @param {string} hepsiburadaStatus 
+   * @returns {string} Mapped internal status
+   */
+  mapToHepsiburadaStatus(internalStatus) {
+    const reverseStatusMap = {
+      'new': 'Open',
+      'processing': 'Picking',
+      'shipped': 'Shipped',
+      'delivered': 'Delivered',
+      'cancelled': 'Cancelled',
+      'returned': 'Returned'
+    };
+    
+    return reverseStatusMap[internalStatus] || 'Open';
+  }
+
+  /**
+   * Update order status on Hepsiburada platform
+   * @param {string} orderId - Internal order ID
+   * @param {string} newStatus - New status to set
+   * @returns {Object} - Result of the status update operation
+   */
+  async updateOrderStatus(orderId, newStatus) {
+    try {
+      await this.initialize();
+      
+      const order = await Order.findByPk(orderId, {
+        include: [{ model: HepsiburadaOrder }]
+      });
+      
+      if (!order) {
+        throw new Error(`Order with ID ${orderId} not found`);
+      }
+      
+      if (!order.HepsiburadaOrder) {
+        throw new Error(`Hepsiburada order details not found for order ID ${orderId}`);
+      }
+      
+      const hepsiburadaStatus = this.mapToHepsiburadaStatus(newStatus);
+      
+      if (!hepsiburadaStatus) {
+        throw new Error(`Cannot map status '${newStatus}' to Hepsiburada status`);
+      }
+      
+      const packageNumber = order.HepsiburadaOrder.packageNumber;
+      
+      if (!packageNumber) {
+        throw new Error('Package number not found in order details');
+      }
+      
+      const url = `/packages/merchantid/${this.merchantId}/packagenumber/${packageNumber}/status`;
+      
+      const response = await this.retryRequest(() => 
+        this.axiosInstance.put(url, {
+          status: hepsiburadaStatus
+        })
+      );
+      
+      // Update local order status
+      await sequelize.transaction(async (t) => {
+        await order.update({
+          status: newStatus,
+          lastSyncedAt: new Date()
+        }, { transaction: t });
+        
+        await order.HepsiburadaOrder.update({
+          platformStatus: hepsiburadaStatus
+        }, { transaction: t });
+      });
+      
+      return {
+        success: true,
+        message: `Order status updated to ${newStatus}`,
+        data: order
+      };
+    } catch (error) {
+      logger.error(`Failed to update order status on Hepsiburada: ${error.message}`, { 
+        error, 
+        orderId, 
+        connectionId: this.connectionId 
+      });
+      
+      return {
+        success: false,
+        message: `Failed to update order status: ${error.message}`,
+        error: error.response?.data || error.message
+      };
+    }
+  }
+
+  /**
+   * Fetch products from Hepsiburada
+   * @param {Object} params - Query parameters 
+   * @returns {Promise<Object>} Result containing product data
+   */
+  async fetchProducts(params = {}) {
+    try {
+      await this.initialize();
+      
+      const defaultParams = {
+        offset: 0,
+        limit: 100
+      };
+      
+      const queryParams = { ...defaultParams, ...params };
+      const url = `/listings/merchantid/${this.merchantId}`;
+      
+      const response = await this.retryRequest(() => 
+        this.axiosInstance.get(url, { params: queryParams })
+      );
+      
+      if (!response.data || !Array.isArray(response.data)) {
+        return {
+          success: false,
+          message: 'No product data returned from Hepsiburada',
+          data: []
+        };
+      }
+      
+      return {
+        success: true,
+        message: `Successfully fetched ${response.data.length} products from Hepsiburada`,
+        data: response.data,
+        pagination: {
+          offset: queryParams.offset,
+          limit: queryParams.limit,
+          totalCount: response.data.length
+        }
+      };
+    } catch (error) {
+      logger.error(`Failed to fetch products from Hepsiburada: ${error.message}`, { 
+        error, 
+        connectionId: this.connectionId 
+      });
+      
+      return {
+        success: false,
+        message: `Failed to fetch products: ${error.message}`,
+        error: error.response?.data || error.message,
+        data: []
+      };
+    }
+  }
+
+  /**
+   * Retry a request with exponential backoff
+   * @param {Function} requestFn - The request function to retry
+   * @param {number} maxRetries - Maximum number of retries
+   * @param {number} delay - Base delay in milliseconds between retries
+   * @returns {Promise<any>} - The API response
+   */
   async retryRequest(requestFn, maxRetries = 3, delay = 1000) {
     let retries = 0;
     let lastError = null;
@@ -816,7 +1055,7 @@ class HepsiburadaService {
           retries++;
           logger.warn(`Retrying Hepsiburada API request (${retries}/${maxRetries}) after error: ${error.message}`);
           
-          // Wait before retrying
+          // Wait before retrying with exponential backoff
           await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, retries - 1)));
         } else {
           // Non-retryable error
@@ -827,6 +1066,96 @@ class HepsiburadaService {
     
     // If we've exhausted retries
     throw lastError;
+  }
+
+  async syncOrdersFromDate(startDate, endDate = new Date()) {
+    try {
+      await this.initialize();
+      
+      // Convert dates to ISO format if they're not already
+      const startDateStr = new Date(startDate).toISOString();
+      const endDateStr = new Date(endDate).toISOString();
+      
+      logger.debug(`Syncing Hepsiburada orders from ${startDateStr} to ${endDateStr}`);
+      
+      const params = {
+        startDate: startDateStr,
+        endDate: endDateStr,
+        offset: 0,
+        limit: 100
+      };
+      
+      let hasMoreOrders = true;
+      let totalOrders = 0;
+      let totalSuccessCount = 0;
+      
+      while (hasMoreOrders) {
+        // Fetch orders for this page
+        const url = `/packages/merchantid/${this.merchantId}`;
+        const response = await this.retryRequest(() => 
+          this.axiosInstance.get(url, { params })
+        );
+        
+        if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
+          hasMoreOrders = false;
+          continue;
+        }
+        
+        const ordersData = response.data;
+        logger.debug(`Fetched ${ordersData.length} orders from Hepsiburada for offset ${params.offset}`);
+        
+        // Process the orders one by one with enhanced error handling
+        const processedOrders = [];
+        
+        for (const orderData of ordersData) {
+          try {
+            const result = await this.processDirectOrderPayload(orderData);
+            if (result.success) {
+              processedOrders.push(result.data);
+            }
+          } catch (orderError) {
+            logger.error(`Failed to process Hepsiburada order: ${orderError.message}`, {
+              error: orderError,
+              orderNumber: orderData.packageNumber || orderData.orderNumber || 'unknown'
+            });
+            // Continue processing other orders even if this one fails
+          }
+        }
+        
+        // Update counters
+        totalOrders += ordersData.length;
+        totalSuccessCount += processedOrders.length;
+        
+        // Move to the next page
+        params.offset += params.limit;
+        
+        // Check if we've reached the end
+        if (ordersData.length < params.limit) {
+          hasMoreOrders = false;
+        }
+      }
+      
+      return {
+        success: true,
+        message: `Successfully processed ${totalSuccessCount} out of ${totalOrders} orders from Hepsiburada`,
+        data: { 
+          count: totalSuccessCount,
+          skipped: totalOrders - totalSuccessCount,
+          total: totalOrders
+        }
+      };
+    } catch (error) {
+      logger.error(`Failed to sync orders from Hepsiburada: ${error.message}`, { 
+        error, 
+        connectionId: this.connectionId 
+      });
+      
+      return {
+        success: false,
+        message: `Failed to sync orders: ${error.message}`,
+        error: error.message
+      };
+    }
   }
 }
 

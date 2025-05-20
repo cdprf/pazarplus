@@ -58,12 +58,35 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.JSON,
       allowNull: true
     },
+    deliveryAddressJson: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: 'Stores the deliveryAddress from the new API format'
+    },
+    invoiceDetailsJson: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: 'Stores the invoice details including tax information'
+    },
+    customerJson: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: 'Stores customer information from the API'
+    },
     platformStatus: {
       type: DataTypes.STRING,
       allowNull: true
     },
     paymentStatus: {
       type: DataTypes.STRING,
+      allowNull: true
+    },
+    createdDate: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    orderDate: {
+      type: DataTypes.DATE,
       allowNull: true
     }
   }, {
