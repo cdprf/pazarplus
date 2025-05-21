@@ -277,9 +277,25 @@ class TrendyolService extends BasePlatformService {
 
       const normalizeResult = await this.normalizeOrders(orders);
       
+      // Create an enhanced notification message with detailed statistics
+      const stats = normalizeResult.stats || {};
+      const successCount = stats.success || 0;
+      const updatedCount = stats.updated || 0;
+      const skippedCount = stats.skipped || 0;
+      
+      // Format a more detailed success message
+      const enhancedMessage = `Successfully processed ${successCount} orders (${updatedCount} updated, ${skippedCount} skipped) from Trendyol`;
+      
+      // Log the enhanced message
+      logger.info(enhancedMessage, {
+        connectionId: this.connectionId,
+        orderStats: stats,
+        platformType: this.getPlatformType()
+      });
+      
       return {
         success: true,
-        message: `Successfully fetched ${normalizeResult.data.length} orders from Trendyol`,
+        message: enhancedMessage,
         data: normalizeResult.data,
         stats: normalizeResult.stats,
         pagination: response.data && !Array.isArray(response.data) ? {
@@ -309,10 +325,67 @@ class TrendyolService extends BasePlatformService {
     let successCount = 0;
     let skippedCount = 0;
     let updatedCount = 0;
+    const skippedOrders = []; // Track skipped orders
     
     try {
-      // Get array of order numbers for efficient querying
-      const orderNumbers = trendyolOrders.map(order => order.orderNumber);
+      // Enhanced validation - check if we have orders to process at all
+      if (!trendyolOrders || !Array.isArray(trendyolOrders) || trendyolOrders.length === 0) {
+        logger.warn(`No orders to process from Trendyol (empty or invalid array)`, {
+          connectionId: this.connectionId
+        });
+        
+        return {
+          success: true,
+          message: "No orders to process (empty array)",
+          data: [],
+          stats: {
+            total: 0,
+            success: 0,
+            updated: 0,
+            skipped: 0
+          }
+        };
+      }
+      
+      // Filter out orders with undefined or null orderNumber to prevent downstream errors
+      // This single validation replaces multiple checks throughout the code
+      const validOrders = trendyolOrders.filter(order => {
+        if (!order || !order.orderNumber) {
+          logger.warn(`Skipping Trendyol order with missing orderNumber`, {
+            order: order ? JSON.stringify(order).substring(0, 200) : 'null',
+            connectionId: this.connectionId
+          });
+          skippedCount++;
+          skippedOrders.push({
+            data: order ? JSON.stringify(order).substring(0, 200) : 'null', 
+            reason: 'Missing orderNumber'
+          });
+          return false;
+        }
+        return true;
+      });
+      
+      // Get array of valid order numbers for efficient querying
+      const orderNumbers = validOrders.map(order => order.orderNumber);
+      
+      if (orderNumbers.length === 0) {
+        logger.warn(`No valid order numbers found in batch of ${trendyolOrders.length} orders`, {
+          connectionId: this.connectionId
+        });
+        
+        return {
+          success: true,
+          message: `No valid orders to process (${trendyolOrders.length} invalid orders skipped)`,
+          data: [],
+          stats: {
+            total: trendyolOrders.length,
+            success: 0,
+            updated: 0,
+            skipped: trendyolOrders.length,
+            skippedDetails: skippedOrders
+          }
+        };
+      }
       
       // First query - fetch all orders matching our criteria
       const existingOrders = await Order.findAll({
@@ -327,14 +400,17 @@ class TrendyolService extends BasePlatformService {
         ]
       });
       
-      // Map for fast lookups
+      // Map for fast lookups - only create once for efficiency
       const existingOrdersMap = {};
       existingOrders.forEach(order => {
-        existingOrdersMap[order.externalOrderId] = order;
+        if (order.externalOrderId) {
+          existingOrdersMap[order.externalOrderId] = order;
+        }
       });
       
       // Process orders one by one
-      for (const order of trendyolOrders) {
+      for (const order of validOrders) {
+        // No need to check for orderNumber again since we filtered invalid orders already
         let phoneNumber;
         try {
           // Get phone number from shipment address
@@ -373,11 +449,39 @@ class TrendyolService extends BasePlatformService {
           
           // Order doesn't exist - create a new one
           try {
-            logger.debug(`Creating new order for ${order.orderNumber}`);
+            // Verify shipmentAddress exists and has required fields
+            if (!order.shipmentAddress || !order.shipmentAddress.fullName) {
+              logger.warn(`Order ${order.orderNumber} missing required shipping information, skipping`, {
+                connectionId: this.connectionId,
+                orderNumber: order.orderNumber
+              });
+              skippedCount++;
+              continue;
+            }
             
             const result = await sequelize.transaction(async (t) => {
-              // Create shipping detail first
+              // Now we can safely create the order - orderNumber was validated earlier
+              const normalizedOrder = await Order.create({
+                externalOrderId: order.orderNumber.toString(), // Force to string
+                connectionId: this.connectionId,
+                userId: this.connection.userId,
+                platformType: this.getPlatformType(),
+                customerName: `${order.shipmentAddress.fullName}`,
+                customerEmail: order.customerEmail || '',
+                customerPhone: phoneNumber || '',
+                orderDate: new Date(order.orderDate),
+                status: this.mapOrderStatus(order.status),
+                totalAmount: order.totalPrice,
+                currency: 'TRY',
+                notes: order.note || '',
+                paymentStatus: 'pending',
+                rawData: JSON.stringify(order),
+                lastSyncedAt: new Date()
+              }, { transaction: t });
+
+              // Create shipping detail with orderId to prevent validation errors
               const shippingDetail = await ShippingDetail.create({
+                orderId: normalizedOrder.id, // Set the orderId explicitly
                 recipientName: order.shipmentAddress.fullName || '',
                 address1: order.shipmentAddress.address1 || '',
                 address2: order.shipmentAddress.address2 || '',
@@ -389,24 +493,13 @@ class TrendyolService extends BasePlatformService {
                 email: order.customerEmail || ''
               }, { transaction: t });
 
-              // Create the order record
-              const normalizedOrder = await Order.create({
-                externalOrderId: order.orderNumber,
-                connectionId: this.connectionId,
-                userId: this.connection.userId,
-                customerName: `${order.shipmentAddress.fullName}`,
-                customerEmail: order.customerEmail || '',
-                customerPhone: phoneNumber || '',
-                orderDate: new Date(order.orderDate),
-                status: this.mapOrderStatus(order.status),
-                totalAmount: order.totalPrice,
-                currency: 'TRY',
-                shippingDetailId: shippingDetail.id,
-                notes: order.note || '',
-                paymentStatus: 'pending',
-                rawData: JSON.stringify(order),
-                lastSyncedAt: new Date()
+              // Update the order with shipping detail ID
+              await normalizedOrder.update({
+                shippingDetailId: shippingDetail.id
               }, { transaction: t });
+
+              // Create platform-specific order data - TrendyolOrder
+              await this.createTrendyolOrderRecord(normalizedOrder.id, order, t);
 
               // Create order items
               if (order.lines && Array.isArray(order.lines)) {
@@ -486,6 +579,33 @@ class TrendyolService extends BasePlatformService {
     // initialize local phoneNumber variable
     let phoneNumber = incomingPhoneNumber;
     try {
+      // Validate order object and critical fields
+      if (!order || typeof order !== 'object') {
+        logger.error('Invalid order object passed to manualCreateOrder', { 
+          connectionId: this.connectionId,
+          order
+        });
+        return { 
+          success: false, 
+          message: 'Invalid order object provided', 
+          error: new Error('Order must be a valid object')
+        };
+      }
+      
+      // Ensure orderNumber/externalOrderId exists and is valid
+      if (!order.orderNumber) {
+        const errorMsg = 'Order missing required orderNumber field';
+        logger.error(errorMsg, {
+          connectionId: this.connectionId,
+          orderData: JSON.stringify(order).substring(0, 300)
+        });
+        return { 
+          success: false, 
+          message: errorMsg, 
+          error: new Error(errorMsg)
+        };
+      }
+
       // Make sure phoneNumber is defined
       if (phoneNumber === undefined || phoneNumber === null) {
         // Extract phone number again to be safe

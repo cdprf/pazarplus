@@ -1,5 +1,5 @@
-import React from 'react';
-import { Spinner } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Spinner, Alert } from 'react-bootstrap';
 import PropTypes from 'prop-types';
 
 const LoadingState = ({ 
@@ -9,15 +9,41 @@ const LoadingState = ({
   loadingMessage = 'Loading...', 
   errorFallback,
   spinnerVariant = 'primary',
-  center = true 
+  center = true,
+  delay = 300 // Delay before showing spinner to prevent flickering
 }) => {
+  const [showSpinner, setShowSpinner] = useState(false);
+  
+  // Show spinner after delay to prevent flickering for fast operations
+  useEffect(() => {
+    let timer;
+    if (loading) {
+      timer = setTimeout(() => setShowSpinner(true), delay);
+    } else {
+      setShowSpinner(false);
+    }
+    
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [loading, delay]);
+  
   if (loading) {
     return (
-      <div className={`p-4 ${center ? 'text-center' : ''}`}>
-        <Spinner animation="border" role="status" variant={spinnerVariant}>
-          <span className="visually-hidden">{loadingMessage}</span>
-        </Spinner>
-        {loadingMessage && <p className="mt-2">{loadingMessage}</p>}
+      <div 
+        className={`loading-container p-4 ${center ? 'text-center' : ''}`}
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        {showSpinner && (
+          <>
+            <Spinner animation="border" variant={spinnerVariant}>
+              <span className="visually-hidden">{loadingMessage}</span>
+            </Spinner>
+            {loadingMessage && <p className="mt-2 loading-text">{loadingMessage}</p>}
+          </>
+        )}
       </div>
     );
   }
@@ -29,11 +55,14 @@ const LoadingState = ({
       : error;
       
     return errorFallback || (
-      <div className={`p-4 ${center ? 'text-center' : ''}`}>
-        <div className="text-danger">
-          <p>{errorMessage}</p>
-        </div>
-      </div>
+      <Alert 
+        variant="danger" 
+        className={`${center ? 'text-center' : ''}`}
+        role="alert"
+        aria-live="assertive"
+      >
+        <p className="mb-0">{errorMessage}</p>
+      </Alert>
     );
   }
 
@@ -42,12 +71,13 @@ const LoadingState = ({
 
 LoadingState.propTypes = {
   loading: PropTypes.bool.isRequired,
-  error: PropTypes.string,
+  error: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
   children: PropTypes.node.isRequired,
   loadingMessage: PropTypes.string,
   errorFallback: PropTypes.node,
   spinnerVariant: PropTypes.string,
-  center: PropTypes.bool
+  center: PropTypes.bool,
+  delay: PropTypes.number
 };
 
 export default LoadingState;

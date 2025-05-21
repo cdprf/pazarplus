@@ -21,7 +21,10 @@ const logger = require('../../../utils/logger');
  * @returns {TrendyolService|TrendyolServiceGeneric} Trendyol service instance
  */
 function createTrendyolService(connectionData, forceGeneric = false) {
+  // Add debug logging to trace which implementation is being used
   const useGeneric = forceGeneric || config.platform?.useGenericModel || process.env.USE_GENERIC_PLATFORM_MODEL === 'true';
+  
+  logger.info(`Creating Trendyol service for connection ${connectionData.id}: ${useGeneric ? 'GENERIC' : 'LEGACY'} implementation`);
   
   if (useGeneric) {
     logger.debug(`Creating generic Trendyol service for connection ${connectionData.id}`);

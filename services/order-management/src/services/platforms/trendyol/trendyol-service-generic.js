@@ -434,6 +434,33 @@ class TrendyolServiceGeneric {
     // Calculate total amount
     const totalAmount = trendyolOrder.totalPrice || 
       (trendyolOrder.lines?.reduce((sum, line) => sum + line.amount, 0) || 0);
+
+    // Ensure orderNumber exists and is converted to string
+    // This is critical to prevent database errors with undefined externalOrderId
+    if (!trendyolOrder.orderNumber) {
+      logger.error('Missing orderNumber in Trendyol order data', {
+        connectionId: this.connectionId,
+        platformType: this.platformType,
+        orderData: JSON.stringify(trendyolOrder).substring(0, 200) // Log just part of data to avoid huge logs
+      });
+      // Provide a fallback ID to prevent database errors, will be logged and can be handled later
+      const fallbackOrderId = `trendyol-unknown-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+      
+      return {
+        externalOrderId: fallbackOrderId,
+        customerName: customerName,
+        customerEmail: trendyolOrder.customerEmail || null,
+        customerPhone: trendyolOrder.shipmentAddress?.phone || null,
+        orderDate: new Date(),
+        totalAmount: totalAmount,
+        currency: 'TRY',
+        status: 'error', // Mark as error so it can be identified and fixed
+        paymentMethod: trendyolOrder.paymentType || 'other',
+        paymentStatus: 'unknown',
+        shippingMethod: trendyolOrder.deliveryType || 'standard',
+        notes: `Error: Original order was missing orderNumber. This is a placeholder. ${trendyolOrder.note || ''}`
+      };
+    }
     
     return {
       externalOrderId: trendyolOrder.orderNumber.toString(),

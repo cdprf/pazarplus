@@ -29,7 +29,8 @@ import ImportHepsiburada from './pages/import/ImportHepsiburada';
 
 // Context providers
 import { AuthProvider } from './context/AuthContext';
-import { AlertProvider } from './context/AlertContext';
+import { NotificationProvider } from './context/NotificationContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 // Error Boundary
 import ErrorBoundary from './components/ErrorBoundary';
@@ -73,38 +74,40 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <Router>
-          <AlertProvider>
-            <AuthProvider>
-              <div className="app-container">
-                <Navbar toggleSidebar={toggleSidebar} />
-                <div className="content-container">
-                  <Sidebar isOpen={sidebarOpen} />
-                  <main className={`main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
-                    <Container fluid>
-                      <Routes>
-                        <Route path="/dev-admin" element={isDev && devMode ? <DevAdmin /> : <Navigate to="/login" />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<Register />} />
-                        <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-                        <Route path="/orders" element={<PrivateRoute><OrderList /></PrivateRoute>} />
-                        <Route path="/orders/:id" element={<PrivateRoute><OrderDetail /></PrivateRoute>} />
-                        <Route path="/orders/:id/print" element={<PrivateRoute><OrderPrint /></PrivateRoute>} />
-                        <Route path="/platforms" element={<PrivateRoute><PlatformConnections /></PrivateRoute>} />
-                        <Route path="/import" element={<PrivateRoute><ImportCSV /></PrivateRoute>} />
-                        <Route path="/import/hepsiburada" element={<PrivateRoute><ImportHepsiburada /></PrivateRoute>} />
-                        <Route path="/export" element={<PrivateRoute><ExportData /></PrivateRoute>} />
-                        <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
-                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                      </Routes>
-                    </Container>
-                  </main>
+        <ThemeProvider>
+          <NotificationProvider position="top-right">
+            <Router>
+              <AuthProvider>
+                <div className="app-container">
+                  <Navbar toggleSidebar={toggleSidebar} />
+                  <div className="content-container">
+                    <Sidebar isOpen={sidebarOpen} />
+                    <main className={`main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+                      <Container fluid>
+                        <Routes>
+                          <Route path="/dev-admin" element={isDev && devMode ? <DevAdmin /> : <Navigate to="/login" />} />
+                          <Route path="/login" element={<Login />} />
+                          <Route path="/register" element={<Register />} />
+                          <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+                          <Route path="/orders" element={<PrivateRoute><OrderList /></PrivateRoute>} />
+                          <Route path="/orders/:id" element={<PrivateRoute><OrderDetail /></PrivateRoute>} />
+                          <Route path="/orders/:id/print" element={<PrivateRoute><OrderPrint /></PrivateRoute>} />
+                          <Route path="/platforms" element={<PrivateRoute><PlatformConnections /></PrivateRoute>} />
+                          <Route path="/import" element={<PrivateRoute><ImportCSV /></PrivateRoute>} />
+                          <Route path="/import/hepsiburada" element={<PrivateRoute><ImportHepsiburada /></PrivateRoute>} />
+                          <Route path="/export" element={<PrivateRoute><ExportData /></PrivateRoute>} />
+                          <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+                          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                        </Routes>
+                      </Container>
+                    </main>
+                  </div>
+                  <Footer />
                 </div>
-                <Footer />
-              </div>
-            </AuthProvider>
-          </AlertProvider>
-        </Router>
+              </AuthProvider>
+            </Router>
+          </NotificationProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
