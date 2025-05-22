@@ -7,18 +7,19 @@ import {
   Card, 
   Row, 
   Col, 
+  Table, 
   Button, 
   Badge, 
   Form, 
   InputGroup, 
   Dropdown, 
   DropdownButton,
-  Pagination
+  Pagination,
+  Spinner
 } from 'react-bootstrap';
 import OrderDashboard from '../components/dashboard/OrderDashboard';
 import ErrorBoundary from '../components/ErrorBoundary';
 import LoadingState from '../components/shared/LoadingState';
-import AccessibleTable from '../components/shared/AccessibleTable';
 import { useOrders, useOrderAction } from '../hooks/useOrders';
 import { usePlatformConnections } from '../hooks/usePlatforms';
 import { useContext } from 'react';
@@ -136,6 +137,14 @@ const OrderList = () => {
     }));
   };
   
+  // Render sort indicator
+  const renderSortIcon = (column) => {
+    if (filters.sort !== column) return <FaSort className="text-muted ms-1" />;
+    return filters.direction === 'asc' 
+      ? <FaSort className="text-primary ms-1" /> 
+      : <FaSort className="text-primary ms-1 fa-flip-vertical" />;
+  };
+  
   // Clear all filters
   const clearFilters = () => {
     setFilters({
@@ -162,14 +171,6 @@ const OrderList = () => {
       hour: '2-digit',
       minute: '2-digit'
     }).format(date);
-  };
-  
-  // Format currency for display
-  const formatCurrency = (amount, currency = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency
-    }).format(amount || 0);
   };
   
   // Generate pagination items
@@ -266,160 +267,11 @@ const OrderList = () => {
       </div>
     );
   };
-
-  // Define table columns
-  const columns = [
-    {
-      key: 'orderNumber',
-      header: (
-        <div 
-          className="cursor-pointer d-flex align-items-center"
-          onClick={() => handleSort('orderNumber')}
-          role="button"
-          tabIndex={0}
-          aria-label={`Sort by Order ID ${filters.sort === 'orderNumber' ? (filters.direction === 'asc' ? 'descending' : 'ascending') : ''}`}
-        >
-          Order ID
-          {filters.sort === 'orderNumber' ? (
-            <span className="ms-1" aria-hidden="true">
-              {filters.direction === 'asc' ? '↑' : '↓'}
-            </span>
-          ) : null}
-        </div>
-      ),
-      render: (order) => (
-        <Link to={`/orders/${order.id}`} className="text-primary fw-bold">
-          #{order.orderNumber || order.id.substr(0, 8)}
-        </Link>
-      )
-    },
-    {
-      key: 'customerName',
-      header: (
-        <div 
-          className="cursor-pointer d-flex align-items-center"
-          onClick={() => handleSort('customerName')}
-          role="button"
-          tabIndex={0}
-          aria-label={`Sort by Customer ${filters.sort === 'customerName' ? (filters.direction === 'asc' ? 'descending' : 'ascending') : ''}`}
-        >
-          Customer
-          {filters.sort === 'customerName' ? (
-            <span className="ms-1" aria-hidden="true">
-              {filters.direction === 'asc' ? '↑' : '↓'}
-            </span>
-          ) : null}
-        </div>
-      ),
-      render: (order) => order.customerName || 'N/A'
-    },
-    {
-      key: 'orderDate',
-      header: (
-        <div 
-          className="cursor-pointer d-flex align-items-center"
-          onClick={() => handleSort('orderDate')}
-          role="button"
-          tabIndex={0}
-          aria-label={`Sort by Order Date ${filters.sort === 'orderDate' ? (filters.direction === 'asc' ? 'descending' : 'ascending') : ''}`}
-        >
-          Order Date
-          {filters.sort === 'orderDate' ? (
-            <span className="ms-1" aria-hidden="true">
-              {filters.direction === 'asc' ? '↑' : '↓'}
-            </span>
-          ) : null}
-        </div>
-      ),
-      render: (order) => formatDate(order.orderDate || order.createdAt)
-    },
-    {
-      key: 'totalAmount',
-      header: (
-        <div 
-          className="cursor-pointer d-flex align-items-center"
-          onClick={() => handleSort('totalAmount')}
-          role="button"
-          tabIndex={0}
-          aria-label={`Sort by Total ${filters.sort === 'totalAmount' ? (filters.direction === 'asc' ? 'descending' : 'ascending') : ''}`}
-        >
-          Total
-          {filters.sort === 'totalAmount' ? (
-            <span className="ms-1" aria-hidden="true">
-              {filters.direction === 'asc' ? '↑' : '↓'}
-            </span>
-          ) : null}
-        </div>
-      ),
-      render: (order) => formatCurrency(order.totalAmount, order.currency)
-    },
-    {
-      key: 'platformType',
-      header: 'Platform',
-      render: (order) => (
-        <Badge bg="light" text="dark">
-          {order.platformType || 'Manual'}
-        </Badge>
-      )
-    },
-    {
-      key: 'status',
-      header: (
-        <div 
-          className="cursor-pointer d-flex align-items-center"
-          onClick={() => handleSort('status')}
-          role="button"
-          tabIndex={0}
-          aria-label={`Sort by Status ${filters.sort === 'status' ? (filters.direction === 'asc' ? 'descending' : 'ascending') : ''}`}
-        >
-          Status
-          {filters.sort === 'status' ? (
-            <span className="ms-1" aria-hidden="true">
-              {filters.direction === 'asc' ? '↑' : '↓'}
-            </span>
-          ) : null}
-        </div>
-      ),
-      render: (order) => getStatusBadge(order.status)
-    }
-  ];
-
-  // Define row actions
-  const actions = [
-    {
-      text: '',
-      icon: <FaEye />,
-      onClick: (order) => navigate(`/orders/${order.id}`),
-      variant: 'outline-primary',
-      label: 'View order'
-    },
-    {
-      text: '',
-      icon: <FaPrint />,
-      onClick: (order) => navigate(`/orders/${order.id}/print`),
-      variant: 'outline-secondary',
-      label: 'Print order'
-    },
-    {
-      text: '',
-      icon: <FaEllipsisV />,
-      onClick: (order) => {
-        // Handle status change via dropdown
-        // This is a placeholder - in reality you'd need to add a more complex dropdown UI here
-        const newStatus = window.prompt('Change status to: (processing, shipped, delivered, cancelled)');
-        if (newStatus && ['processing', 'shipped', 'delivered', 'cancelled'].includes(newStatus)) {
-          handleStatusChange(order.id, newStatus);
-        }
-      },
-      variant: 'outline-secondary',
-      label: 'More actions'
-    }
-  ];
   
   return (
     <div className="order-list">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="h2">Orders</h1>
+        <h2>Orders</h2>
         
         <div>
           <Button 
@@ -448,7 +300,7 @@ const OrderList = () => {
       <Card className="mb-4 mt-4">
         <Card.Header>
           <div className="d-flex justify-content-between align-items-center flex-wrap">
-            <h2 className="h5 mb-0">Order List</h2>
+            <h5 className="mb-0">Order List</h5>
             
             <div className="d-flex align-items-center">
               <Button 
@@ -457,7 +309,6 @@ const OrderList = () => {
                 className="me-2"
                 onClick={refetch}
                 disabled={ordersLoading}
-                aria-label="Refresh orders list"
               >
                 <FaSync className={ordersLoading ? 'fa-spin' : ''} /> Refresh
               </Button>
@@ -466,7 +317,6 @@ const OrderList = () => {
                 variant="outline-primary"
                 size="sm"
                 onClick={() => navigate('/export-data?type=orders')}
-                aria-label="Export orders data"
               >
                 <FaDownload /> Export
               </Button>
@@ -480,19 +330,17 @@ const OrderList = () => {
             <Col lg={4} md={6}>
               <InputGroup>
                 <InputGroup.Text>
-                  <FaSearch aria-hidden="true" />
+                  <FaSearch />
                 </InputGroup.Text>
                 <Form.Control
                   placeholder="Search orders..."
                   value={filters.search}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
-                  aria-label="Search orders"
                 />
                 {filters.search && (
                   <Button 
                     variant="outline-secondary"
                     onClick={() => handleFilterChange('search', '')}
-                    aria-label="Clear search"
                   >
                     &times;
                   </Button>
@@ -504,7 +352,6 @@ const OrderList = () => {
               <Form.Select
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
-                aria-label="Filter by status"
               >
                 <option value="">All Statuses</option>
                 <option value="new">New</option>
@@ -520,7 +367,6 @@ const OrderList = () => {
               <Form.Select
                 value={filters.platform}
                 onChange={(e) => handleFilterChange('platform', e.target.value)}
-                aria-label="Filter by platform"
               >
                 <option value="">All Platforms</option>
                 {platformConnectionsData?.data?.map(connection => (
@@ -538,7 +384,6 @@ const OrderList = () => {
                   type="date"
                   value={filters.dateFrom}
                   onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-                  aria-label="Filter by date from"
                 />
               </InputGroup>
             </Col>
@@ -550,7 +395,6 @@ const OrderList = () => {
                   type="date"
                   value={filters.dateTo}
                   onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-                  aria-label="Filter by date to"
                 />
               </InputGroup>
             </Col>
@@ -569,7 +413,6 @@ const OrderList = () => {
                     variant="link"
                     className="text-white p-0 ms-1"
                     onClick={() => handleFilterChange('status', '')}
-                    aria-label={`Remove status filter: ${filters.status}`}
                   >
                     &times;
                   </Button>
@@ -588,7 +431,6 @@ const OrderList = () => {
                     variant="link"
                     className="text-white p-0 ms-1"
                     onClick={() => handleFilterChange('platform', '')}
-                    aria-label="Remove platform filter"
                   >
                     &times;
                   </Button>
@@ -606,7 +448,6 @@ const OrderList = () => {
                       handleFilterChange('dateFrom', '');
                       handleFilterChange('dateTo', '');
                     }}
-                    aria-label="Remove date filter"
                   >
                     &times;
                   </Button>
@@ -618,43 +459,155 @@ const OrderList = () => {
                 variant="link"
                 className="ms-auto"
                 onClick={clearFilters}
-                aria-label="Clear all filters"
               >
                 Clear all filters
               </Button>
             </div>
           )}
           
-          {/* Orders Table - Using AccessibleTable component */}
+          {/* Orders Table */}
           <LoadingState 
             loading={ordersLoading} 
             error={ordersError}
             loadingMessage="Loading orders..."
           >
-            <AccessibleTable
-              columns={columns}
-              data={ordersData?.orders || []}
-              isLoading={ordersLoading}
-              actions={actions}
-              onRowClick={(order) => navigate(`/orders/${order.id}`)}
-              emptyMessage={
-                <div className="text-center py-5">
-                  <p className="text-muted">No orders found matching your filters.</p>
-                  {(filters.status || filters.platform || filters.search || filters.dateFrom || filters.dateTo) && (
-                    <Button
-                      variant="outline-primary"
-                      size="sm"
-                      onClick={clearFilters}
-                    >
-                      Clear Filters
-                    </Button>
-                  )}
-                </div>
-              }
-              caption="Orders List"
-              tableSummary={`A list of ${ordersData?.orders?.length || 0} orders with details including order ID, customer, date, amount, platform, and status.`}
-              variant="striped"
-            />
+            {ordersData?.orders?.length > 0 ? (
+              <div className="table-responsive">
+                <Table hover className="align-middle">
+                  <thead>
+                    <tr>
+                      <th 
+                        className="cursor-pointer"
+                        onClick={() => handleSort('orderNumber')}
+                      >
+                        Order ID {renderSortIcon('orderNumber')}
+                      </th>
+                      <th 
+                        className="cursor-pointer"
+                        onClick={() => handleSort('customerName')}
+                      >
+                        Customer {renderSortIcon('customerName')}
+                      </th>
+                      <th
+                        className="cursor-pointer"
+                        onClick={() => handleSort('orderDate')}
+                      >
+                        Order Date {renderSortIcon('orderDate')}
+                      </th>
+                      <th
+                        className="cursor-pointer"
+                        onClick={() => handleSort('totalAmount')}
+                      >
+                        Total {renderSortIcon('totalAmount')}
+                      </th>
+                      <th>Platform</th>
+                      <th 
+                        className="cursor-pointer"
+                        onClick={() => handleSort('status')}
+                      >
+                        Status {renderSortIcon('status')}
+                      </th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ordersData.orders.map(order => (
+                      <tr key={order.id}>
+                        <td>
+                          <Link to={`/orders/${order.id}`} className="text-primary fw-bold">
+                            #{order.orderNumber || order.id.substr(0, 8)}
+                          </Link>
+                        </td>
+                        <td>{order.customerName || 'N/A'}</td>
+                        <td>{formatDate(order.orderDate || order.createdAt)}</td>
+                        <td>
+                          {new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: order.currency || 'USD'
+                          }).format(order.totalAmount || 0)}
+                        </td>
+                        <td>
+                          <Badge bg="light" text="dark">
+                            {order.platformType || 'Manual'}
+                          </Badge>
+                        </td>
+                        <td>{getStatusBadge(order.status)}</td>
+                        <td>
+                          <div className="d-flex">
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              className="me-1"
+                              onClick={() => navigate(`/orders/${order.id}`)}
+                            >
+                              <FaEye />
+                            </Button>
+                            
+                            <Button
+                              variant="outline-secondary"
+                              size="sm"
+                              className="me-1"
+                              onClick={() => navigate(`/orders/${order.id}/print`)}
+                            >
+                              <FaPrint />
+                            </Button>
+                            
+                            <DropdownButton
+                              as={Dropdown}
+                              title={<FaEllipsisV />}
+                              variant="outline-secondary"
+                              size="sm"
+                              align="end"
+                            >
+                              <Dropdown.Header>Change Status</Dropdown.Header>
+                              <Dropdown.Item 
+                                onClick={() => handleStatusChange(order.id, 'processing')}
+                                disabled={order.status === 'processing' || actionLoading}
+                              >
+                                Mark as Processing
+                              </Dropdown.Item>
+                              <Dropdown.Item 
+                                onClick={() => handleStatusChange(order.id, 'shipped')}
+                                disabled={order.status === 'shipped' || actionLoading}
+                              >
+                                Mark as Shipped
+                              </Dropdown.Item>
+                              <Dropdown.Item 
+                                onClick={() => handleStatusChange(order.id, 'delivered')}
+                                disabled={order.status === 'delivered' || actionLoading}
+                              >
+                                Mark as Delivered
+                              </Dropdown.Item>
+                              <Dropdown.Divider />
+                              <Dropdown.Item 
+                                onClick={() => handleStatusChange(order.id, 'cancelled')}
+                                disabled={['cancelled', 'delivered'].includes(order.status) || actionLoading}
+                                className="text-danger"
+                              >
+                                Cancel Order
+                              </Dropdown.Item>
+                            </DropdownButton>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-5">
+                <p className="text-muted">No orders found matching your filters.</p>
+                {(filters.status || filters.platform || filters.search || filters.dateFrom || filters.dateTo) && (
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={clearFilters}
+                  >
+                    Clear Filters
+                  </Button>
+                )}
+              </div>
+            )}
             
             {renderPagination()}
           </LoadingState>
