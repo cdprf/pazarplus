@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useWebSocketConnection } from './useWebSocketConnection';
+import useWebSocketConnection from './useWebSocketConnection';
 
 /**
  * Custom hook that listens for specified WebSocket events and invalidates
@@ -14,35 +14,41 @@ import { useWebSocketConnection } from './useWebSocketConnection';
  * @param {Function} options.filter - Optional function to filter events (receives event object)
  * @returns {Object} WebSocket connection state
  */
-export const useWebSocketQuery = (queryKey, eventTypes = [], options = {}) => {
-  // These are defined but currently unused - will be implemented in future features
-  // const { exact = false, filter } = options;
+const useWebSocketQuery = (queryKey, events, filters = {}) => {
   const queryClient = useQueryClient();
-  const { isConnected } = useWebSocketConnection();
-  
+  const { addEventListener, setEventFilter, removeEventFilter } = useWebSocketConnection();
+
   useEffect(() => {
-    if (!isConnected || !eventTypes.length) return;
-    
-    // Import WebSocketService inside the effect to avoid circular dependencies
-    const wsService = require('../services/WebSocketService').default;
-    
-    // Create a handler that invalidates the specified query key
-    const handleEvent = (data) => {
-      console.log(`WebSocket event received, invalidating query: ${queryKey.join('.')}`);
-      queryClient.invalidateQueries({ queryKey });
-    };
-    
-    // Register handlers for each event type
-    const cleanupFunctions = eventTypes.map(eventType => 
-      wsService.addEventListener(eventType, handleEvent)
-    );
-    
-    // Cleanup function to remove all event listeners
+    // Set up event listeners for each event type
+    const cleanupFunctions = events.map(eventType => {
+      // Set any filters for this event type
+      if (filters[eventType]) {
+        setEventFilter(eventType, filters[eventType]);
+      }
+
+      // Add event listener
+      return addEventListener(eventType, () => {
+        // If queryKey is an array of keys, invalidate each one
+        if (Array.isArray(queryKey)) {
+          queryKey.forEach(key => {
+            queryClient.invalidateQueries({ queryKey: key });
+          });
+        } else {
+          queryClient.invalidateQueries({ queryKey });
+        }
+      });
+    });
+
+    // Cleanup function to remove all event listeners and filters
     return () => {
       cleanupFunctions.forEach(cleanup => cleanup());
+      events.forEach(eventType => {
+        if (filters[eventType]) {
+          removeEventFilter(eventType);
+        }
+      });
     };
-  }, [queryClient, queryKey, eventTypes, isConnected]);
-  
-  // This hook doesn't return anything, it just sets up the listeners
-  return null;
+  }, [queryKey, events, filters, addEventListener, setEventFilter, removeEventFilter, queryClient]);
 };
+
+export default useWebSocketQuery;

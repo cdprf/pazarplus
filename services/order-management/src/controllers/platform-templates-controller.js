@@ -1,16 +1,12 @@
-const express = require('express');
-const router = express.Router();
 const { PlatformSettingsTemplate } = require('../models');
-const { authenticateToken } = require('../middleware/auth-middleware');
+const { protect, authorize } = require('../middleware/auth');
+const { body, validationResult } = require('express-validator');
 const logger = require('../utils/logger');
-
-// Apply authentication middleware
-router.use(authenticateToken);
 
 /**
  * Get all platform settings templates
  */
-router.get('/', async (req, res) => {
+async function getTemplates(req, res) {
   try {
     const templates = await PlatformSettingsTemplate.findAll({
       where: { isActive: true }
@@ -28,12 +24,12 @@ router.get('/', async (req, res) => {
       error: error.message
     });
   }
-});
+}
 
 /**
  * Get a specific platform settings template
  */
-router.get('/:id', async (req, res) => {
+async function getTemplate(req, res) {
   try {
     const template = await PlatformSettingsTemplate.findByPk(req.params.id);
     
@@ -56,13 +52,23 @@ router.get('/:id', async (req, res) => {
       error: error.message
     });
   }
-});
+}
 
 /**
  * Create a new platform settings template
  */
-router.post('/', async (req, res) => {
+async function createTemplate(req, res) {
   try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
     const {
       platformType,
       name,
@@ -77,14 +83,6 @@ router.post('/', async (req, res) => {
       requiredScopes,
       sandboxConfiguration
     } = req.body;
-
-    // Validate required fields
-    if (!platformType || !name || !apiEndpoints || !authType || !credentialSchema) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields'
-      });
-    }
 
     const template = await PlatformSettingsTemplate.create({
       platformType,
@@ -114,12 +112,12 @@ router.post('/', async (req, res) => {
       error: error.message
     });
   }
-});
+}
 
 /**
  * Update a platform settings template
  */
-router.put('/:id', async (req, res) => {
+async function updateTemplate(req, res) {
   try {
     const template = await PlatformSettingsTemplate.findByPk(req.params.id);
     
@@ -148,12 +146,12 @@ router.put('/:id', async (req, res) => {
       error: error.message
     });
   }
-});
+}
 
 /**
  * Delete a platform settings template (soft delete)
  */
-router.delete('/:id', async (req, res) => {
+async function deleteTemplate(req, res) {
   try {
     const template = await PlatformSettingsTemplate.findByPk(req.params.id);
     
@@ -178,6 +176,13 @@ router.delete('/:id', async (req, res) => {
       error: error.message
     });
   }
-});
+}
 
-module.exports = router;
+// Export functions for route usage
+module.exports = {
+  getTemplates,
+  getTemplate,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate
+};

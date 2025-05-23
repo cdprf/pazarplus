@@ -8,6 +8,7 @@ const { Op } = require('sequelize');
 // Controller functions
 async function getAllOrders(req, res) {
   try {
+    const { id: userId } = req.user;
     const { 
       page = 1, 
       limit = 20, 
@@ -19,7 +20,7 @@ async function getAllOrders(req, res) {
     } = req.query;
     
     const offset = (page - 1) * limit;
-    const where = {};
+    const where = { userId };
     
     // Apply filters if provided
     if (status) where.status = status;

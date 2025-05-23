@@ -18,18 +18,21 @@ module.exports = (sequelize, DataTypes) => {
     platformType: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: 'Type of platform (e.g., trendyol, hepsiburada)'
+      comment: 'Type of platform (e.g., trendyol, hepsiburada)',
+      unique: 'platformTypeEntityTypeVersionUnique' // Composite constraint
     },
     entityType: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: 'Type of entity (product, order, etc.)'
+      comment: 'Type of entity (product, order, etc.)',
+      unique: 'platformTypeEntityTypeVersionUnique' // Composite constraint
     },
     version: {
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: '1.0.0',
-      comment: 'Schema version'
+      comment: 'Schema version',
+      unique: 'platformTypeEntityTypeVersionUnique' // Composite constraint
     },
     schema: {
       type: DataTypes.JSON,
@@ -59,10 +62,6 @@ module.exports = (sequelize, DataTypes) => {
     tableName: 'platform_schemas',
     timestamps: true,
     indexes: [
-      {
-        unique: true,
-        fields: ['platformType', 'entityType', 'version']
-      },
       {
         fields: ['isActive']
       }

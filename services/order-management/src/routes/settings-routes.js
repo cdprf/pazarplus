@@ -3,7 +3,10 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const settingsController = require('../controllers/settings-controller');
-const authMiddleware = require('../middleware/auth-middleware');
+// Remove old auth middleware
+// const { authenticateToken } = require('../middleware/auth-middleware');
+// Import new auth middleware
+const { protect, authorize } = require('../middleware/auth');
 
 // Setup multer storage for company logo uploads
 const storage = multer.diskStorage({
@@ -31,26 +34,35 @@ const upload = multer({
   }
 });
 
+// Replace old middleware usage
+// router.use(authenticateToken);
+router.use(protect);
+
 // Company info routes
-router.get('/company', authMiddleware.authenticateToken, settingsController.getCompanyInfo);
-router.post('/company', authMiddleware.authenticateToken, settingsController.saveCompanyInfo);
+router.get('/company', protect, settingsController.getCompanyInfo);
+router.post('/company', protect, settingsController.saveCompanyInfo);
 router.post(
   '/company/logo', 
-  authMiddleware.authenticateToken, 
+  protect, 
   upload.single('logo'), 
   settingsController.uploadCompanyLogo
 );
 
 // General settings routes
-router.get('/general', authMiddleware.authenticateToken, settingsController.getGeneralSettings);
-router.post('/general', authMiddleware.authenticateToken, settingsController.saveGeneralSettings);
+router.get('/general', protect, settingsController.getGeneralSettings);
+router.post('/general', protect, settingsController.saveGeneralSettings);
 
 // Notification settings routes
-router.get('/notifications', authMiddleware.authenticateToken, settingsController.getNotificationSettings);
-router.post('/notifications', authMiddleware.authenticateToken, settingsController.saveNotificationSettings);
+router.get('/notifications', protect, settingsController.getNotificationSettings);
+router.post('/notifications', protect, settingsController.saveNotificationSettings);
 
 // Shipping settings routes
-router.get('/shipping', authMiddleware.authenticateToken, settingsController.getShippingSettings);
-router.post('/shipping', authMiddleware.authenticateToken, settingsController.saveShippingSettings);
+router.get('/shipping', protect, settingsController.getShippingSettings);
+router.post('/shipping', protect, settingsController.saveShippingSettings);
+
+// Email settings routes
+router.get('/email', protect, settingsController.getEmailSettings);
+router.post('/email', protect, settingsController.saveEmailSettings);
+router.post('/email/test', protect, settingsController.testEmailSettings);
 
 module.exports = router;

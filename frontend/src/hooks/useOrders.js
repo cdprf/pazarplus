@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orderService } from '../services/api/orderService';
-import { useWebSocketQuery } from './useWebSocketQuery';
+import useWebSocketQuery from './useWebSocketQuery';
 
 /**
  * Hook to fetch all orders with filtering, sorting and pagination
@@ -255,8 +255,15 @@ export const useOrderStats = (params = {}) => {
   
   const queryKey = ['orderStats', queryParams];
   
-  // Statistics should be updated when order changes happen
-  useWebSocketQuery(['orderStats'], ['ORDER_CREATED', 'ORDER_UPDATED', 'ORDER_DELETED']);
+  // Set up WebSocket event listener with time-based filters
+  useWebSocketQuery(['orderStats'], ['ORDER_CREATED', 'ORDER_UPDATED', 'ORDER_CANCELLED'], {
+    'ORDER_CREATED': {
+      'timestamp': {
+        'gte': new Date(Date.now() - (period === 'week' ? 7 : 30) * 24 * 60 * 60 * 1000).toISOString()
+      }
+    },
+    'ORDER_UPDATED': { 'updateType': 'status' }
+  });
   
   return useQuery({
     queryKey,

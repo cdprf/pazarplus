@@ -307,23 +307,45 @@ class N11Service extends BasePlatformService {
    * @returns {string} Internal order status
    */
   mapOrderStatus(status) {
-    switch (status) {
-      case 'NEW':
-        return 'new';
-      case 'PICKING':
-      case 'ACCEPTED':
-        return 'processing';
-      case 'SHIPPED':
-        return 'shipped';
-      case 'DELIVERED':
-        return 'delivered';
-      case 'CANCELLED':
-        return 'cancelled';
-      case 'REJECTED':
-        return 'rejected';
-      default:
-        return 'other';
-    }
+    const statusMap = {
+      'NEW': 'new',
+      'PENDING': 'pending_payment',
+      'PICKING': 'processing',
+      'ACCEPTED': 'processing',
+      'SHIPPED': 'shipped',
+      'DELIVERED': 'delivered',
+      'CANCELLED': 'cancelled',
+      'REJECTED': 'cancelled',
+      'RETURNED': 'returned',
+      'RETURNING': 'return_pending',
+      'UNPAID': 'pending_payment',
+      'PENDING_APPROVAL': 'pending_approval',
+      'APPROVED': 'approved',
+      'ON_HOLD': 'on_hold'
+    };
+    return statusMap[status?.toUpperCase()] || 'other';
+  }
+
+  /**
+   * Map internal status to N11 status
+   * @param {string} internalStatus - Internal status
+   * @returns {string} N11 platform status
+   */
+  mapToPlatformStatus(internalStatus) {
+    const statusMap = {
+      'new': 'NEW',
+      'pending_payment': 'PENDING',
+      'processing': 'PICKING',
+      'shipped': 'SHIPPED',
+      'delivered': 'DELIVERED',
+      'cancelled': 'CANCELLED',
+      'returned': 'RETURNED',
+      'return_pending': 'RETURNING',
+      'pending_approval': 'PENDING_APPROVAL',
+      'approved': 'APPROVED',
+      'on_hold': 'ON_HOLD'
+    };
+    return statusMap[internalStatus?.toLowerCase()] || 'NEW';
   }
 
   /**
@@ -364,68 +386,128 @@ class N11Service extends BasePlatformService {
         await this.setupAxiosInstance();
       }
 
-      // N11 API currently only supports "Picking" status for updates
-      if (status !== 'processing' && status !== 'Picking') {
-        logger.warn(`N11 API only supports 'Picking' status updates, attempted: ${status}`);
-        return {
-          success: false,
-          message: `N11 API only supports 'Picking' status updates, attempted: ${status}`
-        };
+      const order = await Order.findByPk(orderId, {
+        include: [{ model: OrderItem }]
+      });
+
+      if (!order) {
+        throw new Error(`Order not found: ${orderId}`);
       }
 
-      // Ensure we have line IDs to update
-      if (!lineIds || !lineIds.length) {
-        return {
-          success: false,
-          message: 'No line IDs provided for update'
-        };
+      // Map internal status to N11 status
+      const n11Status = this.mapToPlatformStatus(status);
+      
+      // Each status has its own endpoint and data structure in N11 API
+      let endpoint;
+      let requestData;
+
+      switch (status) {
+        case 'processing':
+          endpoint = '/order/v1/accept';
+          requestData = {
+            orderNumber: order.externalOrderId,
+            lines: lineIds || order.OrderItems.map(item => ({ lineId: item.externalLineId }))
+          };
+          break;
+
+        case 'shipped':
+          if (!order.trackingNumber) {
+            throw new Error('Tracking number is required for shipping status update');
+          }
+          endpoint = '/order/v1/ship';
+          requestData = {
+            orderNumber: order.externalOrderId,
+            lines: lineIds || order.OrderItems.map(item => ({ lineId: item.externalLineId })),
+            shipmentInfo: {
+              trackingNumber: order.trackingNumber,
+              trackingUrl: order.trackingUrl || '',
+              shipmentCompany: order.carrierName || 'Other'
+            }
+          };
+          break;
+
+        case 'cancelled':
+          endpoint = '/order/v1/reject';
+          requestData = {
+            orderNumber: order.externalOrderId,
+            lines: lineIds || order.OrderItems.map(item => ({ lineId: item.externalLineId })),
+            rejectReason: order.cancellationReason || 'MerchantCancel',
+            rejectDescription: order.cancellationNotes || ''
+          };
+          break;
+
+        case 'delivered':
+          endpoint = '/order/v1/delivery';
+          requestData = {
+            orderNumber: order.externalOrderId,
+            lines: lineIds || order.OrderItems.map(item => ({ lineId: item.externalLineId })),
+            deliveryInfo: {
+              deliveryDate: new Date().toISOString()
+            }
+          };
+          break;
+
+        case 'return_approved':
+          endpoint = '/order/v1/return/approve';
+          requestData = {
+            orderNumber: order.externalOrderId,
+            lines: lineIds || order.OrderItems.map(item => ({ lineId: item.externalLineId }))
+          };
+          break;
+
+        case 'return_rejected':
+          endpoint = '/order/v1/return/reject';
+          requestData = {
+            orderNumber: order.externalOrderId,
+            lines: lineIds || order.OrderItems.map(item => ({ lineId: item.externalLineId })),
+            rejectReason: order.returnRejectionReason || 'Other'
+          };
+          break;
+
+        default:
+          throw new Error(`Status update to '${status}' is not supported by N11 API`);
       }
 
-      // Format the request according to N11 API
-      const requestData = {
-        lines: lineIds.map(lineId => ({ lineId })),
-        status: 'Picking' // N11 API requires 'Picking' as the status value
-      };
+      // Make the API request
+      const response = await this.axiosInstance.post(endpoint, requestData);
 
-      // Make the API request to update order status
-      const response = await this.axiosInstance.put('/order/v1/update', requestData);
+      // Check response and handle results
+      if (response.data && response.data.result === 'success') {
+        // Update local order status with transaction
+        await sequelize.transaction(async (t) => {
+          await order.update({
+            status,
+            lastSyncedAt: new Date()
+          }, { transaction: t });
 
-      // Check the response
-      if (response.data && response.data.content) {
-        const results = response.data.content;
-        const successItems = results.filter(item => item.status === 'SUCCESS');
-        const failedItems = results.filter(item => item.status !== 'SUCCESS');
-
-        if (failedItems.length > 0) {
-          logger.warn(`Some items failed to update in N11`, { failedItems });
-        }
+          // Update additional fields based on status
+          if (status === 'delivered') {
+            await order.update({
+              deliveryDate: new Date()
+            }, { transaction: t });
+          } else if (status === 'cancelled') {
+            await order.update({
+              cancellationDate: new Date()
+            }, { transaction: t });
+          }
+        });
 
         return {
-          success: successItems.length > 0,
-          successCount: successItems.length,
-          failedCount: failedItems.length,
-          message: successItems.length > 0 
-            ? `Successfully updated ${successItems.length} items in N11` 
-            : 'Failed to update items in N11',
-          details: results
+          success: true,
+          message: `Successfully updated order status to ${status}`,
+          data: order
         };
       } else {
-        return {
-          success: false,
-          message: `Failed to update order status: ${response.data?.errorMessage || 'Unknown error'}`
-        };
+        throw new Error(response.data?.message || 'Failed to update status on N11');
       }
     } catch (error) {
       logger.error(`Failed to update order status in N11: ${error.message}`, {
         error,
-        connectionId: this.connectionId,
-        orderId
+        orderId,
+        status
       });
       
-      return {
-        success: false,
-        message: `Failed to update order status: ${error.message}`
-      };
+      throw error;
     }
   }
 }

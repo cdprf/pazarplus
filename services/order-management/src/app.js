@@ -4,12 +4,16 @@ const morgan = require("morgan");
 const path = require("path");
 const helmet = require("helmet");
 const compression = require("compression");
+const bcrypt = require('bcryptjs'); // Add bcrypt import
 const logger = require("./utils/logger");
 const config = require("./config/app");
 const { initializeSwagger } = require('./config/swagger');
-const applyTestToken = require('./middleware/dev-test-auth');
-const { apiLimiter, authLimiter, syncLimiter } = require('./middleware/rate-limit');
-const authRoutes = require('./routes/authRoutes');
+// Remove old auth middleware
+// const applyTestToken = require('./middleware/dev-test-auth');
+// Keeping API rate limiter but removing auth limiter
+const { apiLimiter, syncLimiter } = require('./middleware/rate-limit');
+// Remove old auth routes
+// const authRoutes = require('./routes/authRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const platformRoutes = require('./routes/platformRoutes');
 const platformTemplatesRoutes = require('./routes/platform-templates-routes');
@@ -18,9 +22,22 @@ const exportRoutes = require('./routes/exportRoutes');
 const csvRoutes = require('./routes/csvRoutes');
 const proxyRoutes = require('./routes/proxyRoutes');
 const settingsRoutes = require('./routes/settings-routes');
-const { authenticateToken } = require('./middleware/auth-middleware');
+// Remove old auth middleware
+// const { authenticateToken } = require('./middleware/auth-middleware');
 const { errorHandler } = require('./middleware/error-handler');
-const { sequelize, User } = require('./models');
+const { sequelize, User, PlatformSchema } = require('./models');
+const validationController = require('./controllers/validation-controller');
+
+// Import new auth middleware
+const { protect, authorize, refreshAuth } = require('./middleware/auth');
+
+// Import cookie parser
+const cookieParser = require('cookie-parser');
+
+// Import routes
+const authRoutes = require('./routes/auth');
+const connectionRoutes = require('./routes/connections');
+const devRoutes = require('./routes/dev');
 
 class App {
   constructor() {
@@ -37,8 +54,7 @@ class App {
         'Authorization', 
         'X-Requested-With',
         'Accept',
-        'Origin',
-        'x-dev-mode'  // Allow our dev mode header
+        'Origin'
       ],
       exposedHeaders: ['Content-Range', 'X-Content-Range'],
       preflightContinue: false,
@@ -58,12 +74,6 @@ class App {
     
     // Handle OPTIONS preflight requests explicitly
     this.app.options('*', cors(this.corsOptions));
-
-    // Apply test token middleware in development environment
-    if (process.env.NODE_ENV === 'development') {
-      this.app.use(applyTestToken);
-      logger.info('Development mode: Test token authentication enabled');
-    }
 
     // Security middlewares with appropriate settings for development
     this.app.use(helmet({
@@ -95,6 +105,9 @@ class App {
 
     // Apply rate limiting to all routes
     this.app.use(apiLimiter);
+
+    // Add cookie parser middleware
+    this.app.use(cookieParser());
   }
 
   initializeRoutes() {
@@ -102,12 +115,9 @@ class App {
       // Handle OPTIONS requests for CORS preflight
       this.app.options('*', cors(this.corsOptions));
       
-      // API Documentation - Initialize Swagger UI with automatic test token
+      // API Documentation - Initialize Swagger UI
       initializeSwagger(this.app);
       
-      // Public routes with auth rate limiting
-      this.app.use('/api/auth', authLimiter, authRoutes);
-
       // Health check route - keep this public
       this.app.get("/health", (req, res) => {
         res.status(200).json({
@@ -118,27 +128,20 @@ class App {
         });
       });
 
-      // Debug route for development only - to check auth status
-      if (process.env.NODE_ENV === 'development') {
-        this.app.get("/api/debug/auth-status", (req, res) => {
-          res.status(200).json({
-            success: true,
-            isAuthenticated: !!req.isUsingTestToken,
-            hasAuthHeader: !!req.headers.authorization,
-            authHeader: req.headers.authorization ? 'Bearer ****' : null,
-            user: req.user || null,
-            timestamp: new Date().toISOString(),
-          });
-        });
-      }
+      // Public auth routes (no authentication required)
+      this.app.use('/api/auth', authRoutes);
+      this.app.use('/api/dev', devRoutes);
 
       // Protected routes - all other API routes require authentication
-      this.app.use('/api', authenticateToken);
+      this.app.use('/api', protect);
+      
+      // Apply refresh token middleware after protect
+      this.app.use('/api', refreshAuth);
       
       // Apply sync rate limiting to sync endpoints
       this.app.use('/api/orders/sync', syncLimiter);
       
-      // Register other routes
+      // Register protected routes
       this.app.use('/api/orders', orderRoutes);
       this.app.use('/api/platforms', platformRoutes);
       this.app.use('/api/platform-templates', platformTemplatesRoutes);
@@ -147,6 +150,8 @@ class App {
       this.app.use('/api/csv', csvRoutes);
       this.app.use('/api/proxy', proxyRoutes);
       this.app.use('/api/settings', settingsRoutes);
+      this.app.use('/api/validate', validationController);
+      this.app.use('/api/connections', connectionRoutes);
 
       // SPA fallback route - only catch routes that aren't handled by the API or other specific routes
       this.app.get("*", (req, res, next) => {
@@ -253,26 +258,69 @@ const initializeApp = async () => {
     await sequelize.authenticate();
     logger.info('Database connection established successfully.');
     
-    // Use a safer approach for database synchronization
-    // In development, use sync with force: false, alter: false to prevent dropping tables
-    // This ensures foreign key constraints won't be violated
-    await sequelize.sync({ force: false, alter: false }); 
-    logger.info('Database synchronized safely.');
+    // Remove automatic sync - use migrations instead
+    // await sequelize.sync({ force: false, alter: true }); 
+    
+    // For development environment, ensure platform schemas exist
+    if (process.env.NODE_ENV === 'development') {
+      // Check for existing platform schemas to avoid duplicates
+      const existingSchemas = await PlatformSchema.findAll();
+      const existingSchemaKeys = existingSchemas.map(
+        schema => `${schema.platformType}_${schema.entityType}_${schema.version}`
+      );
+      
+      // Only create schemas if they don't already exist
+      const platformTypes = ['trendyol', 'hepsiburada'];
+      const entityTypes = ['product', 'order'];
+      
+      for (const platformType of platformTypes) {
+        for (const entityType of entityTypes) {
+          const schemaKey = `${platformType}_${entityType}_1.0.0`;
+          if (!existingSchemaKeys.includes(schemaKey)) {
+            logger.info(`Creating missing schema: ${schemaKey}`);
+            await PlatformSchema.create({
+              platformType,
+              entityType,
+              version: '1.0.0',
+              schema: { type: 'object', properties: {} }, // Basic schema
+              mappings: {},
+              isActive: true,
+              description: `Schema for ${platformType} ${entityType}s`
+            });
+          }
+        }
+      }
+    }
 
     // For development environment, ensure dev user exists
     if (process.env.NODE_ENV === 'development') {
       const devUserEmail = 'dev@example.com';
       let devUser = await User.findOne({ where: { email: devUserEmail } });
       if (!devUser) {
+        // Hash the password before creating the user
+        const hashedPassword = await bcrypt.hash('devpassword123', 12);
+        
         devUser = await User.create({
           email: devUserEmail,
-          password: 'devpassword123', // Provide a default password
+          password: hashedPassword, // Use hashed password
           fullName: 'Development User',
           companyName: 'Dev Co',
-          role: 'admin' // Ensure this role is valid
+          role: 'admin', // Ensure this role is valid
+          isActive: true,
+          emailVerified: true // Skip email verification for dev user
         });
         logger.info(`Development user created: ${devUser.email} with ID ${devUser.id}`);
       } else {
+        // Check if password needs to be updated to hashed version
+        const isPasswordValid = await bcrypt.compare('devpassword123', devUser.password);
+        if (!isPasswordValid) {
+          logger.warn(`Development user password needs updating. Updating to hashed version.`);
+          const hashedPassword = await bcrypt.hash('devpassword123', 12);
+          await devUser.update({ password: hashedPassword });
+          logger.info(`Development user password updated.`);
+        } else {
+          logger.info(`Development user password is already properly hashed.`);
+        }
         logger.info(`Development user found: ${devUser.email} with ID ${devUser.id}`);
       }
     }

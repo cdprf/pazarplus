@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 // src/client/components/OrderDashboard.jsx
 
-import React from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { 
   Row, 
   Col, 
@@ -15,142 +15,156 @@ import OrdersChart from './OrdersChart';
 import LoadingState from '../shared/LoadingState';
 import { useContext } from 'react';
 import { AlertContext } from '../../context/AlertContext';
+import PlatformStatusCard from './PlatformStatusCard';
+import useWebSocketQuery from '../../hooks/useWebSocketQuery';
+import { usePlatforms } from '../../hooks/usePlatforms';
 
 const OrderDashboard = () => {
   const { success, error: showError } = useContext(AlertContext);
   const queryClient = useQueryClient();
-  
-  const { 
-    data: stats,
-    isLoading: statsLoading,
-    error: statsError
-  } = useOrderStats();
+  const [selectedPeriod, setSelectedPeriod] = useState('week');
+  const [syncingPlatforms, setSyncingPlatforms] = useState(new Set());
 
-  const { 
-    mutate: syncOrders,
-    isLoading: isSyncing 
-  } = useOrderSync();
+  // Get platform connections
+  const { data: platforms = [] } = usePlatforms();
 
-  const handleSync = async (platformId) => {
-    try {
-      await syncOrders({
-        platformId,
-        dateRange: {
-          startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          endDate: new Date().toISOString()
-        }
-      });
-      success('Orders synchronized successfully');
-      // Force refetch stats after sync
-      queryClient.invalidateQueries({ queryKey: ['orderStats'] });
-    } catch (err) {
-      showError(err.message);
+  // Set up WebSocket query with filters
+  useWebSocketQuery(['orderStats'], ['ORDER_UPDATED', 'ORDER_CREATED', 'ORDER_CANCELLED'], {
+    'ORDER_UPDATED': {
+      'updateType': 'status' // Only listen for status updates
     }
-  };
+  });
 
-  // Add some debug console logging to help identify the issue
-  console.log('Order stats:', stats);
+  // Listen for platform status changes with specific filters
+  useWebSocketQuery(['platforms'], ['PLATFORM_STATUS_CHANGED'], {
+    'PLATFORM_STATUS_CHANGED': {
+      'platform.status': ['active', 'error'] // Only major status changes
+    }
+  });
+
+  // Listen for sync completion events
+  useWebSocketQuery(['syncStatus'], ['ORDER_SYNC_COMPLETED']);
+
+  // Fetch order statistics
+  const { data: stats, isLoading: statsLoading, error: statsError } = useOrderStats({ period: selectedPeriod });
+
+  // Calculate summary metrics
+  const metrics = useMemo(() => {
+    if (!stats) return {};
+    
+    return {
+      totalOrders: stats.totalOrders || 0,
+      newOrders: stats.newOrders || 0,
+      processingOrders: stats.processingOrders || 0,
+      shippedOrders: stats.shippedOrders || 0,
+      cancelledOrders: stats.cancelledOrders || 0,
+      returnedOrders: stats.returnedOrders || 0
+    };
+  }, [stats]);
+
+  // Handle platform sync
+  const handleSync = useCallback(async (platformId) => {
+    setSyncingPlatforms(prev => new Set([...prev, platformId]));
+    try {
+      await fetch(`/api/orders/sync/${platformId}`, {
+        method: 'POST'
+      });
+    } finally {
+      setSyncingPlatforms(prev => {
+        const next = new Set(prev);
+        next.delete(platformId);
+        return next;
+      });
+    }
+  }, []);
+
+  if (statsLoading) {
+    return <div>Loading dashboard data...</div>;
+  }
 
   return (
-    <div className="dashboard-content">
-      <Row>
-        <Col lg={8}>
-          <Card className="mb-4">
-            <Card.Header>Order Trends</Card.Header>
+    <div className="dashboard">
+      <Row className="mb-4">
+        <Col>
+          <h2>Order Dashboard</h2>
+        </Col>
+        <Col xs="auto">
+          <Button
+            variant="outline-secondary"
+            className="me-2"
+            onClick={() => setSelectedPeriod('week')}
+            active={selectedPeriod === 'week'}
+          >
+            Week
+          </Button>
+          <Button
+            variant="outline-secondary"
+            onClick={() => setSelectedPeriod('month')}
+            active={selectedPeriod === 'month'}
+          >
+            Month
+          </Button>
+        </Col>
+      </Row>
+
+      <Row className="mb-4">
+        <Col md={4}>
+          <Card className="h-100">
             <Card.Body>
-              <OrdersChart />
+              <Card.Title>New Orders</Card.Title>
+              <h3>{metrics.newOrders}</h3>
             </Card.Body>
           </Card>
         </Col>
-        
-        <Col lg={4}>
-          <Card className="mb-4">
-            <Card.Header>Statistics</Card.Header>
+        <Col md={4}>
+          <Card className="h-100">
             <Card.Body>
-              <LoadingState 
-                loading={statsLoading} 
-                error={statsError}
-                loadingMessage="Loading statistics..."
-              >
-                {stats ? (
-                  <div className="stats-container">
-                    <div className="stat-item mb-3">
-                      <h3 className="stat-number">{stats.totalOrders || 0}</h3>
-                      <span className="text-muted">Total Orders</span>
-                    </div>
-                    <div className="stat-item mb-3">
-                      <h3 className="stat-number">{stats.pendingOrders || 0}</h3>
-                      <span className="text-muted">Pending Orders</span>
-                    </div>
-                    <div className="stat-item mb-3">
-                      <h3 className="stat-number">{stats.shippedOrders || 0}</h3>
-                      <span className="text-muted">Shipped Orders</span>
-                    </div>
-                    <div className="mt-4">
-                      <Button
-                        variant="outline-primary"
-                        onClick={() => handleSync()}
-                        disabled={isSyncing}
-                        className="w-100"
-                      >
-                        {isSyncing ? (
-                          <>
-                            <Spinner
-                              as="span"
-                              animation="border"
-                              size="sm"
-                              role="status"
-                              aria-hidden="true"
-                              className="me-2"
-                            />
-                            Syncing Orders...
-                          </>
-                        ) : (
-                          'Sync Orders'
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-muted">No statistics available</p>
-                    <Button 
-                      variant="outline-secondary" 
-                      size="sm"
-                      onClick={() => queryClient.invalidateQueries({ queryKey: ['orderStats'] })}
-                    >
-                      Refresh Statistics
-                    </Button>
-                  </div>
-                )}
-              </LoadingState>
+              <Card.Title>Processing</Card.Title>
+              <h3>{metrics.processingOrders}</h3>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col md={4}>
+          <Card className="h-100">
+            <Card.Body>
+              <Card.Title>Shipped</Card.Title>
+              <h3>{metrics.shippedOrders}</h3>
             </Card.Body>
           </Card>
         </Col>
       </Row>
-      
-      {/* Add some custom CSS for better stats display */}
-      <style jsx>{`
-        .stats-container {
-          padding: 0.5rem;
-        }
-        .stat-item {
-          padding: 1rem;
-          border-radius: 8px;
-          background-color: #f8f9fa;
-          transition: all 0.2s ease;
-        }
-        .stat-item:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .stat-number {
-          font-size: 2rem;
-          font-weight: 600;
-          margin-bottom: 0.5rem;
-          color: #3498db;
-        }
-      `}</style>
+
+      <Row className="mb-4">
+        <Col>
+          <Card>
+            <Card.Body>
+              <Card.Title>Order Trends</Card.Title>
+              <OrdersChart data={stats?.chartData || []} period={selectedPeriod} />
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      <Row>
+        <Col>
+          <Card>
+            <Card.Body>
+              <Card.Title>Platform Status</Card.Title>
+              <Row>
+                {platforms.map(platform => (
+                  <Col key={platform.id} md={4} className="mb-3">
+                    <PlatformStatusCard
+                      platform={platform}
+                      onSync={() => handleSync(platform.id)}
+                      isSyncing={syncingPlatforms.has(platform.id)}
+                    />
+                  </Col>
+                ))}
+              </Row>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 };

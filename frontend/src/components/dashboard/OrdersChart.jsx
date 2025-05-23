@@ -1,109 +1,53 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ButtonGroup, Button } from 'react-bootstrap';
-import { Line } from 'react-chartjs-2';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   Tooltip,
   Legend,
-  Filler
-} from 'chart.js';
-import { formatInTimeZone } from 'date-fns-tz';
-import { parseISO } from 'date-fns';
+  ResponsiveContainer
+} from 'recharts';
 import LoadingState from '../shared/LoadingState';
 import { useOrderTrends } from '../../hooks/useOrders';
-
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
+import useWebSocketQuery from '../../hooks/useWebSocketQuery';
 
 const OrdersChart = () => {
   const [period, setPeriod] = useState('week');
-  const chartRef = useRef(null);
   const { data, isLoading, error } = useOrderTrends(period);
   
+  // Set up real-time updates for chart data
+  useWebSocketQuery(['orderStats', period], ['ORDER_CREATED', 'ORDER_UPDATED', 'ORDER_CANCELLED'], {
+    'ORDER_CREATED': {
+      'timestamp': {
+        'gte': new Date(Date.now() - (period === 'week' ? 7 : 30) * 24 * 60 * 60 * 1000).toISOString()
+      }
+    }
+  });
+
   // Process error to ensure it's a string
   const errorMessage = error ? (error.message || error.toString()) : null;
 
-  const formatDate = (dateString, period) => {
-    const date = parseISO(dateString);
-    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    
-    if (period === 'year') {
-      return formatInTimeZone(date, userTimeZone, 'MMM yyyy');
-    } else if (period === 'month') {
-      return formatInTimeZone(date, userTimeZone, 'MMM d');
-    } else {
-      return formatInTimeZone(date, userTimeZone, 'MMM d, HH:mm');
-    }
-  };
+  // Process and format chart data
+  const chartData = useMemo(() => {
+    if (!data || !Array.isArray(data)) return [];
 
-  const chartData = data ? {
-    labels: data.map(item => formatDate(item.date, period)),
-    datasets: [
-      {
-        label: 'New Orders',
-        data: data.map(item => item.newOrders),
-        borderColor: '#4e73df',
-        backgroundColor: 'rgba(78, 115, 223, 0.05)',
-        fill: true,
-        tension: 0.4
-      },
-      {
-        label: 'Shipped Orders',
-        data: data.map(item => item.shippedOrders),
-        borderColor: '#1cc88a',
-        backgroundColor: 'rgba(28, 200, 138, 0.05)',
-        fill: true,
-        tension: 0.4
-      }
-    ]
-  } : null;
+    return data.map(item => ({
+      date: new Date(item.date).toLocaleDateString(),
+      new: item.newOrders || 0,
+      processing: item.processingOrders || 0,
+      shipped: item.shippedOrders || 0,
+      delivered: item.deliveredOrders || 0
+    }));
+  }, [data]);
 
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top',
-      },
-      tooltip: {
-        mode: 'index',
-        intersect: false,
-        callbacks: {
-          title: (context) => context[0].label,
-          label: (context) => `${context.dataset.label}: ${context.parsed.y}`
-        }
-      }
-    },
-    hover: {
-      mode: 'nearest',
-      intersect: true
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          precision: 0
-        }
-      }
-    },
-    animation: {
-      duration: 750,
-      easing: 'easeInOutQuart'
-    }
+  const colors = {
+    new: '#8884d8',
+    processing: '#82ca9d',
+    shipped: '#ffc658',
+    delivered: '#ff7300'
   };
 
   return (
@@ -136,10 +80,50 @@ const OrdersChart = () => {
         error={errorMessage}
         loadingMessage="Loading chart data..."
       >
-        {chartData ? (
-          <div style={{ height: '300px' }}>
-            <Line ref={chartRef} data={chartData} options={options} />
-          </div>
+        {chartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={400}>
+            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="date" 
+                fontSize={12}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="new"
+                name="New Orders"
+                stroke={colors.new}
+                activeDot={{ r: 8 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="processing"
+                name="Processing"
+                stroke={colors.processing}
+                activeDot={{ r: 8 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="shipped"
+                name="Shipped"
+                stroke={colors.shipped}
+                activeDot={{ r: 8 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="delivered"
+                name="Delivered"
+                stroke={colors.delivered}
+                activeDot={{ r: 8 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         ) : (
           <div className="text-center p-5 text-muted">
             <p>No data available</p>

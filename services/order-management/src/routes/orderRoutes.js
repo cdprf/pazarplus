@@ -1,10 +1,9 @@
-// src/routes/orderRoutes.js
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/order-controller');
-const { authenticateToken } = require('../middleware/auth-middleware');
+const { protect, authorize } = require('../middleware/auth');
 
-router.use(authenticateToken);
+router.use(protect);
 
 /**
  * @swagger

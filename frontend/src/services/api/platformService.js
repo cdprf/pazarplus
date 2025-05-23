@@ -10,11 +10,6 @@ const getHeaders = () => {
   // Start with default headers
   const headers = {};
   
-  // Add development mode header when in development environment
-  if (process.env.NODE_ENV === 'development') {
-    headers['x-dev-mode'] = 'true';
-  }
-  
   // Add authentication token from localStorage if available
   const token = localStorage.getItem('token');
   if (token) {

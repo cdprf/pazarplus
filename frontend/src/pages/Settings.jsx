@@ -43,6 +43,7 @@ import {
 import axios from "axios";
 import { AlertContext } from "../context/AlertContext";
 import { AuthContext } from "../context/AuthContext";
+import { Link } from 'react-router-dom';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("profile");
@@ -539,6 +540,12 @@ const Settings = () => {
                     <Nav.Link eventKey="company" className="rounded-0">
                       <FaBuilding className="me-2" />
                       Company Info
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item>
+                    <Nav.Link eventKey="security" className="rounded-0">
+                      <FaLock className="me-2" />
+                      Security
                     </Nav.Link>
                   </Nav.Item>
                 </Nav>
@@ -1424,6 +1431,67 @@ const Settings = () => {
                         </Button>
                       </div>
                     </Form>
+                  </Tab.Pane>
+
+                  {/* Security Tab */}
+                  <Tab.Pane eventKey="security">
+                    <h4 className="mb-4">Security Settings</h4>
+                    <div className="mb-4">
+                      <h5>Two-Factor Authentication (2FA)</h5>
+                      <p className="text-muted">
+                        Add an extra layer of security to your account by requiring both your
+                        password and an authentication code to log in.
+                      </p>
+                      {user?.twoFactorEnabled ? (
+                        <>
+                          <Alert variant="success">
+                            <i className="fas fa-shield-check me-2"></i>
+                            Two-factor authentication is enabled
+                          </Alert>
+                          <Link to="/settings/2fa">
+                            <Button variant="outline-primary">
+                              Manage 2FA Settings
+                            </Button>
+                          </Link>
+                        </>
+                      ) : (
+                        <>
+                          <Alert variant="warning">
+                            <i className="fas fa-shield-exclamation me-2"></i>
+                            Two-factor authentication is not enabled
+                          </Alert>
+                          <Link to="/settings/2fa">
+                            <Button variant="primary">
+                              Enable 2FA
+                            </Button>
+                          </Link>
+                        </>
+                      )}
+                    </div>
+                    
+                    <hr />
+                    
+                    <div className="mb-4">
+                      <h5>Password</h5>
+                      <p className="text-muted">
+                        It's a good idea to use a strong password that you're not using elsewhere
+                      </p>
+                      <Button variant="outline-primary">
+                        Change Password
+                      </Button>
+                    </div>
+                    
+                    <hr />
+                    
+                    <div>
+                      <h5>Login History</h5>
+                      <p className="text-muted">
+                        Review your recent login activity
+                      </p>
+                      <Button variant="outline-secondary">
+                        View Login History
+                      </Button>
+                    </div>
                   </Tab.Pane>
                 </Tab.Content>
               </Card.Body>

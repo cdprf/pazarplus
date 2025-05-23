@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 // frontend/src/pages/OrderDetail.jsx
 
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { 
   Card, 
   Row, 
@@ -17,7 +17,7 @@ import {
   Modal,
   Form
 } from 'react-bootstrap';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   FaShoppingCart, 
   FaUser, 
@@ -39,14 +39,17 @@ import {
 import axios from 'axios';
 import { AlertContext } from '../context/AlertContext';
 import { orderService } from '../services/api/orderService';
+import wsService from '../services/WebSocketService';
 
 const OrderDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [platformDetails, setPlatformDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
+  const [hasOrderUpdate, setHasOrderUpdate] = useState(false);
   
   // Modal states
   const [showMarkShippedModal, setShowMarkShippedModal] = useState(false);
@@ -59,43 +62,77 @@ const OrderDetail = () => {
   
   const { success, error: showError } = useContext(AlertContext);
   
-  // Fetch order details
-  useEffect(() => {
-    const fetchOrderDetails = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  // Wrap fetchOrderDetails in useCallback
+  const fetchOrderDetails = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setHasOrderUpdate(false);
+      
+      // Fetch basic order details
+      const response = await orderService.getOrder(id);
+      
+      if (response.success) {
+        setOrder(response.data);
         
-        // Fetch basic order details
-        const response = await orderService.getOrder(id);
-        
-        if (response.success) {
-          setOrder(response.data);
-          
-          // Also fetch platform-specific details if available
-          try {
-            const platformResponse = await orderService.getOrderWithPlatformDetails(id);
-            if (platformResponse.success) {
-              setPlatformDetails(platformResponse.data);
-            }
-          } catch (platformError) {
-            console.error('Error fetching platform-specific details:', platformError);
-            // Don't set error here, as we still have basic order details
+        // Also fetch platform-specific details if available
+        try {
+          const platformResponse = await orderService.getOrderWithPlatformDetails(id);
+          if (platformResponse.success) {
+            setPlatformDetails(platformResponse.data);
           }
-        } else {
-          setError(response.message || 'Failed to fetch order details');
+        } catch (platformError) {
+          console.error('Error fetching platform-specific details:', platformError);
+          // Don't set error here, as we still have basic order details
         }
-      } catch (err) {
-        console.error('Error fetching order details:', err);
-        setError('Failed to fetch order details. Please try again later.');
-      } finally {
-        setLoading(false);
+      } else {
+        setError(response.message || 'Failed to fetch order details');
       }
-    };
-    
+    } catch (err) {
+      console.error('Error fetching order details:', err);
+      setError('Failed to fetch order details. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]); // Add id as dependency since it's used in the callback
+
+  // Initial fetch
+  useEffect(() => {
     fetchOrderDetails();
     fetchCarriers();
-  }, [id]);
+  }, [id, fetchOrderDetails]); // Add fetchOrderDetails as dependency
+  
+  // Set up WebSocket listeners for real-time order updates
+  useEffect(() => {
+    if (!id) return;
+    
+    // Subscribe to order updates for this specific order
+    const orderUpdateCleanup = wsService.subscribeToOrderUpdates((data) => {
+      if (data.order && data.order.id === id) {
+        // Show notification that order was updated
+        setHasOrderUpdate(true);
+      }
+    });
+    
+    // Also listen for order cancellations
+    const orderCancelCleanup = wsService.subscribeToOrderCancellations((data) => {
+      if (data.order && data.order.id === id) {
+        // If order is cancelled, update the order state immediately
+        setOrder(prevOrder => ({
+          ...prevOrder,
+          orderStatus: 'cancelled',
+          cancelReason: data.reason,
+          cancelledAt: data.timestamp
+        }));
+        success('Order was cancelled');
+      }
+    });
+    
+    return () => {
+      orderUpdateCleanup();
+      orderCancelCleanup();
+    };
+  }, [id, success]);
   
   // Fetch carrier list
   const fetchCarriers = async () => {
@@ -312,6 +349,17 @@ const OrderDetail = () => {
         </h2>
         
         <div>
+          {hasOrderUpdate && (
+            <Button 
+              variant="info" 
+              className="me-2"
+              onClick={fetchOrderDetails}
+            >
+              <FaSync className="me-2" />
+              Order Updated - Refresh
+            </Button>
+          )}
+          
           <Button 
             variant="outline-secondary" 
             className="me-2"

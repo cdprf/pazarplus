@@ -132,3 +132,6 @@ export const useSyncPlatform = () => {
     }
   });
 };
+
+// Export usePlatforms as an alias for usePlatformConnections for backward compatibility
+export const usePlatforms = usePlatformConnections;

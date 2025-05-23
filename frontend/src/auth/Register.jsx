@@ -1,4 +1,3 @@
-
 import React, { useState, useContext, useEffect } from 'react';
 import { Form, Button, Card, Container, Row, Col, Spinner } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
@@ -17,7 +16,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   
-  const { register, isAuthenticated, error, setError } = useContext(AuthContext);
+  const { register, isAuthenticated } = useContext(AuthContext);
   const { error: showError } = useContext(AlertContext);
   
   const navigate = useNavigate();
@@ -30,14 +29,6 @@ const Register = () => {
       navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
-  
-  // Display auth errors
-  useEffect(() => {
-    if (error) {
-      showError(error);
-      setError(null);
-    }
-  }, [error, showError, setError]);
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -98,10 +89,12 @@ const Register = () => {
       const success = await register(registerData);
       
       if (success) {
-        navigate('/dashboard');
+        showError('Registration successful! Please check your email to verify your account.');
+        navigate('/login');
       }
     } catch (err) {
       console.error('Registration error:', err);
+      showError(err.message || 'Registration failed');
     } finally {
       setLoading(false);
     }

@@ -1,11 +1,9 @@
 // src/controllers/csv-controller.js
 
-const express = require('express');
-const router = express.Router();
 const multer = require('multer');
-const PlatformServiceFactory = require('../services/PlatformServiceFactory');
-const { authenticateToken } = require('../middleware/auth-middleware');
-
+const PlatformServiceFactory = require('../services/platforms/platformServiceFactory');
+const { protect } = require('../middleware/auth');
+const { body, validationResult } = require('express-validator');
 const logger = require('../utils/logger');
 
 // Configure multer for in-memory storage
@@ -24,23 +22,23 @@ const upload = multer({
   }
 });
 
-// Apply authentication middleware to all routes
-router.use(authenticateToken);
-  
-// CSV file upload and processing routes
-router.post('/validate', upload.single('file'), validateCSV);
-router.post('/import/:connectionId', upload.single('file'), importCSV);
-router.get('/templates', getTemplates);
-  
-
 async function validateCSV(req, res) {
   try {
+    // Check for user authentication
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
+
     if (!req.file) {
       return res.status(400).json({
         success: false,
         message: 'No file uploaded'
       });
     }
+    
     // Get CSV options from request
     const {
       hasHeaders = true,
@@ -59,6 +57,7 @@ async function validateCSV(req, res) {
         parsedColumnMap = null;
       }
     }
+    
     // Create temporary CSV service for validation
     const csvService = new (require('../services/platforms/csv/csv-importer'))(null);
     
@@ -69,9 +68,14 @@ async function validateCSV(req, res) {
       delimiter,
       columnMap: parsedColumnMap
     });
+    
     return res.status(result.success ? 200 : 400).json(result);
   } catch (error) {
-    logger.error(`Failed to validate CSV file: ${error.message}`, { error, userId: req.user.id });
+    logger.error(`Failed to validate CSV file: ${error.message}`, { 
+      error, 
+      userId: req.user?.id,
+      filename: req.file?.originalname 
+    });
     
     return res.status(500).json({
       success: false,
@@ -85,12 +89,29 @@ async function importCSV(req, res) {
   try {
     const { connectionId } = req.params;
     
+    // Check for user authentication
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
+
+    // Validate connection ID
+    if (!connectionId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Connection ID is required'
+      });
+    }
+    
     if (!req.file) {
       return res.status(400).json({
         success: false,
         message: 'No file uploaded'
       });
     }
+    
     // Get CSV options from request
     const {
       hasHeaders = true,
@@ -110,8 +131,17 @@ async function importCSV(req, res) {
         parsedColumnMap = null;
       }
     }
-    // Get platform service
-    const platformService = await PlatformServiceFactory.createService(connectionId);
+    
+    // Get platform service - ensure it's created with the correct connection
+    const platformService = await PlatformServiceFactory.createService(connectionId, req.user.id);
+    
+    // Check if platform service was created successfully
+    if (!platformService) {
+      return res.status(404).json({
+        success: false,
+        message: 'Platform connection not found or invalid'
+      });
+    }
     
     // Import orders from CSV
     const result = await platformService.importOrdersFromCSV(req.file, {
@@ -119,11 +149,18 @@ async function importCSV(req, res) {
       skipHeader,
       delimiter,
       overwriteExisting,
-      columnMap: parsedColumnMap
+      columnMap: parsedColumnMap,
+      userId: req.user.id
     });
+    
     return res.status(result.success ? 200 : 400).json(result);
   } catch (error) {
-    logger.error(`Failed to import CSV: ${error.message}`, { error, userId: req.user.id, connectionId: req.params.connectionId });
+    logger.error(`Failed to import CSV: ${error.message}`, { 
+      error, 
+      userId: req.user?.id, 
+      connectionId: req.params.connectionId,
+      filename: req.file?.originalname
+    });
     
     return res.status(500).json({
       success: false,
@@ -135,6 +172,14 @@ async function importCSV(req, res) {
 
 async function getTemplates(req, res) {
   try {
+    // Check for user authentication
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
+
     // Create temporary CSV service to get templates
     const csvService = new (require('../services/platforms/csv/csv-importer'))(null);
     
@@ -146,7 +191,10 @@ async function getTemplates(req, res) {
       data: templates
     });
   } catch (error) {
-    logger.error(`Failed to get CSV templates: ${error.message}`, { error, userId: req.user.id });
+    logger.error(`Failed to get CSV templates: ${error.message}`, { 
+      error, 
+      userId: req.user?.id 
+    });
     
     return res.status(500).json({
       success: false,
@@ -156,5 +204,9 @@ async function getTemplates(req, res) {
   }
 }
 
-
-module.exports = router;
+module.exports = {
+  validateCSV,
+  importCSV,
+  getTemplates,
+  upload // Export multer configuration for use in routes
+};

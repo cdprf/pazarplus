@@ -23,10 +23,10 @@ const OrderPrintTemplate = ({ order, formatDate }) => {
       try {
         const response = await axios.get('/settings/company');
         if (response.data && response.data.success) {
-          setCompanyInfo({
-            ...companyInfo,
+          setCompanyInfo(prevInfo => ({
+            ...prevInfo,
             ...response.data.data
-          });
+          }));
         }
       } catch (err) {
         console.error('Error fetching company info:', err);
@@ -34,7 +34,7 @@ const OrderPrintTemplate = ({ order, formatDate }) => {
     };
     
     fetchCompanyInfo();
-  }, []);
+  }, []);  // No need to include companyInfo since we're using functional update
 
   // Generate campaign code
   const generateCampaignCode = () => {

@@ -15,7 +15,8 @@ import {
   Dropdown, 
   DropdownButton,
   Pagination,
-  Spinner
+  Spinner,
+  Alert
 } from 'react-bootstrap';
 import OrderDashboard from '../components/dashboard/OrderDashboard';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -25,6 +26,8 @@ import { usePlatformConnections } from '../hooks/usePlatforms';
 import { useContext } from 'react';
 import { AlertContext } from '../context/AlertContext';
 import { FaSearch, FaFilter, FaSort, FaDownload, FaSync, FaEye, FaPrint, FaEllipsisV } from 'react-icons/fa';
+import useWebSocketQuery from '../hooks/useWebSocketQuery';
+import wsService from '../services/WebSocketService';
 
 const OrderList = () => {
   const navigate = useNavigate();
@@ -50,6 +53,7 @@ const OrderList = () => {
   });
   
   const [showDashboard, setShowDashboard] = useState(true);
+  const [hasNewOrders, setHasNewOrders] = useState(false);
   
   // Effect to update URL when filters change
   useEffect(() => {
@@ -69,6 +73,43 @@ const OrderList = () => {
     error: ordersError,
     refetch
   } = useOrders(filters);
+  
+  // Set up WebSocket query invalidation for real-time updates
+  useWebSocketQuery(['orders', filters], [
+    'ORDER_UPDATED',
+    'ORDER_CREATED',
+    'ORDER_CANCELLED'
+  ]);
+
+  // Also set up direct WebSocket event listeners for notification purposes
+  useEffect(() => {
+    // Subscribe to new order notifications
+    const newOrderCleanup = wsService.subscribeToNewOrders(() => {
+      if (filters.page !== 1 || filters.status || filters.platform || filters.search || filters.dateFrom || filters.dateTo) {
+        // If we're not on the first page or have filters, show notification instead of auto-refreshing
+        setHasNewOrders(true);
+      } else {
+        // Otherwise, auto-refresh the list
+        refetch();
+      }
+    });
+    
+    // Subscribe to order updates
+    const orderUpdateCleanup = wsService.subscribeToOrderUpdates(() => {
+      // Auto-refresh when orders are updated
+      refetch();
+    });
+    
+    return () => {
+      newOrderCleanup();
+      orderUpdateCleanup();
+    };
+  }, [filters, refetch]);
+  
+  // Reset new orders notification when filters change or on manual refresh
+  useEffect(() => {
+    setHasNewOrders(false);
+  }, [filters]);
   
   // Fetch available platforms for filtering
   const { data: platformConnectionsData } = usePlatformConnections();
@@ -399,6 +440,31 @@ const OrderList = () => {
               </InputGroup>
             </Col>
           </Row>
+          
+          {/* New Orders Notification Alert */}
+          {hasNewOrders && (
+            <Alert 
+              variant="info" 
+              className="mb-3 d-flex justify-content-between align-items-center"
+            >
+              <div>
+                <strong>New orders have arrived!</strong> Refresh or go to the first page to see them.
+              </div>
+              <div>
+                <Button 
+                  variant="outline-primary" 
+                  size="sm" 
+                  onClick={() => {
+                    setFilters(prev => ({ ...prev, page: 1 }));
+                    setHasNewOrders(false);
+                    refetch();
+                  }}
+                >
+                  View New Orders
+                </Button>
+              </div>
+            </Alert>
+          )}
           
           {/* Applied Filters Display */}
           {(filters.status || filters.platform || filters.dateFrom || filters.dateTo) && (

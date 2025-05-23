@@ -103,7 +103,8 @@ class WebSocketService {
           
           // Handle other message types
           if (data.type) {
-            this.notifyEvent(data.type, data.payload);
+            // Use data.data (backend format) if available, otherwise fallback to data.payload
+            this.notifyEvent(data.type, data.data || data.payload);
           }
         } catch (error) {
           console.error('Error processing WebSocket message:', error);
@@ -220,6 +221,29 @@ class WebSocketService {
       console.error('Cannot send message, WebSocket is not connected');
       return false;
     }
+  }
+
+  // Add these specific event subscription methods to make working with the 
+  // backend notification methods easier
+
+  subscribeToOrderUpdates(callback) {
+    return this.addEventListener('ORDER_UPDATED', callback);
+  }
+
+  subscribeToNewOrders(callback) {
+    return this.addEventListener('ORDER_CREATED', callback);
+  }
+
+  subscribeToOrderCancellations(callback) {
+    return this.addEventListener('ORDER_CANCELLED', callback);
+  }
+
+  subscribeToPlatformStatusChanges(callback) {
+    return this.addEventListener('PLATFORM_STATUS_CHANGED', callback);
+  }
+
+  subscribeToOrderSyncCompleted(callback) {
+    return this.addEventListener('ORDER_SYNC_COMPLETED', callback);
   }
 }
 

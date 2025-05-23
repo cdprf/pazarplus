@@ -388,8 +388,7 @@ const ImportHepsiburada = () => {
         orderDate, 
         paymentStatus, 
         items,
-        customer,
-        deliveryAddress
+        customer
       } = parsedData;
       
       return (

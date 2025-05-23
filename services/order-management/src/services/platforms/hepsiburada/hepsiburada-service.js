@@ -820,78 +820,70 @@ class HepsiburadaService extends BasePlatformService {
   mapOrderStatus(hepsiburadaStatus) {
     const statusMap = {
       'Open': 'new',
+      'Pending': 'pending_payment',
       'Picking': 'processing',
+      'Packaging': 'processing',
       'Invoiced': 'processing',
+      'ReadyToShip': 'ready_to_ship',
       'Shipped': 'shipped',
       'Delivered': 'delivered',
       'Cancelled': 'cancelled',
-      'Returned': 'returned'
+      'Returned': 'returned',
+      'ReturnInProgress': 'return_pending',
+      'PartiallyReturned': 'partially_returned',
+      'UnDelivered': 'failed',
+      'UnPaid': 'pending_payment',
+      'WaitingForApproval': 'pending_approval',
+      'Approved': 'approved',
+      'OnHold': 'on_hold'
     };
     
     return statusMap[hepsiburadaStatus] || 'new';
   }
-  
+
+  /**
+   * Map payment status from Hepsiburada to internal status
+   * @param {string} paymentStatus - Hepsiburada payment status
+   * @returns {string} Internal payment status
+   */
   mapPaymentStatus(paymentStatus) {
     const statusMap = {
-      'Received': 'new',
-      'Pending': 'processing',
-      'Completed': 'processing'
+      'Received': 'completed',
+      'Pending': 'pending',
+      'Failed': 'failed',
+      'Refunded': 'refunded',
+      'PartiallyRefunded': 'partially_refunded',
+      'Processing': 'processing',
+      'Cancelled': 'cancelled'
     };
     
-    return statusMap[paymentStatus] || 'new';
+    return statusMap[paymentStatus] || 'pending';
   }
 
   /**
-   * Map internal status to Hepsiburada status
+   * Map internal status to Hepsiburada platform status
    * @param {string} internalStatus - Internal status
-   * @returns {string} Hepsiburada status
+   * @returns {string} Platform-specific status
    */
   mapToPlatformStatus(internalStatus) {
-    const reverseStatusMap = {
-      'new': 'Created',
-      'processing': 'Processing',
+    const statusMap = {
+      'new': 'Open',
+      'pending_payment': 'Pending',
+      'processing': 'Picking',
+      'ready_to_ship': 'ReadyToShip',
       'shipped': 'Shipped',
       'delivered': 'Delivered',
       'cancelled': 'Cancelled',
       'returned': 'Returned',
-      'failed': 'UnDelivered'
+      'return_pending': 'ReturnInProgress',
+      'partially_returned': 'PartiallyReturned',
+      'failed': 'UnDelivered',
+      'pending_approval': 'WaitingForApproval',
+      'approved': 'Approved',
+      'on_hold': 'OnHold'
     };
     
-    return reverseStatusMap[internalStatus];
-  }
-
-  // Alias for backward compatibility
-  mapToHepsiburadaStatus(internalStatus) {
-    return this.mapToPlatformStatus(internalStatus);
-  }
-
-  /**
-   * Get orders from Hepsiburada - required implementation for BasePlatformService
-   * @param {Object} options - Options for fetching orders
-   * @returns {Promise<Array>} List of orders
-   */
-  async getOrders(options = {}) {
-    try {
-      const result = await this.fetchOrders(options);
-      
-      if (!result.success) {
-        logger.error(`Failed to get orders from Hepsiburada: ${result.message}`, {
-          error: result.error,
-          connectionId: this.connectionId,
-          platformType: this.getPlatformType()
-        });
-        return [];
-      }
-      
-      return result.data;
-    } catch (error) {
-      logger.error(`Error in getOrders method for Hepsiburada: ${error.message}`, {
-        error,
-        connectionId: this.connectionId,
-        platformType: this.getPlatformType()
-      });
-      throw error;
-    }
+    return statusMap[internalStatus] || 'Open';
   }
 
   /**
@@ -927,16 +919,49 @@ class HepsiburadaService extends BasePlatformService {
       if (!packageNumber) {
         throw new Error('Package number not found in order details');
       }
-      
-      const url = `/packages/merchantid/${this.merchantId}/packagenumber/${packageNumber}/status`;
+
+      // Special handling for status transitions that require additional API calls
+      let apiEndpoint = `/packages/merchantid/${this.merchantId}/packagenumber/${packageNumber}/status`;
+      let requestData = { status: hepsiburadaStatus };
+
+      // Handle special status transitions
+      switch(newStatus) {
+        case 'shipped':
+          if (!order.trackingNumber) {
+            throw new Error('Tracking number is required for shipping status update');
+          }
+          requestData.trackingNumber = order.trackingNumber;
+          requestData.cargoCompany = order.carrierName || 'Other';
+          apiEndpoint = `/packages/merchantid/${this.merchantId}/packagenumber/${packageNumber}/ship`;
+          break;
+
+        case 'cancelled':
+          if (!order.cancellationReason) {
+            requestData.reason = 'MerchantCancel';
+          } else {
+            requestData.reason = order.cancellationReason;
+          }
+          apiEndpoint = `/packages/merchantid/${this.merchantId}/packagenumber/${packageNumber}/cancel`;
+          break;
+
+        case 'return_approved':
+          apiEndpoint = `/packages/merchantid/${this.merchantId}/packagenumber/${packageNumber}/return/approve`;
+          break;
+
+        case 'return_rejected':
+          apiEndpoint = `/packages/merchantid/${this.merchantId}/packagenumber/${packageNumber}/return/reject`;
+          break;
+      }
       
       const response = await this.retryRequest(() => 
-        this.axiosInstance.put(url, {
-          status: hepsiburadaStatus
-        })
+        this.axiosInstance.put(apiEndpoint, requestData)
       );
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to update status on Hepsiburada');
+      }
       
-      // Update local order status
+      // Update local order status with transaction
       await sequelize.transaction(async (t) => {
         await order.update({
           status: newStatus,
@@ -953,18 +978,44 @@ class HepsiburadaService extends BasePlatformService {
         message: `Order status updated to ${newStatus}`,
         data: order
       };
+
     } catch (error) {
-      logger.error(`Failed to update order status on Hepsiburada: ${error.message}`, { 
-        error, 
-        orderId, 
-        connectionId: this.connectionId 
+      logger.error(`Failed to update order status on Hepsiburada: ${error.message}`, {
+        error,
+        orderId,
+        newStatus
       });
       
-      return {
-        success: false,
-        message: `Failed to update order status: ${error.message}`,
-        error: error.response?.data || error.message
-      };
+      throw error;
+    }
+  }
+
+  /**
+   * Get orders from Hepsiburada - required implementation for BasePlatformService
+   * @param {Object} options - Options for fetching orders
+   * @returns {Promise<Array>} List of orders
+   */
+  async getOrders(options = {}) {
+    try {
+      const result = await this.fetchOrders(options);
+      
+      if (!result.success) {
+        logger.error(`Failed to get orders from Hepsiburada: ${result.message}`, {
+          error: result.error,
+          connectionId: this.connectionId,
+          platformType: this.getPlatformType()
+        });
+        return [];
+      }
+      
+      return result.data;
+    } catch (error) {
+      logger.error(`Error in getOrders method for Hepsiburada: ${error.message}`, {
+        error,
+        connectionId: this.connectionId,
+        platformType: this.getPlatformType()
+      });
+      throw error;
     }
   }
 

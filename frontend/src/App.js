@@ -8,6 +8,11 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import PrivateRoute from './components/auth/PrivateRoute';
 import DevAdmin from './components/auth/DevAdmin';
+import EmailVerification from './components/auth/EmailVerification';
+import ForgotPassword from './components/auth/ForgotPassword';
+import ResetPassword from './components/auth/ResetPassword';
+import TwoFactorSetup from './components/auth/TwoFactorSetup';
+import TwoFactorVerification from './components/auth/TwoFactorVerification';
 
 // Layout components
 import Navbar from './components/layout/Navbar';
@@ -73,11 +78,11 @@ function App() {
   }, [isDev, devMode]);
 
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <NotificationProvider position="top-right">
-            <AlertProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <NotificationProvider position="top-right">
+          <AlertProvider>
+            <ErrorBoundary>
               <Router>
                 <AuthProvider>
                   <div className="app-container">
@@ -90,6 +95,10 @@ function App() {
                             <Route path="/dev-admin" element={isDev && devMode ? <DevAdmin /> : <Navigate to="/login" />} />
                             <Route path="/login" element={<Login />} />
                             <Route path="/register" element={<Register />} />
+                            <Route path="/verify-email" element={<EmailVerification />} />
+                            <Route path="/forgot-password" element={<ForgotPassword />} />
+                            <Route path="/reset-password" element={<ResetPassword />} />
+                            <Route path="/verify-2fa" element={<TwoFactorVerification />} />
                             <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
                             <Route path="/orders" element={<PrivateRoute><OrderList /></PrivateRoute>} />
                             <Route path="/orders/:id" element={<PrivateRoute><OrderDetail /></PrivateRoute>} />
@@ -99,6 +108,7 @@ function App() {
                             <Route path="/import/hepsiburada" element={<PrivateRoute><ImportHepsiburada /></PrivateRoute>} />
                             <Route path="/export" element={<PrivateRoute><ExportData /></PrivateRoute>} />
                             <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+                            <Route path="/settings/2fa" element={<PrivateRoute><TwoFactorSetup /></PrivateRoute>} />
                             <Route path="/" element={<Navigate to="/dashboard" replace />} />
                           </Routes>
                         </Container>
@@ -108,11 +118,11 @@ function App() {
                   </div>
                 </AuthProvider>
               </Router>
-            </AlertProvider>
-          </NotificationProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+            </ErrorBoundary>
+          </AlertProvider>
+        </NotificationProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

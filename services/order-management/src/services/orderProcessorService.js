@@ -2,9 +2,10 @@
 // It includes methods for finding consolidation candidates, consolidating orders, creating batch shipments,
 // and processing webhook notifications from various platforms.
 
-const { Order, OrderItem, ShippingDetail, Product } = require('../models');
+const { Order, OrderItem, ShippingDetail, Product, BatchShipment, FinancialTransaction } = require('../models');
 const { Op } = require('sequelize');
 const logger = require('../utils/logger');
+const sequelize = require('../config/database');
 
 /**
  * Order Processor Service
@@ -170,6 +171,9 @@ class OrderProcessorService {
       if (invalidStatusOrders.length > 0) {
         throw new Error(`Orders with IDs ${invalidStatusOrders.map(o => o.id).join(', ')} have invalid status for consolidation`);
       }
+
+      // Calculate consolidated totals with currency conversion
+      const totals = await this._calculateConsolidatedTotals(orders);
       
       // Create a consolidated order
       const primaryOrder = orders[0];
@@ -181,50 +185,89 @@ class OrderProcessorService {
         customerEmail: primaryOrder.customerEmail,
         status: 'CONSOLIDATED',
         orderDate: new Date(),
-        totalAmount: orders.reduce((sum, order) => sum + parseFloat(order.totalAmount || 0), 0),
-        currency: primaryOrder.currency,
+        totalAmount: totals.totalAmount,
+        subtotal: totals.subtotal,
+        taxAmount: totals.taxTotal,
+        shippingAmount: totals.shippingTotal,
+        currency: totals.currency,
         notes: `Consolidated from orders: ${orderIds.join(', ')}`,
         isConsolidated: true,
-        consolidatedOrderIds: JSON.stringify(orderIds)
+        consolidatedOrderIds: JSON.stringify(orderIds),
+        metadata: {
+          originalCurrencies: totals.originalCurrencies,
+          consolidation: {
+            date: new Date(),
+            orderIds,
+            reason: 'customer_consolidation'
+          }
+        }
       };
       
       // Create the consolidated order
-      const consolidatedOrder = await Order.create(consolidatedOrderData);
-      
-      // Copy shipping details from primary order
-      if (primaryOrder.ShippingDetail) {
-        const shippingData = { ...primaryOrder.ShippingDetail.toJSON() };
-        delete shippingData.id;
-        delete shippingData.createdAt;
-        delete shippingData.updatedAt;
-        
-        shippingData.orderId = consolidatedOrder.id;
-        await ShippingDetail.create(shippingData);
-      }
-      
-      // Copy all order items to the consolidated order
-      for (const order of orders) {
-        if (order.OrderItems && order.OrderItems.length > 0) {
-          for (const item of order.OrderItems) {
-            const itemData = {
-              orderId: consolidatedOrder.id,
-              productId: item.productId,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              totalPrice: item.totalPrice,
-              notes: `From original order: ${order.id}`
-            };
-            
-            await OrderItem.create(itemData);
-          }
+      const consolidatedOrder = await sequelize.transaction(async (t) => {
+        const newOrder = await Order.create(consolidatedOrderData, { transaction: t });
+
+        // Copy shipping details from primary order
+        if (primaryOrder.ShippingDetail) {
+          const shippingData = { ...primaryOrder.ShippingDetail.toJSON() };
+          delete shippingData.id;
+          delete shippingData.createdAt;
+          delete shippingData.updatedAt;
+          
+          shippingData.orderId = newOrder.id;
+          await ShippingDetail.create(shippingData, { transaction: t });
         }
-        
-        // Update original order status
-        order.status = 'CONSOLIDATED';
-        order.consolidatedToOrderId = consolidatedOrder.id;
-        await order.save();
-      }
-      
+
+        // Copy and convert items from all orders
+        for (const order of orders) {
+          if (order.OrderItems && order.OrderItems.length > 0) {
+            for (const item of order.OrderItems) {
+              let convertedUnitPrice = item.unitPrice;
+              let convertedTotalPrice = item.totalPrice;
+
+              // Convert prices if needed
+              if (order.currency !== totals.currency) {
+                const conversionRate = await this._getConversionRate(order.currency, totals.currency);
+                convertedUnitPrice *= conversionRate;
+                convertedTotalPrice *= conversionRate;
+              }
+
+              await OrderItem.create({
+                orderId: newOrder.id,
+                productId: item.productId,
+                quantity: item.quantity,
+                unitPrice: convertedUnitPrice,
+                totalPrice: convertedTotalPrice,
+                currency: totals.currency,
+                taxAmount: item.taxAmount,
+                taxRate: item.taxRate,
+                notes: `From original order: ${order.id}`,
+                metadata: {
+                  originalCurrency: order.currency,
+                  originalUnitPrice: item.unitPrice,
+                  originalTotalPrice: item.totalPrice
+                }
+              }, { transaction: t });
+            }
+          }
+
+          // Update original order
+          await order.update({
+            status: 'CONSOLIDATED',
+            consolidatedToOrderId: newOrder.id,
+            metadata: {
+              ...order.metadata,
+              consolidation: {
+                date: new Date(),
+                consolidatedOrderId: newOrder.id
+              }
+            }
+          }, { transaction: t });
+        }
+
+        return newOrder;
+      });
+
       // Return the full consolidated order with items
       return await Order.findByPk(consolidatedOrder.id, {
         include: [
@@ -232,6 +275,7 @@ class OrderProcessorService {
           { model: ShippingDetail }
         ]
       });
+
     } catch (error) {
       logger.error('Error consolidating orders:', error);
       throw error;
@@ -370,6 +414,149 @@ class OrderProcessorService {
       throw error;
     }
   }
+
+  /**
+   * Create batch shipments with transaction support and rollback
+   * @param {Object} options - Batch options
+   * @returns {Array} - Array of created batches
+   */
+  async createBatchShipmentsWithRollback(options = {}) {
+    const transaction = await sequelize.transaction();
+    
+    try {
+      const batches = await this.createBatchShipments(options);
+      
+      // Process each batch and create shipment records
+      for (const batch of batches) {
+        const batchRecord = await BatchShipment.create({
+          batchKey: batch.batchKey,
+          batchType: batch.batchType,
+          status: 'PENDING',
+          userId: options.userId,
+          totalOrders: batch.totalOrders,
+          totalItems: batch.totalItems,
+          metadata: {
+            destination: batch.destination,
+            platforms: batch.orders.map(o => o.platformId).filter(Boolean)
+          }
+        }, { transaction });
+
+        // Link orders to batch
+        await Promise.all(batch.orders.map(order => 
+          order.update({
+            batchId: batchRecord.id,
+            status: 'IN_BATCH'
+          }, { transaction })
+        ));
+      }
+
+      await transaction.commit();
+      return batches;
+    } catch (error) {
+      await transaction.rollback();
+      logger.error('Error in batch shipment creation:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update payment status for an order
+   * @param {String} orderId - Order ID
+   * @param {String} paymentStatus - New payment status
+   * @param {Object} paymentData - Additional payment data
+   * @returns {Object} Update result
+   */
+  async updatePaymentStatus(orderId, paymentStatus, paymentData = {}) {
+    const transaction = await sequelize.transaction();
+    
+    try {
+      const order = await Order.findByPk(orderId, { transaction });
+      
+      if (!order) {
+        throw new Error(`Order not found: ${orderId}`);
+      }
+
+      const oldPaymentStatus = order.paymentStatus;
+      
+      // Update order payment status
+      await order.update({
+        paymentStatus,
+        lastPaymentUpdate: new Date(),
+        paymentMetadata: {
+          ...order.paymentMetadata,
+          ...paymentData,
+          statusHistory: [
+            ...(order.paymentMetadata?.statusHistory || []),
+            {
+              from: oldPaymentStatus,
+              to: paymentStatus,
+              date: new Date(),
+              reason: paymentData.reason || ''
+            }
+          ]
+        }
+      }, { transaction });
+
+      // Create payment transaction record
+      await FinancialTransaction.create({
+        orderId,
+        type: this._getTransactionType(paymentStatus),
+        amount: paymentData.amount || order.totalAmount,
+        currency: paymentData.currency || order.currency,
+        status: this._mapPaymentToTransactionStatus(paymentStatus),
+        metadata: paymentData
+      }, { transaction });
+
+      // If payment is completed, update order status if needed
+      if (paymentStatus === 'completed' && order.status === 'PENDING_PAYMENT') {
+        await order.update({
+          status: 'PROCESSING'
+        }, { transaction });
+      }
+
+      await transaction.commit();
+
+      return {
+        success: true,
+        order,
+        message: `Payment status updated to ${paymentStatus}`
+      };
+    } catch (error) {
+      await transaction.rollback();
+      logger.error(`Error updating payment status for order ${orderId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Map payment status to transaction status
+   * @private
+   */
+  _mapPaymentToTransactionStatus(paymentStatus) {
+    const statusMap = {
+      'pending': 'pending',
+      'completed': 'completed',
+      'failed': 'failed',
+      'refunded': 'completed',
+      'partially_refunded': 'completed',
+      'cancelled': 'cancelled'
+    };
+    return statusMap[paymentStatus] || 'pending';
+  }
+
+  /**
+   * Get transaction type based on payment status
+   * @private
+   */
+  _getTransactionType(paymentStatus) {
+    const typeMap = {
+      'completed': 'payment',
+      'refunded': 'refund',
+      'partially_refunded': 'partial_refund',
+      'cancelled': 'cancellation'
+    };
+    return typeMap[paymentStatus] || 'payment';
+  }
   
   /**
    * Process webhook notification from platforms
@@ -389,6 +576,12 @@ class OrderProcessorService {
       switch (platformType.toLowerCase()) {
         case 'trendyol':
           result = await this._processTrendyolWebhook(data);
+          break;
+        case 'hepsiburada':
+          result = await this._processHepsiburadaWebhook(data);
+          break;
+        case 'n11':
+          result = await this._processN11Webhook(data);
           break;
         // Add more platform handlers as needed
         default:
@@ -531,6 +724,260 @@ class OrderProcessorService {
       logger.error('Error processing Trendyol webhook:', error);
       throw error;
     }
+  }
+
+  /**
+   * Process Hepsiburada webhook notification
+   * @private
+   * @param {Object} data - Webhook data
+   * @returns {Object} - Processing result
+   */
+  async _processHepsiburadaWebhook(data) {
+    try {
+      if (!data.event || !data.orderId) {
+        throw new Error('Invalid Hepsiburada webhook format');
+      }
+
+      const order = await Order.findOne({
+        where: {
+          externalOrderId: data.orderId,
+          platformType: 'hepsiburada'
+        }
+      });
+
+      if (!order) {
+        logger.warn(`Order not found for Hepsiburada webhook: ${data.orderId}`);
+        return {
+          success: false,
+          message: 'Order not found in system',
+          event: data.event
+        };
+      }
+
+      switch (data.event.toLowerCase()) {
+        case 'created':
+          if (order.status !== 'NEW') {
+            order.status = 'NEW';
+            await order.save();
+          }
+          break;
+
+        case 'packaging':
+          order.status = 'PROCESSING';
+          await order.save();
+          break;
+
+        case 'shipped':
+          order.status = 'SHIPPED';
+          if (data.cargoTrackingNumber) {
+            order.trackingNumber = data.cargoTrackingNumber;
+          }
+          if (data.cargoTrackingUrl) {
+            order.trackingUrl = data.cargoTrackingUrl;
+          }
+          await order.save();
+          break;
+
+        case 'delivered':
+          order.status = 'DELIVERED';
+          order.deliveryDate = new Date();
+          await order.save();
+          break;
+
+        case 'cancelled':
+          order.status = 'CANCELLED';
+          order.cancellationReason = data.reason || '';
+          order.cancellationDate = new Date();
+          await order.save();
+          break;
+
+        case 'returned':
+          order.status = 'RETURNED';
+          order.returnReason = data.reason || '';
+          order.returnDate = new Date();
+          await order.save();
+          break;
+
+        default:
+          logger.info(`Unhandled Hepsiburada event type: ${data.event}`);
+          return {
+            success: false,
+            message: `Unhandled event type: ${data.event}`,
+            orderId: order.id
+          };
+      }
+
+      return {
+        success: true,
+        message: `Successfully processed ${data.event} event`,
+        orderId: order.id,
+        status: order.status
+      };
+
+    } catch (error) {
+      logger.error('Error processing Hepsiburada webhook:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process N11 webhook notification
+   * @private
+   * @param {Object} data - Webhook data
+   * @returns {Object} - Processing result
+   */
+  async _processN11Webhook(data) {
+    try {
+      if (!data.event || !data.orderId) {
+        throw new Error('Invalid N11 webhook format');
+      }
+
+      const order = await Order.findOne({
+        where: {
+          externalOrderId: data.orderId,
+          platformType: 'n11'
+        }
+      });
+
+      if (!order) {
+        logger.warn(`Order not found for N11 webhook: ${data.orderId}`);
+        return {
+          success: false,
+          message: 'Order not found in system',
+          event: data.event
+        };
+      }
+
+      switch (data.event.toLowerCase()) {
+        case 'new':
+          if (order.status !== 'NEW') {
+            order.status = 'NEW';
+            await order.save();
+          }
+          break;
+
+        case 'accepted':
+        case 'picking':
+          order.status = 'PROCESSING';
+          await order.save();
+          break;
+
+        case 'shipped':
+          order.status = 'SHIPPED';
+          if (data.shipmentInfo) {
+            order.trackingNumber = data.shipmentInfo.trackingNumber;
+            order.trackingUrl = data.shipmentInfo.trackingUrl;
+            order.carrierName = data.shipmentInfo.carrierName;
+          }
+          await order.save();
+          break;
+
+        case 'delivered':
+          order.status = 'DELIVERED';
+          order.deliveryDate = new Date();
+          await order.save();
+          break;
+
+        case 'rejected':
+        case 'cancelled':
+          order.status = 'CANCELLED';
+          order.cancellationReason = data.reason || '';
+          order.cancellationDate = new Date();
+          await order.save();
+          break;
+
+        case 'returned':
+          order.status = 'RETURNED';
+          order.returnReason = data.reason || '';
+          order.returnDate = new Date();
+          await order.save();
+          break;
+
+        default:
+          logger.info(`Unhandled N11 event type: ${data.event}`);
+          return {
+            success: false,
+            message: `Unhandled event type: ${data.event}`,
+            orderId: order.id
+          };
+      }
+
+      return {
+        success: true,
+        message: `Successfully processed ${data.event} event`,
+        orderId: order.id,
+        status: order.status
+      };
+
+    } catch (error) {
+      logger.error('Error processing N11 webhook:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate consolidated totals including tax and currency conversion
+   * @private
+   * @param {Array<Order>} orders - Orders to consolidate
+   * @returns {Object} Consolidated totals
+   */
+  async _calculateConsolidatedTotals(orders) {
+    const currencies = [...new Set(orders.map(o => o.currency))];
+    let primaryCurrency = currencies[0];
+    let requiresConversion = currencies.length > 1;
+    
+    // If we have multiple currencies, convert everything to the primary currency
+    let subtotal = 0;
+    let taxTotal = 0;
+    let shippingTotal = 0;
+    
+    for (const order of orders) {
+      if (requiresConversion && order.currency !== primaryCurrency) {
+        const conversionRate = await this._getConversionRate(order.currency, primaryCurrency);
+        subtotal += parseFloat(order.totalAmount) * conversionRate;
+        taxTotal += parseFloat(order.taxAmount || 0) * conversionRate;
+        shippingTotal += parseFloat(order.shippingAmount || 0) * conversionRate;
+      } else {
+        subtotal += parseFloat(order.totalAmount);
+        taxTotal += parseFloat(order.taxAmount || 0);
+        shippingTotal += parseFloat(order.shippingAmount || 0);
+      }
+    }
+
+    return {
+      subtotal,
+      taxTotal,
+      shippingTotal,
+      totalAmount: subtotal + taxTotal + shippingTotal,
+      currency: primaryCurrency,
+      originalCurrencies: currencies
+    };
+  }
+
+  /**
+   * Get currency conversion rate
+   * @private
+   * @param {string} fromCurrency - Source currency
+   * @param {string} toCurrency - Target currency
+   * @returns {number} Conversion rate
+   */
+  async _getConversionRate(fromCurrency, toCurrency) {
+    // Here you would typically call your forex rate provider
+    // For now, we're using a simple implementation
+    const rates = {
+      'TRY': { 'USD': 0.037, 'EUR': 0.034 },
+      'USD': { 'TRY': 27.0, 'EUR': 0.92 },
+      'EUR': { 'TRY': 29.5, 'USD': 1.09 }
+    };
+
+    if (fromCurrency === toCurrency) return 1;
+    
+    const rate = rates[fromCurrency]?.[toCurrency];
+    if (!rate) {
+      throw new Error(`No conversion rate available for ${fromCurrency} to ${toCurrency}`);
+    }
+    
+    return rate;
   }
 }
 

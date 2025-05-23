@@ -1,21 +1,9 @@
-const express = require('express');
-const router = express.Router();
 const exportService = require('../services/exportService');
-const { authenticateToken } = require('../middleware/auth-middleware');
-
+const { protect, authorize } = require('../middleware/auth');
+const { body, validationResult } = require('express-validator');
 const logger = require('../utils/logger');
-
-
-// Apply authentication middleware to all export routes
-router.use(authenticateToken);
-
-// Export routes
-router.post('/orders/csv', exportOrdersToCSV);
-router.post('/orders/excel', exportOrdersToExcel);
-router.post('/order-items/csv', exportOrderItemsToCSV);
-router.get('/files', getExportFiles);
-router.delete('/files/:filename', deleteExportFile);
-  
+const fs = require('fs');
+const path = require('path');
 
 async function exportOrdersToCSV(req, res) {
   try {
@@ -73,12 +61,16 @@ async function exportOrderItemsToCSV(req, res) {
     });
   }
 }
+
 async function getExportFiles(req, res) {
   try {
     const userId = req.user.id;
-    const fs = require('fs');
-    const path = require('path');
     const exportDir = path.join(__dirname, '../../public/exports');
+    
+    // Ensure export directory exists
+    if (!fs.existsSync(exportDir)) {
+      fs.mkdirSync(exportDir, { recursive: true });
+    }
     
     // Read directory
     const files = fs.readdirSync(exportDir);
@@ -114,6 +106,7 @@ async function getExportFiles(req, res) {
     });
   }
 }
+
 async function deleteExportFile(req, res) {
   try {
     const { filename } = req.params;
@@ -127,8 +120,6 @@ async function deleteExportFile(req, res) {
       });
     }
     
-    const fs = require('fs');
-    const path = require('path');
     const filePath = path.join(__dirname, '../../public/exports', filename);
     
     // Check if file exists
@@ -157,5 +148,10 @@ async function deleteExportFile(req, res) {
   }
 }
 
-
-module.exports = router;
+module.exports = {
+  exportOrdersToCSV,
+  exportOrdersToExcel,
+  exportOrderItemsToCSV,
+  getExportFiles,
+  deleteExportFile
+};

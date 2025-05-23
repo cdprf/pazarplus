@@ -2,9 +2,14 @@
 const express = require('express');
 const router = express.Router();
 const shippingController = require('../controllers/shipping-controller');
-const { authenticateToken } = require('../middleware/auth-middleware');
+// Remove old auth middleware
+// const { authenticateToken } = require('../middleware/auth-middleware');
+// Import new auth middleware
+const { protect, authorize } = require('../middleware/auth');
 
-router.use(authenticateToken);
+// Replace old middleware usage
+// router.use(authenticateToken);
+router.use(protect);
 
 router.post('/labels/generate', shippingController.generateShippingLabel);
 router.post('/labels/bulk', shippingController.generateBulkShippingLabels);

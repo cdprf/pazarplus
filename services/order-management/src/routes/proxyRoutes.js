@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const logger = require('../utils/logger');
-const { authenticateToken } = require('../middleware/auth-middleware');
+const { protect, authorize } = require('../middleware/auth');
 
 // Authenticate all routes
-router.use(authenticateToken);
+router.use(protect);
 
 /**
  * Proxy endpoint for Hepsiburada API requests

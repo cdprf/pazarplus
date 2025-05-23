@@ -1,33 +1,30 @@
 const rateLimit = require('express-rate-limit');
-const RedisStore = require('rate-limit-redis');
 const logger = require('../utils/logger');
-
-// Create Redis store if Redis URL is provided, otherwise use memory store
-const store = process.env.REDIS_URL
-  ? new RedisStore({
-      redisURL: process.env.REDIS_URL,
-      prefix: 'rl:', // Redis key prefix for rate limiter
-    })
-  : undefined; // Will use Memory Store
+const { ApiError } = require('../utils/api-error-handler');
 
 // Create different limiters for different endpoints
 const createLimiter = (windowMs, max, message) => {
   return rateLimit({
-    store,
     windowMs,
     max,
     message: {
       success: false,
       message
     },
-    handler: (req, res, next, options) => {
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req, res) => {
       logger.warn(`Rate limit exceeded for IP ${req.ip}`);
-      res.status(429).json(options.message);
+      res.status(429).json({
+        success: false,
+        message: message
+      });
     },
     keyGenerator: (req) => {
       // Use user ID if authenticated, otherwise use IP
       return req.user ? `user_${req.user.id}` : req.ip;
     },
+    skip: (req) => process.env.NODE_ENV === 'development'
   });
 };
 
@@ -38,12 +35,24 @@ const apiLimiter = createLimiter(
   'Too many requests, please try again later.'
 );
 
-// More strict limiter for authentication endpoints
-const authLimiter = createLimiter(
-  60 * 60 * 1000, // 1 hour
-  5, // 5 failed attempts per hour
-  'Too many login attempts, please try again later.'
-);
+// More lenient rate limiting in development
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'development' ? 100 : 5, // Higher limit in development
+  message: {
+    success: false,
+    message: 'Too many login attempts, please try again later'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      message: 'Too many login attempts, please try again later'
+    });
+  },
+  skip: (req) => process.env.NODE_ENV === 'development'
+});
 
 // Platform sync rate limiter
 const syncLimiter = createLimiter(

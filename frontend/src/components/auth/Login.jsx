@@ -1,64 +1,71 @@
 // frontend/src/components/auth/Login.jsx
 
-import React, { useState, useContext, useEffect } from 'react';
-import { Form, Button, Card, Container, Row, Col, Spinner } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../../context/AuthContext';
-import { AlertContext } from '../../context/AlertContext';
+import React, { useState, useEffect } from 'react';
+import { Form, Button, Card, Container, Row, Col, Spinner, Alert } from 'react-bootstrap';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
-  const { login, isAuthenticated, error, setError } = useContext(AuthContext);
-  const { error: showError } = useContext(AlertContext);
-  
+  const { login, user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  
-  // Redirect if already authenticated
+  const location = useLocation();
+
+  // Handle redirect after successful authentication
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
+    console.log('Login useEffect triggered:', { isAuthenticated, user: !!user });
+    
+    if (isAuthenticated && user) {
+      console.log('Redirecting user after login...');
+      // Get the intended destination or default to dashboard
+      const returnTo = sessionStorage.getItem('returnTo') || location.state?.from?.pathname || '/dashboard';
+      console.log('Redirect destination:', returnTo);
+      sessionStorage.removeItem('returnTo');
+      navigate(returnTo, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
-  
-  // Display auth errors
-  useEffect(() => {
-    if (error) {
-      showError(error);
-      setError(null);
-    }
-  }, [error, showError, setError]);
-  
+  }, [isAuthenticated, user, navigate, location.state]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+    setError('');
+
     try {
-      const success = await login(email, password);
-      if (success) {
-        navigate('/dashboard');
+      const response = await login({ email, password });
+      
+      if (response.requires2FA) {
+        // Redirect to 2FA verification page with temporary token
+        navigate('/verify-2fa', { 
+          state: { 
+            tempToken: response.tempToken,
+            email 
+          }
+        });
+        return;
       }
+      
+      // Don't manually navigate here - let useEffect handle it
     } catch (err) {
-      console.error('Login error:', err);
+      setError(err.message || 'Failed to login');
     } finally {
       setLoading(false);
     }
   };
-  
+
   return (
-    <Container>
-      <Row className="justify-content-center align-items-center" style={{ minHeight: '80vh' }}>
-        <Col md={6} lg={5}>
-          <Card className="shadow-sm">
-            <Card.Body className="p-4">
-              <div className="text-center mb-4">
-                <h2 className="mb-0">Pazar+</h2>
-                <p className="text-muted">Order Management System</p>
-              </div>
+    <Container className="py-5">
+      <Row className="justify-content-center">
+        <Col md={6}>
+          <Card>
+            <Card.Body>
+              <h2 className="text-center mb-4">Sign In</h2>
               
-              <h4 className="mb-4 text-center">Login to Your Account</h4>
+              {error && (
+                <Alert variant="danger">{error}</Alert>
+              )}
               
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
@@ -99,14 +106,17 @@ const Login = () => {
                         aria-hidden="true" 
                         className="me-2"
                       />
-                      Logging in...
+                      Signing in...
                     </>
-                  ) : 'Login'}
+                  ) : 'Sign in'}
                 </Button>
                 
                 <div className="text-center mt-3">
                   <p className="mb-0">
                     Don't have an account? <Link to="/register">Register</Link>
+                  </p>
+                  <p className="mt-2">
+                    <Link to="/forgot-password">Forgot your password?</Link>
                   </p>
                 </div>
               </Form>

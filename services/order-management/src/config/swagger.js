@@ -3,10 +3,6 @@
  */
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
-const { generateTestToken } = require('../utils/test-token-generator');
-
-// Generate a test token for API requests
-const testToken = generateTestToken();
 
 // Swagger specification
 const options = {
@@ -56,27 +52,9 @@ const options = {
 const specs = swaggerJsdoc(options);
 
 /**
- * Middleware that automatically applies the test token to API requests
- * but not to the Swagger UI or other non-API routes
- */
-const autoAuthMiddleware = (req, res, next) => {
-  // Skip if this is not an API request or already has authorization
-  if (!req.path.startsWith('/api') || req.headers.authorization) {
-    return next();
-  }
-  
-  // Apply test token to API requests
-  req.headers.authorization = `Bearer ${testToken}`;
-  next();
-};
-
-/**
- * Initialize Swagger documentation and apply auto-authentication middleware
+ * Initialize Swagger documentation
  */
 const initializeSwagger = (app) => {
-  // Add auto-authentication for API endpoints
-  app.use(autoAuthMiddleware);
-  
   // Set up Swagger UI
   const swaggerUiOptions = {
     explorer: true,
@@ -120,7 +98,5 @@ const initializeSwagger = (app) => {
 module.exports = { 
   specs, 
   swaggerUi, 
-  initializeSwagger, 
-  testToken,
-  autoAuthMiddleware 
+  initializeSwagger
 };

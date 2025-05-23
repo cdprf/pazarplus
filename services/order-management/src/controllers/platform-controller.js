@@ -1,38 +1,9 @@
-// services/order-management/src/controllers/platform-controller.js
-const express = require("express");
-const { PlatformConnection, User } = require("../models"); // Added User model
+const { PlatformConnection, User } = require("../models");
 const PlatformServiceFactory = require("../services/platforms/platformServiceFactory");
-const { authenticateToken } = require("../middleware/auth-middleware");
+const { body, validationResult } = require("express-validator");
+const { protect, authorize } = require("../middleware/auth");
 const wsService = require('../services/websocketService');
 const logger = require("../utils/logger");
-
-const router = express.Router();
-
-// Apply authentication middleware to all platform routes
-router.use(authenticateToken);
-
-// Connection management routes
-router.post("/connections", createConnection);
-router.get("/connections", getConnections);
-router.get("/connections/:id", getConnection);
-router.put("/connections/:id", updateConnection);
-router.delete("/connections/:id", deleteConnection);
-router.post("/connections/:id/test", testConnection);
-router.post("/connections/test", testNewConnection);
-router.get("/connections/:id/products", getProductsByConnection);
-
-// Add new Trendyol-specific endpoints
-router.get("/connections/:id/order/:orderNumber", getOrderById);
-router.get("/connections/:id/order/:orderNumber/shipment-packages", getOrderShipmentPackages);
-router.post("/connections/:id/order/:orderNumber/shipment-packages", createShipmentPackage);
-router.get("/connections/:id/claims", getClaims);
-router.get("/connections/:id/shipping-providers", getShippingProviders);
-router.get("/connections/:id/settlements", getSettlements);
-router.post("/connections/:id/batch-requests", createBatchRequest);
-router.get("/connections/:id/batch-requests/:batchRequestId", getBatchRequestStatus);
-
-// Platform type routes
-router.get("/types", getPlatformTypes);
 
 // Platform connection management functions
 async function createConnection(req, res) {
@@ -41,7 +12,7 @@ async function createConnection(req, res) {
 
     if (!req.user || !req.user.id) {
       logger.error('User ID not found in request. Cannot create platform connection.');
-      return res.status(401).json({ // Unauthorized
+      return res.status(401).json({
         success: false,
         message: 'User authentication error. Cannot create platform connection.',
       });
@@ -135,41 +106,23 @@ async function updateConnection(req, res) {
     const connection = await PlatformConnection.findOne({
       where: { id: req.params.id, userId: req.user.id },
     });
+    
     if (!connection) {
       return res.status(404).json({
         success: false,
         message: "Platform connection not found",
       });
     }
-    const { name, platformName, credentials, status } = req.body;
-    const updates = {};
-    if (name) updates.name = name;
-    if (platformName) updates.platformName = platformName;
+
+    const { name, credentials, platformName, status } = req.body;
+    const updateData = {};
     
-    // Handle credentials properly
-    if (credentials) {
-      // Make sure credentials are stored as an object
-      if (typeof credentials === 'string') {
-        try {
-          updates.credentials = JSON.parse(credentials);
-        } catch (e) {
-          logger.warn(`Failed to parse credentials as JSON: ${e.message}`);
-          updates.credentials = credentials;
-        }
-      } else {
-        updates.credentials = credentials;
-      }
-      
-      // Log the credentials being saved (without sensitive data)
-      logger.debug(`Updating credentials for connection ${connection.id}: Keys: ${Object.keys(updates.credentials).join(', ')}`);
-    }
-    
-    if (status) updates.status = status;
-    
-    await connection.update(updates);
-    
-    // Log success for debugging
-    logger.info(`Platform connection ${connection.id} updated successfully`);
+    if (name) updateData.name = name;
+    if (credentials) updateData.credentials = credentials;
+    if (platformName) updateData.platformName = platformName;
+    if (status) updateData.status = status;
+
+    await connection.update(updateData);
     
     return res.status(200).json({
       success: true,
@@ -193,13 +146,16 @@ async function deleteConnection(req, res) {
     const connection = await PlatformConnection.findOne({
       where: { id: req.params.id, userId: req.user.id },
     });
+    
     if (!connection) {
       return res.status(404).json({
         success: false,
         message: "Platform connection not found",
       });
     }
+
     await connection.destroy();
+    
     return res.status(200).json({
       success: true,
       message: "Platform connection deleted successfully",
@@ -221,31 +177,30 @@ async function testConnection(req, res) {
     const connection = await PlatformConnection.findOne({
       where: { id: req.params.id, userId: req.user.id },
     });
+    
     if (!connection) {
       return res.status(404).json({
         success: false,
         message: "Platform connection not found",
       });
     }
-    
-    // Log test connection attempt (without sensitive data)
-    logger.info(`Testing connection for ${connection.platformType} with ID ${connection.id}`);
-    logger.debug(`Connection credential keys: ${Object.keys(connection.credentials || {}).join(', ')}`);
-    
-    const platformService = await PlatformServiceFactory.createService(
-      connection.id
+
+    const platformService = PlatformServiceFactory.createService(
+      connection.platformType,
+      connection.credentials
     );
+
+    const testResult = await platformService.testConnection();
     
-    const result = await platformService.testConnection();
-    
-    // Log test connection result
-    if (result.success) {
-      logger.info(`Connection test successful for ${connection.platformType} connection ${connection.id}`);
-    } else {
-      logger.warn(`Connection test failed for ${connection.platformType} connection ${connection.id}: ${result.message}`);
+    if (testResult.success) {
+      await connection.update({ status: "active" });
     }
-    
-    return res.status(200).json(result);
+
+    return res.status(200).json({
+      success: testResult.success,
+      message: testResult.success ? "Connection test successful" : "Connection test failed",
+      data: testResult,
+    });
   } catch (error) {
     logger.error(`Failed to test platform connection: ${error.message}`, {
       error,
@@ -261,45 +216,33 @@ async function testConnection(req, res) {
 async function testNewConnection(req, res) {
   try {
     const { platformType, credentials } = req.body;
-    
-    // Log test connection attempt (without sensitive data)
-    logger.info(`Testing new ${platformType} connection with credential keys: ${typeof credentials === 'object' ? Object.keys(credentials).join(', ') : 'none provided'}`);
-    
-    let processedCredentials = credentials;
-    
-    // Make sure credentials are in the right format
-    if (typeof credentials === 'string') {
-      try {
-        processedCredentials = JSON.parse(credentials);
-        logger.debug(`Parsed credentials from string to object with keys: ${Object.keys(processedCredentials).join(', ')}`);
-      } catch (e) {
-        logger.warn(`Failed to parse credentials as JSON: ${e.message}`);
-      }
+
+    if (!platformType || !credentials) {
+      return res.status(400).json({
+        success: false,
+        message: "Platform type and credentials are required",
+      });
     }
-    
-    // Create a temporary platform service without saving to database
-    const platformService = PlatformServiceFactory.createServiceByType(
+
+    const platformService = PlatformServiceFactory.createService(
       platformType,
-      processedCredentials
+      credentials
     );
-    
-    const result = await platformService.testConnection();
-    
-    // Log test connection result
-    if (result.success) {
-      logger.info(`${platformType} connection test successful`);
-    } else {
-      logger.warn(`${platformType} connection test failed: ${result.message}`);
-    }
-    
-    return res.status(200).json(result);
+
+    const testResult = await platformService.testConnection();
+
+    return res.status(200).json({
+      success: testResult.success,
+      message: testResult.success ? "Connection test successful" : "Connection test failed",
+      data: testResult,
+    });
   } catch (error) {
     logger.error(`Failed to test new platform connection: ${error.message}`, {
       error,
     });
     return res.status(500).json({
       success: false,
-      message: "Failed to test platform connection",
+      message: "Failed to test new platform connection",
       error: error.message,
     });
   }
@@ -406,7 +349,7 @@ async function createPlatformConnection(req, res) {
   try {
     if (!req.user || !req.user.id) {
       logger.error('User ID not found in request. Cannot create platform connection.');
-      return res.status(401).json({ // Unauthorized
+      return res.status(401).json({
         success: false,
         message: 'User authentication error. Cannot create platform connection.',
       });
