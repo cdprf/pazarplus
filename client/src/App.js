@@ -1,0 +1,163 @@
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuthProvider } from "./contexts/AuthContext";
+import { AlertProvider } from "./contexts/AlertContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
+import ErrorBoundary from "./components/common/ErrorBoundary";
+
+// Import CSS
+import "bootstrap/dist/css/bootstrap.min.css";
+import "./App.css";
+
+// Import components
+import Layout from "./components/layout/Layout.jsx";
+import PrivateRoute from "./components/auth/PrivateRoute";
+import PublicRoute from "./components/auth/PublicRoute";
+
+// Import pages and components (consolidated)
+import Login from "./components/auth/Login";
+import Register from "./components/auth/Register";
+import ForgotPassword from "./components/auth/ForgotPassword";
+import ResetPassword from "./components/auth/ResetPassword";
+import EmailVerification from "./components/auth/EmailVerification";
+import Dashboard from "./components/dashboard/Dashboard";
+import Orders from "./pages/Orders"; // Consolidated order management
+import OrderDetail from "./components/orders/OrderDetail";
+import CustomerManagement from "./components/customers/CustomerManagement";
+import ShippingManagement from "./components/shipping/ShippingManagement";
+import ImportExport from "./components/common/ImportExport";
+import PlatformConnections from "./components/platforms/PlatformConnections";
+import PlatformSettings from "./components/platforms/PlatformSettings";
+import PlatformAnalytics from "./components/platforms/PlatformAnalytics";
+import PlatformSyncHistory from "./components/platforms/PlatformSyncHistory";
+import Settings from "./components/settings/Settings";
+
+// Create a query client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <AuthProvider>
+            <AlertProvider>
+              <ThemeProvider>
+                <NotificationProvider>
+                  <div className="App">
+                    <Routes>
+                      {/* Public routes */}
+                      <Route
+                        path="/login"
+                        element={
+                          <PublicRoute>
+                            <Login />
+                          </PublicRoute>
+                        }
+                      />
+                      <Route
+                        path="/register"
+                        element={
+                          <PublicRoute>
+                            <Register />
+                          </PublicRoute>
+                        }
+                      />
+                      <Route
+                        path="/verify-email"
+                        element={
+                          <PublicRoute>
+                            <EmailVerification />
+                          </PublicRoute>
+                        }
+                      />
+                      <Route
+                        path="/forgot-password"
+                        element={
+                          <PublicRoute>
+                            <ForgotPassword />
+                          </PublicRoute>
+                        }
+                      />
+                      <Route
+                        path="/reset-password"
+                        element={
+                          <PublicRoute>
+                            <ResetPassword />
+                          </PublicRoute>
+                        }
+                      />
+
+                      {/* Private routes - consolidated and organized */}
+                      <Route
+                        path="/"
+                        element={
+                          <PrivateRoute>
+                            <Layout />
+                          </PrivateRoute>
+                        }
+                      >
+                        {/* Dashboard routes */}
+                        <Route index element={<Dashboard />} />
+                        <Route path="dashboard" element={<Dashboard />} />
+                        <Route path="orders" element={<Orders />} />
+                        <Route path="orders/:id" element={<OrderDetail />} />
+
+                        {/* Other management routes */}
+                        <Route
+                          path="customers"
+                          element={<CustomerManagement />}
+                        />
+                        <Route
+                          path="shipping"
+                          element={<ShippingManagement />}
+                        />
+                        <Route
+                          path="import-export"
+                          element={<ImportExport />}
+                        />
+
+                        {/* Platform management */}
+                        <Route
+                          path="platforms"
+                          element={<PlatformConnections />}
+                        />
+                        <Route
+                          path="platforms/:platformId/settings"
+                          element={<PlatformSettings />}
+                        />
+                        <Route
+                          path="platforms/:platformId/analytics"
+                          element={<PlatformAnalytics />}
+                        />
+                        <Route
+                          path="platforms/:platformId/sync-history"
+                          element={<PlatformSyncHistory />}
+                        />
+
+                        {/* Settings */}
+                        <Route path="settings" element={<Settings />} />
+                      </Route>
+                    </Routes>
+                  </div>
+                </NotificationProvider>
+              </ThemeProvider>
+            </AlertProvider>
+          </AuthProvider>
+        </Router>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+}
+
+export default App;

@@ -1,18 +1,23 @@
 # Dependencies
 node_modules/
-.pnp/
-.pnp.js
+/client/node_modules/
 
-# Environment
+# Production build
+/client/build/
+
+# Environment variables
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.development
+.env.test
+.env.production
 
-# Database
-*.sqlite
-*.sqlite3
+# Client environment variables
+/client/.env
+/client/.env.local
+/client/.env.development
+/client/.env.test
+/client/.env.production
 
 # Logs
 logs/
@@ -21,18 +26,24 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Build outputs
-dist/
-build/
-out/
+# Database
+*.sqlite
+*.sqlite-*
 
-# Editor specific
+# Coverage directory
+coverage/
+
+# Temporary files
+.DS_Store
+.tmp/
+tmp/
+
+# IDE files
 .idea/
 .vscode/
-*.swp
-*.swo
+*.sublime-project
+*.sublime-workspace
 
-# OS specific
-.DS_Store
-Thumbs.db
-services/order-management/dir.txt
+# Build files
+/dist/
+/build/

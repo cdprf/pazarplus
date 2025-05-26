@@ -1,0 +1,499 @@
+/* Turkish Payment Gateway Styles */
+.turkish-payment-gateway {
+  background: linear-gradient(135deg, #f8f9ff 0%, #fff 100%);
+  min-height: 100vh;
+  padding: 2rem 0;
+}
+
+/* Payment Header Card */
+.payment-header-card {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  overflow: hidden;
+}
+
+.payment-header-card .card-body {
+  padding: 2rem;
+}
+
+.payment-amount h3 {
+  font-weight: 700;
+  font-size: 2.5rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Gateway Selection Card */
+.gateway-selection-card {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  background: white;
+}
+
+.gateway-selection-card .card-body {
+  padding: 2rem;
+}
+
+.gateway-card {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  background: white;
+}
+
+.gateway-card:hover {
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+.gateway-card.selected {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #f7faff 0%, #e8f2ff 100%);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+}
+
+.gateway-card .card-body {
+  padding: 1.5rem;
+}
+
+.gateway-logo {
+  width: 80px;
+  height: 40px;
+  object-fit: contain;
+}
+
+/* Payment Methods Card */
+.payment-methods-card {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  background: white;
+}
+
+.payment-methods-card .card-body {
+  padding: 2rem;
+}
+
+/* Payment Tabs */
+.payment-tabs {
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.payment-tabs .nav-link {
+  border: none;
+  color: #6c757d;
+  font-weight: 600;
+  padding: 1rem 1.5rem;
+  border-radius: 10px 10px 0 0;
+  margin-right: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.payment-tabs .nav-link:hover {
+  color: #667eea;
+  background: #f8f9fa;
+}
+
+.payment-tabs .nav-link.active {
+  color: #667eea;
+  background: linear-gradient(135deg, #f7faff 0%, #e8f2ff 100%);
+  border-bottom: 3px solid #667eea;
+}
+
+/* Form Styling */
+.form-label {
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.form-control,
+.form-select {
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Security Info Card */
+.security-info-card {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #b3e5fc;
+  border-radius: 12px;
+}
+
+.security-info-card .card-body {
+  padding: 1.5rem;
+}
+
+.security-features {
+  margin-bottom: 1rem;
+}
+
+.security-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.security-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Payment Actions */
+.payment-actions {
+  display: flex;
+  justify-content: center;
+  padding-top: 2rem;
+  border-top: 2px solid #e2e8f0;
+}
+
+.payment-submit-btn {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  border: none;
+  border-radius: 25px;
+  padding: 1rem 3rem;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);
+  transition: all 0.3s ease;
+  min-width: 250px;
+}
+
+.payment-submit-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(76, 175, 80, 0.4);
+  background: linear-gradient(135deg, #45a049 0%, #4CAF50 100%);
+}
+
+.payment-submit-btn:disabled {
+  opacity: 0.7;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* Bank Transfer Info */
+.bank-transfer-info {
+  padding: 1rem 0;
+}
+
+.bank-details {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 10px;
+  margin-top: 1rem;
+}
+
+.bank-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.bank-item:last-child {
+  border-bottom: none;
+}
+
+.bank-item strong {
+  color: #2d3748;
+  min-width: 120px;
+}
+
+/* Mobile Payment Options */
+.mobile-payment-options {
+  padding: 1rem 0;
+}
+
+.mobile-option-card {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.mobile-option-card:hover {
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+.mobile-option-card .card-body {
+  padding: 1.5rem;
+}
+
+.mobile-logo {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Alert Styling */
+.alert {
+  border: none;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.alert-info {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  color: #0d47a1;
+  border-left: 4px solid #2196f3;
+}
+
+/* Modal Styling */
+.modal-content {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 15px 15px 0 0;
+  padding: 1.5rem 2rem;
+}
+
+.modal-header .modal-title {
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.modal-header .btn-close {
+  filter: invert(1);
+}
+
+.modal-body {
+  padding: 2rem;
+}
+
+.modal-footer {
+  padding: 1.5rem 2rem;
+  background: #f8f9fa;
+  border-radius: 0 0 15px 15px;
+}
+
+/* Security Details */
+.security-details h6 {
+  color: #2d3748;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.security-details h6:first-child {
+  margin-top: 0;
+}
+
+.security-details p {
+  color: #6c757d;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+/* Card Number Formatting */
+.form-control[placeholder*="1234"] {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 2px;
+  font-size: 1.1rem;
+}
+
+/* CVV Input */
+.form-control[placeholder="123"] {
+  font-family: 'Courier New', monospace;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* Installment Options */
+.form-select option {
+  padding: 0.5rem;
+}
+
+/* Loading States */
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Hover Effects */
+.gateway-card .badge {
+  transition: all 0.3s ease;
+}
+
+.gateway-card:hover .badge {
+  transform: scale(1.1);
+}
+
+.mobile-option-card .btn {
+  transition: all 0.3s ease;
+}
+
+.mobile-option-card:hover .btn {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .turkish-payment-gateway {
+    padding: 1rem 0;
+  }
+  
+  .payment-header-card .card-body {
+    padding: 1.5rem;
+  }
+  
+  .payment-amount h3 {
+    font-size: 2rem;
+  }
+  
+  .gateway-selection-card .card-body,
+  .payment-methods-card .card-body {
+    padding: 1.5rem;
+  }
+  
+  .payment-tabs .nav-link {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .security-info-card {
+    margin-top: 2rem;
+  }
+  
+  .payment-submit-btn {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1rem;
+  }
+  
+  .gateway-logo {
+    width: 60px;
+    height: 30px;
+  }
+  
+  .mobile-logo {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .payment-tabs {
+    flex-direction: column;
+  }
+  
+  .payment-tabs .nav-link {
+    margin-right: 0;
+    margin-bottom: 0.25rem;
+    border-radius: 8px;
+  }
+  
+  .payment-header-card .d-flex {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .payment-amount {
+    margin-top: 1rem;
+  }
+}
+
+/* Success Animation */
+@keyframes successPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.payment-success {
+  animation: successPulse 0.6s ease-in-out;
+}
+
+/* Error States */
+.form-control.is-invalid {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+.invalid-feedback {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* Focus States */
+.form-control:focus,
+.form-select:focus {
+  outline: none;
+}
+
+/* Turkish Payment Provider Colors */
+.iyzico-brand {
+  background: linear-gradient(135deg, #1B4D3E 0%, #2E8B57 100%);
+}
+
+.garanti-brand {
+  background: linear-gradient(135deg, #00A651 0%, #7CB342 100%);
+}
+
+.payu-brand {
+  background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);
+}
+
+/* Security Badge */
+.security-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(76, 175, 80, 0.1);
+  color: #4CAF50;
+  padding: 0.25rem 0.5rem;
+  border-radius: 15px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Payment Processing Overlay */
+.payment-processing-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.payment-processing-content {
+  text-align: center;
+  padding: 2rem;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+}

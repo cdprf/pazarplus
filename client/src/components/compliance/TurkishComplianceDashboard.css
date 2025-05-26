@@ -1,0 +1,431 @@
+/* Turkish Compliance Dashboard Styles */
+.turkish-compliance-dashboard {
+  background: linear-gradient(135deg, #f8f9ff 0%, #fff 100%);
+  min-height: 100vh;
+  padding: 2rem 0;
+}
+
+.dashboard-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: 15px;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+}
+
+.dashboard-header h2 {
+  font-weight: 700;
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-header p {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin-bottom: 0;
+}
+
+/* Compliance Progress Card */
+.compliance-progress-card {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  background: white;
+  overflow: hidden;
+}
+
+.compliance-progress-card .card-body {
+  padding: 2rem;
+}
+
+.compliance-progress {
+  height: 12px;
+  border-radius: 10px;
+  background-color: #e9ecef;
+}
+
+.compliance-progress .progress-bar {
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Compliance Cards */
+.compliance-card {
+  border: none;
+  border-radius: 15px;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  position: relative;
+}
+
+.compliance-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+}
+
+.compliance-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+}
+
+.compliance-card .card-body {
+  padding: 2rem;
+}
+
+.card-icon-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.card-icon {
+  font-size: 2rem;
+  margin-right: 1rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.card-icon-header h5 {
+  font-weight: 600;
+  margin: 0;
+  color: #2d3748;
+}
+
+/* Specific card colors */
+.kvkk-card::before {
+  background: linear-gradient(90deg, #4CAF50, #45a049);
+}
+
+.kvkk-card .card-icon {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+}
+
+.efatura-card::before {
+  background: linear-gradient(90deg, #2196F3, #1976D2);
+}
+
+.efatura-card .card-icon {
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+}
+
+.tax-card::before {
+  background: linear-gradient(90deg, #FF9800, #F57C00);
+}
+
+.tax-card .card-icon {
+  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+}
+
+/* Compliance Status Badges */
+.compliance-status .badge {
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  border-radius: 25px;
+  font-weight: 600;
+  border: none;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.compliance-details {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 10px;
+  border-left: 4px solid #667eea;
+}
+
+.compliance-details strong {
+  color: #2d3748;
+}
+
+/* Card Actions */
+.card-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.card-actions .btn {
+  border-radius: 25px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+}
+
+.card-actions .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.card-actions .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.card-actions .btn-outline-primary {
+  border: 2px solid #667eea;
+  color: #667eea;
+  background: transparent;
+}
+
+.card-actions .btn-outline-primary:hover {
+  background: #667eea;
+  border-color: #667eea;
+  transform: translateY(-2px);
+}
+
+/* Tax Breakdown */
+.tax-breakdown {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+}
+
+.tax-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.tax-item:last-child {
+  border-bottom: none;
+}
+
+.tax-item.total {
+  border-top: 2px solid #667eea;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #2d3748;
+  background: rgba(102, 126, 234, 0.05);
+  margin: 0.5rem -1.5rem -1.5rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0 0 12px 12px;
+}
+
+.tax-item span {
+  color: #6c757d;
+}
+
+.tax-item strong {
+  color: #2d3748;
+  font-weight: 600;
+}
+
+/* Compliance Issues Alert */
+.compliance-issues {
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  border-left: 4px solid #ffc107;
+}
+
+.compliance-issues .alert-heading {
+  color: #856404;
+  font-weight: 600;
+}
+
+.compliance-issues ul {
+  color: #856404;
+}
+
+.compliance-issues li {
+  margin-bottom: 0.5rem;
+}
+
+/* Modal Styling */
+.modal-content {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 15px 15px 0 0;
+  padding: 1.5rem 2rem;
+}
+
+.modal-header .modal-title {
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.modal-header .btn-close {
+  filter: invert(1);
+}
+
+.modal-body {
+  padding: 2rem;
+}
+
+.modal-footer {
+  padding: 1.5rem 2rem;
+  background: #f8f9fa;
+  border-radius: 0 0 15px 15px;
+}
+
+/* Form Styling */
+.form-label {
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.form-control,
+.form-select {
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-check-input {
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.form-check-input:checked {
+  background-color: #667eea;
+  border-color: #667eea;
+}
+
+.form-check-label {
+  font-weight: 500;
+  color: #2d3748;
+}
+
+/* Alert Styling */
+.alert {
+  border: none;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.alert-info {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  color: #0d47a1;
+  border-left: 4px solid #2196f3;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dashboard-header {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .dashboard-header h2 {
+    font-size: 2rem;
+  }
+  
+  .compliance-card .card-body {
+    padding: 1.5rem;
+  }
+  
+  .card-icon {
+    font-size: 1.5rem;
+    padding: 0.5rem;
+  }
+  
+  .card-actions {
+    flex-direction: column;
+  }
+  
+  .card-actions .btn {
+    width: 100%;
+  }
+  
+  .tax-breakdown {
+    padding: 1rem;
+  }
+  
+  .modal-body {
+    padding: 1.5rem;
+  }
+}
+
+/* Loading Animation */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.loading-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Success Animation */
+@keyframes checkmark {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.success-checkmark {
+  animation: checkmark 0.6s ease-in-out;
+}
+
+/* Hover Effects */
+.compliance-card .btn:hover {
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+
+.compliance-card .badge {
+  transition: all 0.3s ease;
+}
+
+.compliance-card:hover .badge {
+  transform: scale(1.05);
+}
+
+/* Turkish Flag Colors for accents */
+.turkish-accent {
+  background: linear-gradient(135deg, #e30a17 0%, #ffffff 50%, #e30a17 100%);
+}
+
+.turkish-red {
+  color: #e30a17;
+}
+
+.turkish-border {
+  border-left: 4px solid #e30a17;
+}

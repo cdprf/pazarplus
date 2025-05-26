@@ -1,50 +1,90 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const morgan = require('morgan');
-const colors = require('colors');
-const errorHandler = require('./middleware/error');
-const connectDB = require('./config/db');
+require('dotenv').config();
 
-// Load env vars
-dotenv.config({ path: './config/config.env' });
+const app = require('./app');
+const logger = require('./utils/logger');
+const sequelize = require('./config/database');
+const config = require('./config/config');
 
-// Connect to database
-connectDB();
+// Validate critical environment variables
+const validateEnvironment = () => {
+  const requiredEnvVars = [];
+  
+  if (process.env.NODE_ENV === 'production') {
+    requiredEnvVars.push('JWT_SECRET', 'DB_HOST', 'CLIENT_URL');
+  }
+  
+  const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+  
+  if (missingVars.length > 0) {
+    logger.error(`Missing required environment variables: ${missingVars.join(', ')}`);
+    throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+  }
+  
+  logger.info('Environment validation passed', { service: 'pazar-plus' });
+};
 
-// Route files
-const auth = require('./routes/auth');
-const adminRoutes = require('./routes/admin');
-// ...other route imports...
+const PORT = config.server.port; // Use centralized config
 
-const app = express();
+logger.info(`Using port: ${PORT}`, { service: 'pazar-plus', port: PORT });
 
-// Body parser
-app.use(express.json());
+async function startServer() {
+  try {
+    // Validate environment first
+    validateEnvironment();
+    
+    logger.info('Initializing application...', { service: 'pazar-plus' });
+    
+    // Test database connection
+    await sequelize.authenticate();
+    logger.info('Database connection established successfully', { service: 'pazar-plus' });
+    
+    // Sync database tables
+    await sequelize.sync({ 
+      force: false,  // Changed back to false to preserve data
+      logging: false  // Disable SQL logging for cleaner output
+    });
+    logger.info('Database synchronized successfully', { service: 'pazar-plus' });
+    
+    logger.info('Application initialized successfully', { service: 'pazar-plus' });
+    
+    // Start server with error handling
+    const server = app.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`, { 
+        service: 'pazar-plus',
+        port: PORT,
+        environment: process.env.NODE_ENV || 'development'
+      });
+    });
 
-// Dev logging middleware
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
+    // Handle server errors
+    server.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        logger.error(`Port ${PORT} is already in use. Please stop the other process or use a different port.`, {
+          service: 'pazar-plus',
+          port: PORT,
+          error: error.code
+        });
+        process.exit(1);
+      } else {
+        logger.error('Server error:', error, { service: 'pazar-plus' });
+        throw error;
+      }
+    });
+
+  } catch (error) {
+    logger.error('Failed to start server:', error, { service: 'pazar-plus' });
+    process.exit(1);
+  }
 }
 
-// Mount routers
-app.use('/api/v1/auth', auth);
-app.use('/api/v1/admin', adminRoutes);
-// ...other route mounts...
-
-app.use(errorHandler);
-
-const PORT = process.env.PORT || 5000;
-
-const server = app.listen(
-  PORT,
-  console.log(
-    `Server running in ${process.env.NODE_ENV} mode on port ${PORT}`.yellow.bold
-  )
-);
-
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-  console.log(`Error: ${err.message}`.red);
-  // Close server & exit process
-  server.close(() => process.exit(1));
+process.on('unhandledRejection', (err) => {
+  logger.error('Unhandled Promise Rejection:', err);
+  // Don't crash the server in production
+  if (process.env.NODE_ENV === 'development') {
+    process.exit(1);
+  }
 });
+
+// Start the server
+startServer();
