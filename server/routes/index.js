@@ -11,6 +11,9 @@ const complianceRoutes = require("./complianceRoutes");
 const orderManagementRoutes = require("../modules/order-management/routes");
 const orderRoutes = require("./orderRoutes"); // Fixed: now points to the correct file
 
+// Import enhanced platform integration routes
+const enhancedPlatformRoutes = require("./enhanced-platforms");
+
 // Health check endpoint - should be accessible first
 router.get("/api/health", (req, res) => {
   logger.info("Health check accessed");
@@ -21,6 +24,7 @@ router.get("/api/health", (req, res) => {
     routes: {
       auth: "/api/auth",
       platforms: "/api/platforms",
+      enhancedPlatforms: "/api/v1/enhanced-platforms",
       products: "/api/products",
       settings: "/api/settings",
       compliance: "/api/compliance",
@@ -36,26 +40,39 @@ router.use("*", (req, res, next) => {
 });
 
 // Mount centralized routes
-router.use("/api/auth", authRoutes);
-router.use("/api/platforms", platformRoutes);
-router.use("/api/products", productRoutes);
-router.use("/api/settings", settingsRoutes);
-router.use("/api/compliance", complianceRoutes);
+router.use("/auth", authRoutes);
+router.use("/platforms", platformRoutes);
+router.use("/products", productRoutes);
+router.use("/settings", settingsRoutes);
+router.use("/compliance", complianceRoutes);
 
 // Direct orders API for frontend compatibility
-router.use("/api/orders", orderRoutes);
+router.use("/orders", orderRoutes);
 
 // Module-specific routes
-router.use("/api/order-management", orderManagementRoutes);
+router.use("/order-management", orderManagementRoutes);
+
+// Enhanced platform integration routes (Week 5-6 features)
+router.use("/v1/enhanced-platforms", enhancedPlatformRoutes);
 
 // Catch-all for debugging
-router.use("/api/*", (req, res) => {
+router.use("/*", (req, res) => {
   logger.warn(`Unmatched API route: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     success: false,
     message: "API endpoint not found",
     path: req.originalUrl,
     method: req.method,
+    availableRoutes: [
+      "/api/auth",
+      "/api/platforms",
+      "/api/v1/enhanced-platforms",
+      "/api/products",
+      "/api/settings",
+      "/api/compliance",
+      "/api/orders",
+      "/api/order-management",
+    ],
   });
 });
 

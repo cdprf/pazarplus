@@ -23,6 +23,11 @@ const {
   cacheService,
 } = require("./middleware");
 
+// Import enhanced platform services
+const enhancedPlatformService = require("./services/enhanced-platform-service");
+const inventoryManagementService = require("./services/inventory-management-service");
+const notificationService = require("./services/notification-service");
+
 // Load and validate environment configuration
 const config = loadConfig();
 
@@ -74,6 +79,7 @@ app.use(
               styleSrc: ["'self'", "'unsafe-inline'"],
               scriptSrc: ["'self'"],
               imgSrc: ["'self'", "data:", "https:"],
+              connectSrc: ["'self'", "ws:", "wss:"], // Allow WebSocket connections
             },
           }
         : false,
@@ -213,6 +219,10 @@ app.get("/api", (req, res) => {
       caching: true,
       monitoring: true,
       enhancedSecurity: true,
+      enhancedPlatformIntegration: true,
+      realTimeNotifications: true,
+      inventoryManagement: true,
+      conflictResolution: true,
     },
   });
 });
@@ -229,8 +239,8 @@ app.use(createErrorTrackingMiddleware());
 // Global error handling middleware (must be last)
 app.use(errorHandler);
 
-// Initialize performance monitoring
-async function initializeServices() {
+// Initialize enhanced platform services
+async function initializeEnhancedServices() {
   try {
     // Start performance monitoring periodic updates
     performanceMonitor.startPeriodicUpdates();
@@ -238,27 +248,124 @@ async function initializeServices() {
     // Initialize cache service
     await cacheService.connect();
 
+    // Setup enhanced platform service event listeners
+    setupEnhancedPlatformEventListeners();
+
+    // Setup inventory management event listeners
+    setupInventoryManagementEventListeners();
+
     logger.info(
-      "Enhanced security and monitoring services initialized successfully"
+      "Enhanced platform integration services initialized successfully"
     );
   } catch (error) {
-    logger.error("Failed to initialize enhanced services:", error);
+    logger.error("Failed to initialize enhanced platform services:", error);
+  }
+}
+
+// Setup event listeners for enhanced platform service
+function setupEnhancedPlatformEventListeners() {
+  // Listen for sync completion events
+  enhancedPlatformService.on("syncCompleted", (data) => {
+    logger.info("Platform sync completed:", {
+      totalProcessed: data.results.totalProcessed,
+      duration: data.performance.duration,
+      conflicts: data.results.conflicts.length,
+    });
+
+    // Send notification
+    notificationService.notifySyncCompleted({
+      totalProcessed: data.results.totalProcessed,
+      duration: data.performance.duration,
+      conflicts: data.results.conflicts.length,
+      platforms: data.results.successful.map((r) => r.platform),
+    });
+  });
+
+  // Listen for order conflicts
+  enhancedPlatformService.on("orderConflict", (data) => {
+    logger.warn("Order conflict detected:", data);
+    notificationService.notifyOrderConflict(data);
+  });
+
+  // Listen for manual review requirements
+  enhancedPlatformService.on("manualReviewRequired", (data) => {
+    logger.warn("Manual review required:", data);
+    notificationService.notifyManualReviewRequired(data);
+  });
+
+  // Listen for manual review resolutions
+  enhancedPlatformService.on("manualReviewResolved", (data) => {
+    logger.info("Manual review resolved:", data);
+  });
+
+  logger.info("Enhanced platform service event listeners setup complete");
+}
+
+// Setup event listeners for inventory management service
+function setupInventoryManagementEventListeners() {
+  // Listen for inventory updates
+  inventoryManagementService.on("inventoryUpdated", (data) => {
+    logger.info("Inventory updated across platforms:", {
+      sku: data.sku,
+      newQuantity: data.newQuantity,
+      successCount: data.updateResults.filter((r) => r.success).length,
+    });
+  });
+
+  // Listen for low inventory alerts
+  inventoryManagementService.on("lowInventory", (data) => {
+    logger.warn("Low inventory alert:", data);
+    notificationService.notifyLowInventory(data);
+  });
+
+  // Listen for inventory health issues
+  inventoryManagementService.on("inventoryHealthIssues", (data) => {
+    logger.warn("Inventory health issues detected:", {
+      issueCount: data.issues.length,
+      timestamp: data.timestamp,
+    });
+  });
+
+  logger.info("Inventory management service event listeners setup complete");
+}
+
+// Initialize WebSocket server for real-time notifications
+function initializeWebSocketServer(server) {
+  try {
+    // Initialize notification service with HTTP server
+    notificationService.initialize(server);
+
+    // Setup real-time notification handlers
+    notificationService.setupRealTimeNotifications();
+
+    // Start periodic cleanup
+    notificationService.startPeriodicCleanup();
+
+    logger.info("WebSocket notification service initialized successfully");
+  } catch (error) {
+    logger.error("Failed to initialize WebSocket server:", error);
   }
 }
 
 // Initialize services when app starts
-initializeServices();
+initializeEnhancedServices();
 
 // Graceful shutdown handling
 const gracefulShutdown = async (signal) => {
   logger.info(`Received ${signal}. Starting graceful shutdown...`);
 
   try {
+    // Shutdown notification service
+    notificationService.shutdown();
+    logger.info("Notification service shut down");
+
     // Close cache connections
     await cacheService.disconnect();
     logger.info("Cache service disconnected");
+
+    logger.info("Graceful shutdown completed");
   } catch (error) {
-    logger.error("Error during cache service shutdown:", error);
+    logger.error("Error during shutdown:", error);
   }
 
   process.exit(0);
@@ -283,4 +390,5 @@ process.on("uncaughtException", (err) => {
   process.exit(1);
 });
 
-module.exports = app;
+// Export both app and WebSocket initialization function
+module.exports = { app, initializeWebSocketServer };
