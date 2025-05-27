@@ -1,11 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Form, Alert, Spinner, Badge } from 'react-bootstrap';
-import { useParams, useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Button,
+  Form,
+  Alert,
+  Spinner,
+  Badge,
+} from "react-bootstrap";
+import { useParams, useNavigate } from "react-router-dom";
+import api from "../../services/api";
+import { useAlert } from "../../contexts/AlertContext";
 
 const PlatformSettings = () => {
   const { platformId } = useParams();
   const navigate = useNavigate();
+  const { showAlert } = useAlert();
   const [platform, setPlatform] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -14,41 +26,49 @@ const PlatformSettings = () => {
     syncInterval: 15,
     autoUpdateInventory: true,
     autoUpdatePrices: false,
-    webhookUrl: '',
-    isActive: true
+    webhookUrl: "",
+    isActive: true,
   });
 
-  useEffect(() => {
-    fetchPlatformDetails();
-  }, [platformId]);
-
-  const fetchPlatformDetails = async () => {
+  const fetchPlatformDetails = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/platforms/connections/${platformId}`);
+      const response = await api.platforms.getConnection(platformId);
       setPlatform(response.data);
-      
+
       // Set existing settings if available
       if (response.data.settings) {
-        setSettings({ ...settings, ...response.data.settings });
+        setSettings((prevSettings) => ({
+          ...prevSettings,
+          ...response.data.settings,
+        }));
       }
     } catch (error) {
-      console.error('Failed to fetch platform details:', error);
-      setError('Failed to load platform details');
+      const errorMessage =
+        error.response?.data?.message || "Failed to load platform details";
+      setError(errorMessage);
+      showAlert(errorMessage, "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [platformId, showAlert]);
+
+  useEffect(() => {
+    fetchPlatformDetails();
+  }, [fetchPlatformDetails]);
 
   const handleSave = async (e) => {
     e.preventDefault();
     try {
       setSaving(true);
       await api.platforms.updateSettings(platformId, settings);
-      alert('Settings saved successfully!');
+      showAlert("Settings saved successfully!", "success");
     } catch (error) {
-      console.error('Failed to save settings:', error);
-      alert('Failed to save settings. Please try again.');
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to save settings. Please try again.";
+      showAlert(errorMessage, "error");
     } finally {
       setSaving(false);
     }
@@ -59,13 +79,16 @@ const PlatformSettings = () => {
       setSaving(true);
       const response = await api.platforms.testConnection(platformId);
       if (response.success) {
-        alert('Connection test successful!');
+        showAlert("Connection test successful!", "success");
       } else {
-        alert('Connection test failed: ' + response.message);
+        showAlert("Connection test failed: " + response.message, "error");
       }
     } catch (error) {
-      console.error('Connection test failed:', error);
-      alert('Connection test failed: ' + (error.response?.data?.message || error.message));
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Connection test failed. Please try again.";
+      showAlert(errorMessage, "error");
     } finally {
       setSaving(false);
     }
@@ -77,13 +100,17 @@ const PlatformSettings = () => {
       // Call the API to perform a force sync
       const response = await api.platforms.syncPlatform(platformId);
       if (response.success) {
-        alert('Force sync initiated successfully!');
+        showAlert("Force sync initiated successfully!", "success");
       } else {
-        alert('Force sync failed: ' + response.message);
+        showAlert("Force sync failed: " + response.message, "error");
       }
     } catch (error) {
-      console.error('Force sync failed:', error);
-      alert('Force sync failed: ' + (error.response?.data?.message || error.message));
+      console.error("Force sync failed:", error);
+      showAlert(
+        "Force sync failed: " +
+          (error.response?.data?.message || error.message),
+        "error"
+      );
     } finally {
       setSaving(false);
     }
@@ -118,7 +145,10 @@ const PlatformSettings = () => {
         <Alert variant="danger">
           <Alert.Heading>Error</Alert.Heading>
           <p>{error}</p>
-          <Button variant="outline-danger" onClick={() => navigate('/platforms')}>
+          <Button
+            variant="outline-danger"
+            onClick={() => navigate("/platforms")}
+          >
             Back to Platforms
           </Button>
         </Alert>
@@ -132,7 +162,10 @@ const PlatformSettings = () => {
         <Alert variant="warning">
           <Alert.Heading>Platform Not Found</Alert.Heading>
           <p>The requested platform could not be found.</p>
-          <Button variant="outline-warning" onClick={() => navigate('/platforms')}>
+          <Button
+            variant="outline-warning"
+            onClick={() => navigate("/platforms")}
+          >
             Back to Platforms
           </Button>
         </Alert>
@@ -147,13 +180,21 @@ const PlatformSettings = () => {
           <div className="d-flex justify-content-between align-items-center">
             <div>
               <h1>{platform.name} Settings</h1>
-              <p className="text-muted">Configure your {platform.name} integration</p>
+              <p className="text-muted">
+                Configure your {platform.name} integration
+              </p>
             </div>
             <div>
-              <Badge bg={platform.status === 'active' ? 'success' : 'danger'} className="me-2">
+              <Badge
+                bg={platform.status === "active" ? "success" : "danger"}
+                className="me-2"
+              >
                 {platform.status}
               </Badge>
-              <Button variant="outline-secondary" onClick={() => navigate('/platforms')}>
+              <Button
+                variant="outline-secondary"
+                onClick={() => navigate("/platforms")}
+              >
                 <i className="fas fa-arrow-left me-2"></i>Back
               </Button>
             </div>
@@ -175,7 +216,12 @@ const PlatformSettings = () => {
                       <Form.Label>Sync Interval (minutes)</Form.Label>
                       <Form.Select
                         value={settings.syncInterval}
-                        onChange={(e) => setSettings({...settings, syncInterval: parseInt(e.target.value)})}
+                        onChange={(e) =>
+                          setSettings({
+                            ...settings,
+                            syncInterval: parseInt(e.target.value),
+                          })
+                        }
                       >
                         <option value={5}>5 minutes</option>
                         <option value={15}>15 minutes</option>
@@ -192,7 +238,12 @@ const PlatformSettings = () => {
                       <Form.Control
                         type="url"
                         value={settings.webhookUrl}
-                        onChange={(e) => setSettings({...settings, webhookUrl: e.target.value})}
+                        onChange={(e) =>
+                          setSettings({
+                            ...settings,
+                            webhookUrl: e.target.value,
+                          })
+                        }
                         placeholder="https://your-site.com/webhook"
                       />
                       <Form.Text className="text-muted">
@@ -205,13 +256,18 @@ const PlatformSettings = () => {
                 <hr />
 
                 <h6>Automation Settings</h6>
-                
+
                 <Form.Check
                   type="switch"
                   id="auto-inventory"
                   label="Auto-update inventory"
                   checked={settings.autoUpdateInventory}
-                  onChange={(e) => setSettings({...settings, autoUpdateInventory: e.target.checked})}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      autoUpdateInventory: e.target.checked,
+                    })
+                  }
                   className="mb-3"
                 />
 
@@ -220,7 +276,12 @@ const PlatformSettings = () => {
                   id="auto-prices"
                   label="Auto-update prices"
                   checked={settings.autoUpdatePrices}
-                  onChange={(e) => setSettings({...settings, autoUpdatePrices: e.target.checked})}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      autoUpdatePrices: e.target.checked,
+                    })
+                  }
                   className="mb-3"
                 />
 
@@ -229,7 +290,9 @@ const PlatformSettings = () => {
                   id="platform-active"
                   label="Platform active"
                   checked={settings.isActive}
-                  onChange={(e) => setSettings({...settings, isActive: e.target.checked})}
+                  onChange={(e) =>
+                    setSettings({ ...settings, isActive: e.target.checked })
+                  }
                   className="mb-4"
                 />
 
@@ -237,7 +300,13 @@ const PlatformSettings = () => {
                   <Button type="submit" variant="primary" disabled={saving}>
                     {saving ? (
                       <>
-                        <Spinner as="span" animation="border" size="sm" role="status" className="me-2" />
+                        <Spinner
+                          as="span"
+                          animation="border"
+                          size="sm"
+                          role="status"
+                          className="me-2"
+                        />
                         Saving...
                       </>
                     ) : (
@@ -246,10 +315,10 @@ const PlatformSettings = () => {
                       </>
                     )}
                   </Button>
-                  
-                  <Button 
-                    type="button" 
-                    variant="outline-info" 
+
+                  <Button
+                    type="button"
+                    variant="outline-info"
                     onClick={handleTestConnection}
                     disabled={saving}
                   >
@@ -273,16 +342,26 @@ const PlatformSettings = () => {
               </div>
               <div className="mb-3">
                 <strong>Connected:</strong>
-                <div className="text-muted">{new Date(platform.createdAt).toLocaleString()}</div>
+                <div className="text-muted">
+                  {platform.createdAt
+                    ? new Date(platform.createdAt).toLocaleString()
+                    : "N/A"}
+                </div>
               </div>
               <div className="mb-3">
                 <strong>Last Updated:</strong>
-                <div className="text-muted">{new Date(platform.updatedAt).toLocaleString()}</div>
+                <div className="text-muted">
+                  {platform.updatedAt
+                    ? new Date(platform.updatedAt).toLocaleString()
+                    : "N/A"}
+                </div>
               </div>
               <div className="mb-3">
                 <strong>Status:</strong>
                 <div>
-                  <Badge bg={platform.status === 'active' ? 'success' : 'danger'}>
+                  <Badge
+                    bg={platform.status === "active" ? "success" : "danger"}
+                  >
                     {platform.status}
                   </Badge>
                 </div>
@@ -295,28 +374,33 @@ const PlatformSettings = () => {
               <h6 className="mb-0">Quick Actions</h6>
             </Card.Header>
             <Card.Body className="d-grid gap-2">
-              <Button 
-                variant="outline-primary" 
+              <Button
+                variant="outline-primary"
                 size="sm"
                 onClick={handleForceSync}
                 disabled={saving}
               >
                 {saving ? (
-                  <Spinner as="span" animation="border" size="sm" className="me-2" />
+                  <Spinner
+                    as="span"
+                    animation="border"
+                    size="sm"
+                    className="me-2"
+                  />
                 ) : (
                   <i className="fas fa-sync me-2"></i>
                 )}
                 Force Sync
               </Button>
-              <Button 
-                variant="outline-info" 
+              <Button
+                variant="outline-info"
                 size="sm"
                 onClick={handleViewAnalytics}
               >
                 <i className="fas fa-chart-bar me-2"></i>View Analytics
               </Button>
-              <Button 
-                variant="outline-warning" 
+              <Button
+                variant="outline-warning"
                 size="sm"
                 onClick={handleSyncHistory}
               >

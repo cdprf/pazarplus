@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
-import { useNotification } from "../../contexts/NotificationContext";
+import { useAlert } from "../../contexts/AlertContext";
 import { cn } from "../../utils/cn";
 import { Button, Badge } from "../ui";
 import {
@@ -34,14 +34,12 @@ import {
   CreditCardIcon,
   ArchiveBoxIcon,
   TagIcon,
-  ClipboardDocumentListIcon,
-  InboxIcon,
-  ExclamationTriangleIcon,
+  WifiIcon,
   SunIcon,
   MoonIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
-  WifiIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 
 // Enhanced navigation structure with categories and subcategories
@@ -773,7 +771,7 @@ const SidebarSection = ({ section, location, onNavigate }) => {
 };
 
 const QuickActionsPanel = ({ onAction }) => {
-  const { showNotification } = useNotification();
+  const { showAlert } = useAlert();
   const [isLoading, setIsLoading] = useState({});
 
   const handleAction = async (action) => {
@@ -783,37 +781,21 @@ const QuickActionsPanel = ({ onAction }) => {
       switch (action) {
         case "create-order":
           await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate API call
-          showNotification("Create Order feature coming soon!", "info", {
-            icon: CheckCircleIcon,
-            duration: 3000,
-          });
+          showAlert("Create Order feature coming soon!", "info");
           break;
         case "sync-platforms":
           await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
-          showNotification(
-            "All platforms synchronized successfully",
-            "success",
-            {
-              icon: CheckCircleIcon,
-              duration: 4000,
-            }
-          );
+          showAlert("All platforms synchronized successfully", "success");
           break;
         case "export-data":
           await new Promise((resolve) => setTimeout(resolve, 800)); // Simulate API call
-          showNotification("Export completed successfully", "success", {
-            icon: CheckCircleIcon,
-            duration: 3000,
-          });
+          showAlert("Export completed successfully", "success");
           break;
         default:
           break;
       }
     } catch (error) {
-      showNotification("Action failed. Please try again.", "error", {
-        icon: ExclamationCircleIcon,
-        duration: 5000,
-      });
+      showAlert("Action failed. Please try again.", "error");
     } finally {
       setIsLoading((prev) => ({ ...prev, [action]: false }));
     }

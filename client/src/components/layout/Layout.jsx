@@ -65,11 +65,7 @@ const Layout = () => {
             <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
           )}
 
-          <main
-            className={`flex-1 transition-all duration-300 ${
-              isAuthenticated ? "lg:ml-64" : ""
-            }`}
-          >
+          <main className={`flex-1 transition-all duration-300`}>
             <div className="min-h-full">
               <Outlet />
             </div>

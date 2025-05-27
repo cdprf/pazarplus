@@ -47,3 +47,8 @@ tmp/
 # Build files
 /dist/
 /build/
+master-plan.md
+server/modules/order-management/orders-management-plan.md
+enhanced-master-plan.md
+implementation-roadmap.md
+server/modules/order-management/enhanced-implementation-plan.md

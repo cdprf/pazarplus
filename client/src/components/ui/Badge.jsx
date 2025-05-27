@@ -5,7 +5,7 @@ export const Badge = ({
   children,
   variant = "default",
   size = "default",
-  icon: Icon,
+  icon,
   className = "",
   ...props
 }) => {
@@ -32,10 +32,49 @@ export const Badge = ({
   };
 
   const sizes = {
-    sm: "px-2 py-0.5 text-xs",
-    default: "px-2.5 py-1 text-xs",
-    lg: "px-3 py-1.5 text-sm",
+    xs: "px-1.5 py-0.5 text-xs",
+    sm: "px-2 py-1 text-xs",
+    default: "px-2.5 py-1.5 text-sm",
+    lg: "px-3 py-2 text-base",
   };
+
+  const renderIcon = () => {
+    if (!icon) {
+      return null;
+    }
+
+    // Check if icon is a React component function (including Heroicons)
+    if (typeof icon === "function") {
+      const IconComponent = icon;
+      return <IconComponent className="h-3 w-3 mr-1" />;
+    }
+
+    // Check if icon is already a JSX element
+    if (React.isValidElement(icon)) {
+      return React.cloneElement(icon, {
+        className: cn("h-3 w-3 mr-1", icon.props?.className),
+      });
+    }
+
+    // Check if icon is an object with $$typeof (React component pattern)
+    if (typeof icon === "object" && icon !== null && icon.$$typeof) {
+      // This handles cases where the icon might be a React component object
+      return React.createElement(icon, { className: "h-3 w-3 mr-1" });
+    }
+
+    // For development mode, warn about invalid icon types
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        "Badge: Invalid icon type provided. Expected React component, JSX element, or function.",
+        typeof icon,
+        icon
+      );
+    }
+
+    return null;
+  };
+
+  const iconElement = renderIcon();
 
   return (
     <span
@@ -47,7 +86,7 @@ export const Badge = ({
       )}
       {...props}
     >
-      {Icon && <Icon className="h-3 w-3 mr-1" />}
+      {iconElement}
       {children}
     </span>
   );

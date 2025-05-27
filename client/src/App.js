@@ -5,7 +5,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { AlertProvider } from "./contexts/AlertContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
-import ErrorBoundary from "./components/common/ErrorBoundary";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 // Import CSS
 import "bootstrap/dist/css/bootstrap.min.css";

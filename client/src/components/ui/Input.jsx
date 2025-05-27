@@ -6,50 +6,64 @@ export const Input = forwardRef(
     {
       className = "",
       type = "text",
-      label,
       error,
-      helper,
-      icon: Icon,
-      iconPosition = "left",
-      required = false,
+      success,
+      disabled,
+      required,
+      label,
+      helpText,
+      errorMessage,
+      id,
       ...props
     },
     ref
   ) => {
-    const inputClasses = cn(
-      "form-input",
-      error && "form-input-error",
-      className
-    );
+    const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
 
     return (
       <div className="form-group">
         {label && (
-          <label className="form-label" htmlFor={props.id}>
+          <label className="form-label" htmlFor={inputId}>
             {label}
             {required && <span className="form-required">*</span>}
           </label>
         )}
-
-        <div className="relative">
-          {Icon && iconPosition === "left" && (
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Icon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-            </div>
+        <input
+          id={inputId}
+          type={type}
+          className={cn(
+            "form-input",
+            {
+              "form-input-error": error,
+              "form-input-success": success,
+              "opacity-50 cursor-not-allowed": disabled,
+            },
+            className
           )}
-
-          <input type={type} className={inputClasses} ref={ref} {...props} />
-
-          {Icon && iconPosition === "right" && (
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-              <Icon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-            </div>
-          )}
-        </div>
-
-        {error && <div className="form-error">{error}</div>}
-
-        {helper && !error && <div className="form-help">{helper}</div>}
+          disabled={disabled}
+          required={required}
+          ref={ref}
+          aria-invalid={error ? "true" : "false"}
+          aria-describedby={
+            error
+              ? `${inputId}-error`
+              : helpText
+              ? `${inputId}-help`
+              : undefined
+          }
+          {...props}
+        />
+        {errorMessage && error && (
+          <div id={`${inputId}-error`} className="form-error">
+            {errorMessage}
+          </div>
+        )}
+        {helpText && !error && (
+          <div id={`${inputId}-help`} className="form-help">
+            {helpText}
+          </div>
+        )}
+        {success && <div className="form-success">Looks good!</div>}
       </div>
     );
   }

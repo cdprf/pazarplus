@@ -84,7 +84,9 @@ const api = {
       const response = await axios.get("/api/orders/stats");
       return response.data;
     } catch (error) {
-      console.error("Error fetching order stats:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error fetching order stats:", error);
+      }
       throw error;
     }
   },
@@ -95,7 +97,9 @@ const api = {
       const response = await axios.get(`/api/orders/trends?period=${period}`);
       return response.data;
     } catch (error) {
-      console.error("Error fetching order trends:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error fetching order trends:", error);
+      }
       throw error;
     }
   },
@@ -106,7 +110,9 @@ const api = {
       const response = await axios.get("/api/orders", { params });
       return response.data;
     } catch (error) {
-      console.error("Error fetching orders:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error fetching orders:", error);
+      }
       throw error;
     }
   },
@@ -116,7 +122,9 @@ const api = {
       const response = await axios.get(`/api/orders/${id}`);
       return response.data;
     } catch (error) {
-      console.error("Error fetching order:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error fetching order:", error);
+      }
       throw error;
     }
   },
@@ -126,7 +134,9 @@ const api = {
       const response = await axios.post("/api/orders", orderData);
       return response.data;
     } catch (error) {
-      console.error("Error creating order:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error creating order:", error);
+      }
       throw error;
     }
   },
@@ -136,7 +146,9 @@ const api = {
       const response = await axios.put(`/api/orders/${id}`, orderData);
       return response.data;
     } catch (error) {
-      console.error("Error updating order:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error updating order:", error);
+      }
       throw error;
     }
   },
@@ -146,7 +158,9 @@ const api = {
       const response = await axios.delete(`/api/orders/${id}`);
       return response.data;
     } catch (error) {
-      console.error("Error deleting order:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error deleting order:", error);
+      }
       throw error;
     }
   },

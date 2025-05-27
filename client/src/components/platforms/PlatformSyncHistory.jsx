@@ -1,7 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Alert, Spinner, Badge, Table, Form, InputGroup } from 'react-bootstrap';
-import { useParams, useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Button,
+  Alert,
+  Spinner,
+  Badge,
+  Table,
+  Form,
+  InputGroup,
+} from "react-bootstrap";
+import { useParams, useNavigate } from "react-router-dom";
+import api from "../../services/api";
 
 const PlatformSyncHistory = () => {
   const { platformId } = useParams();
@@ -11,81 +23,83 @@ const PlatformSyncHistory = () => {
   const [syncHistory, setSyncHistory] = useState([]);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
-    status: '',
-    dateRange: '30d',
-    search: ''
+    status: "",
+    dateRange: "30d",
+    search: "",
   });
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
-    total: 0
+    total: 0,
   });
 
-  useEffect(() => {
-    fetchSyncHistory();
-  }, [platformId, filters, pagination.page]);
-
-  const fetchSyncHistory = async () => {
+  const fetchSyncHistory = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      
       // Fetch platform details
       const platformResponse = await api.platforms.getConnection(platformId);
       setPlatform(platformResponse.data);
-      
+
       // Fetch sync history
       const historyResponse = await api.platforms.getSyncHistory(platformId, {
         ...filters,
         page: pagination.page,
-        limit: pagination.limit
+        limit: pagination.limit,
       });
-      
+
       setSyncHistory(historyResponse.data.history || []);
-      setPagination(prev => ({
+      setPagination((prev) => ({
         ...prev,
-        total: historyResponse.data.total || 0
+        total: historyResponse.data.total || 0,
       }));
     } catch (error) {
-      console.error('Failed to fetch sync history:', error);
-      setError('Failed to load sync history');
+      console.error("Failed to fetch sync history:", error);
+      setError("Failed to load sync history");
     } finally {
       setLoading(false);
     }
-  };
+  }, [platformId]); // Remove filters and pagination dependencies to prevent infinite re-renders
+
+  useEffect(() => {
+    fetchSyncHistory();
+  }, [fetchSyncHistory, filters, pagination.page, pagination.limit]); // Add the actual dependencies here
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-    setPagination(prev => ({ ...prev, page: 1 })); // Reset to first page
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPagination((prev) => ({ ...prev, page: 1 })); // Reset to first page
   };
 
   const handleRetrySync = async (syncId) => {
     try {
       await api.platforms.retrySync(platformId, syncId);
-      alert('Sync retry initiated successfully!');
+      alert("Sync retry initiated successfully!");
       fetchSyncHistory(); // Refresh the history
     } catch (error) {
-      console.error('Failed to retry sync:', error);
-      alert('Failed to retry sync: ' + (error.response?.data?.message || error.message));
+      console.error("Failed to retry sync:", error);
+      alert(
+        "Failed to retry sync: " +
+          (error.response?.data?.message || error.message)
+      );
     }
   };
 
   const getStatusBadge = (status) => {
     const variants = {
-      success: 'success',
-      failed: 'danger',
-      running: 'primary',
-      pending: 'warning',
-      cancelled: 'secondary'
+      success: "success",
+      failed: "danger",
+      running: "primary",
+      pending: "warning",
+      cancelled: "secondary",
     };
-    return <Badge bg={variants[status] || 'secondary'}>{status}</Badge>;
+    return <Badge bg={variants[status] || "secondary"}>{status}</Badge>;
   };
 
   const formatDuration = (milliseconds) => {
-    if (!milliseconds) return 'N/A';
+    if (!milliseconds) return "N/A";
     const seconds = Math.floor(milliseconds / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    
+
     if (hours > 0) return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
     if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
     return `${seconds}s`;
@@ -110,7 +124,10 @@ const PlatformSyncHistory = () => {
         <Alert variant="danger">
           <Alert.Heading>Error</Alert.Heading>
           <p>{error}</p>
-          <Button variant="outline-danger" onClick={() => navigate(`/platforms/${platformId}/settings`)}>
+          <Button
+            variant="outline-danger"
+            onClick={() => navigate(`/platforms/${platformId}/settings`)}
+          >
             Back to Settings
           </Button>
         </Alert>
@@ -131,7 +148,10 @@ const PlatformSyncHistory = () => {
               <Button variant="primary" onClick={fetchSyncHistory}>
                 <i className="fas fa-sync-alt me-2"></i>Refresh
               </Button>
-              <Button variant="outline-secondary" onClick={() => navigate(`/platforms/${platformId}/settings`)}>
+              <Button
+                variant="outline-secondary"
+                onClick={() => navigate(`/platforms/${platformId}/settings`)}
+              >
                 <i className="fas fa-arrow-left me-2"></i>Back to Settings
               </Button>
             </div>
@@ -142,9 +162,9 @@ const PlatformSyncHistory = () => {
       {/* Filters */}
       <Row className="mb-4">
         <Col md={3}>
-          <Form.Select 
-            value={filters.status} 
-            onChange={(e) => handleFilterChange('status', e.target.value)}
+          <Form.Select
+            value={filters.status}
+            onChange={(e) => handleFilterChange("status", e.target.value)}
           >
             <option value="">All Statuses</option>
             <option value="success">Success</option>
@@ -155,9 +175,9 @@ const PlatformSyncHistory = () => {
           </Form.Select>
         </Col>
         <Col md={3}>
-          <Form.Select 
-            value={filters.dateRange} 
-            onChange={(e) => handleFilterChange('dateRange', e.target.value)}
+          <Form.Select
+            value={filters.dateRange}
+            onChange={(e) => handleFilterChange("dateRange", e.target.value)}
           >
             <option value="7d">Last 7 days</option>
             <option value="30d">Last 30 days</option>
@@ -171,7 +191,7 @@ const PlatformSyncHistory = () => {
               type="text"
               placeholder="Search by sync ID or error message..."
               value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
+              onChange={(e) => handleFilterChange("search", e.target.value)}
             />
             <Button variant="outline-secondary">
               <i className="fas fa-search"></i>
@@ -191,10 +211,9 @@ const PlatformSyncHistory = () => {
               <i className="fas fa-history display-4 text-muted mb-3"></i>
               <h5 className="text-muted">No sync history found</h5>
               <p className="text-muted">
-                {Object.values(filters).some(v => v) 
-                  ? 'Try adjusting your filters'
-                  : 'No synchronizations have been performed yet'
-                }
+                {Object.values(filters).some((v) => v)
+                  ? "Try adjusting your filters"
+                  : "No synchronizations have been performed yet"}
               </p>
             </div>
           ) : (
@@ -217,38 +236,40 @@ const PlatformSyncHistory = () => {
                     <td>
                       <code className="text-primary">{sync.id}</code>
                     </td>
+                    <td>{getStatusBadge(sync.status)}</td>
                     <td>
-                      {getStatusBadge(sync.status)}
-                    </td>
-                    <td>
-                      <Badge bg="info">{sync.type || 'Manual'}</Badge>
+                      <Badge bg="info">{sync.type || "Manual"}</Badge>
                     </td>
                     <td>
                       <div>{new Date(sync.startedAt).toLocaleString()}</div>
-                      <small className="text-muted">by {sync.initiatedBy || 'System'}</small>
+                      <small className="text-muted">
+                        by {sync.initiatedBy || "System"}
+                      </small>
                     </td>
-                    <td>
-                      {formatDuration(sync.duration)}
-                    </td>
+                    <td>{formatDuration(sync.duration)}</td>
                     <td>
                       <div>
-                        <strong className="text-success">{sync.recordsProcessed || 0}</strong> processed
+                        <strong className="text-success">
+                          {sync.recordsProcessed || 0}
+                        </strong>{" "}
+                        processed
                       </div>
                       {sync.recordsSkipped > 0 && (
-                        <small className="text-warning">{sync.recordsSkipped} skipped</small>
+                        <small className="text-warning">
+                          {sync.recordsSkipped} skipped
+                        </small>
                       )}
                     </td>
                     <td>
                       {sync.errorMessage ? (
-                        <span 
-                          className="text-danger" 
+                        <span
+                          className="text-danger"
                           title={sync.errorMessage}
-                          style={{ cursor: 'help' }}
+                          style={{ cursor: "help" }}
                         >
-                          {sync.errorMessage.length > 50 
-                            ? sync.errorMessage.substring(0, 50) + '...' 
-                            : sync.errorMessage
-                          }
+                          {sync.errorMessage.length > 50
+                            ? sync.errorMessage.substring(0, 50) + "..."
+                            : sync.errorMessage}
                         </span>
                       ) : (
                         <span className="text-muted">-</span>
@@ -256,17 +277,19 @@ const PlatformSyncHistory = () => {
                     </td>
                     <td>
                       <div className="btn-group btn-group-sm">
-                        <Button 
-                          variant="outline-primary" 
+                        <Button
+                          variant="outline-primary"
                           size="sm"
-                          onClick={() => {/* View details */}}
+                          onClick={() => {
+                            /* View details */
+                          }}
                           title="View Details"
                         >
                           <i className="fas fa-eye"></i>
                         </Button>
-                        {sync.status === 'failed' && (
-                          <Button 
-                            variant="outline-warning" 
+                        {sync.status === "failed" && (
+                          <Button
+                            variant="outline-warning"
                             size="sm"
                             onClick={() => handleRetrySync(sync.id)}
                             title="Retry Sync"
@@ -274,10 +297,12 @@ const PlatformSyncHistory = () => {
                             <i className="fas fa-redo"></i>
                           </Button>
                         )}
-                        <Button 
-                          variant="outline-secondary" 
+                        <Button
+                          variant="outline-secondary"
                           size="sm"
-                          onClick={() => {/* Download logs */}}
+                          onClick={() => {
+                            /* Download logs */
+                          }}
                           title="Download Logs"
                         >
                           <i className="fas fa-download"></i>
@@ -297,22 +322,30 @@ const PlatformSyncHistory = () => {
         <Row className="mt-3">
           <Col className="d-flex justify-content-between align-items-center">
             <div className="text-muted">
-              Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
+              Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+              {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+              of {pagination.total} entries
             </div>
             <div className="btn-group">
-              <Button 
-                variant="outline-secondary" 
+              <Button
+                variant="outline-secondary"
                 size="sm"
                 disabled={pagination.page === 1}
-                onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                onClick={() =>
+                  setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
+                }
               >
                 Previous
               </Button>
-              <Button 
-                variant="outline-secondary" 
+              <Button
+                variant="outline-secondary"
                 size="sm"
-                disabled={pagination.page * pagination.limit >= pagination.total}
-                onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                disabled={
+                  pagination.page * pagination.limit >= pagination.total
+                }
+                onClick={() =>
+                  setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
+                }
               >
                 Next
               </Button>

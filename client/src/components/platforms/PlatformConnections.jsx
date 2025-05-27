@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Plus,
   Settings,
+  ExternalLink,
   CheckCircle,
   XCircle,
   Link,
@@ -10,15 +10,15 @@ import {
   Plug,
   Info,
   AlertTriangle,
-  Calendar,
   Activity,
   Shield,
 } from "lucide-react";
 import { usePlatforms } from "../../hooks/usePlatforms";
 import { useAlert } from "../../contexts/AlertContext";
 import api from "../../services/api";
+import logger from "../../utils/logger";
 import { Button } from "../ui/Button";
-import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
+import { Card, CardContent } from "../ui/Card";
 import { Badge } from "../ui/Badge";
 import { Modal } from "../ui/Modal";
 
@@ -92,7 +92,8 @@ const PlatformConnections = () => {
         minute: "2-digit",
       });
     } catch (error) {
-      console.error("Date formatting error:", error);
+      // Log error using proper logger instead of console
+      logger.error("Date formatting error:", error);
       return "Geçersiz tarih";
     }
   };

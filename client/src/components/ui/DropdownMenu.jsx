@@ -41,12 +41,14 @@ export const DropdownMenu = ({
       <div ref={triggerRef}>
         {typeof trigger === "function"
           ? trigger({ isOpen, toggle: () => setIsOpen(!isOpen) })
-          : React.cloneElement(trigger, {
+          : React.isValidElement(trigger)
+          ? React.cloneElement(trigger, {
               onClick: () => setIsOpen(!isOpen),
               "aria-expanded": isOpen,
               "aria-haspopup": true,
-              className: cn("dropdown-trigger", trigger.props.className),
-            })}
+              className: cn("dropdown-trigger", trigger.props?.className || ""),
+            })
+          : null}
       </div>
 
       {isOpen && (
@@ -60,7 +62,9 @@ export const DropdownMenu = ({
           role="menu"
         >
           {React.Children.map(children, (child) =>
-            React.cloneElement(child, { onSelect: () => setIsOpen(false) })
+            React.isValidElement(child)
+              ? React.cloneElement(child, { onSelect: () => setIsOpen(false) })
+              : child
           )}
         </div>
       )}
@@ -79,12 +83,25 @@ export const DropdownItem = ({
   ...props
 }) => {
   const baseClass = "dropdown-item";
-  const variantClass = variant === "danger" ? "dropdown-item-danger" : "";
+  const variantClass = variant !== "default" ? `dropdown-item-${variant}` : "";
 
   const handleClick = (e) => {
-    if (disabled) return;
-    if (onClick) onClick(e);
-    if (onSelect) onSelect();
+    if (!disabled) {
+      onClick?.(e);
+      onSelect?.(e);
+    }
+  };
+
+  const renderIcon = () => {
+    if (Icon) {
+      if (typeof Icon === "function") {
+        return <Icon className="dropdown-icon" />;
+      }
+      if (React.isValidElement(Icon)) {
+        return React.cloneElement(Icon, { className: "dropdown-icon" });
+      }
+    }
+    return null;
   };
 
   return (
@@ -92,7 +109,9 @@ export const DropdownItem = ({
       className={cn(
         baseClass,
         variantClass,
-        disabled && "opacity-50 cursor-not-allowed",
+        {
+          "opacity-50 cursor-not-allowed": disabled,
+        },
         className
       )}
       onClick={handleClick}
@@ -100,8 +119,8 @@ export const DropdownItem = ({
       role="menuitem"
       {...props}
     >
-      {Icon && <Icon className="dropdown-icon" />}
-      <span>{children}</span>
+      {renderIcon()}
+      <span className="dropdown-text">{children}</span>
     </button>
   );
 };

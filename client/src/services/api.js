@@ -26,20 +26,25 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    console.log(
-      `🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`,
-      {
-        baseURL: config.baseURL,
-        headers: Object.keys(config.headers),
-        tokenPresent: !!token,
-        tokenLength: token?.length || 0,
-      }
-    );
+    // Only log in development
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`,
+        {
+          baseURL: config.baseURL,
+          headers: Object.keys(config.headers),
+          tokenPresent: !!token,
+          tokenLength: token?.length || 0,
+        }
+      );
+    }
 
     return config;
   },
   (error) => {
-    console.error("❌ Request interceptor error:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("❌ Request interceptor error:", error);
+    }
     return Promise.reject(error);
   }
 );
@@ -47,25 +52,31 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response) => {
-    console.log(`✅ API Response: ${response.status}`, {
-      url: response.config.url,
-      status: response.status,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log(`✅ API Response: ${response.status}`, {
+        url: response.config.url,
+        status: response.status,
+      });
+    }
     return response;
   },
   (error) => {
-    console.error("❌ API Response error:", {
-      url: error.config?.url,
-      status: error.response?.status,
-      message: error.message,
-      data: error.response?.data,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.error("❌ API Response error:", {
+        url: error.config?.url,
+        status: error.response?.status,
+        message: error.message,
+        data: error.response?.data,
+      });
+    }
 
     // Handle 431 errors specifically
     if (error.response?.status === 431) {
-      console.warn(
-        "🚨 Request header too large - clearing potentially corrupted token"
-      );
+      if (process.env.NODE_ENV === "development") {
+        console.warn(
+          "🚨 Request header too large - clearing potentially corrupted token"
+        );
+      }
       localStorage.removeItem("token");
       window.location.reload();
     }
@@ -82,7 +93,7 @@ const platformAPI = {
       const response = await api.get("/api/platforms/connections");
       return response.data;
     } catch (error) {
-      console.error("Error fetching platform connections:", error);
+      // Error will be handled by the calling component
       throw error;
     }
   },
@@ -93,7 +104,6 @@ const platformAPI = {
       const response = await api.get(`/api/platforms/connections/${id}`);
       return response.data;
     } catch (error) {
-      console.error("Error fetching platform connection:", error);
       throw error;
     }
   },
@@ -107,7 +117,6 @@ const platformAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("Error creating platform connection:", error);
       throw error;
     }
   },
@@ -121,7 +130,6 @@ const platformAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("Error updating platform connection:", error);
       throw error;
     }
   },
@@ -132,7 +140,6 @@ const platformAPI = {
       const response = await api.delete(`/api/platforms/connections/${id}`);
       return response.data;
     } catch (error) {
-      console.error("Error deleting platform connection:", error);
       throw error;
     }
   },
@@ -143,7 +150,6 @@ const platformAPI = {
       const response = await api.post(`/api/platforms/connections/${id}/test`);
       return response.data;
     } catch (error) {
-      console.error("Error testing platform connection:", error);
       throw error;
     }
   },
@@ -154,7 +160,6 @@ const platformAPI = {
       const response = await api.post(`/api/platforms/connections/${id}/sync`);
       return response.data;
     } catch (error) {
-      console.error("Error syncing platform:", error);
       throw error;
     }
   },
@@ -168,7 +173,6 @@ const platformAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("Error updating platform settings:", error);
       throw error;
     }
   },
@@ -181,7 +185,6 @@ const platformAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching platform analytics:", error);
       throw error;
     }
   },
@@ -194,7 +197,6 @@ const platformAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching platform stats:", error);
       throw error;
     }
   },
@@ -209,7 +211,6 @@ const platformAPI = {
       const response = await api.get(url);
       return response.data;
     } catch (error) {
-      console.error("Error fetching platform sync history:", error);
       throw error;
     }
   },
@@ -222,7 +223,6 @@ const platformAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("Error retrying sync:", error);
       throw error;
     }
   },
@@ -236,10 +236,29 @@ const orderAPI = {
       const queryString = new URLSearchParams(params).toString();
       const url = queryString ? `/api/orders?${queryString}` : "/api/orders";
       const response = await api.get(url);
-      return response.data;
+
+      // Handle both array and paginated responses
+      if (Array.isArray(response.data)) {
+        return {
+          success: true,
+          data: response.data,
+          total: response.data.length,
+        };
+      }
+
+      return {
+        success: true,
+        data: response.data.data || response.data.orders || [],
+        total: response.data.total || response.data.count || 0,
+        page: response.data.page || 1,
+        totalPages: response.data.totalPages || 1,
+      };
     } catch (error) {
-      console.error("Error fetching orders:", error);
-      throw error;
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message,
+        data: null,
+      };
     }
   },
 
@@ -249,7 +268,6 @@ const orderAPI = {
       const response = await api.get("/api/orders/stats");
       return response.data;
     } catch (error) {
-      console.error("Error fetching order stats:", error);
       throw error;
     }
   },
@@ -262,7 +280,6 @@ const orderAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching order trends:", error);
       throw error;
     }
   },
@@ -273,7 +290,6 @@ const orderAPI = {
       const response = await api.get(`/api/orders/${id}`);
       return response.data;
     } catch (error) {
-      console.error("Error fetching order:", error);
       throw error;
     }
   },
@@ -284,7 +300,6 @@ const orderAPI = {
       const response = await api.post("/api/orders", orderData);
       return response.data;
     } catch (error) {
-      console.error("Error creating order:", error);
       throw error;
     }
   },
@@ -295,7 +310,6 @@ const orderAPI = {
       const response = await api.put(`/api/orders/${id}`, orderData);
       return response.data;
     } catch (error) {
-      console.error("Error updating order:", error);
       throw error;
     }
   },
@@ -306,7 +320,19 @@ const orderAPI = {
       const response = await api.put(`/api/orders/${id}/status`, { status });
       return response.data;
     } catch (error) {
-      console.error("Error updating order status:", error);
+      throw error;
+    }
+  },
+
+  // Bulk update order status - Added for OrderManagement component
+  bulkUpdateStatus: async (orderIds, status) => {
+    try {
+      const response = await api.put("/api/orders/bulk/status", {
+        orderIds,
+        status,
+      });
+      return response.data;
+    } catch (error) {
       throw error;
     }
   },
@@ -320,7 +346,6 @@ const orderAPI = {
       const response = await api.post(url);
       return response.data;
     } catch (error) {
-      console.error("Error syncing orders:", error);
       throw error;
     }
   },
@@ -331,7 +356,6 @@ const orderAPI = {
       const response = await api.put("/api/orders/bulk", { orderIds, updates });
       return response.data;
     } catch (error) {
-      console.error("Error bulk updating orders:", error);
       throw error;
     }
   },
@@ -342,7 +366,6 @@ const orderAPI = {
       const response = await api.delete(`/api/orders/${id}`);
       return response.data;
     } catch (error) {
-      console.error("Error deleting order:", error);
       throw error;
     }
   },
@@ -353,7 +376,6 @@ const orderAPI = {
       const response = await api.post(`/api/orders/${id}/einvoice`);
       return response.data;
     } catch (error) {
-      console.error("Error generating e-invoice:", error);
       throw error;
     }
   },
@@ -371,7 +393,6 @@ const customerAPI = {
       const response = await api.get(url);
       return response.data;
     } catch (error) {
-      console.error("Error fetching customers:", error);
       throw error;
     }
   },
@@ -382,7 +403,6 @@ const customerAPI = {
       const response = await api.get(`/api/customers/${id}`);
       return response.data;
     } catch (error) {
-      console.error("Error fetching customer:", error);
       throw error;
     }
   },
@@ -393,7 +413,6 @@ const customerAPI = {
       const response = await api.post("/api/customers", customerData);
       return response.data;
     } catch (error) {
-      console.error("Error creating customer:", error);
       throw error;
     }
   },
@@ -404,7 +423,6 @@ const customerAPI = {
       const response = await api.put(`/api/customers/${id}`, updates);
       return response.data;
     } catch (error) {
-      console.error("Error updating customer:", error);
       throw error;
     }
   },
@@ -419,7 +437,6 @@ const customerAPI = {
       const response = await api.get(url);
       return response.data;
     } catch (error) {
-      console.error("Error fetching customer orders:", error);
       throw error;
     }
   },
@@ -433,7 +450,6 @@ const shippingAPI = {
       const response = await api.get("/api/shipping/carriers");
       return response.data;
     } catch (error) {
-      console.error("Error fetching shipping carriers:", error);
       throw error;
     }
   },
@@ -444,55 +460,29 @@ const shippingAPI = {
       const response = await api.post("/api/shipping/carriers", carrierData);
       return response.data;
     } catch (error) {
-      console.error("Error creating shipping carrier:", error);
       throw error;
     }
   },
 
   // Update shipping carrier
-  updateShippingCarrier: async (id, updates) => {
+  updateShippingCarrier: async (id, carrierData) => {
     try {
-      const response = await api.put(`/api/shipping/carriers/${id}`, updates);
+      const response = await api.put(
+        `/api/shipping/carriers/${id}`,
+        carrierData
+      );
       return response.data;
     } catch (error) {
-      console.error("Error updating shipping carrier:", error);
       throw error;
     }
   },
 
-  // Get shipments
-  getShipments: async (params = {}) => {
+  // Delete shipping carrier
+  deleteShippingCarrier: async (id) => {
     try {
-      const queryString = new URLSearchParams(params).toString();
-      const url = queryString
-        ? `/api/shipping/shipments?${queryString}`
-        : "/api/shipping/shipments";
-      const response = await api.get(url);
+      const response = await api.delete(`/api/shipping/carriers/${id}`);
       return response.data;
     } catch (error) {
-      console.error("Error fetching shipments:", error);
-      throw error;
-    }
-  },
-
-  // Create shipment
-  createShipment: async (shipmentData) => {
-    try {
-      const response = await api.post("/api/shipping/shipments", shipmentData);
-      return response.data;
-    } catch (error) {
-      console.error("Error creating shipment:", error);
-      throw error;
-    }
-  },
-
-  // Update shipment
-  updateShipment: async (id, updates) => {
-    try {
-      const response = await api.put(`/api/shipping/shipments/${id}`, updates);
-      return response.data;
-    } catch (error) {
-      console.error("Error updating shipment:", error);
       throw error;
     }
   },
@@ -507,18 +497,38 @@ const shippingAPI = {
       const response = await api.get(url);
       return response.data;
     } catch (error) {
-      console.error("Error fetching shipping rates:", error);
+      throw error;
+    }
+  },
+
+  // Calculate shipping cost
+  calculateShippingCost: async (shippingData) => {
+    try {
+      const response = await api.post("/api/shipping/calculate", shippingData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Create shipping label
+  createShippingLabel: async (labelData) => {
+    try {
+      const response = await api.post("/api/shipping/labels", labelData);
+      return response.data;
+    } catch (error) {
       throw error;
     }
   },
 
   // Track shipment
-  trackShipment: async (trackingNumber) => {
+  trackShipment: async (trackingNumber, carrier) => {
     try {
-      const response = await api.get(`/api/shipping/track/${trackingNumber}`);
+      const response = await api.get(
+        `/api/shipping/track/${trackingNumber}?carrier=${carrier}`
+      );
       return response.data;
     } catch (error) {
-      console.error("Error tracking shipment:", error);
       throw error;
     }
   },
@@ -537,7 +547,6 @@ const importExportAPI = {
       });
       return response.data;
     } catch (error) {
-      console.error("Error importing data:", error);
       throw error;
     }
   },
@@ -550,7 +559,6 @@ const importExportAPI = {
       });
       return response;
     } catch (error) {
-      console.error("Error exporting data:", error);
       throw error;
     }
   },
@@ -563,7 +571,6 @@ const importExportAPI = {
       });
       return response;
     } catch (error) {
-      console.error("Error downloading template:", error);
       throw error;
     }
   },
@@ -577,7 +584,6 @@ const dashboardAPI = {
       const response = await api.get("/api/dashboard/stats");
       return response.data;
     } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
       throw error;
     }
   },
@@ -590,7 +596,6 @@ const dashboardAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching recent activities:", error);
       throw error;
     }
   },
@@ -603,7 +608,6 @@ const dashboardAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching performance metrics:", error);
       throw error;
     }
   },
@@ -617,7 +621,6 @@ const settingsAPI = {
       const response = await api.get("/api/settings/app");
       return response.data;
     } catch (error) {
-      console.error("Error fetching app settings:", error);
       throw error;
     }
   },
@@ -628,7 +631,6 @@ const settingsAPI = {
       const response = await api.put("/api/settings/app", settings);
       return response.data;
     } catch (error) {
-      console.error("Error updating app settings:", error);
       throw error;
     }
   },
@@ -639,7 +641,6 @@ const settingsAPI = {
       const response = await api.get("/api/settings/notifications");
       return response.data;
     } catch (error) {
-      console.error("Error fetching notification settings:", error);
       throw error;
     }
   },
@@ -650,7 +651,6 @@ const settingsAPI = {
       const response = await api.put("/api/settings/notifications", settings);
       return response.data;
     } catch (error) {
-      console.error("Error updating notification settings:", error);
       throw error;
     }
   },
@@ -670,7 +670,6 @@ const reportsAPI = {
       });
       return response;
     } catch (error) {
-      console.error("Error exporting report:", error);
       throw error;
     }
   },
@@ -683,7 +682,6 @@ const reportsAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching analytics summary:", error);
       throw error;
     }
   },
@@ -696,7 +694,6 @@ const reportsAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching customer analytics:", error);
       throw error;
     }
   },
@@ -709,7 +706,98 @@ const reportsAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching product performance:", error);
+      throw error;
+    }
+  },
+};
+
+// Product-specific API methods
+const productAPI = {
+  // Get products with optional query parameters
+  getProducts: async (params = {}) => {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      const url = queryString
+        ? `/api/products?${queryString}`
+        : "/api/products";
+      const response = await api.get(url);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get single product by ID
+  getProduct: async (id) => {
+    try {
+      const response = await api.get(`/api/products/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Create new product
+  createProduct: async (productData) => {
+    try {
+      const response = await api.post("/api/products", productData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Update product
+  updateProduct: async (id, productData) => {
+    try {
+      const response = await api.put(`/api/products/${id}`, productData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Delete product
+  deleteProduct: async (id) => {
+    try {
+      const response = await api.delete(`/api/products/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Bulk delete products
+  bulkDelete: async (productIds) => {
+    try {
+      const response = await api.delete("/api/products/bulk", {
+        data: { productIds },
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Bulk update product status
+  bulkUpdateStatus: async (productIds, status) => {
+    try {
+      const response = await api.put("/api/products/bulk/status", {
+        productIds,
+        status,
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get product statistics
+  getProductStats: async () => {
+    try {
+      const response = await api.get("/api/products/stats");
+      return response.data;
+    } catch (error) {
       throw error;
     }
   },
@@ -724,6 +812,7 @@ api.importExport = importExportAPI;
 api.dashboard = dashboardAPI;
 api.settings = settingsAPI;
 api.reports = reportsAPI;
+api.products = productAPI;
 
 // Add legacy direct methods for backward compatibility with existing hooks
 api.getOrders = orderAPI.getOrders;
@@ -736,6 +825,7 @@ api.updateOrderStatus = orderAPI.updateOrderStatus;
 api.syncOrders = orderAPI.syncOrders;
 
 // Add new methods for reports
+api.getConnections = platformAPI.getConnections;
 api.getPlatformStats = platformAPI.getPlatformStats;
 api.exportReport = reportsAPI.exportReport;
 

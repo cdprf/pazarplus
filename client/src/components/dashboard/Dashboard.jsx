@@ -30,6 +30,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
 import { Badge } from "../ui/Badge";
 import OrdersChart from "./OrdersChart";
 
+// Ensure CSS is imported
+import "../../index.css";
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { showAlert } = useAlert();
@@ -283,7 +286,7 @@ const Dashboard = () => {
             <CubeIcon className="h-6 w-6" />
           </div>
           <div className="stat-content">
-            <div className="stat-value">{stats.total.toLocaleString()}</div>
+            <div className="stat-value">{stats.total || 0}</div>
             <div className="stat-label">Total Orders</div>
             <div className="stat-change">
               {stats.growth?.orders >= 0 ? (
@@ -295,7 +298,9 @@ const Dashboard = () => {
                   -{Math.abs(stats.growth?.orders || 0)}%
                 </span>
               )}
-              <span className="text-gray-500 ml-1">vs last period</span>
+              <span className="text-gray-500 dark:text-gray-400 ml-1">
+                vs last period
+              </span>
             </div>
           </div>
         </div>
@@ -307,7 +312,7 @@ const Dashboard = () => {
           </div>
           <div className="stat-content">
             <div className="stat-value">
-              {formatCurrency(stats.totalRevenue)}
+              {formatCurrency(stats.totalRevenue || 0)}
             </div>
             <div className="stat-label">Total Revenue</div>
             <div className="stat-change">
@@ -320,29 +325,37 @@ const Dashboard = () => {
                   -{Math.abs(stats.growth?.revenue || 0)}%
                 </span>
               )}
-              <span className="text-gray-500 ml-1">vs last period</span>
+              <span className="text-gray-500 dark:text-gray-400 ml-1">
+                vs last period
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Urgent Orders */}
+        {/* Pending Orders */}
         <div className="dashboard-stat">
           <div className="stat-icon stat-icon-warning">
             <BoltIcon className="h-6 w-6" />
           </div>
           <div className="stat-content">
-            <div className="stat-value">{urgentOrders}</div>
+            <div className="stat-value">{pendingOrders || 0}</div>
             <div className="stat-label">Pending Orders</div>
             <div className="stat-change">
-              <Badge variant="warning" size="sm">
+              <Badge
+                variant="warning"
+                size="sm"
+                className="inline-flex items-center font-medium rounded-full transition-colors bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-0.5 text-xs"
+              >
                 Urgent
               </Badge>
-              <span className="text-gray-500 ml-2">Need attention</span>
+              <span className="text-gray-500 dark:text-gray-400 ml-2">
+                Need attention
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Performance Score */}
+        {/* Completion Rate */}
         <div className="dashboard-stat">
           <div className="stat-icon stat-icon-primary">
             <ChartBarIcon className="h-6 w-6" />
@@ -352,7 +365,9 @@ const Dashboard = () => {
             <div className="stat-label">Completion Rate</div>
             <div className="stat-change">
               <StarIcon className="w-4 h-4 text-yellow-500 mr-1" />
-              <span className="text-gray-500">Delivered orders</span>
+              <span className="text-gray-500 dark:text-gray-400">
+                Delivered orders
+              </span>
             </div>
           </div>
         </div>

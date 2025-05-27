@@ -1,34 +1,46 @@
-import React, { useState, useRef } from 'react';
-import { 
-  Upload, 
-  Download, 
-  FileText, 
-  AlertCircle, 
-  CheckCircle, 
-  X,
-  RefreshCw
-} from 'lucide-react';
-import api from '../../services/api';
-import { useNotification } from '../../contexts/NotificationContext';
+import React, { useState, useRef } from "react";
+import {
+  Upload,
+  Download,
+  FileText,
+  AlertCircle,
+  CheckCircle,
+  RefreshCw,
+} from "lucide-react";
+import api from "../../services/api";
+import { useNotification } from "../../contexts/NotificationContext";
+import logger from "../../utils/logger";
 
 const ImportExport = () => {
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importResults, setImportResults] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [importType, setImportType] = useState('orders');
+  const [importType, setImportType] = useState("orders");
   const fileInputRef = useRef(null);
   const { showNotification } = useNotification();
 
   const supportedTypes = [
-    { value: 'orders', label: 'Orders', description: 'Import order data from CSV/Excel' },
-    { value: 'customers', label: 'Customers', description: 'Import customer information' },
-    { value: 'products', label: 'Products', description: 'Import product catalog' }
+    {
+      value: "orders",
+      label: "Orders",
+      description: "Import order data from CSV/Excel",
+    },
+    {
+      value: "customers",
+      label: "Customers",
+      description: "Import customer information",
+    },
+    {
+      value: "products",
+      label: "Products",
+      description: "Import product catalog",
+    },
   ];
 
   const exportFormats = [
-    { value: 'csv', label: 'CSV', description: 'Comma-separated values' },
-    { value: 'xlsx', label: 'Excel', description: 'Microsoft Excel format' }
+    { value: "csv", label: "CSV", description: "Comma-separated values" },
+    { value: "xlsx", label: "Excel", description: "Microsoft Excel format" },
   ];
 
   const handleFileSelect = (event) => {
@@ -36,19 +48,19 @@ const ImportExport = () => {
     if (file) {
       // Validate file type
       const allowedTypes = [
-        'text/csv',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        "text/csv",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       ];
-      
+
       if (!allowedTypes.includes(file.type)) {
-        showNotification('Please select a CSV or Excel file', 'error');
+        showNotification("Please select a CSV or Excel file", "error");
         return;
       }
 
       // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
-        showNotification('File size must be less than 10MB', 'error');
+        showNotification("File size must be less than 10MB", "error");
         return;
       }
 
@@ -58,7 +70,7 @@ const ImportExport = () => {
 
   const handleImport = async () => {
     if (!selectedFile) {
-      showNotification('Please select a file to import', 'error');
+      showNotification("Please select a file to import", "error");
       return;
     }
 
@@ -67,41 +79,40 @@ const ImportExport = () => {
       setImportResults(null);
 
       const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('type', importType);
+      formData.append("file", selectedFile);
+      formData.append("type", importType);
 
       const response = await api.importExport.importData(formData, {
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round(
             (progressEvent.loaded * 100) / progressEvent.total
           );
-          console.log(`Upload progress: ${percentCompleted}%`);
-        }
+          logger.debug(`Upload progress: ${percentCompleted}%`);
+        },
       });
 
       setImportResults(response);
       showNotification(
-        `Successfully imported ${response.successful || 0} records`, 
-        'success'
+        `Successfully imported ${response.successful || 0} records`,
+        "success"
       );
 
       // Clear the selected file
       setSelectedFile(null);
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
-
     } catch (error) {
-      console.error('Import error:', error);
-      const errorMessage = error.response?.data?.message || 'Import failed';
-      showNotification(errorMessage, 'error');
-      
+      logger.error("Import error:", error);
+      const errorMessage = error.response?.data?.message || "Import failed";
+      showNotification(errorMessage, "error");
+
       // If there are validation errors, show them
       if (error.response?.data?.errors) {
         setImportResults({
           successful: 0,
           failed: error.response.data.errors.length,
-          errors: error.response.data.errors
+          errors: error.response.data.errors,
         });
       }
     } finally {
@@ -112,29 +123,31 @@ const ImportExport = () => {
   const handleExport = async (format) => {
     try {
       setExporting(true);
-      
+
       const response = await api.importExport.exportData(importType, format);
-      
+
       // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      
-      const timestamp = new Date().toISOString().split('T')[0];
-      const extension = format === 'xlsx' ? 'xlsx' : 'csv';
-      link.setAttribute('download', `${importType}-export-${timestamp}.${extension}`);
-      
+
+      const timestamp = new Date().toISOString().split("T")[0];
+      const extension = format === "xlsx" ? "xlsx" : "csv";
+      link.setAttribute(
+        "download",
+        `${importType}-export-${timestamp}.${extension}`
+      );
+
       document.body.appendChild(link);
       link.click();
       link.remove();
-      
+
       window.URL.revokeObjectURL(url);
-      
-      showNotification(`${importType} exported successfully`, 'success');
-      
+
+      showNotification(`${importType} exported successfully`, "success");
     } catch (error) {
-      console.error('Export error:', error);
-      showNotification('Export failed', 'error');
+      logger.error("Export error:", error);
+      showNotification("Export failed", "error");
     } finally {
       setExporting(false);
     }
@@ -143,23 +156,22 @@ const ImportExport = () => {
   const downloadTemplate = async () => {
     try {
       const response = await api.importExport.downloadTemplate(importType);
-      
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.setAttribute('download', `${importType}-template.csv`);
-      
+      link.setAttribute("download", `${importType}-template.csv`);
+
       document.body.appendChild(link);
       link.click();
       link.remove();
-      
+
       window.URL.revokeObjectURL(url);
-      
-      showNotification('Template downloaded successfully', 'success');
-      
+
+      showNotification("Template downloaded successfully", "success");
     } catch (error) {
-      console.error('Template download error:', error);
-      showNotification('Failed to download template', 'error');
+      logger.error("Template download error:", error);
+      showNotification("Failed to download template", "error");
     }
   };
 
@@ -171,7 +183,9 @@ const ImportExport = () => {
           <Upload className="mr-3" />
           Import & Export
         </h1>
-        <p className="text-gray-600 mt-1">Import data from CSV/Excel files or export your data</p>
+        <p className="text-gray-600 mt-1">
+          Import data from CSV/Excel files or export your data
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -199,7 +213,7 @@ const ImportExport = () => {
               ))}
             </select>
             <p className="text-sm text-gray-500 mt-1">
-              {supportedTypes.find(t => t.value === importType)?.description}
+              {supportedTypes.find((t) => t.value === importType)?.description}
             </p>
           </div>
 
@@ -220,7 +234,7 @@ const ImportExport = () => {
               <label htmlFor="file-upload" className="cursor-pointer">
                 <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <p className="text-lg font-medium text-gray-900 mb-2">
-                  {selectedFile ? selectedFile.name : 'Choose a file'}
+                  {selectedFile ? selectedFile.name : "Choose a file"}
                 </p>
                 <p className="text-sm text-gray-500">
                   CSV, Excel files up to 10MB
@@ -270,10 +284,12 @@ const ImportExport = () => {
                 )}
                 <h3 className="font-medium">Import Results</h3>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-green-600 font-medium">Successful:</span>
+                  <span className="text-green-600 font-medium">
+                    Successful:
+                  </span>
                   <span className="ml-2">{importResults.successful || 0}</span>
                 </div>
                 <div>
@@ -284,7 +300,9 @@ const ImportExport = () => {
 
               {importResults.errors && importResults.errors.length > 0 && (
                 <div className="mt-3">
-                  <h4 className="text-sm font-medium text-red-700 mb-2">Errors:</h4>
+                  <h4 className="text-sm font-medium text-red-700 mb-2">
+                    Errors:
+                  </h4>
                   <div className="max-h-32 overflow-y-auto">
                     {importResults.errors.slice(0, 5).map((error, index) => (
                       <p key={index} className="text-xs text-red-600 mb-1">
@@ -354,9 +372,13 @@ const ImportExport = () => {
 
           {/* Export Info */}
           <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="text-sm font-medium text-blue-800 mb-2">Export Information</h3>
+            <h3 className="text-sm font-medium text-blue-800 mb-2">
+              Export Information
+            </h3>
             <ul className="text-xs text-blue-700 space-y-1">
-              <li>• All data will be exported based on your current permissions</li>
+              <li>
+                • All data will be exported based on your current permissions
+              </li>
               <li>• Large datasets may take some time to process</li>
               <li>• Exported files will include all relevant fields</li>
               <li>• File will be downloaded automatically when ready</li>
@@ -367,26 +389,34 @@ const ImportExport = () => {
 
       {/* Instructions */}
       <div className="mt-8 bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Import Instructions</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Import Instructions
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">1. Prepare Your File</h4>
+            <h4 className="font-medium text-gray-900 mb-2">
+              1. Prepare Your File
+            </h4>
             <p className="text-gray-600">
-              Download the template for your data type and fill it with your data. 
-              Ensure all required fields are included.
+              Download the template for your data type and fill it with your
+              data. Ensure all required fields are included.
             </p>
           </div>
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">2. Upload & Import</h4>
+            <h4 className="font-medium text-gray-900 mb-2">
+              2. Upload & Import
+            </h4>
             <p className="text-gray-600">
-              Select your file and click import. The system will validate 
-              your data and show any errors that need to be fixed.
+              Select your file and click import. The system will validate your
+              data and show any errors that need to be fixed.
             </p>
           </div>
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">3. Review Results</h4>
+            <h4 className="font-medium text-gray-900 mb-2">
+              3. Review Results
+            </h4>
             <p className="text-gray-600">
-              Check the import results to see how many records were successfully 
+              Check the import results to see how many records were successfully
               imported and fix any errors if needed.
             </p>
           </div>

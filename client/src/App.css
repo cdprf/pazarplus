@@ -531,10 +531,6 @@ body {
 
 /* Enhanced responsive design */
 @media (max-width: 768px) {
-  .sidebar {
-    width: 100%;
-  }
-
   .main-content {
     margin-left: 0 !important;
   }

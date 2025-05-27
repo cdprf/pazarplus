@@ -1,132 +1,140 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Plus, 
-  Search, 
-  Filter, 
-  Download, 
-  Edit, 
-  Eye, 
-  Mail, 
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Users,
+  Plus,
+  Search,
+  Download,
+  Edit,
+  Eye,
+  Mail,
   Phone,
   MapPin,
-  Package
-} from 'lucide-react';
-import api from '../../services/api';
-import { useNotification } from '../../contexts/NotificationContext';
+  Package,
+} from "lucide-react";
+import api from "../../services/api";
+import { useNotification } from "../../contexts/NotificationContext";
 
 const CustomerManagement = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState('view'); // 'view', 'edit', 'create'
+  const [modalMode, setModalMode] = useState("view"); // 'view', 'edit', 'create'
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [filters, setFilters] = useState({
-    status: 'all',
-    sortBy: 'name',
-    sortOrder: 'asc'
+    status: "all",
+    sortBy: "name",
+    sortOrder: "asc",
   });
 
   const { showNotification } = useNotification();
 
-  useEffect(() => {
-    fetchCustomers();
-  }, [currentPage, filters, searchTerm]);
-
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
         page: currentPage,
         limit: 20,
         search: searchTerm,
-        ...filters
+        ...filters,
       };
-      
+
       const response = await api.customers.getCustomers(params);
       setCustomers(response.customers || []);
       setTotalPages(response.totalPages || 1);
     } catch (error) {
-      console.error('Error fetching customers:', error);
-      showNotification('Error fetching customers', 'error');
+      console.error("Error fetching customers:", error);
+      showNotification("Error fetching customers", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, filters, searchTerm, showNotification]);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   const handleCreateCustomer = () => {
     setSelectedCustomer({
-      name: '',
-      email: '',
-      phone: '',
+      name: "",
+      email: "",
+      phone: "",
       address: {
-        street: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        country: 'Turkey'
+        street: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        country: "Turkey",
       },
-      notes: ''
+      notes: "",
     });
-    setModalMode('create');
+    setModalMode("create");
     setShowModal(true);
   };
 
   const handleEditCustomer = (customer) => {
     setSelectedCustomer(customer);
-    setModalMode('edit');
+    setModalMode("edit");
     setShowModal(true);
   };
 
   const handleViewCustomer = (customer) => {
     setSelectedCustomer(customer);
-    setModalMode('view');
+    setModalMode("view");
     setShowModal(true);
   };
 
   const handleSaveCustomer = async (customerData) => {
     try {
-      if (modalMode === 'create') {
+      if (modalMode === "create") {
         await api.customers.createCustomer(customerData);
-        showNotification('Customer created successfully', 'success');
+        showNotification("Customer created successfully", "success");
       } else {
         await api.customers.updateCustomer(selectedCustomer.id, customerData);
-        showNotification('Customer updated successfully', 'success');
+        showNotification("Customer updated successfully", "success");
       }
-      
+
       setShowModal(false);
       fetchCustomers();
     } catch (error) {
-      console.error('Error saving customer:', error);
-      showNotification(`Error ${modalMode === 'create' ? 'creating' : 'updating'} customer`, 'error');
+      console.error("Error saving customer:", error);
+      showNotification(
+        `Error ${modalMode === "create" ? "creating" : "updating"} customer`,
+        "error"
+      );
     }
   };
 
   const exportCustomers = async () => {
     try {
-      const response = await api.importExport.exportData('customers', 'csv');
+      const response = await api.importExport.exportData("customers", "csv");
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.setAttribute('download', `customers-${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute(
+        "download",
+        `customers-${new Date().toISOString().split("T")[0]}.csv`
+      );
       document.body.appendChild(link);
       link.click();
       link.remove();
-      showNotification('Customers exported successfully', 'success');
+      showNotification("Customers exported successfully", "success");
     } catch (error) {
-      console.error('Error exporting customers:', error);
-      showNotification('Error exporting customers', 'error');
+      console.error("Error exporting customers:", error);
+      showNotification("Error exporting customers", "error");
     }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "inactive":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -174,10 +182,12 @@ const CustomerManagement = () => {
               />
             </div>
           </div>
-          
+
           <select
             value={filters.status}
-            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, status: e.target.value }))
+            }
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">All Status</option>
@@ -187,7 +197,9 @@ const CustomerManagement = () => {
 
           <select
             value={filters.sortBy}
-            onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
+            onChange={(e) =>
+              setFilters((prev) => ({ ...prev, sortBy: e.target.value }))
+            }
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           >
             <option value="name">Sort by Name</option>
@@ -206,8 +218,12 @@ const CustomerManagement = () => {
         ) : customers.length === 0 ? (
           <div className="text-center p-8">
             <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No customers found</h3>
-            <p className="text-gray-500">Get started by adding your first customer.</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No customers found
+            </h3>
+            <p className="text-gray-500">
+              Get started by adding your first customer.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -274,8 +290,12 @@ const CustomerManagement = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(customer.status)}`}>
-                        {customer.status || 'active'}
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
+                          customer.status
+                        )}`}
+                      >
+                        {customer.status || "active"}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -314,14 +334,18 @@ const CustomerManagement = () => {
               </div>
               <div className="flex space-x-2">
                 <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
                   disabled={currentPage === 1}
                   className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50"
                 >
                   Previous
                 </button>
                 <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
                   disabled={currentPage === totalPages}
                   className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50"
                 >
@@ -362,17 +386,17 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
   };
 
   const updateFormData = (field, value) => {
-    if (field.includes('.')) {
-      const [parent, child] = field.split('.');
-      setFormData(prev => ({
+    if (field.includes(".")) {
+      const [parent, child] = field.split(".");
+      setFormData((prev) => ({
         ...prev,
         [parent]: {
           ...prev[parent],
-          [child]: value
-        }
+          [child]: value,
+        },
       }));
     } else {
-      setFormData(prev => ({ ...prev, [field]: value }));
+      setFormData((prev) => ({ ...prev, [field]: value }));
     }
   };
 
@@ -382,8 +406,11 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold">
-              {mode === 'create' ? 'Add New Customer' : 
-               mode === 'edit' ? 'Edit Customer' : 'Customer Details'}
+              {mode === "create"
+                ? "Add New Customer"
+                : mode === "edit"
+                ? "Edit Customer"
+                : "Customer Details"}
             </h2>
             <button
               onClick={onClose}
@@ -401,9 +428,9 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
                 </label>
                 <input
                   type="text"
-                  value={formData.name || ''}
-                  onChange={(e) => updateFormData('name', e.target.value)}
-                  disabled={mode === 'view'}
+                  value={formData.name || ""}
+                  onChange={(e) => updateFormData("name", e.target.value)}
+                  disabled={mode === "view"}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 />
@@ -415,9 +442,9 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
                 </label>
                 <input
                   type="email"
-                  value={formData.email || ''}
-                  onChange={(e) => updateFormData('email', e.target.value)}
-                  disabled={mode === 'view'}
+                  value={formData.email || ""}
+                  onChange={(e) => updateFormData("email", e.target.value)}
+                  disabled={mode === "view"}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 />
@@ -429,9 +456,9 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
                 </label>
                 <input
                   type="tel"
-                  value={formData.phone || ''}
-                  onChange={(e) => updateFormData('phone', e.target.value)}
-                  disabled={mode === 'view'}
+                  value={formData.phone || ""}
+                  onChange={(e) => updateFormData("phone", e.target.value)}
+                  disabled={mode === "view"}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 />
               </div>
@@ -441,9 +468,9 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
                   Status
                 </label>
                 <select
-                  value={formData.status || 'active'}
-                  onChange={(e) => updateFormData('status', e.target.value)}
-                  disabled={mode === 'view'}
+                  value={formData.status || "active"}
+                  onChange={(e) => updateFormData("status", e.target.value)}
+                  disabled={mode === "view"}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 >
                   <option value="active">Active</option>
@@ -454,7 +481,9 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
 
             {/* Address Section */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Address</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Address
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -462,9 +491,11 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
                   </label>
                   <input
                     type="text"
-                    value={formData.address?.street || ''}
-                    onChange={(e) => updateFormData('address.street', e.target.value)}
-                    disabled={mode === 'view'}
+                    value={formData.address?.street || ""}
+                    onChange={(e) =>
+                      updateFormData("address.street", e.target.value)
+                    }
+                    disabled={mode === "view"}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                   />
                 </div>
@@ -475,9 +506,11 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
                   </label>
                   <input
                     type="text"
-                    value={formData.address?.city || ''}
-                    onChange={(e) => updateFormData('address.city', e.target.value)}
-                    disabled={mode === 'view'}
+                    value={formData.address?.city || ""}
+                    onChange={(e) =>
+                      updateFormData("address.city", e.target.value)
+                    }
+                    disabled={mode === "view"}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                   />
                 </div>
@@ -488,9 +521,11 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
                   </label>
                   <input
                     type="text"
-                    value={formData.address?.state || ''}
-                    onChange={(e) => updateFormData('address.state', e.target.value)}
-                    disabled={mode === 'view'}
+                    value={formData.address?.state || ""}
+                    onChange={(e) =>
+                      updateFormData("address.state", e.target.value)
+                    }
+                    disabled={mode === "view"}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                   />
                 </div>
@@ -501,9 +536,11 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
                   </label>
                   <input
                     type="text"
-                    value={formData.address?.zipCode || ''}
-                    onChange={(e) => updateFormData('address.zipCode', e.target.value)}
-                    disabled={mode === 'view'}
+                    value={formData.address?.zipCode || ""}
+                    onChange={(e) =>
+                      updateFormData("address.zipCode", e.target.value)
+                    }
+                    disabled={mode === "view"}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                   />
                 </div>
@@ -514,9 +551,11 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
                   </label>
                   <input
                     type="text"
-                    value={formData.address?.country || 'Turkey'}
-                    onChange={(e) => updateFormData('address.country', e.target.value)}
-                    disabled={mode === 'view'}
+                    value={formData.address?.country || "Turkey"}
+                    onChange={(e) =>
+                      updateFormData("address.country", e.target.value)
+                    }
+                    disabled={mode === "view"}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                   />
                 </div>
@@ -528,16 +567,16 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
                 Notes
               </label>
               <textarea
-                value={formData.notes || ''}
-                onChange={(e) => updateFormData('notes', e.target.value)}
-                disabled={mode === 'view'}
+                value={formData.notes || ""}
+                onChange={(e) => updateFormData("notes", e.target.value)}
+                disabled={mode === "view"}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 placeholder="Additional notes about this customer..."
               />
             </div>
 
-            {mode !== 'view' && (
+            {mode !== "view" && (
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
@@ -549,9 +588,12 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
                 >
-                  {loading ? 'Saving...' : (mode === 'create' ? 'Create Customer' : 'Update Customer')}
+                  {loading && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  )}
+                  {mode === "create" ? "Create Customer" : "Save Changes"}
                 </button>
               </div>
             )}

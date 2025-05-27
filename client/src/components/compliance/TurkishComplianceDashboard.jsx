@@ -1,31 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { 
-  Container, 
-  Row, 
-  Col, 
-  Card, 
-  Badge, 
-  Button, 
+import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Badge,
+  Button,
   ProgressBar,
   Alert,
   Modal,
   Form,
-  Spinner
-} from 'react-bootstrap';
-import { 
-  FaShieldAlt, 
-  FaFileInvoice, 
-  FaArchive, 
+  Spinner,
+} from "react-bootstrap";
+import {
+  FaShieldAlt,
+  FaFileInvoice,
+  FaArchive,
   FaCalculator,
   FaCheckCircle,
   FaExclamationTriangle,
   FaClock,
   FaDownload,
-  FaEye
-} from 'react-icons/fa';
-import { motion } from 'framer-motion';
-import './TurkishComplianceDashboard.css';
+  FaEye,
+} from "react-icons/fa";
+import { motion } from "framer-motion";
+import "./TurkishComplianceDashboard.css";
 
 const TurkishComplianceDashboard = ({ orderId }) => {
   const { t } = useTranslation();
@@ -45,13 +45,13 @@ const TurkishComplianceDashboard = ({ orderId }) => {
       setLoading(true);
       const response = await fetch(`/api/compliance/status/${orderId}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
       });
       const data = await response.json();
       setComplianceData(data);
     } catch (error) {
-      console.error('Failed to fetch compliance data:', error);
+      console.error("Failed to fetch compliance data:", error);
     } finally {
       setLoading(false);
     }
@@ -59,22 +59,22 @@ const TurkishComplianceDashboard = ({ orderId }) => {
 
   const handleKVKKConsent = async (consentData) => {
     try {
-      setProcessingAction('kvkk');
+      setProcessingAction("kvkk");
       const response = await fetch(`/api/compliance/kvkk/${orderId}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify(consentData)
+        body: JSON.stringify(consentData),
       });
-      
+
       if (response.ok) {
         await fetchComplianceData();
         setShowKVKKModal(false);
       }
     } catch (error) {
-      console.error('Failed to record KVKK consent:', error);
+      console.error("Failed to record KVKK consent:", error);
     } finally {
       setProcessingAction(null);
     }
@@ -82,22 +82,22 @@ const TurkishComplianceDashboard = ({ orderId }) => {
 
   const handleCreateEFatura = async (eFaturaData) => {
     try {
-      setProcessingAction('efatura');
+      setProcessingAction("efatura");
       const response = await fetch(`/api/compliance/efatura/${orderId}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify(eFaturaData)
+        body: JSON.stringify(eFaturaData),
       });
-      
+
       if (response.ok) {
         await fetchComplianceData();
         setShowEFaturaModal(false);
       }
     } catch (error) {
-      console.error('Failed to create E-Fatura:', error);
+      console.error("Failed to create E-Fatura:", error);
     } finally {
       setProcessingAction(null);
     }
@@ -105,20 +105,20 @@ const TurkishComplianceDashboard = ({ orderId }) => {
 
   const handleCreateEArsiv = async () => {
     try {
-      setProcessingAction('earsiv');
+      setProcessingAction("earsiv");
       const response = await fetch(`/api/compliance/earsiv/${orderId}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
       });
-      
+
       if (response.ok) {
         await fetchComplianceData();
         setShowEArsivModal(false);
       }
     } catch (error) {
-      console.error('Failed to create E-Arşiv:', error);
+      console.error("Failed to create E-Arşiv:", error);
     } finally {
       setProcessingAction(null);
     }
@@ -126,12 +126,12 @@ const TurkishComplianceDashboard = ({ orderId }) => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      'COMPLIANT': { variant: 'success', icon: FaCheckCircle },
-      'NON_COMPLIANT': { variant: 'danger', icon: FaExclamationTriangle },
-      'PENDING': { variant: 'warning', icon: FaClock }
+      COMPLIANT: { variant: "success", icon: FaCheckCircle },
+      NON_COMPLIANT: { variant: "danger", icon: FaExclamationTriangle },
+      PENDING: { variant: "warning", icon: FaClock },
     };
 
-    const config = statusConfig[status] || statusConfig['PENDING'];
+    const config = statusConfig[status] || statusConfig["PENDING"];
     const IconComponent = config.icon;
 
     return (
@@ -144,12 +144,16 @@ const TurkishComplianceDashboard = ({ orderId }) => {
 
   const getComplianceProgress = () => {
     if (!complianceData) return 0;
-    
+
     let completed = 0;
     let total = 3; // KVKK, E-Fatura/E-Arşiv, İrsaliye
 
     if (complianceData.kvkkConsent) completed += 1;
-    if (complianceData.eFaturaStatus === 'SENT' || complianceData.eArsivStatus === 'CREATED') completed += 1;
+    if (
+      complianceData.eFaturaStatus === "SENT" ||
+      complianceData.eArsivStatus === "CREATED"
+    )
+      completed += 1;
     if (complianceData.irsaliyeNumber) completed += 1;
 
     return Math.round((completed / total) * 100);
@@ -159,7 +163,7 @@ const TurkishComplianceDashboard = ({ orderId }) => {
     return (
       <Container className="text-center py-5">
         <Spinner animation="border" variant="primary" />
-        <p className="mt-3">{t('common.loading')}</p>
+        <p className="mt-3">{t("common.loading")}</p>
       </Container>
     );
   }
@@ -177,9 +181,9 @@ const TurkishComplianceDashboard = ({ orderId }) => {
             <div className="dashboard-header">
               <h2 className="d-flex align-items-center mb-3">
                 <FaShieldAlt className="me-3 text-primary" />
-                {t('compliance.title')}
+                {t("compliance.title")}
               </h2>
-              <p className="text-muted">{t('compliance.subtitle')}</p>
+              <p className="text-muted">{t("compliance.subtitle")}</p>
             </div>
           </Col>
         </Row>
@@ -191,19 +195,21 @@ const TurkishComplianceDashboard = ({ orderId }) => {
               <Card.Body>
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h5 className="mb-0">Uyumluluk Durumu</h5>
-                  {complianceData && getStatusBadge(complianceData.status || 'PENDING')}
+                  {complianceData &&
+                    getStatusBadge(complianceData.status || "PENDING")}
                 </div>
-                <ProgressBar 
-                  now={getComplianceProgress()} 
+                <ProgressBar
+                  now={getComplianceProgress()}
                   label={`${getComplianceProgress()}%`}
-                  variant={getComplianceProgress() === 100 ? 'success' : 'primary'}
+                  variant={
+                    getComplianceProgress() === 100 ? "success" : "primary"
+                  }
                   className="compliance-progress"
                 />
                 <small className="text-muted mt-2 d-block">
-                  {getComplianceProgress() === 100 ? 
-                    'Tüm uyumluluk gereksinimler tamamlandı' : 
-                    'Bazı uyumluluk adımları eksik'
-                  }
+                  {getComplianceProgress() === 100
+                    ? "Tüm uyumluluk gereksinimler tamamlandı"
+                    : "Bazı uyumluluk adımları eksik"}
                 </small>
               </Card.Body>
             </Card>
@@ -222,19 +228,19 @@ const TurkishComplianceDashboard = ({ orderId }) => {
                 <Card.Body>
                   <div className="card-icon-header">
                     <FaShieldAlt className="card-icon" />
-                    <h5>{t('compliance.kvkk.title')}</h5>
+                    <h5>{t("compliance.kvkk.title")}</h5>
                   </div>
-                  
+
                   <div className="compliance-status mb-3">
                     {complianceData?.kvkkConsent ? (
                       <Badge bg="success" className="d-flex align-items-center">
                         <FaCheckCircle className="me-1" />
-                        {t('compliance.kvkk.consentGiven')}
+                        {t("compliance.kvkk.consentGiven")}
                       </Badge>
                     ) : (
                       <Badge bg="warning" className="d-flex align-items-center">
                         <FaExclamationTriangle className="me-1" />
-                        {t('compliance.kvkk.consentRequired')}
+                        {t("compliance.kvkk.consentRequired")}
                       </Badge>
                     )}
                   </div>
@@ -242,20 +248,29 @@ const TurkishComplianceDashboard = ({ orderId }) => {
                   {complianceData?.kvkkConsent && (
                     <div className="compliance-details">
                       <small className="text-muted">
-                        <strong>{t('compliance.kvkk.consentMethod')}:</strong> {complianceData.kvkkConsentMethod}<br/>
-                        <strong>{t('compliance.kvkk.consentDate')}:</strong> {new Date(complianceData.kvkkConsentDate).toLocaleDateString('tr-TR')}
+                        <strong>{t("compliance.kvkk.consentMethod")}:</strong>{" "}
+                        {complianceData.kvkkConsentMethod}
+                        <br />
+                        <strong>
+                          {t("compliance.kvkk.consentDate")}:
+                        </strong>{" "}
+                        {complianceData.kvkkConsentDate
+                          ? new Date(
+                              complianceData.kvkkConsentDate
+                            ).toLocaleDateString("tr-TR")
+                          : "N/A"}
                       </small>
                     </div>
                   )}
 
                   <div className="card-actions mt-3">
                     {!complianceData?.kvkkConsent ? (
-                      <Button 
-                        variant="primary" 
+                      <Button
+                        variant="primary"
                         onClick={() => setShowKVKKModal(true)}
-                        disabled={processingAction === 'kvkk'}
+                        disabled={processingAction === "kvkk"}
                       >
-                        {processingAction === 'kvkk' ? (
+                        {processingAction === "kvkk" ? (
                           <Spinner size="sm" className="me-2" />
                         ) : null}
                         KVKK Onayı Al
@@ -282,14 +297,16 @@ const TurkishComplianceDashboard = ({ orderId }) => {
                 <Card.Body>
                   <div className="card-icon-header">
                     <FaFileInvoice className="card-icon" />
-                    <h5>{complianceData?.customerType === 'COMPANY' ? 
-                      t('compliance.efatura.title') : 
-                      t('compliance.earsiv.title')
-                    }</h5>
+                    <h5>
+                      {complianceData?.customerType === "COMPANY"
+                        ? t("compliance.efatura.title")
+                        : t("compliance.earsiv.title")}
+                    </h5>
                   </div>
-                  
+
                   <div className="compliance-status mb-3">
-                    {(complianceData?.eFaturaStatus === 'SENT' || complianceData?.eArsivStatus === 'CREATED') ? (
+                    {complianceData?.eFaturaStatus === "SENT" ||
+                    complianceData?.eArsivStatus === "CREATED" ? (
                       <Badge bg="success" className="d-flex align-items-center">
                         <FaCheckCircle className="me-1" />
                         Oluşturuldu
@@ -302,32 +319,49 @@ const TurkishComplianceDashboard = ({ orderId }) => {
                     )}
                   </div>
 
-                  {(complianceData?.eFaturaNumber || complianceData?.eArsivNumber) && (
+                  {(complianceData?.eFaturaNumber ||
+                    complianceData?.eArsivNumber) && (
                     <div className="compliance-details">
                       <small className="text-muted">
-                        <strong>Belge No:</strong> {complianceData.eFaturaNumber || complianceData.eArsivNumber}<br/>
-                        <strong>Tarih:</strong> {new Date(complianceData.eFaturaDate || complianceData.eArsivDate).toLocaleDateString('tr-TR')}
+                        <strong>Belge No:</strong>{" "}
+                        {complianceData.eFaturaNumber ||
+                          complianceData.eArsivNumber}
+                        <br />
+                        <strong>Tarih:</strong>{" "}
+                        {complianceData.eFaturaDate || complianceData.eArsivDate
+                          ? new Date(
+                              complianceData.eFaturaDate ||
+                                complianceData.eArsivDate
+                            ).toLocaleDateString("tr-TR")
+                          : "N/A"}
                       </small>
                     </div>
                   )}
 
                   <div className="card-actions mt-3">
-                    {!(complianceData?.eFaturaStatus === 'SENT' || complianceData?.eArsivStatus === 'CREATED') ? (
-                      <Button 
-                        variant="primary" 
-                        onClick={() => complianceData?.customerType === 'COMPANY' ? 
-                          setShowEFaturaModal(true) : 
-                          setShowEArsivModal(true)
+                    {!(
+                      complianceData?.eFaturaStatus === "SENT" ||
+                      complianceData?.eArsivStatus === "CREATED"
+                    ) ? (
+                      <Button
+                        variant="primary"
+                        onClick={() =>
+                          complianceData?.customerType === "COMPANY"
+                            ? setShowEFaturaModal(true)
+                            : setShowEArsivModal(true)
                         }
-                        disabled={processingAction === 'efatura' || processingAction === 'earsiv'}
+                        disabled={
+                          processingAction === "efatura" ||
+                          processingAction === "earsiv"
+                        }
                       >
-                        {(processingAction === 'efatura' || processingAction === 'earsiv') ? (
+                        {processingAction === "efatura" ||
+                        processingAction === "earsiv" ? (
                           <Spinner size="sm" className="me-2" />
                         ) : null}
-                        {complianceData?.customerType === 'COMPANY' ? 
-                          t('compliance.efatura.create') : 
-                          t('compliance.earsiv.create')
-                        }
+                        {complianceData?.customerType === "COMPANY"
+                          ? t("compliance.efatura.create")
+                          : t("compliance.earsiv.create")}
                       </Button>
                     ) : (
                       <div className="d-flex gap-2">
@@ -357,22 +391,28 @@ const TurkishComplianceDashboard = ({ orderId }) => {
                 <Card.Body>
                   <div className="card-icon-header">
                     <FaCalculator className="card-icon" />
-                    <h5>{t('compliance.tax.title')}</h5>
+                    <h5>{t("compliance.tax.title")}</h5>
                   </div>
-                  
+
                   {complianceData?.kdvTotal && (
                     <div className="tax-breakdown">
                       <div className="tax-item">
                         <span>KDV Öncesi:</span>
-                        <strong>{(complianceData.totalBeforeKDV || 0).toFixed(2)} ₺</strong>
+                        <strong>
+                          {(complianceData.totalBeforeKDV || 0).toFixed(2)} ₺
+                        </strong>
                       </div>
                       <div className="tax-item">
                         <span>KDV (%{complianceData.kdvRate || 18}):</span>
-                        <strong>{(complianceData.kdvTotal || 0).toFixed(2)} ₺</strong>
+                        <strong>
+                          {(complianceData.kdvTotal || 0).toFixed(2)} ₺
+                        </strong>
                       </div>
                       <div className="tax-item total">
                         <span>Toplam:</span>
-                        <strong>{(complianceData.totalWithKDV || 0).toFixed(2)} ₺</strong>
+                        <strong>
+                          {(complianceData.totalWithKDV || 0).toFixed(2)} ₺
+                        </strong>
                       </div>
                     </div>
                   )}
@@ -410,27 +450,27 @@ const TurkishComplianceDashboard = ({ orderId }) => {
       </motion.div>
 
       {/* KVKK Modal */}
-      <KVKKConsentModal 
+      <KVKKConsentModal
         show={showKVKKModal}
         onHide={() => setShowKVKKModal(false)}
         onSubmit={handleKVKKConsent}
-        processing={processingAction === 'kvkk'}
+        processing={processingAction === "kvkk"}
       />
 
       {/* E-Fatura Modal */}
-      <EFaturaModal 
+      <EFaturaModal
         show={showEFaturaModal}
         onHide={() => setShowEFaturaModal(false)}
         onSubmit={handleCreateEFatura}
-        processing={processingAction === 'efatura'}
+        processing={processingAction === "efatura"}
       />
 
       {/* E-Arşiv Modal */}
-      <EArsivModal 
+      <EArsivModal
         show={showEArsivModal}
         onHide={() => setShowEArsivModal(false)}
         onSubmit={handleCreateEArsiv}
-        processing={processingAction === 'earsiv'}
+        processing={processingAction === "earsiv"}
       />
     </Container>
   );
@@ -441,8 +481,8 @@ const KVKKConsentModal = ({ show, onHide, onSubmit, processing }) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
     consentGiven: true,
-    consentMethod: 'WEBSITE',
-    consentDate: new Date().toISOString().split('T')[0]
+    consentMethod: "WEBSITE",
+    consentDate: new Date().toISOString().split("T")[0],
   });
 
   const handleSubmit = (e) => {
@@ -458,25 +498,30 @@ const KVKKConsentModal = ({ show, onHide, onSubmit, processing }) => {
       <Form onSubmit={handleSubmit}>
         <Modal.Body>
           <Alert variant="info">
-            <strong>KVKK Bilgilendirme:</strong> Kişisel verileriniz 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında işlenmektedir.
+            <strong>KVKK Bilgilendirme:</strong> Kişisel verileriniz 6698 sayılı
+            Kişisel Verilerin Korunması Kanunu kapsamında işlenmektedir.
           </Alert>
-          
+
           <Form.Group className="mb-3">
-            <Form.Check 
+            <Form.Check
               type="checkbox"
               id="kvkk-consent"
               label="KVKK kapsamında kişisel verilerimin işlenmesine onay veriyorum"
               checked={formData.consentGiven}
-              onChange={(e) => setFormData({...formData, consentGiven: e.target.checked})}
+              onChange={(e) =>
+                setFormData({ ...formData, consentGiven: e.target.checked })
+              }
               required
             />
           </Form.Group>
 
           <Form.Group className="mb-3">
             <Form.Label>Onay Yöntemi</Form.Label>
-            <Form.Select 
+            <Form.Select
               value={formData.consentMethod}
-              onChange={(e) => setFormData({...formData, consentMethod: e.target.value})}
+              onChange={(e) =>
+                setFormData({ ...formData, consentMethod: e.target.value })
+              }
             >
               <option value="WEBSITE">Web Sitesi</option>
               <option value="EMAIL">E-posta</option>
@@ -486,19 +531,25 @@ const KVKKConsentModal = ({ show, onHide, onSubmit, processing }) => {
 
           <Form.Group className="mb-3">
             <Form.Label>Onay Tarihi</Form.Label>
-            <Form.Control 
+            <Form.Control
               type="date"
               value={formData.consentDate}
-              onChange={(e) => setFormData({...formData, consentDate: e.target.value})}
+              onChange={(e) =>
+                setFormData({ ...formData, consentDate: e.target.value })
+              }
               required
             />
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={onHide}>
-            {t('common.cancel')}
+            {t("common.cancel")}
           </Button>
-          <Button variant="primary" type="submit" disabled={processing || !formData.consentGiven}>
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={processing || !formData.consentGiven}
+          >
             {processing ? <Spinner size="sm" className="me-2" /> : null}
             KVKK Onayını Kaydet
           </Button>
@@ -512,10 +563,10 @@ const KVKKConsentModal = ({ show, onHide, onSubmit, processing }) => {
 const EFaturaModal = ({ show, onHide, onSubmit, processing }) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState({
-    customerType: 'COMPANY',
-    taxNumber: '',
-    taxOffice: '',
-    identityNumber: ''
+    customerType: "COMPANY",
+    taxNumber: "",
+    taxOffice: "",
+    identityNumber: "",
   });
 
   const handleSubmit = (e) => {
@@ -532,23 +583,27 @@ const EFaturaModal = ({ show, onHide, onSubmit, processing }) => {
         <Modal.Body>
           <Form.Group className="mb-3">
             <Form.Label>Müşteri Tipi</Form.Label>
-            <Form.Select 
+            <Form.Select
               value={formData.customerType}
-              onChange={(e) => setFormData({...formData, customerType: e.target.value})}
+              onChange={(e) =>
+                setFormData({ ...formData, customerType: e.target.value })
+              }
             >
               <option value="COMPANY">Kurumsal</option>
               <option value="INDIVIDUAL">Bireysel</option>
             </Form.Select>
           </Form.Group>
 
-          {formData.customerType === 'COMPANY' && (
+          {formData.customerType === "COMPANY" && (
             <>
               <Form.Group className="mb-3">
                 <Form.Label>Vergi Numarası (VKN)</Form.Label>
-                <Form.Control 
+                <Form.Control
                   type="text"
                   value={formData.taxNumber}
-                  onChange={(e) => setFormData({...formData, taxNumber: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, taxNumber: e.target.value })
+                  }
                   placeholder="10 haneli vergi numarası"
                   maxLength={10}
                   required
@@ -557,10 +612,12 @@ const EFaturaModal = ({ show, onHide, onSubmit, processing }) => {
 
               <Form.Group className="mb-3">
                 <Form.Label>Vergi Dairesi</Form.Label>
-                <Form.Control 
+                <Form.Control
                   type="text"
                   value={formData.taxOffice}
-                  onChange={(e) => setFormData({...formData, taxOffice: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, taxOffice: e.target.value })
+                  }
                   placeholder="Vergi dairesi adı"
                   required
                 />
@@ -568,13 +625,15 @@ const EFaturaModal = ({ show, onHide, onSubmit, processing }) => {
             </>
           )}
 
-          {formData.customerType === 'INDIVIDUAL' && (
+          {formData.customerType === "INDIVIDUAL" && (
             <Form.Group className="mb-3">
               <Form.Label>TC Kimlik Numarası (Opsiyonel)</Form.Label>
-              <Form.Control 
+              <Form.Control
                 type="text"
                 value={formData.identityNumber}
-                onChange={(e) => setFormData({...formData, identityNumber: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, identityNumber: e.target.value })
+                }
                 placeholder="11 haneli TC kimlik numarası"
                 maxLength={11}
               />
@@ -583,7 +642,7 @@ const EFaturaModal = ({ show, onHide, onSubmit, processing }) => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={onHide}>
-            {t('common.cancel')}
+            {t("common.cancel")}
           </Button>
           <Button variant="primary" type="submit" disabled={processing}>
             {processing ? <Spinner size="sm" className="me-2" /> : null}
@@ -612,13 +671,17 @@ const EArsivModal = ({ show, onHide, onSubmit, processing }) => {
       <Form onSubmit={handleSubmit}>
         <Modal.Body>
           <Alert variant="info">
-            <strong>E-Arşiv Bilgisi:</strong> E-Arşiv belgesi bireysel müşteriler için elektronik arşiv sistemi ile oluşturulacaktır.
+            <strong>E-Arşiv Bilgisi:</strong> E-Arşiv belgesi bireysel
+            müşteriler için elektronik arşiv sistemi ile oluşturulacaktır.
           </Alert>
-          <p>Bu işlem sipariş için otomatik olarak E-Arşiv belgesi oluşturacaktır.</p>
+          <p>
+            Bu işlem sipariş için otomatik olarak E-Arşiv belgesi
+            oluşturacaktır.
+          </p>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={onHide}>
-            {t('common.cancel')}
+            {t("common.cancel")}
           </Button>
           <Button variant="primary" type="submit" disabled={processing}>
             {processing ? <Spinner size="sm" className="me-2" /> : null}

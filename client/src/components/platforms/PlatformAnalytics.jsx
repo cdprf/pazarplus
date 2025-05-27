@@ -1,8 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Alert, Spinner, Badge, Table } from 'react-bootstrap';
-import { useParams, useNavigate } from 'react-router-dom';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import api from '../../services/api';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Button,
+  Alert,
+  Spinner,
+  Badge,
+  Table,
+} from "react-bootstrap";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import api from "../../services/api";
 
 const PlatformAnalytics = () => {
   const { platformId } = useParams();
@@ -11,32 +35,37 @@ const PlatformAnalytics = () => {
   const [platform, setPlatform] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [error, setError] = useState(null);
-  const [timeRange, setTimeRange] = useState('30d');
+  const [timeRange, setTimeRange] = useState("30d");
 
-  useEffect(() => {
-    fetchPlatformAnalytics();
-  }, [platformId, timeRange]);
-
-  const fetchPlatformAnalytics = async () => {
+  const fetchPlatformAnalytics = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // Fetch platform details
       const platformResponse = await api.platforms.getConnection(platformId);
       setPlatform(platformResponse.data);
-      
+
       // Fetch analytics data
-      const analyticsResponse = await api.platforms.getAnalytics(platformId, timeRange);
+      const analyticsResponse = await api.platforms.getAnalytics(
+        platformId,
+        timeRange
+      );
       setAnalytics(analyticsResponse.data);
     } catch (error) {
-      console.error('Failed to fetch platform analytics:', error);
-      setError('Failed to load platform analytics');
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to fetch platform analytics:", error);
+      }
+      setError("Failed to load platform analytics");
     } finally {
       setLoading(false);
     }
-  };
+  }, [platformId, timeRange]);
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+  useEffect(() => {
+    fetchPlatformAnalytics();
+  }, [fetchPlatformAnalytics]);
+
+  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
   if (loading) {
     return (
@@ -57,7 +86,10 @@ const PlatformAnalytics = () => {
         <Alert variant="danger">
           <Alert.Heading>Error</Alert.Heading>
           <p>{error}</p>
-          <Button variant="outline-danger" onClick={() => navigate(`/platforms/${platformId}/settings`)}>
+          <Button
+            variant="outline-danger"
+            onClick={() => navigate(`/platforms/${platformId}/settings`)}
+          >
             Back to Settings
           </Button>
         </Alert>
@@ -75,17 +107,20 @@ const PlatformAnalytics = () => {
               <p className="text-muted">Performance insights and metrics</p>
             </div>
             <div className="d-flex gap-2">
-              <select 
-                className="form-select" 
-                value={timeRange} 
+              <select
+                className="form-select"
+                value={timeRange}
                 onChange={(e) => setTimeRange(e.target.value)}
-                style={{ width: 'auto' }}
+                style={{ width: "auto" }}
               >
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
                 <option value="90d">Last 90 days</option>
               </select>
-              <Button variant="outline-secondary" onClick={() => navigate(`/platforms/${platformId}/settings`)}>
+              <Button
+                variant="outline-secondary"
+                onClick={() => navigate(`/platforms/${platformId}/settings`)}
+              >
                 <i className="fas fa-arrow-left me-2"></i>Back to Settings
               </Button>
             </div>
@@ -114,7 +149,9 @@ const PlatformAnalytics = () => {
         <Col md={3}>
           <Card className="text-center">
             <Card.Body>
-              <h3 className="text-info">${analytics?.averageOrderValue || 0}</h3>
+              <h3 className="text-info">
+                ${analytics?.averageOrderValue || 0}
+              </h3>
               <p className="text-muted mb-0">Avg Order Value</p>
             </Card.Body>
           </Card>
@@ -144,8 +181,18 @@ const PlatformAnalytics = () => {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Line type="monotone" dataKey="orders" stroke="#8884d8" strokeWidth={2} />
-                  <Line type="monotone" dataKey="revenue" stroke="#82ca9d" strokeWidth={2} />
+                  <Line
+                    type="monotone"
+                    dataKey="orders"
+                    stroke="#8884d8"
+                    strokeWidth={2}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#82ca9d"
+                    strokeWidth={2}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </Card.Body>
@@ -164,14 +211,21 @@ const PlatformAnalytics = () => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }) =>
+                      `${name} ${(percent * 100).toFixed(0)}%`
+                    }
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {(analytics?.statusDistribution || []).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
+                    {(analytics?.statusDistribution || []).map(
+                      (entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      )
+                    )}
                   </Pie>
                   <Tooltip />
                 </PieChart>
@@ -209,18 +263,29 @@ const PlatformAnalytics = () => {
               <h5 className="mb-0">Recent Activity</h5>
             </Card.Header>
             <Card.Body>
-              <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
+              <div style={{ maxHeight: "250px", overflowY: "auto" }}>
                 {analytics?.recentActivity?.map((activity, index) => (
-                  <div key={index} className="d-flex justify-content-between align-items-center py-2 border-bottom">
+                  <div
+                    key={index}
+                    className="d-flex justify-content-between align-items-center py-2 border-bottom"
+                  >
                     <div>
                       <strong>{activity.action}</strong>
-                      <div className="text-muted small">{activity.description}</div>
+                      <div className="text-muted small">
+                        {activity.description}
+                      </div>
                     </div>
                     <div className="text-end">
-                      <Badge bg={activity.status === 'success' ? 'success' : 'danger'}>
+                      <Badge
+                        bg={
+                          activity.status === "success" ? "success" : "danger"
+                        }
+                      >
                         {activity.status}
                       </Badge>
-                      <div className="text-muted small">{new Date(activity.timestamp).toLocaleString()}</div>
+                      <div className="text-muted small">
+                        {new Date(activity.timestamp).toLocaleString()}
+                      </div>
                     </div>
                   </div>
                 )) || (
@@ -255,12 +320,23 @@ const PlatformAnalytics = () => {
                 <tbody>
                   {analytics?.performanceMetrics?.map((metric, index) => (
                     <tr key={index}>
-                      <td><strong>{metric.name}</strong></td>
+                      <td>
+                        <strong>{metric.name}</strong>
+                      </td>
                       <td>{metric.current}</td>
                       <td>{metric.previous}</td>
                       <td>
-                        <Badge bg={metric.change > 0 ? 'success' : metric.change < 0 ? 'danger' : 'secondary'}>
-                          {metric.change > 0 ? '+' : ''}{metric.change}%
+                        <Badge
+                          bg={
+                            metric.change > 0
+                              ? "success"
+                              : metric.change < 0
+                              ? "danger"
+                              : "secondary"
+                          }
+                        >
+                          {metric.change > 0 ? "+" : ""}
+                          {metric.change}%
                         </Badge>
                       </td>
                     </tr>

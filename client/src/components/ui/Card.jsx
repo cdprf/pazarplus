@@ -1,53 +1,70 @@
 import React from "react";
 import { cn } from "../../utils/cn";
 
-export const Card = ({
-  children,
-  className = "",
-  variant = "default",
-  hover = false,
-  ...props
-}) => {
-  const baseClass = "card";
-  const variantClass = hover ? "card-interactive" : "";
+const Card = React.forwardRef(
+  (
+    { children, className, variant = "default", hover = false, ...props },
+    ref
+  ) => {
+    const baseClass = "card";
+    const variantClass = hover ? "card-interactive" : "";
 
-  return (
-    <div className={cn(baseClass, variantClass, className)} {...props}>
+    return (
+      <div
+        ref={ref}
+        className={cn(baseClass, variantClass, className)}
+        {...props}
+      >
+        {children}
+      </div>
+    );
+  }
+);
+Card.displayName = "Card";
+
+const CardHeader = React.forwardRef(
+  ({ children, className = "", ...props }, ref) => (
+    <div ref={ref} className={cn("card-header", className)} {...props}>
       {children}
     </div>
-  );
-};
-
-export const CardHeader = ({ children, className = "", ...props }) => (
-  <div className={cn("card-header", className)} {...props}>
-    {children}
-  </div>
+  )
 );
+CardHeader.displayName = "CardHeader";
 
-export const CardTitle = ({ children, className = "", ...props }) => (
-  <h3 className={cn("card-title", className)} {...props}>
-    {children}
-  </h3>
+const CardTitle = React.forwardRef(
+  ({ children, className = "", ...props }, ref) => (
+    <h3 ref={ref} className={cn("card-title", className)} {...props}>
+      {children}
+    </h3>
+  )
 );
+CardTitle.displayName = "CardTitle";
 
-export const CardContent = ({ children, className = "", ...props }) => (
-  <div className={cn("card-body", className)} {...props}>
-    {children}
-  </div>
+const CardContent = React.forwardRef(
+  ({ children, className = "", ...props }, ref) => (
+    <div ref={ref} className={cn("card-body", className)} {...props}>
+      {children}
+    </div>
+  )
 );
+CardContent.displayName = "CardContent";
 
 // Add CardBody as alias for CardContent for backward compatibility
 export const CardBody = CardContent;
 
-// Add CardSubtitle component
 export const CardSubtitle = ({ children, className = "", ...props }) => (
   <p className={cn("card-subtitle", className)} {...props}>
     {children}
   </p>
 );
 
-export const CardFooter = ({ children, className = "", ...props }) => (
-  <div className={cn("card-footer", className)} {...props}>
-    {children}
-  </div>
+const CardFooter = React.forwardRef(
+  ({ children, className = "", ...props }, ref) => (
+    <div ref={ref} className={cn("card-footer", className)} {...props}>
+      {children}
+    </div>
+  )
 );
+CardFooter.displayName = "CardFooter";
+
+export { Card, CardHeader, CardTitle, CardContent, CardFooter };

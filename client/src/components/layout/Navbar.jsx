@@ -304,9 +304,9 @@ const Navbar = ({ toggleSidebar }) => {
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowThemeMenu(!showThemeMenu)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                icon={ThemeIcon}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex items-center"
               >
+                <ThemeIcon className="h-4 w-4" />
                 <ChevronDownIcon className="h-3 w-3 ml-1" />
               </Button>
 
