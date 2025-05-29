@@ -11,22 +11,26 @@ Order.init(
       primaryKey: true,
     },
     userId: {
-      type: DataTypes.UUID, // Match User model's UUID
+      type: DataTypes.UUID,
       allowNull: false,
       references: {
         model: "Users",
         key: "id",
       },
     },
-    // Add missing fields that the controller expects
+    // Core order identifiers
     externalOrderId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false, // Changed: Made required for proper order tracking
+      comment:
+        "Order ID from the external platform (e.g., Trendyol order number)",
     },
     orderNumber: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false, // Changed: Made required for display purposes
+      comment: "Order number for display purposes",
     },
+    // Legacy platform fields - kept for backward compatibility
     platformType: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -35,18 +39,18 @@ Order.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    // Fix: Make these nullable initially to avoid validation errors
     platformOrderId: {
       type: DataTypes.STRING,
-      allowNull: true, // Changed from false to true
+      allowNull: true,
     },
     platformId: {
       type: DataTypes.STRING,
-      allowNull: true, // Changed from false to true
+      allowNull: true,
     },
+    // Platform connection reference
     connectionId: {
       type: DataTypes.INTEGER,
-      allowNull: true,
+      allowNull: false, // Changed: Made required for proper platform association
       references: {
         model: "platform_connections",
         key: "id",
@@ -58,9 +62,19 @@ Order.init(
       defaultValue: DataTypes.NOW,
     },
     orderStatus: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM(
+        "new",
+        "pending",
+        "processing",
+        "shipped",
+        "delivered",
+        "cancelled",
+        "returned",
+        "failed",
+        "unknown"
+      ), // Enhanced: Added proper ENUM values
       allowNull: false,
-      defaultValue: "pending",
+      defaultValue: "new", // Changed: Better default status
     },
     totalAmount: {
       type: DataTypes.DECIMAL(10, 2),
@@ -84,7 +98,7 @@ Order.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    // Add shipping address field that controller expects
+    // Shipping information
     shippingAddress: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -92,13 +106,25 @@ Order.init(
     shippingDetailId: {
       type: DataTypes.INTEGER,
       allowNull: true,
+      references: {
+        model: "shipping_details",
+        key: "id",
+      },
     },
-    // Add e-invoice fields that controller uses
-    eInvoiceStatus: {
+    // Invoice fields - updated names for consistency
+    invoiceStatus: {
+      // Changed: Renamed from eInvoiceStatus for consistency
+      type: DataTypes.ENUM("pending", "issued", "cancelled"),
+      allowNull: true,
+      defaultValue: "pending",
+    },
+    invoiceNumber: {
+      // Added: For invoice tracking
       type: DataTypes.STRING,
       allowNull: true,
     },
-    eInvoiceDate: {
+    invoiceDate: {
+      // Changed: Renamed from eInvoiceDate for consistency
       type: DataTypes.DATE,
       allowNull: true,
     },
@@ -107,8 +133,15 @@ Order.init(
       allowNull: true,
     },
     rawData: {
-      type: DataTypes.TEXT,
+      type: DataTypes.JSON, // Enhanced: Changed from TEXT to JSON for better data handling
       allowNull: true,
+      comment: "Raw order data from platform API",
+    },
+    lastSyncedAt: {
+      // Added: For tracking sync status
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: "Last time this order was synced from platform",
     },
   },
   {
@@ -121,11 +154,24 @@ Order.init(
         fields: ["userId"],
       },
       {
-        fields: ["platformOrderId", "platformId"],
-        unique: false, // Changed from true to false to avoid conflicts
+        fields: ["externalOrderId", "connectionId"], // Enhanced: Better unique constraint
+        unique: true,
+        name: "unique_external_order_per_connection",
       },
       {
-        fields: ["orderStatus"], // Fixed: changed from status to orderStatus
+        fields: ["orderStatus"],
+      },
+      {
+        fields: ["orderDate"], // Added: For date-based queries
+      },
+      {
+        fields: ["connectionId"], // Added: For platform-based queries
+      },
+      // Keep legacy index for backward compatibility
+      {
+        fields: ["platformOrderId", "platformId"],
+        unique: false,
+        name: "legacy_platform_order_index",
       },
     ],
   }

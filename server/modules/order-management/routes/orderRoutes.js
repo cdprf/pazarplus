@@ -1,7 +1,7 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const orderController = require('../../../controllers/order-controller');
-const auth = require('../../../middleware/auth');
+const orderController = require("../controllers/order-controller");
+const { auth } = require("../../../middleware/auth"); // Fixed: destructure auth from middleware
 
 // Use the middleware
 router.use(auth);
@@ -71,7 +71,7 @@ router.use(auth);
  *       500:
  *         description: Server error
  */
-router.get('/', orderController.getOrders);
+router.get("/", orderController.getOrders);
 
 /**
  * @swagger
@@ -96,7 +96,7 @@ router.get('/', orderController.getOrders);
  *       500:
  *         description: Server error
  */
-router.get('/stats', orderController.getOrderStats);
+router.get("/stats", orderController.getOrderStats);
 
 /**
  * @swagger
@@ -121,7 +121,7 @@ router.get('/stats', orderController.getOrderStats);
  *       500:
  *         description: Server error
  */
-router.get('/trends', orderController.getOrderTrends);
+router.get("/trends", orderController.getOrderTrends);
 
 /**
  * @swagger
@@ -147,7 +147,7 @@ router.get('/trends', orderController.getOrderTrends);
  *       500:
  *         description: Server error
  */
-router.get('/export', orderController.exportOrders);
+router.get("/export", orderController.exportOrders);
 
 /**
  * @swagger
@@ -183,7 +183,7 @@ router.get('/export', orderController.exportOrders);
  *       500:
  *         description: Server error
  */
-router.put('/bulk-update', orderController.bulkUpdateOrders);
+router.put("/bulk-update", orderController.bulkUpdateOrders);
 
 /**
  * @swagger
@@ -210,7 +210,7 @@ router.put('/bulk-update', orderController.bulkUpdateOrders);
  *       500:
  *         description: Server error
  */
-router.get('/:id', orderController.getOrderById);
+router.get("/:id", orderController.getOrderById);
 
 /**
  * @swagger
@@ -253,13 +253,13 @@ router.get('/:id', orderController.getOrderById);
  *       500:
  *         description: Server error
  */
-router.put('/:id/status', orderController.updateOrderStatus);
+router.put("/:id/status", orderController.updateOrderStatus);
 
 // Add the missing endpoints that the frontend expects
-router.delete('/bulk-delete', orderController.bulkDeleteOrders);
-router.post('/bulk-einvoice', orderController.bulkEInvoice);
-router.delete('/:id', orderController.deleteOrder);
-router.post('/:id/einvoice', orderController.generateEInvoice);
-router.post('/sync', orderController.syncOrders);
+router.delete("/bulk-delete", orderController.bulkDeleteOrders);
+router.post("/bulk-einvoice", orderController.bulkEInvoice);
+router.delete("/:id", orderController.deleteOrder);
+router.post("/:id/einvoice", orderController.generateEInvoice);
+router.post("/sync", orderController.syncOrders);
 
 module.exports = router;

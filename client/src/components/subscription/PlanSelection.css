@@ -1,0 +1,382 @@
+/* Plan Selection Styles */
+.plan-selection {
+  padding: 2rem 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}
+
+.section-title {
+  color: white;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.section-subtitle {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+}
+
+/* Billing Toggle */
+.billing-toggle {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50px;
+  padding: 0.5rem;
+  display: inline-flex;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.billing-btn {
+  border-radius: 25px;
+  padding: 0.75rem 2rem;
+  margin: 0 0.25rem;
+  border: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.billing-btn:not(.btn-primary) {
+  background: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.billing-btn:not(.btn-primary):hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Plan Cards */
+.plan-card {
+  border: none;
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.plan-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.plan-card.popular {
+  transform: scale(1.05);
+  border: 3px solid #007bff;
+}
+
+.plan-card.popular::before {
+  background: linear-gradient(90deg, #007bff 0%, #0056b3 100%);
+  height: 8px;
+}
+
+.plan-card.current {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 2px solid #28a745;
+}
+
+.plan-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+}
+
+/* Popular Badge */
+.popular-badge {
+  position: absolute;
+  top: 20px;
+  right: -30px;
+  background: linear-gradient(45deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  padding: 0.5rem 2rem;
+  transform: rotate(45deg);
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+}
+
+/* Plan Icon */
+.plan-icon {
+  margin: 2rem 0 1rem 0;
+  filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.1));
+}
+
+/* Plan Title & Description */
+.plan-title {
+  color: #2c3e50;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.plan-description {
+  color: #6c757d;
+  font-size: 0.9rem;
+  margin-bottom: 2rem;
+}
+
+/* Pricing */
+.plan-pricing {
+  margin: 2rem 0;
+}
+
+.price-amount {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #2c3e50;
+  line-height: 1;
+}
+
+.price-amount small {
+  font-size: 1rem;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+.yearly-info {
+  margin-top: 1rem;
+}
+
+.yearly-total {
+  color: #6c757d;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+/* Features List */
+.features-list {
+  margin: 2rem 0;
+  border: none;
+}
+
+.feature-item {
+  border: none;
+  padding: 0.75rem 0;
+  display: flex;
+  align-items: center;
+  background: transparent;
+}
+
+.feature-icon {
+  margin-right: 0.75rem;
+  font-size: 0.9rem;
+  width: 16px;
+}
+
+.feature-icon.included {
+  color: #28a745;
+}
+
+.feature-icon.not-included {
+  color: #dc3545;
+  opacity: 0.5;
+}
+
+.feature-item span.included {
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.feature-item span.not-included {
+  color: #6c757d;
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Plan Actions */
+.plan-actions {
+  margin-top: 2rem;
+}
+
+.plan-actions .btn {
+  border-radius: 25px;
+  padding: 1rem 2rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.plan-actions .btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.plan-actions .btn-primary {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  border: none;
+}
+
+/* Trust Indicators */
+.trust-indicators {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  margin-top: 3rem;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.trust-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: white;
+  text-align: center;
+}
+
+.trust-icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: #ffc107;
+  filter: drop-shadow(0 3px 10px rgba(255, 193, 7, 0.3));
+}
+
+.trust-item span {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Modal Overrides */
+.modal-xl .modal-body.p-0 .plan-selection {
+  background: white;
+  min-height: auto;
+}
+
+.modal-xl .modal-body.p-0 .section-title {
+  color: #2c3e50;
+}
+
+.modal-xl .modal-body.p-0 .section-subtitle {
+  color: #6c757d;
+}
+
+.modal-xl .modal-body.p-0 .trust-indicators {
+  background: #f8f9fa;
+}
+
+.modal-xl .modal-body.p-0 .trust-item {
+  color: #2c3e50;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+  .plan-card.popular {
+    transform: none;
+    margin-bottom: 2rem;
+  }
+
+  .trust-indicators {
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .billing-toggle {
+    flex-direction: column;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .billing-btn {
+    margin: 0.25rem 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .plan-selection {
+    padding: 1rem 0.5rem;
+  }
+
+  .section-title {
+    font-size: 1.75rem;
+  }
+
+  .price-amount {
+    font-size: 2.5rem;
+  }
+
+  .trust-indicators {
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+
+  .trust-item span {
+    font-size: 0.8rem;
+  }
+}
+
+/* Animation Classes */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.plan-card {
+  animation: slideInUp 0.6s ease-out;
+}
+
+.plan-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.plan-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.plan-card:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+/* Loading States */
+.plan-actions .btn .spinner-border {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Focus States */
+.billing-btn:focus,
+.plan-actions .btn:focus {
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+/* Hover Effects for Features */
+.feature-item:hover {
+  background: rgba(0, 123, 255, 0.05);
+  border-radius: 8px;
+  padding-left: 1rem;
+  margin-left: -1rem;
+  transition: all 0.2s ease;
+}
+
+/* Payment Modal Styling */
+.modal-lg .modal-content {
+  border-radius: 20px;
+  border: none;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-lg .modal-header {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  border-radius: 20px 20px 0 0;
+  border: none;
+  padding: 1.5rem 2rem;
+}
+
+.modal-lg .modal-title {
+  font-weight: 600;
+  font-size: 1.25rem;
+}

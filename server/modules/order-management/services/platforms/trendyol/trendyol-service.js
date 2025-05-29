@@ -354,10 +354,9 @@ class TrendyolService extends BasePlatformService {
 
       // Process orders one by one
       for (const order of trendyolOrders) {
-        let phoneNumber;
         try {
           // Get phone number from shipment address
-          phoneNumber = this.extractPhoneNumber(order);
+          const phoneNumber = this.extractPhoneNumber(order);
 
           // Check if order already exists using our lookup map
           const existingOrder = existingOrdersMap[order.orderNumber];
@@ -366,7 +365,7 @@ class TrendyolService extends BasePlatformService {
             // Order exists - update it with the latest data
             try {
               await existingOrder.update({
-                status: this.mapOrderStatus(order.status),
+                orderStatus: this.mapOrderStatus(order.status), // Fixed: use orderStatus
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date(),
               });
@@ -397,13 +396,16 @@ class TrendyolService extends BasePlatformService {
               // Create shipping detail first
               const shippingDetail = await ShippingDetail.create(
                 {
-                  recipientName: order.shipmentAddress.fullName || "",
-                  address1: order.shipmentAddress.address1 || "",
-                  address2: order.shipmentAddress.address2 || "",
-                  city: order.shipmentAddress.city || "",
-                  state: order.shipmentAddress.district || "",
-                  postalCode: order.shipmentAddress.postalCode || "",
-                  country: order.shipmentAddress.countryCode || "TR",
+                  recipientName:
+                    order.shipmentAddress?.fullName ||
+                    order.customerFirstName + " " + order.customerLastName ||
+                    "",
+                  address1: order.shipmentAddress?.address1 || "",
+                  address2: order.shipmentAddress?.address2 || "",
+                  city: order.shipmentAddress?.city || "",
+                  state: order.shipmentAddress?.district || "",
+                  postalCode: order.shipmentAddress?.postalCode || "",
+                  country: order.shipmentAddress?.countryCode || "TR",
                   phone: phoneNumber || "",
                   email: order.customerEmail || "",
                 },
@@ -414,20 +416,27 @@ class TrendyolService extends BasePlatformService {
               const normalizedOrder = await Order.create(
                 {
                   externalOrderId: order.orderNumber,
-                  orderNumber: order.orderNumber, // Add orderNumber field
+                  orderNumber: order.orderNumber,
                   connectionId: this.connectionId,
                   userId: this.connection.userId,
-                  customerName: `${order.shipmentAddress.fullName}`,
+                  customerName:
+                    order.shipmentAddress?.fullName ||
+                    `${order.customerFirstName || ""} ${
+                      order.customerLastName || ""
+                    }`.trim() ||
+                    "Unknown Customer",
                   customerEmail: order.customerEmail || "",
                   customerPhone: phoneNumber || "",
                   orderDate: new Date(order.orderDate),
-                  orderStatus: this.mapOrderStatus(order.status), // Use orderStatus instead of status
-                  totalAmount: order.totalPrice,
-                  currency: "TRY",
+                  orderStatus: this.mapOrderStatus(order.status),
+                  totalAmount: parseFloat(
+                    order.totalPrice || order.grossAmount || 0
+                  ),
+                  currency: order.currency || "TRY",
                   shippingDetailId: shippingDetail.id,
                   notes: order.note || "",
                   rawData: JSON.stringify(order),
-                  // Remove deprecated fields: platformType, platform, platformOrderId, platformId
+                  lastSyncedAt: new Date(),
                 },
                 { transaction: t }
               );
@@ -440,13 +449,13 @@ class TrendyolService extends BasePlatformService {
                       orderId: normalizedOrder.id,
                       platformProductId: item.productId
                         ? item.productId.toString()
-                        : item.productCode.toString(),
+                        : item.productCode?.toString() || "",
                       title: item.productName || "Unknown Product",
-                      sku: item.merchantSku,
-                      quantity: item.quantity,
-                      price: item.price,
+                      sku: item.merchantSku || item.productCode || "",
+                      quantity: parseInt(item.quantity) || 1,
+                      price: parseFloat(item.price) || 0,
                       currency: "TRY",
-                      barcode: item.barcode,
+                      barcode: item.barcode || "",
                       variantInfo: item.variantFeatures
                         ? JSON.stringify(item.variantFeatures)
                         : null,
@@ -457,12 +466,20 @@ class TrendyolService extends BasePlatformService {
                 }
               }
 
-              // Create platform-specific Trendyol order record
-              await this.createTrendyolOrderRecord(
-                normalizedOrder.id,
-                order,
-                t
-              );
+              // Create platform-specific Trendyol order record if the method exists
+              try {
+                await this.createTrendyolOrderRecord(
+                  normalizedOrder.id,
+                  order,
+                  t
+                );
+              } catch (trendyolRecordError) {
+                // Log but don't fail the transaction if TrendyolOrder creation fails
+                this.logger.warn(
+                  `Failed to create TrendyolOrder record: ${trendyolRecordError.message}`,
+                  { orderNumber: order.orderNumber }
+                );
+              }
 
               return normalizedOrder;
             });
@@ -477,15 +494,41 @@ class TrendyolService extends BasePlatformService {
           } catch (error) {
             if (error.name === "SequelizeUniqueConstraintError") {
               this.logger.warn(
-                `Unique constraint violation for ${order.orderNumber}, skipping`,
+                `Unique constraint violation for ${order.orderNumber}, attempting to find existing order`,
                 {
                   orderNumber: order.orderNumber,
                   connectionId: this.connectionId,
                 }
               );
-              skippedCount++;
+
+              // Try to find the existing order and add it to results
+              const existingOrder = await Order.findOne({
+                where: {
+                  externalOrderId: order.orderNumber,
+                  connectionId: this.connectionId,
+                },
+              });
+
+              if (existingOrder) {
+                normalizedOrders.push(existingOrder);
+                skippedCount++;
+              } else {
+                this.logger.error(
+                  `Unique constraint error but order not found: ${order.orderNumber}`,
+                  { orderNumber: order.orderNumber }
+                );
+                skippedCount++;
+              }
             } else {
-              throw error;
+              this.logger.error(
+                `Failed to create order ${order.orderNumber}: ${error.message}`,
+                {
+                  error,
+                  orderNumber: order.orderNumber,
+                  connectionId: this.connectionId,
+                }
+              );
+              skippedCount++;
             }
           }
         } catch (error) {
@@ -684,45 +727,9 @@ class TrendyolService extends BasePlatformService {
   }
 
   /**
-   * Get orders from Trendyol - required implementation for BasePlatformService
-   * @param {Object} options - Options for fetching orders
-   * @returns {Promise<Array>} List of orders
-   */
-  async getOrders(options = {}) {
-    try {
-      const result = await this.fetchOrders(options);
-
-      if (!result.success) {
-        this.logger.error(
-          `Failed to get orders from Trendyol: ${result.message}`,
-          {
-            error: result.error,
-            connectionId: this.connectionId,
-            platformType: this.getPlatformType(),
-          }
-        );
-        return [];
-      }
-
-      // Return just the normalized orders array
-      return Array.isArray(result.data) ? result.data : [];
-    } catch (error) {
-      this.logger.error(
-        `Error in getOrders method for Trendyol: ${error.message}`,
-        {
-          error,
-          connectionId: this.connectionId,
-          platformType: this.getPlatformType(),
-        }
-      );
-      return []; // Return empty array instead of throwing
-    }
-  }
-
-  /**
-   * Map Trendyol order status to internal system status with logging of unknown statuses
-   * @param {string} trendyolStatus - Platform-specific status
-   * @returns {string} Internal status
+   * Map Trendyol order status to internal status
+   * @param {String} trendyolStatus - Trendyol-specific status
+   * @returns {String} Internal status
    */
   mapOrderStatus(trendyolStatus) {
     const statusMap = {
@@ -730,6 +737,7 @@ class TrendyolService extends BasePlatformService {
       Picking: "processing",
       Invoiced: "processing",
       Shipped: "shipped",
+      AtCollectionPoint: "shipped", // Package is available for pickup at collection point
       Delivered: "delivered",
       Cancelled: "cancelled",
       UnDelivered: "failed",

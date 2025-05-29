@@ -4,12 +4,25 @@ const authController = require("../controllers/auth-controller");
 const { auth } = require("../middleware/auth");
 const {
   authLimiter,
-  validateRequest,
   registerValidation,
   loginValidation,
   passwordChangeValidation,
 } = require("../middleware/validation");
+const { validationResult } = require("express-validator");
 const logger = require("../utils/logger");
+
+// Define validateRequest locally to avoid import issues
+const validateRequest = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      errors: errors.array(),
+    });
+  }
+  next();
+};
 
 // Debug middleware
 router.use((req, res, next) => {

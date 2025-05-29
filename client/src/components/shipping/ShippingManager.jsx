@@ -58,7 +58,7 @@ const ShippingManager = () => {
 
   const loadCarriers = async () => {
     try {
-      const response = await api.get("/shipping/carriers");
+      const response = await api.get("/api/shipping/carriers");
       if (response.data.success) {
         setCarriers(response.data.data);
       }
@@ -72,17 +72,15 @@ const ShippingManager = () => {
     setError("");
 
     try {
-      const response = await api.post("/shipping/rates", {
+      const response = await api.post("/api/shipping/rates", {
         packageInfo,
         fromAddress,
         toAddress,
-        carriers: selectedCarrier
-          ? [selectedCarrier]
-          : ["aras", "yurtici", "ptt"],
+        carriers: selectedCarrier ? [selectedCarrier] : null, // Let backend decide which carriers to use
       });
 
       if (response.data.success) {
-        setRates(response.data.data.carriers);
+        setRates(response.data.data.carriers || []);
       } else {
         setError(response.data.error?.message || "Failed to get rates");
       }
@@ -110,7 +108,7 @@ const ShippingManager = () => {
         },
       };
 
-      const response = await api.post("/shipping/labels", {
+      const response = await api.post("/api/shipping/labels", {
         shipmentData,
         carrier,
       });
@@ -149,7 +147,7 @@ const ShippingManager = () => {
 
     try {
       const response = await api.get(
-        `/shipping/track/${trackingInfo.carrier}/${trackingInfo.trackingNumber}`
+        `/api/shipping/track/${trackingInfo.carrier}/${trackingInfo.trackingNumber}`
       );
 
       if (response.data.success) {

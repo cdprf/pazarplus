@@ -85,6 +85,245 @@ api.interceptors.response.use(
   }
 );
 
+// Enhanced API service with consistent response handling
+const orderService = {
+  getOrders: async (params = {}) => {
+    try {
+      const response = await api.get("/api/order-management/orders", {
+        params,
+      });
+      return {
+        success: true,
+        data: response.data.data || response.data.orders || [],
+        total: response.data.total || response.data.count || 0,
+        page: response.data.page || 1,
+        totalPages: response.data.totalPages || 1,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message,
+        data: [],
+        pagination: {
+          total: 0,
+          totalPages: 1,
+          currentPage: 1,
+          limit: 20,
+        },
+      };
+    }
+  },
+
+  getOrderById: async (id) => {
+    try {
+      const response = await api.get(`/api/order-management/orders/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  createOrder: async (orderData) => {
+    try {
+      const response = await api.post(
+        "/api/order-management/orders",
+        orderData
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateOrder: async (id, orderData) => {
+    try {
+      const response = await api.put(
+        `/api/order-management/orders/${id}`,
+        orderData
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  deleteOrder: async (id) => {
+    try {
+      const response = await api.delete(`/api/order-management/orders/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateOrderStatus: async (id, status) => {
+    try {
+      const response = await api.put(
+        `/api/order-management/orders/${id}/status`,
+        { status }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Sync orders from platforms
+  syncOrders: async (platformId = null) => {
+    try {
+      // Get user info from token to extract userId
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      // Decode the JWT token to get user info (simple base64 decode)
+      let userId;
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        userId = payload.id || payload.userId;
+      } catch (decodeError) {
+        throw new Error("Invalid authentication token");
+      }
+
+      if (!userId) {
+        throw new Error("User ID not found in token");
+      }
+
+      const requestBody = { userId };
+      if (platformId) {
+        requestBody.platformIds = [platformId];
+      }
+
+      const response = await api.post(
+        "/api/order-management/orders/sync",
+        requestBody
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Bulk update order status - Added for OrderManagement component
+  bulkUpdateStatus: async (orderIds, status) => {
+    try {
+      const response = await api.put(
+        "/api/order-management/orders/bulk/status",
+        {
+          orderIds,
+          status,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Export orders
+  exportOrders: async (format = "csv", filters = {}) => {
+    try {
+      const response = await api.get(
+        `/api/order-management/orders/export?format=${format}`,
+        {
+          params: filters,
+          responseType: "blob",
+        }
+      );
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get order statistics
+  getOrderStats: async () => {
+    try {
+      const response = await api.get("/api/order-management/orders/stats");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get order trends
+  getOrderTrends: async (timeRange = "30d") => {
+    try {
+      const response = await api.get(
+        `/api/order-management/orders/trends?timeRange=${timeRange}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Print shipping slip
+  printShippingSlip: async (orderId, options = {}) => {
+    try {
+      const response = await api.post(
+        `/api/order-management/orders/${orderId}/print-shipping-slip`,
+        options
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Print invoice
+  printInvoice: async (orderId, options = {}) => {
+    try {
+      const response = await api.post(
+        `/api/order-management/orders/${orderId}/print-invoice`,
+        options
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Cancel order
+  cancelOrder: async (orderId, reason = "") => {
+    try {
+      const response = await api.post(
+        `/api/order-management/orders/${orderId}/cancel`,
+        { reason }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Generate e-invoice
+  generateEInvoice: async (orderId) => {
+    try {
+      const response = await api.post(
+        `/api/order-management/orders/${orderId}/einvoice`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Bulk generate e-invoices
+  bulkEInvoice: async (orderIds) => {
+    try {
+      const response = await api.post(
+        "/api/order-management/orders/bulk-einvoice",
+        { orderIds }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
 // Platform-specific API methods
 const platformAPI = {
   // Get all platform connections
@@ -221,159 +460,6 @@ const platformAPI = {
       const response = await api.post(
         `/api/platforms/connections/${id}/sync-history/${syncId}/retry`
       );
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-};
-
-// Order-specific API methods
-const orderAPI = {
-  // Get orders with optional query parameters
-  getOrders: async (params = {}) => {
-    try {
-      const queryString = new URLSearchParams(params).toString();
-      const url = queryString ? `/api/orders?${queryString}` : "/api/orders";
-      const response = await api.get(url);
-
-      // Handle both array and paginated responses
-      if (Array.isArray(response.data)) {
-        return {
-          success: true,
-          data: response.data,
-          total: response.data.length,
-        };
-      }
-
-      return {
-        success: true,
-        data: response.data.data || response.data.orders || [],
-        total: response.data.total || response.data.count || 0,
-        page: response.data.page || 1,
-        totalPages: response.data.totalPages || 1,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message,
-        data: null,
-      };
-    }
-  },
-
-  // Get order statistics
-  getOrderStats: async () => {
-    try {
-      const response = await api.get("/api/orders/stats");
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Get order trends
-  getOrderTrends: async (timeRange = "30d") => {
-    try {
-      const response = await api.get(
-        `/api/orders/trends?timeRange=${timeRange}`
-      );
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Get single order by ID
-  getOrder: async (id) => {
-    try {
-      const response = await api.get(`/api/orders/${id}`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Create new order
-  createOrder: async (orderData) => {
-    try {
-      const response = await api.post("/api/orders", orderData);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Update order
-  updateOrder: async (id, orderData) => {
-    try {
-      const response = await api.put(`/api/orders/${id}`, orderData);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Update order status
-  updateOrderStatus: async (id, status) => {
-    try {
-      const response = await api.put(`/api/orders/${id}/status`, { status });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Bulk update order status - Added for OrderManagement component
-  bulkUpdateStatus: async (orderIds, status) => {
-    try {
-      const response = await api.put("/api/orders/bulk/status", {
-        orderIds,
-        status,
-      });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Sync orders from platforms
-  syncOrders: async (platformId = null) => {
-    try {
-      const url = platformId
-        ? `/api/orders/sync?platformId=${platformId}`
-        : "/api/orders/sync";
-      const response = await api.post(url);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Bulk update orders
-  bulkUpdateOrders: async (orderIds, updates) => {
-    try {
-      const response = await api.put("/api/orders/bulk", { orderIds, updates });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Delete order
-  deleteOrder: async (id) => {
-    try {
-      const response = await api.delete(`/api/orders/${id}`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Generate e-invoice
-  generateEInvoice: async (id) => {
-    try {
-      const response = await api.post(`/api/orders/${id}/einvoice`);
       return response.data;
     } catch (error) {
       throw error;
@@ -805,7 +891,7 @@ const productAPI = {
 
 // Extend the default export with all API methods
 api.platforms = platformAPI;
-api.orders = orderAPI;
+api.orders = orderService;
 api.customers = customerAPI;
 api.shipping = shippingAPI;
 api.importExport = importExportAPI;
@@ -815,14 +901,14 @@ api.reports = reportsAPI;
 api.products = productAPI;
 
 // Add legacy direct methods for backward compatibility with existing hooks
-api.getOrders = orderAPI.getOrders;
-api.getOrderStats = orderAPI.getOrderStats;
-api.getOrderTrends = orderAPI.getOrderTrends;
-api.getOrder = orderAPI.getOrder;
-api.createOrder = orderAPI.createOrder;
-api.updateOrder = orderAPI.updateOrder;
-api.updateOrderStatus = orderAPI.updateOrderStatus;
-api.syncOrders = orderAPI.syncOrders;
+api.getOrders = orderService.getOrders;
+api.getOrderStats = orderService.getOrderStats;
+api.getOrderTrends = orderService.getOrderTrends;
+api.getOrder = orderService.getOrder;
+api.createOrder = orderService.createOrder;
+api.updateOrder = orderService.updateOrder;
+api.updateOrderStatus = orderService.updateOrderStatus;
+api.syncOrders = orderService.syncOrders;
 
 // Add new methods for reports
 api.getConnections = platformAPI.getConnections;

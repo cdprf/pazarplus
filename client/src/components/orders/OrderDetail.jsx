@@ -47,7 +47,7 @@ const OrderDetail = () => {
   const handleStatusUpdate = async (newStatus) => {
     try {
       await api.updateOrderStatus(id, newStatus);
-      setOrder(prev => ({ ...prev, status: newStatus }));
+      setOrder(prev => ({ ...prev, orderStatus: newStatus }));
       showNotification('Order status updated successfully', 'success');
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -140,7 +140,7 @@ const OrderDetail = () => {
               Order #{order.orderNumber || order.id}
             </h1>
             <p className="text-gray-600">
-              Placed on {formatDate(order.createdAt)} • {order.platform}
+              Placed on {formatDate(order.orderDate)} • {order.platform}
             </p>
           </div>
         </div>

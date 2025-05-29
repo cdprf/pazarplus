@@ -5,6 +5,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useNotification } from "../../contexts/NotificationContext";
 import { cn } from "../../utils/cn";
 import { Button, Badge } from "../ui";
+import api from "../../services/api";
 import {
   Bars3Icon,
   UserIcon,
@@ -37,11 +38,84 @@ const Navbar = ({ toggleSidebar }) => {
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showQuickSearch, setShowQuickSearch] = useState(false);
+  const [orderCounts, setOrderCounts] = useState({
+    total: 0,
+    pending: 0,
+    processing: 0,
+    shipped: 0,
+    delivered: 0,
+  });
 
   const userMenuRef = useRef(null);
   const themeMenuRef = useRef(null);
   const notificationRef = useRef(null);
   const searchRef = useRef(null);
+
+  // Fetch order counts for navigation badges
+  useEffect(() => {
+    const fetchOrderCounts = async () => {
+      if (!isAuthenticated) return;
+
+      try {
+        const response = await api.orders.getOrders({ page: 0, size: 1 });
+        if (response.success) {
+          // Get total count from response
+          let totalOrders = 0;
+
+          if (Array.isArray(response.data)) {
+            totalOrders = response.data.length;
+          } else if (response.data && response.data.total) {
+            totalOrders = response.data.total;
+          } else if (response.data && Array.isArray(response.data.data)) {
+            totalOrders = response.data.data.length;
+          }
+
+          // Also fetch stats for different statuses
+          const statsResponse = await api.orders.getOrderStats?.();
+          let counts = {
+            total: totalOrders,
+            pending: 0,
+            processing: 0,
+            shipped: 0,
+            delivered: 0,
+          };
+
+          if (statsResponse?.success && statsResponse.data) {
+            counts = {
+              total: statsResponse.data.total || totalOrders,
+              pending: statsResponse.data.pending || 0,
+              processing: statsResponse.data.processing || 0,
+              shipped: statsResponse.data.shipped || 0,
+              delivered: statsResponse.data.delivered || 0,
+            };
+          }
+
+          setOrderCounts(counts);
+          console.log("Order counts updated:", counts);
+        }
+      } catch (error) {
+        console.error("Error fetching order counts:", error);
+        // Try alternative method to get total orders count
+        try {
+          const response = await api.orders.getOrders({ page: 0, size: 999 });
+          if (response.success && Array.isArray(response.data)) {
+            setOrderCounts((prev) => ({
+              ...prev,
+              total: response.data.length,
+            }));
+          }
+        } catch (err) {
+          console.error("Alternative order count fetch failed:", err);
+        }
+      }
+    };
+
+    fetchOrderCounts();
+
+    // Refresh counts every 30 seconds
+    const interval = setInterval(fetchOrderCounts, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -170,7 +244,7 @@ const Navbar = ({ toggleSidebar }) => {
       path: "/orders",
       icon: ShoppingCartIcon,
       description: "Manage orders",
-      badge: "23",
+      badge: orderCounts.total > 0 ? orderCounts.total : null,
     },
     {
       name: "Analytics",

@@ -5,10 +5,14 @@ const rateLimit = require("express-rate-limit");
 // Create more restrictive rate limiters for sensitive endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === "development" ? 50 : 5, // 50 attempts in dev, 5 in production
+  max: process.env.NODE_ENV === "development" ? 10000 : 5, // Very high for dev, 5 in production
   message: {
     success: false,
     message: "Too many authentication attempts, please try again later.",
+  },
+  skip: (req) => {
+    // Always skip in development
+    return process.env.NODE_ENV === "development";
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -16,10 +20,14 @@ const authLimiter = rateLimit({
 
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === "development" ? 500 : 100, // Higher limits for development
+  max: process.env.NODE_ENV === "development" ? 50000 : 100, // Much higher limits for development
   message: {
     success: false,
     message: "Too many requests, please try again later.",
+  },
+  skip: (req) => {
+    // Always skip in development
+    return process.env.NODE_ENV === "development";
   },
 });
 

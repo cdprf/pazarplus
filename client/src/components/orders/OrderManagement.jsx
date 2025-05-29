@@ -23,6 +23,9 @@ import {
   Loader2,
   AlertTriangle,
   Inbox,
+  Printer,
+  FileText,
+  Ban,
 } from "lucide-react";
 import api from "../../services/api";
 import { useAlert } from "../../contexts/AlertContext";
@@ -51,7 +54,7 @@ const OrderManagement = () => {
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [recordCount, setRecordCount] = useState(20);
   const [sortConfig, setSortConfig] = useState({
-    key: "createdAt",
+    key: "orderDate", // Changed from "createdAt" to "orderDate" for consistency with backend
     direction: "desc",
   });
 
@@ -59,33 +62,22 @@ const OrderManagement = () => {
   const [filters, setFilters] = useState({
     status: "all",
     platform: "all",
-    sortBy: "createdAt",
-    sortOrder: "desc",
-    invoiceStatus: "all",
-    shippingInfo: "all",
-    microExport: "all",
-    buyNowPayLater: "all",
-    pickupPoint: "all",
-    logisticsTransferred: "all",
-    priceMin: "",
-    priceMax: "",
-    desiMin: "",
-    desiMax: "",
     dateFrom: "",
     dateTo: "",
     store: "all",
+    sortBy: "orderDate", // Changed to match backend field
+    sortOrder: "desc",
   });
-
   const [filterErrors, setFilterErrors] = useState({});
 
-  // Calculate stats from mapped orders
+  // Enhanced stats state with proper structure
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
     processing: 0,
     shipped: 0,
     delivered: 0,
-    totalRevenue: 0,
+    cancelled: 0,
   });
 
   // Date range presets
@@ -97,294 +89,162 @@ const OrderManagement = () => {
     { label: "Geçen Ay", value: "lastMonth" },
   ];
 
-  // Map Trendyol status to internal status
-  const mapTrendyolStatus = useCallback((trendyolStatus) => {
-    const statusMap = {
-      Awaiting: "pending",
-      Created: "processing",
-      Picking: "processing",
-      Shipped: "shipped",
-      Delivered: "delivered",
-      Cancelled: "cancelled",
-      Returned: "cancelled",
-    };
+  // Trendyol mapping functions - available for future use
+  // const mapTrendyolStatus = useCallback((trendyolStatus) => {
+  //   const statusMap = {
+  //     Created: "pending",
+  //     Approved: "confirmed",
+  //     Picking: "processing",
+  //     Invoiced: "processing",
+  //     Shipped: "shipped",
+  //     Delivered: "delivered",
+  //     Cancelled: "iptal-edildi",
+  //     Returned: "returned",
+  //     UnDelivered: "failed"
+  //   };
+  //   return statusMap[trendyolStatus] || "unknown";
+  // }, []);
 
-    return statusMap[trendyolStatus] || "pending";
-  }, []);
+  // const mapTrendyolAddress = useCallback((address) => {
+  //   return {
+  //     firstName: address.firstName || "",
+  //     lastName: address.lastName || "",
+  //     address1: address.address1 || "",
+  //     address2: address.address2 || "",
+  //     city: address.city || "",
+  //     district: address.district || "",
+  //     neighborhood: address.neighborhood || "",
+  //     postalCode: address.postalCode || "",
+  //     countryCode: address.countryCode || "TR",
+  //     phone: address.phone || "",
+  //     fullName: `${address.firstName || ""} ${address.lastName || ""}`.trim()
+  //   };
+  // }, []);
 
-  // Map Trendyol address structure
-  const mapTrendyolAddress = useCallback((address) => {
-    if (!address) return null;
+  // const mapTrendyolLineItem = useCallback((lineItem) => {
+  //   return {
+  //     id: lineItem.orderLineId,
+  //     productId: lineItem.productId,
+  //     merchantSku: lineItem.merchantSku,
+  //     productName: lineItem.productName,
+  //     productCode: lineItem.productCode,
+  //     merchantId: lineItem.merchantId,
+  //     amount: lineItem.amount,
+  //     discount: lineItem.discount || 0,
+  //     discountDetails: lineItem.discountDetails || [],
+  //     currencyCode: lineItem.currencyCode || "TRY",
+  //     productColor: lineItem.productColor,
+  //     productSize: lineItem.productSize,
+  //     quantity: lineItem.quantity,
+  //     unitPrice: lineItem.price,
+  //     totalPrice: lineItem.amount,
+  //     sku: lineItem.merchantSku,
+  //     barcode: lineItem.barcode,
+  //     orderLineItemStatusName: lineItem.orderLineItemStatusName
+  //   };
+  // }, []);
 
-    return {
-      id: address.id,
-      firstName: address.firstName,
-      lastName: address.lastName,
-      fullName: address.fullName,
-      company: address.company,
-      street: address.address1,
-      address2: address.address2,
-      city: address.city,
-      district: address.district,
-      neighborhood: address.neighborhood,
-      postalCode: address.postalCode,
-      country: address.countryCode,
-      phone: address.phone,
-      fullAddress: address.fullAddress,
-
-      // Turkish specific fields
-      cityCode: address.cityCode,
-      districtId: address.districtId,
-      neighborhoodId: address.neighborhoodId,
-      countyId: address.countyId,
-      countyName: address.countyName,
-    };
-  }, []);
-
-  // Map Trendyol line items
-  const mapTrendyolLineItem = useCallback((lineItem) => {
-    return {
-      id: lineItem.id,
-      productName: lineItem.productName,
-      productCode: lineItem.productCode,
-      sku: lineItem.sku || lineItem.merchantSku,
-      barcode: lineItem.barcode,
-      quantity: lineItem.quantity,
-      price: lineItem.price,
-      amount: lineItem.amount,
-      discount: lineItem.discount,
-      tyDiscount: lineItem.tyDiscount,
-
-      // Product details
-      productSize: lineItem.productSize,
-      productColor: lineItem.productColor,
-      productOrigin: lineItem.productOrigin,
-      productCategoryId: lineItem.productCategoryId,
-
-      // VAT information
-      vatBaseAmount: lineItem.vatBaseAmount,
-
-      // Campaign information
-      salesCampaignId: lineItem.salesCampaignId,
-
-      // Delivery options
-      fastDeliveryOptions: lineItem.fastDeliveryOptions || [],
-
-      // Status
-      status: lineItem.orderLineItemStatusName,
-
-      // Discount details
-      discountDetails: lineItem.discountDetails || [],
-    };
-  }, []);
-
-  // Generate contextual tags for orders
-  const generateOrderTags = useCallback((order) => {
-    const tags = [];
-
-    if (order.fastDelivery) tags.push("Hızlı Teslimat");
-    if (order.commercial) tags.push("Kurumsal");
-    if (order.micro) tags.push("Micro");
-    if (order.giftBoxRequested) tags.push("Hediye Paketi");
-    if (order.groupDeal) tags.push("Grup İndirimi");
-    if (order.deliveryAddressType === "CollectionPoint")
-      tags.push("Kargo Noktası");
-    if (order.totalDiscount > 0) tags.push("İndirimli");
-    if (order["3pByTrendyol"]) tags.push("3P by Trendyol");
-
-    return tags;
-  }, []);
-
-  // Map Trendyol API response to internal order structure
-  const mapTrendyolOrder = useCallback(
-    (trendyolOrder) => {
-      return {
-        id: trendyolOrder.id,
-        orderNumber: trendyolOrder.orderNumber,
-        platform: "trendyol",
-
-        // Customer information
-        customerName: `${trendyolOrder.customerFirstName} ${trendyolOrder.customerLastName}`,
-        customerFirstName: trendyolOrder.customerFirstName,
-        customerLastName: trendyolOrder.customerLastName,
-        customerEmail: trendyolOrder.customerEmail,
-        customerId: trendyolOrder.customerId,
-
-        // Status mapping
-        status: mapTrendyolStatus(trendyolOrder.status),
-        shipmentStatus: trendyolOrder.shipmentPackageStatus,
-        orderLineItemStatus: trendyolOrder.lines?.[0]?.orderLineItemStatusName,
-
-        // Financial information
-        totalAmount: trendyolOrder.totalPrice || 0,
-        grossAmount: trendyolOrder.grossAmount || 0,
-        totalDiscount: trendyolOrder.totalDiscount || 0,
-        totalTyDiscount: trendyolOrder.totalTyDiscount || 0,
-        currency: trendyolOrder.currencyCode || "TRY",
-
-        // Dates
-        createdAt: new Date(trendyolOrder.orderDate).toISOString(),
-        orderDate: trendyolOrder.orderDate,
-        lastModifiedDate: trendyolOrder.lastModifiedDate,
-        estimatedDeliveryStartDate: trendyolOrder.estimatedDeliveryStartDate,
-        estimatedDeliveryEndDate: trendyolOrder.estimatedDeliveryEndDate,
-        agreedDeliveryDate: trendyolOrder.agreedDeliveryDate,
-
-        // Shipping information
-        shippingAddress: mapTrendyolAddress(trendyolOrder.shipmentAddress),
-        invoiceAddress: mapTrendyolAddress(trendyolOrder.invoiceAddress),
-        deliveryType: trendyolOrder.deliveryType,
-        deliveryAddressType: trendyolOrder.deliveryAddressType,
-
-        // Cargo information
-        cargoTrackingNumber: trendyolOrder.cargoTrackingNumber,
-        cargoTrackingLink: trendyolOrder.cargoTrackingLink,
-        cargoSenderNumber: trendyolOrder.cargoSenderNumber,
-        cargoProviderName: trendyolOrder.cargoProviderName,
-        cargoDeci: trendyolOrder.cargoDeci,
-
-        // Order items
-        items: (trendyolOrder.lines || []).map(mapTrendyolLineItem),
-
-        // Package history for status timeline
-        packageHistories: trendyolOrder.packageHistories || [],
-
-        // Trendyol specific fields
-        fastDelivery: trendyolOrder.fastDelivery,
-        fastDeliveryType: trendyolOrder.fastDeliveryType,
-        commercial: trendyolOrder.commercial,
-        micro: trendyolOrder.micro,
-        giftBoxRequested: trendyolOrder.giftBoxRequested,
-        warehouseId: trendyolOrder.warehouseId,
-        groupDeal: trendyolOrder.groupDeal,
-
-        // Compliance information
-        identityNumber: trendyolOrder.identityNumber,
-        taxNumber: trendyolOrder.taxNumber,
-
-        // Additional metadata
-        tags: generateOrderTags(trendyolOrder),
-      };
-    },
-    [
-      mapTrendyolStatus,
-      mapTrendyolAddress,
-      mapTrendyolLineItem,
-      generateOrderTags,
-    ]
-  );
+  // const generateOrderTags = useCallback((order) => {
+  //   const tags = [];
+  //
+  //   if (order.fastDelivery) tags.push("hızlı-teslimat");
+  //   if (order.scheduled) tags.push("planlanmış");
+  //   if (order.invoiceRequested) tags.push("fatura-istendi");
+  //   if (order.giftMessage) tags.push("hediye");
+  //   if (order.totalPrice > 500) tags.push("yüksek-değer");
+  //   if (order.itemCount > 5) tags.push("çoklu-ürün");
+  //
+  //   return tags;
+  // }, []);
 
   // Update stats from actual order data
-  const updateStatsFromOrders = useCallback((orders) => {
-    setStats({
-      total: orders.length,
-      pending: orders.filter((o) => o.status === "pending").length,
-      processing: orders.filter((o) => o.status === "processing").length,
-      shipped: orders.filter((o) => o.status === "shipped").length,
-      delivered: orders.filter((o) => o.status === "delivered").length,
-      totalRevenue: orders.reduce(
-        (sum, order) => sum + (order.totalAmount || 0),
-        0
-      ),
+  const updateStatsFromOrders = useCallback((ordersData) => {
+    if (!Array.isArray(ordersData)) {
+      console.warn("updateStatsFromOrders: Invalid orders data");
+      return;
+    }
+
+    const newStats = {
+      total: ordersData.length,
+      pending: 0,
+      processing: 0,
+      shipped: 0,
+      delivered: 0,
+      cancelled: 0,
+    };
+
+    ordersData.forEach((order) => {
+      const status = order.status || order.orderStatus || "pending";
+      if (newStats.hasOwnProperty(status)) {
+        newStats[status]++;
+      }
     });
+
+    setStats(newStats);
+    console.log("Stats updated from orders:", newStats);
   }, []);
 
-  // Filter validation
+  // Utility functions with better error handling
+  const formatCurrency = useCallback((amount, currency = "TRY") => {
+    if (!amount || isNaN(amount)) return "₺0,00";
+
+    try {
+      const numAmount = parseFloat(amount);
+      return new Intl.NumberFormat("tr-TR", {
+        style: "currency",
+        currency: currency === "TRY" ? "TRY" : "USD",
+        minimumFractionDigits: 2,
+      }).format(numAmount);
+    } catch (error) {
+      console.warn("Currency formatting error:", error);
+      return `${currency} ${amount}`;
+    }
+  }, []);
+
+  const formatDate = useCallback((order) => {
+    if (!order) return "Tarih yok";
+
+    // Try different date fields with fallbacks
+    const dateValue =
+      order.displayDate || order.orderDate || order.createdAt || order.date;
+    if (!dateValue) return "Tarih yok";
+
+    try {
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) return "Geçersiz tarih";
+
+      return date.toLocaleDateString("tr-TR", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (error) {
+      console.warn("Date formatting error:", error);
+      return "Tarih hatası";
+    }
+  }, []);
+
+  // Enhanced validation function
   const validateFilters = useCallback((filters) => {
     const errors = {};
 
-    // Price range validation
-    if (filters.priceMin && filters.priceMax) {
-      if (parseFloat(filters.priceMin) > parseFloat(filters.priceMax)) {
-        errors.priceRange = "Minimum fiyat maksimum fiyattan büyük olamaz";
-      }
-    }
-
-    // Desi range validation
-    if (filters.desiMin && filters.desiMax) {
-      if (parseFloat(filters.desiMin) > parseFloat(filters.desiMax)) {
-        errors.desiRange = "Minimum desi maksimum desiden büyük olamaz";
-      }
-    }
-
-    // Date range validation
     if (filters.dateFrom && filters.dateTo) {
-      if (new Date(filters.dateFrom) > new Date(filters.dateTo)) {
+      const fromDate = new Date(filters.dateFrom);
+      const toDate = new Date(filters.dateTo);
+
+      if (fromDate > toDate) {
         errors.dateRange = "Başlangıç tarihi bitiş tarihinden sonra olamaz";
+      }
+
+      const daysDiff = (toDate - fromDate) / (1000 * 60 * 60 * 24);
+      if (daysDiff > 365) {
+        errors.dateRange = "Tarih aralığı 1 yıldan fazla olamaz";
       }
     }
 
     return errors;
-  }, []);
-
-  // Enhanced status text for Turkish e-commerce
-  const getStatusText = useCallback((status) => {
-    const statusMap = {
-      pending: "Bekleyen",
-      processing: "Hazırlanıyor",
-      shipped: "Kargoda",
-      delivered: "Teslim Edildi",
-      cancelled: "İptal Edildi",
-    };
-    return statusMap[status] || status;
-  }, []);
-
-  // Enhanced status icon mapping
-  const getStatusIcon = useCallback((status) => {
-    const iconMap = {
-      pending: Clock,
-      processing: Package,
-      shipped: Truck,
-      delivered: CheckCircle,
-      cancelled: AlertCircle,
-    };
-    return iconMap[status] || Clock;
-  }, []);
-
-  // Platform specific badge variant
-  const getPlatformVariant = useCallback((platform) => {
-    const platformMap = {
-      trendyol: "warning", // Orange for Trendyol
-      hepsiburada: "info",
-      n11: "purple",
-      amazon: "success",
-      gittigidiyor: "secondary",
-    };
-    return platformMap[platform?.toLowerCase()] || "secondary";
-  }, []);
-
-  // Enhanced currency formatting for Turkish locale
-  const formatCurrency = useCallback((amount, currency = "TRY") => {
-    return new Intl.NumberFormat("tr-TR", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  }, []);
-
-  // Enhanced date formatting for Turkish locale
-  const formatDate = useCallback((dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("tr-TR", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }, []);
-
-  // Utility functions
-  const getStatusVariant = useCallback((status) => {
-    const statusMap = {
-      pending: "warning",
-      processing: "info",
-      shipped: "purple",
-      delivered: "success",
-      cancelled: "danger",
-    };
-    return statusMap[status] || "secondary";
   }, []);
 
   const fetchOrders = useCallback(async () => {
@@ -402,8 +262,8 @@ const OrderManagement = () => {
       setFilterErrors({});
 
       const params = {
-        page: currentPage - 1, // API uses 0-based pagination
-        size: recordCount,
+        page: currentPage, // API expects 1-based pagination
+        limit: recordCount,
         search: searchTerm.trim(),
         ...filters,
       };
@@ -413,15 +273,72 @@ const OrderManagement = () => {
       console.log("API Response:", response);
 
       if (response.success) {
-        // Map Trendyol API response to our internal structure
-        const mappedOrders = (response.data?.content || []).map(
-          mapTrendyolOrder
-        );
-        console.log("Mapped orders:", mappedOrders);
-        setOrders(mappedOrders);
-        setTotalPages(response.data?.totalPages || 1);
+        // Handle different response structures from the API
+        let ordersData = [];
+        let totalCount = 0;
+        let totalPagesCalculated = 1;
 
-        // Update stats with actual API data
+        if (Array.isArray(response.data)) {
+          // Direct array response
+          ordersData = response.data;
+          totalCount = response.total || ordersData.length;
+          totalPagesCalculated =
+            response.totalPages || Math.ceil(totalCount / recordCount);
+        } else if (response.data && Array.isArray(response.data.data)) {
+          // Nested data structure
+          ordersData = response.data.data;
+          totalCount =
+            response.data.total || response.total || ordersData.length;
+          totalPagesCalculated =
+            response.data.totalPages ||
+            response.totalPages ||
+            Math.ceil(totalCount / recordCount);
+        } else if (response.data && Array.isArray(response.data.orders)) {
+          // Orders in .orders property
+          ordersData = response.data.orders;
+          totalCount =
+            response.data.total || response.total || ordersData.length;
+          totalPagesCalculated =
+            response.data.totalPages ||
+            response.totalPages ||
+            Math.ceil(totalCount / recordCount);
+        } else if (response.pagination) {
+          // Response with pagination object
+          ordersData = response.data || [];
+          totalCount = response.pagination.total || 0;
+          totalPagesCalculated =
+            response.pagination.totalPages ||
+            Math.ceil(totalCount / recordCount);
+        } else {
+          // Fallback: empty array
+          ordersData = [];
+          totalCount = 0;
+          totalPagesCalculated = 1;
+        }
+
+        // Map API response fields to component expected fields
+        const mappedOrders = ordersData.map((order) => ({
+          ...order,
+          // Ensure status field is available (map orderStatus to status)
+          status: order.status || order.orderStatus || "pending",
+          // Ensure platform field is available (map platformType to platform)
+          platform: order.platform || order.platformType || "unknown",
+          // Ensure we have proper date fields
+          displayDate: order.orderDate || order.createdAt,
+        }));
+
+        console.log("Processed orders data:", {
+          ordersCount: mappedOrders.length,
+          totalCount,
+          totalPages: totalPagesCalculated,
+          currentPage,
+          sampleOrder: mappedOrders[0], // Log first order for debugging
+        });
+
+        setOrders(mappedOrders);
+        setTotalPages(Math.max(1, totalPagesCalculated));
+
+        // Update stats with mapped orders data
         updateStatsFromOrders(mappedOrders);
       } else {
         throw new Error(response.message || "Failed to fetch orders");
@@ -441,7 +358,6 @@ const OrderManagement = () => {
     searchTerm,
     showAlert,
     recordCount,
-    mapTrendyolOrder,
     updateStatsFromOrders,
     validateFilters,
   ]);
@@ -499,21 +415,11 @@ const OrderManagement = () => {
     setFilters({
       status: "all",
       platform: "all",
-      sortBy: "createdAt",
-      sortOrder: "desc",
-      invoiceStatus: "all",
-      shippingInfo: "all",
-      microExport: "all",
-      buyNowPayLater: "all",
-      pickupPoint: "all",
-      logisticsTransferred: "all",
-      priceMin: "",
-      priceMax: "",
-      desiMin: "",
-      desiMax: "",
       dateFrom: "",
       dateTo: "",
       store: "all",
+      sortBy: "orderDate", // Changed to match backend field
+      sortOrder: "desc",
     });
     setSearchTerm("");
     setFilterErrors({});
@@ -569,27 +475,106 @@ const OrderManagement = () => {
     [navigate]
   );
 
-  // Enhanced sync with better UX
+  // Enhanced sync with better UX and error diagnosis
   const handleSyncOrders = useCallback(async () => {
     try {
       setSyncing(true);
-      await api.orders.syncOrders();
-      showAlert("Siparişler başarıyla senkronize edildi", "success");
-      await fetchOrders();
+      setError(null);
+
+      console.log("🔄 Starting order sync...");
+
+      // First, let's check if we have any platform connections
+      const connectionsResponse = await api.platforms.getConnections();
+      console.log("📡 Platform connections:", connectionsResponse);
+
+      if (
+        !connectionsResponse.success ||
+        !connectionsResponse.data ||
+        connectionsResponse.data.length === 0
+      ) {
+        showAlert(
+          "❌ Sipariş senkronizasyonu için önce platform bağlantıları kurmanız gerekiyor. Platform Ayarları sayfasından Trendyol, Hepsiburada veya N11 bağlantılarınızı ekleyin.",
+          "warning"
+        );
+        return;
+      }
+
+      // Proceed with sync
+      const syncResponse = await api.orders.syncOrders();
+      console.log("✅ Sync response:", syncResponse);
+
+      if (syncResponse.success) {
+        const {
+          syncedCount = 0,
+          errorCount = 0,
+          platforms = [],
+        } = syncResponse.data || {};
+
+        if (syncedCount > 0) {
+          showAlert(
+            `✅ ${syncedCount} sipariş başarıyla senkronize edildi`,
+            "success"
+          );
+        } else if (errorCount > 0) {
+          showAlert(
+            `⚠️ Senkronizasyon tamamlandı ancak ${errorCount} hata oluştu. Platform bağlantılarınızı kontrol edin.`,
+            "warning"
+          );
+        } else {
+          showAlert(
+            "ℹ️ Senkronizasyon tamamlandı ancak yeni sipariş bulunamadı. Platform hesaplarınızda sipariş olduğundan emin olun.",
+            "info"
+          );
+        }
+
+        // Log platform-specific results
+        platforms.forEach((platform) => {
+          console.log(
+            `🏪 ${platform.platformType}: ${
+              platform.syncedCount || 0
+            } senkronize, ${platform.errorCount || 0} hata`
+          );
+        });
+
+        // Refresh orders regardless of sync count
+        await fetchOrders();
+      } else {
+        throw new Error(
+          syncResponse.message || "Senkronizasyon başarısız oldu"
+        );
+      }
     } catch (error) {
-      console.error("Error syncing orders:", error);
-      showAlert("Senkronizasyon sırasında bir hata oluştu", "error");
+      console.error("❌ Error syncing orders:", error);
+
+      // Provide more specific error messages - FIXED THE ISSUE HERE
+      let errorMessage = "Senkronizasyon sırasında bir hata oluştu";
+
+      if (error.response?.status === 401) {
+        errorMessage =
+          "🔒 Oturum süreniz dolmuş veya giriş yapmanız gerekiyor. Lütfen giriş yapın.";
+        // Redirect to login page
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 2000);
+      } else if (error.response?.status === 403) {
+        errorMessage = "🚫 Bu işlem için yetkiniz bulunmuyor.";
+      } else if (error.response?.status === 404) {
+        errorMessage =
+          "📡 API endpoint bulunamadı. Sunucu yapılandırmasını kontrol edin.";
+      } else if (error.response?.data?.message) {
+        errorMessage = `❌ ${error.response.data.message}`;
+      } else if (error.message) {
+        errorMessage = `❌ ${error.message}`;
+      }
+
+      showAlert(errorMessage, "error");
+      setError(error.message);
     } finally {
       setSyncing(false);
     }
   }, [showAlert, fetchOrders]);
 
   // Enhanced search with debouncing
-  const handleSearch = useCallback((value) => {
-    setSearchTerm(value);
-    setCurrentPage(1); // Reset to first page on search
-  }, []);
-
   const handleKeyPress = useCallback(
     (e) => {
       if (e.key === "Enter") {
@@ -607,12 +592,23 @@ const OrderManagement = () => {
       if (sortConfig.key === key && sortConfig.direction === "asc") {
         direction = "desc";
       }
+
+      // Map frontend sort keys to backend expected keys
+      let backendSortKey = key;
+      if (key === "createdAt") {
+        // For dates, we want to sort by the actual date field from the API
+        backendSortKey = "orderDate"; // Use orderDate for better sorting
+      }
+
       setSortConfig({ key, direction });
       setFilters((prev) => ({
         ...prev,
-        sortBy: key,
+        sortBy: backendSortKey,
         sortOrder: direction,
       }));
+
+      // Reset to first page when sorting changes
+      setCurrentPage(1);
     },
     [sortConfig]
   );
@@ -723,6 +719,79 @@ const OrderManagement = () => {
     }
   }, [showAlert]);
 
+  // Print handlers
+  const handlePrintShippingSlip = useCallback(
+    async (orderId) => {
+      try {
+        const response = await api.orders.printShippingSlip(orderId);
+        if (response.success) {
+          // Open PDF in new window for printing
+          const pdfWindow = window.open(response.data.pdfUrl, "_blank");
+          if (pdfWindow) {
+            pdfWindow.onload = () => {
+              pdfWindow.print();
+            };
+          }
+          showAlert("Gönderi belgesi hazırlandı", "success");
+        }
+      } catch (error) {
+        console.error("Error printing shipping slip:", error);
+        showAlert("Gönderi belgesi yazdırılırken hata oluştu", "error");
+      }
+    },
+    [showAlert]
+  );
+
+  const handlePrintInvoice = useCallback(
+    async (orderId) => {
+      try {
+        const response = await api.orders.printInvoice(orderId);
+        if (response.success) {
+          // Open PDF in new window for printing
+          const pdfWindow = window.open(response.data.pdfUrl, "_blank");
+          if (pdfWindow) {
+            pdfWindow.onload = () => {
+              pdfWindow.print();
+            };
+          }
+          showAlert("Fatura hazırlandı", "success");
+        }
+      } catch (error) {
+        console.error("Error printing invoice:", error);
+        showAlert("Fatura yazdırılırken hata oluştu", "error");
+      }
+    },
+    [showAlert]
+  );
+
+  const handleCancelOrder = useCallback(
+    async (orderId) => {
+      if (
+        !window.confirm("Bu siparişi iptal etmek istediğinizden emin misiniz?")
+      ) {
+        return;
+      }
+
+      try {
+        const response = await api.orders.cancelOrder(orderId);
+        if (response.success) {
+          showAlert("Sipariş başarıyla iptal edildi", "success");
+          fetchOrders(); // Refresh the orders list
+        }
+      } catch (error) {
+        console.error("Error canceling order:", error);
+        showAlert("Sipariş iptal edilirken hata oluştu", "error");
+      }
+    },
+    [showAlert, fetchOrders]
+  );
+
+  // Enhanced search with debouncing
+  const handleSearch = useCallback((value) => {
+    setSearchTerm(value);
+    setCurrentPage(1); // Reset to first page on search
+  }, []);
+
   // Loading and error states
   if (loading) {
     return (
@@ -787,6 +856,17 @@ const OrderManagement = () => {
                   <span>
                     {syncing ? "Senkronize Ediliyor..." : "Senkronize Et"}
                   </span>
+                </Button>
+
+                {/* Debug Test Button - Remove this after testing */}
+                <Button
+                  onClick={() =>
+                    showAlert("Test bildirimi başarıyla gösterildi!", "success")
+                  }
+                  variant="outline"
+                  className="flex items-center space-x-2 bg-purple-100 text-purple-700 border-purple-300"
+                >
+                  <span>🧪 Test Bildirimi</span>
                 </Button>
 
                 <Button
@@ -1231,7 +1311,7 @@ const OrderManagement = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {orders.map((order) => {
-                      const StatusIcon = getStatusIcon(order.status);
+                      const statusIcon = getStatusIcon(order.status);
                       return (
                         <tr
                           key={order.id}
@@ -1289,7 +1369,7 @@ const OrderManagement = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <StatusIcon className="h-4 w-4 mr-2" />
+                              <span className="mr-2 text-sm">{statusIcon}</span>
                               <Badge variant={getStatusVariant(order.status)}>
                                 {getStatusText(order.status)}
                               </Badge>
@@ -1301,7 +1381,7 @@ const OrderManagement = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <div className="flex items-center">
                               <CalendarDays className="h-4 w-4 mr-1" />
-                              {formatDate(order.createdAt)}
+                              {formatDate(order)}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -1330,6 +1410,36 @@ const OrderManagement = () => {
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
+                              {/* Print buttons */}
+                              <Button
+                                onClick={() =>
+                                  handlePrintShippingSlip(order.id)
+                                }
+                                size="sm"
+                                variant="ghost"
+                                className="p-1"
+                                title="Gönderi Belgesi Yazdır"
+                              >
+                                <Printer className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => handlePrintInvoice(order.id)}
+                                size="sm"
+                                variant="ghost"
+                                className="p-1"
+                                title="Fatura Yazdır"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => handleCancelOrder(order.id)}
+                                size="sm"
+                                variant="ghost"
+                                className="p-1 text-red-600"
+                                title="Siparişi İptal Et"
+                              >
+                                <Ban className="h-4 w-4" />
+                              </Button>
                             </div>
                           </td>
                         </tr>
@@ -1340,14 +1450,32 @@ const OrderManagement = () => {
               </div>
             )}
 
-            {/* Pagination */}
+            {/* Enhanced Pagination */}
             {totalPages > 1 && (
               <div className="px-6 py-4 border-t border-gray-200">
                 <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-700">
-                    Sayfa {currentPage} / {totalPages}
+                  <div className="flex items-center text-sm text-gray-700">
+                    <span>
+                      Sayfa {currentPage} / {totalPages}
+                    </span>
+                    <span className="ml-4 text-gray-500">
+                      Toplam {(totalPages - 1) * recordCount + orders.length}{" "}
+                      kayıt
+                    </span>
                   </div>
-                  <div className="flex space-x-2">
+                  <div className="flex items-center space-x-1">
+                    {/* First page button */}
+                    <Button
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                      size="sm"
+                      variant="outline"
+                      className="hidden sm:inline-flex"
+                    >
+                      İlk
+                    </Button>
+
+                    {/* Previous page button */}
                     <Button
                       onClick={() =>
                         setCurrentPage((prev) => Math.max(prev - 1, 1))
@@ -1358,6 +1486,60 @@ const OrderManagement = () => {
                     >
                       Önceki
                     </Button>
+
+                    {/* Page numbers */}
+                    <div className="hidden sm:flex items-center space-x-1">
+                      {Array.from(
+                        { length: Math.min(5, totalPages) },
+                        (_, i) => {
+                          let pageNumber;
+                          if (totalPages <= 5) {
+                            pageNumber = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNumber = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNumber = totalPages - 4 + i;
+                          } else {
+                            pageNumber = currentPage - 2 + i;
+                          }
+
+                          return (
+                            <Button
+                              key={pageNumber}
+                              onClick={() => setCurrentPage(pageNumber)}
+                              size="sm"
+                              variant={
+                                currentPage === pageNumber
+                                  ? "primary"
+                                  : "outline"
+                              }
+                              className="min-w-[40px]"
+                            >
+                              {pageNumber}
+                            </Button>
+                          );
+                        }
+                      )}
+
+                      {/* Show ellipsis and last page if needed */}
+                      {totalPages > 5 && currentPage < totalPages - 2 && (
+                        <>
+                          {currentPage < totalPages - 3 && (
+                            <span className="px-2 text-gray-500">...</span>
+                          )}
+                          <Button
+                            onClick={() => setCurrentPage(totalPages)}
+                            size="sm"
+                            variant="outline"
+                            className="min-w-[40px]"
+                          >
+                            {totalPages}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Next page button */}
                     <Button
                       onClick={() =>
                         setCurrentPage((prev) => Math.min(prev + 1, totalPages))
@@ -1368,7 +1550,36 @@ const OrderManagement = () => {
                     >
                       Sonraki
                     </Button>
+
+                    {/* Last page button */}
+                    <Button
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      size="sm"
+                      variant="outline"
+                      className="hidden sm:inline-flex"
+                    >
+                      Son
+                    </Button>
                   </div>
+                </div>
+
+                {/* Mobile pagination controls */}
+                <div className="sm:hidden mt-3 flex justify-between items-center">
+                  <select
+                    value={currentPage}
+                    onChange={(e) => setCurrentPage(parseInt(e.target.value))}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm"
+                  >
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        Sayfa {i + 1}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-gray-500">
+                    {totalPages} sayfadan {currentPage}
+                  </span>
                 </div>
               </div>
             )}
@@ -1729,6 +1940,73 @@ const OrderForm = ({
       </div>
     </form>
   );
+};
+
+// Utility functions for status and platform handling
+const getStatusIcon = (status) => {
+  const iconMap = {
+    pending: "⏳",
+    confirmed: "✅",
+    processing: "⚙️",
+    shipped: "🚚",
+    delivered: "📦",
+    cancelled: "❌",
+    returned: "↩️",
+    refunded: "💰",
+    failed: "⚠️",
+  };
+  return iconMap[status] || "❓";
+};
+
+const getStatusVariant = (status) => {
+  const variantMap = {
+    pending: "warning",
+    confirmed: "info",
+    processing: "primary",
+    shipped: "info",
+    delivered: "success",
+    cancelled: "danger",
+    returned: "warning",
+    refunded: "secondary",
+    failed: "danger",
+  };
+  return variantMap[status] || "secondary";
+};
+
+const getStatusText = (status) => {
+  const textMap = {
+    pending: "Beklemede",
+    confirmed: "Onaylandı",
+    processing: "Hazırlanıyor",
+    shipped: "Kargoda",
+    delivered: "Teslim Edildi",
+    cancelled: "İptal Edildi",
+    returned: "İade Edildi",
+    refunded: "İade Tamamlandı",
+    failed: "Başarısız",
+  };
+  return textMap[status] || status;
+};
+
+const getPlatformVariant = (platform) => {
+  const variantMap = {
+    trendyol: "primary",
+    hepsiburada: "warning",
+    n11: "info",
+    amazon: "dark",
+    default: "secondary",
+  };
+  return variantMap[platform?.toLowerCase()] || variantMap.default;
+};
+
+const getPlatformIcon = (platform) => {
+  const iconMap = {
+    trendyol: "🛒",
+    hepsiburada: "🛍️",
+    n11: "📱",
+    amazon: "📦",
+  };
+  return iconMap[platform?.toLowerCase()] || "🏪";
 };
 
 export default OrderManagement;

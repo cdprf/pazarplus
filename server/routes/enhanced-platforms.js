@@ -1,516 +1,163 @@
 const express = require("express");
-const router = express.Router();
-const { authenticate, authorize } = require("../middleware");
-const enhancedPlatformService = require("../services/enhanced-platform-service");
-const inventoryManagementService = require("../services/inventory-management-service");
-const notificationService = require("../services/notification-service");
+const {
+  enhancedPlatformServiceFactory,
+} = require("../services/enhanced-platform-factory");
+const { auth } = require("../middleware/auth");
+const { body, query, param, validationResult } = require("express-validator");
 const logger = require("../utils/logger");
 
-/**
- * Enhanced Platform Integration Routes
- * Provides endpoints for advanced platform synchronization, conflict resolution, and inventory management
- */
+const router = express.Router();
 
-// Middleware for all platform routes
-router.use(authenticate);
-
-/**
- * @swagger
- * /api/v1/enhanced-platforms/sync:
- *   post:
- *     summary: Trigger enhanced platform synchronization with conflict resolution
- *     tags: [Enhanced Platforms]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               platforms:
- *                 type: array
- *                 items:
- *                   type: string
- *                 description: Specific platforms to sync (optional)
- *               options:
- *                 type: object
- *                 properties:
- *                   forceSync:
- *                     type: boolean
- *                   startDate:
- *                     type: string
- *                     format: date-time
- *                   endDate:
- *                     type: string
- *                     format: date-time
- *     responses:
- *       200:
- *         description: Sync completed successfully
- *       400:
- *         description: Invalid request parameters
- *       500:
- *         description: Sync failed
- */
-router.post("/sync", authorize(["admin", "manager"]), async (req, res) => {
-  try {
-    const { platforms = [], options = {} } = req.body;
-
-    logger.info("Enhanced platform sync triggered by user:", {
-      userId: req.user.id,
-      platforms,
-      options,
+// Define validateRequest locally to avoid import issues
+const validateRequest = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      errors: errors.array(),
     });
+  }
+  next();
+};
 
-    const syncResult =
-      await enhancedPlatformService.syncOrdersWithConflictResolution(platforms);
+/**
+ * Enhanced Platform Routes
+ * Provides robust platform integration APIs with:
+ * - Circuit breaker protection
+ * - Rate limiting compliance
+ * - Real-time sync management
+ * - Comprehensive monitoring
+ * - Automatic compliance processing
+ */
+
+// Apply authentication to all routes
+router.use(auth);
+
+/**
+ * GET /api/enhanced-platforms/health
+ * Get global health status of all platform services
+ */
+router.get("/health", async (req, res) => {
+  try {
+    const healthStatus = enhancedPlatformServiceFactory.getGlobalHealthStatus();
 
     res.json({
       success: true,
-      message: "Platform synchronization completed",
-      data: syncResult,
-      timestamp: new Date(),
+      data: healthStatus,
+      timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    logger.error("Enhanced platform sync failed:", error);
+    logger.error("Failed to get platform health status:", error);
     res.status(500).json({
       success: false,
-      message: "Platform synchronization failed",
+      message: "Failed to retrieve health status",
       error: error.message,
     });
   }
 });
 
 /**
- * @swagger
- * /api/v1/enhanced-platforms/conflicts:
- *   get:
- *     summary: Get pending manual reviews and conflicts
- *     tags: [Enhanced Platforms]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Pending conflicts retrieved successfully
+ * GET /api/enhanced-platforms/available
+ * Get list of available enhanced platform integrations
  */
-router.get("/conflicts", authorize(["admin", "manager"]), async (req, res) => {
+router.get("/available", async (req, res) => {
   try {
-    const pendingReviews =
-      await enhancedPlatformService.getPendingManualReviews();
+    const platforms = enhancedPlatformServiceFactory.getAvailablePlatforms();
 
     res.json({
       success: true,
-      data: {
-        pendingReviews,
-        count: pendingReviews.length,
-      },
-      timestamp: new Date(),
+      data: platforms,
+      total: platforms.length,
     });
   } catch (error) {
-    logger.error("Failed to get pending conflicts:", error);
+    logger.error("Failed to get available platforms:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to retrieve conflicts",
+      message: "Failed to retrieve available platforms",
       error: error.message,
     });
   }
 });
 
 /**
- * @swagger
- * /api/v1/enhanced-platforms/conflicts/{conflictId}/resolve:
- *   post:
- *     summary: Resolve a manual review conflict
- *     tags: [Enhanced Platforms]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: conflictId
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               resolution:
- *                 type: object
- *                 properties:
- *                   action:
- *                     type: string
- *                     enum: [accept_new, keep_existing, manual_merge]
- *                   notes:
- *                     type: string
- *                   resolvedBy:
- *                     type: string
- *     responses:
- *       200:
- *         description: Conflict resolved successfully
+ * POST /api/enhanced-platforms/:platform/connections/:connectionId/sync
+ * Trigger manual sync for a specific platform connection
  */
 router.post(
-  "/conflicts/:conflictId/resolve",
-  authorize(["admin", "manager"]),
+  "/:platform/connections/:connectionId/sync",
+  [
+    param("platform")
+      .isIn(["trendyol", "hepsiburada", "n11"])
+      .withMessage("Invalid platform"),
+    param("connectionId").isUUID().withMessage("Invalid connection ID"),
+    body("startDate").optional().isISO8601().withMessage("Invalid start date"),
+    body("endDate").optional().isISO8601().withMessage("Invalid end date"),
+    body("pageSize")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Page size must be between 1 and 100"),
+    body("maxPages")
+      .optional()
+      .isInt({ min: 1, max: 50 })
+      .withMessage("Max pages must be between 1 and 50"),
+    body("processCompliance")
+      .optional()
+      .isBoolean()
+      .withMessage("Process compliance must be boolean"),
+    validateRequest,
+  ],
   async (req, res) => {
     try {
-      const { conflictId } = req.params;
-      const { resolution } = req.body;
+      const { platform, connectionId } = req.params;
+      const options = req.body;
 
-      resolution.resolvedBy = req.user.id;
-      resolution.resolvedAt = new Date();
-
-      const result = await enhancedPlatformService.resolveManualReview(
-        conflictId,
-        resolution
-      );
-
-      res.json({
-        success: true,
-        message: "Conflict resolved successfully",
-        data: result,
-        timestamp: new Date(),
+      // Get connection data
+      const { PlatformConnection } = require("../models");
+      const connection = await PlatformConnection.findOne({
+        where: {
+          id: connectionId,
+          userId: req.user.id,
+          platformType: platform,
+          isActive: true,
+        },
       });
-    } catch (error) {
-      logger.error("Failed to resolve conflict:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to resolve conflict",
-        error: error.message,
-      });
-    }
-  }
-);
 
-/**
- * @swagger
- * /api/v1/enhanced-platforms/inventory/{sku}:
- *   get:
- *     summary: Get real-time inventory for a product across all platforms
- *     tags: [Enhanced Platforms]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: sku
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Inventory data retrieved successfully
- */
-router.get("/inventory/:sku", async (req, res) => {
-  try {
-    const { sku } = req.params;
-
-    const inventory = await inventoryManagementService.getProductInventory(sku);
-
-    res.json({
-      success: true,
-      data: inventory,
-      timestamp: new Date(),
-    });
-  } catch (error) {
-    logger.error("Failed to get inventory:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve inventory",
-      error: error.message,
-    });
-  }
-});
-
-/**
- * @swagger
- * /api/v1/enhanced-platforms/inventory/{sku}/update:
- *   post:
- *     summary: Update inventory across all platforms
- *     tags: [Enhanced Platforms]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: sku
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               quantity:
- *                 type: number
- *                 minimum: 0
- *               originPlatform:
- *                 type: string
- *               reason:
- *                 type: string
- *     responses:
- *       200:
- *         description: Inventory updated successfully
- */
-router.post(
-  "/inventory/:sku/update",
-  authorize(["admin", "manager"]),
-  async (req, res) => {
-    try {
-      const { sku } = req.params;
-      const { quantity, originPlatform, reason } = req.body;
-
-      if (quantity < 0) {
-        return res.status(400).json({
+      if (!connection) {
+        return res.status(404).json({
           success: false,
-          message: "Quantity cannot be negative",
+          message: "Platform connection not found or inactive",
         });
       }
 
-      const result =
-        await inventoryManagementService.updateInventoryAcrossPlatforms(
-          sku,
-          quantity,
-          originPlatform,
-          { reason, updatedBy: req.user.id }
-        );
-
-      res.json({
-        success: true,
-        message: "Inventory updated across platforms",
-        data: result,
-        timestamp: new Date(),
-      });
-    } catch (error) {
-      logger.error("Failed to update inventory:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to update inventory",
-        error: error.message,
-      });
-    }
-  }
-);
-
-/**
- * @swagger
- * /api/v1/enhanced-platforms/inventory/{sku}/reserve:
- *   post:
- *     summary: Reserve stock for an order
- *     tags: [Enhanced Platforms]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: sku
- *         required: true
- *         schema:
- *           type: string
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               quantity:
- *                 type: number
- *                 minimum: 1
- *               orderNumber:
- *                 type: string
- *               duration:
- *                 type: number
- *                 description: Reservation duration in milliseconds
- *     responses:
- *       200:
- *         description: Stock reserved successfully
- */
-router.post("/inventory/:sku/reserve", async (req, res) => {
-  try {
-    const { sku } = req.params;
-    const { quantity, orderNumber, duration } = req.body;
-
-    if (!quantity || quantity <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Quantity must be greater than 0",
-      });
-    }
-
-    if (!orderNumber) {
-      return res.status(400).json({
-        success: false,
-        message: "Order number is required",
-      });
-    }
-
-    const result = await inventoryManagementService.reserveStock(
-      sku,
-      quantity,
-      orderNumber,
-      duration
-    );
-
-    res.json({
-      success: true,
-      message: "Stock reserved successfully",
-      data: result,
-      timestamp: new Date(),
-    });
-  } catch (error) {
-    logger.error("Failed to reserve stock:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to reserve stock",
-      error: error.message,
-    });
-  }
-});
-
-/**
- * @swagger
- * /api/v1/enhanced-platforms/inventory/reservations/{reservationId}/confirm:
- *   post:
- *     summary: Confirm stock reservation (order fulfilled)
- *     tags: [Enhanced Platforms]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: reservationId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Reservation confirmed successfully
- */
-router.post(
-  "/inventory/reservations/:reservationId/confirm",
-  async (req, res) => {
-    try {
-      const { reservationId } = req.params;
-
-      const result = await inventoryManagementService.confirmStockReservation(
-        reservationId
+      // Create or get service
+      const service = await enhancedPlatformServiceFactory.createService(
+        platform,
+        {
+          id: connection.id,
+          userId: connection.userId,
+          credentials: JSON.parse(connection.credentials),
+          settings: connection.settings || {},
+        }
       );
 
-      res.json({
-        success: true,
-        message: "Stock reservation confirmed",
-        data: result,
-        timestamp: new Date(),
-      });
-    } catch (error) {
-      logger.error("Failed to confirm reservation:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to confirm reservation",
-        error: error.message,
-      });
-    }
-  }
-);
-
-/**
- * @swagger
- * /api/v1/enhanced-platforms/inventory/reservations/{reservationId}/release:
- *   post:
- *     summary: Release stock reservation
- *     tags: [Enhanced Platforms]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: reservationId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Reservation released successfully
- */
-router.post(
-  "/inventory/reservations/:reservationId/release",
-  async (req, res) => {
-    try {
-      const { reservationId } = req.params;
-
-      const result = await inventoryManagementService.releaseStockReservation(
-        reservationId
-      );
-
-      res.json({
-        success: true,
-        message: "Stock reservation released",
-        data: result,
-        timestamp: new Date(),
-      });
-    } catch (error) {
-      logger.error("Failed to release reservation:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to release reservation",
-        error: error.message,
-      });
-    }
-  }
-);
-
-/**
- * @swagger
- * /api/v1/enhanced-platforms/inventory/analytics:
- *   get:
- *     summary: Get inventory analytics and insights
- *     tags: [Enhanced Platforms]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: startDate
- *         schema:
- *           type: string
- *           format: date-time
- *       - in: query
- *         name: endDate
- *         schema:
- *           type: string
- *           format: date-time
- *       - in: query
- *         name: platforms
- *         schema:
- *           type: string
- *           description: Comma-separated platform names
- *     responses:
- *       200:
- *         description: Analytics retrieved successfully
- */
-router.get(
-  "/inventory/analytics",
-  authorize(["admin", "manager"]),
-  async (req, res) => {
-    try {
-      const { startDate, endDate, platforms } = req.query;
-
-      const options = {};
-      if (startDate) options.startDate = new Date(startDate);
-      if (endDate) options.endDate = new Date(endDate);
-      if (platforms) options.platforms = platforms.split(",");
-
-      const analytics = await inventoryManagementService.getInventoryAnalytics(
+      // Perform sync
+      const result = await enhancedPlatformServiceFactory.performSync(
+        platform,
+        connectionId,
         options
       );
 
       res.json({
         success: true,
-        data: analytics,
-        timestamp: new Date(),
+        message: "Sync completed successfully",
+        data: result,
       });
     } catch (error) {
-      logger.error("Failed to get inventory analytics:", error);
+      logger.error("Manual sync failed:", error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve analytics",
+        message: "Sync failed",
         error: error.message,
       });
     }
@@ -518,122 +165,200 @@ router.get(
 );
 
 /**
- * @swagger
- * /api/v1/enhanced-platforms/inventory/bulk-update:
- *   post:
- *     summary: Bulk update inventory for multiple products
- *     tags: [Enhanced Platforms]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               updates:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     sku:
- *                       type: string
- *                     quantity:
- *                       type: number
- *                     originPlatform:
- *                       type: string
- *                     options:
- *                       type: object
- *     responses:
- *       200:
- *         description: Bulk update completed
+ * POST /api/enhanced-platforms/:platform/connections/:connectionId/realtime/start
+ * Start real-time sync for a platform connection
  */
 router.post(
-  "/inventory/bulk-update",
-  authorize(["admin", "manager"]),
+  "/:platform/connections/:connectionId/realtime/start",
+  [
+    param("platform")
+      .isIn(["trendyol", "hepsiburada", "n11"])
+      .withMessage("Invalid platform"),
+    param("connectionId").isUUID().withMessage("Invalid connection ID"),
+    body("interval")
+      .optional()
+      .isInt({ min: 60000, max: 3600000 })
+      .withMessage("Interval must be between 1 minute and 1 hour"),
+    body("processCompliance")
+      .optional()
+      .isBoolean()
+      .withMessage("Process compliance must be boolean"),
+    validateRequest,
+  ],
   async (req, res) => {
     try {
-      const { updates } = req.body;
+      const { platform, connectionId } = req.params;
+      const options = req.body;
 
-      if (!Array.isArray(updates) || updates.length === 0) {
-        return res.status(400).json({
+      // Verify connection ownership
+      const { PlatformConnection } = require("../models");
+      const connection = await PlatformConnection.findOne({
+        where: {
+          id: connectionId,
+          userId: req.user.id,
+          platformType: platform,
+          isActive: true,
+        },
+      });
+
+      if (!connection) {
+        return res.status(404).json({
           success: false,
-          message: "Updates array is required and cannot be empty",
+          message: "Platform connection not found or inactive",
         });
       }
 
-      // Add user context to options
-      const updatesWithUser = updates.map((update) => ({
-        ...update,
-        options: {
-          ...update.options,
-          updatedBy: req.user.id,
-        },
-      }));
-
-      const results = await inventoryManagementService.bulkUpdateInventory(
-        updatesWithUser
+      // Create or get service
+      const service = await enhancedPlatformServiceFactory.createService(
+        platform,
+        {
+          id: connection.id,
+          userId: connection.userId,
+          credentials: JSON.parse(connection.credentials),
+          settings: connection.settings || {},
+        }
       );
 
-      const successCount = results.filter((r) => r.success).length;
-      const failureCount = results.filter((r) => !r.success).length;
+      // Start real-time sync
+      const result = await enhancedPlatformServiceFactory.startRealTimeSync(
+        platform,
+        connectionId,
+        options
+      );
 
       res.json({
         success: true,
-        message: `Bulk update completed: ${successCount} successful, ${failureCount} failed`,
-        data: {
-          results,
-          summary: {
-            total: results.length,
-            successful: successCount,
-            failed: failureCount,
+        message: "Real-time sync started successfully",
+        data: result,
+      });
+    } catch (error) {
+      logger.error("Failed to start real-time sync:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to start real-time sync",
+        error: error.message,
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/enhanced-platforms/:platform/connections/:connectionId/realtime/stop
+ * Stop real-time sync for a platform connection
+ */
+router.post(
+  "/:platform/connections/:connectionId/realtime/stop",
+  [
+    param("platform")
+      .isIn(["trendyol", "hepsiburada", "n11"])
+      .withMessage("Invalid platform"),
+    param("connectionId").isUUID().withMessage("Invalid connection ID"),
+    validateRequest,
+  ],
+  async (req, res) => {
+    try {
+      const { platform, connectionId } = req.params;
+
+      // Verify connection ownership
+      const { PlatformConnection } = require("../models");
+      const connection = await PlatformConnection.findOne({
+        where: {
+          id: connectionId,
+          userId: req.user.id,
+          platformType: platform,
+        },
+      });
+
+      if (!connection) {
+        return res.status(404).json({
+          success: false,
+          message: "Platform connection not found",
+        });
+      }
+
+      // Stop real-time sync
+      const result = await enhancedPlatformServiceFactory.stopRealTimeSync(
+        platform,
+        connectionId
+      );
+
+      res.json({
+        success: true,
+        message: "Real-time sync stopped successfully",
+        data: result,
+      });
+    } catch (error) {
+      logger.error("Failed to stop real-time sync:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to stop real-time sync",
+        error: error.message,
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/enhanced-platforms/:platform/connections/:connectionId/status
+ * Get detailed status for a specific platform service
+ */
+router.get(
+  "/:platform/connections/:connectionId/status",
+  [
+    param("platform")
+      .isIn(["trendyol", "hepsiburada", "n11"])
+      .withMessage("Invalid platform"),
+    param("connectionId").isUUID().withMessage("Invalid connection ID"),
+    validateRequest,
+  ],
+  async (req, res) => {
+    try {
+      const { platform, connectionId } = req.params;
+
+      // Verify connection ownership
+      const { PlatformConnection } = require("../models");
+      const connection = await PlatformConnection.findOne({
+        where: {
+          id: connectionId,
+          userId: req.user.id,
+          platformType: platform,
+        },
+      });
+
+      if (!connection) {
+        return res.status(404).json({
+          success: false,
+          message: "Platform connection not found",
+        });
+      }
+
+      // Get service status
+      const service = enhancedPlatformServiceFactory.getService(
+        platform,
+        connectionId
+      );
+
+      if (!service) {
+        return res.json({
+          success: true,
+          data: {
+            status: "inactive",
+            message: "Service not currently running",
           },
-        },
-        timestamp: new Date(),
-      });
-    } catch (error) {
-      logger.error("Failed to perform bulk inventory update:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to perform bulk update",
-        error: error.message,
-      });
-    }
-  }
-);
+        });
+      }
 
-/**
- * @swagger
- * /api/v1/enhanced-platforms/inventory/reservations:
- *   get:
- *     summary: Get all active stock reservations
- *     tags: [Enhanced Platforms]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Reservations retrieved successfully
- */
-router.get(
-  "/inventory/reservations",
-  authorize(["admin", "manager"]),
-  async (req, res) => {
-    try {
-      const reservations = inventoryManagementService.getAllReservations();
+      const healthStatus = service.getHealthStatus();
 
       res.json({
         success: true,
-        data: {
-          reservations,
-          count: reservations.length,
-        },
-        timestamp: new Date(),
+        data: healthStatus,
       });
     } catch (error) {
-      logger.error("Failed to get reservations:", error);
+      logger.error("Failed to get service status:", error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve reservations",
+        message: "Failed to retrieve service status",
         error: error.message,
       });
     }
@@ -641,136 +366,213 @@ router.get(
 );
 
 /**
- * @swagger
- * /api/v1/enhanced-platforms/inventory/status:
- *   get:
- *     summary: Get inventory management system status
- *     tags: [Enhanced Platforms]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Status retrieved successfully
+ * GET /api/enhanced-platforms/user/connections
+ * Get all enhanced platform connections for the authenticated user
  */
-router.get(
-  "/inventory/status",
-  authorize(["admin", "manager"]),
-  async (req, res) => {
-    try {
-      const status = inventoryManagementService.getInventoryStatus();
-
-      res.json({
-        success: true,
-        data: status,
-        timestamp: new Date(),
-      });
-    } catch (error) {
-      logger.error("Failed to get inventory status:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to retrieve status",
-        error: error.message,
-      });
-    }
-  }
-);
-
-/**
- * @swagger
- * /api/v1/enhanced-platforms/notifications/stats:
- *   get:
- *     summary: Get WebSocket connection statistics
- *     tags: [Enhanced Platforms]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Statistics retrieved successfully
- */
-router.get(
-  "/notifications/stats",
-  authorize(["admin", "manager"]),
-  async (req, res) => {
-    try {
-      const stats = notificationService.getConnectionStats();
-
-      res.json({
-        success: true,
-        data: stats,
-        timestamp: new Date(),
-      });
-    } catch (error) {
-      logger.error("Failed to get notification stats:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to retrieve notification statistics",
-        error: error.message,
-      });
-    }
-  }
-);
-
-/**
- * @swagger
- * /api/v1/enhanced-platforms/notifications/recent:
- *   get:
- *     summary: Get recent notifications
- *     tags: [Enhanced Platforms]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema:
- *           type: number
- *           default: 50
- *     responses:
- *       200:
- *         description: Recent notifications retrieved successfully
- */
-router.get("/notifications/recent", async (req, res) => {
+router.get("/user/connections", async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 50;
-    const notifications = await notificationService.getRecentNotifications(
-      limit
-    );
+    const { PlatformConnection } = require("../models");
+
+    const connections = await PlatformConnection.findAll({
+      where: {
+        userId: req.user.id,
+        isActive: true,
+      },
+      attributes: ["id", "platformType", "settings", "createdAt", "lastSyncAt"],
+      order: [["createdAt", "DESC"]],
+    });
+
+    // Enhance with service status
+    const enhancedConnections = connections.map((connection) => {
+      const service = enhancedPlatformServiceFactory.getService(
+        connection.platformType,
+        connection.id
+      );
+
+      return {
+        ...connection.toJSON(),
+        serviceStatus: service
+          ? service.getHealthStatus()
+          : { status: "inactive" },
+      };
+    });
 
     res.json({
       success: true,
-      data: {
-        notifications,
-        count: notifications.length,
-      },
-      timestamp: new Date(),
+      data: enhancedConnections,
+      total: enhancedConnections.length,
     });
   } catch (error) {
-    logger.error("Failed to get recent notifications:", error);
+    logger.error("Failed to get user connections:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to retrieve notifications",
+      message: "Failed to retrieve connections",
       error: error.message,
     });
   }
 });
 
-// Error handling middleware for this router
-router.use((error, req, res, next) => {
-  logger.error("Enhanced platform route error:", {
-    error: error.message,
-    stack: error.stack,
-    path: req.path,
-    method: req.method,
-    userId: req.user?.id,
-  });
+/**
+ * DELETE /api/enhanced-platforms/:platform/connections/:connectionId
+ * Destroy a platform service and clean up resources
+ */
+router.delete(
+  "/:platform/connections/:connectionId",
+  [
+    param("platform")
+      .isIn(["trendyol", "hepsiburada", "n11"])
+      .withMessage("Invalid platform"),
+    param("connectionId").isUUID().withMessage("Invalid connection ID"),
+    validateRequest,
+  ],
+  async (req, res) => {
+    try {
+      const { platform, connectionId } = req.params;
 
-  res.status(500).json({
-    success: false,
-    message: "Internal server error in enhanced platform service",
-    error:
-      process.env.NODE_ENV === "production"
-        ? "Internal server error"
-        : error.message,
-  });
+      // Verify connection ownership
+      const { PlatformConnection } = require("../models");
+      const connection = await PlatformConnection.findOne({
+        where: {
+          id: connectionId,
+          userId: req.user.id,
+          platformType: platform,
+        },
+      });
+
+      if (!connection) {
+        return res.status(404).json({
+          success: false,
+          message: "Platform connection not found",
+        });
+      }
+
+      // Destroy service
+      const result = await enhancedPlatformServiceFactory.destroyService(
+        platform,
+        connectionId
+      );
+
+      res.json({
+        success: true,
+        message: "Platform service destroyed successfully",
+        data: result,
+      });
+    } catch (error) {
+      logger.error("Failed to destroy platform service:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to destroy platform service",
+        error: error.message,
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/enhanced-platforms/compliance/:orderId
+ * Get compliance status for a specific order
+ */
+router.get(
+  "/compliance/:orderId",
+  [param("orderId").isUUID().withMessage("Invalid order ID"), validateRequest],
+  async (req, res) => {
+    try {
+      const { orderId } = req.params;
+
+      // Verify order ownership
+      const { Order } = require("../models");
+      const order = await Order.findOne({
+        where: {
+          id: orderId,
+          userId: req.user.id,
+        },
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      // Get compliance status
+      const {
+        TurkishComplianceService,
+      } = require("../services/turkishComplianceService");
+      const complianceService = new TurkishComplianceService();
+
+      const complianceStatus = await complianceService.getComplianceStatus(
+        orderId
+      );
+
+      res.json({
+        success: true,
+        data: complianceStatus,
+      });
+    } catch (error) {
+      logger.error("Failed to get compliance status:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve compliance status",
+        error: error.message,
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/enhanced-platforms/compliance/report
+ * Generate compliance report for date range
+ */
+router.get(
+  "/compliance/report",
+  [
+    query("startDate").isISO8601().withMessage("Invalid start date"),
+    query("endDate").isISO8601().withMessage("Invalid end date"),
+    validateRequest,
+  ],
+  async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+
+      // Get compliance report
+      const {
+        TurkishComplianceService,
+      } = require("../services/turkishComplianceService");
+      const complianceService = new TurkishComplianceService();
+
+      const report = await complianceService.generateComplianceReport({
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+      });
+
+      res.json({
+        success: true,
+        data: report,
+      });
+    } catch (error) {
+      logger.error("Failed to generate compliance report:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to generate compliance report",
+        error: error.message,
+      });
+    }
+  }
+);
+
+// Setup global event listeners for enhanced platform factory
+enhancedPlatformServiceFactory.on("globalSyncComplete", (data) => {
+  logger.info("Global sync completed:", data);
+});
+
+enhancedPlatformServiceFactory.on("globalCircuitOpen", (data) => {
+  logger.warn("Global circuit breaker opened:", data);
+});
+
+enhancedPlatformServiceFactory.on("platformWideIssue", (data) => {
+  logger.error("Platform-wide issue detected:", data);
+  // TODO: Send alerts to administrators
 });
 
 module.exports = router;

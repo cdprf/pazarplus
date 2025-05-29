@@ -1,10 +1,25 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Card, Table, Button, Badge, Spinner, Alert, Form, InputGroup, Modal, Tabs, Tab } from 'react-bootstrap';
-import api from '../../services/api';
-import { useAlert } from '../../contexts/AlertContext';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Table,
+  Button,
+  Badge,
+  Spinner,
+  Alert,
+  Form,
+  InputGroup,
+  Modal,
+  Tabs,
+  Tab,
+} from "react-bootstrap";
+import api from "../../services/api";
+import { useAlert } from "../../contexts/AlertContext";
 
 const ShippingManagement = () => {
-  const [activeTab, setActiveTab] = useState('carriers');
+  const [activeTab, setActiveTab] = useState("carriers");
   const [carriers, setCarriers] = useState([]);
   const [shipments, setShipments] = useState([]);
   const [rates, setRates] = useState([]);
@@ -13,18 +28,18 @@ const ShippingManagement = () => {
   const [showCreateShipmentModal, setShowCreateShipmentModal] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [newCarrier, setNewCarrier] = useState({
-    name: '',
-    code: '',
-    type: '',
-    baseRate: '',
-    apiEndpoint: '',
-    apiKey: '',
-    isActive: true
+    name: "",
+    code: "",
+    type: "",
+    baseRate: "",
+    apiEndpoint: "",
+    apiKey: "",
+    isActive: true,
   });
   const [filters, setFilters] = useState({
-    search: '',
-    status: '',
-    carrier: ''
+    search: "",
+    status: "",
+    carrier: "",
   });
 
   const { showAlert } = useAlert();
@@ -33,25 +48,33 @@ const ShippingManagement = () => {
     try {
       setLoading(true);
       switch (activeTab) {
-        case 'carriers':
-          const carriersResponse = await api.getShippingCarriers();
-          setCarriers(carriersResponse.data || []);
+        case "carriers":
+          // Use the new unified shipping API
+          const carriersResponse = await api.get("/api/shipping/carriers");
+          if (carriersResponse.data.success) {
+            setCarriers(carriersResponse.data.data || []);
+          }
           break;
-        case 'shipments':
-          const shipmentsResponse = await api.getShipments(filters);
-          setShipments(shipmentsResponse.data || []);
+        case "shipments":
+          // Fetch shipments with filters
+          const shipmentsResponse = await api.get("/api/shipping/shipments", {
+            params: filters,
+          });
+          if (shipmentsResponse.data.success) {
+            setShipments(shipmentsResponse.data.data || []);
+          }
           break;
-        case 'rates':
-          const ratesResponse = await api.getShippingRates();
-          setRates(ratesResponse.data || []);
+        case "rates":
+          // Get sample shipping rates
+          setRates([]);
           break;
         default:
-          console.warn('Unknown tab:', activeTab);
+          console.warn("Unknown tab:", activeTab);
           break;
       }
     } catch (error) {
-      console.error('Failed to fetch shipping data:', error);
-      showAlert('Failed to load shipping data', 'error');
+      console.error("Failed to fetch shipping data:", error);
+      showAlert("Failed to load shipping data", "error");
     } finally {
       setLoading(false);
     }
@@ -64,18 +87,23 @@ const ShippingManagement = () => {
   const handleCreateShipment = async (orderIds) => {
     try {
       setLoading(true);
-      const response = await api.createShipment({ orderIds });
-      if (response.success) {
-        showAlert('Shipment created successfully!', 'success');
+      const response = await api.post("/api/shipping/labels/create", {
+        orderIds,
+        carrier: "auto", // Let the system choose the best carrier
+      });
+      if (response.data.success) {
+        showAlert("Shipment created successfully!", "success");
         setShowCreateShipmentModal(false);
         setSelectedOrders([]);
         fetchData();
       } else {
-        throw new Error(response.message || 'Failed to create shipment');
+        throw new Error(
+          response.data.error?.message || "Failed to create shipment"
+        );
       }
     } catch (error) {
-      console.error('Failed to create shipment:', error);
-      showAlert('Failed to create shipment: ' + error.message, 'error');
+      console.error("Failed to create shipment:", error);
+      showAlert("Failed to create shipment: " + error.message, "error");
     } finally {
       setLoading(false);
     }
@@ -84,55 +112,106 @@ const ShippingManagement = () => {
   const handleAddCarrier = async () => {
     try {
       if (!newCarrier.name || !newCarrier.code || !newCarrier.type) {
-        showAlert('Please fill in all required fields', 'warning');
+        showAlert("Please fill in all required fields", "warning");
         return;
       }
 
       setLoading(true);
-      const response = await api.createShippingCarrier(newCarrier);
-      if (response.success) {
-        showAlert('Carrier added successfully!', 'success');
+      const response = await api.post("/api/shipping/carriers", newCarrier);
+      if (response.data.success) {
+        showAlert("Carrier added successfully!", "success");
         setShowCarrierModal(false);
         setNewCarrier({
-          name: '',
-          code: '',
-          type: '',
-          baseRate: '',
-          apiEndpoint: '',
-          apiKey: '',
-          isActive: true
+          name: "",
+          code: "",
+          type: "",
+          baseRate: "",
+          apiEndpoint: "",
+          apiKey: "",
+          isActive: true,
         });
         fetchData();
       } else {
-        throw new Error(response.message || 'Failed to add carrier');
+        throw new Error(
+          response.data.error?.message || "Failed to add carrier"
+        );
       }
     } catch (error) {
-      console.error('Failed to add carrier:', error);
-      showAlert('Failed to add carrier: ' + error.message, 'error');
+      console.error("Failed to add carrier:", error);
+      showAlert("Failed to add carrier: " + error.message, "error");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleTestCarrier = async (carrierCode) => {
+    try {
+      setLoading(true);
+      const response = await api.post("/api/shipping/carriers/validate", {
+        carrier: carrierCode,
+      });
+
+      if (response.data.success) {
+        showAlert(`${carrierCode} API connection successful!`, "success");
+      } else {
+        showAlert(
+          `${carrierCode} API connection failed: ${response.data.error?.message}`,
+          "error"
+        );
+      }
+    } catch (error) {
+      showAlert(`Failed to test ${carrierCode}: ` + error.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTrackPackage = async (trackingNumber, carrier) => {
+    try {
+      const response = await api.get(
+        `/api/shipping/track/${carrier}/${trackingNumber}`
+      );
+      if (response.data.success) {
+        showAlert(
+          "Package tracking information retrieved successfully",
+          "success"
+        );
+        // You could open a modal here to show tracking details
+        console.log("Tracking data:", response.data.data);
+      } else {
+        showAlert(
+          "Failed to track package: " + response.data.error?.message,
+          "error"
+        );
+      }
+    } catch (error) {
+      showAlert("Tracking failed: " + error.message, "error");
+    }
+  };
+
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const getStatusBadge = (status) => {
     const variants = {
-      pending: 'warning',
-      in_transit: 'info',
-      delivered: 'success',
-      cancelled: 'danger',
-      returned: 'secondary'
+      pending: "warning",
+      in_transit: "info",
+      delivered: "success",
+      cancelled: "danger",
+      returned: "secondary",
     };
-    return <Badge bg={variants[status] || 'secondary'}>{status.replace('_', ' ')}</Badge>;
+    return (
+      <Badge bg={variants[status] || "secondary"}>
+        {status.replace("_", " ")}
+      </Badge>
+    );
   };
 
   if (loading) {
@@ -155,13 +234,18 @@ const ShippingManagement = () => {
           <div className="d-flex justify-content-between align-items-center">
             <div>
               <h1>Shipping Management</h1>
-              <p className="text-muted">Manage carriers, shipments, and shipping rates</p>
+              <p className="text-muted">
+                Manage carriers, shipments, and shipping rates
+              </p>
             </div>
             <div className="d-flex gap-2">
               <Button variant="outline-primary">
                 <i className="fas fa-truck me-2"></i>Track Shipment
               </Button>
-              <Button variant="primary" onClick={() => setShowCreateShipmentModal(true)}>
+              <Button
+                variant="primary"
+                onClick={() => setShowCreateShipmentModal(true)}
+              >
                 <i className="fas fa-plus me-2"></i>Create Shipment
               </Button>
             </div>
@@ -181,7 +265,9 @@ const ShippingManagement = () => {
                       type="text"
                       placeholder="Search carriers..."
                       value={filters.search}
-                      onChange={(e) => setFilters({...filters, search: e.target.value})}
+                      onChange={(e) =>
+                        setFilters({ ...filters, search: e.target.value })
+                      }
                     />
                     <Button variant="outline-secondary">
                       <i className="fas fa-search"></i>
@@ -189,7 +275,10 @@ const ShippingManagement = () => {
                   </InputGroup>
                 </Col>
                 <Col md={6} className="text-end">
-                  <Button variant="primary" onClick={() => setShowCarrierModal(true)}>
+                  <Button
+                    variant="primary"
+                    onClick={() => setShowCarrierModal(true)}
+                  >
                     <i className="fas fa-plus me-2"></i>Add Carrier
                   </Button>
                 </Col>
@@ -199,8 +288,13 @@ const ShippingManagement = () => {
                 <div className="text-center py-5">
                   <i className="fas fa-truck display-4 text-muted mb-3"></i>
                   <h5 className="text-muted">No carriers configured</h5>
-                  <p className="text-muted">Add shipping carriers to start managing shipments</p>
-                  <Button variant="primary" onClick={() => setShowCarrierModal(true)}>
+                  <p className="text-muted">
+                    Add shipping carriers to start managing shipments
+                  </p>
+                  <Button
+                    variant="primary"
+                    onClick={() => setShowCarrierModal(true)}
+                  >
                     <i className="fas fa-plus me-2"></i>Add Your First Carrier
                   </Button>
                 </div>
@@ -222,15 +316,17 @@ const ShippingManagement = () => {
                       <tr key={carrier.id}>
                         <td>
                           <div className="d-flex align-items-center">
-                            <img 
-                              src={carrier.logo || '/api/placeholder/32/32'} 
+                            <img
+                              src={carrier.logo || "/api/placeholder/32/32"}
                               alt={carrier.name}
                               className="me-2"
-                              style={{ width: '32px', height: '32px' }}
+                              style={{ width: "32px", height: "32px" }}
                             />
                             <div>
                               <strong>{carrier.name}</strong>
-                              <div className="text-muted small">{carrier.code}</div>
+                              <div className="text-muted small">
+                                {carrier.code}
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -238,26 +334,52 @@ const ShippingManagement = () => {
                           <Badge bg="info">{carrier.type}</Badge>
                         </td>
                         <td>
-                          <Badge bg={carrier.isActive ? 'success' : 'secondary'}>
-                            {carrier.isActive ? 'Active' : 'Inactive'}
+                          <Badge
+                            bg={carrier.isActive ? "success" : "secondary"}
+                          >
+                            {carrier.isActive ? "Active" : "Inactive"}
                           </Badge>
                         </td>
                         <td>
-                          <Badge bg={carrier.apiConnected ? 'success' : 'danger'}>
-                            {carrier.apiConnected ? 'Connected' : 'Disconnected'}
+                          <Badge
+                            bg={
+                              carrier.features?.includes("api")
+                                ? "success"
+                                : "warning"
+                            }
+                          >
+                            {carrier.features?.includes("api")
+                              ? "API Available"
+                              : "Manual"}
                           </Badge>
                         </td>
-                        <td>${carrier.baseRate?.toFixed(2) || 'N/A'}</td>
-                        <td>{carrier.coverage || 'Domestic'}</td>
+                        <td>${carrier.estimatedCost || "Variable"}</td>
+                        <td>{carrier.coverage || "Turkey"}</td>
                         <td>
                           <div className="btn-group btn-group-sm">
-                            <Button variant="outline-primary" size="sm" title="Edit">
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              title="Edit"
+                            >
                               <i className="fas fa-edit"></i>
                             </Button>
-                            <Button variant="outline-info" size="sm" title="Test API">
-                              <i className="fas fa-plug"></i>
-                            </Button>
-                            <Button variant="outline-secondary" size="sm" title="Settings">
+                            {carrier.features?.includes("api") && (
+                              <Button
+                                variant="outline-info"
+                                size="sm"
+                                title="Test API"
+                                onClick={() => handleTestCarrier(carrier.code)}
+                                disabled={loading}
+                              >
+                                <i className="fas fa-plug"></i>
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline-secondary"
+                              size="sm"
+                              title="Settings"
+                            >
                               <i className="fas fa-cog"></i>
                             </Button>
                           </div>
@@ -278,7 +400,9 @@ const ShippingManagement = () => {
                       type="text"
                       placeholder="Search shipments..."
                       value={filters.search}
-                      onChange={(e) => setFilters({...filters, search: e.target.value})}
+                      onChange={(e) =>
+                        setFilters({ ...filters, search: e.target.value })
+                      }
                     />
                     <Button variant="outline-secondary">
                       <i className="fas fa-search"></i>
@@ -286,9 +410,11 @@ const ShippingManagement = () => {
                   </InputGroup>
                 </Col>
                 <Col md={3}>
-                  <Form.Select 
-                    value={filters.status} 
-                    onChange={(e) => setFilters({...filters, status: e.target.value})}
+                  <Form.Select
+                    value={filters.status}
+                    onChange={(e) =>
+                      setFilters({ ...filters, status: e.target.value })
+                    }
                   >
                     <option value="">All Status</option>
                     <option value="pending">Pending</option>
@@ -298,18 +424,26 @@ const ShippingManagement = () => {
                   </Form.Select>
                 </Col>
                 <Col md={3}>
-                  <Form.Select 
-                    value={filters.carrier} 
-                    onChange={(e) => setFilters({...filters, carrier: e.target.value})}
+                  <Form.Select
+                    value={filters.carrier}
+                    onChange={(e) =>
+                      setFilters({ ...filters, carrier: e.target.value })
+                    }
                   >
                     <option value="">All Carriers</option>
-                    {carriers.map(carrier => (
-                      <option key={carrier.id} value={carrier.id}>{carrier.name}</option>
+                    {carriers.map((carrier) => (
+                      <option key={carrier.id} value={carrier.id}>
+                        {carrier.name}
+                      </option>
                     ))}
                   </Form.Select>
                 </Col>
                 <Col md={2}>
-                  <Button variant="outline-secondary" className="w-100" onClick={fetchData}>
+                  <Button
+                    variant="outline-secondary"
+                    className="w-100"
+                    onClick={fetchData}
+                  >
                     <i className="fas fa-sync-alt me-2"></i>Refresh
                   </Button>
                 </Col>
@@ -319,7 +453,9 @@ const ShippingManagement = () => {
                 <div className="text-center py-5">
                   <i className="fas fa-shipping-fast display-4 text-muted mb-3"></i>
                   <h5 className="text-muted">No shipments found</h5>
-                  <p className="text-muted">Create shipments from orders to track deliveries</p>
+                  <p className="text-muted">
+                    Create shipments from orders to track deliveries
+                  </p>
                 </div>
               ) : (
                 <Table responsive hover>
@@ -345,30 +481,52 @@ const ShippingManagement = () => {
                         <td>
                           <div>
                             <div>{shipment.customerName}</div>
-                            <small className="text-muted">{shipment.shippingAddress?.city}</small>
+                            <small className="text-muted">
+                              {shipment.shippingAddress?.city}
+                            </small>
                           </div>
                         </td>
                         <td>
                           <Badge bg="secondary">{shipment.carrierName}</Badge>
                         </td>
+                        <td>{getStatusBadge(shipment.status)}</td>
                         <td>
-                          {getStatusBadge(shipment.status)}
+                          {shipment.shipDate
+                            ? formatDate(shipment.shipDate)
+                            : "-"}
                         </td>
                         <td>
-                          {shipment.shipDate ? formatDate(shipment.shipDate) : '-'}
-                        </td>
-                        <td>
-                          {shipment.estimatedDelivery ? formatDate(shipment.estimatedDelivery) : '-'}
+                          {shipment.estimatedDelivery
+                            ? formatDate(shipment.estimatedDelivery)
+                            : "-"}
                         </td>
                         <td>
                           <div className="btn-group btn-group-sm">
-                            <Button variant="outline-primary" size="sm" title="Track">
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              title="Track"
+                              onClick={() =>
+                                handleTrackPackage(
+                                  shipment.trackingNumber,
+                                  shipment.carrier
+                                )
+                              }
+                            >
                               <i className="fas fa-map-marker-alt"></i>
                             </Button>
-                            <Button variant="outline-info" size="sm" title="Update">
+                            <Button
+                              variant="outline-info"
+                              size="sm"
+                              title="Update"
+                            >
                               <i className="fas fa-edit"></i>
                             </Button>
-                            <Button variant="outline-secondary" size="sm" title="Label">
+                            <Button
+                              variant="outline-secondary"
+                              size="sm"
+                              title="Label"
+                            >
                               <i className="fas fa-print"></i>
                             </Button>
                           </div>
@@ -386,7 +544,8 @@ const ShippingManagement = () => {
                 <Col md={8}>
                   <Alert variant="info">
                     <i className="fas fa-info-circle me-2"></i>
-                    Shipping rates are automatically calculated based on carrier settings and destination.
+                    Shipping rates are automatically calculated based on carrier
+                    settings and destination.
                   </Alert>
                 </Col>
                 <Col md={4} className="text-end">
@@ -406,18 +565,28 @@ const ShippingManagement = () => {
                       </Card.Header>
                       <Card.Body>
                         <div className="mb-3">
-                          <h4 className="text-primary">${rate.price?.toFixed(2)}</h4>
+                          <h4 className="text-primary">
+                            ${rate.price?.toFixed(2)}
+                          </h4>
                           <small className="text-muted">
                             Delivery: {rate.estimatedDays} business days
                           </small>
                         </div>
                         <div className="mb-2">
-                          <small className="text-muted">Weight limit: {rate.weightLimit}kg</small>
+                          <small className="text-muted">
+                            Weight limit: {rate.weightLimit}kg
+                          </small>
                         </div>
                         <div className="mb-3">
-                          <small className="text-muted">Coverage: {rate.coverage}</small>
+                          <small className="text-muted">
+                            Coverage: {rate.coverage}
+                          </small>
                         </div>
-                        <Button variant="outline-primary" size="sm" className="w-100">
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="w-100"
+                        >
                           Select Rate
                         </Button>
                       </Card.Body>
@@ -430,7 +599,9 @@ const ShippingManagement = () => {
                 <div className="text-center py-5">
                   <i className="fas fa-calculator display-4 text-muted mb-3"></i>
                   <h5 className="text-muted">No rates available</h5>
-                  <p className="text-muted">Configure carriers to see shipping rates</p>
+                  <p className="text-muted">
+                    Configure carriers to see shipping rates
+                  </p>
                 </div>
               )}
             </Tab>
@@ -439,7 +610,11 @@ const ShippingManagement = () => {
       </Card>
 
       {/* Enhanced Add Carrier Modal */}
-      <Modal show={showCarrierModal} onHide={() => setShowCarrierModal(false)} size="lg">
+      <Modal
+        show={showCarrierModal}
+        onHide={() => setShowCarrierModal(false)}
+        size="lg"
+      >
         <Modal.Header closeButton>
           <Modal.Title>Add Shipping Carrier</Modal.Title>
         </Modal.Header>
@@ -449,11 +624,13 @@ const ShippingManagement = () => {
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Carrier Name *</Form.Label>
-                  <Form.Control 
-                    type="text" 
+                  <Form.Control
+                    type="text"
                     placeholder="e.g., FedEx, UPS, DHL"
                     value={newCarrier.name}
-                    onChange={(e) => setNewCarrier({...newCarrier, name: e.target.value})}
+                    onChange={(e) =>
+                      setNewCarrier({ ...newCarrier, name: e.target.value })
+                    }
                     required
                   />
                 </Form.Group>
@@ -461,11 +638,16 @@ const ShippingManagement = () => {
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Carrier Code *</Form.Label>
-                  <Form.Control 
-                    type="text" 
+                  <Form.Control
+                    type="text"
                     placeholder="e.g., FEDEX, UPS, DHL"
                     value={newCarrier.code}
-                    onChange={(e) => setNewCarrier({...newCarrier, code: e.target.value.toUpperCase()})}
+                    onChange={(e) =>
+                      setNewCarrier({
+                        ...newCarrier,
+                        code: e.target.value.toUpperCase(),
+                      })
+                    }
                     required
                   />
                 </Form.Group>
@@ -475,9 +657,11 @@ const ShippingManagement = () => {
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Carrier Type *</Form.Label>
-                  <Form.Select 
+                  <Form.Select
                     value={newCarrier.type}
-                    onChange={(e) => setNewCarrier({...newCarrier, type: e.target.value})}
+                    onChange={(e) =>
+                      setNewCarrier({ ...newCarrier, type: e.target.value })
+                    }
                     required
                   >
                     <option value="">Select type...</option>
@@ -491,32 +675,38 @@ const ShippingManagement = () => {
               <Col md={6}>
                 <Form.Group className="mb-3">
                   <Form.Label>Base Rate ($)</Form.Label>
-                  <Form.Control 
-                    type="number" 
-                    step="0.01" 
+                  <Form.Control
+                    type="number"
+                    step="0.01"
                     placeholder="0.00"
                     value={newCarrier.baseRate}
-                    onChange={(e) => setNewCarrier({...newCarrier, baseRate: e.target.value})}
+                    onChange={(e) =>
+                      setNewCarrier({ ...newCarrier, baseRate: e.target.value })
+                    }
                   />
                 </Form.Group>
               </Col>
             </Row>
             <Form.Group className="mb-3">
               <Form.Label>API Endpoint (Optional)</Form.Label>
-              <Form.Control 
-                type="url" 
+              <Form.Control
+                type="url"
                 placeholder="https://api.carrier.com/v1"
                 value={newCarrier.apiEndpoint}
-                onChange={(e) => setNewCarrier({...newCarrier, apiEndpoint: e.target.value})}
+                onChange={(e) =>
+                  setNewCarrier({ ...newCarrier, apiEndpoint: e.target.value })
+                }
               />
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>API Key (Optional)</Form.Label>
-              <Form.Control 
-                type="password" 
+              <Form.Control
+                type="password"
                 placeholder="Enter API key for rate calculations"
                 value={newCarrier.apiKey}
-                onChange={(e) => setNewCarrier({...newCarrier, apiKey: e.target.value})}
+                onChange={(e) =>
+                  setNewCarrier({ ...newCarrier, apiKey: e.target.value })
+                }
               />
             </Form.Group>
             <Form.Check
@@ -524,37 +714,51 @@ const ShippingManagement = () => {
               id="carrier-active"
               label="Set as active carrier"
               checked={newCarrier.isActive}
-              onChange={(e) => setNewCarrier({...newCarrier, isActive: e.target.checked})}
+              onChange={(e) =>
+                setNewCarrier({ ...newCarrier, isActive: e.target.checked })
+              }
               className="mb-3"
             />
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowCarrierModal(false)}>
+          <Button
+            variant="secondary"
+            onClick={() => setShowCarrierModal(false)}
+          >
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleAddCarrier} disabled={loading}>
+          <Button
+            variant="primary"
+            onClick={handleAddCarrier}
+            disabled={loading}
+          >
             {loading ? (
               <>
                 <Spinner size="sm" className="me-2" />
                 Adding...
               </>
             ) : (
-              'Add Carrier'
+              "Add Carrier"
             )}
           </Button>
         </Modal.Footer>
       </Modal>
 
       {/* Create Shipment Modal */}
-      <Modal show={showCreateShipmentModal} onHide={() => setShowCreateShipmentModal(false)} size="lg">
+      <Modal
+        show={showCreateShipmentModal}
+        onHide={() => setShowCreateShipmentModal(false)}
+        size="lg"
+      >
         <Modal.Header closeButton>
           <Modal.Title>Create New Shipment</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Alert variant="info">
             <i className="fas fa-info-circle me-2"></i>
-            Select orders to create shipments. Orders must be in 'paid' status to be eligible for shipping.
+            Select orders to create shipments. Orders must be in 'paid' status
+            to be eligible for shipping.
           </Alert>
           <Form>
             <Form.Group className="mb-3">
@@ -562,8 +766,15 @@ const ShippingManagement = () => {
               <Form.Control
                 type="text"
                 placeholder="e.g., ORD-001, ORD-002, ORD-003"
-                value={selectedOrders.join(', ')}
-                onChange={(e) => setSelectedOrders(e.target.value.split(',').map(id => id.trim()).filter(id => id))}
+                value={selectedOrders.join(", ")}
+                onChange={(e) =>
+                  setSelectedOrders(
+                    e.target.value
+                      .split(",")
+                      .map((id) => id.trim())
+                      .filter((id) => id)
+                  )
+                }
               />
               <Form.Text className="text-muted">
                 Enter order IDs separated by commas
@@ -573,9 +784,13 @@ const ShippingManagement = () => {
               <Form.Label>Carrier</Form.Label>
               <Form.Select required>
                 <option value="">Select carrier...</option>
-                {carriers.filter(c => c.isActive).map(carrier => (
-                  <option key={carrier.id} value={carrier.id}>{carrier.name}</option>
-                ))}
+                {carriers
+                  .filter((c) => c.isActive)
+                  .map((carrier) => (
+                    <option key={carrier.id} value={carrier.id}>
+                      {carrier.name}
+                    </option>
+                  ))}
               </Form.Select>
             </Form.Group>
             <Form.Group className="mb-3">
@@ -589,11 +804,14 @@ const ShippingManagement = () => {
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowCreateShipmentModal(false)}>
+          <Button
+            variant="secondary"
+            onClick={() => setShowCreateShipmentModal(false)}
+          >
             Cancel
           </Button>
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={() => handleCreateShipment(selectedOrders)}
             disabled={loading || selectedOrders.length === 0}
           >
@@ -603,7 +821,7 @@ const ShippingManagement = () => {
                 Creating...
               </>
             ) : (
-              'Create Shipment'
+              "Create Shipment"
             )}
           </Button>
         </Modal.Footer>

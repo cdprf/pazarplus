@@ -4,15 +4,38 @@ const logger = require("../utils/logger");
 /**
  * Redis Cache Service
  * Provides caching functionality for platform data, orders, and frequently accessed resources
+ * Falls back to in-memory cache when Redis is unavailable
  */
 class CacheService {
   constructor() {
     this.client = null;
     this.isConnected = false;
     this.defaultTTL = 3600; // 1 hour default TTL
+    this.fallbackCache = new Map(); // In-memory fallback
+    this.connectionAttempts = 0;
+    this.maxConnectionAttempts = 3;
+    this.lastConnectionAttempt = 0;
+    this.reconnectInterval = 30000; // 30 seconds between attempts
   }
 
   async connect() {
+    const now = Date.now();
+
+    // Don't attempt connection if we've reached max attempts and haven't waited long enough
+    if (
+      this.connectionAttempts >= this.maxConnectionAttempts &&
+      now - this.lastConnectionAttempt < this.reconnectInterval
+    ) {
+      return false;
+    }
+
+    // Reset attempts after waiting period
+    if (now - this.lastConnectionAttempt >= this.reconnectInterval) {
+      this.connectionAttempts = 0;
+    }
+
+    this.lastConnectionAttempt = now;
+
     try {
       this.client = Redis.createClient({
         host: process.env.REDIS_HOST || "localhost",
@@ -21,33 +44,34 @@ class CacheService {
         db: process.env.REDIS_DB || 0,
         retryDelayOnFailover: 100,
         enableReadyCheck: true,
-        maxRetriesPerRequest: 3,
+        maxRetriesPerRequest: 1, // Reduced from 3
         lazyConnect: true,
+        connectTimeout: 3000, // Reduced from 5000
       });
 
       this.client.on("error", (err) => {
-        logger.error("Redis Client Error:", err);
+        if (this.connectionAttempts === 0) {
+          logger.warn("Redis unavailable, using in-memory cache fallback");
+        }
         this.isConnected = false;
+        this.connectionAttempts++;
       });
 
       this.client.on("connect", () => {
-        logger.info("Redis Client Connected");
+        logger.info("Redis cache connected successfully");
         this.isConnected = true;
-      });
-
-      this.client.on("reconnecting", () => {
-        logger.info("Redis Client Reconnecting");
+        this.connectionAttempts = 0;
       });
 
       await this.client.connect();
-
-      // Test the connection
       await this.client.ping();
       logger.info("Redis cache service initialized successfully");
-
       return true;
     } catch (error) {
-      logger.error("Failed to connect to Redis:", error);
+      this.connectionAttempts++;
+      if (this.connectionAttempts === 1) {
+        logger.warn("Redis not available, using fallback cache");
+      }
       this.isConnected = false;
       return false;
     }
@@ -63,43 +87,71 @@ class CacheService {
         logger.error("Error closing Redis connection:", error);
       }
     }
+    this.fallbackCache.clear();
   }
 
-  // Generic cache operations
+  // Generic cache operations with fallback
   async get(key) {
-    if (!this.isConnected) return null;
-
-    try {
-      const value = await this.client.get(key);
-      return value ? JSON.parse(value) : null;
-    } catch (error) {
-      logger.error(`Cache get error for key ${key}:`, error);
-      return null;
+    if (this.isConnected && this.client) {
+      try {
+        const value = await this.client.get(key);
+        return value ? JSON.parse(value) : null;
+      } catch (error) {
+        logger.warn(
+          `Redis get error for key ${key}, using fallback:`,
+          error.message
+        );
+        this.isConnected = false;
+      }
     }
+
+    // Fallback to in-memory cache
+    const fallbackValue = this.fallbackCache.get(key);
+    if (fallbackValue && fallbackValue.expires > Date.now()) {
+      return fallbackValue.data;
+    } else if (fallbackValue) {
+      this.fallbackCache.delete(key);
+    }
+    return null;
   }
 
   async set(key, value, ttl = this.defaultTTL) {
-    if (!this.isConnected) return false;
+    const serializedValue = JSON.stringify(value);
 
-    try {
-      await this.client.setex(key, ttl, JSON.stringify(value));
-      return true;
-    } catch (error) {
-      logger.error(`Cache set error for key ${key}:`, error);
-      return false;
+    if (this.isConnected && this.client) {
+      try {
+        await this.client.setEx(key, ttl, serializedValue);
+        return true;
+      } catch (error) {
+        logger.warn(
+          `Redis set error for key ${key}, using fallback:`,
+          error.message
+        );
+        this.isConnected = false;
+      }
     }
+
+    // Fallback to in-memory cache
+    this.fallbackCache.set(key, {
+      data: value,
+      expires: Date.now() + ttl * 1000,
+    });
+    return true;
   }
 
   async del(key) {
-    if (!this.isConnected) return false;
-
-    try {
-      await this.client.del(key);
-      return true;
-    } catch (error) {
-      logger.error(`Cache delete error for key ${key}:`, error);
-      return false;
+    if (this.isConnected && this.client) {
+      try {
+        await this.client.del(key);
+      } catch (error) {
+        logger.warn(`Redis del error for key ${key}:`, error.message);
+        this.isConnected = false;
+      }
     }
+
+    // Also remove from fallback cache
+    this.fallbackCache.delete(key);
+    return true;
   }
 
   async exists(key) {
@@ -277,26 +329,37 @@ class CacheService {
 
   // Cache statistics and monitoring
   async getCacheStats() {
-    if (!this.isConnected) return null;
+    const stats = {
+      isConnected: this.isConnected,
+      fallbackCacheSize: this.fallbackCache.size,
+      connectionAttempts: this.connectionAttempts,
+    };
 
-    try {
-      const info = await this.client.info("memory");
-      const keyspace = await this.client.info("keyspace");
-
-      return {
-        memory: info,
-        keyspace: keyspace,
-        isConnected: this.isConnected,
-      };
-    } catch (error) {
-      logger.error("Error getting cache stats:", error);
-      return null;
+    if (this.isConnected && this.client) {
+      try {
+        const info = await this.client.info("memory");
+        const keyspace = await this.client.info("keyspace");
+        stats.memory = info;
+        stats.keyspace = keyspace;
+      } catch (error) {
+        logger.warn("Error getting Redis cache stats:", error.message);
+        this.isConnected = false;
+      }
     }
+
+    return stats;
   }
 
   // Health check
   async healthCheck() {
-    if (!this.isConnected) return false;
+    if (!this.isConnected) {
+      return {
+        status: "degraded",
+        message: "Using fallback cache",
+        isConnected: false,
+        fallbackCacheSize: this.fallbackCache.size,
+      };
+    }
 
     try {
       const start = Date.now();
@@ -307,13 +370,16 @@ class CacheService {
         status: "healthy",
         latency: `${latency}ms`,
         isConnected: this.isConnected,
+        fallbackCacheSize: this.fallbackCache.size,
       };
     } catch (error) {
       logger.error("Cache health check failed:", error);
+      this.isConnected = false;
       return {
         status: "unhealthy",
         error: error.message,
         isConnected: false,
+        fallbackCacheSize: this.fallbackCache.size,
       };
     }
   }

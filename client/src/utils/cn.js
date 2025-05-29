@@ -2,10 +2,11 @@ import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 /**
- * Utility function for combining class names with proper Tailwind CSS merging
- * @param {...any} inputs - Class names to combine
- * @returns {string} - Combined and merged class names
+ * Utility function to conditionally join classNames
+ * Combines clsx for conditional classes and tailwind-merge for deduplication
  */
 export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
+
+export default cn;

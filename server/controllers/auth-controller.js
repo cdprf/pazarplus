@@ -5,13 +5,71 @@ const { User } = require("../models");
 const logger = require("../utils/logger");
 const config = require("../config/config");
 
-// Generate JWT Token with enhanced debugging
-const generateToken = (id) => {
+// Utility function to safely serialize data and prevent circular references
+const safeJsonResponse = (data) => {
+  try {
+    // If data is a Sequelize instance, convert to plain object
+    if (data && typeof data.get === "function") {
+      data = data.get({ plain: true });
+    }
+
+    // If data is an array, process each item
+    if (Array.isArray(data)) {
+      return data.map((item) => safeJsonResponse(item));
+    }
+
+    // If data is an object, process recursively
+    if (data && typeof data === "object") {
+      const serialized = {};
+      for (const [key, value] of Object.entries(data)) {
+        // Skip circular reference properties and sensitive data
+        if (
+          key === "user" ||
+          key === "User" ||
+          key === "dataValues" ||
+          key === "_previousDataValues" ||
+          key === "password" ||
+          key === "token"
+        ) {
+          continue;
+        }
+
+        if (value && typeof value === "object") {
+          if (typeof value.get === "function") {
+            // Sequelize instance
+            serialized[key] = value.get({ plain: true });
+          } else if (Array.isArray(value)) {
+            // Array of potentially Sequelize instances
+            serialized[key] = value.map((item) =>
+              item && typeof item.get === "function"
+                ? item.get({ plain: true })
+                : item
+            );
+          } else {
+            // Regular object - recursively serialize but limit depth
+            serialized[key] = safeJsonResponse(value);
+          }
+        } else {
+          serialized[key] = value;
+        }
+      }
+      return serialized;
+    }
+
+    return data;
+  } catch (error) {
+    logger.error("Error serializing data for JSON response:", error);
+    return { error: "Failed to serialize data", type: typeof data };
+  }
+};
+
+// Generate JWT Token with enhanced debugging and tenant support
+const generateToken = (user) => {
   try {
     // Validate inputs
-    if (!id) {
-      logger.error("Token generation failed: No user ID provided");
-      throw new Error("User ID is required for token generation");
+    if (!user || !user.id) {
+      logger.error("Token generation failed: No user or user ID provided");
+      throw new Error("User is required for token generation");
     }
 
     if (!config.jwt.secret) {
@@ -21,36 +79,44 @@ const generateToken = (id) => {
 
     // Log token generation attempt
     logger.debug("Generating JWT token", {
-      userId: id,
+      userId: user.id,
       secretExists: !!config.jwt.secret,
       secretLength: config.jwt.secret?.length,
       expiresIn: config.jwt.expiresIn,
+      tenantId: user.tenantId,
     });
 
-    const token = jwt.sign(
-      {
-        id,
-        iat: Math.floor(Date.now() / 1000), // Issued at time
-      },
-      config.jwt.secret,
-      {
-        expiresIn: config.jwt.expiresIn,
-        issuer: "pazar-plus",
-        audience: "pazar-plus-client",
-      }
-    );
+    // Enhanced token payload with tenant information
+    const payload = {
+      id: user.id,
+      iat: Math.floor(Date.now() / 1000), // Issued at time
+      // Include tenant ID for multi-tenant support
+      tenantId: user.tenantId,
+      // Include subscription plan for feature gating
+      subscriptionPlan: user.subscriptionPlan,
+      // Include user role for authorization
+      role: user.role,
+    };
+
+    const token = jwt.sign(payload, config.jwt.secret, {
+      expiresIn: config.jwt.expiresIn,
+      issuer: "pazar-plus",
+      audience: "pazar-plus-client",
+    });
 
     // Verify the token was created correctly
     try {
       const decoded = jwt.verify(token, config.jwt.secret);
       logger.debug("Token generated and verified successfully", {
-        userId: id,
+        userId: user.id,
         tokenLength: token.length,
         expiresAt: new Date(decoded.exp * 1000).toISOString(),
+        tenantId: decoded.tenantId,
+        subscriptionPlan: decoded.subscriptionPlan,
       });
     } catch (verifyError) {
       logger.error("Generated token failed verification", {
-        userId: id,
+        userId: user.id,
         error: verifyError.message,
       });
       throw new Error("Generated token is invalid");
@@ -59,7 +125,7 @@ const generateToken = (id) => {
     return token;
   } catch (error) {
     logger.error("Token generation error", {
-      userId: id,
+      userId: user?.id,
       error: error.message,
       stack: error.stack,
     });
@@ -77,12 +143,20 @@ const generateResetToken = () => {
   return crypto.randomBytes(32).toString("hex");
 };
 
-// Register user
+// Register user with enhanced multi-tenant support
 const register = async (req, res) => {
   try {
-    const { username, email, password, fullName } = req.body;
+    const {
+      username,
+      email,
+      password,
+      fullName,
+      companyName,
+      businessType,
+      monthlyRevenue,
+    } = req.body;
 
-    // Validate required fields
+    // Enhanced input validation
     if (!username || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -90,37 +164,64 @@ const register = async (req, res) => {
       });
     }
 
-    // Check if user exists by email
-    const userExistsByEmail = await User.findOne({ where: { email } });
-    if (userExistsByEmail) {
+    // Check if user already exists
+    const existingUser = await User.findOne({
+      where: { email },
+    });
+
+    if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: "User with this email already exists",
+        message: "User already exists with this email",
       });
     }
 
-    // Check if user exists by username
-    const userExistsByUsername = await User.findOne({ where: { username } });
-    if (userExistsByUsername) {
-      return res.status(400).json({
-        success: false,
-        message: "Username already taken",
-      });
-    }
-
-    // Hash password with stronger salt rounds
+    // Hash password with increased salt rounds for better security
     const salt = await bcrypt.genSalt(12); // Increased from 10 to 12 for better security
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create user
+    // Generate unique referral code
+    const referralCode = crypto.randomBytes(4).toString("hex").toUpperCase();
+
+    // Create user with enhanced multi-tenant fields
     const user = await User.create({
       username,
       email,
       password: hashedPassword,
       fullName: fullName || "",
+      companyName,
+      businessType,
+      monthlyRevenue,
+      referralCode,
+      // Trial setup - user starts with trial by default
+      subscriptionPlan: "trial",
+      subscriptionStatus: "trial",
+      onboardingStep: 1, // Start onboarding process
+      // Set trial period (14 days)
+      trialStartedAt: new Date(),
+      trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      // Initial feature access
+      featuresEnabled: {
+        analytics: true,
+        inventory_management: true,
+        multi_platform: false,
+        ai_insights: false,
+        custom_reports: false,
+        api_access: false,
+      },
     });
 
-    const token = generateToken(user.id);
+    // Generate tenant-aware token
+    const token = generateToken(user);
+
+    // Log successful registration
+    logger.info("User registered successfully", {
+      userId: user.id,
+      username: user.username,
+      email: user.email,
+      subscriptionPlan: user.subscriptionPlan,
+      referralCode: user.referralCode,
+    });
 
     res.status(201).json({
       success: true,
@@ -131,6 +232,13 @@ const register = async (req, res) => {
         username: user.username,
         email: user.email,
         fullName: user.fullName,
+        companyName: user.companyName,
+        subscriptionPlan: user.subscriptionPlan,
+        subscriptionStatus: user.subscriptionStatus,
+        trialEndsAt: user.trialEndsAt,
+        onboardingStep: user.onboardingStep,
+        featuresEnabled: user.featuresEnabled,
+        referralCode: user.referralCode,
       },
     });
   } catch (error) {
@@ -142,7 +250,7 @@ const register = async (req, res) => {
   }
 };
 
-// Login user
+// Login user with enhanced multi-tenant support
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -151,39 +259,71 @@ const login = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Please provide email and password",
+        message: "Email and password are required",
       });
     }
 
-    // Check for user - need to include password for comparison
-    const user = await User.scope("withPassword").findOne({ where: { email } });
+    // Find user with password (using scope to include password field)
+    const user = await User.scope("withPassword").findOne({
+      where: { email },
+    });
+
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid credentials",
+        message: "Invalid email or password",
       });
     }
 
-    // Check password
+    // Check if password matches
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: "Invalid credentials",
+        message: "Invalid email or password",
       });
     }
 
-    const token = generateToken(user.id);
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: "Account is deactivated. Please contact support.",
+      });
+    }
+
+    // Update last login time and activity
+    await user.update({
+      lastLogin: new Date(),
+      lastActivityAt: new Date(),
+    });
+
+    // Generate tenant-aware token
+    const token = generateToken(user);
+
+    // Remove password from response
+    const userResponse = { ...user.toJSON() };
+    delete userResponse.password;
+
+    // Log successful login
+    logger.info("User logged in successfully", {
+      userId: user.id,
+      email: user.email,
+      subscriptionPlan: user.subscriptionPlan,
+      tenantId: user.tenantId,
+      lastLogin: user.lastLogin,
+    });
 
     res.json({
       success: true,
       message: "Login successful",
       token,
       user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        fullName: user.fullName,
+        ...userResponse,
+        // Include subscription status for frontend
+        isTrialExpired: user.trialEndsAt && new Date() > user.trialEndsAt,
+        trialDaysRemaining: user.getTrialDaysRemaining(),
+        needsOnboarding: !user.onboardingCompleted,
       },
     });
   } catch (error) {
@@ -195,44 +335,106 @@ const login = async (req, res) => {
   }
 };
 
-// Get user profile
+// Get current user profile with subscription info
 const getProfile = async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.id, {
-      attributes: { exclude: ["password", "twoFactorSecret"] },
+    const user = req.user;
+
+    // Get user with subscription information
+    const userWithSubscription = await User.findByPk(user.id, {
+      include: [
+        {
+          association: "subscriptions",
+          where: {
+            status: ["trial", "active"],
+          },
+          required: false,
+          limit: 1,
+          order: [["createdAt", "DESC"]],
+        },
+        {
+          association: "usageRecords",
+          where: {
+            billingPeriodStart: { [require("sequelize").Op.lte]: new Date() },
+            billingPeriodEnd: { [require("sequelize").Op.gte]: new Date() },
+          },
+          required: false,
+        },
+      ],
     });
 
-    if (!user) {
+    // Calculate usage statistics
+    const usageStats = {};
+    if (userWithSubscription.usageRecords) {
+      for (const record of userWithSubscription.usageRecords) {
+        usageStats[record.metricType] = {
+          current: record.currentUsage,
+          limit: record.limit,
+          percentage: record.getUsagePercentage(),
+          isOverLimit: record.isOverLimit(),
+        };
+      }
+    }
+
+    res.json({
+      success: true,
+      user: safeJsonResponse({
+        ...userWithSubscription.toJSON(),
+        // Enhanced profile information
+        isTrialExpired: user.trialEndsAt && new Date() > user.trialEndsAt,
+        trialDaysRemaining: user.getTrialDaysRemaining(),
+        needsOnboarding: !user.onboardingCompleted,
+        currentSubscription: userWithSubscription.subscriptions?.[0] || null,
+        usageStats,
+      }),
+    });
+  } catch (error) {
+    logger.error(`Get profile error: ${error.message}`, { error });
+    res.status(500).json({
+      success: false,
+      message: "Failed to get user profile",
+    });
+  }
+};
+
+// Update user profile
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { fullName, companyName, businessType, monthlyRevenue } = req.body;
+
+    const updateData = {};
+    if (fullName !== undefined) updateData.fullName = fullName;
+    if (companyName !== undefined) updateData.companyName = companyName;
+    if (businessType !== undefined) updateData.businessType = businessType;
+    if (monthlyRevenue !== undefined)
+      updateData.monthlyRevenue = monthlyRevenue;
+
+    const [updatedCount] = await User.update(updateData, {
+      where: { id: userId },
+    });
+
+    if (updatedCount === 0) {
       return res.status(404).json({
         success: false,
         message: "User not found",
       });
     }
 
+    const updatedUser = await User.findByPk(userId);
+
     res.json({
       success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        fullName: user.fullName,
-      },
+      message: "Profile updated successfully",
+      user: updatedUser,
     });
   } catch (error) {
-    logger.error(`Get profile error: ${error.message}`, { error });
+    logger.error(`Update profile error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: "Server error",
+      message: "Failed to update profile",
     });
   }
-};
-
-// Logout user
-const logout = async (req, res) => {
-  res.json({
-    success: true,
-    message: "Logged out successfully",
-  });
 };
 
 // Forgot password
@@ -249,36 +451,33 @@ const forgotPassword = async (req, res) => {
 
     const user = await User.findOne({ where: { email } });
 
-    // Always return success for security (don't reveal if email exists)
     if (!user) {
+      // Don't reveal if email exists or not
       return res.json({
         success: true,
-        message:
-          "If an account with that email exists, a password reset link has been sent",
+        message: "If the email exists, a reset link has been sent",
       });
     }
 
     // Generate reset token
     const resetToken = generateResetToken();
-    const resetTokenHash = crypto
-      .createHash("sha256")
-      .update(resetToken)
-      .digest("hex");
+    const resetExpires = new Date(Date.now() + 3600000); // 1 hour
 
-    // Set reset token and expiry (10 minutes)
     await user.update({
-      passwordResetToken: resetTokenHash,
-      passwordResetExpires: new Date(Date.now() + 10 * 60 * 1000),
+      passwordResetToken: resetToken,
+      passwordResetExpires: resetExpires,
     });
 
     // TODO: Send email with reset link
-    // For now, we'll log the token (in production, send email)
-    logger.info(`Password reset token for ${email}: ${resetToken}`);
+    logger.info("Password reset requested", {
+      userId: user.id,
+      email: user.email,
+      resetToken: resetToken.substring(0, 8) + "...",
+    });
 
     res.json({
       success: true,
-      message:
-        "If an account with that email exists, a password reset link has been sent",
+      message: "If the email exists, a reset link has been sent",
     });
   } catch (error) {
     logger.error(`Forgot password error: ${error.message}`, { error });
@@ -292,28 +491,19 @@ const forgotPassword = async (req, res) => {
 // Reset password
 const resetPassword = async (req, res) => {
   try {
-    const { token, password } = req.body;
+    const { token, newPassword } = req.body;
 
-    if (!token || !password) {
+    if (!token || !newPassword) {
       return res.status(400).json({
         success: false,
         message: "Token and new password are required",
       });
     }
 
-    // Hash the token to compare with stored hash
-    const resetTokenHash = crypto
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
-
-    // Find user with valid reset token
-    const user = await User.scope("withPassword").findOne({
+    const user = await User.findOne({
       where: {
-        passwordResetToken: resetTokenHash,
-        passwordResetExpires: {
-          [require("sequelize").Op.gt]: new Date(),
-        },
+        passwordResetToken: token,
+        passwordResetExpires: { [require("sequelize").Op.gt]: new Date() },
       },
     });
 
@@ -324,15 +514,19 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    // Hash new password with stronger salt rounds
-    const salt = await bcrypt.genSalt(12); // Increased from 10 to 12 for better security
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // Hash new password
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    // Update password and clear reset token
     await user.update({
       password: hashedPassword,
       passwordResetToken: null,
       passwordResetExpires: null,
+    });
+
+    logger.info("Password reset successful", {
+      userId: user.id,
+      email: user.email,
     });
 
     res.json({
@@ -360,50 +554,33 @@ const verifyEmail = async (req, res) => {
       });
     }
 
-    // Hash the token to compare with stored hash
-    const verificationTokenHash = crypto
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
-
-    // Find user with valid verification token
     const user = await User.findOne({
       where: {
-        emailVerificationToken: verificationTokenHash,
-        emailVerificationExpires: {
-          [require("sequelize").Op.gt]: new Date(),
-        },
+        emailVerificationToken: token,
       },
     });
 
     if (!user) {
       return res.status(400).json({
         success: false,
-        message: "Invalid or expired verification token",
+        message: "Invalid verification token",
       });
     }
 
-    // Update user as verified and clear verification token
     await user.update({
-      emailVerified: true,
-      isActive: true,
+      isEmailVerified: true,
       emailVerificationToken: null,
-      emailVerificationExpires: null,
+      emailVerifiedAt: new Date(),
     });
 
-    // Generate auth token for immediate login
-    const authToken = generateToken(user.id);
+    logger.info("Email verified successfully", {
+      userId: user.id,
+      email: user.email,
+    });
 
     res.json({
       success: true,
       message: "Email verified successfully",
-      accessToken: authToken,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        fullName: user.fullName,
-      },
     });
   } catch (error) {
     logger.error(`Email verification error: ${error.message}`, { error });
@@ -435,7 +612,7 @@ const resendVerification = async (req, res) => {
       });
     }
 
-    if (user.emailVerified) {
+    if (user.isEmailVerified) {
       return res.status(400).json({
         success: false,
         message: "Email is already verified",
@@ -444,30 +621,27 @@ const resendVerification = async (req, res) => {
 
     // Generate new verification token
     const verificationToken = generateVerificationToken();
-    const verificationTokenHash = crypto
-      .createHash("sha256")
-      .update(verificationToken)
-      .digest("hex");
 
-    // Update user with new verification token (24 hours expiry)
     await user.update({
-      emailVerificationToken: verificationTokenHash,
-      emailVerificationExpires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      emailVerificationToken: verificationToken,
     });
 
     // TODO: Send verification email
-    // For now, we'll log the token (in production, send email)
-    logger.info(`Email verification token for ${email}: ${verificationToken}`);
+    logger.info("Verification email resent", {
+      userId: user.id,
+      email: user.email,
+      token: verificationToken.substring(0, 8) + "...",
+    });
 
     res.json({
       success: true,
-      message: "Verification email sent successfully",
+      message: "Verification email sent",
     });
   } catch (error) {
     logger.error(`Resend verification error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: "Server error during verification email resend",
+      message: "Server error during verification resend",
     });
   }
 };
@@ -475,6 +649,7 @@ const resendVerification = async (req, res) => {
 // Change password
 const changePassword = async (req, res) => {
   try {
+    const userId = req.user.id;
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
@@ -485,7 +660,7 @@ const changePassword = async (req, res) => {
     }
 
     // Get user with password
-    const user = await User.scope("withPassword").findByPk(req.user.id);
+    const user = await User.scope("withPassword").findByPk(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -503,13 +678,17 @@ const changePassword = async (req, res) => {
       });
     }
 
-    // Hash new password with stronger salt rounds
-    const salt = await bcrypt.genSalt(12); // Increased from 10 to 12 for better security
+    // Hash new password
+    const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    // Update password
     await user.update({
       password: hashedPassword,
+    });
+
+    logger.info("Password changed successfully", {
+      userId: user.id,
+      email: user.email,
     });
 
     res.json({
@@ -525,14 +704,51 @@ const changePassword = async (req, res) => {
   }
 };
 
+// Logout
+const logout = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Update last activity
+    await User.update(
+      {
+        lastActivityAt: new Date(),
+      },
+      {
+        where: { id: userId },
+      }
+    );
+
+    logger.info("User logged out", {
+      userId: userId,
+    });
+
+    res.json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    logger.error(`Logout error: ${error.message}`, { error });
+    res.status(500).json({
+      success: false,
+      message: "Server error during logout",
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   getProfile,
-  logout,
+  updateProfile,
   forgotPassword,
   resetPassword,
   verifyEmail,
   resendVerification,
   changePassword,
+  logout,
+  generateToken,
+  generateVerificationToken,
+  generateResetToken,
+  safeJsonResponse,
 };

@@ -48,10 +48,25 @@ const auth = async (req, res, next) => {
       userId: decoded.id,
       tokenExp: decoded.exp,
       tokenIat: decoded.iat,
+      // Include tenant info if present
+      tenantId: decoded.tenantId || null,
     });
 
-    // Find user
-    const user = await User.findByPk(decoded.id);
+    // Find user with subscription information
+    const user = await User.findByPk(decoded.id, {
+      include: [
+        {
+          association: "subscriptions",
+          where: {
+            status: ["trial", "active"],
+          },
+          required: false,
+          limit: 1,
+          order: [["createdAt", "DESC"]],
+        },
+      ],
+    });
+
     if (!user) {
       logger.warn("Authentication failed: User not found", {
         userId: decoded.id,
@@ -75,11 +90,21 @@ const auth = async (req, res, next) => {
       });
     }
 
-    // Add user to request
+    // Add user and subscription info to request
     req.user = user;
+    req.subscription = user.subscriptions?.[0] || null;
+    req.tenantId = decoded.tenantId || user.tenantId;
+
+    // Update last activity
+    user.update({ lastActivityAt: new Date() }).catch((err) => {
+      logger.warn("Failed to update last activity:", err.message);
+    });
+
     logger.debug("Authentication successful", {
       userId: user.id,
       userEmail: user.email,
+      subscriptionPlan: user.subscriptionPlan,
+      tenantId: req.tenantId,
       url: req.url,
     });
 
@@ -169,6 +194,103 @@ const auth = async (req, res, next) => {
 };
 
 /**
+ * Feature gating middleware - checks if user has access to specific features
+ */
+const requireFeature = (featureName) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+        });
+      }
+
+      // Check if user has access to the feature
+      const hasAccess = req.user.hasFeatureAccess(featureName);
+
+      if (!hasAccess) {
+        logger.warn("Feature access denied", {
+          userId: req.user.id,
+          feature: featureName,
+          subscriptionPlan: req.user.subscriptionPlan,
+          url: req.url,
+        });
+
+        return res.status(403).json({
+          success: false,
+          message: `This feature requires a higher subscription plan`,
+          requiredFeature: featureName,
+          currentPlan: req.user.subscriptionPlan,
+          upgradeRequired: true,
+        });
+      }
+
+      next();
+    } catch (error) {
+      logger.error("Feature gate error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to check feature access",
+      });
+    }
+  };
+};
+
+/**
+ * Usage limit middleware - checks if user has exceeded usage limits
+ */
+const checkUsageLimit = (metricType) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user || !req.subscription) {
+        return next(); // Skip if no subscription
+      }
+
+      const { trackUsage } = require("../controllers/subscription-controller");
+
+      // Track this API call
+      await trackUsage(req.user.id, metricType);
+
+      // Check current usage against limits
+      const currentMonth = new Date();
+      const usageRecord = await req.user.getUsageRecords({
+        where: {
+          metricType,
+          billingPeriodStart: { [require("sequelize").Op.lte]: currentMonth },
+          billingPeriodEnd: { [require("sequelize").Op.gte]: currentMonth },
+        },
+      });
+
+      if (usageRecord.length > 0 && usageRecord[0].isOverLimit()) {
+        logger.warn("Usage limit exceeded", {
+          userId: req.user.id,
+          metricType,
+          currentUsage: usageRecord[0].currentUsage,
+          limit: usageRecord[0].limit,
+        });
+
+        return res.status(429).json({
+          success: false,
+          message: `Monthly ${metricType} limit exceeded`,
+          usage: {
+            current: usageRecord[0].currentUsage,
+            limit: usageRecord[0].limit,
+            resetDate: usageRecord[0].billingPeriodEnd,
+          },
+          upgradeRequired: true,
+        });
+      }
+
+      next();
+    } catch (error) {
+      logger.error("Usage limit check error:", error);
+      next(); // Continue on error to avoid blocking the request
+    }
+  };
+};
+
+/**
  * Admin-only middleware
  */
 const adminAuth = async (req, res, next) => {
@@ -209,6 +331,7 @@ const optionalAuth = async (req, res, next) => {
     const user = await User.findByPk(decoded.id);
 
     req.user = user && user.isActive ? user : null;
+    req.tenantId = decoded.tenantId || user?.tenantId;
     next();
   } catch (error) {
     // For optional auth, we just continue without user
@@ -217,7 +340,36 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
-module.exports = auth; // Export auth as default
-module.exports.auth = auth; // Named export
-module.exports.adminAuth = adminAuth; // Named export
-module.exports.optionalAuth = optionalAuth; // Named export
+/**
+ * Tenant isolation middleware - ensures users can only access their tenant's data
+ */
+const requireTenant = async (req, res, next) => {
+  try {
+    if (!req.user || !req.tenantId) {
+      return res.status(403).json({
+        success: false,
+        message: "Tenant access required",
+      });
+    }
+
+    // Add tenant filter to all database queries
+    req.tenantFilter = { tenantId: req.tenantId };
+
+    next();
+  } catch (error) {
+    logger.error("Tenant middleware error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Tenant validation error",
+    });
+  }
+};
+
+module.exports = {
+  auth,
+  adminAuth,
+  optionalAuth,
+  requireFeature,
+  checkUsageLimit,
+  requireTenant,
+};

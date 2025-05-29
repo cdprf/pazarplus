@@ -4,6 +4,37 @@ const helmet = require("helmet");
 const cacheService = require("../services/cache-service");
 const logger = require("../utils/logger");
 
+// Development user whitelist - emails that should bypass rate limiting
+const DEV_USER_WHITELIST = [
+  "dev@pazarplus.com",
+  "admin@pazarplus.com",
+  "test@pazarplus.com",
+  "ahmed@pazarplus.com", // Add your dev email here
+];
+
+// Helper function to check if user should skip rate limiting
+const shouldSkipRateLimit = (req) => {
+  // Always skip in development environment
+  if (process.env.NODE_ENV === "development") {
+    return true;
+  }
+
+  // Skip for whitelisted dev users
+  if (
+    req.user?.email &&
+    DEV_USER_WHITELIST.includes(req.user.email.toLowerCase())
+  ) {
+    return true;
+  }
+
+  // Skip for health checks and metrics
+  if (req.path === "/health" || req.path === "/metrics") {
+    return true;
+  }
+
+  return false;
+};
+
 /**
  * Enhanced Rate Limiting Middleware
  * Provides multi-tier rate limiting with Redis-backed persistence
@@ -13,7 +44,7 @@ class RateLimitService {
   static createAPILimiter() {
     return rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 1000, // limit each IP to 1000 requests per windowMs
+      max: process.env.NODE_ENV === "development" ? 10000 : 1000, // Very high limit for dev
       message: {
         error: "Too many requests from this IP, please try again later.",
         retryAfter: "15 minutes",
@@ -21,8 +52,7 @@ class RateLimitService {
       standardHeaders: true,
       legacyHeaders: false,
       skip: (req) => {
-        // Skip rate limiting for health checks and internal services
-        return req.path === "/health" || req.path === "/metrics";
+        return shouldSkipRateLimit(req);
       },
       keyGenerator: (req) => {
         // Use user ID if authenticated, otherwise IP
@@ -36,11 +66,14 @@ class RateLimitService {
   static createPlatformLimiter() {
     return rateLimit({
       windowMs: 60 * 1000, // 1 minute
-      max: 60, // 60 requests per minute per platform connection
+      max: process.env.NODE_ENV === "development" ? 1000 : 60, // Much higher for dev
       message: {
         error:
           "Platform API rate limit exceeded. Please wait before making more requests.",
         retryAfter: "1 minute",
+      },
+      skip: (req) => {
+        return shouldSkipRateLimit(req);
       },
       keyGenerator: (req) => {
         const connectionId = req.params.id || req.body.connectionId;
@@ -50,16 +83,23 @@ class RateLimitService {
     });
   }
 
-  // Authentication Rate Limiting - Very restrictive
+  // Authentication Rate Limiting - Less restrictive for development
   static createAuthLimiter() {
     return rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 5, // limit each IP to 5 requests per windowMs
+      max: process.env.NODE_ENV === "development" ? 1000 : 50, // Much higher for dev
       message: {
         error: "Too many authentication attempts, please try again later.",
         retryAfter: "15 minutes",
       },
       skipSuccessfulRequests: true,
+      skip: (req) => {
+        return (
+          shouldSkipRateLimit(req) ||
+          (req.path === "/api/auth/me" &&
+            process.env.NODE_ENV === "development")
+        );
+      },
       keyGenerator: (req) => {
         return req.ip + ":" + (req.body.email || req.body.username || "");
       },
@@ -71,10 +111,13 @@ class RateLimitService {
   static createSyncLimiter() {
     return rateLimit({
       windowMs: 5 * 60 * 1000, // 5 minutes
-      max: 10, // 10 sync requests per 5 minutes
+      max: process.env.NODE_ENV === "development" ? 1000 : 10, // Much higher for dev
       message: {
         error: "Sync rate limit exceeded. Please wait before syncing again.",
         retryAfter: "5 minutes",
+      },
+      skip: (req) => {
+        return shouldSkipRateLimit(req);
       },
       keyGenerator: (req) => {
         return `sync:${req.user?.id}`;
@@ -87,11 +130,24 @@ class RateLimitService {
   static createSpeedLimiter() {
     return slowDown({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      delayAfter: 100, // allow 100 requests per windowMs without delay
-      delayMs: 500, // add 500ms delay per request after delayAfter
-      maxDelayMs: 20000, // max delay of 20 seconds
+      delayAfter: process.env.NODE_ENV === "development" ? 10000 : 100, // Much higher threshold for dev
+      delayMs: (used, req) => {
+        // Skip delay entirely in development
+        if (process.env.NODE_ENV === "development") {
+          return 0;
+        }
+        const delayAfter = req.slowDown.limit;
+        return (used - delayAfter) * 500;
+      },
+      maxDelayMs: process.env.NODE_ENV === "development" ? 0 : 20000, // No delay in dev
+      skip: (req) => {
+        return shouldSkipRateLimit(req);
+      },
       keyGenerator: (req) => {
         return req.user?.id || req.ip;
+      },
+      validate: {
+        delayMs: false, // Disable the warning message
       },
     });
   }
@@ -315,24 +371,64 @@ class SecurityService {
 class BusinessRateLimits {
   // Platform sync rate limiting
   static async checkSyncRateLimit(userId, connectionId) {
+    // Skip rate limiting in development
+    if (process.env.NODE_ENV === "development") {
+      return {
+        allowed: true,
+        count: 0,
+        resetTime: Date.now(),
+        remaining: 1000,
+      };
+    }
+
     const identifier = `sync:${userId}:${connectionId}`;
     return await RateLimitService.checkCustomRateLimit(identifier, 5, 300); // 5 syncs per 5 minutes
   }
 
   // Order creation rate limiting
   static async checkOrderCreationLimit(userId) {
+    // Skip rate limiting in development
+    if (process.env.NODE_ENV === "development") {
+      return {
+        allowed: true,
+        count: 0,
+        resetTime: Date.now(),
+        remaining: 1000,
+      };
+    }
+
     const identifier = `order_creation:${userId}`;
     return await RateLimitService.checkCustomRateLimit(identifier, 100, 3600); // 100 orders per hour
   }
 
   // Product update rate limiting
   static async checkProductUpdateLimit(userId) {
+    // Skip rate limiting in development
+    if (process.env.NODE_ENV === "development") {
+      return {
+        allowed: true,
+        count: 0,
+        resetTime: Date.now(),
+        remaining: 1000,
+      };
+    }
+
     const identifier = `product_update:${userId}`;
     return await RateLimitService.checkCustomRateLimit(identifier, 200, 3600); // 200 updates per hour
   }
 
   // Platform API call rate limiting
   static async checkPlatformAPILimit(connectionId) {
+    // Skip rate limiting in development
+    if (process.env.NODE_ENV === "development") {
+      return {
+        allowed: true,
+        count: 0,
+        resetTime: Date.now(),
+        remaining: 1000,
+      };
+    }
+
     const identifier = `platform_api:${connectionId}`;
     return await RateLimitService.checkCustomRateLimit(identifier, 1000, 3600); // 1000 API calls per hour
   }

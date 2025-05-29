@@ -1168,51 +1168,9 @@ class HepsiburadaService extends BasePlatformService {
   }
 
   /**
-   * Get orders from Hepsiburada - required implementation for BasePlatformService
-   * @param {Object} options - Options for fetching orders
-   * @returns {Promise<Array>} List of orders
-   */
-  async getOrders(options = {}) {
-    try {
-      const result = await this.fetchOrders(options);
-
-      if (!result.success) {
-        this.logger.error(
-          `Failed to get orders from Hepsiburada: ${result.message}`,
-          {
-            error: result.error,
-            connectionId: this.connectionId,
-            platformType: this.getPlatformType(),
-          }
-        );
-        return [];
-      }
-
-      // If we have orders, normalize them
-      if (result.data && result.data.length > 0) {
-        const normalizeResult = await this.normalizeOrders(result.data);
-        return Array.isArray(normalizeResult.data) ? normalizeResult.data : [];
-      }
-
-      // Return empty array if no orders
-      return [];
-    } catch (error) {
-      this.logger.error(
-        `Error in getOrders method for Hepsiburada: ${error.message}`,
-        {
-          error,
-          connectionId: this.connectionId,
-          platformType: this.getPlatformType(),
-        }
-      );
-      return []; // Return empty array instead of throwing
-    }
-  }
-
-  /**
-   * Map Hepsiburada order status to internal system status
-   * @param {string} hepsiburadaStatus - Platform-specific status
-   * @returns {string} Internal status
+   * Map Hepsiburada order status to internal status
+   * @param {String} hepsiburadaStatus - Hepsiburada-specific status
+   * @returns {String} Internal status
    */
   mapOrderStatus(hepsiburadaStatus) {
     const statusMap = {

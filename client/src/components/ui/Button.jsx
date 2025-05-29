@@ -12,6 +12,7 @@ const Button = React.forwardRef(
       children,
       icon,
       iconPosition = "left",
+      fullWidth = false,
       ...props
     },
     ref
@@ -99,6 +100,7 @@ const Button = React.forwardRef(
             "opacity-50 cursor-not-allowed": disabled || loading,
             "hover:shadow-lg hover:scale-105 active:scale-95":
               !disabled && !loading,
+            "w-full": fullWidth,
           },
           className
         )}

@@ -1,135 +1,259 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { 
-  Container, 
-  Row, 
-  Col, 
-  Card, 
-  Badge, 
-  Button, 
+import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
   Form,
+  Button,
   Alert,
-  Modal,
   Spinner,
-  Tabs,
-  Tab
-} from 'react-bootstrap';
-import { 
-  FaCreditCard, 
-  FaUniversity, 
-  FaMobile,
+  Badge,
+  Modal,
+} from "react-bootstrap";
+import {
+  FaCreditCard,
   FaShieldAlt,
+  FaLock,
   FaCheckCircle,
   FaExclamationTriangle,
-  FaInfoCircle
-} from 'react-icons/fa';
-import { motion } from 'framer-motion';
-import './TurkishPaymentGateway.css';
+} from "react-icons/fa";
+import { motion } from "framer-motion";
+import "./TurkishPaymentGateway.css";
 
-const TurkishPaymentGateway = ({ orderId, amount, currency = 'TRY', onPaymentComplete }) => {
+const TurkishPaymentGateway = ({
+  orderId,
+  amount,
+  currency = "TRY",
+  onPaymentComplete,
+  onPaymentError,
+  customer = null,
+}) => {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState('creditCard');
-  const [paymentGateways, setPaymentGateways] = useState([]);
-  const [selectedGateway, setSelectedGateway] = useState(null);
-  const [paymentForm, setPaymentForm] = useState({
-    cardNumber: '',
-    expiryMonth: '',
-    expiryYear: '',
-    cvv: '',
-    cardHolderName: '',
-    installments: '1'
+  const [paymentData, setPaymentData] = useState({
+    cardNumber: "",
+    cardHolderName: "",
+    expireMonth: "",
+    expireYear: "",
+    cvc: "",
+    installment: 1,
+  });
+  const [billingAddress, setBillingAddress] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    district: "",
+    zipCode: "",
+    identityNumber: "",
   });
   const [loading, setLoading] = useState(false);
-  const [processing, setProcessing] = useState(false);
-  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [selectedProvider, setSelectedProvider] = useState("iyzico");
+  const [installmentOptions, setInstallmentOptions] = useState([]);
+  const [showSecure3D, setShowSecure3D] = useState(false);
+  const [threeDSContent, setThreeDSContent] = useState("");
 
   useEffect(() => {
-    fetchPaymentGateways();
-  }, []);
+    fetchPaymentMethods();
+    if (customer) {
+      setBillingAddress((prev) => ({
+        ...prev,
+        firstName: customer.firstName || "",
+        lastName: customer.lastName || "",
+        email: customer.email || "",
+        phone: customer.phone || "",
+      }));
+    }
+  }, [customer]);
 
-  const fetchPaymentGateways = async () => {
+  const fetchPaymentMethods = async () => {
     try {
-      setLoading(true);
-      const response = await fetch('/api/payments/gateways/turkish', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await fetch("/api/payments/methods");
       const data = await response.json();
-      setPaymentGateways(data.gateways || []);
-      if (data.gateways?.length > 0) {
-        setSelectedGateway(data.gateways[0]);
+      if (data.success) {
+        setPaymentMethods(data.methods || []);
       }
     } catch (error) {
-      console.error('Failed to fetch payment gateways:', error);
-    } finally {
-      setLoading(false);
+      console.error("Failed to fetch payment methods:", error);
     }
   };
 
-  const handlePayment = async (e) => {
-    e.preventDefault();
-    try {
-      setProcessing(true);
+  const fetchInstallmentOptions = async (cardNumber) => {
+    if (cardNumber.length >= 6) {
+      try {
+        const response = await fetch(
+          `/api/payments/installments?amount=${amount}&cardBin=${cardNumber.substring(
+            0,
+            6
+          )}&provider=${selectedProvider}`
+        );
+        const data = await response.json();
+        if (data.success) {
+          setInstallmentOptions(data.installments || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch installment options:", error);
+      }
+    }
+  };
 
-      const paymentData = {
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Card validation
+    if (
+      !paymentData.cardNumber ||
+      paymentData.cardNumber.replace(/\s/g, "").length < 16
+    ) {
+      newErrors.cardNumber = "Geçerli bir kart numarası giriniz";
+    }
+    if (!paymentData.cardHolderName || paymentData.cardHolderName.length < 2) {
+      newErrors.cardHolderName = "Kart sahibinin adını giriniz";
+    }
+    if (!paymentData.expireMonth || !paymentData.expireYear) {
+      newErrors.expiry = "Son kullanma tarihini giriniz";
+    }
+    if (!paymentData.cvc || paymentData.cvc.length < 3) {
+      newErrors.cvc = "Güvenlik kodunu giriniz";
+    }
+
+    // Billing address validation
+    if (!billingAddress.firstName) newErrors.firstName = "Ad zorunludur";
+    if (!billingAddress.lastName) newErrors.lastName = "Soyad zorunludur";
+    if (!billingAddress.email) newErrors.email = "E-posta zorunludur";
+    if (!billingAddress.phone) newErrors.phone = "Telefon zorunludur";
+    if (!billingAddress.address) newErrors.address = "Adres zorunludur";
+    if (!billingAddress.city) newErrors.city = "Şehir zorunludur";
+    if (
+      !billingAddress.identityNumber ||
+      billingAddress.identityNumber.length !== 11
+    ) {
+      newErrors.identityNumber = "Geçerli bir TC Kimlik No giriniz";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handlePayment = async () => {
+    if (!validateForm()) return;
+
+    setLoading(true);
+    try {
+      const paymentPayload = {
         orderId,
-        gatewayId: selectedGateway.id,
         amount,
         currency,
-        paymentMethod: activeTab,
-        ...paymentForm
+        provider: selectedProvider,
+        paymentCard: {
+          number: paymentData.cardNumber.replace(/\s/g, ""),
+          holderName: paymentData.cardHolderName,
+          expireMonth: paymentData.expireMonth,
+          expireYear: paymentData.expireYear,
+          cvc: paymentData.cvc,
+        },
+        customer: {
+          id: customer?.id || `customer_${Date.now()}`,
+          name: billingAddress.firstName,
+          surname: billingAddress.lastName,
+          email: billingAddress.email,
+          phone: billingAddress.phone,
+          identityNumber: billingAddress.identityNumber,
+          ip: "127.0.0.1", // This should be obtained from the server
+        },
+        billingAddress: {
+          firstName: billingAddress.firstName,
+          lastName: billingAddress.lastName,
+          address: billingAddress.address,
+          city: billingAddress.city,
+          district: billingAddress.district,
+          country: "Turkey",
+          zipCode: billingAddress.zipCode,
+        },
+        shippingAddress: {
+          firstName: billingAddress.firstName,
+          lastName: billingAddress.lastName,
+          address: billingAddress.address,
+          city: billingAddress.city,
+          district: billingAddress.district,
+          country: "Turkey",
+          zipCode: billingAddress.zipCode,
+        },
+        basketItems: [
+          {
+            id: "subscription",
+            name: "Subscription Payment",
+            category: "Service",
+            price: amount,
+          },
+        ],
+        installment: paymentData.installment,
+        callbackUrl: `${window.location.origin}/payment/callback`,
       };
 
-      const response = await fetch('/api/payments/process', {
-        method: 'POST',
+      const response = await fetch("/api/payments/process", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify(paymentData)
+        body: JSON.stringify(paymentPayload),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        onPaymentComplete?.(result);
+        if (result.data.status === "pending_3ds") {
+          // Handle 3D Secure
+          setThreeDSContent(result.data.threeDSHtmlContent);
+          setShowSecure3D(true);
+        } else if (result.data.status === "completed") {
+          // Payment completed
+          onPaymentComplete && onPaymentComplete(result.data);
+        }
       } else {
-        throw new Error(result.message || 'Payment failed');
+        throw new Error(result.message || "Payment failed");
       }
     } catch (error) {
-      console.error('Payment processing failed:', error);
-      alert('Ödeme işlemi başarısız: ' + error.message);
+      console.error("Payment error:", error);
+      onPaymentError && onPaymentError(error);
+      setErrors({ payment: error.message });
     } finally {
-      setProcessing(false);
+      setLoading(false);
     }
   };
 
-  const formatAmount = (amount) => {
-    return new Intl.NumberFormat('tr-TR', {
-      style: 'currency',
-      currency: 'TRY'
+  const formatCardNumber = (value) => {
+    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
+    const matches = v.match(/\d{4,16}/g);
+    const match = (matches && matches[0]) || "";
+    const parts = [];
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4));
+    }
+    if (parts.length) {
+      return parts.join(" ");
+    } else {
+      return v;
+    }
+  };
+
+  const formatPrice = (amount) => {
+    return new Intl.NumberFormat("tr-TR", {
+      style: "currency",
+      currency: "TRY",
     }).format(amount);
   };
 
-  const getInstallmentOptions = () => {
-    if (!selectedGateway?.installmentOptions) return [];
-    return selectedGateway.installmentOptions.map(option => ({
-      value: option.installment.toString(),
-      label: option.installment === 1 ? 
-        t('payments.noInstallment') : 
-        `${option.installment} ${t('payments.installments')} (${formatAmount(option.monthlyAmount)})`
-    }));
+  const getInstallmentText = (installment) => {
+    if (installment === 1) return "Tek Çekim";
+    return `${installment} Taksit`;
   };
-
-  if (loading) {
-    return (
-      <Container className="text-center py-5">
-        <Spinner animation="border" variant="primary" />
-        <p className="mt-3">{t('common.loading')}</p>
-      </Container>
-    );
-  }
 
   return (
     <Container fluid className="turkish-payment-gateway">
@@ -138,18 +262,19 @@ const TurkishPaymentGateway = ({ orderId, amount, currency = 'TRY', onPaymentCom
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        {/* Payment Header */}
+        {/* Payment Summary */}
         <Row className="mb-4">
           <Col>
-            <Card className="payment-header-card">
+            <Card className="payment-summary-card">
               <Card.Body>
                 <div className="d-flex justify-content-between align-items-center">
                   <div>
-                    <h4 className="mb-1">Güvenli Ödeme</h4>
-                    <p className="text-muted mb-0">256-bit SSL şifreleme ile korunmaktadır</p>
+                    <h5 className="mb-1">Ödeme Özeti</h5>
+                    <p className="text-muted mb-0">Sipariş No: {orderId}</p>
                   </div>
-                  <div className="payment-amount">
-                    <h3 className="text-primary mb-0">{formatAmount(amount)}</h3>
+                  <div className="text-end">
+                    <h4 className="text-primary mb-0">{formatPrice(amount)}</h4>
+                    <Badge bg="success">Güvenli Ödeme</Badge>
                   </div>
                 </div>
               </Card.Body>
@@ -157,366 +282,398 @@ const TurkishPaymentGateway = ({ orderId, amount, currency = 'TRY', onPaymentCom
           </Col>
         </Row>
 
-        {/* Payment Gateway Selection */}
-        <Row className="mb-4">
-          <Col>
-            <Card className="gateway-selection-card">
-              <Card.Body>
-                <h5 className="mb-3">Ödeme Sağlayıcısı Seçin</h5>
-                <Row className="g-3">
-                  {paymentGateways.map((gateway) => (
-                    <Col md={4} key={gateway.id}>
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <Card 
-                          className={`gateway-card ${selectedGateway?.id === gateway.id ? 'selected' : ''}`}
-                          onClick={() => setSelectedGateway(gateway)}
-                        >
-                          <Card.Body className="text-center">
-                            <img 
-                              src={gateway.logo} 
-                              alt={gateway.name}
-                              className="gateway-logo mb-2"
-                            />
-                            <h6 className="mb-1">{gateway.name}</h6>
-                            <Badge bg={gateway.isActive ? 'success' : 'secondary'}>
-                              {gateway.isActive ? 'Aktif' : 'Pasif'}
-                            </Badge>
-                          </Card.Body>
-                        </Card>
-                      </motion.div>
-                    </Col>
-                  ))}
-                </Row>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
+        {errors.payment && (
+          <Alert variant="danger" className="mb-4">
+            <FaExclamationTriangle className="me-2" />
+            {errors.payment}
+          </Alert>
+        )}
 
-        {/* Payment Methods */}
         <Row>
-          <Col>
-            <Card className="payment-methods-card">
+          {/* Payment Form */}
+          <Col lg={8}>
+            <Card className="payment-form-card">
+              <Card.Header>
+                <h5 className="mb-0">
+                  <FaCreditCard className="me-2" />
+                  Kart Bilgileri
+                </h5>
+              </Card.Header>
               <Card.Body>
-                <Tabs
-                  activeKey={activeTab}
-                  onSelect={(k) => setActiveTab(k)}
-                  className="payment-tabs mb-4"
-                >
-                  {/* Credit Card Tab */}
-                  <Tab 
-                    eventKey="creditCard" 
-                    title={
-                      <span>
-                        <FaCreditCard className="me-2" />
-                        Kredi/Banka Kartı
-                      </span>
-                    }
-                  >
-                    <Form onSubmit={handlePayment}>
-                      <Row>
-                        <Col md={8}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>Kart Numarası</Form.Label>
-                            <Form.Control
-                              type="text"
-                              placeholder="1234 5678 9012 3456"
-                              value={paymentForm.cardNumber}
-                              onChange={(e) => setPaymentForm({
-                                ...paymentForm, 
-                                cardNumber: e.target.value.replace(/\s/g, '').replace(/(.{4})/g, '$1 ').trim()
-                              })}
-                              maxLength={19}
-                              required
-                            />
-                          </Form.Group>
+                <Form>
+                  {/* Card Information */}
+                  <Row className="mb-3">
+                    <Col>
+                      <Form.Label>Kart Numarası</Form.Label>
+                      <Form.Control
+                        type="text"
+                        placeholder="1234 5678 9012 3456"
+                        value={paymentData.cardNumber}
+                        onChange={(e) => {
+                          const formatted = formatCardNumber(e.target.value);
+                          setPaymentData((prev) => ({
+                            ...prev,
+                            cardNumber: formatted,
+                          }));
+                          fetchInstallmentOptions(formatted);
+                        }}
+                        isInvalid={!!errors.cardNumber}
+                        maxLength={19}
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.cardNumber}
+                      </Form.Control.Feedback>
+                    </Col>
+                  </Row>
 
-                          <Row>
-                            <Col md={6}>
-                              <Form.Group className="mb-3">
-                                <Form.Label>Son Kullanma Tarihi</Form.Label>
-                                <Row>
-                                  <Col>
-                                    <Form.Select
-                                      value={paymentForm.expiryMonth}
-                                      onChange={(e) => setPaymentForm({...paymentForm, expiryMonth: e.target.value})}
-                                      required
-                                    >
-                                      <option value="">Ay</option>
-                                      {Array.from({length: 12}, (_, i) => (
-                                        <option key={i+1} value={String(i+1).padStart(2, '0')}>
-                                          {String(i+1).padStart(2, '0')}
-                                        </option>
-                                      ))}
-                                    </Form.Select>
-                                  </Col>
-                                  <Col>
-                                    <Form.Select
-                                      value={paymentForm.expiryYear}
-                                      onChange={(e) => setPaymentForm({...paymentForm, expiryYear: e.target.value})}
-                                      required
-                                    >
-                                      <option value="">Yıl</option>
-                                      {Array.from({length: 10}, (_, i) => {
-                                        const year = new Date().getFullYear() + i;
-                                        return (
-                                          <option key={year} value={year}>
-                                            {year}
-                                          </option>
-                                        );
-                                      })}
-                                    </Form.Select>
-                                  </Col>
-                                </Row>
-                              </Form.Group>
-                            </Col>
-                            <Col md={6}>
-                              <Form.Group className="mb-3">
-                                <Form.Label>CVV</Form.Label>
-                                <Form.Control
-                                  type="text"
-                                  placeholder="123"
-                                  value={paymentForm.cvv}
-                                  onChange={(e) => setPaymentForm({...paymentForm, cvv: e.target.value})}
-                                  maxLength={4}
-                                  required
-                                />
-                              </Form.Group>
-                            </Col>
-                          </Row>
+                  <Row className="mb-3">
+                    <Col>
+                      <Form.Label>Kart Sahibinin Adı</Form.Label>
+                      <Form.Control
+                        type="text"
+                        placeholder="Ad Soyad"
+                        value={paymentData.cardHolderName}
+                        onChange={(e) =>
+                          setPaymentData((prev) => ({
+                            ...prev,
+                            cardHolderName: e.target.value.toUpperCase(),
+                          }))
+                        }
+                        isInvalid={!!errors.cardHolderName}
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.cardHolderName}
+                      </Form.Control.Feedback>
+                    </Col>
+                  </Row>
 
-                          <Form.Group className="mb-3">
-                            <Form.Label>Kart Üzerindeki İsim</Form.Label>
-                            <Form.Control
-                              type="text"
-                              placeholder="JOHN DOE"
-                              value={paymentForm.cardHolderName}
-                              onChange={(e) => setPaymentForm({...paymentForm, cardHolderName: e.target.value.toUpperCase()})}
-                              required
-                            />
-                          </Form.Group>
+                  <Row className="mb-3">
+                    <Col md={4}>
+                      <Form.Label>Ay</Form.Label>
+                      <Form.Select
+                        value={paymentData.expireMonth}
+                        onChange={(e) =>
+                          setPaymentData((prev) => ({
+                            ...prev,
+                            expireMonth: e.target.value,
+                          }))
+                        }
+                        isInvalid={!!errors.expiry}
+                      >
+                        <option value="">Ay</option>
+                        {Array.from({ length: 12 }, (_, i) => (
+                          <option
+                            key={i + 1}
+                            value={String(i + 1).padStart(2, "0")}
+                          >
+                            {String(i + 1).padStart(2, "0")}
+                          </option>
+                        ))}
+                      </Form.Select>
+                    </Col>
+                    <Col md={4}>
+                      <Form.Label>Yıl</Form.Label>
+                      <Form.Select
+                        value={paymentData.expireYear}
+                        onChange={(e) =>
+                          setPaymentData((prev) => ({
+                            ...prev,
+                            expireYear: e.target.value,
+                          }))
+                        }
+                        isInvalid={!!errors.expiry}
+                      >
+                        <option value="">Yıl</option>
+                        {Array.from({ length: 20 }, (_, i) => {
+                          const year = new Date().getFullYear() + i;
+                          return (
+                            <option key={year} value={String(year).slice(-2)}>
+                              {year}
+                            </option>
+                          );
+                        })}
+                      </Form.Select>
+                    </Col>
+                    <Col md={4}>
+                      <Form.Label>CVC</Form.Label>
+                      <Form.Control
+                        type="text"
+                        placeholder="123"
+                        value={paymentData.cvc}
+                        onChange={(e) =>
+                          setPaymentData((prev) => ({
+                            ...prev,
+                            cvc: e.target.value.replace(/\D/g, ""),
+                          }))
+                        }
+                        isInvalid={!!errors.cvc}
+                        maxLength={4}
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.cvc}
+                      </Form.Control.Feedback>
+                    </Col>
+                  </Row>
 
-                          {/* Installments */}
-                          {selectedGateway?.installmentOptions?.length > 0 && (
-                            <Form.Group className="mb-3">
-                              <Form.Label>Taksit Seçeneği</Form.Label>
-                              <Form.Select
-                                value={paymentForm.installments}
-                                onChange={(e) => setPaymentForm({...paymentForm, installments: e.target.value})}
-                              >
-                                {getInstallmentOptions().map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </Form.Select>
-                            </Form.Group>
-                          )}
-                        </Col>
-
-                        <Col md={4}>
-                          <Card className="security-info-card">
-                            <Card.Body>
-                              <h6 className="d-flex align-items-center mb-3">
-                                <FaShieldAlt className="text-success me-2" />
-                                Güvenlik Bilgileri
-                              </h6>
-                              <div className="security-features">
-                                <div className="security-item">
-                                  <FaCheckCircle className="text-success me-2" />
-                                  <span>256-bit SSL Şifreleme</span>
-                                </div>
-                                <div className="security-item">
-                                  <FaCheckCircle className="text-success me-2" />
-                                  <span>PCI DSS Uyumlu</span>
-                                </div>
-                                <div className="security-item">
-                                  <FaCheckCircle className="text-success me-2" />
-                                  <span>3D Secure Koruması</span>
-                                </div>
-                              </div>
-                              <Button 
-                                variant="outline-info" 
-                                size="sm" 
-                                className="mt-3"
-                                onClick={() => setShowSecurityModal(true)}
-                              >
-                                <FaInfoCircle className="me-1" />
-                                Detaylı Bilgi
-                              </Button>
-                            </Card.Body>
-                          </Card>
-                        </Col>
-                      </Row>
-
-                      <div className="payment-actions mt-4">
-                        <Button 
-                          type="submit" 
-                          variant="primary" 
-                          size="lg"
-                          disabled={processing}
-                          className="payment-submit-btn"
+                  {/* Installment Options */}
+                  {installmentOptions.length > 0 && (
+                    <Row className="mb-3">
+                      <Col>
+                        <Form.Label>Taksit Seçeneği</Form.Label>
+                        <Form.Select
+                          value={paymentData.installment}
+                          onChange={(e) =>
+                            setPaymentData((prev) => ({
+                              ...prev,
+                              installment: parseInt(e.target.value),
+                            }))
+                          }
                         >
-                          {processing ? (
-                            <>
-                              <Spinner size="sm" className="me-2" />
-                              İşleniyor...
-                            </>
-                          ) : (
-                            <>
-                              <FaCreditCard className="me-2" />
-                              {formatAmount(amount)} Öde
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </Form>
-                  </Tab>
+                          {installmentOptions.map((option) => (
+                            <option
+                              key={option.installmentNumber}
+                              value={option.installmentNumber}
+                            >
+                              {getInstallmentText(option.installmentNumber)}
+                              {option.installmentNumber > 1 &&
+                                ` (${formatPrice(
+                                  option.totalPrice / option.installmentNumber
+                                )} x ${option.installmentNumber})`}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      </Col>
+                    </Row>
+                  )}
 
-                  {/* Bank Transfer Tab */}
-                  <Tab 
-                    eventKey="bankTransfer" 
-                    title={
-                      <span>
-                        <FaUniversity className="me-2" />
-                        Havale/EFT
-                      </span>
-                    }
-                  >
-                    <div className="bank-transfer-info">
-                      <Alert variant="info">
-                        <Alert.Heading className="h6">
-                          <FaUniversity className="me-2" />
-                          Banka Hesap Bilgileri
-                        </Alert.Heading>
-                        <div className="bank-details">
-                          <div className="bank-item">
-                            <strong>Banka:</strong> Türkiye İş Bankası
-                          </div>
-                          <div className="bank-item">
-                            <strong>Hesap Sahibi:</strong> Pazar+ Teknoloji A.Ş.
-                          </div>
-                          <div className="bank-item">
-                            <strong>IBAN:</strong> TR98 0006 4000 0011 2345 6789 01
-                          </div>
-                          <div className="bank-item">
-                            <strong>Açıklama:</strong> Sipariş No: {orderId}
-                          </div>
-                        </div>
-                      </Alert>
-                      
-                      <Button variant="success" size="lg" className="mt-3">
-                        <FaUniversity className="me-2" />
-                        Banka Bilgilerini Kopyala
-                      </Button>
-                    </div>
-                  </Tab>
+                  {/* Billing Address */}
+                  <hr className="my-4" />
+                  <h6 className="mb-3">Fatura Adresi</h6>
 
-                  {/* Mobile Payment Tab */}
-                  <Tab 
-                    eventKey="mobilePayment" 
-                    title={
-                      <span>
-                        <FaMobile className="me-2" />
-                        Mobil Ödeme
-                      </span>
-                    }
-                  >
-                    <div className="mobile-payment-options">
-                      <Row className="g-3">
-                        <Col md={4}>
-                          <Card className="mobile-option-card">
-                            <Card.Body className="text-center">
-                              <div className="mobile-logo mb-3">📱</div>
-                              <h6>Turkcell</h6>
-                              <p className="text-muted small">Faturalı/Faturasız Hat</p>
-                              <Button variant="outline-primary" size="sm">
-                                Seç
-                              </Button>
-                            </Card.Body>
-                          </Card>
-                        </Col>
-                        <Col md={4}>
-                          <Card className="mobile-option-card">
-                            <Card.Body className="text-center">
-                              <div className="mobile-logo mb-3">📱</div>
-                              <h6>Vodafone</h6>
-                              <p className="text-muted small">Faturalı/Faturasız Hat</p>
-                              <Button variant="outline-primary" size="sm">
-                                Seç
-                              </Button>
-                            </Card.Body>
-                          </Card>
-                        </Col>
-                        <Col md={4}>
-                          <Card className="mobile-option-card">
-                            <Card.Body className="text-center">
-                              <div className="mobile-logo mb-3">📱</div>
-                              <h6>Türk Telekom</h6>
-                              <p className="text-muted small">Faturalı/Faturasız Hat</p>
-                              <Button variant="outline-primary" size="sm">
-                                Seç
-                              </Button>
-                            </Card.Body>
-                          </Card>
-                        </Col>
-                      </Row>
-                    </div>
-                  </Tab>
-                </Tabs>
+                  <Row className="mb-3">
+                    <Col md={6}>
+                      <Form.Label>Ad</Form.Label>
+                      <Form.Control
+                        type="text"
+                        value={billingAddress.firstName}
+                        onChange={(e) =>
+                          setBillingAddress((prev) => ({
+                            ...prev,
+                            firstName: e.target.value,
+                          }))
+                        }
+                        isInvalid={!!errors.firstName}
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.firstName}
+                      </Form.Control.Feedback>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Label>Soyad</Form.Label>
+                      <Form.Control
+                        type="text"
+                        value={billingAddress.lastName}
+                        onChange={(e) =>
+                          setBillingAddress((prev) => ({
+                            ...prev,
+                            lastName: e.target.value,
+                          }))
+                        }
+                        isInvalid={!!errors.lastName}
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.lastName}
+                      </Form.Control.Feedback>
+                    </Col>
+                  </Row>
+
+                  <Row className="mb-3">
+                    <Col md={6}>
+                      <Form.Label>E-posta</Form.Label>
+                      <Form.Control
+                        type="email"
+                        value={billingAddress.email}
+                        onChange={(e) =>
+                          setBillingAddress((prev) => ({
+                            ...prev,
+                            email: e.target.value,
+                          }))
+                        }
+                        isInvalid={!!errors.email}
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.email}
+                      </Form.Control.Feedback>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Label>Telefon</Form.Label>
+                      <Form.Control
+                        type="tel"
+                        placeholder="05XX XXX XX XX"
+                        value={billingAddress.phone}
+                        onChange={(e) =>
+                          setBillingAddress((prev) => ({
+                            ...prev,
+                            phone: e.target.value,
+                          }))
+                        }
+                        isInvalid={!!errors.phone}
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.phone}
+                      </Form.Control.Feedback>
+                    </Col>
+                  </Row>
+
+                  <Row className="mb-3">
+                    <Col>
+                      <Form.Label>TC Kimlik No</Form.Label>
+                      <Form.Control
+                        type="text"
+                        placeholder="12345678901"
+                        value={billingAddress.identityNumber}
+                        onChange={(e) =>
+                          setBillingAddress((prev) => ({
+                            ...prev,
+                            identityNumber: e.target.value.replace(/\D/g, ""),
+                          }))
+                        }
+                        isInvalid={!!errors.identityNumber}
+                        maxLength={11}
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.identityNumber}
+                      </Form.Control.Feedback>
+                    </Col>
+                  </Row>
+
+                  <Row className="mb-3">
+                    <Col>
+                      <Form.Label>Adres</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={2}
+                        value={billingAddress.address}
+                        onChange={(e) =>
+                          setBillingAddress((prev) => ({
+                            ...prev,
+                            address: e.target.value,
+                          }))
+                        }
+                        isInvalid={!!errors.address}
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.address}
+                      </Form.Control.Feedback>
+                    </Col>
+                  </Row>
+
+                  <Row className="mb-3">
+                    <Col md={6}>
+                      <Form.Label>Şehir</Form.Label>
+                      <Form.Control
+                        type="text"
+                        value={billingAddress.city}
+                        onChange={(e) =>
+                          setBillingAddress((prev) => ({
+                            ...prev,
+                            city: e.target.value,
+                          }))
+                        }
+                        isInvalid={!!errors.city}
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.city}
+                      </Form.Control.Feedback>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Label>Posta Kodu</Form.Label>
+                      <Form.Control
+                        type="text"
+                        value={billingAddress.zipCode}
+                        onChange={(e) =>
+                          setBillingAddress((prev) => ({
+                            ...prev,
+                            zipCode: e.target.value,
+                          }))
+                        }
+                      />
+                    </Col>
+                  </Row>
+                </Form>
               </Card.Body>
             </Card>
           </Col>
+
+          {/* Security & Summary */}
+          <Col lg={4}>
+            <Card className="security-card mb-3">
+              <Card.Body>
+                <h6 className="mb-3">
+                  <FaShieldAlt className="me-2 text-success" />
+                  Güvenlik
+                </h6>
+                <div className="security-item">
+                  <FaLock className="me-2 text-primary" />
+                  <span>256-bit SSL Şifreleme</span>
+                </div>
+                <div className="security-item">
+                  <FaCheckCircle className="me-2 text-success" />
+                  <span>PCI DSS Uyumlu</span>
+                </div>
+                <div className="security-item">
+                  <FaShieldAlt className="me-2 text-info" />
+                  <span>3D Secure Korumalı</span>
+                </div>
+              </Card.Body>
+            </Card>
+
+            <div className="payment-action">
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-100"
+                onClick={handlePayment}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Spinner animation="border" size="sm" className="me-2" />
+                    İşleniyor...
+                  </>
+                ) : (
+                  <>
+                    <FaCreditCard className="me-2" />
+                    {formatPrice(amount)} Öde
+                  </>
+                )}
+              </Button>
+              <small className="text-muted d-block text-center mt-2">
+                Ödeme işlemi güvenli olarak gerçekleştirilecektir
+              </small>
+            </div>
+          </Col>
         </Row>
 
-        {/* Security Modal */}
-        <SecurityInfoModal 
-          show={showSecurityModal}
-          onHide={() => setShowSecurityModal(false)}
-        />
+        {/* 3D Secure Modal */}
+        <Modal
+          show={showSecure3D}
+          onHide={() => setShowSecure3D(false)}
+          size="lg"
+          backdrop="static"
+        >
+          <Modal.Header>
+            <Modal.Title>3D Secure Doğrulama</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <div
+              dangerouslySetInnerHTML={{ __html: threeDSContent }}
+              style={{ minHeight: "400px" }}
+            />
+          </Modal.Body>
+        </Modal>
       </motion.div>
     </Container>
-  );
-};
-
-// Security Information Modal
-const SecurityInfoModal = ({ show, onHide }) => {
-  const { t } = useTranslation();
-
-  return (
-    <Modal show={show} onHide={onHide} size="lg">
-      <Modal.Header closeButton>
-        <Modal.Title>
-          <FaShieldAlt className="me-2" />
-          Güvenlik ve Gizlilik
-        </Modal.Title>
-      </Modal.Header>
-      <Modal.Body>
-        <div className="security-details">
-          <h6>🔒 SSL Şifreleme</h6>
-          <p>Tüm ödeme bilgileriniz 256-bit SSL teknolojisi ile şifrelenir ve güvenli bir şekilde iletilir.</p>
-          
-          <h6>🛡️ PCI DSS Uyumluluk</h6>
-          <p>Ödeme sistemimiz PCI DSS (Payment Card Industry Data Security Standard) gereksinimlerine uygundur.</p>
-          
-          <h6>🔐 3D Secure</h6>
-          <p>Kartınız 3D Secure teknolojisi ile korunur. Ödeme sırasında bankanız tarafından doğrulama yapılır.</p>
-          
-          <h6>📊 Veri Koruma</h6>
-          <p>Kart bilgileriniz sistemimizde saklanmaz. Tüm işlemler gerçek zamanlı olarak yapılır.</p>
-          
-          <h6>🏛️ KVKK Uyumluluk</h6>
-          <p>Kişisel verileriniz 6698 sayılı KVKK kapsamında korunur ve işlenir.</p>
-        </div>
-      </Modal.Body>
-      <Modal.Footer>
-        <Button variant="primary" onClick={onHide}>
-          Anladım
-        </Button>
-      </Modal.Footer>
-    </Modal>
   );
 };
 

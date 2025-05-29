@@ -42,6 +42,37 @@ class NotificationService extends EventEmitter {
   }
 
   /**
+   * Setup real-time notification handlers
+   */
+  setupRealTimeNotifications() {
+    // This method sets up event listeners for real-time notifications
+    // It's called after WebSocket server initialization
+
+    // Listen for platform events and broadcast notifications
+    this.on("order_updated", (orderData) => {
+      this.notifyOrderStatusChange(orderData);
+    });
+
+    this.on("new_order", (orderData) => {
+      this.notifyNewOrder(orderData);
+    });
+
+    this.on("inventory_low", (inventoryData) => {
+      this.notifyLowInventory(inventoryData);
+    });
+
+    this.on("sync_completed", (syncData) => {
+      this.notifySyncCompleted(syncData);
+    });
+
+    this.on("platform_error", (errorData) => {
+      this.notifyPlatformError(errorData);
+    });
+
+    logger.info("Real-time notification handlers setup complete");
+  }
+
+  /**
    * Handle new WebSocket connection
    */
   handleConnection(ws, request) {
@@ -224,6 +255,66 @@ class NotificationService extends EventEmitter {
   }
 
   /**
+   * Helper method to safely serialize data and prevent circular references
+   */
+  safeSerialize(data) {
+    try {
+      // If data is a Sequelize instance, convert to plain object
+      if (data && typeof data.get === "function") {
+        data = data.get({ plain: true });
+      }
+
+      // If data is an array, process each item
+      if (Array.isArray(data)) {
+        return data.map((item) => this.safeSerialize(item));
+      }
+
+      // If data is an object, process recursively
+      if (data && typeof data === "object") {
+        const serialized = {};
+        for (const [key, value] of Object.entries(data)) {
+          // Skip circular reference properties and sensitive data
+          if (
+            key === "user" ||
+            key === "User" ||
+            key === "dataValues" ||
+            key === "_previousDataValues" ||
+            key === "password" ||
+            key === "token"
+          ) {
+            continue;
+          }
+
+          if (value && typeof value === "object") {
+            if (typeof value.get === "function") {
+              // Sequelize instance
+              serialized[key] = value.get({ plain: true });
+            } else if (Array.isArray(value)) {
+              // Array of potentially Sequelize instances
+              serialized[key] = value.map((item) =>
+                item && typeof item.get === "function"
+                  ? item.get({ plain: true })
+                  : item
+              );
+            } else {
+              // Regular object - recursively serialize but limit depth
+              serialized[key] = this.safeSerialize(value);
+            }
+          } else {
+            serialized[key] = value;
+          }
+        }
+        return serialized;
+      }
+
+      return data;
+    } catch (error) {
+      logger.error("Error serializing data for notification:", error);
+      return { error: "Failed to serialize data", type: typeof data };
+    }
+  }
+
+  /**
    * Broadcast notification to all subscribed clients
    */
   broadcast(notification) {
@@ -232,6 +323,13 @@ class NotificationService extends EventEmitter {
       this.notificationQueue.push(notification);
       return;
     }
+
+    // Safely serialize the notification data
+    const safeNotification = {
+      ...notification,
+      data: this.safeSerialize(notification.data),
+      timestamp: notification.timestamp || new Date(),
+    };
 
     const sentCount = { success: 0, failed: 0 };
     const channel = notification.channel || "all";
@@ -242,10 +340,7 @@ class NotificationService extends EventEmitter {
         client.subscriptions.has("all") ||
         client.subscriptions.has(channel)
       ) {
-        const sent = this.sendToClient(clientId, {
-          ...notification,
-          timestamp: notification.timestamp || new Date(),
-        });
+        const sent = this.sendToClient(clientId, safeNotification);
 
         if (sent) {
           sentCount.success++;
@@ -256,7 +351,7 @@ class NotificationService extends EventEmitter {
     }
 
     // Store notification for later retrieval
-    this.storeNotification(notification);
+    this.storeNotification(safeNotification);
 
     logger.debug(
       `Broadcast notification sent to ${sentCount.success} clients, ${sentCount.failed} failed`

@@ -3,14 +3,14 @@
  * Integration with PTT (Turkish Postal Service) API for Turkish domestic shipping
  */
 
-const BaseShippingService = require('../BaseShippingService');
-const axios = require('axios');
+const BaseShippingService = require("./BaseShippingService");
+const axios = require("axios");
 
 class PTTKargoService extends BaseShippingService {
   constructor(credentials = {}) {
-    super('PTT Kargo', credentials);
-    this.apiUrl = 'https://api.ptt.gov.tr/kargo';
-    this.testApiUrl = 'https://testapi.ptt.gov.tr/kargo';
+    super("PTT Kargo", credentials);
+    this.apiUrl = "https://api.ptt.gov.tr/kargo";
+    this.testApiUrl = "https://testapi.ptt.gov.tr/kargo";
     this.isTestMode = credentials.testMode || false;
   }
 
@@ -19,20 +19,22 @@ class PTTKargoService extends BaseShippingService {
    */
   async initialize() {
     if (!this.credentials.apiKey || !this.credentials.customerCode) {
-      throw new Error('PTT Kargo credentials (apiKey, customerCode) are required');
+      throw new Error(
+        "PTT Kargo credentials (apiKey, customerCode) are required"
+      );
     }
 
     const baseURL = this.isTestMode ? this.testApiUrl : this.apiUrl;
-    
+
     this.axiosInstance = axios.create({
       baseURL,
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'X-API-Key': this.credentials.apiKey,
-        'X-Customer-Code': this.credentials.customerCode
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-API-Key": this.credentials.apiKey,
+        "X-Customer-Code": this.credentials.customerCode,
       },
-      timeout: 30000
+      timeout: 30000,
     });
 
     // Add response interceptor for error handling
@@ -41,13 +43,13 @@ class PTTKargoService extends BaseShippingService {
       (error) => {
         this.logger.error(`PTT Kargo API error: ${error.message}`, {
           status: error.response?.status,
-          data: error.response?.data
+          data: error.response?.data,
         });
         return Promise.reject(error);
       }
     );
 
-    this.logger.info('PTT Kargo service initialized successfully');
+    this.logger.info("PTT Kargo service initialized successfully");
   }
 
   /**
@@ -68,11 +70,17 @@ class PTTKargoService extends BaseShippingService {
 
       // Validate addresses
       if (!this.validateTurkishPostalCode(fromFormatted.postalCode)) {
-        return this.createErrorResponse('Invalid origin postal code', 'INVALID_POSTAL_CODE');
+        return this.createErrorResponse(
+          "Invalid origin postal code",
+          "INVALID_POSTAL_CODE"
+        );
       }
-      
+
       if (!this.validateTurkishPostalCode(toFormatted.postalCode)) {
-        return this.createErrorResponse('Invalid destination postal code', 'INVALID_POSTAL_CODE');
+        return this.createErrorResponse(
+          "Invalid destination postal code",
+          "INVALID_POSTAL_CODE"
+        );
       }
 
       const weight = this.getBillableWeight(packageInfo, 5000); // PTT uses 5000 cm³/kg
@@ -84,39 +92,44 @@ class PTTKargoService extends BaseShippingService {
         length: packageInfo.dimensions?.length || 10,
         width: packageInfo.dimensions?.width || 10,
         height: packageInfo.dimensions?.height || 10,
-        serviceType: this.mapServiceType(packageInfo.serviceType || 'STANDARD'),
-        paymentType: packageInfo.paymentType || 'PREPAID',
-        declaredValue: packageInfo.declaredValue || 0
+        serviceType: this.mapServiceType(packageInfo.serviceType || "STANDARD"),
+        paymentType: packageInfo.paymentType || "PREPAID",
+        declaredValue: packageInfo.declaredValue || 0,
       };
 
       const response = await this.retryRequest(() =>
-        this.axiosInstance.post('/v1/rates/calculate', requestData)
+        this.axiosInstance.post("/v1/rates/calculate", requestData)
       );
 
       if (!response.data || !response.data.success) {
         return this.createErrorResponse(
-          response.data?.message || 'Failed to get shipping rates',
-          'RATE_CALCULATION_FAILED'
+          response.data?.message || "Failed to get shipping rates",
+          "RATE_CALCULATION_FAILED"
         );
       }
 
-      const rates = response.data.rates.map(rate => ({
+      const rates = response.data.rates.map((rate) => ({
         serviceCode: rate.serviceCode,
         serviceName: rate.serviceName,
         price: parseFloat(rate.totalPrice),
-        currency: 'TRY',
+        currency: "TRY",
         estimatedDeliveryDays: rate.estimatedDeliveryTime,
-        features: rate.includedServices || ['Tracking'],
-        restrictions: rate.restrictions || []
+        features: rate.includedServices || ["Tracking"],
+        restrictions: rate.restrictions || [],
       }));
 
-      return this.createSuccessResponse(rates, 'Shipping rates calculated successfully');
-
+      return this.createSuccessResponse(
+        rates,
+        "Shipping rates calculated successfully"
+      );
     } catch (error) {
-      this.logger.error(`Failed to get PTT Kargo shipping rates: ${error.message}`, { error });
+      this.logger.error(
+        `Failed to get PTT Kargo shipping rates: ${error.message}`,
+        { error }
+      );
       return this.createErrorResponse(
         `Failed to calculate shipping rates: ${error.message}`,
-        'RATE_CALCULATION_ERROR'
+        "RATE_CALCULATION_ERROR"
       );
     }
   }
@@ -133,23 +146,29 @@ class PTTKargoService extends BaseShippingService {
       }
 
       const { packageInfo, fromAddress, toAddress, orderInfo } = shipmentData;
-      
+
       const fromFormatted = this.formatTurkishAddress(fromAddress);
       const toFormatted = this.formatTurkishAddress(toAddress);
 
       // Validate required fields
-      if (!toFormatted.phone || !this.validateTurkishPhoneNumber(toFormatted.phone)) {
-        return this.createErrorResponse('Valid Turkish phone number is required', 'INVALID_PHONE');
+      if (
+        !toFormatted.phone ||
+        !this.validateTurkishPhoneNumber(toFormatted.phone)
+      ) {
+        return this.createErrorResponse(
+          "Valid Turkish phone number is required",
+          "INVALID_PHONE"
+        );
       }
 
       const weight = this.getBillableWeight(packageInfo, 5000);
 
       const labelRequest = {
         // Service information
-        serviceType: this.mapServiceType(packageInfo.serviceType || 'STANDARD'),
-        paymentType: packageInfo.paymentType || 'PREPAID',
-        deliveryType: 'STANDARD',
-        
+        serviceType: this.mapServiceType(packageInfo.serviceType || "STANDARD"),
+        paymentType: packageInfo.paymentType || "PREPAID",
+        deliveryType: "STANDARD",
+
         // Sender information
         sender: {
           name: fromFormatted.name,
@@ -159,9 +178,9 @@ class PTTKargoService extends BaseShippingService {
           postalCode: fromFormatted.postalCode,
           phone: fromFormatted.phone,
           email: fromFormatted.email,
-          taxNumber: this.credentials.taxNumber || ''
+          taxNumber: this.credentials.taxNumber || "",
         },
-        
+
         // Receiver information
         receiver: {
           name: toFormatted.name,
@@ -171,68 +190,73 @@ class PTTKargoService extends BaseShippingService {
           postalCode: toFormatted.postalCode,
           phone: toFormatted.phone,
           email: toFormatted.email,
-          idNumber: packageInfo.receiverIdNumber || ''
+          idNumber: packageInfo.receiverIdNumber || "",
         },
-        
+
         // Package information
         package: {
           weight: Math.ceil(weight / 1000),
           dimensions: {
             length: packageInfo.dimensions?.length || 10,
             width: packageInfo.dimensions?.width || 10,
-            height: packageInfo.dimensions?.height || 10
+            height: packageInfo.dimensions?.height || 10,
           },
-          content: packageInfo.description || 'E-commerce order',
+          content: packageInfo.description || "E-commerce order",
           quantity: packageInfo.quantity || 1,
           declaredValue: packageInfo.declaredValue || 0,
-          currency: 'TRY'
+          currency: "TRY",
         },
-        
+
         // Additional options
         options: {
           smsNotification: true,
           emailNotification: true,
           insurance: packageInfo.insurance || false,
-          returnReceipt: packageInfo.returnReceipt || false
+          returnReceipt: packageInfo.returnReceipt || false,
         },
-        
+
         // Reference information
-        customerReference: orderInfo?.orderNumber || '',
-        description: packageInfo.description || 'E-commerce shipment'
+        customerReference: orderInfo?.orderNumber || "",
+        description: packageInfo.description || "E-commerce shipment",
       };
 
       const response = await this.retryRequest(() =>
-        this.axiosInstance.post('/v1/shipments/create', labelRequest)
+        this.axiosInstance.post("/v1/shipments/create", labelRequest)
       );
 
       if (!response.data || !response.data.success) {
         return this.createErrorResponse(
-          response.data?.message || 'Failed to create shipping label',
-          'LABEL_CREATION_FAILED'
+          response.data?.message || "Failed to create shipping label",
+          "LABEL_CREATION_FAILED"
         );
       }
 
       const shipmentResult = response.data.shipment;
-      
+
       const result = {
         trackingNumber: shipmentResult.trackingNumber,
         labelUrl: shipmentResult.labelUrl,
         shipmentId: shipmentResult.shipmentId,
         estimatedDeliveryDate: shipmentResult.estimatedDeliveryDate,
         totalCost: shipmentResult.totalCost,
-        currency: 'TRY',
+        currency: "TRY",
         serviceType: labelRequest.serviceType,
-        labelFormat: 'PDF',
-        postOfficeCode: shipmentResult.postOfficeCode
+        labelFormat: "PDF",
+        postOfficeCode: shipmentResult.postOfficeCode,
       };
 
-      return this.createSuccessResponse(result, 'Shipping label created successfully');
-
+      return this.createSuccessResponse(
+        result,
+        "Shipping label created successfully"
+      );
     } catch (error) {
-      this.logger.error(`Failed to create PTT Kargo shipping label: ${error.message}`, { error });
+      this.logger.error(
+        `Failed to create PTT Kargo shipping label: ${error.message}`,
+        { error }
+      );
       return this.createErrorResponse(
         `Failed to create shipping label: ${error.message}`,
-        'LABEL_CREATION_ERROR'
+        "LABEL_CREATION_ERROR"
       );
     }
   }
@@ -249,7 +273,10 @@ class PTTKargoService extends BaseShippingService {
       }
 
       if (!trackingNumber) {
-        return this.createErrorResponse('Tracking number is required', 'MISSING_TRACKING_NUMBER');
+        return this.createErrorResponse(
+          "Tracking number is required",
+          "MISSING_TRACKING_NUMBER"
+        );
       }
 
       const response = await this.retryRequest(() =>
@@ -258,13 +285,13 @@ class PTTKargoService extends BaseShippingService {
 
       if (!response.data || !response.data.success) {
         return this.createErrorResponse(
-          response.data?.message || 'Tracking information not found',
-          'TRACKING_NOT_FOUND'
+          response.data?.message || "Tracking information not found",
+          "TRACKING_NOT_FOUND"
         );
       }
 
       const trackingData = response.data.tracking;
-      
+
       const result = {
         trackingNumber,
         status: this.mapTrackingStatus(trackingData.currentStatus),
@@ -274,25 +301,30 @@ class PTTKargoService extends BaseShippingService {
         currentLocation: {
           postOffice: trackingData.currentPostOffice,
           city: trackingData.currentCity,
-          code: trackingData.currentLocationCode
+          code: trackingData.currentLocationCode,
         },
-        events: trackingData.trackingEvents?.map(event => ({
-          date: event.eventDate,
-          time: event.eventTime,
-          status: event.statusCode,
-          description: event.statusDescription,
-          location: event.location,
-          postOffice: event.postOfficeName
-        })) || []
+        events:
+          trackingData.trackingEvents?.map((event) => ({
+            date: event.eventDate,
+            time: event.eventTime,
+            status: event.statusCode,
+            description: event.statusDescription,
+            location: event.location,
+            postOffice: event.postOfficeName,
+          })) || [],
       };
 
-      return this.createSuccessResponse(result, 'Tracking information retrieved successfully');
-
+      return this.createSuccessResponse(
+        result,
+        "Tracking information retrieved successfully"
+      );
     } catch (error) {
-      this.logger.error(`Failed to track PTT Kargo package: ${error.message}`, { error });
+      this.logger.error(`Failed to track PTT Kargo package: ${error.message}`, {
+        error,
+      });
       return this.createErrorResponse(
         `Failed to track package: ${error.message}`,
-        'TRACKING_ERROR'
+        "TRACKING_ERROR"
       );
     }
   }
@@ -309,20 +341,23 @@ class PTTKargoService extends BaseShippingService {
       }
 
       if (!trackingNumber) {
-        return this.createErrorResponse('Tracking number is required', 'MISSING_TRACKING_NUMBER');
+        return this.createErrorResponse(
+          "Tracking number is required",
+          "MISSING_TRACKING_NUMBER"
+        );
       }
 
       const response = await this.retryRequest(() =>
         this.axiosInstance.post(`/v1/shipments/${trackingNumber}/cancel`, {
-          reason: 'Customer request',
-          notes: 'Shipment cancelled by customer'
+          reason: "Customer request",
+          notes: "Shipment cancelled by customer",
         })
       );
 
       if (!response.data || !response.data.success) {
         return this.createErrorResponse(
-          response.data?.message || 'Failed to cancel shipment',
-          'CANCELLATION_FAILED'
+          response.data?.message || "Failed to cancel shipment",
+          "CANCELLATION_FAILED"
         );
       }
 
@@ -331,17 +366,22 @@ class PTTKargoService extends BaseShippingService {
         cancelled: true,
         cancellationDate: response.data.cancellationDate,
         refundAmount: response.data.refundAmount || 0,
-        refundCurrency: 'TRY',
-        refundMethod: response.data.refundMethod || 'ORIGINAL_PAYMENT'
+        refundCurrency: "TRY",
+        refundMethod: response.data.refundMethod || "ORIGINAL_PAYMENT",
       };
 
-      return this.createSuccessResponse(result, 'Shipment cancelled successfully');
-
+      return this.createSuccessResponse(
+        result,
+        "Shipment cancelled successfully"
+      );
     } catch (error) {
-      this.logger.error(`Failed to cancel PTT Kargo shipment: ${error.message}`, { error });
+      this.logger.error(
+        `Failed to cancel PTT Kargo shipment: ${error.message}`,
+        { error }
+      );
       return this.createErrorResponse(
         `Failed to cancel shipment: ${error.message}`,
-        'CANCELLATION_ERROR'
+        "CANCELLATION_ERROR"
       );
     }
   }
@@ -353,35 +393,35 @@ class PTTKargoService extends BaseShippingService {
   getSupportedServices() {
     return [
       {
-        code: 'STANDARD',
-        name: 'Standart Posta',
-        description: 'Standard postal service',
-        estimatedDays: '2-5'
+        code: "STANDARD",
+        name: "Standart Posta",
+        description: "Standard postal service",
+        estimatedDays: "2-5",
       },
       {
-        code: 'EXPRESS',
-        name: 'Hızlı Posta',
-        description: 'Express postal service',
-        estimatedDays: '1-3'
+        code: "EXPRESS",
+        name: "Hızlı Posta",
+        description: "Express postal service",
+        estimatedDays: "1-3",
       },
       {
-        code: 'PRIORITY',
-        name: 'Öncelikli Posta',
-        description: 'Priority postal service',
-        estimatedDays: '1-2'
+        code: "PRIORITY",
+        name: "Öncelikli Posta",
+        description: "Priority postal service",
+        estimatedDays: "1-2",
       },
       {
-        code: 'COD',
-        name: 'Kapıda Ödeme',
-        description: 'Cash on delivery service',
-        estimatedDays: '2-5'
+        code: "COD",
+        name: "Kapıda Ödeme",
+        description: "Cash on delivery service",
+        estimatedDays: "2-5",
       },
       {
-        code: 'INSURED',
-        name: 'Güvenceli Posta',
-        description: 'Insured postal service',
-        estimatedDays: '2-4'
-      }
+        code: "INSURED",
+        name: "Güvenceli Posta",
+        description: "Insured postal service",
+        estimatedDays: "2-4",
+      },
     ];
   }
 
@@ -392,13 +432,13 @@ class PTTKargoService extends BaseShippingService {
    */
   mapServiceType(serviceType) {
     const serviceMap = {
-      'STANDARD': 'STANDARD',
-      'EXPRESS': 'EXPRESS',
-      'PRIORITY': 'PRIORITY',
-      'COD': 'COD',
-      'INSURED': 'INSURED'
+      STANDARD: "STANDARD",
+      EXPRESS: "EXPRESS",
+      PRIORITY: "PRIORITY",
+      COD: "COD",
+      INSURED: "INSURED",
     };
-    return serviceMap[serviceType?.toUpperCase()] || 'STANDARD';
+    return serviceMap[serviceType?.toUpperCase()] || "STANDARD";
   }
 
   /**
@@ -408,19 +448,19 @@ class PTTKargoService extends BaseShippingService {
    */
   mapTrackingStatus(pttStatus) {
     const statusMap = {
-      'POSTED': 'created',
-      'IN_TRANSIT': 'in_transit',
-      'ARRIVED_AT_POST_OFFICE': 'in_transit',
-      'OUT_FOR_DELIVERY': 'out_for_delivery',
-      'DELIVERED': 'delivered',
-      'DELIVERY_ATTEMPTED': 'delivery_attempted',
-      'RETURNED_TO_SENDER': 'returned',
-      'CANCELLED': 'cancelled',
-      'ON_HOLD': 'on_hold',
-      'CUSTOMS_CLEARANCE': 'in_transit'
+      POSTED: "created",
+      IN_TRANSIT: "in_transit",
+      ARRIVED_AT_POST_OFFICE: "in_transit",
+      OUT_FOR_DELIVERY: "out_for_delivery",
+      DELIVERED: "delivered",
+      DELIVERY_ATTEMPTED: "delivery_attempted",
+      RETURNED_TO_SENDER: "returned",
+      CANCELLED: "cancelled",
+      ON_HOLD: "on_hold",
+      CUSTOMS_CLEARANCE: "in_transit",
     };
 
-    return statusMap[pttStatus?.toUpperCase()] || 'unknown';
+    return statusMap[pttStatus?.toUpperCase()] || "unknown";
   }
 
   /**
@@ -430,11 +470,40 @@ class PTTKargoService extends BaseShippingService {
   getDeliveryAreas() {
     // PTT serves all of Turkey
     return [
-      'İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya',
-      'Gaziantep', 'Mersin', 'Diyarbakır', 'Kayseri', 'Eskişehir', 'Şanlıurfa',
-      'Malatya', 'Erzurum', 'Trabzon', 'Denizli', 'Ordu', 'Balıkesir', 'Manisa',
-      'Samsun', 'Kahramanmaraş', 'Van', 'Aydın', 'Hatay', 'Sakarya', 'Tekirdağ',
-      'Muğla', 'Kocaeli', 'Mardin', 'Afyon', 'Elazığ', 'Batman', 'Uşak'
+      "İstanbul",
+      "Ankara",
+      "İzmir",
+      "Bursa",
+      "Antalya",
+      "Adana",
+      "Konya",
+      "Gaziantep",
+      "Mersin",
+      "Diyarbakır",
+      "Kayseri",
+      "Eskişehir",
+      "Şanlıurfa",
+      "Malatya",
+      "Erzurum",
+      "Trabzon",
+      "Denizli",
+      "Ordu",
+      "Balıkesir",
+      "Manisa",
+      "Samsun",
+      "Kahramanmaraş",
+      "Van",
+      "Aydın",
+      "Hatay",
+      "Sakarya",
+      "Tekirdağ",
+      "Muğla",
+      "Kocaeli",
+      "Mardin",
+      "Afyon",
+      "Elazığ",
+      "Batman",
+      "Uşak",
       // PTT serves all 81 provinces in Turkey
     ];
   }
@@ -451,43 +520,52 @@ class PTTKargoService extends BaseShippingService {
       }
 
       const formattedAddress = this.formatTurkishAddress(address);
-      
+
       if (!this.validateTurkishPostalCode(formattedAddress.postalCode)) {
-        return this.createErrorResponse('Invalid postal code', 'INVALID_POSTAL_CODE');
+        return this.createErrorResponse(
+          "Invalid postal code",
+          "INVALID_POSTAL_CODE"
+        );
       }
 
       const response = await this.retryRequest(() =>
-        this.axiosInstance.get('/v1/delivery/availability', {
+        this.axiosInstance.get("/v1/delivery/availability", {
           params: {
             postalCode: formattedAddress.postalCode,
             city: formattedAddress.city,
-            district: formattedAddress.district
-          }
+            district: formattedAddress.district,
+          },
         })
       );
 
       if (!response.data || !response.data.success) {
         return this.createErrorResponse(
-          'Delivery availability check failed',
-          'AVAILABILITY_CHECK_FAILED'
+          "Delivery availability check failed",
+          "AVAILABILITY_CHECK_FAILED"
         );
       }
 
       const result = {
         available: response.data.data?.available !== false, // PTT serves most areas
-        serviceTypes: response.data.data?.availableServices || this.getSupportedServices(),
-        estimatedDeliveryDays: response.data.data?.deliveryTime || '2-5',
+        serviceTypes:
+          response.data.data?.availableServices || this.getSupportedServices(),
+        estimatedDeliveryDays: response.data.data?.deliveryTime || "2-5",
         restrictions: response.data.data?.restrictions || [],
-        nearestPostOffice: response.data.data?.nearestPostOffice || {}
+        nearestPostOffice: response.data.data?.nearestPostOffice || {},
       };
 
-      return this.createSuccessResponse(result, 'Delivery availability checked successfully');
-
+      return this.createSuccessResponse(
+        result,
+        "Delivery availability checked successfully"
+      );
     } catch (error) {
-      this.logger.error(`Failed to check PTT Kargo delivery availability: ${error.message}`, { error });
+      this.logger.error(
+        `Failed to check PTT Kargo delivery availability: ${error.message}`,
+        { error }
+      );
       return this.createErrorResponse(
         `Failed to check delivery availability: ${error.message}`,
-        'AVAILABILITY_CHECK_ERROR'
+        "AVAILABILITY_CHECK_ERROR"
       );
     }
   }
@@ -504,7 +582,10 @@ class PTTKargoService extends BaseShippingService {
       }
 
       if (!this.validateTurkishPostalCode(postalCode)) {
-        return this.createErrorResponse('Invalid postal code', 'INVALID_POSTAL_CODE');
+        return this.createErrorResponse(
+          "Invalid postal code",
+          "INVALID_POSTAL_CODE"
+        );
       }
 
       const response = await this.retryRequest(() =>
@@ -513,13 +594,13 @@ class PTTKargoService extends BaseShippingService {
 
       if (!response.data || !response.data.success) {
         return this.createErrorResponse(
-          'Post office information not found',
-          'POST_OFFICE_NOT_FOUND'
+          "Post office information not found",
+          "POST_OFFICE_NOT_FOUND"
         );
       }
 
       const postOffice = response.data.postOffice;
-      
+
       const result = {
         code: postOffice.code,
         name: postOffice.name,
@@ -529,16 +610,21 @@ class PTTKargoService extends BaseShippingService {
         postalCode: postOffice.postalCode,
         phone: postOffice.phone,
         workingHours: postOffice.workingHours,
-        services: postOffice.availableServices || []
+        services: postOffice.availableServices || [],
       };
 
-      return this.createSuccessResponse(result, 'Post office information retrieved successfully');
-
+      return this.createSuccessResponse(
+        result,
+        "Post office information retrieved successfully"
+      );
     } catch (error) {
-      this.logger.error(`Failed to get PTT post office info: ${error.message}`, { error });
+      this.logger.error(
+        `Failed to get PTT post office info: ${error.message}`,
+        { error }
+      );
       return this.createErrorResponse(
         `Failed to get post office information: ${error.message}`,
-        'POST_OFFICE_INFO_ERROR'
+        "POST_OFFICE_INFO_ERROR"
       );
     }
   }

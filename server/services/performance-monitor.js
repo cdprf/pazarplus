@@ -50,6 +50,11 @@ class PerformanceMonitor {
       help: "Number of active database connections",
     });
 
+    this.dbPoolSize = new prometheus.Gauge({
+      name: "pazar_plus_db_pool_size",
+      help: "Database connection pool size",
+    });
+
     // Platform integration metrics
     this.platformApiCalls = new prometheus.Counter({
       name: "pazar_plus_platform_api_calls_total",
@@ -133,6 +138,7 @@ class PerformanceMonitor {
     this.register.registerMetric(this.httpRequestTotal);
     this.register.registerMetric(this.dbQueryDuration);
     this.register.registerMetric(this.dbConnectionPool);
+    this.register.registerMetric(this.dbPoolSize);
     this.register.registerMetric(this.platformApiCalls);
     this.register.registerMetric(this.platformApiDuration);
     this.register.registerMetric(this.platformSyncSuccess);
@@ -237,20 +243,31 @@ class PerformanceMonitor {
   // Update real-time gauges
   async updateGauges() {
     try {
-      // This would be called periodically to update gauge metrics
-      const { sequelize } = require("../models");
-
-      // Update database connection pool
-      if (sequelize.connectionManager && sequelize.connectionManager.pool) {
-        const pool = sequelize.connectionManager.pool;
-        this.dbConnectionPool.set(pool.used.length);
+      // Database connection pool metrics
+      try {
+        const { sequelize } = require("../models");
+        const pool = sequelize?.connectionManager?.pool;
+        if (pool) {
+          this.dbConnectionPool.set(pool.used?.length || 0);
+          this.dbPoolSize.set(pool.size || 0);
+        } else {
+          this.dbConnectionPool.set(0);
+          this.dbPoolSize.set(0);
+        }
+      } catch (dbError) {
+        logger.warn(
+          "Could not access database connection pool:",
+          dbError.message
+        );
+        this.dbConnectionPool.set(0);
+        this.dbPoolSize.set(0);
       }
 
-      // Update active users (last 24 hours)
+      // Active users (last 24 hours)
       const activeUserCount = await this.getActiveUserCount();
       this.activeUsers.set(activeUserCount);
 
-      // Update platform connections
+      // Platform connections
       const connectionCounts = await this.getPlatformConnectionCounts();
       for (const [platform, count] of Object.entries(connectionCounts)) {
         this.platformConnections.labels(platform).set(count);
@@ -267,7 +284,7 @@ class PerformanceMonitor {
 
       const count = await User.count({
         where: {
-          lastLoginAt: {
+          lastLogin: {
             [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000),
           },
         },

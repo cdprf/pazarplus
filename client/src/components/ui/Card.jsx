@@ -67,4 +67,27 @@ const CardFooter = React.forwardRef(
 );
 CardFooter.displayName = "CardFooter";
 
-export { Card, CardHeader, CardTitle, CardContent, CardFooter };
+const CardDescription = React.forwardRef(
+  ({ children, className = "", ...props }, ref) => (
+    <p
+      ref={ref}
+      className={cn(
+        "card-description text-sm text-gray-600 dark:text-gray-400",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </p>
+  )
+);
+CardDescription.displayName = "CardDescription";
+
+export {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+};

@@ -25,6 +25,7 @@ import EmailVerification from "./components/auth/EmailVerification";
 import Dashboard from "./components/dashboard/Dashboard";
 import Orders from "./pages/Orders"; // Consolidated order management
 import OrderDetail from "./components/orders/OrderDetail";
+import ProductManagement from "./components/products/ProductManagement";
 import CustomerManagement from "./components/customers/CustomerManagement";
 import ShippingManagement from "./components/shipping/ShippingManagement";
 import ImportExport from "./components/common/ImportExport";
@@ -32,7 +33,9 @@ import PlatformConnections from "./components/platforms/PlatformConnections";
 import PlatformSettings from "./components/platforms/PlatformSettings";
 import PlatformAnalytics from "./components/platforms/PlatformAnalytics";
 import PlatformSyncHistory from "./components/platforms/PlatformSyncHistory";
+import Reports from "./components/reports/Reports"; // Add the analytics/reports page
 import Settings from "./components/settings/Settings";
+import PrintSettings from "./components/settings/PrintSettings";
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -112,6 +115,10 @@ function App() {
                         <Route path="dashboard" element={<Dashboard />} />
                         <Route path="orders" element={<Orders />} />
                         <Route path="orders/:id" element={<OrderDetail />} />
+                        <Route
+                          path="products"
+                          element={<ProductManagement />}
+                        />
 
                         {/* Other management routes */}
                         <Route
@@ -145,8 +152,22 @@ function App() {
                           element={<PlatformSyncHistory />}
                         />
 
+                        {/* Reports */}
+                        <Route path="reports" element={<Reports />} />
+                        <Route path="analytics" element={<Reports />} />
+                        <Route path="analytics/sales" element={<Reports />} />
+                        <Route
+                          path="analytics/performance"
+                          element={<Reports />}
+                        />
+                        <Route path="analytics/trends" element={<Reports />} />
+
                         {/* Settings */}
                         <Route path="settings" element={<Settings />} />
+                        <Route
+                          path="print-settings"
+                          element={<PrintSettings />}
+                        />
                       </Route>
                     </Routes>
                   </div>

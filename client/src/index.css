@@ -223,6 +223,10 @@ body {
   @apply border-green-500 focus:border-green-500 focus:ring-green-500/20;
 }
 
+.form-input-warning {
+  @apply border-yellow-500 focus:border-yellow-500 focus:ring-yellow-500/20;
+}
+
 .form-help {
   @apply text-sm text-gray-500 dark:text-gray-400;
 }
@@ -273,6 +277,14 @@ body {
 
 .table-row {
   @apply hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors;
+}
+
+.table-row:hover .table-actions {
+  @apply opacity-100;
+}
+
+.table-actions {
+  @apply opacity-0 transition-opacity duration-200;
 }
 
 .table-td {
@@ -455,27 +467,31 @@ nav svg,
 
 /* Toast notifications */
 .toast {
-  @apply flex items-start p-4 rounded-lg shadow-lg border max-w-sm;
+  @apply flex items-start p-4 rounded-lg shadow-lg border max-w-sm min-w-80 bg-white dark:bg-gray-800 transition-all duration-300 ease-in-out backdrop-blur-sm;
 }
 
 .toast-success {
-  @apply bg-white dark:bg-gray-800 border-green-200 dark:border-green-800;
+  @apply border-green-200 dark:border-green-800;
 }
 
 .toast-error {
-  @apply bg-white dark:bg-gray-800 border-red-200 dark:border-red-800;
+  @apply border-red-200 dark:border-red-800;
 }
 
 .toast-warning {
-  @apply bg-white dark:bg-gray-800 border-yellow-200 dark:border-yellow-800;
+  @apply border-yellow-200 dark:border-yellow-800;
 }
 
 .toast-info {
-  @apply bg-white dark:bg-gray-800 border-blue-200 dark:border-blue-800;
+  @apply border-blue-200 dark:border-blue-800;
+}
+
+.toast-icon-container {
+  @apply flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mr-3;
 }
 
 .toast-icon {
-  @apply flex-shrink-0 mr-3;
+  @apply h-5 w-5;
 }
 
 .toast-content {
@@ -483,15 +499,406 @@ nav svg,
 }
 
 .toast-title {
-  @apply text-sm font-medium text-gray-900 dark:text-gray-100;
+  @apply text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1;
 }
 
 .toast-message {
-  @apply text-sm text-gray-600 dark:text-gray-400 mt-1;
+  @apply text-sm text-gray-600 dark:text-gray-400 leading-5;
 }
 
 .toast-close {
-  @apply ml-3 flex-shrink-0 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors;
+  @apply ml-3 flex-shrink-0 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900;
+}
+
+.toast-progress-container {
+  @apply absolute bottom-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700 rounded-b-lg overflow-hidden;
+}
+
+.toast-progress-bar {
+  @apply h-full transition-all duration-100 ease-linear;
+}
+
+.toast-progress-success {
+  @apply bg-green-500;
+}
+
+.toast-progress-error {
+  @apply bg-red-500;
+}
+
+.toast-progress-warning {
+  @apply bg-yellow-500;
+}
+
+.toast-progress-info {
+  @apply bg-blue-500;
+}
+
+/* Toast Container */
+.z-toast {
+  z-index: 9999;
+}
+
+/* Enhanced Toast Animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutLeft {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutUp {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out forwards;
+}
+
+.animate-slide-out-right {
+  animation: slideOutRight 0.3s ease-in forwards;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.3s ease-out forwards;
+}
+
+.animate-slide-out-left {
+  animation: slideOutLeft 0.3s ease-in forwards;
+}
+
+.animate-slide-in-down {
+  animation: slideInDown 0.3s ease-out forwards;
+}
+
+.animate-slide-out-up {
+  animation: slideOutUp 0.3s ease-in forwards;
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.3s ease-out forwards;
+}
+
+.animate-slide-out-down {
+  animation: slideOutDown 0.3s ease-in forwards;
+}
+
+/* Enhanced Toast Stacking and Animations */
+.toast-wrapper {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+/* Toast Container Stacking Enhancements */
+.toast-container {
+  @apply fixed flex flex-col;
+  pointer-events: none;
+}
+
+.toast-container .toast-wrapper {
+  pointer-events: auto;
+}
+
+/* Smooth stacking animations with proper spacing */
+.toast-wrapper:nth-child(1) {
+  transform: translateY(0px) scale(1);
+  z-index: 1000;
+}
+
+.toast-wrapper:nth-child(2) {
+  transform: translateY(2px) scale(0.98);
+  z-index: 999;
+  opacity: 0.95;
+}
+
+.toast-wrapper:nth-child(3) {
+  transform: translateY(4px) scale(0.96);
+  z-index: 998;
+  opacity: 0.9;
+}
+
+.toast-wrapper:nth-child(4) {
+  transform: translateY(6px) scale(0.94);
+  z-index: 997;
+  opacity: 0.85;
+}
+
+.toast-wrapper:nth-child(n + 5) {
+  transform: translateY(8px) scale(0.92);
+  z-index: 996;
+  opacity: 0.8;
+}
+
+/* Enhanced slide animations for different positions */
+.animate-slide-in-from-right {
+  animation: slideInFromRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-out-to-right {
+  animation: slideOutToRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-slide-in-from-left {
+  animation: slideInFromLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-out-to-left {
+  animation: slideOutToLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-slide-in-from-top {
+  animation: slideInFromTop 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-out-to-top {
+  animation: slideOutToTop 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-slide-in-from-bottom {
+  animation: slideInFromBottom 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-out-to-bottom {
+  animation: slideOutToBottom 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes slideInFromRight {
+  0% {
+    opacity: 0;
+    transform: translateX(100%) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes slideOutToRight {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(100%) scale(0.8);
+  }
+}
+
+@keyframes slideInFromLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-100%) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes slideOutToLeft {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-100%) scale(0.8);
+  }
+}
+
+@keyframes slideInFromTop {
+  0% {
+    opacity: 0;
+    transform: translateY(-100%) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideOutToTop {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100%) scale(0.8);
+  }
+}
+
+@keyframes slideInFromBottom {
+  0% {
+    opacity: 0;
+    transform: translateY(100%) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideOutToBottom {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(100%) scale(0.8);
+  }
+}
+
+/* Hover effects for stacked toasts */
+.toast-wrapper:hover {
+  transform: translateY(0px) scale(1) !important;
+  z-index: 1001 !important;
+  opacity: 1 !important;
+}
+
+/* Beautiful backdrop blur effect for overlapping toasts */
+.toast-wrapper:not(:first-child) .toast {
+  backdrop-filter: blur(4px);
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.dark .toast-wrapper:not(:first-child) .toast {
+  background-color: rgba(31, 41, 55, 0.9);
+}
+
+/* Enhanced progress bar for stacked toasts */
+.toast-wrapper:not(:first-child) .toast-progress-bar {
+  opacity: 0.7;
+}
+
+/* Smooth entrance delay for staggered animations */
+.toast-wrapper:nth-child(1) {
+  animation-delay: 0ms;
+}
+.toast-wrapper:nth-child(2) {
+  animation-delay: 100ms;
+}
+.toast-wrapper:nth-child(3) {
+  animation-delay: 200ms;
+}
+.toast-wrapper:nth-child(4) {
+  animation-delay: 300ms;
+}
+.toast-wrapper:nth-child(n + 5) {
+  animation-delay: 400ms;
+}
+
+/* Enhanced shadows for depth */
+.toast-wrapper:nth-child(1) .toast {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.toast-wrapper:nth-child(2) .toast {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.toast-wrapper:nth-child(n + 3) .toast {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* Responsive toast stacking for mobile */
+@media (max-width: 640px) {
+  .toast-wrapper {
+    margin-bottom: 8px;
+  }
+
+  .toast-wrapper:nth-child(n + 2) {
+    transform: scale(0.98) !important;
+    opacity: 0.9 !important;
+  }
+
+  .toast-wrapper:nth-child(n + 3) {
+    display: none; /* Hide excess toasts on mobile */
+  }
+}
+
+/* Enhanced hover effects for toasts */
+.toast:hover {
+  @apply shadow-xl transform scale-[1.02] transition-all duration-200;
 }
 
 /* Enhanced focus styles */
@@ -912,15 +1319,6 @@ nav svg,
   @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900;
 }
 
-/* Enhanced table improvements for better data display */
-.table-row:hover .table-actions {
-  @apply opacity-100;
-}
-
-.table-actions {
-  @apply opacity-0 transition-opacity duration-200;
-}
-
 /* Bulk selection enhancements */
 .bulk-actions-bar {
   @apply bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6;
@@ -967,19 +1365,6 @@ nav svg,
 
 .compliance-buy-now-pay-later {
   @apply bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-400;
-}
-
-/* Enhanced form validation styles */
-.form-input-error {
-  @apply border-red-500 focus:border-red-500 focus:ring-red-500/20;
-}
-
-.form-input-success {
-  @apply border-green-500 focus:border-green-500 focus:ring-green-500/20;
-}
-
-.form-input-warning {
-  @apply border-yellow-500 focus:border-yellow-500 focus:ring-yellow-500/20;
 }
 
 /* Turkish currency formatting */
@@ -1236,5 +1621,4 @@ nav svg,
   @apply flex-1 justify-center text-xs px-3 py-2;
   @apply hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md;
   @apply transition-all duration-200;
-  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1;
 }

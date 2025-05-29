@@ -9,11 +9,11 @@ async function testOrderFetching() {
 
     // Get the dev user
     const devUser = await User.findOne({
-      where: { username: "test" },
+      where: { username: "dda" }, // Changed from "test" to "dda" to match existing user
     });
 
     if (!devUser) {
-      console.log("❌ test user not found");
+      console.log("❌ dda user not found");
       return;
     }
 
@@ -91,7 +91,7 @@ async function testOrderFetching() {
 
     // Now test the order controller logic
     console.log("\n🧪 Testing Order Controller Logic");
-    const OrderController = require("./server/controllers/order-controller");
+    const OrderController = require("./server/modules/order-management/controllers/order-controller");
 
     // Mock request and response
     const mockReq = {

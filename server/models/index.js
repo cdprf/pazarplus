@@ -11,87 +11,219 @@ const TrendyolOrder = require("./TrendyolOrder");
 const ShippingCarrier = require("./ShippingCarrier");
 const ShippingRate = require("./ShippingRate");
 const TurkishCompliance = require("./TurkishCompliance");
+const ComplianceDocuments = require("./ComplianceDocuments");
+
+// === NEW SUBSCRIPTION MODELS ===
+const Subscription = require("./Subscription");
+const UsageRecord = require("./UsageRecord");
+const Invoice = require("./Invoice");
+
+// Initialize models with sequelize
+const models = {
+  User: User,
+  Order: Order,
+  OrderItem: OrderItem,
+  Product: Product,
+  PlatformConnection: PlatformConnection,
+  ShippingDetail: ShippingDetail,
+  HepsiburadaOrder: HepsiburadaOrder,
+  N11Order: N11Order,
+  TrendyolOrder: TrendyolOrder,
+  ShippingCarrier: ShippingCarrier,
+  ShippingRate: ShippingRate,
+  TurkishCompliance: TurkishCompliance,
+  ComplianceDocuments: ComplianceDocuments,
+
+  // === SUBSCRIPTION MODELS ===
+  Subscription: Subscription,
+  UsageRecord: UsageRecord,
+  Invoice: Invoice,
+};
 
 // Define associations
-User.hasMany(Order, { foreignKey: "userId", as: "orders" });
-Order.belongsTo(User, { foreignKey: "userId", as: "user" });
+models.User.hasMany(models.Order, { foreignKey: "userId", as: "orders" });
+models.Order.belongsTo(models.User, { foreignKey: "userId", as: "user" });
 
-User.hasMany(Product, { foreignKey: "userId", as: "products" });
-Product.belongsTo(User, { foreignKey: "userId", as: "user" });
+models.User.hasMany(models.Product, { foreignKey: "userId", as: "products" });
+models.Product.belongsTo(models.User, { foreignKey: "userId", as: "user" });
 
-Order.hasMany(OrderItem, { foreignKey: "orderId", as: "items" });
-OrderItem.belongsTo(Order, { foreignKey: "orderId", as: "order" });
+models.Order.hasMany(models.OrderItem, { foreignKey: "orderId", as: "items" });
+models.OrderItem.belongsTo(models.Order, {
+  foreignKey: "orderId",
+  as: "order",
+});
 
-User.hasMany(PlatformConnection, {
+// Add Product <-> OrderItem association
+models.Product.hasMany(models.OrderItem, {
+  foreignKey: "productId",
+  as: "orderItems",
+});
+models.OrderItem.belongsTo(models.Product, {
+  foreignKey: "productId",
+  as: "product",
+});
+
+models.User.hasMany(models.PlatformConnection, {
   foreignKey: "userId",
   as: "platformConnections",
 });
-PlatformConnection.belongsTo(User, { foreignKey: "userId", as: "user" });
+models.PlatformConnection.belongsTo(models.User, {
+  foreignKey: "userId",
+  as: "user",
+});
 
-Order.belongsTo(ShippingDetail, {
+models.Order.belongsTo(models.ShippingDetail, {
   foreignKey: "shippingDetailId",
   as: "shippingDetail",
 });
-ShippingDetail.hasMany(Order, { foreignKey: "shippingDetailId", as: "orders" });
+models.ShippingDetail.hasMany(models.Order, {
+  foreignKey: "shippingDetailId",
+  as: "orders",
+});
 
-PlatformConnection.hasMany(Order, { foreignKey: "connectionId", as: "orders" });
-Order.belongsTo(PlatformConnection, {
+models.PlatformConnection.hasMany(models.Order, {
+  foreignKey: "connectionId",
+  as: "orders",
+});
+models.Order.belongsTo(models.PlatformConnection, {
   foreignKey: "connectionId",
   as: "platformConnection",
 });
 
 // Platform-specific order associations
-Order.hasOne(HepsiburadaOrder, {
+models.Order.hasOne(models.HepsiburadaOrder, {
   foreignKey: "orderId",
   as: "hepsiburadaOrder",
 });
-HepsiburadaOrder.belongsTo(Order, { foreignKey: "orderId", as: "order" });
+models.HepsiburadaOrder.belongsTo(models.Order, {
+  foreignKey: "orderId",
+  as: "order",
+});
 
-Order.hasOne(N11Order, { foreignKey: "orderId", as: "n11Order" });
-N11Order.belongsTo(Order, { foreignKey: "orderId", as: "order" });
+models.Order.hasOne(models.N11Order, { foreignKey: "orderId", as: "n11Order" });
+models.N11Order.belongsTo(models.Order, { foreignKey: "orderId", as: "order" });
 
-Order.hasOne(TrendyolOrder, { foreignKey: "orderId", as: "trendyolOrder" });
-TrendyolOrder.belongsTo(Order, { foreignKey: "orderId", as: "order" });
+models.Order.hasOne(models.TrendyolOrder, {
+  foreignKey: "orderId",
+  as: "trendyolOrder",
+});
+models.TrendyolOrder.belongsTo(models.Order, {
+  foreignKey: "orderId",
+  as: "order",
+});
 
 // Shipping carrier associations
-ShippingCarrier.hasMany(ShippingRate, { foreignKey: "carrierId", as: "rates" });
-ShippingRate.belongsTo(ShippingCarrier, {
+models.ShippingCarrier.hasMany(models.ShippingRate, {
+  foreignKey: "carrierId",
+  as: "rates",
+});
+models.ShippingRate.belongsTo(models.ShippingCarrier, {
   foreignKey: "carrierId",
   as: "carrier",
 });
 
-Order.hasMany(ShippingRate, { foreignKey: "orderId", as: "shippingRates" });
-ShippingRate.belongsTo(Order, { foreignKey: "orderId", as: "order" });
+models.Order.hasMany(models.ShippingRate, {
+  foreignKey: "orderId",
+  as: "shippingRates",
+});
+models.ShippingRate.belongsTo(models.Order, {
+  foreignKey: "orderId",
+  as: "order",
+});
 
 // Optional: Add carrier to shipping detail for selected carrier
-ShippingDetail.belongsTo(ShippingCarrier, {
+models.ShippingDetail.belongsTo(models.ShippingCarrier, {
   foreignKey: "carrierId",
   as: "carrier",
 });
-ShippingCarrier.hasMany(ShippingDetail, {
+models.ShippingCarrier.hasMany(models.ShippingDetail, {
   foreignKey: "carrierId",
   as: "shipments",
 });
 
 // Turkish compliance associations
-Order.hasOne(TurkishCompliance, {
+models.Order.hasOne(models.TurkishCompliance, {
   foreignKey: "orderId",
   as: "turkishCompliance",
 });
-TurkishCompliance.belongsTo(Order, { foreignKey: "orderId", as: "order" });
+models.TurkishCompliance.belongsTo(models.Order, {
+  foreignKey: "orderId",
+  as: "order",
+});
+
+// Enhanced compliance documents associations
+models.Order.hasMany(models.ComplianceDocuments, {
+  foreignKey: "orderId",
+  as: "complianceDocuments",
+});
+models.ComplianceDocuments.belongsTo(models.Order, {
+  foreignKey: "orderId",
+  as: "order",
+});
+
+// === SUBSCRIPTION ASSOCIATIONS ===
+
+// User <-> Subscription (One-to-Many)
+models.User.hasMany(models.Subscription, {
+  foreignKey: "userId",
+  as: "subscriptions",
+});
+models.Subscription.belongsTo(models.User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// User <-> UsageRecord (One-to-Many)
+models.User.hasMany(models.UsageRecord, {
+  foreignKey: "userId",
+  as: "usageRecords",
+});
+models.UsageRecord.belongsTo(models.User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// Subscription <-> UsageRecord (One-to-Many)
+models.Subscription.hasMany(models.UsageRecord, {
+  foreignKey: "subscriptionId",
+  as: "usageRecords",
+});
+models.UsageRecord.belongsTo(models.Subscription, {
+  foreignKey: "subscriptionId",
+  as: "subscription",
+});
+
+// User <-> Invoice (One-to-Many)
+models.User.hasMany(models.Invoice, {
+  foreignKey: "userId",
+  as: "invoices",
+});
+models.Invoice.belongsTo(models.User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// Subscription <-> Invoice (One-to-Many)
+models.Subscription.hasMany(models.Invoice, {
+  foreignKey: "subscriptionId",
+  as: "invoices",
+});
+models.Invoice.belongsTo(models.Subscription, {
+  foreignKey: "subscriptionId",
+  as: "subscription",
+});
+
+// User self-referencing for referrals
+models.User.hasMany(models.User, {
+  foreignKey: "referredBy",
+  as: "referrals",
+});
+models.User.belongsTo(models.User, {
+  foreignKey: "referredBy",
+  as: "referrer",
+});
 
 module.exports = {
   sequelize,
-  User,
-  Order,
-  OrderItem,
-  Product,
-  PlatformConnection,
-  ShippingDetail,
-  HepsiburadaOrder,
-  N11Order,
-  TrendyolOrder,
-  ShippingCarrier,
-  ShippingRate,
-  TurkishCompliance,
+  ...models,
 };

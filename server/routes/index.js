@@ -9,10 +9,15 @@ const productRoutes = require("./productRoutes");
 const settingsRoutes = require("./settingsRoutes");
 const complianceRoutes = require("./complianceRoutes");
 const orderManagementRoutes = require("../modules/order-management/routes");
-const orderRoutes = require("./orderRoutes"); // Fixed: now points to the correct file
 
 // Import enhanced platform integration routes
 const enhancedPlatformRoutes = require("./enhanced-platforms");
+
+// Import Month 5 Phase 1: Analytics & Business Intelligence routes
+const analyticsRoutes = require("./analytics");
+
+// Import Month 5 Phase 2: Subscription & Multi-tenant routes
+const subscriptionRoutes = require("./subscription");
 
 // Health check endpoint - should be accessible first
 router.get("/api/health", (req, res) => {
@@ -29,6 +34,8 @@ router.get("/api/health", (req, res) => {
       settings: "/api/settings",
       compliance: "/api/compliance",
       orderManagement: "/api/order-management",
+      analytics: "/api/analytics", // Month 5 Phase 1
+      subscription: "/api/subscription", // Month 5 Phase 2 - NEW
     },
   });
 });
@@ -46,14 +53,17 @@ router.use("/products", productRoutes);
 router.use("/settings", settingsRoutes);
 router.use("/compliance", complianceRoutes);
 
-// Direct orders API for frontend compatibility
-router.use("/orders", orderRoutes);
-
 // Module-specific routes
 router.use("/order-management", orderManagementRoutes);
 
 // Enhanced platform integration routes (Week 5-6 features)
 router.use("/v1/enhanced-platforms", enhancedPlatformRoutes);
+
+// Month 5 Phase 1: Advanced Analytics & Business Intelligence routes
+router.use("/analytics", analyticsRoutes);
+
+// Month 5 Phase 2: Subscription Management & Multi-tenant SaaS routes
+router.use("/subscription", subscriptionRoutes);
 
 // Catch-all for debugging
 router.use("/*", (req, res) => {
@@ -70,8 +80,9 @@ router.use("/*", (req, res) => {
       "/api/products",
       "/api/settings",
       "/api/compliance",
-      "/api/orders",
       "/api/order-management",
+      "/api/analytics", // Month 5 Phase 1
+      "/api/subscription", // Month 5 Phase 2 - NEW
     ],
   });
 });

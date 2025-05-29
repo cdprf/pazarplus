@@ -74,6 +74,8 @@ const Layout = () => {
 
         <Footer />
       </div>
+
+      {/* Toast notifications are already handled by AlertProvider */}
     </div>
   );
 };

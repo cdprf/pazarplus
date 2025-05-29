@@ -1,0 +1,264 @@
+/* Subscription Dashboard Styles */
+.subscription-dashboard {
+  padding: 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}
+
+.subscription-dashboard .card {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.subscription-dashboard .card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Plan Card */
+.plan-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border-left: 5px solid #007bff;
+}
+
+.plan-card .plan-price h3 {
+  font-weight: 700;
+  font-size: 2.5rem;
+}
+
+.plan-detail {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 0.9rem;
+}
+
+.plan-detail:last-child {
+  border-bottom: none;
+}
+
+.trial-progress {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 10px;
+  margin-top: 1rem;
+}
+
+/* Feature Card */
+.feature-card {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.feature-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 0.75rem;
+  flex-shrink: 0;
+}
+
+.feature-dot.enabled {
+  background: #28a745;
+  box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
+}
+
+.feature-dot.disabled {
+  background: #dc3545;
+  opacity: 0.5;
+}
+
+.feature-name {
+  color: #495057;
+  font-weight: 500;
+}
+
+/* Usage Card */
+.usage-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f1f3f4 100%);
+}
+
+.usage-card .card-header {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  border-radius: 15px 15px 0 0;
+  border: none;
+}
+
+.usage-metric h6 {
+  color: #495057;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.usage-progress {
+  background: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.usage-progress .progress {
+  height: 8px;
+  border-radius: 4px;
+}
+
+/* Actions Card */
+.actions-card {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border-left: 5px solid #28a745;
+}
+
+.actions-card .btn {
+  margin: 0.25rem;
+  border-radius: 20px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.actions-card .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .subscription-dashboard {
+    padding: 0.5rem;
+  }
+
+  .plan-card .d-flex {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .plan-price {
+    margin-top: 1rem;
+  }
+
+  .usage-metric {
+    margin-bottom: 1.5rem;
+  }
+
+  .actions-card .d-flex {
+    flex-direction: column;
+  }
+
+  .actions-card .btn {
+    width: 100%;
+    margin: 0.25rem 0;
+  }
+}
+
+/* Badge Animations */
+.badge {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
+  }
+}
+
+/* Progress Bar Animations */
+.progress-bar {
+  animation: progressFill 1.5s ease-in-out;
+}
+
+@keyframes progressFill {
+  0% {
+    width: 0%;
+  }
+}
+
+/* Alert Styling */
+.alert {
+  border: none;
+  border-radius: 10px;
+  border-left: 5px solid;
+}
+
+.alert-warning {
+  border-left-color: #ffc107;
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+}
+
+/* Modal Styling */
+.modal-content {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  border-bottom: 1px solid #e9ecef;
+  border-radius: 15px 15px 0 0;
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+}
+
+.modal-header .btn-close {
+  filter: invert(1);
+}
+
+/* Loading State */
+.spinner-border {
+  color: #007bff;
+}
+
+/* Card Hover Effects */
+.plan-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 123, 255, 0.05) 0%,
+    rgba(0, 86, 179, 0.05) 100%
+  );
+  border-radius: 15px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.plan-card:hover::before {
+  opacity: 1;
+}
+
+/* Custom Scrollbar */
+.subscription-dashboard::-webkit-scrollbar {
+  width: 8px;
+}
+
+.subscription-dashboard::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.subscription-dashboard::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  border-radius: 10px;
+}
+
+.subscription-dashboard::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+}
