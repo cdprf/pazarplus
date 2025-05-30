@@ -19,12 +19,29 @@ class EnhancedPlatformService {
   }
 
   /**
+   * Get the correct server URL for WebSocket connection
+   */
+  getServerUrl() {
+    if (process.env.NODE_ENV === "development") {
+      const hostname = window.location.hostname;
+
+      // If hostname is an IP address (mobile access), use the same IP for WebSocket
+      if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+        return `http://${hostname}:5001`;
+      }
+
+      // Default to localhost for desktop development
+      return process.env.REACT_APP_SERVER_URL || "http://localhost:5001";
+    }
+    return process.env.REACT_APP_SERVER_URL || window.location.origin;
+  }
+
+  /**
    * Establish WebSocket connection for real-time notifications
    */
   connect() {
     try {
-      const serverUrl =
-        process.env.REACT_APP_SERVER_URL || "http://localhost:3001";
+      const serverUrl = this.getServerUrl();
 
       this.socket = io(serverUrl, {
         transports: ["websocket", "polling"],

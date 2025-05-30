@@ -26,3 +26,14 @@ export { Tabs, TabsList, TabsTrigger, TabsContent } from "./Tabs";
 export { Modal, ModalHeader, ModalContent, ModalFooter } from "./Modal";
 export { Tooltip } from "./Tooltip";
 export { Select } from "./Select";
+export { Switch } from "./Switch";
+export { Textarea } from "./Textarea";
+export { ScrollArea } from "./ScrollArea";
+export {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "./Dialog";

@@ -858,17 +858,6 @@ const OrderManagement = () => {
                   </span>
                 </Button>
 
-                {/* Debug Test Button - Remove this after testing */}
-                <Button
-                  onClick={() =>
-                    showAlert("Test bildirimi başarıyla gösterildi!", "success")
-                  }
-                  variant="outline"
-                  className="flex items-center space-x-2 bg-purple-100 text-purple-700 border-purple-300"
-                >
-                  <span>🧪 Test Bildirimi</span>
-                </Button>
-
                 <Button
                   onClick={exportOrders}
                   variant="outline"

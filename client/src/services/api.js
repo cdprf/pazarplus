@@ -3,6 +3,15 @@ import axios from "axios";
 // Determine the correct API base URL
 const getApiBaseUrl = () => {
   if (process.env.NODE_ENV === "development") {
+    // Check if we're accessing from a mobile device on the network
+    const hostname = window.location.hostname;
+
+    // If hostname is an IP address (mobile access), use the same IP for API
+    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+      return `http://${hostname}:5001`;
+    }
+
+    // Default to localhost for desktop development
     return process.env.REACT_APP_API_URL || "http://localhost:5001";
   }
   return process.env.REACT_APP_API_URL || window.location.origin;

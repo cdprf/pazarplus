@@ -341,6 +341,12 @@ const Sidebar = ({ isOpen, onClose }) => {
               href: "/shipping/rates",
               ariaLabel: "Kargo ücret tarifeleri",
             },
+            {
+              name: "Slip Designer",
+              href: "/shipping/slip-designer",
+              ariaLabel: "Kargo fişi tasarım stüdyosu",
+              badge: "new",
+            },
           ],
         },
         {

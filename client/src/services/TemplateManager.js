@@ -1,0 +1,266 @@
+/**
+ * TemplateManager service for managing shipping slip templates
+ * Used by ShippingSlipDesigner to load, save, and manage templates
+ */
+
+import api from "./api";
+
+class TemplateManager {
+  /**
+   * Get all saved templates
+   *
+   * @returns {Array} Array of template objects
+   */
+  static getAll() {
+    try {
+      // First try to fetch from API if available
+      return this.fetchFromApi().catch(() => {
+        // Fall back to local storage
+        return this.fetchFromLocalStorage();
+      });
+    } catch (error) {
+      console.error("Failed to get templates:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch templates from the API
+   *
+   * @returns {Promise<Array>} Promise resolving to array of templates
+   */
+  static async fetchFromApi() {
+    try {
+      const response = await api.get("/api/shipping/templates");
+      if (response.data && Array.isArray(response.data)) {
+        // Store in local storage as backup
+        localStorage.setItem(
+          "shippingTemplates",
+          JSON.stringify(response.data)
+        );
+        return response.data;
+      }
+      throw new Error("Invalid API response format");
+    } catch (error) {
+      console.warn(
+        "Failed to fetch templates from API, using local storage:",
+        error
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch templates from local storage
+   *
+   * @returns {Array} Array of template objects
+   */
+  static fetchFromLocalStorage() {
+    try {
+      const templatesJson = localStorage.getItem("shippingTemplates");
+      if (templatesJson) {
+        const templates = JSON.parse(templatesJson);
+        return Array.isArray(templates) ? templates : [];
+      }
+      return [];
+    } catch (error) {
+      console.error("Failed to load templates from local storage:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get a template by ID
+   *
+   * @param {string} id Template ID
+   * @returns {Object|null} Template object or null if not found
+   */
+  static getById(id) {
+    try {
+      const templates = this.fetchFromLocalStorage();
+      return templates.find((template) => template.id === id) || null;
+    } catch (error) {
+      console.error(`Failed to get template with ID ${id}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Save a template
+   *
+   * @param {Object} template Template object to save
+   * @returns {Object} Saved template with ID
+   */
+  static async save(template) {
+    if (!template) {
+      throw new Error("No template provided");
+    }
+
+    try {
+      // Ensure template has an ID
+      const templateToSave = {
+        ...template,
+        id: template.id || `template_${Date.now()}`,
+        createdAt: template.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Try to save to API first
+      try {
+        const response = await api.post(
+          "/api/shipping/templates",
+          templateToSave
+        );
+        if (response.data) {
+          // Update local storage with the API-saved template
+          const templates = this.fetchFromLocalStorage();
+          const updatedTemplates = [
+            ...templates.filter((t) => t.id !== response.data.id),
+            response.data,
+          ];
+          localStorage.setItem(
+            "shippingTemplates",
+            JSON.stringify(updatedTemplates)
+          );
+          return response.data;
+        }
+      } catch (apiError) {
+        console.warn(
+          "Failed to save template to API, falling back to local storage:",
+          apiError
+        );
+        // Fall back to local storage
+        const templates = this.fetchFromLocalStorage();
+        const updatedTemplates = [
+          ...templates.filter((t) => t.id !== templateToSave.id),
+          templateToSave,
+        ];
+        localStorage.setItem(
+          "shippingTemplates",
+          JSON.stringify(updatedTemplates)
+        );
+      }
+
+      return templateToSave;
+    } catch (error) {
+      console.error("Failed to save template:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a template
+   *
+   * @param {string} id Template ID to delete
+   * @returns {boolean} Success status
+   */
+  static async delete(id) {
+    if (!id) {
+      throw new Error("No template ID provided");
+    }
+
+    try {
+      // Try to delete from API first
+      try {
+        await api.delete(`/api/shipping/templates/${id}`);
+      } catch (apiError) {
+        console.warn(`Failed to delete template ${id} from API:`, apiError);
+        // Continue with local deletion regardless
+      }
+
+      // Delete from local storage
+      const templates = this.fetchFromLocalStorage();
+      const updatedTemplates = templates.filter(
+        (template) => template.id !== id
+      );
+      localStorage.setItem(
+        "shippingTemplates",
+        JSON.stringify(updatedTemplates)
+      );
+
+      return true;
+    } catch (error) {
+      console.error(`Failed to delete template ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Export template to file
+   *
+   * @param {Object} template Template to export
+   */
+  static async export(template) {
+    if (!template) {
+      throw new Error("No template provided for export");
+    }
+
+    try {
+      const templateJson = JSON.stringify(template, null, 2);
+      const blob = new Blob([templateJson], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+
+      // Create download link
+      const downloadLink = document.createElement("a");
+      downloadLink.href = url;
+      downloadLink.download = `${template.name.replace(
+        /\s+/g,
+        "_"
+      )}_template.json`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(downloadLink);
+        URL.revokeObjectURL(url);
+      }, 100);
+
+      return true;
+    } catch (error) {
+      console.error("Failed to export template:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Import template from file content
+   *
+   * @param {Object|string} fileContent Template file content or parsed object
+   * @returns {Object} Imported template
+   */
+  static async import(fileContent) {
+    try {
+      let template;
+
+      if (typeof fileContent === "string") {
+        template = JSON.parse(fileContent);
+      } else if (fileContent instanceof File) {
+        const text = await fileContent.text();
+        template = JSON.parse(text);
+      } else {
+        template = fileContent;
+      }
+
+      if (!template || !template.elements || !template.config) {
+        throw new Error("Invalid template format");
+      }
+
+      // Ensure template has required properties
+      const importedTemplate = {
+        ...template,
+        id: `template_${Date.now()}`, // Generate new ID to prevent conflicts
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        imported: true,
+      };
+
+      return importedTemplate;
+    } catch (error) {
+      console.error("Failed to import template:", error);
+      throw error;
+    }
+  }
+}
+
+export default TemplateManager;

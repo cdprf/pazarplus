@@ -23,10 +23,14 @@ const ShippingManagement = () => {
   const [carriers, setCarriers] = useState([]);
   const [shipments, setShipments] = useState([]);
   const [rates, setRates] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showCarrierModal, setShowCarrierModal] = useState(false);
   const [showCreateShipmentModal, setShowCreateShipmentModal] = useState(false);
+  const [showRateComparisonModal, setShowRateComparisonModal] = useState(false);
+  const [showTrackingModal, setShowTrackingModal] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
+  const [trackingData, setTrackingData] = useState(null);
+
   const [newCarrier, setNewCarrier] = useState({
     name: "",
     code: "",
@@ -36,6 +40,43 @@ const ShippingManagement = () => {
     apiKey: "",
     isActive: true,
   });
+
+  // Enhanced package info with Turkish carrier requirements
+  const [packageInfo, setPackageInfo] = useState({
+    weight: 1000, // in grams
+    dimensions: { length: 20, width: 15, height: 10 }, // in cm
+    declaredValue: 100, // in TRY
+    serviceType: "STANDARD",
+    description: "E-commerce shipment",
+    quantity: 1,
+  });
+
+  // Turkish address format
+  const [fromAddress, setFromAddress] = useState({
+    name: "Satıcı A.Ş.",
+    address1: "Maslak Mahallesi Eski Büyükdere Cad. No:1",
+    city: "İstanbul",
+    district: "Sarıyer",
+    postalCode: "34485",
+    phone: "+905551234567",
+    email: "info@seller.com",
+  });
+
+  const [toAddress, setToAddress] = useState({
+    name: "Müşteri Adı",
+    address1: "Kızılay Mahallesi Atatürk Bulvarı No:123",
+    city: "Ankara",
+    district: "Çankaya",
+    postalCode: "06420",
+    phone: "+905559876543",
+    email: "customer@example.com",
+  });
+
+  const [trackingInfo, setTrackingInfo] = useState({
+    trackingNumber: "",
+    carrier: "",
+  });
+
   const [filters, setFilters] = useState({
     search: "",
     status: "",
@@ -49,14 +90,12 @@ const ShippingManagement = () => {
       setLoading(true);
       switch (activeTab) {
         case "carriers":
-          // Use the new unified shipping API
           const carriersResponse = await api.get("/api/shipping/carriers");
           if (carriersResponse.data.success) {
             setCarriers(carriersResponse.data.data || []);
           }
           break;
         case "shipments":
-          // Fetch shipments with filters
           const shipmentsResponse = await api.get("/api/shipping/shipments", {
             params: filters,
           });
@@ -65,8 +104,7 @@ const ShippingManagement = () => {
           }
           break;
         case "rates":
-          // Get sample shipping rates
-          setRates([]);
+          // Keep existing rates or fetch new ones
           break;
         default:
           console.warn("Unknown tab:", activeTab);
@@ -84,12 +122,128 @@ const ShippingManagement = () => {
     fetchData();
   }, [fetchData]);
 
+  // Enhanced rate comparison with Turkish carriers
+  const compareRates = async () => {
+    setLoading(true);
+    setRates([]);
+
+    try {
+      const response = await api.post("/api/shipping/rates", {
+        packageInfo,
+        fromAddress,
+        toAddress,
+        carriers: null, // Compare all carriers
+      });
+
+      if (response.data.success) {
+        setRates(response.data.data.carriers || []);
+        setShowRateComparisonModal(true);
+      } else {
+        showAlert(
+          response.data.error?.message || "Failed to get rates",
+          "error"
+        );
+      }
+    } catch (error) {
+      showAlert("Rate comparison failed: " + error.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Enhanced label creation
+  const createShippingLabel = async (carrier, rate) => {
+    setLoading(true);
+
+    try {
+      const shipmentData = {
+        packageInfo: {
+          ...packageInfo,
+          serviceType: rate.serviceCode,
+        },
+        fromAddress,
+        toAddress,
+        orderInfo: {
+          orderNumber: `ORD-${Date.now()}`,
+        },
+      };
+
+      const response = await api.post("/api/shipping/labels", {
+        shipmentData,
+        carrier,
+      });
+
+      if (response.data.success) {
+        const { trackingNumber } = response.data.data;
+        showAlert(
+          `Label created successfully! Tracking Number: ${trackingNumber}`,
+          "success"
+        );
+
+        setTrackingInfo({ trackingNumber, carrier });
+        setShowRateComparisonModal(false);
+        fetchData(); // Refresh data
+      } else {
+        showAlert(
+          response.data.error?.message || "Failed to create label",
+          "error"
+        );
+      }
+    } catch (error) {
+      showAlert("Label creation failed: " + error.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Enhanced tracking with detailed history
+  const trackPackage = async (trackingNumber = null, carrier = null) => {
+    const trackNum = trackingNumber || trackingInfo.trackingNumber;
+    const trackCarrier = carrier || trackingInfo.carrier;
+
+    if (!trackNum || !trackCarrier) {
+      showAlert("Please enter tracking number and select carrier", "warning");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await api.get(
+        `/api/shipping/track/${trackCarrier}/${trackNum}`
+      );
+
+      if (response.data.success) {
+        setTrackingData(response.data.data);
+        setShowTrackingModal(true);
+        showAlert(
+          "Package tracking information retrieved successfully",
+          "success"
+        );
+      } else {
+        showAlert(
+          "Failed to track package: " + response.data.error?.message,
+          "error"
+        );
+      }
+    } catch (error) {
+      showAlert("Tracking failed: " + error.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fix the missing handleTrackPackage function
+  const handleTrackPackage = async (trackingNumber, carrier) => {
+    return trackPackage(trackingNumber, carrier);
+  };
+
   const handleCreateShipment = async (orderIds) => {
     try {
       setLoading(true);
       const response = await api.post("/api/shipping/labels/create", {
         orderIds,
-        carrier: "auto", // Let the system choose the best carrier
+        carrier: "auto",
       });
       if (response.data.success) {
         showAlert("Shipment created successfully!", "success");
@@ -166,31 +320,8 @@ const ShippingManagement = () => {
     }
   };
 
-  const handleTrackPackage = async (trackingNumber, carrier) => {
-    try {
-      const response = await api.get(
-        `/api/shipping/track/${carrier}/${trackingNumber}`
-      );
-      if (response.data.success) {
-        showAlert(
-          "Package tracking information retrieved successfully",
-          "success"
-        );
-        // You could open a modal here to show tracking details
-        console.log("Tracking data:", response.data.data);
-      } else {
-        showAlert(
-          "Failed to track package: " + response.data.error?.message,
-          "error"
-        );
-      }
-    } catch (error) {
-      showAlert("Tracking failed: " + error.message, "error");
-    }
-  };
-
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString("tr-TR", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -202,19 +333,41 @@ const ShippingManagement = () => {
   const getStatusBadge = (status) => {
     const variants = {
       pending: "warning",
-      in_transit: "info",
+      picked_up: "info",
+      in_transit: "primary",
+      out_for_delivery: "warning",
       delivered: "success",
       cancelled: "danger",
       returned: "secondary",
     };
     return (
       <Badge bg={variants[status] || "secondary"}>
-        {status.replace("_", " ")}
+        {status.replace("_", " ").toUpperCase()}
       </Badge>
     );
   };
 
-  if (loading) {
+  // Enhanced getStatusColor function for timeline tracking
+  const getStatusColor = (status) => {
+    const statusColors = {
+      pending: "bg-yellow-100 text-yellow-800",
+      picked_up: "bg-blue-100 text-blue-800",
+      in_transit: "bg-purple-100 text-purple-800",
+      out_for_delivery: "bg-orange-100 text-orange-800",
+      delivered: "bg-green-100 text-green-800",
+      cancelled: "bg-red-100 text-red-800",
+      returned: "bg-gray-100 text-gray-800",
+    };
+    return statusColors[status] || "bg-gray-100 text-gray-800";
+  };
+
+  // Enhanced carrier selection handler
+  const handleCarrierSelection = (carrierCode) => {
+    console.log("Selected carrier:", carrierCode);
+    // This function can be used for future carrier-specific operations
+  };
+
+  if (loading && activeTab !== "rates") {
     return (
       <Container className="py-4">
         <div className="text-center">
@@ -233,14 +386,24 @@ const ShippingManagement = () => {
         <Col>
           <div className="d-flex justify-content-between align-items-center">
             <div>
-              <h1>Shipping Management</h1>
+              <h1>Turkish Shipping Management</h1>
               <p className="text-muted">
-                Manage carriers, shipments, and shipping rates
+                Manage carriers, shipments, rates and tracking for Turkish
+                logistics
               </p>
             </div>
             <div className="d-flex gap-2">
-              <Button variant="outline-primary">
-                <i className="fas fa-truck me-2"></i>Track Shipment
+              <Button
+                variant="outline-primary"
+                onClick={() => setShowRateComparisonModal(true)}
+              >
+                <i className="fas fa-calculator me-2"></i>Compare Rates
+              </Button>
+              <Button
+                variant="outline-info"
+                onClick={() => setShowTrackingModal(true)}
+              >
+                <i className="fas fa-search-location me-2"></i>Track Package
               </Button>
               <Button
                 variant="primary"
@@ -256,8 +419,8 @@ const ShippingManagement = () => {
       <Card className="border-0 shadow-sm">
         <Card.Body>
           <Tabs activeKey={activeTab} onSelect={setActiveTab} className="mb-4">
-            {/* Carriers Tab */}
-            <Tab eventKey="carriers" title="Shipping Carriers">
+            {/* Enhanced Carriers Tab */}
+            <Tab eventKey="carriers" title="Turkish Carriers">
               <Row className="mb-3">
                 <Col md={6}>
                   <InputGroup>
@@ -287,9 +450,10 @@ const ShippingManagement = () => {
               {carriers.length === 0 ? (
                 <div className="text-center py-5">
                   <i className="fas fa-truck display-4 text-muted mb-3"></i>
-                  <h5 className="text-muted">No carriers configured</h5>
+                  <h5 className="text-muted">No Turkish carriers configured</h5>
                   <p className="text-muted">
-                    Add shipping carriers to start managing shipments
+                    Add Turkish shipping carriers like Aras Kargo, Yurtiçi
+                    Kargo, MNG Kargo
                   </p>
                   <Button
                     variant="primary"
@@ -306,8 +470,8 @@ const ShippingManagement = () => {
                       <th>Type</th>
                       <th>Status</th>
                       <th>API Status</th>
-                      <th>Base Rate</th>
                       <th>Coverage</th>
+                      <th>Est. Cost</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -353,14 +517,17 @@ const ShippingManagement = () => {
                               : "Manual"}
                           </Badge>
                         </td>
-                        <td>${carrier.estimatedCost || "Variable"}</td>
                         <td>{carrier.coverage || "Turkey"}</td>
+                        <td>₺{carrier.estimatedCost || "Variable"}</td>
                         <td>
                           <div className="btn-group btn-group-sm">
                             <Button
                               variant="outline-primary"
                               size="sm"
                               title="Edit"
+                              onClick={() =>
+                                handleCarrierSelection(carrier.code)
+                              }
                             >
                               <i className="fas fa-edit"></i>
                             </Button>
@@ -823,6 +990,455 @@ const ShippingManagement = () => {
             ) : (
               "Create Shipment"
             )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Enhanced Rate Comparison Modal */}
+      <Modal
+        show={showRateComparisonModal}
+        onHide={() => setShowRateComparisonModal(false)}
+        size="xl"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Turkish Shipping Rate Comparison</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Row>
+            <Col md={6}>
+              <h5>Package & Address Details</h5>
+
+              {/* Package Information */}
+              <Card className="mb-3">
+                <Card.Header>Package Information</Card.Header>
+                <Card.Body>
+                  <Row>
+                    <Col md={6}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Weight (grams)</Form.Label>
+                        <Form.Control
+                          type="number"
+                          value={packageInfo.weight}
+                          onChange={(e) =>
+                            setPackageInfo((prev) => ({
+                              ...prev,
+                              weight: parseInt(e.target.value),
+                            }))
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Declared Value (₺)</Form.Label>
+                        <Form.Control
+                          type="number"
+                          value={packageInfo.declaredValue}
+                          onChange={(e) =>
+                            setPackageInfo((prev) => ({
+                              ...prev,
+                              declaredValue: parseFloat(e.target.value),
+                            }))
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                  <Row>
+                    <Col md={4}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Length (cm)</Form.Label>
+                        <Form.Control
+                          type="number"
+                          value={packageInfo.dimensions.length}
+                          onChange={(e) =>
+                            setPackageInfo((prev) => ({
+                              ...prev,
+                              dimensions: {
+                                ...prev.dimensions,
+                                length: parseInt(e.target.value),
+                              },
+                            }))
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={4}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Width (cm)</Form.Label>
+                        <Form.Control
+                          type="number"
+                          value={packageInfo.dimensions.width}
+                          onChange={(e) =>
+                            setPackageInfo((prev) => ({
+                              ...prev,
+                              dimensions: {
+                                ...prev.dimensions,
+                                width: parseInt(e.target.value),
+                              },
+                            }))
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={4}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Height (cm)</Form.Label>
+                        <Form.Control
+                          type="number"
+                          value={packageInfo.dimensions.height}
+                          onChange={(e) =>
+                            setPackageInfo((prev) => ({
+                              ...prev,
+                              dimensions: {
+                                ...prev.dimensions,
+                                height: parseInt(e.target.value),
+                              },
+                            }))
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+
+              {/* Address Information */}
+              <Card className="mb-3">
+                <Card.Header>Address Information</Card.Header>
+                <Card.Body>
+                  <h6>From Address (Gönderici)</h6>
+                  <Row>
+                    <Col md={6}>
+                      <Form.Group className="mb-2">
+                        <Form.Label>City</Form.Label>
+                        <Form.Control
+                          value={fromAddress.city}
+                          onChange={(e) =>
+                            setFromAddress((prev) => ({
+                              ...prev,
+                              city: e.target.value,
+                            }))
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Group className="mb-2">
+                        <Form.Label>District</Form.Label>
+                        <Form.Control
+                          value={fromAddress.district}
+                          onChange={(e) =>
+                            setFromAddress((prev) => ({
+                              ...prev,
+                              district: e.target.value,
+                            }))
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+
+                  <h6 className="mt-3">To Address (Alıcı)</h6>
+                  <Row>
+                    <Col md={6}>
+                      <Form.Group className="mb-2">
+                        <Form.Label>City</Form.Label>
+                        <Form.Control
+                          value={toAddress.city}
+                          onChange={(e) =>
+                            setToAddress((prev) => ({
+                              ...prev,
+                              city: e.target.value,
+                            }))
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Group className="mb-2">
+                        <Form.Label>District</Form.Label>
+                        <Form.Control
+                          value={toAddress.district}
+                          onChange={(e) =>
+                            setToAddress((prev) => ({
+                              ...prev,
+                              district: e.target.value,
+                            }))
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+
+              <Button
+                onClick={compareRates}
+                disabled={loading}
+                className="w-100"
+                variant="primary"
+              >
+                {loading ? (
+                  <>
+                    <Spinner size="sm" className="me-2" />
+                    Comparing Rates...
+                  </>
+                ) : (
+                  "Compare Turkish Carrier Rates"
+                )}
+              </Button>
+            </Col>
+
+            <Col md={6}>
+              <h5>Rate Comparison Results</h5>
+              {rates.length === 0 ? (
+                <div className="text-center text-muted py-5">
+                  <i className="fas fa-calculator display-4 mb-3"></i>
+                  <p>
+                    Fill in package details and click "Compare Rates" to see
+                    available options.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+                  {rates.map((carrier, index) => (
+                    <Card key={index} className="mb-3">
+                      <Card.Header className="d-flex justify-content-between align-items-center">
+                        <h6 className="mb-0">{carrier.carrierName}</h6>
+                        <Badge bg={carrier.success ? "success" : "danger"}>
+                          {carrier.success ? "Available" : "Error"}
+                        </Badge>
+                      </Card.Header>
+                      <Card.Body>
+                        {carrier.success ? (
+                          <div>
+                            {carrier.rates.map((rate, rateIndex) => (
+                              <div
+                                key={rateIndex}
+                                className="d-flex justify-content-between align-items-center p-2 border rounded mb-2"
+                              >
+                                <div>
+                                  <strong>{rate.serviceName}</strong>
+                                  <div className="small text-muted">
+                                    {rate.estimatedDeliveryDays} gün •{" "}
+                                    {rate.features?.join(", ")}
+                                  </div>
+                                </div>
+                                <div className="text-end">
+                                  <div className="h5 text-primary mb-1">
+                                    ₺{rate.price}
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      createShippingLabel(carrier.carrier, rate)
+                                    }
+                                    disabled={loading}
+                                  >
+                                    Create Label
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-danger">
+                            <i className="fas fa-exclamation-triangle me-2"></i>
+                            {carrier.error}
+                          </div>
+                        )}
+                      </Card.Body>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </Col>
+          </Row>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowRateComparisonModal(false)}
+          >
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Enhanced Tracking Modal */}
+      <Modal
+        show={showTrackingModal}
+        onHide={() => setShowTrackingModal(false)}
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Package Tracking</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Row>
+            <Col md={6}>
+              <Card>
+                <Card.Header>Track Package</Card.Header>
+                <Card.Body>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Tracking Number</Form.Label>
+                    <Form.Control
+                      value={trackingInfo.trackingNumber}
+                      onChange={(e) =>
+                        setTrackingInfo((prev) => ({
+                          ...prev,
+                          trackingNumber: e.target.value,
+                        }))
+                      }
+                      placeholder="Enter tracking number"
+                    />
+                  </Form.Group>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Carrier</Form.Label>
+                    <Form.Select
+                      value={trackingInfo.carrier}
+                      onChange={(e) =>
+                        setTrackingInfo((prev) => ({
+                          ...prev,
+                          carrier: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">Select Carrier</option>
+                      {carriers.map((carrier) => (
+                        <option key={carrier.code} value={carrier.code}>
+                          {carrier.name}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                  <Button
+                    onClick={() => trackPackage()}
+                    disabled={
+                      loading ||
+                      !trackingInfo.trackingNumber ||
+                      !trackingInfo.carrier
+                    }
+                    className="w-100"
+                  >
+                    {loading ? (
+                      <>
+                        <Spinner size="sm" className="me-2" />
+                        Tracking...
+                      </>
+                    ) : (
+                      "Track Package"
+                    )}
+                  </Button>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={6}>
+              <Card>
+                <Card.Header>Tracking Information</Card.Header>
+                <Card.Body style={{ maxHeight: "400px", overflowY: "auto" }}>
+                  {!trackingData ? (
+                    <div className="text-center text-muted py-4">
+                      <i className="fas fa-search-location display-4 mb-3"></i>
+                      <p>
+                        Enter tracking number and select carrier to track your
+                        package.
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      {/* Current Status */}
+                      <div
+                        className="border rounded p-3 mb-3"
+                        style={{ backgroundColor: "#f8f9fa" }}
+                      >
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <h6>Current Status</h6>
+                          {getStatusBadge(trackingData.status)}
+                        </div>
+                        <div className="small">
+                          <div>
+                            <strong>Tracking:</strong>{" "}
+                            {trackingData.trackingNumber}
+                          </div>
+                          <div>
+                            <strong>Carrier:</strong> {trackingData.carrierName}
+                          </div>
+                          {trackingData.estimatedDeliveryDate && (
+                            <div>
+                              <strong>Est. Delivery:</strong>{" "}
+                              {formatDate(trackingData.estimatedDeliveryDate)}
+                            </div>
+                          )}
+                          {trackingData.currentLocation && (
+                            <div>
+                              <strong>Location:</strong>{" "}
+                              {trackingData.currentLocation.city} -{" "}
+                              {trackingData.currentLocation.facility}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Tracking Events */}
+                      {trackingData.events &&
+                        trackingData.events.length > 0 && (
+                          <div>
+                            <h6>Tracking History</h6>
+                            <div className="timeline">
+                              {trackingData.events.map((event, index) => (
+                                <div key={index} className="d-flex mb-3">
+                                  <div className="me-3">
+                                    <div
+                                      className="rounded-circle d-flex align-items-center justify-content-center"
+                                      style={{
+                                        width: "12px",
+                                        height: "12px",
+                                        backgroundColor:
+                                          event.status === "delivered"
+                                            ? "#28a745"
+                                            : "#6c757d",
+                                      }}
+                                    ></div>
+                                  </div>
+                                  <div className="flex-grow-1">
+                                    <div className="d-flex justify-content-between">
+                                      <strong className="small">
+                                        {event.description}
+                                      </strong>
+                                      <span className="small text-muted">
+                                        {event.date && event.time
+                                          ? new Date(
+                                              `${event.date} ${event.time}`
+                                            ).toLocaleString("tr-TR")
+                                          : "N/A"}
+                                      </span>
+                                    </div>
+                                    {event.location && (
+                                      <div className="small text-muted">
+                                        {event.location}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowTrackingModal(false)}
+          >
+            Close
           </Button>
         </Modal.Footer>
       </Modal>

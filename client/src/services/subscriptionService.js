@@ -1,8 +1,23 @@
 import axios from "axios";
 import { getAuthHeader } from "../utils/auth";
 
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:3000/api";
+// Dynamic API base URL that works for both localhost and network access
+const getApiBaseUrl = () => {
+  if (process.env.NODE_ENV === "development") {
+    const hostname = window.location.hostname;
+
+    // If hostname is an IP address (mobile access), use the same IP for API
+    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+      return `http://${hostname}:5001/api`;
+    }
+
+    // Default to localhost for desktop development
+    return process.env.REACT_APP_API_URL || "http://localhost:5001/api";
+  }
+  return process.env.REACT_APP_API_URL || `${window.location.origin}/api`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 class SubscriptionService {
   constructor() {

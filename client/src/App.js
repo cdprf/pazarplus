@@ -28,6 +28,7 @@ import OrderDetail from "./components/orders/OrderDetail";
 import ProductManagement from "./components/products/ProductManagement";
 import CustomerManagement from "./components/customers/CustomerManagement";
 import ShippingManagement from "./components/shipping/ShippingManagement";
+import ShippingSlipDesigner from "./components/shipping/ShippingSlipDesigner";
 import ImportExport from "./components/common/ImportExport";
 import PlatformConnections from "./components/platforms/PlatformConnections";
 import PlatformSettings from "./components/platforms/PlatformSettings";
@@ -50,8 +51,8 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <ErrorBoundary>
         <Router>
           <AuthProvider>
             <AlertProvider>
@@ -129,6 +130,11 @@ function App() {
                           path="shipping"
                           element={<ShippingManagement />}
                         />
+                        {/* Nested shipping routes */}
+                        <Route
+                          path="shipping/slip-designer"
+                          element={<ShippingSlipDesigner />}
+                        />
                         <Route
                           path="import-export"
                           element={<ImportExport />}
@@ -176,8 +182,8 @@ function App() {
             </AlertProvider>
           </AuthProvider>
         </Router>
-      </QueryClientProvider>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </QueryClientProvider>
   );
 }
 

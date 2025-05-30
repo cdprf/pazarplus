@@ -200,6 +200,17 @@ app.use((req, res, next) => {
   next();
 });
 
+// Handle webpack hot-update files - should not be served by backend
+app.use("*.hot-update.json", (req, res, next) => {
+  // These files should only be served by webpack dev server
+  res.status(404).json({
+    success: false,
+    message:
+      "Webpack hot-update files should be served by the development server",
+    code: "WEBPACK_FILE_NOT_FOUND",
+  });
+});
+
 // Health check and metrics endpoints (before API versioning affects routes)
 app.use("/", require("./routes/health"));
 
