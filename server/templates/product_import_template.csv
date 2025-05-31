@@ -1,0 +1,4 @@
+name,sku,barcode,description,price,stockQuantity,category,status,images
+Example Product,SKU123,123456789,Product description with details,99.99,100,Electronics,active,https://example.com/image1.jpg,https://example.com/image2.jpg
+Basic T-Shirt,TS001,978650001,Cotton t-shirt in various colors,29.90,500,Apparel,active,https://example.com/tshirt1.jpg,https://example.com/tshirt2.jpg
+Wireless Mouse,WM200,499281942,Ergonomic wireless mouse with long battery life,49.95,75,Computing,active,https://example.com/mouse1.jpg

@@ -3979,7 +3979,7 @@ const ElementPropertiesPanel = React.memo(
                 {element.fields && (
                   <div className="space-y-2">
                     <Label>Gösterilecek Alanlar</Label>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                    <div className="space-y-2 overflow-y-auto">
                       {Object.entries(element.fields).map(
                         ([field, enabled]) => (
                           <div
@@ -4017,12 +4017,15 @@ const ElementPropertiesPanel = React.memo(
                         <Input
                           type="number"
                           value={element.style?.fontSize || 12}
-                          onChange={(e) =>
-                            handleStyleChange(
-                              "fontSize",
-                              parseInt(e.target.value)
-                            )
-                          }
+                          onChange={(e) => {
+                            const newFontSize = parseInt(e.target.value);
+                            onUpdate({
+                              style: {
+                                ...element.style,
+                                fontSize: newFontSize,
+                              },
+                            });
+                          }}
                           min="8"
                           max="72"
                           className="w-20"
@@ -4695,7 +4698,7 @@ const Toolbar = ({
   return (
     <div className="bg-white border-b border-gray-200 p-4">
       <div className="flex items-center justify-between">
-        
+
         {/* Undo/Redo and Preview Mode Controls */}
         <div className="flex items-center space-x-2">
 
@@ -5425,7 +5428,7 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
   };
 
   return (
-    <div className="flex flex-col h-full min-h-screen max-h-screen overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - Element Library */}
         <LeftSidebar

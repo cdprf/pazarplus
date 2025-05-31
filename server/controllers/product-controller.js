@@ -1,6 +1,43 @@
-const { Product, sequelize } = require("../models");
+const { Product, sequelize, User } = require("../models");
 const logger = require("../utils/logger");
 const { Op } = require("sequelize");
+const productMergeService = require("../services/product-merge-service");
+const path = require("path");
+const fs = require("fs");
+const csv = require("csv-parser");
+const multer = require("multer");
+const { v4: uuidv4 } = require("uuid");
+
+// Set up multer storage for CSV uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, "../uploads/csv");
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename
+    const uniqueFilename = `${Date.now()}-${uuidv4()}${path.extname(
+      file.originalname
+    )}`;
+    cb(null, uniqueFilename);
+  },
+});
+
+const upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    // Only accept CSV files
+    if (file.mimetype === "text/csv" || file.originalname.endsWith(".csv")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only CSV files are allowed"), false);
+    }
+  },
+});
 
 // Get products with filtering, sorting, and pagination
 const getProducts = async (req, res) => {
@@ -594,6 +631,219 @@ const getProductStats = async (req, res) => {
   }
 };
 
+// Fetch, merge and sync products from all platforms
+const syncProductsFromPlatforms = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const options = req.query;
+
+    // Step 1: Fetch products from all platforms
+    const fetchResult = await productMergeService.fetchAllProducts(
+      userId,
+      options
+    );
+
+    if (!fetchResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: fetchResult.message,
+        error: fetchResult.error,
+      });
+    }
+
+    if (fetchResult.data.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No products found from any platform",
+        data: [],
+      });
+    }
+
+    // Step 2: Merge products by SKU, barcode and name
+    const mergedProducts = await productMergeService.mergeProducts(
+      fetchResult.data
+    );
+
+    // Step 3: Save merged products to database
+    const savedProducts = await productMergeService.saveMergedProducts(
+      mergedProducts,
+      userId
+    );
+
+    return res.json({
+      success: true,
+      message: `Successfully synchronized ${savedProducts.length} products`,
+      data: {
+        totalFetched: fetchResult.data.length,
+        platformResults: fetchResult.platformResults,
+        totalMerged: mergedProducts.length,
+        totalSaved: savedProducts.length,
+      },
+    });
+  } catch (error) {
+    logger.error("Error syncing products:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error syncing products from platforms",
+      error: error.message,
+    });
+  }
+};
+
+// Import products from CSV file
+const importProductsFromCSV = async (req, res) => {
+  const csvUpload = upload.single("file");
+
+  csvUpload(req, res, async (err) => {
+    if (err) {
+      logger.error("CSV upload error:", err);
+      return res.status(400).json({
+        success: false,
+        message: err.message,
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No CSV file uploaded",
+      });
+    }
+
+    try {
+      const userId = req.user.id;
+      const filePath = req.file.path;
+      const results = [];
+      const errors = [];
+
+      // Process CSV file line by line
+      await new Promise((resolve, reject) => {
+        fs.createReadStream(filePath)
+          .pipe(csv())
+          .on("data", (data) => results.push(data))
+          .on("error", (error) => reject(error))
+          .on("end", () => resolve());
+      });
+
+      // Process each row
+      const products = [];
+      for (const row of results) {
+        try {
+          // Validate required fields
+          if (!row.name || !row.sku) {
+            errors.push({ row, error: "Name and SKU are required" });
+            continue;
+          }
+
+          // Check if product already exists
+          const existingProduct = await Product.findOne({
+            where: {
+              userId,
+              [Op.or]: [{ sku: row.sku }, { barcode: row.barcode }],
+            },
+          });
+
+          if (existingProduct) {
+            // Update existing product
+            await existingProduct.update({
+              name: row.name,
+              description: row.description,
+              price: parseFloat(row.price) || existingProduct.price,
+              stockQuantity:
+                parseInt(row.stockQuantity) || existingProduct.stockQuantity,
+              barcode: row.barcode || existingProduct.barcode,
+              category: row.category || existingProduct.category,
+              // Process comma-separated image URLs
+              images: row.images
+                ? row.images.split(",").map((url) => url.trim())
+                : existingProduct.images,
+              status: row.status || "active",
+            });
+
+            products.push(existingProduct);
+          } else {
+            // Create new product
+            const newProduct = await Product.create({
+              userId,
+              name: row.name,
+              sku: row.sku,
+              description: row.description || "",
+              price: parseFloat(row.price) || 0,
+              stockQuantity: parseInt(row.stockQuantity) || 0,
+              barcode: row.barcode || null,
+              category: row.category || null,
+              // Process comma-separated image URLs
+              images: row.images
+                ? row.images.split(",").map((url) => url.trim())
+                : [],
+              status: row.status || "active",
+            });
+
+            products.push(newProduct);
+          }
+        } catch (error) {
+          logger.error(`Error processing CSV row:`, { row, error });
+          errors.push({ row, error: error.message });
+        }
+      }
+
+      // Clean up the uploaded file
+      fs.unlinkSync(filePath);
+
+      return res.json({
+        success: true,
+        message: `Imported ${products.length} products, with ${errors.length} errors`,
+        data: {
+          imported: products.length,
+          errors: errors.length > 0 ? errors : undefined,
+        },
+      });
+    } catch (error) {
+      logger.error("Error importing products from CSV:", error);
+
+      // Clean up the uploaded file if it exists
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Error importing products from CSV",
+        error: error.message,
+      });
+    }
+  });
+};
+
+// Get CSV template for product import
+const getCSVTemplate = (req, res) => {
+  try {
+    const templatePath = path.join(
+      __dirname,
+      "../templates/product_import_template.csv"
+    );
+
+    // Check if template exists
+    if (!fs.existsSync(templatePath)) {
+      // Create template if it doesn't exist
+      const header =
+        "name,sku,barcode,description,price,stockQuantity,category,status,images\n";
+      const exampleRow =
+        "Example Product,SKU123,123456789,Product description,99.99,100,Electronics,active,https://example.com/image1.jpg,https://example.com/image2.jpg\n";
+      fs.writeFileSync(templatePath, header + exampleRow);
+    }
+
+    return res.download(templatePath, "product_import_template.csv");
+  } catch (error) {
+    logger.error("Error providing CSV template:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error providing CSV template",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getProducts,
   getProductById,
@@ -603,4 +853,7 @@ module.exports = {
   bulkDelete,
   bulkUpdateStatus,
   getProductStats,
+  syncProductsFromPlatforms,
+  importProductsFromCSV,
+  getCSVTemplate,
 };
