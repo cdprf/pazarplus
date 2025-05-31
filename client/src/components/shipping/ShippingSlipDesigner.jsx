@@ -1789,7 +1789,7 @@ const TemplateModal = ({
   onLoad,
   onDelete,
   savedTemplates,
-  setSavedTemplates
+  setSavedTemplates,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("updated"); // updated, created, name
@@ -1844,16 +1844,18 @@ const TemplateModal = ({
 
       // Save the duplicated template using TemplateManager
       const savedDuplicate = await TemplateManager.save(duplicatedTemplate);
-      
+
       // Update the templates list
-      setSavedTemplates(prev => [...prev, savedDuplicate]);
-      
+      setSavedTemplates((prev) => [...prev, savedDuplicate]);
+
       // Optional: Show success message
-      showAlert(`Template "${duplicatedTemplate.name}" duplicated successfully`, "success");
-      
+      showAlert(
+        `Template "${duplicatedTemplate.name}" duplicated successfully`,
+        "success"
+      );
+
       // Optional: Auto-load the duplicated template
       // onLoad(savedDuplicate);
-      
     } catch (error) {
       console.error("Failed to duplicate template:", error);
       showAlert("Failed to duplicate template", "error");
@@ -1995,11 +1997,60 @@ const PreviewModal = ({
   const [resizeInfo, setResizeInfo] = useState(null);
 
   // Initialize preview elements when modal opens or elements change
+  // Fixed: Properly sync with elements changes including font size updates
   useEffect(() => {
     if (isOpen && elements.length > 0) {
-      setPreviewElements([...elements]);
+      // Deep copy elements to avoid mutation and ensure fresh state
+      const elementsWithIds = elements.map((element, index) => ({
+        ...element,
+        id: element.id || `preview_element_${index}`,
+        // Ensure style object is properly copied
+        style: {
+          ...element.style,
+          // Force re-render by creating new style object reference
+          fontSize: element.style?.fontSize || 14,
+        },
+        position: element.position || { x: 10, y: 10 },
+        size: element.size || { width: 20, height: 10 },
+      }));
+      setPreviewElements(elementsWithIds);
     }
-  }, [elements, isOpen]);
+  }, [elements, isOpen, elements.length]);
+
+  // Additional effect to handle real-time style updates
+  useEffect(() => {
+    if (isOpen && elements.length > 0) {
+      setPreviewElements((prevElements) => {
+        return elements.map((element, index) => {
+          const existingElement = prevElements.find(
+            (pe) => pe.id === element.id
+          );
+          return {
+            ...element,
+            id: element.id || `preview_element_${index}`,
+            // Preserve position and size from existing element if it exists (for drag/resize)
+            position: existingElement?.position ||
+              element.position || {
+                x: 10,
+                y: 10,
+              },
+            size: existingElement?.size ||
+              element.size || { width: 20, height: 10 },
+            // Always use the latest style from main elements
+            style: {
+              ...element.style,
+              // Ensure fontSize is properly applied
+              fontSize: element.style?.fontSize || 14,
+            },
+          };
+        });
+      });
+    }
+  }, [
+    elements.map((e) => e.style?.fontSize).join(","),
+    elements.map((e) => e.content).join(","),
+    isOpen,
+  ]);
 
   // Handle element selection
   const handleElementSelect = (element, event) => {
@@ -2014,21 +2065,16 @@ const PreviewModal = ({
 
   // Handle drag start
   const handleDragStart = (element, event) => {
+    if (event.button !== 0 || element.locked) return; // Only left mouse button
+
     event.preventDefault();
     event.stopPropagation();
 
-    const rect = event.currentTarget.getBoundingClientRect();
-    const containerRect =
-      event.currentTarget.offsetParent.getBoundingClientRect();
-
     setDragInfo({
-      element,
+      elementId: element.id,
       startX: event.clientX,
       startY: event.clientY,
-      initialX: element.position.x,
-      initialY: element.position.y,
-      elementRect: rect,
-      containerRect: containerRect,
+      startPosition: { ...element.position },
     });
   };
 
@@ -2040,19 +2086,31 @@ const PreviewModal = ({
       const deltaX = event.clientX - dragInfo.startX;
       const deltaY = event.clientY - dragInfo.startY;
 
-      const containerWidth = dragInfo.containerRect.width;
-      const containerHeight = dragInfo.containerRect.height;
+      // Convert pixel movement to percentage
+      const containerRect = event.target
+        .closest("[data-preview-container]")
+        ?.getBoundingClientRect();
+      if (!containerRect) return;
 
-      const deltaXPercent = (deltaX / containerWidth) * 100;
-      const deltaYPercent = (deltaY / containerHeight) * 100;
-
-      const newX = Math.max(0, Math.min(95, dragInfo.initialX + deltaXPercent));
-      const newY = Math.max(0, Math.min(95, dragInfo.initialY + deltaYPercent));
+      const percentX = (deltaX / containerRect.width) * 100;
+      const percentY = (deltaY / containerRect.height) * 100;
 
       setPreviewElements((prev) =>
         prev.map((el) =>
-          el.id === dragInfo.element.id
-            ? { ...el, position: { x: newX, y: newY } }
+          el.id === dragInfo.elementId
+            ? {
+                ...el,
+                position: {
+                  x: Math.max(
+                    0,
+                    Math.min(95, dragInfo.startPosition.x + percentX)
+                  ),
+                  y: Math.max(
+                    0,
+                    Math.min(95, dragInfo.startPosition.y + percentY)
+                  ),
+                },
+              }
             : el
         )
       );
@@ -2067,19 +2125,18 @@ const PreviewModal = ({
 
   // Handle resize start
   const handleResizeStart = (element, corner, event) => {
+    if (element.locked) return;
+
     event.preventDefault();
     event.stopPropagation();
 
-    const rect = event.currentTarget.offsetParent.getBoundingClientRect();
-
     setResizeInfo({
-      element,
+      elementId: element.id,
       corner,
       startX: event.clientX,
       startY: event.clientY,
-      initialWidth: element.size.width,
-      initialHeight: element.size.height,
-      containerRect: rect,
+      startSize: { ...element.size },
+      startPosition: { ...element.position },
     });
   };
 
@@ -2091,43 +2148,71 @@ const PreviewModal = ({
       const deltaX = event.clientX - resizeInfo.startX;
       const deltaY = event.clientY - resizeInfo.startY;
 
-      const containerWidth = resizeInfo.containerRect.width;
-      const containerHeight = resizeInfo.containerRect.height;
+      // Convert pixel movement to percentage
+      const containerRect = event.target
+        .closest("[data-preview-container]")
+        ?.getBoundingClientRect();
+      if (!containerRect) return;
 
-      const deltaXPercent = (deltaX / containerWidth) * 100;
-      const deltaYPercent = (deltaY / containerHeight) * 100;
+      const percentDeltaX = (deltaX / containerRect.width) * 100;
+      const percentDeltaY = (deltaY / containerRect.height) * 100;
 
-      let newWidth = resizeInfo.initialWidth;
-      let newHeight = resizeInfo.initialHeight;
+      let newSize = { ...resizeInfo.startSize };
+      let newPosition = { ...resizeInfo.startPosition };
 
       switch (resizeInfo.corner) {
-        case "se":
-          newWidth = Math.max(5, resizeInfo.initialWidth + deltaXPercent);
-          newHeight = Math.max(3, resizeInfo.initialHeight + deltaYPercent);
+        case "se": // Bottom-right
+          newSize.width = Math.max(
+            5,
+            resizeInfo.startSize.width + percentDeltaX
+          );
+          newSize.height = Math.max(
+            3,
+            resizeInfo.startSize.height + percentDeltaY
+          );
           break;
-        case "sw":
-          newWidth = Math.max(5, resizeInfo.initialWidth - deltaXPercent);
-          newHeight = Math.max(3, resizeInfo.initialHeight + deltaYPercent);
+        case "sw": // Bottom-left
+          newSize.width = Math.max(
+            5,
+            resizeInfo.startSize.width - percentDeltaX
+          );
+          newSize.height = Math.max(
+            3,
+            resizeInfo.startSize.height + percentDeltaY
+          );
+          newPosition.x = resizeInfo.startPosition.x + percentDeltaX;
           break;
-        case "ne":
-          newWidth = Math.max(5, resizeInfo.initialWidth + deltaXPercent);
-          newHeight = Math.max(3, resizeInfo.initialHeight - deltaYPercent);
+        case "ne": // Top-right
+          newSize.width = Math.max(
+            5,
+            resizeInfo.startSize.width + percentDeltaX
+          );
+          newSize.height = Math.max(
+            3,
+            resizeInfo.startSize.height - percentDeltaY
+          );
+          newPosition.y = resizeInfo.startPosition.y + percentDeltaY;
           break;
-        case "nw":
-          newWidth = Math.max(5, resizeInfo.initialWidth - deltaXPercent);
-          newHeight = Math.max(3, resizeInfo.initialHeight - deltaYPercent);
+        case "nw": // Top-left
+          newSize.width = Math.max(
+            5,
+            resizeInfo.startSize.width - percentDeltaX
+          );
+          newSize.height = Math.max(
+            3,
+            resizeInfo.startSize.height - percentDeltaY
+          );
+          newPosition.x = resizeInfo.startPosition.x + percentDeltaX;
+          newPosition.y = resizeInfo.startPosition.y + percentDeltaY;
           break;
-        default:
-          break;
+          default:
+            break
       }
-
-      newWidth = Math.min(newWidth, 95);
-      newHeight = Math.min(newHeight, 95);
 
       setPreviewElements((prev) =>
         prev.map((el) =>
-          el.id === resizeInfo.element.id
-            ? { ...el, size: { width: newWidth, height: newHeight } }
+          el.id === resizeInfo.elementId
+            ? { ...el, size: newSize, position: newPosition }
             : el
         )
       );
@@ -2142,45 +2227,17 @@ const PreviewModal = ({
 
   const handlePrint = () => {
     if (printRef.current) {
-      const printWindow = window.open("", "_blank");
-      const printContent = printRef.current.innerHTML;
-
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Gönderi Belgesi - ${templateConfig.name}</title>
-            <style>
-              @media print {
-                @page {
-                  margin: 0;
-                  size: ${paperDimensions.width}mm ${paperDimensions.height}mm;
-                }
-                body {
-                  margin: 0;
-                  padding: 0;
-                  font-family: Arial, sans-serif;
-                }
-                .no-print {
-                  display: none !important;
-                }
-              }
-            </style>
-          </head>
-          <body>
-            ${printContent}
-          </body>
-        </html>
-      `);
-
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
+      const printContents = printRef.current.innerHTML;
+      const originalContents = document.body.innerHTML;
+      document.body.innerHTML = printContents;
+      window.print();
+      document.body.innerHTML = originalContents;
+      window.location.reload(); // Reload to restore React functionality
     }
   };
 
   const toggleFullscreen = () => {
-    setIsFullscreen((prev) => !prev);
+    setIsFullscreen(!isFullscreen);
   };
 
   // Event handlers for mouse move and mouse up
@@ -2188,7 +2245,8 @@ const PreviewModal = ({
     const handleMouseMove = (event) => {
       if (dragInfo) {
         handleDragMove(event);
-      } else if (resizeInfo) {
+      }
+      if (resizeInfo) {
         handleResizeMove(event);
       }
     };
@@ -2196,7 +2254,8 @@ const PreviewModal = ({
     const handleMouseUp = () => {
       if (dragInfo) {
         handleDragEnd();
-      } else if (resizeInfo) {
+      }
+      if (resizeInfo) {
         handleResizeEnd();
       }
     };
@@ -2204,12 +2263,12 @@ const PreviewModal = ({
     if (dragInfo || resizeInfo) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
-
-      return () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
-      };
     }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
   }, [
     dragInfo,
     resizeInfo,
@@ -2222,6 +2281,7 @@ const PreviewModal = ({
   // Save changes when modal is closed
   const handleClose = () => {
     if (onElementsChange && previewElements.length > 0) {
+      // Update main elements with preview changes
       onElementsChange(previewElements);
     }
     setSelectedElement(null);
@@ -2277,6 +2337,7 @@ const PreviewModal = ({
           style={{
             backgroundColor: "#f4f4f4",
           }}
+          data-preview-container
         >
           <div
             ref={printRef}
@@ -2293,7 +2354,7 @@ const PreviewModal = ({
               .sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1))
               .map((element) => (
                 <div
-                  key={element.id}
+                  key={`preview-${element.id}`}
                   className={`absolute ${
                     selectedElement?.id === element.id
                       ? "ring-2 ring-blue-500"
@@ -2336,8 +2397,12 @@ const PreviewModal = ({
                               fontFamily:
                                 element.style?.fontFamily ||
                                 "Inter, Arial, sans-serif",
+                              width: "100%",
+                              height: "100%",
+                              overflow: "hidden",
+                              display: "flex",
+                              alignItems: "center",
                             }}
-                            className="w-full h-full overflow-hidden"
                           >
                             {element.content || "Text Content"}
                           </div>
@@ -2397,37 +2462,24 @@ const PreviewModal = ({
                             {QRCode ? (
                               <QRCode
                                 value={element.content || "https://example.com"}
-                                size={
-                                  Math.min(
-                                    element.size.width *
-                                      paperDimensions.width *
-                                      0.01 *
-                                      2,
-                                    element.size.height *
-                                      paperDimensions.height *
-                                      0.01 *
-                                      2
-                                  ) * 0.8
-                                }
-                                level={
-                                  element.options?.errorCorrectionLevel || "M"
-                                }
+                                size={Math.min(
+                                  (paperDimensions.width * element.size.width) /
+                                    50,
+                                  (paperDimensions.height *
+                                    element.size.height) /
+                                    50
+                                )}
                               />
                             ) : (
                               <FallbackQRCode
                                 value={element.content || "https://example.com"}
-                                size={
-                                  Math.min(
-                                    element.size.width *
-                                      paperDimensions.width *
-                                      0.01 *
-                                      2,
-                                    element.size.height *
-                                      paperDimensions.height *
-                                      0.01 *
-                                      2
-                                  ) * 0.8
-                                }
+                                size={Math.min(
+                                  (paperDimensions.width * element.size.width) /
+                                    50,
+                                  (paperDimensions.height *
+                                    element.size.height) /
+                                    50
+                                )}
                               />
                             )}
                           </div>
@@ -2435,14 +2487,13 @@ const PreviewModal = ({
 
                       case ELEMENT_TYPES.DIVIDER:
                         return (
-                          <hr
+                          <div
+                            className="w-full"
                             style={{
-                              width: "100%",
                               height: element.style?.height || "2px",
                               backgroundColor:
                                 element.style?.backgroundColor || "#e5e7eb",
-                              border: "none",
-                              margin: "0.5rem 0",
+                              marginTop: "50%",
                             }}
                           />
                         );
@@ -2450,146 +2501,33 @@ const PreviewModal = ({
                       case ELEMENT_TYPES.SPACER:
                         return <div className="w-full h-full" />;
 
-                      // Structured elements with field visibility controls
-                      case ELEMENT_TYPES.RECIPIENT:
-                      case ELEMENT_TYPES.SENDER:
-                      case ELEMENT_TYPES.CUSTOMER_INFO:
-                      case ELEMENT_TYPES.SHIPPING_ADDRESS:
-                      case ELEMENT_TYPES.BILLING_ADDRESS:
-                        const fields = element.fields || {};
-                        const isSender = element.type === ELEMENT_TYPES.SENDER;
-                        const title = isSender ? "GÖNDERİCİ" : "ALICI";
-
-                        return (
-                          <div
-                            style={{
-                              padding: element.style?.padding || "0.75rem",
-                              fontSize: `${element.style?.fontSize || 11}px`,
-                              textAlign: element.style?.textAlign || "left",
-                              lineHeight: element.style?.lineHeight || 1.5,
-                              color: element.style?.color || "#374151",
-                            }}
-                            className="w-full h-full overflow-hidden"
-                          >
-                            {fields.showTitle !== false && (
-                              <div className="font-semibold mb-1">{title}</div>
-                            )}
-                            {isSender ? (
-                              <>
-                                {fields.showCompany !== false && (
-                                  <div>ACME Şirketi Ltd.</div>
-                                )}
-                                {fields.showAddress !== false && (
-                                  <div>Atatürk Cad. No:123</div>
-                                )}
-                                {fields.showCity !== false && (
-                                  <div>İstanbul, 34000</div>
-                                )}
-                                {fields.showPhone !== false && (
-                                  <div>Tel: 0212 123 45 67</div>
-                                )}
-                                {fields.showEmail && (
-                                  <div>info@acme.com.tr</div>
-                                )}
-                                {fields.showWebsite && (
-                                  <div>www.acme.com.tr</div>
-                                )}
-                              </>
-                            ) : (
-                              <>
-                                {fields.showName !== false && (
-                                  <div>Ahmet Yılmaz</div>
-                                )}
-                                {fields.showAddress !== false && (
-                                  <div>Bağdat Caddesi No:42 D:5</div>
-                                )}
-                                {fields.showCity !== false && (
-                                  <div>İstanbul, 34744</div>
-                                )}
-                                {fields.showPhone !== false && (
-                                  <div>Tel: 0530 123 45 67</div>
-                                )}
-                                {fields.showEmail && (
-                                  <div>ahmet.yilmaz@email.com</div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        );
-
-                      // Complex data elements
-                      case ELEMENT_TYPES.ORDER_SUMMARY:
-                      case ELEMENT_TYPES.ORDER_DETAILS:
-                      case ELEMENT_TYPES.ORDER_ITEMS:
-                      case ELEMENT_TYPES.ORDER_TOTALS:
-                      case ELEMENT_TYPES.PAYMENT_INFO:
-                      case ELEMENT_TYPES.PRODUCT_LIST:
-                      case ELEMENT_TYPES.PRODUCT_DETAILS:
-                      case ELEMENT_TYPES.INVENTORY_INFO:
-                      case ELEMENT_TYPES.TRACKING_INFO:
-                      case ELEMENT_TYPES.CARRIER_INFO:
-                      case ELEMENT_TYPES.SHIPPING_METHOD:
-                      case ELEMENT_TYPES.DELIVERY_INFO:
-                      case ELEMENT_TYPES.PLATFORM_INFO:
-                      case ELEMENT_TYPES.TRENDYOL_DATA:
-                      case ELEMENT_TYPES.HEPSIBURADA_DATA:
-                      case ELEMENT_TYPES.N11_DATA:
-                      case ELEMENT_TYPES.INVOICE_INFO:
-                      case ELEMENT_TYPES.TAX_INFO:
-                      case ELEMENT_TYPES.COMPLIANCE_DATA:
-                      case ELEMENT_TYPES.CUSTOM_TABLE:
-                      case ELEMENT_TYPES.CUSTOM_LIST:
-                        // For complex data elements, show a placeholder in preview
-                        const elementConfig = Object.values(ELEMENT_CATEGORIES)
-                          .flatMap((cat) => cat.elements)
-                          .find((el) => el.type === element.type);
-
-                        return (
-                          <div
-                            style={{
-                              padding: element.style?.padding || "0.75rem",
-
-                              fontSize: `${element.style?.fontSize || 11}px`,
-                              textAlign: element.style?.textAlign || "left",
-                              lineHeight: element.style?.lineHeight || 1.5,
-                              color: element.style?.color || "#374151",
-                            }}
-                            className="w-full h-full overflow-hidden"
-                          >
-                            <div className="font-medium mb-1">
-                              {elementConfig?.name || element.type}
-                            </div>
-                            <div className="text-xs opacity-75">
-                              {elementConfig?.description || "Data field"}
-                            </div>
-                            {element.type === ELEMENT_TYPES.ORDER_SUMMARY && (
-                              <div className="mt-2 text-xs space-y-1">
-                                <div>Order #: ORD-12345</div>
-                                <div>Date: 30.05.2025</div>
-                                <div>Status: Processing</div>
-                                <div>Platform: Trendyol</div>
-                              </div>
-                            )}
-                            {element.type === ELEMENT_TYPES.TRACKING_INFO && (
-                              <div className="mt-2 text-xs space-y-1">
-                                <div>Tracking #: TK123456789TR</div>
-                                <div>Carrier: PTT Kargo</div>
-                                <div>Ship date: 30.05.2025</div>
-                              </div>
-                            )}
-                          </div>
-                        );
-
                       default:
                         return (
-                          <div className="w-full h-full flex items-center justify-center border border-dashed border-gray-300 text-gray-400 text-xs p-2">
-                            {element.type || "Element"}
+                          <div
+                            style={{
+                              padding: element.style?.padding || "0.5rem",
+                              textAlign: element.style?.textAlign || "left",
+                              fontSize: `${element.style?.fontSize || 12}px`,
+                              fontWeight: element.style?.fontWeight || "normal",
+                              color: element.style?.color || "#374151",
+                              lineHeight: element.style?.lineHeight || 1.5,
+                              fontFamily:
+                                element.style?.fontFamily ||
+                                "Inter, Arial, sans-serif",
+                              width: "100%",
+                              height: "100%",
+                              overflow: "hidden",
+                              display: "flex",
+                              alignItems: "center",
+                            }}
+                          >
+                            {element.content || `${element.type} content`}
                           </div>
                         );
                     }
                   })()}
 
-                  {/* Resize handles, only show for selected elements */}
+                  {/* Selection handles */}
                   {selectedElement?.id === element.id && (
                     <>
                       <div
@@ -2629,19 +2567,19 @@ const PreviewModal = ({
   );
 };
 
-const TemplateCard = ({ 
-  template, 
-  onLoad, 
-  onDelete, 
-  onDuplicate, 
-  formatDate, 
-  viewMode = "grid" 
+const TemplateCard = ({
+  template,
+  onLoad,
+  onDelete,
+  onDuplicate,
+  formatDate,
+  viewMode = "grid",
 }) => {
   const [showActions, setShowActions] = useState(false);
 
   if (viewMode === "list") {
     return (
-      <div 
+      <div
         className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg border"
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
@@ -2657,12 +2595,12 @@ const TemplateCard = ({
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <div className="text-xs text-gray-400">
             {formatDate(template.updatedAt || template.createdAt)}
           </div>
-          
+
           {showActions && (
             <div className="flex space-x-1">
               <Button
@@ -2721,7 +2659,7 @@ const TemplateCard = ({
             </Button>
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <Badge variant="outline" className="text-xs">
             {template.elements?.length || 0} elements
@@ -2736,7 +2674,7 @@ const TemplateCard = ({
           )}
         </div>
       </CardHeader>
-      
+
       <CardContent className="pt-0">
         {/* USE formatDate function properly */}
         <div className="space-y-1 mb-3">
@@ -2773,7 +2711,7 @@ const TemplateCard = ({
               Load
             </Button>
           </div>
-          
+
           <Button
             size="sm"
             variant="ghost"
@@ -4011,26 +3949,156 @@ const ElementPropertiesPanel = React.memo(
                 {/* Font settings */}
                 {!["divider", "spacer", "image"].includes(element.type) && (
                   <>
-                    <div className="space-y-2">
-                      <Label>Yazı Tipi Boyutu</Label>
-                      <div className="flex items-center space-x-2">
-                        <Input
-                          type="number"
-                          value={element.style?.fontSize || 12}
-                          onChange={(e) => {
-                            const newFontSize = parseInt(e.target.value);
-                            onUpdate({
-                              style: {
-                                ...element.style,
-                                fontSize: newFontSize,
-                              },
-                            });
-                          }}
-                          min="8"
-                          max="72"
-                          className="w-20"
-                        />
-                        <span className="text-xs text-gray-500">px</span>
+                    {/* Enhanced Font Size Section */}
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">
+                        Yazı Tipi Boyutu
+                      </Label>
+
+                      {/* Font Size Presets */}
+                      <div className="grid grid-cols-4 gap-1 mb-2">
+                        {[
+                          { label: "XS", value: 8, desc: "Çok Küçük" },
+                          { label: "S", value: 10, desc: "Küçük" },
+                          { label: "M", value: 12, desc: "Orta" },
+                          { label: "L", value: 14, desc: "Büyük" },
+                          { label: "XL", value: 18, desc: "Çok Büyük" },
+                          { label: "XXL", value: 24, desc: "İri" },
+                          { label: "H1", value: 32, desc: "Başlık 1" },
+                          { label: "H2", value: 28, desc: "Başlık 2" },
+                        ].map((preset) => (
+                          <Button
+                            key={preset.value}
+                            size="sm"
+                            variant={
+                              (element.style?.fontSize || 12) === preset.value
+                                ? "default"
+                                : "outline"
+                            }
+                            onClick={() =>
+                              handleStyleChange("fontSize", preset.value)
+                            }
+                            className="h-8 p-1 text-xs"
+                            title={`${preset.desc} (${preset.value}px)`}
+                          >
+                            {preset.label}
+                          </Button>
+                        ))}
+                      </div>
+
+                      {/* Custom Font Size Controls */}
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            type="number"
+                            value={element.style?.fontSize || 12}
+                            onChange={(e) => {
+                              const newFontSize = Math.max(
+                                6,
+                                Math.min(100, parseInt(e.target.value) || 12)
+                              );
+                              handleStyleChange("fontSize", newFontSize);
+                            }}
+                            min="6"
+                            max="100"
+                            step="1"
+                            className="w-16 text-center"
+                          />
+                          <span className="text-xs text-gray-500 min-w-[20px]">
+                            px
+                          </span>
+
+                          {/* Font Size Slider */}
+                          <Input
+                            type="range"
+                            min="6"
+                            max="72"
+                            step="1"
+                            value={element.style?.fontSize || 12}
+                            onChange={(e) =>
+                              handleStyleChange(
+                                "fontSize",
+                                parseInt(e.target.value)
+                              )
+                            }
+                            className="flex-1 h-2"
+                          />
+                        </div>
+
+                        {/* Quick adjustment buttons */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex space-x-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const currentSize =
+                                  element.style?.fontSize || 12;
+                                const newSize = Math.max(6, currentSize - 1);
+                                handleStyleChange("fontSize", newSize);
+                              }}
+                              className="h-6 px-2 text-xs"
+                              title="1px küçült"
+                            >
+                              -1
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const currentSize =
+                                  element.style?.fontSize || 12;
+                                const newSize = Math.min(100, currentSize + 1);
+                                handleStyleChange("fontSize", newSize);
+                              }}
+                              className="h-6 px-2 text-xs"
+                              title="1px büyült"
+                            >
+                              +1
+                            </Button>
+                          </div>
+
+                          {/* Font Size Unit Selector */}
+                          <Select
+                            value={element.style?.fontSizeUnit || "px"}
+                            onValueChange={(value) =>
+                              handleStyleChange("fontSizeUnit", value)
+                            }
+                          >
+                            <SelectTrigger className="w-16 h-6 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="px">px</SelectItem>
+                              <SelectItem value="pt">pt</SelectItem>
+                              <SelectItem value="em">em</SelectItem>
+                              <SelectItem value="rem">rem</SelectItem>
+                              <SelectItem value="%">%</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Font Size Preview */}
+                        <div className="p-3 bg-gray-50 rounded border">
+                          <div className="text-xs text-gray-500 mb-1">
+                            Önizleme:
+                          </div>
+                          <div
+                            style={{
+                              fontSize: `${element.style?.fontSize || 12}${
+                                element.style?.fontSizeUnit || "px"
+                              }`,
+                              fontFamily:
+                                element.style?.fontFamily ||
+                                "Inter, Arial, sans-serif",
+                              fontWeight: element.style?.fontWeight || "normal",
+                              color: element.style?.color || "#374151",
+                              lineHeight: element.style?.lineHeight || "1.5",
+                            }}
+                          >
+                            Örnek metin Aa 123
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -4698,10 +4766,8 @@ const Toolbar = ({
   return (
     <div className="bg-white border-b border-gray-200 p-4">
       <div className="flex items-center justify-between">
-
         {/* Undo/Redo and Preview Mode Controls */}
         <div className="flex items-center space-x-2">
-
           {/* Undo/Redo */}
           <Button
             size="sm"
@@ -4728,7 +4794,6 @@ const Toolbar = ({
 
           {/* Preview Mode Buttons */}
           <div className="flex items-center space-x-1">
-
             {/* Desktop Preview Button */}
             <span className="text-xs text-gray-600">Preview:</span>
             <Button
@@ -4863,7 +4928,7 @@ const Toolbar = ({
             </span>
           </div>
         </div>
-        
+
         {/* Action Buttons */}
         <div className="flex items-center space-x-2">
           {/* Hierarchy Toggle */}

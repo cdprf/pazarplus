@@ -67,6 +67,12 @@
   --z-popover: 1060;
   --z-tooltip: 1070;
   --z-toast: 1080;
+
+  /* Sidebar specific z-index values */
+  --z-sidebar: var(--z-fixed);
+  --z-sidebar-backdrop: var(--z-modal-backdrop);
+  --z-sidebar-tooltip: var(--z-tooltip);
+  --z-sidebar-dropdown: var(--z-dropdown);
 }
 
 /* Dark theme overrides */
@@ -324,49 +330,9 @@ body {
 
 .nav-icon {
   @apply mr-3 flex-shrink-0 transition-colors;
-  width: 1rem !important;
-  height: 1rem !important;
-  min-width: 1rem !important;
-  min-height: 1rem !important;
-  max-width: 1rem !important;
-  max-height: 1rem !important;
-}
-
-/* Additional aggressive icon size fixes for all possible selectors */
-.nav-item .nav-icon,
-.nav-item svg,
-.nav-item [class*="Icon"] {
-  width: 1rem !important;
-  height: 1rem !important;
-  min-width: 1rem !important;
-  min-height: 1rem !important;
-  max-width: 1rem !important;
-  max-height: 1rem !important;
-  flex-shrink: 0 !important;
-}
-
-/* Heroicons specific fixes */
-.nav-item svg[data-slot="icon"],
-.nav-item svg.heroicon {
-  width: 1rem !important;
-  height: 1rem !important;
-  min-width: 1rem !important;
-  min-height: 1rem !important;
-  max-width: 1rem !important;
-  max-height: 1rem !important;
-}
-
-/* Force all SVG icons in navigation to proper size */
-nav svg,
-.sidebar svg,
-[class*="sidebar"] svg,
-[class*="nav"] svg {
-  width: 1rem !important;
-  height: 1rem !important;
-  min-width: 1rem !important;
-  min-height: 1rem !important;
-  max-width: 1rem !important;
-  max-height: 1rem !important;
+  /* Removed hardcoded width/height - using Tailwind classes */
+  width: 1.25rem; /* 20px - better for accessibility */
+  height: 1.25rem; /* 20px - better for accessibility */
 }
 
 .nav-text {
@@ -438,36 +404,32 @@ nav svg,
 }
 
 .modal-backdrop {
-  @apply fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity;
+  @apply fixed inset-0 bg-black/50 backdrop-blur-sm transition-all duration-300;
+  z-index: var(--z-modal-backdrop);
 }
 
 .modal-container {
-  @apply relative bg-white dark:bg-gray-800 rounded-xl shadow-modal max-w-lg mx-auto mt-20 mb-8;
-}
-
-.modal-header {
-  @apply flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700;
-}
-
-.modal-title {
-  @apply text-lg font-semibold text-gray-900 dark:text-gray-100;
-}
-
-.modal-close {
-  @apply p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors;
-}
-
-.modal-body {
-  @apply p-6;
-}
-
-.modal-footer {
-  @apply flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700;
+  @apply relative bg-white dark:bg-gray-900 rounded-lg shadow-xl transform transition-all;
+  z-index: var(--z-modal);
 }
 
 /* Toast notifications */
+.toast-container {
+  z-index: var(--z-toast);
+  pointer-events: none; /* Container should not block interactions */
+}
+
 .toast {
   @apply flex items-start p-4 rounded-lg shadow-lg border max-w-sm min-w-80 bg-white dark:bg-gray-800 transition-all duration-300 ease-in-out backdrop-blur-sm;
+  pointer-events: auto; /* Each toast should be interactive */
+}
+
+.toast-wrapper {
+  pointer-events: auto;
+}
+
+.toast-overflow-indicator {
+  pointer-events: auto;
 }
 
 .toast-success {
@@ -1248,19 +1210,26 @@ nav svg,
 }
 
 .dropdown-trigger {
-  @apply flex items-center justify-between px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300;
-  @apply bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg;
-  @apply hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500;
+  @apply flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300;
+  @apply bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md;
+  @apply hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500;
+  @apply transition-colors duration-200;
 }
 
 .dropdown-chevron {
-  @apply ml-2 h-4 w-4 transition-transform duration-200;
+  @apply w-4 h-4 ml-2 transition-transform duration-200;
+}
+
+.dropdown:hover .dropdown-chevron,
+.dropdown:focus-within .dropdown-chevron {
+  @apply rotate-180;
 }
 
 .dropdown-content {
-  @apply absolute top-full right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-50;
+  @apply absolute top-full right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1;
   @apply opacity-0 invisible transition-all duration-200 ease-out;
   @apply transform scale-95 origin-top-right;
+  z-index: var(--z-dropdown);
 }
 
 .dropdown:hover .dropdown-content,
@@ -1419,206 +1388,152 @@ nav svg,
   }
 }
 
-/* Sidebar Component Styles - Following Design System */
-.sidebar-backdrop {
-  @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden;
-  @apply transition-opacity duration-300 ease-in-out;
+/* Enhanced Z-index hierarchy for sidebar components */
+:root {
+  /* ...existing code... */
+
+  /* Enhanced Z-index scale for proper layering */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+
+  /* Sidebar specific z-index values */
+  --z-sidebar: var(--z-fixed);
+  --z-sidebar-backdrop: var(--z-modal-backdrop);
+  --z-sidebar-tooltip: var(--z-tooltip);
+  --z-sidebar-dropdown: var(--z-dropdown);
 }
 
+/* Enhanced sidebar specific styles */
 .sidebar-container {
-  @apply fixed top-16 bottom-0 left-0 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700;
-  @apply transform transition-transform duration-300 ease-in-out z-30;
-  @apply shadow-xl lg:shadow-none;
-  /* Ensure sidebar starts below header and reaches footer */
-  height: calc(100vh - 4rem);
+  @apply fixed left-0 top-0 h-full transition-all duration-300 ease-in-out;
+  @apply bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700;
+  @apply shadow-xl dark:shadow-2xl;
+  z-index: var(--z-sidebar);
 }
 
-.sidebar-container-closed {
-  @apply -translate-x-full lg:translate-x-0;
+.sidebar-backdrop {
+  @apply fixed inset-0 bg-black/50 backdrop-blur-sm transition-all duration-300;
+  z-index: var(--z-sidebar-backdrop);
 }
 
-.sidebar-container-open {
-  @apply translate-x-0;
+.sidebar-tooltip {
+  @apply absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-800 text-white text-sm rounded;
+  @apply opacity-0 pointer-events-none transition-opacity duration-200;
+  z-index: var(--z-sidebar-tooltip);
 }
 
-.sidebar {
-  @apply flex flex-col h-full;
-  /* Ensure proper flex layout for sticky footer */
+.sidebar-user-dropdown {
+  @apply absolute bottom-14 left-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700;
+  @apply rounded-lg shadow-xl p-2 space-y-1;
+  z-index: var(--z-sidebar-dropdown);
 }
 
-/* Sidebar Header Styles */
-.sidebar-header {
-  @apply flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700;
-  @apply bg-gray-50 dark:bg-gray-800/50;
-  flex-shrink: 0; /* Prevent header from shrinking */
+/* Enhanced focus management for accessibility */
+.focus-visible:focus {
+  @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  @apply ring-offset-white dark:ring-offset-gray-900;
 }
 
-.sidebar-title {
-  @apply text-lg font-semibold text-gray-900 dark:text-gray-100;
+/* Enhanced animation performance */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.sidebar-close-btn {
-  @apply p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors lg:hidden;
-  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1;
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-/* Sidebar Navigation - Scrollable Middle Section */
-.sidebar-nav {
-  @apply flex-1 overflow-y-auto px-4 py-4;
-  @apply scrollbar-thin;
-  /* Remove bottom padding since footer is now in flex layout */
-  min-height: 0; /* Allow flex child to shrink */
+/* Performance optimizations */
+.animate-fade-in {
+  animation: fadeInUp 0.3s ease-out;
+  will-change: transform, opacity;
 }
 
-.sidebar-sections {
-  @apply space-y-6;
+.animate-slide-in-left {
+  animation: slideInLeft 0.3s ease-out;
+  will-change: transform, opacity;
 }
 
-/* Sidebar Section Styles */
-.sidebar-section {
-  @apply space-y-3;
+/* Remove will-change after animation completes */
+.animate-fade-in:not(:hover),
+.animate-slide-in-left:not(:hover) {
+  will-change: auto;
 }
 
-.sidebar-section-header {
-  @apply w-full text-left transition-all duration-200 px-3 py-2 rounded-lg;
-  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1;
-  @apply focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900;
-}
-
-.sidebar-section-header-collapsible {
-  @apply hover:text-primary-600 dark:hover:text-primary-400 cursor-pointer;
-  @apply hover:bg-gray-100 dark:hover:bg-gray-800;
-}
-
-.sidebar-section-header-static {
-  @apply cursor-default;
-}
-
-.sidebar-section-title {
-  @apply text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider;
-  @apply flex items-center justify-between;
-}
-
-.sidebar-section-chevron {
-  @apply w-3 h-3 transition-transform duration-300 ease-in-out;
-}
-
-.sidebar-section-items {
-  @apply transition-all duration-300 ease-in-out;
-}
-
-/* Sidebar Footer - Flex layout for proper bottom positioning */
-.sidebar-footer {
-  @apply px-4 py-4 border-t border-gray-200 dark:border-gray-700;
-  @apply bg-gradient-to-t from-gray-50 to-gray-50/50 dark:from-gray-800/80 dark:to-gray-800/40;
-  @apply backdrop-blur-sm space-y-4;
-  flex-shrink: 0; /* Prevent footer from shrinking */
-  /* Enhanced styling following design system */
-  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
-}
-
-/* Enhanced footer styling for dark mode */
-[data-theme="dark"] .sidebar-footer {
-  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.2);
-}
-
-/* Main content positioning for desktop with sidebar */
-@media (min-width: 1024px) {
+/* Enhanced responsive sidebar behavior */
+@media (max-width: 768px) {
   .sidebar-container {
-    /* On desktop, sidebar is part of layout, not fixed */
-    position: relative;
-    top: 0;
-    height: 100%;
-    z-index: auto;
+    @apply w-80; /* Fixed width on mobile */
   }
 
-  .sidebar-backdrop {
-    @apply hidden;
+  .sidebar-container.closed {
+    @apply -translate-x-full;
   }
 
-  /* Ensure main content has proper margin for sidebar */
-  .main-content {
-    margin-left: 256px; /* Width of sidebar */
+  .sidebar-container.open {
+    @apply translate-x-0;
   }
 }
 
-/* Quick Actions Styles - Compact Design */
-.quick-actions {
-  @apply space-y-3;
+@media (min-width: 769px) {
+  .sidebar-container.collapsed {
+    width: fit-content;
+  }
+
+  .sidebar-container.expanded {
+    @apply w-80;
+  }
 }
 
-.quick-actions-header {
-  @apply font-medium text-gray-700 dark:text-gray-300 px-1 text-xs uppercase tracking-wider;
-  @apply mb-2;
+/* Enhanced tooltip positioning for collapsed sidebar */
+.sidebar-container.collapsed .nav-item:hover + .sidebar-tooltip,
+.sidebar-container.collapsed .nav-item:focus + .sidebar-tooltip {
+  @apply opacity-100;
 }
 
-.quick-actions-grid {
-  @apply space-y-2;
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-container,
+  .nav-item,
+  .animate-fade-in,
+  .animate-slide-in-left {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
-.quick-action-btn {
-  @apply w-full justify-between text-gray-700 dark:text-gray-300 px-3 py-2.5 text-sm;
-  @apply hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100;
-  @apply transition-all duration-200 rounded-lg;
-  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1;
-}
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .sidebar-container {
+    @apply border-2 border-gray-900 dark:border-gray-100;
+  }
 
-/* User Profile Styles - Compact Design */
-.user-profile {
-  @apply space-y-3;
-}
+  .nav-item {
+    @apply border border-transparent;
+  }
 
-.user-info {
-  @apply flex items-center space-x-3 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg;
-  /* Enhanced background with subtle gradient */
-  background: linear-gradient(
-    135deg,
-    rgba(249, 250, 251, 0.8) 0%,
-    rgba(243, 244, 246, 0.9) 100%
-  );
-}
-
-[data-theme="dark"] .user-info {
-  background: linear-gradient(
-    135deg,
-    rgba(31, 41, 55, 0.8) 0%,
-    rgba(17, 24, 39, 0.9) 100%
-  );
-}
-
-.user-avatar {
-  @apply w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center flex-shrink-0;
-  /* Enhanced gradient for avatar */
-  background: linear-gradient(
-    135deg,
-    var(--brand-primary) 0%,
-    var(--brand-secondary) 100%
-  );
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.user-avatar-text {
-  @apply text-white font-medium text-sm;
-}
-
-.user-details {
-  @apply flex-1 min-w-0;
-}
-
-.user-name {
-  @apply text-sm font-medium text-gray-900 dark:text-gray-100 truncate;
-}
-
-.user-role {
-  @apply text-xs text-gray-500 dark:text-gray-400 leading-tight;
-}
-
-.user-actions {
-  @apply flex items-center space-x-2;
-}
-
-.user-action-btn {
-  @apply flex-1 justify-center text-xs px-3 py-2;
-  @apply hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md;
-  @apply transition-all duration-200;
+  .nav-item:focus,
+  .nav-item:hover {
+    @apply border-gray-900 dark:border-gray-100;
+  }
 }

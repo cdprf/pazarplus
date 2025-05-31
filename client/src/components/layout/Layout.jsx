@@ -1,7 +1,7 @@
 import React from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
-import Sidebar from "./Sidebar";
+import AdvancedSidebar from "../sidebar/AdvancedSidebar";
 import Footer from "./Footer";
 import { useWebSocketConnection } from "../../hooks/useWebSocketConnection";
 import { useAuth } from "../../hooks/useAuth";
@@ -19,11 +19,6 @@ const Layout = () => {
   // Toggle sidebar function
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
-  };
-
-  // Close sidebar function for mobile
-  const closeSidebar = () => {
-    setSidebarOpen(false);
   };
 
   // Don't show connection status on auth pages
@@ -62,7 +57,7 @@ const Layout = () => {
       <div className="pt-16 min-h-screen flex flex-col">
         <div className="flex flex-1">
           {isAuthenticated && (
-            <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
+            <AdvancedSidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
           )}
 
           <main className={`flex-1 transition-all duration-300`}>

@@ -736,6 +736,94 @@ const logout = async (req, res) => {
   }
 };
 
+// Development token endpoint - only works in development mode
+const generateDevToken = async (req, res) => {
+  try {
+    // Only allow in development mode
+    if (process.env.NODE_ENV !== "development" && !req.headers["x-dev-mode"]) {
+      return res.status(403).json({
+        success: false,
+        message: "Development endpoint not available in production",
+      });
+    }
+
+    logger.info("🔧 Development token requested");
+
+    // Create or find a development user
+    let devUser = await User.findOne({
+      where: { email: "dev@example.com" },
+    });
+
+    if (!devUser) {
+      // Create development user
+      const salt = await bcrypt.genSalt(12);
+      const hashedPassword = await bcrypt.hash("dev123456", salt);
+
+      devUser = await User.create({
+        username: "devuser",
+        email: "dev@example.com",
+        password: hashedPassword,
+        fullName: "Development User",
+        companyName: "Dev Company",
+        businessType: "e-commerce",
+        role: "admin",
+        subscriptionPlan: "premium",
+        subscriptionStatus: "active",
+        isEmailVerified: true,
+        isActive: true,
+        onboardingCompleted: true,
+        featuresEnabled: {
+          analytics: true,
+          inventory_management: true,
+          multi_platform: true,
+          ai_insights: true,
+          custom_reports: true,
+          api_access: true,
+        },
+      });
+
+      logger.info("✅ Development user created", { userId: devUser.id });
+    }
+
+    // Generate token for development user
+    const token = generateToken(devUser);
+
+    // Update last login
+    await devUser.update({
+      lastLogin: new Date(),
+      lastActivityAt: new Date(),
+    });
+
+    // Remove password from response
+    const userResponse = { ...devUser.toJSON() };
+    delete userResponse.password;
+
+    logger.info("✅ Development token generated successfully", {
+      userId: devUser.id,
+      tokenLength: token.length,
+    });
+
+    res.json({
+      success: true,
+      message: "Development token generated",
+      token,
+      user: {
+        ...userResponse,
+        devMode: true,
+        isTrialExpired: false,
+        trialDaysRemaining: 999,
+        needsOnboarding: false,
+      },
+    });
+  } catch (error) {
+    logger.error(`Development token error: ${error.message}`, { error });
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate development token",
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -747,6 +835,7 @@ module.exports = {
   resendVerification,
   changePassword,
   logout,
+  generateDevToken, // Add this new function
   generateToken,
   generateVerificationToken,
   generateResetToken,

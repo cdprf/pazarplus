@@ -1,33 +1,96 @@
 const express = require("express");
 const { body, validationResult } = require("express-validator");
 const rateLimit = require("express-rate-limit");
+const logger = require("../utils/logger");
 
-// Create more restrictive rate limiters for sensitive endpoints
-const authLimiter = rateLimit({
+// Enhanced rate limiting configuration with better error messages and monitoring
+const createEnhancedLimiter = (options = {}) => {
+  const defaults = {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req, res) => {
+      logger.warn(`Rate limit exceeded for ${options.name || "unknown"}`, {
+        ip: req.ip,
+        userAgent: req.get("User-Agent"),
+        path: req.path,
+        user: req.user?.id || "anonymous",
+      });
+
+      res.status(429).json({
+        success: false,
+        message:
+          options.message || "Rate limit exceeded. Please try again later.",
+        code: "RATE_LIMIT_EXCEEDED",
+        retryAfter: Math.round(options.windowMs / 1000),
+        type: options.name || "general",
+      });
+    },
+    skip: (req) => {
+      // Skip in development environment
+      if (process.env.NODE_ENV === "development") {
+        return true;
+      }
+
+      // Skip for health checks
+      if (req.path === "/health" || req.path === "/metrics") {
+        return true;
+      }
+
+      return false;
+    },
+  };
+
+  return rateLimit({ ...defaults, ...options });
+};
+
+// Authentication rate limiter with progressive penalties
+const authLimiter = createEnhancedLimiter({
+  name: "authentication",
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === "development" ? 10000 : 5, // Very high for dev, 5 in production
-  message: {
-    success: false,
-    message: "Too many authentication attempts, please try again later.",
+  max: process.env.NODE_ENV === "development" ? 1000 : 10, // More reasonable production limit
+  message: "Too many authentication attempts. Please try again in 15 minutes.",
+  skipSuccessfulRequests: true, // Don't count successful auth requests
+  keyGenerator: (req) => {
+    // Combine IP and email/username for more specific limiting
+    const identifier = req.body?.email || req.body?.username || "unknown";
+    return `auth:${req.ip}:${identifier}`;
   },
-  skip: (req) => {
-    // Always skip in development
-    return process.env.NODE_ENV === "development";
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
 });
 
-const generalLimiter = rateLimit({
+// General API rate limiter
+const generalLimiter = createEnhancedLimiter({
+  name: "general_api",
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === "development" ? 50000 : 100, // Much higher limits for development
-  message: {
-    success: false,
-    message: "Too many requests, please try again later.",
+  max: process.env.NODE_ENV === "development" ? 10000 : 1000,
+  message: "API rate limit exceeded. Please slow down your requests.",
+  keyGenerator: (req) => {
+    // Use user ID if authenticated, otherwise IP
+    return req.user?.id || req.ip;
   },
-  skip: (req) => {
-    // Always skip in development
-    return process.env.NODE_ENV === "development";
+});
+
+// Sensitive operations limiter (password changes, account deletions)
+const sensitiveOperationsLimiter = createEnhancedLimiter({
+  name: "sensitive_operations",
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: process.env.NODE_ENV === "development" ? 100 : 5,
+  message: "Too many sensitive operations. Please wait before trying again.",
+  keyGenerator: (req) => {
+    return `sensitive:${req.user?.id || req.ip}`;
+  },
+});
+
+// Platform API operations limiter
+const platformLimiter = createEnhancedLimiter({
+  name: "platform_api",
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: process.env.NODE_ENV === "development" ? 1000 : 50,
+  message:
+    "Platform API rate limit exceeded. Please wait before making more requests.",
+  keyGenerator: (req) => {
+    const connectionId = req.params.id || req.body.connectionId || "unknown";
+    return `platform:${connectionId}:${req.user?.id || req.ip}`;
   },
 });
 
@@ -84,4 +147,6 @@ module.exports = {
   registerValidation,
   loginValidation,
   passwordChangeValidation,
+  sensitiveOperationsLimiter,
+  platformLimiter,
 };

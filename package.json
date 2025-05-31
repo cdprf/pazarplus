@@ -85,6 +85,7 @@
     "yup": "^1.4.0"
   },
   "devDependencies": {
+    "@heroicons/react": "^2.2.0",
     "@types/jest": "^29.5.12",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",

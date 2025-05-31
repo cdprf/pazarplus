@@ -120,10 +120,11 @@ export const Tooltip = ({
         <div
           ref={tooltipRef}
           className={cn(
-            "absolute z-50 px-2 py-1 text-sm text-white bg-gray-900 rounded shadow-lg whitespace-nowrap",
+            "absolute px-2 py-1 text-sm text-white bg-gray-900 rounded shadow-lg whitespace-nowrap",
             positionClasses[actualPosition],
             className
           )}
+          style={{ zIndex: "var(--z-tooltip)" }}
           role="tooltip"
         >
           {content}

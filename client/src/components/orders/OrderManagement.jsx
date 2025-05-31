@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ShoppingCart,
@@ -17,7 +23,6 @@ import {
   Package,
   AlertCircle,
   BarChart3,
-  CreditCard,
   CalendarDays,
   ArrowUpDown,
   Loader2,
@@ -26,6 +31,11 @@ import {
   Printer,
   FileText,
   Ban,
+  MapPin,
+  Phone,
+  Mail,
+  User,
+  DollarSign,
 } from "lucide-react";
 import api from "../../services/api";
 import { useAlert } from "../../contexts/AlertContext";
@@ -34,10 +44,11 @@ import { Card, CardContent } from "../ui/Card";
 import { Badge } from "../ui/Badge";
 import { Modal } from "../ui/Modal";
 
-const OrderManagement = () => {
+const OrderManagement = React.memo(() => {
   const navigate = useNavigate();
   const { showAlert } = useAlert();
   const searchInputRef = useRef(null);
+  const debounceRef = useRef(null);
 
   // State management
   const [orders, setOrders] = useState([]);
@@ -49,12 +60,13 @@ const OrderManagement = () => {
   const [modalMode, setModalMode] = useState("view");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [recordCount, setRecordCount] = useState(20);
   const [sortConfig, setSortConfig] = useState({
-    key: "orderDate", // Changed from "createdAt" to "orderDate" for consistency with backend
+    key: "orderDate",
     direction: "desc",
   });
 
@@ -65,8 +77,10 @@ const OrderManagement = () => {
     dateFrom: "",
     dateTo: "",
     store: "all",
-    sortBy: "orderDate", // Changed to match backend field
+    sortBy: "orderDate",
     sortOrder: "desc",
+    priceMin: "",
+    priceMax: "",
   });
   const [filterErrors, setFilterErrors] = useState({});
 
@@ -78,6 +92,7 @@ const OrderManagement = () => {
     shipped: 0,
     delivered: 0,
     cancelled: 0,
+    totalRevenue: 0,
   });
 
   // Date range presets
@@ -88,75 +103,6 @@ const OrderManagement = () => {
     { label: "Bu Ay", value: "thisMonth" },
     { label: "Geçen Ay", value: "lastMonth" },
   ];
-
-  // Trendyol mapping functions - available for future use
-  // const mapTrendyolStatus = useCallback((trendyolStatus) => {
-  //   const statusMap = {
-  //     Created: "pending",
-  //     Approved: "confirmed",
-  //     Picking: "processing",
-  //     Invoiced: "processing",
-  //     Shipped: "shipped",
-  //     Delivered: "delivered",
-  //     Cancelled: "iptal-edildi",
-  //     Returned: "returned",
-  //     UnDelivered: "failed"
-  //   };
-  //   return statusMap[trendyolStatus] || "unknown";
-  // }, []);
-
-  // const mapTrendyolAddress = useCallback((address) => {
-  //   return {
-  //     firstName: address.firstName || "",
-  //     lastName: address.lastName || "",
-  //     address1: address.address1 || "",
-  //     address2: address.address2 || "",
-  //     city: address.city || "",
-  //     district: address.district || "",
-  //     neighborhood: address.neighborhood || "",
-  //     postalCode: address.postalCode || "",
-  //     countryCode: address.countryCode || "TR",
-  //     phone: address.phone || "",
-  //     fullName: `${address.firstName || ""} ${address.lastName || ""}`.trim()
-  //   };
-  // }, []);
-
-  // const mapTrendyolLineItem = useCallback((lineItem) => {
-  //   return {
-  //     id: lineItem.orderLineId,
-  //     productId: lineItem.productId,
-  //     merchantSku: lineItem.merchantSku,
-  //     productName: lineItem.productName,
-  //     productCode: lineItem.productCode,
-  //     merchantId: lineItem.merchantId,
-  //     amount: lineItem.amount,
-  //     discount: lineItem.discount || 0,
-  //     discountDetails: lineItem.discountDetails || [],
-  //     currencyCode: lineItem.currencyCode || "TRY",
-  //     productColor: lineItem.productColor,
-  //     productSize: lineItem.productSize,
-  //     quantity: lineItem.quantity,
-  //     unitPrice: lineItem.price,
-  //     totalPrice: lineItem.amount,
-  //     sku: lineItem.merchantSku,
-  //     barcode: lineItem.barcode,
-  //     orderLineItemStatusName: lineItem.orderLineItemStatusName
-  //   };
-  // }, []);
-
-  // const generateOrderTags = useCallback((order) => {
-  //   const tags = [];
-  //
-  //   if (order.fastDelivery) tags.push("hızlı-teslimat");
-  //   if (order.scheduled) tags.push("planlanmış");
-  //   if (order.invoiceRequested) tags.push("fatura-istendi");
-  //   if (order.giftMessage) tags.push("hediye");
-  //   if (order.totalPrice > 500) tags.push("yüksek-değer");
-  //   if (order.itemCount > 5) tags.push("çoklu-ürün");
-  //
-  //   return tags;
-  // }, []);
-
   // Update stats from actual order data
   const updateStatsFromOrders = useCallback((ordersData) => {
     if (!Array.isArray(ordersData)) {
@@ -171,12 +117,18 @@ const OrderManagement = () => {
       shipped: 0,
       delivered: 0,
       cancelled: 0,
+      totalRevenue: 0,
     };
 
     ordersData.forEach((order) => {
       const status = order.status || order.orderStatus || "pending";
       if (newStats.hasOwnProperty(status)) {
         newStats[status]++;
+      }
+
+      // Calculate total revenue from delivered orders
+      if (status === "delivered" && order.totalAmount) {
+        newStats.totalRevenue += parseFloat(order.totalAmount) || 0;
       }
     });
 
@@ -244,9 +196,85 @@ const OrderManagement = () => {
       }
     }
 
+    if (filters.priceMin && filters.priceMax) {
+      const minPrice = parseFloat(filters.priceMin);
+      const maxPrice = parseFloat(filters.priceMax);
+
+      if (minPrice > maxPrice) {
+        errors.priceRange = "Minimum fiyat maksimum fiyattan büyük olamaz";
+      }
+    }
+
     return errors;
   }, []);
 
+  // Status and platform helper functions
+  const getStatusIcon = useCallback((status) => {
+    const iconMap = {
+      pending: "⏳",
+      confirmed: "✅",
+      processing: "⚙️",
+      shipped: "🚚",
+      delivered: "📦",
+      cancelled: "❌",
+      returned: "↩️",
+      refunded: "💰",
+      failed: "⚠️",
+    };
+    return iconMap[status] || "❓";
+  }, []);
+
+  const getStatusVariant = useCallback((status) => {
+    const variantMap = {
+      pending: "warning",
+      confirmed: "info",
+      processing: "primary",
+      shipped: "info",
+      delivered: "success",
+      cancelled: "danger",
+      returned: "warning",
+      refunded: "secondary",
+      failed: "danger",
+    };
+    return variantMap[status] || "secondary";
+  }, []);
+
+  const getStatusText = useCallback((status) => {
+    const textMap = {
+      pending: "Beklemede",
+      confirmed: "Onaylandı",
+      processing: "Hazırlanıyor",
+      shipped: "Kargoda",
+      delivered: "Teslim Edildi",
+      cancelled: "İptal Edildi",
+      returned: "İade Edildi",
+      refunded: "İade Tamamlandı",
+      failed: "Başarısız",
+    };
+    return textMap[status] || status;
+  }, []);
+
+  const getPlatformVariant = useCallback((platform) => {
+    const variantMap = {
+      trendyol: "primary",
+      hepsiburada: "warning",
+      n11: "info",
+      amazon: "dark",
+      default: "secondary",
+    };
+    return variantMap[platform?.toLowerCase()] || variantMap.default;
+  }, []);
+
+  const getPlatformIcon = useCallback((platform) => {
+    const icons = {
+      trendyol: "🛍️",
+      hepsiburada: "🛒",
+      n11: "🏪",
+      pazarama: "🎯",
+      gittigidiyor: "🔔",
+    };
+    return icons[platform?.toLowerCase()] || "📦";
+  }, []);
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
@@ -262,7 +290,7 @@ const OrderManagement = () => {
       setFilterErrors({});
 
       const params = {
-        page: currentPage, // API expects 1-based pagination
+        page: currentPage,
         limit: recordCount,
         search: searchTerm.trim(),
         ...filters,
@@ -319,12 +347,27 @@ const OrderManagement = () => {
         // Map API response fields to component expected fields
         const mappedOrders = ordersData.map((order) => ({
           ...order,
+          id: order.id || order._id || order.orderId,
           // Ensure status field is available (map orderStatus to status)
           status: order.status || order.orderStatus || "pending",
           // Ensure platform field is available (map platformType to platform)
           platform: order.platform || order.platformType || "unknown",
           // Ensure we have proper date fields
           displayDate: order.orderDate || order.createdAt,
+          // Ensure customer fields
+          customerName:
+            order.customerName ||
+            order.customer?.name ||
+            `${order.customer?.firstName || ""} ${
+              order.customer?.lastName || ""
+            }`.trim() ||
+            "Bilinmeyen Müşteri",
+          customerEmail: order.customerEmail || order.customer?.email || "",
+          // Ensure monetary fields
+          totalAmount: order.totalAmount || order.amount || order.total || 0,
+          currency: order.currency || order.currencyCode || "TRY",
+          // Ensure order number
+          orderNumber: order.orderNumber || order.orderNo || order.id || "N/A",
         }));
 
         console.log("Processed orders data:", {
@@ -337,6 +380,7 @@ const OrderManagement = () => {
 
         setOrders(mappedOrders);
         setTotalPages(Math.max(1, totalPagesCalculated));
+        setTotalRecords(totalCount);
 
         // Update stats with mapped orders data
         updateStatsFromOrders(mappedOrders);
@@ -348,6 +392,7 @@ const OrderManagement = () => {
       setError(error.message);
       setOrders([]);
       setTotalPages(1);
+      setTotalRecords(0);
       showAlert("Siparişler yüklenirken bir hata oluştu", "error");
     } finally {
       setLoading(false);
@@ -362,10 +407,136 @@ const OrderManagement = () => {
     validateFilters,
   ]);
 
+  // Debounced search effect
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
 
+    debounceRef.current = setTimeout(
+      () => {
+        fetchOrders();
+      },
+      searchTerm ? 500 : 0
+    ); // 500ms debounce for search, immediate for other changes
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [searchTerm]);
+
+  // Effect for non-search changes
+  useEffect(() => {
+    if (!searchTerm) {
+      fetchOrders();
+    }
+  }, [currentPage, filters, recordCount]);
+
+  // Memoized filtered and sorted orders
+  const filteredAndSortedOrders = useMemo(() => {
+    if (!Array.isArray(orders)) return [];
+
+    let filtered = [...orders];
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(
+        (order) =>
+          order.orderNumber?.toLowerCase().includes(searchLower) ||
+          order.customerName?.toLowerCase().includes(searchLower) ||
+          order.customerEmail?.toLowerCase().includes(searchLower) ||
+          order.platform?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply status filter
+    if (filters.status && filters.status !== "all") {
+      filtered = filtered.filter((order) => order.status === filters.status);
+    }
+
+    // Apply platform filter
+    if (filters.platform && filters.platform !== "all") {
+      filtered = filtered.filter(
+        (order) => order.platform === filters.platform
+      );
+    }
+
+    // Apply price filter
+    if (filters.priceMin) {
+      const minPrice = parseFloat(filters.priceMin);
+      filtered = filtered.filter((order) => order.totalAmount >= minPrice);
+    }
+
+    if (filters.priceMax) {
+      const maxPrice = parseFloat(filters.priceMax);
+      filtered = filtered.filter((order) => order.totalAmount <= maxPrice);
+    }
+
+    // Apply date filter
+    if (filters.dateFrom) {
+      const fromDate = new Date(filters.dateFrom);
+      filtered = filtered.filter((order) => {
+        const orderDate = new Date(
+          order.displayDate || order.orderDate || order.createdAt
+        );
+        return orderDate >= fromDate;
+      });
+    }
+
+    if (filters.dateTo) {
+      const toDate = new Date(filters.dateTo);
+      toDate.setHours(23, 59, 59, 999); // End of day
+      filtered = filtered.filter((order) => {
+        const orderDate = new Date(
+          order.displayDate || order.orderDate || order.createdAt
+        );
+        return orderDate <= toDate;
+      });
+    }
+
+    // Apply sorting
+    return filtered.sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+
+      if (aValue === bValue) return 0;
+
+      let comparison = 0;
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        comparison = aValue.localeCompare(bValue);
+      } else if (typeof aValue === "number" && typeof bValue === "number") {
+        comparison = aValue - bValue;
+      } else if (aValue instanceof Date && bValue instanceof Date) {
+        comparison = aValue.getTime() - bValue.getTime();
+      } else {
+        comparison = aValue < bValue ? -1 : 1;
+      }
+
+      return sortConfig.direction === "desc" ? -comparison : comparison;
+    });
+  }, [orders, searchTerm, filters, sortConfig]);
+
+  // Memoized current page orders
+  const currentOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * recordCount;
+    const endIndex = startIndex + recordCount;
+    return filteredAndSortedOrders.slice(startIndex, endIndex);
+  }, [filteredAndSortedOrders, currentPage, recordCount]);
+
+  // Update total pages based on filtered results
+  const calculatedTotalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredAndSortedOrders.length / recordCount));
+  }, [filteredAndSortedOrders.length, recordCount]);
+
+  // Reset page when it exceeds total pages
+  useEffect(() => {
+    if (currentPage > calculatedTotalPages) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, calculatedTotalPages]);
   // Date range presets handler
   const applyDatePreset = useCallback((preset) => {
     const today = new Date();
@@ -418,8 +589,10 @@ const OrderManagement = () => {
       dateFrom: "",
       dateTo: "",
       store: "all",
-      sortBy: "orderDate", // Changed to match backend field
+      sortBy: "orderDate",
       sortOrder: "desc",
+      priceMin: "",
+      priceMax: "",
     });
     setSearchTerm("");
     setFilterErrors({});
@@ -430,12 +603,12 @@ const OrderManagement = () => {
   const handleSelectAll = useCallback(
     (checked) => {
       if (checked) {
-        setSelectedOrders(orders.map((order) => order.id));
+        setSelectedOrders(currentOrders.map((order) => order.id));
       } else {
         setSelectedOrders([]);
       }
     },
-    [orders]
+    [currentOrders]
   );
 
   const handleSelectOrder = useCallback((orderId, checked) => {
@@ -483,20 +656,25 @@ const OrderManagement = () => {
 
       console.log("🔄 Starting order sync...");
 
-      // First, let's check if we have any platform connections
-      const connectionsResponse = await api.platforms.getConnections();
-      console.log("📡 Platform connections:", connectionsResponse);
+      // Check platform connections first
+      try {
+        const connectionsResponse = await api.platforms.getConnections();
+        console.log("📡 Platform connections:", connectionsResponse);
 
-      if (
-        !connectionsResponse.success ||
-        !connectionsResponse.data ||
-        connectionsResponse.data.length === 0
-      ) {
-        showAlert(
-          "❌ Sipariş senkronizasyonu için önce platform bağlantıları kurmanız gerekiyor. Platform Ayarları sayfasından Trendyol, Hepsiburada veya N11 bağlantılarınızı ekleyin.",
-          "warning"
-        );
-        return;
+        if (
+          !connectionsResponse.success ||
+          !connectionsResponse.data ||
+          connectionsResponse.data.length === 0
+        ) {
+          showAlert(
+            "❌ Sipariş senkronizasyonu için önce platform bağlantıları kurmanız gerekiyor. Platform Ayarları sayfasından Trendyol, Hepsiburada veya N11 bağlantılarınızı ekleyin.",
+            "warning"
+          );
+          return;
+        }
+      } catch (connectionError) {
+        console.warn("Could not check platform connections:", connectionError);
+        // Continue with sync anyway
       }
 
       // Proceed with sync
@@ -546,13 +724,12 @@ const OrderManagement = () => {
     } catch (error) {
       console.error("❌ Error syncing orders:", error);
 
-      // Provide more specific error messages - FIXED THE ISSUE HERE
+      // Provide more specific error messages
       let errorMessage = "Senkronizasyon sırasında bir hata oluştu";
 
       if (error.response?.status === 401) {
         errorMessage =
           "🔒 Oturum süreniz dolmuş veya giriş yapmanız gerekiyor. Lütfen giriş yapın.";
-        // Redirect to login page
         setTimeout(() => {
           window.location.href = "/login";
         }, 2000);
@@ -574,16 +751,22 @@ const OrderManagement = () => {
     }
   }, [showAlert, fetchOrders]);
 
-  // Enhanced search with debouncing
+  // Enhanced search handlers
   const handleKeyPress = useCallback(
     (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
+        setCurrentPage(1);
         fetchOrders();
       }
     },
     [fetchOrders]
   );
+
+  const handleSearch = useCallback((value) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  }, []);
 
   // Enhanced sorting
   const handleSort = useCallback(
@@ -596,8 +779,7 @@ const OrderManagement = () => {
       // Map frontend sort keys to backend expected keys
       let backendSortKey = key;
       if (key === "createdAt") {
-        // For dates, we want to sort by the actual date field from the API
-        backendSortKey = "orderDate"; // Use orderDate for better sorting
+        backendSortKey = "orderDate";
       }
 
       setSortConfig({ key, direction });
@@ -607,7 +789,6 @@ const OrderManagement = () => {
         sortOrder: direction,
       }));
 
-      // Reset to first page when sorting changes
       setCurrentPage(1);
     },
     [sortConfig]
@@ -625,11 +806,15 @@ const OrderManagement = () => {
       currency: "TRY",
       items: [],
       shippingAddress: {
+        firstName: "",
+        lastName: "",
         street: "",
         city: "",
-        state: "",
-        zipCode: "",
+        district: "",
+        neighborhood: "",
+        postalCode: "",
         country: "Turkey",
+        phone: "",
       },
     });
     setModalMode("create");
@@ -725,7 +910,6 @@ const OrderManagement = () => {
       try {
         const response = await api.orders.printShippingSlip(orderId);
         if (response.success) {
-          // Open PDF in new window for printing
           const pdfWindow = window.open(response.data.pdfUrl, "_blank");
           if (pdfWindow) {
             pdfWindow.onload = () => {
@@ -747,7 +931,6 @@ const OrderManagement = () => {
       try {
         const response = await api.orders.printInvoice(orderId);
         if (response.success) {
-          // Open PDF in new window for printing
           const pdfWindow = window.open(response.data.pdfUrl, "_blank");
           if (pdfWindow) {
             pdfWindow.onload = () => {
@@ -776,7 +959,7 @@ const OrderManagement = () => {
         const response = await api.orders.cancelOrder(orderId);
         if (response.success) {
           showAlert("Sipariş başarıyla iptal edildi", "success");
-          fetchOrders(); // Refresh the orders list
+          fetchOrders();
         }
       } catch (error) {
         console.error("Error canceling order:", error);
@@ -785,12 +968,6 @@ const OrderManagement = () => {
     },
     [showAlert, fetchOrders]
   );
-
-  // Enhanced search with debouncing
-  const handleSearch = useCallback((value) => {
-    setSearchTerm(value);
-    setCurrentPage(1); // Reset to first page on search
-  }, []);
 
   // Loading and error states
   if (loading) {
@@ -823,7 +1000,6 @@ const OrderManagement = () => {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header Section */}
@@ -963,7 +1139,7 @@ const OrderManagement = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center">
-                <CreditCard className="h-8 w-8 text-green-600" />
+                <DollarSign className="h-8 w-8 text-green-600" />
                 <div className="ml-3">
                   <p className="text-sm font-medium text-gray-500">
                     Toplam Gelir
@@ -1060,7 +1236,6 @@ const OrderManagement = () => {
                 </Button>
               </div>
             </div>
-
             {/* Advanced Filters */}
             {showAdvancedFilters && (
               <div className="mt-6 pt-6 border-t border-gray-200">
@@ -1244,8 +1419,8 @@ const OrderManagement = () => {
                         <input
                           type="checkbox"
                           checked={
-                            selectedOrders.length === orders.length &&
-                            orders.length > 0
+                            selectedOrders.length === currentOrders.length &&
+                            currentOrders.length > 0
                           }
                           onChange={(e) => handleSelectAll(e.target.checked)}
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -1286,7 +1461,7 @@ const OrderManagement = () => {
                       </th>
                       <th
                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => handleSort("createdAt")}
+                        onClick={() => handleSort("displayDate")}
                       >
                         <div className="flex items-center space-x-1">
                           <span>Tarih</span>
@@ -1299,7 +1474,7 @@ const OrderManagement = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {orders.map((order) => {
+                    {currentOrders.map((order) => {
                       const statusIcon = getStatusIcon(order.status);
                       return (
                         <tr
@@ -1339,11 +1514,15 @@ const OrderManagement = () => {
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {order.customerName}
+                            <div className="mt-1 flex items-center">
+                              <User className="h-4 w-4 text-gray-400 mr-2" />
+                              <p className="text-sm text-gray-900">
+                                {order.customerName}
+                              </p>
                             </div>
                             {order.customerEmail && (
-                              <div className="text-sm text-gray-500">
+                              <div className="text-sm text-gray-500 flex items-center">
+                                <Mail className="h-3 w-3 mr-1" />
                                 {order.customerEmail}
                               </div>
                             )}
@@ -1353,7 +1532,7 @@ const OrderManagement = () => {
                               variant={getPlatformVariant(order.platform)}
                               className="capitalize"
                             >
-                              {order.platform}
+                              {getPlatformIcon(order.platform)} {order.platform}
                             </Badge>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -1380,6 +1559,7 @@ const OrderManagement = () => {
                                 size="sm"
                                 variant="ghost"
                                 className="p-1"
+                                title="Görüntüle"
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -1388,6 +1568,7 @@ const OrderManagement = () => {
                                 size="sm"
                                 variant="ghost"
                                 className="p-1"
+                                title="Düzenle"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -1396,10 +1577,10 @@ const OrderManagement = () => {
                                 size="sm"
                                 variant="ghost"
                                 className="p-1"
+                                title="Detaylar"
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
-                              {/* Print buttons */}
                               <Button
                                 onClick={() =>
                                   handlePrintShippingSlip(order.id)
@@ -1440,16 +1621,17 @@ const OrderManagement = () => {
             )}
 
             {/* Enhanced Pagination */}
-            {totalPages > 1 && (
+            {calculatedTotalPages > 1 && (
               <div className="px-6 py-4 border-t border-gray-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center text-sm text-gray-700">
                     <span>
-                      Sayfa {currentPage} / {totalPages}
+                      Sayfa {currentPage} / {calculatedTotalPages}
                     </span>
                     <span className="ml-4 text-gray-500">
-                      Toplam {(totalPages - 1) * recordCount + orders.length}{" "}
-                      kayıt
+                      Toplam {totalRecords > 0 ? totalRecords : filteredAndSortedOrders.length} kayıt
+                      {filteredAndSortedOrders.length !== orders.length &&
+                        ` (${orders.length} kayıttan filtrelenmiş)`}
                     </span>
                   </div>
                   <div className="flex items-center space-x-1">
@@ -1479,15 +1661,15 @@ const OrderManagement = () => {
                     {/* Page numbers */}
                     <div className="hidden sm:flex items-center space-x-1">
                       {Array.from(
-                        { length: Math.min(5, totalPages) },
+                        { length: Math.min(5, calculatedTotalPages) },
                         (_, i) => {
                           let pageNumber;
-                          if (totalPages <= 5) {
+                          if (calculatedTotalPages <= 5) {
                             pageNumber = i + 1;
                           } else if (currentPage <= 3) {
                             pageNumber = i + 1;
-                          } else if (currentPage >= totalPages - 2) {
-                            pageNumber = totalPages - 4 + i;
+                          } else if (currentPage >= calculatedTotalPages - 2) {
+                            pageNumber = calculatedTotalPages - 4 + i;
                           } else {
                             pageNumber = currentPage - 2 + i;
                           }
@@ -1511,29 +1693,34 @@ const OrderManagement = () => {
                       )}
 
                       {/* Show ellipsis and last page if needed */}
-                      {totalPages > 5 && currentPage < totalPages - 2 && (
-                        <>
-                          {currentPage < totalPages - 3 && (
-                            <span className="px-2 text-gray-500">...</span>
-                          )}
-                          <Button
-                            onClick={() => setCurrentPage(totalPages)}
-                            size="sm"
-                            variant="outline"
-                            className="min-w-[40px]"
-                          >
-                            {totalPages}
-                          </Button>
-                        </>
-                      )}
+                      {calculatedTotalPages > 5 &&
+                        currentPage < calculatedTotalPages - 2 && (
+                          <>
+                            {currentPage < calculatedTotalPages - 3 && (
+                              <span className="px-2 text-gray-500">...</span>
+                            )}
+                            <Button
+                              onClick={() =>
+                                setCurrentPage(calculatedTotalPages)
+                              }
+                              size="sm"
+                              variant="outline"
+                              className="min-w-[40px]"
+                            >
+                              {calculatedTotalPages}
+                            </Button>
+                          </>
+                        )}
                     </div>
 
                     {/* Next page button */}
                     <Button
                       onClick={() =>
-                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                        setCurrentPage((prev) =>
+                          Math.min(prev + 1, calculatedTotalPages)
+                        )
                       }
-                      disabled={currentPage === totalPages}
+                      disabled={currentPage === calculatedTotalPages}
                       size="sm"
                       variant="outline"
                     >
@@ -1542,8 +1729,8 @@ const OrderManagement = () => {
 
                     {/* Last page button */}
                     <Button
-                      onClick={() => setCurrentPage(totalPages)}
-                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(calculatedTotalPages)}
+                      disabled={currentPage === calculatedTotalPages}
                       size="sm"
                       variant="outline"
                       className="hidden sm:inline-flex"
@@ -1560,14 +1747,14 @@ const OrderManagement = () => {
                     onChange={(e) => setCurrentPage(parseInt(e.target.value))}
                     className="px-3 py-1 border border-gray-300 rounded text-sm"
                   >
-                    {Array.from({ length: totalPages }, (_, i) => (
+                    {Array.from({ length: calculatedTotalPages }, (_, i) => (
                       <option key={i + 1} value={i + 1}>
                         Sayfa {i + 1}
                       </option>
                     ))}
                   </select>
                   <span className="text-sm text-gray-500">
-                    {totalPages} sayfadan {currentPage}
+                    {calculatedTotalPages} sayfadan {currentPage}
                   </span>
                 </div>
               </div>
@@ -1598,12 +1785,14 @@ const OrderManagement = () => {
             onUpdateStatus={handleUpdateStatus}
             getStatusVariant={getStatusVariant}
             getStatusText={getStatusText}
+            formatCurrency={formatCurrency}
+            formatDate={formatDate}
           />
         </Modal>
       )}
     </div>
   );
-};
+});
 
 // Order Form Component
 const OrderForm = ({
@@ -1614,9 +1803,12 @@ const OrderForm = ({
   onUpdateStatus,
   getStatusVariant,
   getStatusText,
+  formatCurrency,
+  formatDate,
 }) => {
   const [formData, setFormData] = useState(order);
   const [validationErrors, setValidationErrors] = useState({});
+  const [saving, setSaving] = useState(false);
 
   const validateForm = useCallback(() => {
     const errors = {};
@@ -1637,11 +1829,18 @@ const OrderForm = ({
       errors.totalAmount = "Geçerli bir tutar giriniz";
     }
 
+    if (
+      formData.customerEmail &&
+      !/\S+@\S+\.\S+/.test(formData.customerEmail)
+    ) {
+      errors.customerEmail = "Geçerli bir e-posta adresi giriniz";
+    }
+
     return errors;
   }, [formData]);
 
   const handleSave = useCallback(
-    (e) => {
+    async (e) => {
       e.preventDefault();
 
       const errors = validateForm();
@@ -1650,8 +1849,14 @@ const OrderForm = ({
         return;
       }
 
+      setSaving(true);
       setValidationErrors({});
-      onSave(formData);
+
+      try {
+        await onSave(formData);
+      } finally {
+        setSaving(false);
+      }
     },
     [formData, validateForm, onSave]
   );
@@ -1666,6 +1871,16 @@ const OrderForm = ({
     },
     [validationErrors]
   );
+
+  const handleAddressChange = useCallback((field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      shippingAddress: {
+        ...prev.shippingAddress,
+        [field]: value,
+      },
+    }));
+  }, []);
 
   if (mode === "view") {
     return (
@@ -1700,6 +1915,9 @@ const OrderForm = ({
               Müşteri
             </label>
             <p className="mt-1 text-sm text-gray-900">{order.customerName}</p>
+            {order.customerEmail && (
+              <p className="text-sm text-gray-500">{order.customerEmail}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">
@@ -1709,7 +1927,7 @@ const OrderForm = ({
               <Badge variant={getStatusVariant(order.status)}>
                 {getStatusText(order.status)}
               </Badge>
-              {mode === "view" && onUpdateStatus && (
+              {onUpdateStatus && (
                 <select
                   className="text-sm border border-gray-300 rounded px-2 py-1"
                   value={order.status}
@@ -1723,6 +1941,20 @@ const OrderForm = ({
                 </select>
               )}
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Toplam Tutar
+            </label>
+            <p className="mt-1 text-sm font-bold text-gray-900">
+              {formatCurrency(order.totalAmount, order.currency)}
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Sipariş Tarihi
+            </label>
+            <p className="mt-1 text-sm text-gray-900">{formatDate(order)}</p>
           </div>
         </div>
 
@@ -1744,15 +1976,23 @@ const OrderForm = ({
                       <p className="text-sm text-gray-500">
                         Adet: {item.quantity}
                         {item.sku && ` • SKU: ${item.sku}`}
+                        {item.productColor && ` • Renk: ${item.productColor}`}
+                        {item.productSize && ` • Beden: ${item.productSize}`}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="font-medium">
-                        {new Intl.NumberFormat("tr-TR", {
-                          style: "currency",
-                          currency: order.currency || "TRY",
-                        }).format(item.amount || 0)}
+                        {formatCurrency(
+                          item.amount || item.totalPrice || 0,
+                          order.currency
+                        )}
                       </p>
+                      {item.unitPrice && (
+                        <p className="text-sm text-gray-500">
+                          Birim:{" "}
+                          {formatCurrency(item.unitPrice, order.currency)}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1764,7 +2004,8 @@ const OrderForm = ({
         {/* Shipping Address */}
         {order.shippingAddress && (
           <div>
-            <h4 className="text-lg font-medium text-gray-900 mb-4">
+            <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+              <MapPin className="h-5 w-5 mr-2 text-gray-600" />
               Teslimat Adresi
             </h4>
             <div className="bg-gray-50 rounded-lg p-4">
@@ -1776,11 +2017,19 @@ const OrderForm = ({
                 {order.shippingAddress.street}
               </p>
               <p className="text-sm text-gray-600">
+                {order.shippingAddress.neighborhood &&
+                  `${order.shippingAddress.neighborhood}, `}
                 {order.shippingAddress.district}, {order.shippingAddress.city}
               </p>
+              {order.shippingAddress.postalCode && (
+                <p className="text-sm text-gray-600">
+                  Posta Kodu: {order.shippingAddress.postalCode}
+                </p>
+              )}
               {order.shippingAddress.phone && (
                 <p className="text-sm text-gray-600 mt-2">
-                  Tel: {order.shippingAddress.phone}
+                  <Phone className="h-4 w-4 inline mr-1" />
+                  {order.shippingAddress.phone}
                 </p>
               )}
             </div>
@@ -1798,6 +2047,7 @@ const OrderForm = ({
 
   return (
     <form onSubmit={handleSave} className="space-y-6">
+      {/* Basic Order Information */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1836,6 +2086,7 @@ const OrderForm = ({
             <option value="trendyol">Trendyol</option>
             <option value="hepsiburada">Hepsiburada</option>
             <option value="n11">N11</option>
+            <option value="pazarama">Pazarama</option>
           </select>
           {validationErrors.platform && (
             <p className="mt-1 text-sm text-red-600">
@@ -1871,10 +2122,19 @@ const OrderForm = ({
           </label>
           <input
             type="email"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+              validationErrors.customerEmail
+                ? "border-red-300"
+                : "border-gray-300"
+            }`}
             value={formData.customerEmail || ""}
             onChange={(e) => handleInputChange("customerEmail", e.target.value)}
           />
+          {validationErrors.customerEmail && (
+            <p className="mt-1 text-sm text-red-600">
+              {validationErrors.customerEmail}
+            </p>
+          )}
         </div>
 
         <div>
@@ -1898,19 +2158,33 @@ const OrderForm = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Toplam Tutar *
           </label>
-          <input
-            type="number"
-            step="0.01"
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-              validationErrors.totalAmount
-                ? "border-red-300"
-                : "border-gray-300"
-            }`}
-            value={formData.totalAmount || ""}
-            onChange={(e) =>
-              handleInputChange("totalAmount", parseFloat(e.target.value))
-            }
-          />
+          <div className="flex">
+            <input
+              type="number"
+              step="0.01"
+              className={`flex-1 px-3 py-2 border rounded-l-lg focus:ring-2 focus:ring-blue-500 ${
+                validationErrors.totalAmount
+                  ? "border-red-300"
+                  : "border-gray-300"
+              }`}
+              value={formData.totalAmount || ""}
+              onChange={(e) =>
+                handleInputChange(
+                  "totalAmount",
+                  parseFloat(e.target.value) || 0
+                )
+              }
+            />
+            <select
+              className="px-3 py-2 border border-l-0 border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500"
+              value={formData.currency || "TRY"}
+              onChange={(e) => handleInputChange("currency", e.target.value)}
+            >
+              <option value="TRY">TRY</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
           {validationErrors.totalAmount && (
             <p className="mt-1 text-sm text-red-600">
               {validationErrors.totalAmount}
@@ -1919,83 +2193,119 @@ const OrderForm = ({
         </div>
       </div>
 
+      {/* Shipping Address */}
+      <div>
+      <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+          <MapPin className="h-5 w-5 mr-2 text-gray-600" />
+          Teslimat Adresi
+        </h4>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Ad
+            </label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={formData.shippingAddress?.firstName || ""}
+              onChange={(e) => handleAddressChange("firstName", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Soyad
+            </label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={formData.shippingAddress?.lastName || ""}
+              onChange={(e) => handleAddressChange("lastName", e.target.value)}
+            />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Adres
+            </label>
+            <textarea
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              rows="3"
+              value={formData.shippingAddress?.street || ""}
+              onChange={(e) => handleAddressChange("street", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Şehir
+            </label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={formData.shippingAddress?.city || ""}
+              onChange={(e) => handleAddressChange("city", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              İlçe
+            </label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={formData.shippingAddress?.district || ""}
+              onChange={(e) => handleAddressChange("district", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Posta Kodu
+            </label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={formData.shippingAddress?.postalCode || ""}
+              onChange={(e) =>
+                handleAddressChange("postalCode", e.target.value)
+              }
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Telefon
+            </label>
+            <input
+              type="tel"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={formData.shippingAddress?.phone || ""}
+              onChange={(e) => handleAddressChange("phone", e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="flex justify-end space-x-3">
-        <Button type="button" onClick={onCancel} variant="outline">
+        <Button
+          type="button"
+          onClick={onCancel}
+          variant="outline"
+          disabled={saving}
+        >
           İptal
         </Button>
-        <Button type="submit" variant="primary">
-          {mode === "create" ? "Oluştur" : "Güncelle"}
+        <Button type="submit" variant="primary" disabled={saving}>
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              {mode === "create" ? "Oluşturuluyor..." : "Güncelleniyor..."}
+            </>
+          ) : mode === "create" ? (
+            "Oluştur"
+          ) : (
+            "Güncelle"
+          )}
         </Button>
       </div>
     </form>
   );
-};
-
-// Utility functions for status and platform handling
-const getStatusIcon = (status) => {
-  const iconMap = {
-    pending: "⏳",
-    confirmed: "✅",
-    processing: "⚙️",
-    shipped: "🚚",
-    delivered: "📦",
-    cancelled: "❌",
-    returned: "↩️",
-    refunded: "💰",
-    failed: "⚠️",
-  };
-  return iconMap[status] || "❓";
-};
-
-const getStatusVariant = (status) => {
-  const variantMap = {
-    pending: "warning",
-    confirmed: "info",
-    processing: "primary",
-    shipped: "info",
-    delivered: "success",
-    cancelled: "danger",
-    returned: "warning",
-    refunded: "secondary",
-    failed: "danger",
-  };
-  return variantMap[status] || "secondary";
-};
-
-const getStatusText = (status) => {
-  const textMap = {
-    pending: "Beklemede",
-    confirmed: "Onaylandı",
-    processing: "Hazırlanıyor",
-    shipped: "Kargoda",
-    delivered: "Teslim Edildi",
-    cancelled: "İptal Edildi",
-    returned: "İade Edildi",
-    refunded: "İade Tamamlandı",
-    failed: "Başarısız",
-  };
-  return textMap[status] || status;
-};
-
-const getPlatformVariant = (platform) => {
-  const variantMap = {
-    trendyol: "primary",
-    hepsiburada: "warning",
-    n11: "info",
-    amazon: "dark",
-    default: "secondary",
-  };
-  return variantMap[platform?.toLowerCase()] || variantMap.default;
-};
-
-const getPlatformIcon = (platform) => {
-  const iconMap = {
-    trendyol: "🛒",
-    hepsiburada: "🛍️",
-    n11: "📱",
-    amazon: "📦",
-  };
-  return iconMap[platform?.toLowerCase()] || "🏪";
 };
 
 export default OrderManagement;

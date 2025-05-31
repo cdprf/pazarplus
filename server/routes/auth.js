@@ -46,6 +46,9 @@ router.post("/reset-password", authController.resetPassword);
 router.post("/verify-email", authController.verifyEmail);
 router.post("/resend-verification", authController.resendVerification);
 
+// Development route - only works in development mode
+router.post("/dev-token", authController.generateDevToken);
+
 // Protected routes
 router.get("/me", auth, authController.getProfile); // Added missing /me endpoint
 router.get("/profile", auth, authController.getProfile);

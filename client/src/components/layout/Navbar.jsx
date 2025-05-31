@@ -280,19 +280,34 @@ const Navbar = ({ toggleSidebar }) => {
   };
 
   return (
-    <nav className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50 transition-all duration-200">
+    <nav
+      className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 sticky top-0 transition-all duration-200"
+      style={{ zIndex: "var(--z-sticky)" }}
+    >
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Left side */}
           <div className="flex items-center">
             {isAuthenticated && (
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
                 onClick={toggleSidebar}
-                className="lg:hidden mr-3 hover:bg-gray-100 dark:hover:bg-gray-800"
-                icon={Bars3Icon}
-              />
+                className={cn(
+                  "lg:hidden mr-3 group relative p-2 rounded-lg transition-all duration-200",
+                  "hover:bg-gray-100 dark:hover:bg-gray-800",
+                  "focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2",
+                  "active:scale-95"
+                )}
+                aria-label="Toggle navigation menu"
+                title="Toggle sidebar"
+              >
+                <Bars3Icon className="h-5 w-5 text-gray-600 dark:text-gray-400 transition-all duration-200 group-hover:text-primary-600 dark:group-hover:text-primary-400" />
+
+                {/* Enhanced visual feedback ring */}
+                <div className="absolute inset-0 rounded-lg bg-primary-500/10 scale-0 group-hover:scale-100 transition-transform duration-200" />
+
+                {/* Active state indicator */}
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-primary-500 rounded-full opacity-0 group-active:opacity-100 transition-opacity duration-150" />
+              </button>
             )}
 
             {/* Brand */}
@@ -385,7 +400,10 @@ const Navbar = ({ toggleSidebar }) => {
               </Button>
 
               {showThemeMenu && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 animate-scale-in">
+                <div
+                  className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 animate-scale-in"
+                  style={{ zIndex: "var(--z-dropdown)" }}
+                >
                   <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
                     <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Theme Preference
@@ -460,7 +478,10 @@ const Navbar = ({ toggleSidebar }) => {
                   </Button>
 
                   {showNotifications && (
-                    <div className="absolute right-0 top-full mt-2 w-96 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 animate-scale-in">
+                    <div
+                      className="absolute right-0 top-full mt-2 w-96 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 animate-scale-in"
+                      style={{ zIndex: "var(--z-dropdown)" }}
+                    >
                       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex items-center justify-between">
                           <h3 className="font-semibold text-gray-900 dark:text-white">
@@ -587,7 +608,10 @@ const Navbar = ({ toggleSidebar }) => {
                   </Button>
 
                   {showUserMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-2 animate-scale-in">
+                    <div
+                      className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-2 animate-scale-in"
+                      style={{ zIndex: "var(--z-dropdown)" }}
+                    >
                       <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex items-center space-x-3">
                           <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-secondary-600 rounded-full flex items-center justify-center">

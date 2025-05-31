@@ -19,6 +19,9 @@ const analyticsRoutes = require("./analytics");
 // Import Month 5 Phase 2: Subscription & Multi-tenant routes
 const subscriptionRoutes = require("./subscription");
 
+// Import rate limiting management routes
+const rateLimitRoutes = require("./rate-limits");
+
 // Health check endpoint - should be accessible first
 router.get("/api/health", (req, res) => {
   logger.info("Health check accessed");
@@ -36,6 +39,7 @@ router.get("/api/health", (req, res) => {
       orderManagement: "/api/order-management",
       analytics: "/api/analytics", // Month 5 Phase 1
       subscription: "/api/subscription", // Month 5 Phase 2 - NEW
+      rateLimits: "/api/admin", // Rate limiting management
     },
   });
 });
@@ -64,6 +68,9 @@ router.use("/analytics", analyticsRoutes);
 
 // Month 5 Phase 2: Subscription Management & Multi-tenant SaaS routes
 router.use("/subscription", subscriptionRoutes);
+
+// Admin routes (including rate limiting management)
+router.use("/admin", rateLimitRoutes);
 
 // Catch-all for debugging
 router.use("/*", (req, res) => {

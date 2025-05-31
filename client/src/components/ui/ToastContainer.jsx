@@ -32,14 +32,10 @@ export const ToastContainer = ({
   return (
     <div
       className={cn(
-        "fixed flex flex-col gap-3",
+        "fixed flex flex-col gap-3 toast-container",
         positionStyles[position],
         className
       )}
-      style={{
-        zIndex: 9999,
-        pointerEvents: "none", // Container should not block interactions
-      }}
       aria-live="polite"
       aria-label="Notifications"
       {...props}
@@ -57,8 +53,6 @@ export const ToastContainer = ({
               key={toast.id}
               className="toast-wrapper transform transition-all duration-300 ease-in-out"
               style={{
-                zIndex: 9999 - visualIndex, // Higher z-index for newer toasts
-                pointerEvents: "auto", // Each toast should be interactive
                 // Add slight offset for better visual separation
                 transform: `translateY(${visualIndex * 2}px)`,
               }}
