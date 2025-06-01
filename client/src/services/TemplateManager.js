@@ -9,18 +9,16 @@ class TemplateManager {
   /**
    * Get all saved templates
    *
-   * @returns {Array} Array of template objects
+   * @returns {Promise<Array>} Promise resolving to array of template objects
    */
-  static getAll() {
+  static async getAll() {
     try {
       // First try to fetch from API if available
-      return this.fetchFromApi().catch(() => {
-        // Fall back to local storage
-        return this.fetchFromLocalStorage();
-      });
+      return await this.fetchFromApi();
     } catch (error) {
-      console.error("Failed to get templates:", error);
-      return [];
+      console.warn("API fetch failed, falling back to local storage:", error);
+      // Fall back to local storage
+      return this.fetchFromLocalStorage();
     }
   }
 
@@ -42,10 +40,7 @@ class TemplateManager {
       }
       throw new Error("Invalid API response format");
     } catch (error) {
-      console.warn(
-        "Failed to fetch templates from API, using local storage:",
-        error
-      );
+      console.warn("Failed to fetch templates from API:", error);
       throw error;
     }
   }
@@ -73,10 +68,24 @@ class TemplateManager {
    * Get a template by ID
    *
    * @param {string} id Template ID
-   * @returns {Object|null} Template object or null if not found
+   * @returns {Promise<Object|null>} Promise resolving to template object or null if not found
    */
-  static getById(id) {
+  static async getById(id) {
     try {
+      // Try API first
+      try {
+        const response = await api.get(`/api/shipping/templates/${id}`);
+        if (response.data) {
+          return response.data;
+        }
+      } catch (apiError) {
+        console.warn(
+          `Failed to fetch template ${id} from API, checking local storage:`,
+          apiError
+        );
+      }
+
+      // Fall back to local storage
       const templates = this.fetchFromLocalStorage();
       return templates.find((template) => template.id === id) || null;
     } catch (error) {
@@ -89,21 +98,37 @@ class TemplateManager {
    * Save a template
    *
    * @param {Object} template Template object to save
-   * @returns {Object} Saved template with ID
+   * @returns {Promise<Object>} Promise resolving to saved template with ID
    */
   static async save(template) {
     if (!template) {
       throw new Error("No template provided");
     }
 
+    // Input validation
+    if (!template.name || template.name.trim() === "") {
+      throw new Error("Template name is required");
+    }
+    if (!template.elements || !Array.isArray(template.elements)) {
+      throw new Error("Template elements are required and must be an array");
+    }
+    if (!template.config || typeof template.config !== "object") {
+      throw new Error("Template config is required and must be an object");
+    }
+
     try {
-      // Ensure template has an ID
+      // Ensure template has an ID and timestamps
       const templateToSave = {
         ...template,
-        id: template.id || `template_${Date.now()}`,
+        id:
+          template.id ||
+          `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         createdAt: template.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
+
+      let savedTemplate = null;
+      let apiSuccess = false;
 
       // Try to save to API first
       try {
@@ -112,36 +137,38 @@ class TemplateManager {
           templateToSave
         );
         if (response.data) {
-          // Update local storage with the API-saved template
-          const templates = this.fetchFromLocalStorage();
-          const updatedTemplates = [
-            ...templates.filter((t) => t.id !== response.data.id),
-            response.data,
-          ];
-          localStorage.setItem(
-            "shippingTemplates",
-            JSON.stringify(updatedTemplates)
-          );
-          return response.data;
+          savedTemplate = response.data;
+          apiSuccess = true;
         }
       } catch (apiError) {
         console.warn(
-          "Failed to save template to API, falling back to local storage:",
-          apiError
+          "Failed to save template to API, will save locally:",
+          apiError.message
         );
-        // Fall back to local storage
+        savedTemplate = templateToSave;
+      }
+
+      // Always update local storage (as backup or primary storage)
+      try {
         const templates = this.fetchFromLocalStorage();
         const updatedTemplates = [
-          ...templates.filter((t) => t.id !== templateToSave.id),
-          templateToSave,
+          ...templates.filter((t) => t.id !== savedTemplate.id),
+          savedTemplate,
         ];
         localStorage.setItem(
           "shippingTemplates",
           JSON.stringify(updatedTemplates)
         );
+      } catch (storageError) {
+        console.error("Failed to save to local storage:", storageError);
+        if (!apiSuccess) {
+          throw new Error(
+            "Failed to save template both to API and local storage"
+          );
+        }
       }
 
-      return templateToSave;
+      return savedTemplate;
     } catch (error) {
       console.error("Failed to save template:", error);
       throw error;

@@ -22,6 +22,9 @@ const subscriptionRoutes = require("./subscription");
 // Import rate limiting management routes
 const rateLimitRoutes = require("./rate-limits");
 
+// Import shipping templates routes
+const shippingTemplatesRoutes = require("./shipping-templates");
+
 // Health check endpoint - should be accessible first
 router.get("/api/health", (req, res) => {
   logger.info("Health check accessed");
@@ -71,6 +74,9 @@ router.use("/subscription", subscriptionRoutes);
 
 // Admin routes (including rate limiting management)
 router.use("/admin", rateLimitRoutes);
+
+// Shipping templates routes
+router.use("/shipping/templates", shippingTemplatesRoutes);
 
 // Catch-all for debugging
 router.use("/*", (req, res) => {

@@ -88,7 +88,6 @@ import {
 } from "../ui/Dialog";
 import { useAlert } from "../../contexts/AlertContext";
 import api from "../../services/api";
-import def from "ajv/dist/vocabularies/discriminator";
 
 // Try to import react-barcode, fallback to custom implementation
 let Barcode;
@@ -1996,6 +1995,14 @@ const PreviewModal = ({
   const [dragInfo, setDragInfo] = useState(null);
   const [resizeInfo, setResizeInfo] = useState(null);
 
+  const fontSizeDependencies = useMemo(() => {
+    return elements.map((e) => e.style?.fontSize).join(",");
+  }, [elements]);
+
+  const contentDependencies = useMemo(() => {
+    return elements.map((e) => e.content).join(",");
+  }, [elements]);
+
   // Initialize preview elements when modal opens or elements change
   // Fixed: Properly sync with elements changes including font size updates
   useEffect(() => {
@@ -2015,7 +2022,7 @@ const PreviewModal = ({
       }));
       setPreviewElements(elementsWithIds);
     }
-  }, [elements, isOpen, elements.length]);
+  }, [elements, isOpen, elements.length, setPreviewElements]);
 
   // Additional effect to handle real-time style updates
   useEffect(() => {
@@ -2039,18 +2046,12 @@ const PreviewModal = ({
             // Always use the latest style from main elements
             style: {
               ...element.style,
-              // Ensure fontSize is properly applied
-              fontSize: element.style?.fontSize || 14,
             },
           };
         });
       });
     }
-  }, [
-    elements.map((e) => e.style?.fontSize).join(","),
-    elements.map((e) => e.content).join(","),
-    isOpen,
-  ]);
+  }, [elements, fontSizeDependencies, contentDependencies, isOpen, setPreviewElements]);
 
   // Handle element selection
   const handleElementSelect = (element, event) => {
@@ -2205,8 +2206,8 @@ const PreviewModal = ({
           newPosition.x = resizeInfo.startPosition.x + percentDeltaX;
           newPosition.y = resizeInfo.startPosition.y + percentDeltaY;
           break;
-          default:
-            break
+        default:
+          break;
       }
 
       setPreviewElements((prev) =>
@@ -3239,7 +3240,7 @@ const ElementRenderer = React.memo(
             <div
               className="w-full h-full flex items-center justify-start"
               style={{
-                fontSize: updatedElement.style?.fontSize || 14,
+                fontSize: `${updatedElement.style?.fontSize || 14}px`,
                 fontFamily:
                   updatedElement.style?.fontFamily ||
                   "Inter, Arial, sans-serif",
@@ -3351,7 +3352,7 @@ const ElementRenderer = React.memo(
         case ELEMENT_TYPES.SHIPPING_ADDRESS:
         case ELEMENT_TYPES.BILLING_ADDRESS:
           return (
-            <div className="w-full h-full p-2 text-xs">
+            <div className="w-full h-full p-2">
               <div className="font-medium mb-1">
                 {updatedElement.type.replace(/_/g, " ").toUpperCase()}
               </div>
@@ -3371,7 +3372,7 @@ const ElementRenderer = React.memo(
         case ELEMENT_TYPES.ORDER_TOTALS:
         case ELEMENT_TYPES.PAYMENT_INFO:
           return (
-            <div className="w-full h-full p-2 text-xs">
+            <div className="w-full h-full p-2">
               <div className="font-medium mb-1">
                 {updatedElement.type.replace(/_/g, " ").toUpperCase()}
               </div>
@@ -3389,7 +3390,7 @@ const ElementRenderer = React.memo(
         case ELEMENT_TYPES.SHIPPING_METHOD:
         case ELEMENT_TYPES.DELIVERY_INFO:
           return (
-            <div className="w-full h-full p-2 text-xs">
+            <div className="w-full h-full p-2">
               <div className="font-medium mb-1">
                 {updatedElement.type.replace(/_/g, " ").toUpperCase()}
               </div>
@@ -3407,7 +3408,7 @@ const ElementRenderer = React.memo(
         case ELEMENT_TYPES.HEPSIBURADA_DATA:
         case ELEMENT_TYPES.N11_DATA:
           return (
-            <div className="w-full h-full p-2 text-xs">
+            <div className="w-full h-full p-2">
               <div className="font-medium mb-1">
                 {updatedElement.type.replace(/_/g, " ").toUpperCase()}
               </div>
@@ -3422,7 +3423,7 @@ const ElementRenderer = React.memo(
         // Custom Elements
         case ELEMENT_TYPES.CUSTOM_TABLE:
           return (
-            <div className="w-full h-full p-2 text-xs">
+            <div className="w-full h-full p-2">
               <div className="font-medium mb-1">CUSTOM TABLE</div>
               <table className="w-full border-collapse">
                 <thead>
@@ -3443,7 +3444,7 @@ const ElementRenderer = React.memo(
 
         case ELEMENT_TYPES.CUSTOM_LIST:
           return (
-            <div className="w-full h-full p-2 text-xs">
+            <div className="w-full h-full p-2">
               <div className="font-medium mb-1">CUSTOM LIST</div>
               <ul className="list-disc list-inside space-y-1 text-gray-600">
                 <li>Item 1</li>
