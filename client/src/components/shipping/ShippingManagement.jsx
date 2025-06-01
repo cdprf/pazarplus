@@ -347,20 +347,6 @@ const ShippingManagement = () => {
     );
   };
 
-  // Enhanced getStatusColor function for timeline tracking
-  const getStatusColor = (status) => {
-    const statusColors = {
-      pending: "bg-yellow-100 text-yellow-800",
-      picked_up: "bg-blue-100 text-blue-800",
-      in_transit: "bg-purple-100 text-purple-800",
-      out_for_delivery: "bg-orange-100 text-orange-800",
-      delivered: "bg-green-100 text-green-800",
-      cancelled: "bg-red-100 text-red-800",
-      returned: "bg-gray-100 text-gray-800",
-    };
-    return statusColors[status] || "bg-gray-100 text-gray-800";
-  };
-
   // Enhanced carrier selection handler
   const handleCarrierSelection = (carrierCode) => {
     console.log("Selected carrier:", carrierCode);
@@ -599,7 +585,10 @@ const ShippingManagement = () => {
                   >
                     <option value="">All Carriers</option>
                     {carriers.map((carrier) => (
-                      <option key={carrier.id} value={carrier.id}>
+                      <option
+                        key={`filter-${carrier.id || carrier.code}`}
+                        value={carrier.id}
+                      >
                         {carrier.name}
                       </option>
                     ))}

@@ -1248,6 +1248,7 @@ class HepsiburadaService extends BasePlatformService {
               offset: 0,
               limit: 1,
             },
+            timeout: 10000,
           }
         );
 
@@ -1275,13 +1276,27 @@ class HepsiburadaService extends BasePlatformService {
         const errorData = requestError.response?.data;
 
         if (errorData) {
-          if (typeof errorData === "object" && errorData.errors) {
-            errorMessage = errorData.errors.join(", ");
-          } else if (typeof errorData === "object" && errorData.message) {
+          if (errorData.message) {
             errorMessage = errorData.message;
+          } else if (errorData.error_description) {
+            errorMessage = errorData.error_description;
           } else if (typeof errorData === "string") {
             errorMessage = errorData;
           }
+        }
+
+        // Map common HTTP status codes to user-friendly messages
+        if (requestError.response?.status === 401) {
+          errorMessage =
+            "Authentication failed - please check your API credentials";
+        } else if (requestError.response?.status === 403) {
+          errorMessage =
+            "Access denied - your account may not have the required permissions";
+        } else if (requestError.response?.status === 404) {
+          errorMessage =
+            "API endpoint not found - please verify your merchant ID";
+        } else if (requestError.response?.status >= 500) {
+          errorMessage = "Hepsiburada server error - please try again later";
         }
 
         throw new Error(errorMessage);
@@ -1299,6 +1314,121 @@ class HepsiburadaService extends BasePlatformService {
         success: false,
         message: `Connection failed: ${error.message}`,
         error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  /**
+   * Fetch products from Hepsiburada - Standardized method for consistency across platforms
+   * @param {Object} params - Query parameters for product fetching
+   * @returns {Promise<Object>} Products data
+   */
+  async fetchProducts(params = {}) {
+    try {
+      await this.initialize();
+
+      const defaultParams = {
+        offset:
+          params.offset ||
+          (params.page || 0) * (params.size || params.limit || 50),
+        limit: params.size || params.limit || 50,
+      };
+
+      const queryParams = { ...defaultParams, ...params };
+
+      // Ensure limit doesn't exceed maximum
+      if (queryParams.limit > 100) {
+        queryParams.limit = 100;
+      }
+
+      this.logger.debug(
+        `Fetching Hepsiburada products with params: ${JSON.stringify(
+          queryParams
+        )}`
+      );
+
+      // Use a products endpoint if available, otherwise try to get products from listings
+      // Note: Hepsiburada may require specific endpoints for product listing
+      let url = `/listings/merchantid/${this.merchantId}`;
+
+      // Try the products endpoint first, if it exists
+      try {
+        const response = await this.retryRequest(() =>
+          this.axiosInstance.get(url, { params: queryParams })
+        );
+
+        // Handle empty responses
+        if (
+          !response.data ||
+          (Array.isArray(response.data) && response.data.length === 0)
+        ) {
+          return {
+            success: true,
+            message: "No products found in Hepsiburada account",
+            data: [],
+            pagination: {
+              offset: queryParams.offset,
+              limit: queryParams.limit,
+              total: 0,
+            },
+          };
+        }
+
+        if (!Array.isArray(response.data)) {
+          return {
+            success: false,
+            message: "Invalid response format from Hepsiburada API",
+            data: [],
+          };
+        }
+
+        this.logger.info(
+          `Successfully fetched ${response.data.length} products from Hepsiburada`
+        );
+
+        return {
+          success: true,
+          message: `Successfully fetched ${response.data.length} products from Hepsiburada`,
+          data: response.data,
+          pagination: {
+            offset: queryParams.offset,
+            limit: queryParams.limit,
+            total: response.data.length, // Hepsiburada may not provide total count
+            page: Math.floor(queryParams.offset / queryParams.limit),
+            size: queryParams.limit,
+          },
+        };
+      } catch (endpointError) {
+        // If the listings endpoint doesn't work, try alternative approaches
+        this.logger.warn(
+          `Listings endpoint failed: ${endpointError.message}. Trying alternative approach.`
+        );
+
+        // For now, return a message indicating that product fetching may not be available
+        // This can be enhanced once we know the exact Hepsiburada API structure for products
+        return {
+          success: false,
+          message:
+            "Product fetching is not yet fully supported for Hepsiburada. Please check API documentation for the correct endpoint.",
+          error: "Endpoint not implemented",
+          data: [],
+          note: "This feature requires specific Hepsiburada API endpoints that may not be available in the current integration.",
+        };
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch products from Hepsiburada: ${error.message}`,
+        {
+          error,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to fetch products: ${error.message}`,
+        error: error.response?.data || error.message,
+        data: [],
       };
     }
   }

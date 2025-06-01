@@ -1,0 +1,256 @@
+const express = require("express");
+const router = express.Router();
+const ProductController = require("../controllers/product-controller");
+const authMiddleware = require("../middleware/auth-middleware");
+const { body, param, query } = require("express-validator");
+const validationMiddleware = require("../middleware/validation-middleware");
+
+// Apply authentication to all routes
+router.use(authMiddleware);
+
+/**
+ * @swagger
+ * /api/products:
+ *   get:
+ *     summary: Get all products for authenticated user
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: Number of items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search products by name, SKU, or barcode
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filter by category
+ *       - in: query
+ *         name: platform
+ *         schema:
+ *           type: string
+ *           enum: [trendyol, n11, hepsiburada]
+ *         description: Filter by platform
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive]
+ *           default: active
+ *         description: Filter by status
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved products
+ */
+router.get("/", ProductController.getProducts);
+
+/**
+ * @swagger
+ * /api/products/sync:
+ *   post:
+ *     summary: Sync products from all connected platforms
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               platforms:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   enum: [trendyol, n11, hepsiburada]
+ *                 description: Specific platforms to sync (optional)
+ *               options:
+ *                 type: object
+ *                 properties:
+ *                   page:
+ *                     type: integer
+ *                     default: 0
+ *                   size:
+ *                     type: integer
+ *                     default: 100
+ *     responses:
+ *       200:
+ *         description: Successfully synced products
+ */
+router.post(
+  "/sync",
+  [
+    body("platforms").optional().isArray(),
+    body("platforms.*").optional().isIn(["trendyol", "n11", "hepsiburada"]),
+    validationMiddleware,
+  ],
+  ProductController.syncProducts
+);
+
+/**
+ * @swagger
+ * /api/products/test/{platformType}/{connectionId}:
+ *   get:
+ *     summary: Test product fetching from specific platform
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: platformType
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [trendyol, n11, hepsiburada]
+ *       - in: path
+ *         name: connectionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: Successfully tested product fetching
+ */
+router.get(
+  "/test/:platformType/:connectionId",
+  [
+    param("platformType").isIn(["trendyol", "n11", "hepsiburada"]),
+    param("connectionId").isUUID(),
+    query("page").optional().isInt({ min: 0 }),
+    query("size").optional().isInt({ min: 1, max: 100 }),
+    validationMiddleware,
+  ],
+  ProductController.testPlatformProducts
+);
+
+/**
+ * @swagger
+ * /api/products/platform/{platformType}:
+ *   get:
+ *     summary: Get products from specific platform
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: platformType
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [trendyol, n11, hepsiburada]
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved platform products
+ */
+router.get(
+  "/platform/:platformType",
+  [
+    param("platformType").isIn(["trendyol", "n11", "hepsiburada"]),
+    query("page").optional().isInt({ min: 0 }),
+    query("limit").optional().isInt({ min: 1, max: 100 }),
+    validationMiddleware,
+  ],
+  ProductController.getPlatformProducts
+);
+
+/**
+ * @swagger
+ * /api/products/sync-status:
+ *   get:
+ *     summary: Get product synchronization status
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved sync status
+ */
+router.get("/sync-status", ProductController.getSyncStatus);
+
+/**
+ * @swagger
+ * /api/products/{id}:
+ *   put:
+ *     summary: Update product information
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               stockQuantity:
+ *                 type: integer
+ *               category:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *                 enum: [active, inactive]
+ *     responses:
+ *       200:
+ *         description: Successfully updated product
+ */
+router.put(
+  "/:id",
+  [
+    param("id").isUUID(),
+    body("name").optional().isString().isLength({ min: 1, max: 255 }),
+    body("description").optional().isString(),
+    body("price").optional().isNumeric(),
+    body("stockQuantity").optional().isInt({ min: 0 }),
+    body("category").optional().isString(),
+    body("status").optional().isIn(["active", "inactive"]),
+    validationMiddleware,
+  ],
+  ProductController.updateProduct
+);
+
+module.exports = router;

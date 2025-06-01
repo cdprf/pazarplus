@@ -6,9 +6,9 @@ class Product extends Model {}
 Product.init(
   {
     id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
-      autoIncrement: true,
     },
     name: {
       type: DataTypes.STRING,
@@ -25,6 +25,11 @@ Product.init(
         notEmpty: true,
         len: [1, 100],
       },
+    },
+    barcode: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: "Product barcode for identification",
     },
     description: {
       type: DataTypes.TEXT,
@@ -114,6 +119,23 @@ Product.init(
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
     },
+    lastSyncedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: "Last time this product was synced from platforms",
+    },
+    hasVariants: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: "Whether this product has variants",
+    },
+    variantAttributes: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: [],
+      comment: "Variant attribute definitions (color, size, etc.)",
+    },
   },
   {
     sequelize,
@@ -137,8 +159,67 @@ Product.init(
       {
         fields: ["stockQuantity"],
       },
+      {
+        fields: ["barcode"],
+      },
     ],
+    hooks: {
+      afterCreate: async (product) => {
+        // If product doesn't have variants, create a default variant
+        if (!product.hasVariants) {
+          const ProductVariant = require("./ProductVariant");
+          await ProductVariant.create({
+            productId: product.id,
+            name: "Default",
+            sku: product.sku,
+            barcode: product.barcode,
+            price: product.price,
+            costPrice: product.costPrice,
+            stockQuantity: product.stockQuantity,
+            minStockLevel: product.minStockLevel,
+            weight: product.weight,
+            dimensions: product.dimensions,
+            images: product.images,
+            status: product.status,
+            isDefault: true,
+            sortOrder: 0,
+          });
+        }
+      },
+    },
   }
 );
+
+// Product associations
+Product.associate = function (models) {
+  Product.belongsTo(models.User, {
+    foreignKey: "userId",
+    as: "user",
+  });
+
+  Product.hasMany(models.ProductVariant, {
+    foreignKey: "productId",
+    as: "variants",
+  });
+
+  Product.hasMany(models.InventoryMovement, {
+    foreignKey: "productId",
+    as: "inventoryMovements",
+  });
+
+  Product.hasMany(models.StockReservation, {
+    foreignKey: "productId",
+    as: "stockReservations",
+  });
+
+  Product.hasMany(models.PlatformData, {
+    foreignKey: "entityId",
+    constraints: false,
+    scope: {
+      entityType: "product",
+    },
+    as: "platformData",
+  });
+};
 
 module.exports = Product;

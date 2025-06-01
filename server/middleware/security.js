@@ -257,7 +257,7 @@ class SecurityService {
       origin: (origin, callback) => {
         const allowedOrigins = [
           "http://localhost:3000",
-          "http://localhost:3001",
+          "http://192.168.1.105:3000", // Your machine's IP for external device access
           "https://app.pazarplus.com",
           "https://dashboard.pazarplus.com",
         ];
@@ -439,6 +439,16 @@ class BusinessRateLimits {
  */
 class SecurityMiddlewareFactory {
   static createSecurityStack() {
+    // In development, skip rate limiting entirely
+    if (process.env.NODE_ENV === "development") {
+      return [
+        SecurityService.createSecurityMiddleware(),
+        SecurityService.sanitizeRequest(),
+        SecurityService.createSizeLimiter(),
+        // Skip rate limiters in development
+      ];
+    }
+
     return [
       SecurityService.createSecurityMiddleware(),
       SecurityService.sanitizeRequest(),
@@ -449,6 +459,14 @@ class SecurityMiddlewareFactory {
   }
 
   static createAuthStack() {
+    // In development, skip rate limiting entirely
+    if (process.env.NODE_ENV === "development") {
+      return [
+        SecurityService.sanitizeRequest(),
+        // Skip auth rate limiter in development
+      ];
+    }
+
     return [
       RateLimitService.createAuthLimiter(),
       SecurityService.sanitizeRequest(),
@@ -456,6 +474,13 @@ class SecurityMiddlewareFactory {
   }
 
   static createPlatformStack() {
+    // In development, skip rate limiting entirely
+    if (process.env.NODE_ENV === "development") {
+      return [
+        // Skip platform rate limiters in development
+      ];
+    }
+
     return [
       RateLimitService.createPlatformLimiter(),
       RateLimitService.createSyncLimiter(),

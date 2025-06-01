@@ -3,7 +3,12 @@
  * Handles fetching and merging products across multiple platforms
  */
 const logger = require("../utils/logger");
-const { Product, PlatformData, PlatformConnection } = require("../models");
+const {
+  Product,
+  PlatformData,
+  PlatformConnection,
+  sequelize,
+} = require("../models");
 const { Op } = require("sequelize");
 const PlatformServiceFactory = require("../modules/order-management/services/platforms/platformServiceFactory");
 
@@ -417,9 +422,42 @@ class ProductMergeService {
    */
   async saveMergedProducts(mergedProducts, userId) {
     const savedProducts = [];
+    const errors = [];
 
     for (const mergedProduct of mergedProducts) {
+      const transaction = await sequelize.transaction();
+
       try {
+        // Validate required fields before attempting to save
+        if (!mergedProduct.name || mergedProduct.name.trim() === "") {
+          logger.warn(
+            `Skipping product without name: ${JSON.stringify(
+              mergedProduct,
+              null,
+              2
+            )}`
+          );
+          errors.push({
+            product: mergedProduct.sku || "unknown",
+            error: "Product name is required",
+          });
+          await transaction.rollback();
+          continue;
+        }
+
+        // Generate SKU if missing
+        if (!mergedProduct.sku || mergedProduct.sku.trim() === "") {
+          // Generate a unique SKU based on name and timestamp
+          const namePrefix = mergedProduct.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "")
+            .substring(0, 10);
+          mergedProduct.sku = `${namePrefix}-${Date.now()}`;
+          logger.info(
+            `Generated SKU for product "${mergedProduct.name}": ${mergedProduct.sku}`
+          );
+        }
+
         // Check if product already exists by SKU
         let existingProduct = null;
         if (mergedProduct.sku) {
@@ -428,86 +466,178 @@ class ProductMergeService {
               userId,
               sku: mergedProduct.sku,
             },
+            transaction,
           });
         }
 
-        // Or by barcode
+        // Or by barcode if no SKU match
         if (!existingProduct && mergedProduct.barcode) {
           existingProduct = await Product.findOne({
             where: {
               userId,
               barcode: mergedProduct.barcode,
             },
+            transaction,
           });
         }
 
         // Update existing or create new
         let product;
         if (existingProduct) {
-          // Update
-          await existingProduct.update({
-            name: mergedProduct.name || existingProduct.name,
-            description:
-              mergedProduct.description || existingProduct.description,
-            price: mergedProduct.price || existingProduct.price,
-            stockQuantity:
-              mergedProduct.stockQuantity || existingProduct.stockQuantity,
-            images: mergedProduct.images || existingProduct.images,
-            barcode: mergedProduct.barcode || existingProduct.barcode,
-            category: mergedProduct.category || existingProduct.category,
-            lastSyncedAt: new Date(),
-          });
+          // Update existing product
+          await existingProduct.update(
+            {
+              name: mergedProduct.name || existingProduct.name,
+              description:
+                mergedProduct.description || existingProduct.description,
+              price: mergedProduct.price || existingProduct.price,
+              stockQuantity:
+                mergedProduct.stockQuantity || existingProduct.stockQuantity,
+              images: mergedProduct.images || existingProduct.images,
+              barcode: mergedProduct.barcode || existingProduct.barcode,
+              category: mergedProduct.category || existingProduct.category,
+              lastSyncedAt: new Date(),
+            },
+            { transaction }
+          );
           product = existingProduct;
+          logger.debug(`Updated existing product: ${product.sku}`);
         } else {
-          // Create new
-          product = await Product.create({
+          // Create new product with required fields
+          const productData = {
             userId,
             sku: mergedProduct.sku,
-            barcode: mergedProduct.barcode,
             name: mergedProduct.name,
-            description: mergedProduct.description,
-            price: mergedProduct.price || 0,
-            stockQuantity: mergedProduct.stockQuantity || 0,
-            category: mergedProduct.category,
-            images: mergedProduct.images,
+            description: mergedProduct.description || "",
+            price: parseFloat(mergedProduct.price) || 0,
+            stockQuantity: parseInt(mergedProduct.stockQuantity) || 0,
+            category: mergedProduct.category || "Uncategorized",
+            images: Array.isArray(mergedProduct.images)
+              ? mergedProduct.images
+              : [],
             status: "active",
             lastSyncedAt: new Date(),
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          });
+          };
+
+          // Only add barcode if it exists and is not empty
+          if (mergedProduct.barcode && mergedProduct.barcode.trim() !== "") {
+            productData.barcode = mergedProduct.barcode;
+          }
+
+          product = await Product.create(productData, { transaction });
+          logger.info(`Created new product: ${product.sku} - ${product.name}`);
         }
 
-        // Update platform connections
-        for (const source of mergedProduct.sources) {
-          await PlatformData.findOrCreate({
-            where: {
-              entityType: "product",
-              entityId: product.id,
-              platformType: source.platform,
-            },
-            defaults: {
-              platformEntityId: source.externalId,
-              platformSku: source.sku,
-              platformPrice: source.price,
-              platformQuantity: source.stockQuantity,
-              lastSyncedAt: new Date(),
-              status: "active",
-              data: { source },
-            },
-          });
+        // Update platform connections if sources exist
+        if (mergedProduct.sources && Array.isArray(mergedProduct.sources)) {
+          for (const source of mergedProduct.sources) {
+            try {
+              if (source.platform && source.externalId) {
+                // Use upsert for better concurrency handling
+                const [platformData, created] = await PlatformData.upsert(
+                  {
+                    entityType: "product",
+                    entityId: product.id,
+                    platformType: source.platform,
+                    platformEntityId: source.externalId,
+                    platformSku: source.sku || product.sku,
+                    platformPrice: parseFloat(source.price) || 0,
+                    platformQuantity: parseInt(source.stockQuantity) || 0,
+                    lastSyncedAt: new Date(),
+                    status: "active",
+                    data: { source },
+                  },
+                  {
+                    transaction,
+                    conflictFields: ["entityType", "entityId", "platformType"],
+                  }
+                );
+
+                logger.debug(
+                  `${created ? "Created" : "Updated"} platform data for ${
+                    source.platform
+                  }: ${source.externalId}`
+                );
+              }
+            } catch (platformError) {
+              // Check if it's a constraint violation we can handle
+              if (platformError.name === "SequelizeUniqueConstraintError") {
+                logger.warn(
+                  `Constraint violation for product ${product.sku} on ${source.platform}, attempting manual update:`,
+                  platformError.message
+                );
+
+                try {
+                  // Try to find and update the existing record
+                  const existingPlatformData = await PlatformData.findOne({
+                    where: {
+                      entityType: "product",
+                      entityId: product.id,
+                      platformType: source.platform,
+                    },
+                    transaction,
+                  });
+
+                  if (existingPlatformData) {
+                    await existingPlatformData.update(
+                      {
+                        platformEntityId: source.externalId,
+                        platformSku: source.sku || product.sku,
+                        platformPrice: parseFloat(source.price) || 0,
+                        platformQuantity: parseInt(source.stockQuantity) || 0,
+                        lastSyncedAt: new Date(),
+                        status: "active",
+                        data: { source },
+                      },
+                      { transaction }
+                    );
+
+                    logger.debug(
+                      `Successfully updated existing platform data for ${source.platform}: ${source.externalId}`
+                    );
+                  }
+                } catch (retryError) {
+                  logger.error(
+                    `Failed to handle constraint violation for product ${product.sku}:`,
+                    retryError
+                  );
+                  // Continue with other sources instead of failing the entire product
+                }
+              } else {
+                logger.error(
+                  `Error updating platform data for product ${product.sku}:`,
+                  platformError
+                );
+                // Continue with other sources instead of failing the entire product
+              }
+            }
+          }
         }
 
+        await transaction.commit();
         savedProducts.push(product);
       } catch (error) {
+        await transaction.rollback();
         logger.error(
           `Error saving merged product ${
             mergedProduct.sku || mergedProduct.name
           }:`,
           error
         );
+        errors.push({
+          product: mergedProduct.sku || mergedProduct.name || "unknown",
+          error: error.message,
+        });
       }
     }
 
+    if (errors.length > 0) {
+      logger.warn(`Failed to save ${errors.length} products:`, errors);
+    }
+
+    logger.info(
+      `Successfully saved ${savedProducts.length} products out of ${mergedProducts.length} merged products`
+    );
     return savedProducts;
   }
 }

@@ -59,7 +59,6 @@ const OrderManagement = React.memo(() => {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState("view");
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -379,7 +378,6 @@ const OrderManagement = React.memo(() => {
         });
 
         setOrders(mappedOrders);
-        setTotalPages(Math.max(1, totalPagesCalculated));
         setTotalRecords(totalCount);
 
         // Update stats with mapped orders data
@@ -391,7 +389,6 @@ const OrderManagement = React.memo(() => {
       console.error("Error fetching orders:", error);
       setError(error.message);
       setOrders([]);
-      setTotalPages(1);
       setTotalRecords(0);
       showAlert("Siparişler yüklenirken bir hata oluştu", "error");
     } finally {
@@ -425,14 +422,14 @@ const OrderManagement = React.memo(() => {
         clearTimeout(debounceRef.current);
       }
     };
-  }, [searchTerm]);
+  }, [searchTerm, fetchOrders]);
 
   // Effect for non-search changes
   useEffect(() => {
     if (!searchTerm) {
       fetchOrders();
     }
-  }, [currentPage, filters, recordCount]);
+  }, [currentPage, filters, recordCount, fetchOrders, searchTerm]);
 
   // Memoized filtered and sorted orders
   const filteredAndSortedOrders = useMemo(() => {
@@ -1629,7 +1626,11 @@ const OrderManagement = React.memo(() => {
                       Sayfa {currentPage} / {calculatedTotalPages}
                     </span>
                     <span className="ml-4 text-gray-500">
-                      Toplam {totalRecords > 0 ? totalRecords : filteredAndSortedOrders.length} kayıt
+                      Toplam{" "}
+                      {totalRecords > 0
+                        ? totalRecords
+                        : filteredAndSortedOrders.length}{" "}
+                      kayıt
                       {filteredAndSortedOrders.length !== orders.length &&
                         ` (${orders.length} kayıttan filtrelenmiş)`}
                     </span>
@@ -2195,7 +2196,7 @@ const OrderForm = ({
 
       {/* Shipping Address */}
       <div>
-      <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+        <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
           <MapPin className="h-5 w-5 mr-2 text-gray-600" />
           Teslimat Adresi
         </h4>

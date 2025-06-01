@@ -97,7 +97,12 @@ app.use(
 // CORS configuration with environment-based origins
 app.use(
   cors({
-    origin: config.CORS_ORIGINS,
+    origin: [
+      ...config.CORS_ORIGINS,
+      "http://192.168.1.105:3000", // Your machine's IP for external device access
+      "http://localhost:3000", // Keep localhost for local development
+      "http://127.0.0.1:3000", // Alternative localhost
+    ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: [
@@ -134,11 +139,29 @@ const limiter = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skip: (req) => {
+    // Always skip in development environment
+    if (config.NODE_ENV === "development") {
+      return true;
+    }
+
+    // Skip for health checks and metrics
+    if (
+      req.path === "/health" ||
+      req.path === "/metrics" ||
+      req.path.startsWith("/health")
+    ) {
+      return true;
+    }
+
+    return false;
+  },
   handler: (req, res) => {
     logger.warn("Rate limit exceeded", {
       ip: req.ip,
       userAgent: req.get("User-Agent"),
       path: req.path,
+      environment: config.NODE_ENV,
     });
 
     // Track rate limit violations
@@ -152,7 +175,13 @@ const limiter = rateLimit({
     });
   },
 });
-app.use(limiter);
+
+// Only apply rate limiting in production
+if (config.NODE_ENV !== "development") {
+  app.use(limiter);
+} else {
+  logger.info("Rate limiting disabled in development environment");
+}
 
 // API versioning middleware
 app.use(apiVersioning);

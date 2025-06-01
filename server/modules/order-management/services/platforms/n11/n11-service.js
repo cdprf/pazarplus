@@ -1461,11 +1461,70 @@ class N11Service extends BasePlatformService {
         };
       } else {
         throw new Error(
-          response.data?.result?.errorMessage || "Failed to fetch products"
+          response.data?.result?.errorMessage ||
+            "Failed to fetch products from N11"
         );
       }
     } catch (error) {
-      this.logger.error(`Failed to fetch products: ${error.message}`, {
+      this.logger.error(`Failed to fetch products from N11: ${error.message}`, {
+        error,
+        connectionId: this.connectionId,
+      });
+
+      return {
+        success: false,
+        message: `Failed to fetch products: ${error.message}`,
+        error: error.response?.data || error.message,
+        data: [],
+      };
+    }
+  }
+
+  /**
+   * Fetch products from N11 - Standardized method name for consistency across platforms
+   * @param {Object} params - Query parameters for product fetching
+   * @returns {Promise<Object>} Products data
+   */
+  async fetchProducts(params = {}) {
+    try {
+      this.logger.debug(
+        `Fetching N11 products with params: ${JSON.stringify(params)}`
+      );
+
+      // Call the existing getProductQuery method with standardized parameters
+      const result = await this.getProductQuery({
+        page: params.page || 0,
+        size: params.size || params.limit || 50,
+        ...params,
+      });
+
+      if (result.success) {
+        this.logger.info(
+          `Successfully fetched ${result.data.length} products from N11`
+        );
+
+        return {
+          success: true,
+          message: `Successfully fetched ${result.data.length} products from N11`,
+          data: result.data,
+          pagination: result.pagination
+            ? {
+                page: result.pagination.currentPage || 0,
+                size: result.pagination.pageSize || 50,
+                totalPages: Math.ceil(
+                  (result.pagination.totalCount || 0) /
+                    (result.pagination.pageSize || 50)
+                ),
+                totalElements:
+                  result.pagination.totalCount || result.data.length,
+              }
+            : undefined,
+        };
+      }
+
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to fetch products from N11: ${error.message}`, {
         error,
         connectionId: this.connectionId,
       });

@@ -4,6 +4,7 @@ const Order = require("./Order");
 const OrderItem = require("./OrderItem");
 const Product = require("./Product");
 const PlatformConnection = require("./PlatformConnection");
+const PlatformData = require("./PlatformData");
 const ShippingDetail = require("./ShippingDetail");
 const HepsiburadaOrder = require("./HepsiburadaOrder");
 const N11Order = require("./N11Order");
@@ -25,6 +26,7 @@ const models = {
   OrderItem: OrderItem,
   Product: Product,
   PlatformConnection: PlatformConnection,
+  PlatformData: PlatformData,
   ShippingDetail: ShippingDetail,
   HepsiburadaOrder: HepsiburadaOrder,
   N11Order: N11Order,
@@ -221,6 +223,32 @@ models.User.hasMany(models.User, {
 models.User.belongsTo(models.User, {
   foreignKey: "referredBy",
   as: "referrer",
+});
+
+// === PLATFORM DATA ASSOCIATIONS ===
+
+// Product <-> PlatformData (One-to-Many)
+models.Product.hasMany(models.PlatformData, {
+  foreignKey: "entityId",
+  scope: { entityType: "product" },
+  as: "platformData",
+});
+models.PlatformData.belongsTo(models.Product, {
+  foreignKey: "entityId",
+  constraints: false,
+  as: "product",
+});
+
+// Order <-> PlatformData (One-to-Many)
+models.Order.hasMany(models.PlatformData, {
+  foreignKey: "entityId",
+  scope: { entityType: "order" },
+  as: "platformData",
+});
+models.PlatformData.belongsTo(models.Order, {
+  foreignKey: "entityId",
+  constraints: false,
+  as: "order",
 });
 
 module.exports = {

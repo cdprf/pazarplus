@@ -1,0 +1,674 @@
+/* Product Management Enhanced Styles */
+/* Following Pazar+ Design System Guidelines */
+
+/* ========================================
+   PAGE LAYOUT & STRUCTURE
+   ======================================== */
+
+.page-container {
+  @apply min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200;
+}
+
+.page-header {
+  @apply mb-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6;
+}
+
+.page-header-content {
+  @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4;
+}
+
+.page-title {
+  @apply text-3xl font-bold text-gray-900 dark:text-gray-100;
+}
+
+.page-subtitle {
+  @apply text-gray-600 dark:text-gray-400 mt-1 text-lg;
+}
+
+.page-actions {
+  @apply flex items-center gap-3 flex-wrap;
+}
+
+/* ========================================
+   ANALYTICS SECTION
+   ======================================== */
+
+.analytics-card {
+  @apply bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800;
+}
+
+.analytics-header {
+  @apply pb-4;
+}
+
+.analytics-grid {
+  @apply grid grid-cols-1 md:grid-cols-3 gap-4;
+}
+
+.analytics-item {
+  @apply bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 hover:bg-white dark:hover:bg-gray-800 hover:scale-[1.02] transition-all duration-300;
+}
+
+.analytics-icon {
+  @apply w-16 h-16 rounded-full flex items-center justify-center;
+}
+
+.analytics-icon-blue {
+  @apply bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400;
+}
+
+.analytics-icon-green {
+  @apply bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400;
+}
+
+.analytics-icon-purple {
+  @apply bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400;
+}
+
+/* ========================================
+   NOTIFICATIONS
+   ======================================== */
+
+.notifications-container {
+  @apply space-y-3;
+}
+
+.notification {
+  @apply p-4 rounded-lg border flex items-center justify-between backdrop-blur-sm animate-fade-in;
+}
+
+.notification-success {
+  @apply bg-green-50/90 dark:bg-green-900/20 border-green-200 dark:border-green-800;
+}
+
+.notification-content {
+  @apply flex items-center;
+}
+
+.notification-icon {
+  @apply h-5 w-5 text-green-500 mr-3;
+}
+
+.notification-message {
+  @apply text-green-800 dark:text-green-300 font-medium;
+}
+
+.notification-close {
+  @apply text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200;
+}
+
+/* ========================================
+   FILTERS & SEARCH
+   ======================================== */
+
+.filters-section {
+  @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6;
+}
+
+.filters-row {
+  @apply flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between;
+}
+
+.filters-primary {
+  @apply flex flex-wrap items-center gap-3 flex-1;
+}
+
+.filters-secondary {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.search-container {
+  @apply flex-1 max-w-md;
+}
+
+.search-input-wrapper {
+  @apply relative;
+}
+
+.search-input {
+  @apply w-full pl-10 pr-10 py-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200;
+}
+
+.search-icon {
+  @apply absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5;
+}
+
+.search-clear {
+  @apply absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300;
+}
+
+.view-toggle {
+  @apply flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1;
+}
+
+.view-toggle .btn {
+  @apply px-3 py-2 rounded-md text-sm font-medium transition-all duration-200;
+}
+
+.filter-toggle {
+  @apply relative;
+}
+
+.platform-select {
+  @apply px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200;
+}
+
+.advanced-filters {
+  @apply border-gray-200 dark:border-gray-700;
+}
+
+.filters-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end;
+}
+
+.filter-group {
+  @apply space-y-2;
+}
+
+.filter-label {
+  @apply block text-sm font-medium text-gray-700 dark:text-gray-300;
+}
+
+.filter-actions {
+  @apply flex justify-end;
+}
+
+/* ========================================
+   STATS CARDS
+   ======================================== */
+
+.stats-container {
+  @apply space-y-4;
+}
+
+.stat-card {
+  @apply border-l-4 shadow-sm;
+}
+
+.stat-card-success {
+  @apply border-l-green-500 bg-green-50/50 dark:bg-green-900/10;
+}
+
+.stat-card-info {
+  @apply border-l-blue-500 bg-blue-50/50 dark:bg-blue-900/10;
+}
+
+.stat-content {
+  @apply p-4;
+}
+
+.stat-header {
+  @apply flex items-start justify-between;
+}
+
+.stat-info {
+  @apply flex-1;
+}
+
+.stat-title {
+  @apply text-lg font-semibold text-gray-900 dark:text-gray-100;
+}
+
+.stat-description {
+  @apply text-gray-600 dark:text-gray-400 mt-1;
+}
+
+.stat-highlight {
+  @apply font-bold text-gray-900 dark:text-gray-100;
+}
+
+.stat-badges {
+  @apply flex flex-wrap gap-2 mt-3;
+}
+
+.stat-badge {
+  @apply text-xs;
+}
+
+/* ========================================
+   SELECTION STATES
+   ======================================== */
+
+.selection-card {
+  @apply bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800;
+}
+
+.selection-content {
+  @apply p-4 flex items-center justify-between;
+}
+
+.selection-info {
+  @apply flex items-center;
+}
+
+.selection-icon {
+  @apply h-5 w-5 text-blue-500 mr-3;
+}
+
+.selection-text {
+  @apply text-blue-800 dark:text-blue-300 font-medium;
+}
+
+.selection-count {
+  @apply font-bold;
+}
+
+.selection-actions {
+  @apply flex items-center gap-2;
+}
+
+/* ========================================
+   PRODUCTS CONTAINER
+   ======================================== */
+
+.products-container {
+  @apply shadow-sm border border-gray-200 dark:border-gray-700;
+}
+
+.products-header {
+  @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50;
+}
+
+.products-meta {
+  @apply flex items-center gap-3;
+}
+
+.products-count {
+  @apply text-sm font-medium text-gray-600 dark:text-gray-400;
+}
+
+.filter-indicator {
+  @apply text-xs;
+}
+
+.products-sort {
+  @apply flex items-center;
+}
+
+.sort-select {
+  @apply px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+}
+
+/* ========================================
+   GRID VIEW
+   ======================================== */
+
+.products-grid {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 p-6;
+}
+
+.product-card {
+  @apply overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+}
+
+.product-card-image {
+  @apply relative;
+}
+
+.product-card-header {
+  @apply space-y-1;
+}
+
+.product-card-title {
+  @apply font-semibold text-gray-900 dark:text-gray-100 text-sm leading-tight;
+}
+
+.product-card-sku {
+  @apply text-xs text-gray-500 dark:text-gray-400 font-mono;
+}
+
+.product-card-meta {
+  @apply text-xs;
+}
+
+.product-card-platforms {
+  @apply space-y-2;
+}
+
+.product-card-actions {
+  @apply pt-3 border-t border-gray-100 dark:border-gray-700;
+}
+
+/* ========================================
+   TABLE VIEW
+   ======================================== */
+
+.products-table-container {
+  @apply overflow-x-auto;
+}
+
+.products-table {
+  @apply w-full;
+}
+
+.table-header {
+  @apply bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700;
+}
+
+.table-th {
+  @apply px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider;
+}
+
+.table-th-checkbox {
+  @apply w-12;
+}
+
+.table-th-sortable {
+  @apply cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none;
+}
+
+.table-th-actions {
+  @apply text-right;
+}
+
+.table-sort-header {
+  @apply flex items-center gap-1;
+}
+
+.table-body {
+  @apply bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700;
+}
+
+.table-row {
+  @apply hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150;
+}
+
+.table-td {
+  @apply px-6 py-4 whitespace-nowrap text-sm;
+}
+
+.table-td-actions {
+  @apply text-right;
+}
+
+/* ========================================
+   PRODUCT CELLS
+   ======================================== */
+
+.product-cell {
+  @apply flex items-center;
+}
+
+.product-image-container {
+  @apply flex-shrink-0 h-12 w-12 relative cursor-pointer;
+}
+
+.product-image {
+  @apply h-12 w-12 rounded-lg object-cover hover:opacity-80 transition-opacity;
+}
+
+.product-image-count {
+  @apply absolute bottom-0 right-0 bg-gray-800 bg-opacity-75 rounded-full w-5 h-5 flex items-center justify-center text-xs text-white;
+}
+
+.product-image-placeholder {
+  @apply h-12 w-12 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center;
+}
+
+.product-info {
+  @apply ml-4 min-w-0 flex-1;
+}
+
+.product-name {
+  @apply text-sm font-medium text-gray-900 dark:text-gray-100 truncate;
+}
+
+.product-description {
+  @apply text-sm text-gray-500 dark:text-gray-400 truncate;
+}
+
+.product-sku {
+  @apply text-gray-900 dark:text-gray-100 font-mono;
+}
+
+.product-price {
+  @apply font-semibold text-gray-900 dark:text-gray-100;
+}
+
+/* ========================================
+   STATUS INDICATORS
+   ======================================== */
+
+.stock-container {
+  @apply flex items-center;
+}
+
+.stock-icon {
+  @apply h-4 w-4 mr-2;
+}
+
+.stock-icon-success {
+  @apply text-green-500;
+}
+
+.stock-icon-warning {
+  @apply text-amber-500;
+}
+
+.stock-icon-danger {
+  @apply text-red-500;
+}
+
+.stock-badge {
+  @apply text-xs;
+}
+
+.category-badge {
+  @apply text-xs;
+}
+
+.platform-badge {
+  @apply text-xs flex items-center gap-1;
+}
+
+.platform-label {
+  @apply hidden sm:inline;
+}
+
+.status-badge {
+  @apply text-xs;
+}
+
+.platforms-container {
+  @apply flex flex-wrap gap-1;
+}
+
+/* ========================================
+   ACTIONS
+   ======================================== */
+
+.actions-container {
+  @apply flex items-center justify-end space-x-1;
+}
+
+.actions-primary {
+  @apply flex items-center space-x-1;
+}
+
+.actions-more {
+  @apply relative;
+}
+
+.action-button {
+  @apply text-gray-400 hover:text-gray-600 dark:hover:text-gray-300;
+}
+
+/* ========================================
+   DROPDOWN MENUS
+   ======================================== */
+
+.dropdown-menu {
+  @apply absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-50 border border-gray-200 dark:border-gray-700 backdrop-blur-sm;
+}
+
+.dropdown-item {
+  @apply w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center transition-colors duration-150;
+}
+
+.dropdown-item-danger {
+  @apply text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20;
+}
+
+.dropdown-divider {
+  @apply border-t border-gray-200 dark:border-gray-700 my-1;
+}
+
+/* ========================================
+   PAGINATION
+   ======================================== */
+
+.pagination-container {
+  @apply px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4;
+}
+
+.pagination-info {
+  @apply text-sm text-gray-700 dark:text-gray-300;
+}
+
+.pagination-text {
+  @apply space-x-1;
+}
+
+.pagination-range {
+  @apply font-medium;
+}
+
+.pagination-total {
+  @apply font-medium;
+}
+
+.pagination-controls {
+  @apply flex items-center space-x-3;
+}
+
+.pagination-button {
+  @apply px-4 py-2;
+}
+
+.pagination-current {
+  @apply text-sm font-medium text-gray-700 dark:text-gray-300 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md;
+}
+
+/* ========================================
+   EMPTY & LOADING STATES
+   ======================================== */
+
+.empty-state {
+  @apply flex flex-col items-center justify-center py-16 px-4 text-center;
+}
+
+.empty-state-icon {
+  @apply mb-6;
+}
+
+.empty-state-title {
+  @apply text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2;
+}
+
+.empty-state-description {
+  @apply text-gray-600 dark:text-gray-400 max-w-md mx-auto mb-6;
+}
+
+.empty-state-actions {
+  @apply flex flex-col sm:flex-row gap-3;
+}
+
+.loading-state {
+  @apply flex flex-col items-center justify-center py-16 px-4;
+}
+
+.loading-spinner {
+  @apply mb-6;
+}
+
+.loading-content {
+  @apply text-center;
+}
+
+.loading-title {
+  @apply text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2;
+}
+
+.loading-description {
+  @apply text-gray-600 dark:text-gray-400;
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* ========================================
+   RESPONSIVE ENHANCEMENTS
+   ======================================== */
+
+@media (max-width: 640px) {
+  .page-header {
+    @apply p-4;
+  }
+
+  .filters-section {
+    @apply p-4;
+  }
+
+  .products-grid {
+    @apply grid-cols-1 gap-4 p-4;
+  }
+
+  .table-th,
+  .table-td {
+    @apply px-3 py-3;
+  }
+}
+
+/* ========================================
+   DARK MODE SPECIFIC OVERRIDES
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  .dropdown-menu {
+    @apply shadow-2xl;
+  }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+  .page-actions,
+  .filters-section,
+  .actions-container,
+  .pagination-container {
+    @apply hidden;
+  }
+
+  .products-table {
+    @apply text-xs;
+  }
+}

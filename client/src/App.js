@@ -25,7 +25,7 @@ import EmailVerification from "./components/auth/EmailVerification";
 import Dashboard from "./components/dashboard/Dashboard";
 import Orders from "./pages/Orders"; // Consolidated order management
 import OrderDetail from "./components/orders/OrderDetail";
-import ProductManagement from "./components/products/ProductManagement";
+import ProductManagement from "./components/ProductManagement";
 import CustomerManagement from "./components/customers/CustomerManagement";
 import ShippingManagement from "./components/shipping/ShippingManagement";
 import ShippingSlipDesigner from "./components/shipping/ShippingSlipDesigner";
@@ -37,6 +37,7 @@ import PlatformSyncHistory from "./components/platforms/PlatformSyncHistory";
 import Reports from "./components/reports/Reports"; // Add the analytics/reports page
 import Settings from "./components/settings/Settings";
 import PrintSettings from "./components/settings/PrintSettings";
+import InventoryInsights from "./components/analytics/InventoryInsights"; // Add inventory component
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -120,6 +121,10 @@ function App() {
                           path="products"
                           element={<ProductManagement />}
                         />
+                        <Route
+                          path="products/inventory"
+                          element={<InventoryInsights />}
+                        />
 
                         {/* Other management routes */}
                         <Route
@@ -173,6 +178,12 @@ function App() {
                         <Route
                           path="print-settings"
                           element={<PrintSettings />}
+                        />
+
+                        {/* Inventory Insights */}
+                        <Route
+                          path="inventory-insights"
+                          element={<InventoryInsights />}
                         />
                       </Route>
                     </Routes>
