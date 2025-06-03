@@ -1,5 +1,5 @@
-const TurkishComplianceService = require("./turkishComplianceService");
-const TurkishPaymentService = require("./turkishPaymentService");
+const { TurkishComplianceService } = require("./turkishComplianceService");
+const { TurkishPaymentService } = require("./turkishPaymentService");
 // Legacy Turkish shipping service - deprecated in favor of modular shipping services
 // const TurkishShippingService = require('./turkishShippingService');
 const shippingFactory = require("../modules/public/shipping/ShippingServiceFactory");

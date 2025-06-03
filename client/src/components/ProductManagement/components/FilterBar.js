@@ -176,9 +176,11 @@ const FilterPanel = ({
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Tüm Durumlar</option>
-                  <option value="active">Aktif</option>
-                  <option value="inactive">Pasif</option>
-                  <option value="draft">Taslak</option>
+                  {STATUS_OPTIONS.map((status) => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -195,9 +197,11 @@ const FilterPanel = ({
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Tüm Stok Durumları</option>
-                  <option value="in_stock">Stokta</option>
-                  <option value="low_stock">Az Stok</option>
-                  <option value="out_of_stock">Stok Yok</option>
+                  {STOCK_STATUS_OPTIONS.map((stockStatus) => (
+                    <option key={stockStatus.value} value={stockStatus.value}>
+                      {stockStatus.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -290,6 +294,7 @@ const SortSelector = ({ value, onChange, className = "" }) => {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+        title={`Sıralama: ${currentOption?.label || `${field} (${order})`}`}
       >
         {SORT_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
@@ -297,6 +302,18 @@ const SortSelector = ({ value, onChange, className = "" }) => {
           </option>
         ))}
       </select>
+
+      {/* Visual sort direction indicator using field and order */}
+      <div
+        className="ml-2 p-1 border border-gray-300 rounded bg-gray-50"
+        title={`${field} sıralaması`}
+      >
+        {order === "asc" ? (
+          <SortAsc className="h-4 w-4 text-gray-600" title="Artan sıralama" />
+        ) : (
+          <SortDesc className="h-4 w-4 text-gray-600" title="Azalan sıralama" />
+        )}
+      </div>
     </div>
   );
 };
@@ -560,6 +577,22 @@ const FiltersBar = ({
     onPlatformFilterChange("all");
   }, [onPlatformFilterChange]);
 
+  const handleSortChange = useCallback(
+    (value) => {
+      const [field, order] = value.split("-");
+      const currentOption = SORT_OPTIONS.find((opt) => opt.value === value);
+
+      // Use the field and currentOption variables to implement sort functionality
+      onFiltersChange({
+        ...filters,
+        sortBy: field,
+        sortOrder: order,
+        sortLabel: currentOption?.label || `${field} (${order})`,
+      });
+    },
+    [filters, onFiltersChange]
+  );
+
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Primary Filter Row */}
@@ -599,7 +632,7 @@ const FiltersBar = ({
         <div className="flex items-center justify-between gap-4">
           <SortSelector
             value={sortValue}
-            onChange={onSortChange}
+            onChange={handleSortChange}
             className="min-w-0"
           />
 

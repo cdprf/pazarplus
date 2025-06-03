@@ -72,7 +72,7 @@ const PlatformConnections = () => {
       description: "Türk online pazaryeri",
       icon: "🏪",
       color: "info",
-      fields: ["apiKey", "apiSecret", "merchantId"],
+      fields: ["apiKey", "apiSecret"],
     },
   ];
 

@@ -1,0 +1,125 @@
+// Paper size presets with common shipping label formats
+export const PAPER_SIZE_PRESETS = {
+  A4: {
+    width: 210,
+    height: 297,
+    name: "A4 (210 × 297 mm)",
+    category: "Standard",
+  },
+  A5: {
+    width: 148,
+    height: 210,
+    name: "A5 (148 × 210 mm)",
+    category: "Standard",
+  },
+  A6: {
+    width: 105,
+    height: 148,
+    name: "A6 (105 × 148 mm)",
+    category: "Standard",
+  },
+  LETTER: {
+    width: 216,
+    height: 279,
+    name: "Letter (8.5 × 11 in)",
+    category: "Standard",
+  },
+  SHIPPING_LABEL_4X6: {
+    width: 102,
+    height: 152,
+    name: "Shipping Label 4×6 (102 × 152 mm)",
+    category: "Shipping",
+  },
+  SHIPPING_LABEL_4X4: {
+    width: 102,
+    height: 102,
+    name: "Shipping Label 4×4 (102 × 102 mm)",
+    category: "Shipping",
+  },
+  THERMAL_LABEL: {
+    width: 100,
+    height: 150,
+    name: "Thermal Label (100 × 150 mm)",
+    category: "Thermal",
+  },
+  ZEBRA_LABEL: {
+    width: 102,
+    height: 76,
+    name: "Zebra Label (102 × 76 mm)",
+    category: "Thermal",
+  },
+  CUSTOM: {
+    width: 210,
+    height: 297,
+    name: "Özel Boyut",
+    category: "Custom",
+  },
+};
+
+// Template size presets for quick setup
+export const TEMPLATE_SIZE_PRESETS = [
+  {
+    id: "shipping-standard",
+    name: "Standart Gönderi Belgesi",
+    paperSize: "A4",
+    orientation: "portrait",
+    description: "Klasik A4 gönderi belgesi formatı",
+    icon: "📄",
+  },
+  {
+    id: "shipping-compact",
+    name: "Kompakt Gönderi Belgesi",
+    paperSize: "A5",
+    orientation: "portrait",
+    description: "Küçük paketler için A5 formatı",
+    icon: "📋",
+  },
+  {
+    id: "shipping-landscape",
+    name: "Yatay Gönderi Belgesi",
+    paperSize: "A4",
+    orientation: "landscape",
+    description: "Geniş etiketler için yatay A4 formatı",
+    icon: "📊",
+  },
+  {
+    id: "thermal-standard",
+    name: "Standart Termal Etiket",
+    paperSize: "THERMAL_LABEL",
+    orientation: "portrait",
+    description: "100×150mm termal yazıcı etiketi",
+    icon: "🏷️",
+  },
+  {
+    id: "thermal-compact",
+    name: "Kompakt Termal Etiket",
+    paperSize: "ZEBRA_LABEL",
+    orientation: "portrait",
+    description: "102×76mm Zebra/TSC uyumlu etiket",
+    icon: "🎫",
+  },
+  {
+    id: "shipping-label-4x6",
+    name: "Kargo Etiketi 4×6",
+    paperSize: "SHIPPING_LABEL_4X6",
+    orientation: "portrait",
+    description: "Standart kargo etiketi boyutu",
+    icon: "📦",
+  },
+  {
+    id: "shipping-label-4x4",
+    name: "Kare Kargo Etiketi",
+    paperSize: "SHIPPING_LABEL_4X4",
+    orientation: "portrait",
+    description: "Kare format kargo etiketi",
+    icon: "⬜",
+  },
+  {
+    id: "custom-size",
+    name: "Özel Boyut",
+    paperSize: "CUSTOM",
+    orientation: "portrait",
+    description: "Kendi boyutunuzu belirleyin",
+    icon: "✏️",
+  },
+];

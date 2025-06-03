@@ -70,6 +70,12 @@ async function getAllOrders(req, res) {
       sortOrder = "DESC",
     } = req.query;
 
+    // Check if user has any platform connections
+    const platformConnections = await PlatformConnection.findAll({
+      where: { userId },
+      attributes: ["id", "platformType", "name", "isActive"],
+    });
+
     const offset = (page - 1) * limit;
     const where = { userId };
 
@@ -155,7 +161,7 @@ async function getAllOrders(req, res) {
     const totalPages = Math.ceil(orders.count / limit);
     const currentPage = parseInt(page);
 
-    return res.status(200).json({
+    const response = {
       success: true,
       data: {
         orders: transformedOrders,
@@ -166,19 +172,62 @@ async function getAllOrders(req, res) {
           limit: parseInt(limit),
           hasNext: currentPage < totalPages,
           hasPrev: currentPage > 1,
-          // Additional stats for frontend
           showing: transformedOrders.length,
           from: offset + 1,
           to: Math.min(offset + transformedOrders.length, orders.count),
         },
       },
-      // Include summary stats in response
       stats: {
         total: orders.count,
         page: currentPage,
         pages: totalPages,
       },
-    });
+    };
+
+    // Add platform connection info and guidance if no data exists
+    if (orders.count === 0) {
+      response.meta = {
+        platformConnections: {
+          total: platformConnections.length,
+          active: platformConnections.filter((pc) => pc.isActive).length,
+          platforms: platformConnections.map((pc) => ({
+            id: pc.id,
+            name: pc.name,
+            type: pc.platformType,
+            isActive: pc.isActive,
+          })),
+        },
+        guidance: {
+          hasConnections: platformConnections.length > 0,
+          hasActiveConnections: platformConnections.some((pc) => pc.isActive),
+          message:
+            platformConnections.length === 0
+              ? "Siparişleri görüntülemek için önce bir pazaryeri platformuna bağlanın."
+              : platformConnections.some((pc) => pc.isActive)
+              ? "Siparişleri görmek için platformlarınızdan veri senkronizasyonu yapın."
+              : "Platform bağlantılarınızı aktifleştirin ve senkronizasyon yapın.",
+          nextSteps:
+            platformConnections.length === 0
+              ? [
+                  "Platform Bağlantıları sayfasına gidin",
+                  "Trendyol, Hepsiburada veya N11'e bağlanın",
+                  "API anahtarlarınızı ekleyin",
+                ]
+              : platformConnections.some((pc) => pc.isActive)
+              ? [
+                  "Sipariş Yönetimi sayfasında 'Senkronize Et' butonuna tıklayın",
+                  "Platform verileriniz otomatik olarak çekilecektir",
+                ]
+              : [
+                  "Platform bağlantılarınızı kontrol edin",
+                  "Deaktif bağlantıları aktifleştirin",
+                  "Senkronizasyon işlemini başlatın",
+                ],
+        },
+      };
+    }
+
+    return res.status(200).json(response);
   } catch (error) {
     logger.error("Get orders error:", error);
     return res.status(500).json({

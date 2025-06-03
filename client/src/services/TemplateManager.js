@@ -30,14 +30,30 @@ class TemplateManager {
   static async fetchFromApi() {
     try {
       const response = await api.get("/api/shipping/templates");
-      if (response.data && Array.isArray(response.data)) {
+
+      // Handle the standard API response format: { success: true, data: [...], message: "..." }
+      if (
+        response.data &&
+        response.data.success &&
+        Array.isArray(response.data.data)
+      ) {
         // Store in local storage as backup
+        localStorage.setItem(
+          "shippingTemplates",
+          JSON.stringify(response.data.data)
+        );
+        return response.data.data;
+      }
+
+      // Fallback: check if data is directly an array (backward compatibility)
+      if (response.data && Array.isArray(response.data)) {
         localStorage.setItem(
           "shippingTemplates",
           JSON.stringify(response.data)
         );
         return response.data;
       }
+
       throw new Error("Invalid API response format");
     } catch (error) {
       console.warn("Failed to fetch templates from API:", error);
@@ -75,7 +91,12 @@ class TemplateManager {
       // Try API first
       try {
         const response = await api.get(`/api/shipping/templates/${id}`);
-        if (response.data) {
+        // Handle the standard API response format
+        if (response.data && response.data.success && response.data.data) {
+          return response.data.data;
+        }
+        // Fallback: check if data is directly the template (backward compatibility)
+        if (response.data && response.data.id) {
           return response.data;
         }
       } catch (apiError) {
@@ -136,7 +157,12 @@ class TemplateManager {
           "/api/shipping/templates",
           templateToSave
         );
-        if (response.data) {
+        // Handle the standard API response format
+        if (response.data && response.data.success && response.data.data) {
+          savedTemplate = response.data.data;
+          apiSuccess = true;
+        } else if (response.data && response.data.id) {
+          // Fallback: direct data response (backward compatibility)
           savedTemplate = response.data;
           apiSuccess = true;
         }
@@ -152,8 +178,8 @@ class TemplateManager {
       try {
         const templates = this.fetchFromLocalStorage();
         const updatedTemplates = [
-          ...templates.filter((t) => t.id !== savedTemplate.id),
-          savedTemplate,
+          ...templates.filter((t) => t.id !== templateToSave.id),
+          templateToSave,
         ];
         localStorage.setItem(
           "shippingTemplates",
@@ -168,7 +194,7 @@ class TemplateManager {
         }
       }
 
-      return savedTemplate;
+      return templateToSave;
     } catch (error) {
       console.error("Failed to save template:", error);
       throw error;

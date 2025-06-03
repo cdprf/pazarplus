@@ -153,6 +153,21 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user]);
 
+  const updateProfile = useCallback(async (profileData) => {
+    try {
+      const response = await api.put("/api/auth/profile", profileData);
+      if (response.data.success && response.data.user) {
+        setUser(response.data.user);
+      }
+      return response.data;
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.message || "Failed to update profile";
+      setError(errorMessage);
+      throw err;
+    }
+  }, []);
+
   // Initialize auth state
   useEffect(() => {
     const initializeAuth = async () => {
@@ -237,6 +252,7 @@ export const AuthProvider = ({ children }) => {
     setupTwoFactor,
     verifyTwoFactor,
     disableTwoFactor,
+    updateProfile,
     setError,
     devMode: enableDevMode && user?.devMode,
   };

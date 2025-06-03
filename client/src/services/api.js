@@ -606,22 +606,83 @@ const shippingAPI = {
     }
   },
 
-  // Create shipping label
-  createShippingLabel: async (labelData) => {
+  // Shipping Templates
+  getShippingTemplates: async () => {
     try {
-      const response = await api.post("/api/shipping/labels", labelData);
+      const response = await api.get("/api/shipping/templates");
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  // Track shipment
-  trackShipment: async (trackingNumber, carrier) => {
+  getShippingTemplate: async (id) => {
     try {
-      const response = await api.get(
-        `/api/shipping/track/${trackingNumber}?carrier=${carrier}`
+      const response = await api.get(`/api/shipping/templates/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  saveShippingTemplate: async (templateData) => {
+    try {
+      const response = await api.post("/api/shipping/templates", templateData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateShippingTemplate: async (id, templateData) => {
+    try {
+      const response = await api.put(
+        `/api/shipping/templates/${id}`,
+        templateData
       );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  deleteShippingTemplate: async (id) => {
+    try {
+      const response = await api.delete(`/api/shipping/templates/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Default Template Management
+  getDefaultTemplate: async () => {
+    try {
+      const response = await api.get("/api/shipping/templates/default");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  setDefaultTemplate: async (templateId) => {
+    try {
+      const response = await api.post("/api/shipping/templates/default", {
+        templateId,
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Generate shipping slip with template
+  generateShippingSlip: async (orderId, templateId = null) => {
+    try {
+      const response = await api.post("/api/shipping/templates/generate-slip", {
+        orderId,
+        templateId,
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -710,27 +771,58 @@ const dashboardAPI = {
 
 // Settings API methods
 const settingsAPI = {
-  // Get app settings
-  getAppSettings: async () => {
+  // Company info methods
+  getCompanyInfo: async () => {
     try {
-      const response = await api.get("/api/settings/app");
+      const response = await api.get("/api/settings/company");
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  // Update app settings
-  updateAppSettings: async (settings) => {
+  saveCompanyInfo: async (companyData) => {
     try {
-      const response = await api.put("/api/settings/app", settings);
+      const response = await api.post("/api/settings/company", companyData);
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  // Get notification settings
+  uploadCompanyLogo: async (formData) => {
+    try {
+      const response = await api.post("/api/settings/company/logo", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // General settings methods
+  getGeneralSettings: async () => {
+    try {
+      const response = await api.get("/api/settings/general");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  saveGeneralSettings: async (settings) => {
+    try {
+      const response = await api.post("/api/settings/general", settings);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Notification settings methods
   getNotificationSettings: async () => {
     try {
       const response = await api.get("/api/settings/notifications");
@@ -740,10 +832,84 @@ const settingsAPI = {
     }
   },
 
-  // Update notification settings
+  saveNotificationSettings: async (settings) => {
+    try {
+      const response = await api.post("/api/settings/notifications", settings);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Shipping settings methods
+  getShippingSettings: async () => {
+    try {
+      const response = await api.get("/api/settings/shipping");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  saveShippingSettings: async (settings) => {
+    try {
+      const response = await api.post("/api/settings/shipping", settings);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Email settings methods
+  getEmailSettings: async () => {
+    try {
+      const response = await api.get("/api/settings/email");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  saveEmailSettings: async (settings) => {
+    try {
+      const response = await api.post("/api/settings/email", settings);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  testEmailSettings: async () => {
+    try {
+      const response = await api.post("/api/settings/email/test");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Legacy methods for backward compatibility
+  getAppSettings: async () => {
+    try {
+      const response = await api.get("/api/settings/general");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateAppSettings: async (settings) => {
+    try {
+      const response = await api.post("/api/settings/general", settings);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   updateNotificationSettings: async (settings) => {
     try {
-      const response = await api.put("/api/settings/notifications", settings);
+      const response = await api.post("/api/settings/notifications", settings);
       return response.data;
     } catch (error) {
       throw error;

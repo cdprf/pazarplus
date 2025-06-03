@@ -175,8 +175,8 @@ class BasePlatformService {
         {
           connectionId: this.connectionId,
           platformType: this.getPlatformType(),
-          startDate,
-          endDate,
+          //startDate,
+          //endDate,
         }
       );
 
@@ -186,10 +186,18 @@ class BasePlatformService {
       }
 
       // Get orders using the platform-specific implementation
+      // Ensure startDate is at least 18 months ago
+      const now = new Date();
+      const minStartDate = new Date(now.getFullYear(), now.getMonth() - 18, now.getDate());
+      
+
       const options = {
-        startDate:
-          startDate instanceof Date ? startDate.toISOString() : startDate,
-        endDate: endDate instanceof Date ? endDate.toISOString() : endDate,
+        startDate: minStartDate.getTime(),
+        endDate: endDate
+          ? endDate instanceof Date
+        ? endDate.getTime()
+        : new Date(endDate).getTime()
+          : now.getTime(),
       };
 
       // Use fetchOrders method which includes normalization (platform-specific)
@@ -394,6 +402,16 @@ class BasePlatformService {
           );
         } else {
           // Non-retryable error
+          logger.error(
+            `Non-retryable error in API request for ${this.getPlatformType()}: ${
+              error.message
+            }`,
+            {
+              error,
+              connectionId: this.connectionId,
+              platformType: this.getPlatformType(),
+            }
+          );
           throw error;
         }
       }

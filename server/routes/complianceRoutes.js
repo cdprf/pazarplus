@@ -4,7 +4,7 @@ const { auth } = require("../middleware/auth");
 const {
   TurkishComplianceService,
 } = require("../services/turkishComplianceService");
-const TurkishPaymentService = require("../services/turkishPaymentService");
+const { TurkishPaymentService } = require("../services/turkishPaymentService");
 const logger = require("../utils/logger");
 
 const complianceService = new TurkishComplianceService();

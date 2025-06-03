@@ -125,29 +125,66 @@ function App() {
                           path="products/inventory"
                           element={<InventoryInsights />}
                         />
+                        <Route
+                          path="products/categories"
+                          element={<ProductManagement />}
+                        />
+                        <Route
+                          path="products/pricing"
+                          element={<ProductManagement />}
+                        />
 
-                        {/* Other management routes */}
+                        {/* Customer Management */}
                         <Route
                           path="customers"
                           element={<CustomerManagement />}
                         />
+
+                        {/* Shipping Management - with sub-routes */}
                         <Route
                           path="shipping"
                           element={<ShippingManagement />}
                         />
-                        {/* Nested shipping routes */}
+                        <Route
+                          path="shipping/create"
+                          element={<ShippingManagement />}
+                        />
+                        <Route
+                          path="shipping/tracking"
+                          element={<ShippingManagement />}
+                        />
+                        <Route
+                          path="shipping/carriers"
+                          element={<ShippingManagement />}
+                        />
+                        <Route
+                          path="shipping/rates"
+                          element={<ShippingManagement />}
+                        />
                         <Route
                           path="shipping/slip-designer"
                           element={<ShippingSlipDesigner />}
                         />
-                        <Route
-                          path="import-export"
-                          element={<ImportExport />}
-                        />
 
-                        {/* Platform management */}
+                        {/* Platform Management - enhanced */}
                         <Route
                           path="platforms"
+                          element={<PlatformConnections />}
+                        />
+                        <Route
+                          path="platforms/trendyol"
+                          element={<PlatformConnections />}
+                        />
+                        <Route
+                          path="platforms/hepsiburada"
+                          element={<PlatformConnections />}
+                        />
+                        <Route
+                          path="platforms/n11"
+                          element={<PlatformConnections />}
+                        />
+                        <Route
+                          path="platforms/gittigidiyor"
                           element={<PlatformConnections />}
                         />
                         <Route
@@ -163,8 +200,28 @@ function App() {
                           element={<PlatformSyncHistory />}
                         />
 
-                        {/* Reports */}
+                        {/* Orders - enhanced with sub-routes */}
+                        <Route path="orders" element={<Orders />} />
+                        <Route path="orders/:id" element={<OrderDetail />} />
+                        <Route path="orders/new" element={<Orders />} />
+                        <Route path="orders/completed" element={<Orders />} />
+
+                        {/* Payment Management */}
+                        <Route
+                          path="payments"
+                          element={<CustomerManagement />}
+                        />
+
+                        {/* Compliance */}
+                        <Route path="compliance" element={<Settings />} />
+
+                        {/* Reports - enhanced structure */}
                         <Route path="reports" element={<Reports />} />
+                        <Route path="reports/sales" element={<Reports />} />
+                        <Route path="reports/tax" element={<Reports />} />
+                        <Route path="reports/inventory" element={<Reports />} />
+
+                        {/* Analytics */}
                         <Route path="analytics" element={<Reports />} />
                         <Route path="analytics/sales" element={<Reports />} />
                         <Route
@@ -173,18 +230,42 @@ function App() {
                         />
                         <Route path="analytics/trends" element={<Reports />} />
 
-                        {/* Settings */}
+                        {/* User Profile */}
+                        <Route path="profile" element={<Settings />} />
+
+                        {/* Notifications */}
+                        <Route path="notifications" element={<Dashboard />} />
+
+                        {/* Settings - enhanced with sub-routes */}
                         <Route path="settings" element={<Settings />} />
+                        <Route
+                          path="settings/notifications"
+                          element={<Settings />}
+                        />
+                        <Route path="settings/api" element={<Settings />} />
+                        <Route path="settings/users" element={<Settings />} />
                         <Route
                           path="print-settings"
                           element={<PrintSettings />}
                         />
 
-                        {/* Inventory Insights */}
+                        {/* Support */}
+                        <Route path="support" element={<Dashboard />} />
+
+                        {/* Import/Export */}
                         <Route
-                          path="inventory-insights"
-                          element={<InventoryInsights />}
+                          path="import-export"
+                          element={<ImportExport />}
                         />
+
+                        {/* Footer and Static Pages */}
+                        <Route path="help" element={<Dashboard />} />
+                        <Route path="docs" element={<Dashboard />} />
+                        <Route path="api-docs" element={<Dashboard />} />
+                        <Route path="about" element={<Dashboard />} />
+                        <Route path="privacy" element={<Dashboard />} />
+                        <Route path="terms" element={<Dashboard />} />
+                        <Route path="security" element={<Dashboard />} />
                       </Route>
                     </Routes>
                   </div>

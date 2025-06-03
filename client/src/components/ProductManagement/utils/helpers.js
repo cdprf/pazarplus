@@ -1,4 +1,4 @@
-import { CheckCircle, AlertTriangle, AlertCircle } from "lucide-react";
+import { CheckCircle, AlertTriangle, AlertCircle, Globe } from "lucide-react";
 import { PlatformIcons } from "./constants";
 
 // Utility Functions

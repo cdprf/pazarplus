@@ -17,27 +17,28 @@ const BasePlatformService = require("../BasePlatformService");
 
 // N11 API Constants
 const N11_API = {
-  BASE_URL: "https://api.n11.com/rest",
+  BASE_URL: "https://api.n11.com",
   ENDPOINTS: {
     // Order Management
-    ORDERS: "/order/v1/list",
-    ORDER_DETAIL: "/order/v1/detail",
-    UPDATE_ORDER: "/order/v1/update",
-    ACCEPT_ORDER: "/order/v1/accept",
-    REJECT_ORDER: "/order/v1/reject",
-    SHIP_ORDER: "/order/v1/ship",
-    DELIVER_ORDER: "/order/v1/delivery",
-    SPLIT_PACKAGE: "/order/v1/splitCombinePackage",
-    LABOR_COST: "/order/v1/laborCost",
+    ORDERS: "/rest/delivery/v1/shipmentPackages",
+    ORDER_DETAIL: "/rest/delivery/v1/shipmentPackages/{id}",
+    UPDATE_ORDER: "/rest/delivery/v1/shipmentPackages/{id}",
+    ACCEPT_ORDER: "/rest/delivery/v1/shipmentPackages/{id}/accept",
+    REJECT_ORDER: "/rest/delivery/v1/shipmentPackages/{id}/reject",
+    SHIP_ORDER: "/rest/delivery/v1/shipmentPackages/{id}/ship",
+    DELIVER_ORDER: "/rest/delivery/v1/shipmentPackages/{id}/delivery",
+    SPLIT_PACKAGE:
+      "/rest/delivery/v1/shipmentPackages/{id}/splitCombinePackage",
+    LABOR_COST: "/rest/delivery/v1/shipmentPackages/{id}/laborCost",
 
     // Product Management
-    PRODUCTS: "/product/v1/list",
+    PRODUCTS: "/ms/product-query",
     PRODUCT_DETAIL: "/product/v1/detail",
     PRODUCT_QUERY: "/product/v1/getProductQuery",
 
     // Category Management
-    CATEGORIES: "/category/v1/getCategories",
-    CATEGORY_ATTRIBUTES: "/category/v1/getCategoryAttributesList",
+    CATEGORIES: "/cdn/categories",
+    CATEGORY_ATTRIBUTES: "/cdn/categories/{categoryId}/attributes",
 
     // Catalog Service
     CATALOG_SEARCH: "/catalog/v1/search",
@@ -104,8 +105,8 @@ class N11Service extends BasePlatformService {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        appKey: appKey,
-        appSecret: appSecret,
+        appkey: appKey,
+        appsecret: appSecret,
       },
       timeout: 30000,
     });
@@ -123,8 +124,8 @@ class N11Service extends BasePlatformService {
       const credentials = super.decryptCredentials(encryptedCredentials);
 
       return {
-        appKey: credentials.appKey,
-        appSecret: credentials.appSecret,
+        appKey: credentials.apiKey,
+        appSecret: credentials.apiSecret,
         endpointUrl: credentials.endpointUrl || N11_API.BASE_URL,
       };
     } catch (error) {
@@ -223,14 +224,10 @@ class N11Service extends BasePlatformService {
 
       // Default parameters for N11 order list API
       const defaultParams = {
-        status: params.status || "Confirmed",
-        period: params.period || "lastOrderDate",
         startDate: params.startDate || this.getDefaultStartDate(),
         endDate: params.endDate || this.getDefaultEndDate(),
-        pagingData: {
-          currentPage: params.page || 0,
-          pageSize: params.size || 50,
-        },
+        page: params.page,
+        size: params.size || 50,
       };
 
       const queryParams = { ...defaultParams, ...params };
@@ -243,15 +240,20 @@ class N11Service extends BasePlatformService {
         this.axiosInstance.post(N11_API.ENDPOINTS.ORDERS, queryParams)
       );
 
-      if (
-        !response.data ||
-        !response.data.result ||
-        response.data.result.status !== "success"
-      ) {
+      const resultStatus =
+        response.data &&
+        response.data.result &&
+        typeof response.data.result.status !== "undefined"
+          ? response.data.result.status
+          : null;
+
+      if (resultStatus !== "success") {
         return {
           success: false,
           message:
-            response.data?.result?.errorMessage ||
+            (response.data &&
+              response.data.result &&
+              response.data.result.errorMessage) ||
             "Failed to fetch orders from N11",
           data: [],
         };
@@ -329,7 +331,7 @@ class N11Service extends BasePlatformService {
             // Update existing order
             try {
               await existingOrder.update({
-                status: this.mapOrderStatus(order.status),
+                status: this.mapOrderStatus(order.shipmentPackageStatus),
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date(),
               });
@@ -357,14 +359,14 @@ class N11Service extends BasePlatformService {
             const { ShippingDetail } = require("../../../../../models");
             const shippingDetail = await ShippingDetail.create(
               {
-                recipientName: order.recipient?.fullName || "",
-                address1: order.billingAddress?.address || "",
-                city: order.billingAddress?.city || "",
-                state: order.billingAddress?.district || "",
-                postalCode: order.billingAddress?.postalCode || "",
+                recipientName: order.shippingAddress?.fullName || "",
+                address1: order.shippingAddress?.address || "",
+                city: order.shippingAddress?.city || "",
+                state: order.shippingAddress?.district || "",
+                postalCode: order.shippingAddress?.postalCode || "",
                 country: "Turkey",
                 phone: phoneNumber || "",
-                email: order.buyer?.email || "",
+                email: order.customerEmail || "",
               },
               { transaction: t }
             );
@@ -375,16 +377,20 @@ class N11Service extends BasePlatformService {
                 externalOrderId: order.id.toString(),
                 connectionId: this.connectionId,
                 userId: this.connection.userId,
-                customerName: order.buyer?.fullName || "Unknown",
-                customerEmail: order.buyer?.email || "",
+                customerName: order.customerFullName || "Unknown",
+                customerEmail: order.customerEmail || "",
                 customerPhone: phoneNumber || "",
-                orderDate: new Date(order.createDate),
-                status: this.mapOrderStatus(order.status),
+                orderDate: new Date(
+                  order.packageHistories[0]?.createdDate ||
+                    order.lastModifiedDate
+                ),
+                orderNumber: order.orderNumber || "",
+                platform: "n11",
+                orderStatus: this.mapOrderStatus(order.shipmentPackageStatus),
                 totalAmount: parseFloat(order.totalAmount || 0),
                 currency: "TRY",
                 shippingDetailId: shippingDetail.id,
-                notes: order.note || "",
-                paymentStatus: "pending",
+                paymentStatus: "done",
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date(),
               },
@@ -392,19 +398,19 @@ class N11Service extends BasePlatformService {
             );
 
             // Create order items
-            if (order.orderItemList && Array.isArray(order.orderItemList)) {
-              for (const item of order.orderItemList) {
+            if (order.lines && Array.isArray(order.lines)) {
+              for (const item of order.lines) {
                 await OrderItem.create(
                   {
                     orderId: normalizedOrder.id,
                     externalProductId:
                       item.productId?.toString() || item.id?.toString(),
                     name: item.productName || item.title,
-                    sku: item.productSellerCode || item.sellerStockCode,
+                    sku: item.stockCode || item.sellerStockCode,
                     quantity: parseInt(item.quantity || 1, 10),
                     unitPrice: parseFloat(item.price || 0),
                     totalPrice: parseFloat(
-                      item.totalAmount || item.price * item.quantity || 0
+                      item.dueAmount || item.price * item.quantity || 0
                     ),
                     discount: parseFloat(item.discount || 0),
                     options: item.attributes
@@ -463,82 +469,19 @@ class N11Service extends BasePlatformService {
   }
 
   /**
-   * Create N11-specific order record
-   * @param {string} orderId - The main Order record ID
-   * @param {Object} n11OrderData - Raw order data from N11 API
-   * @param {Object} transaction - Sequelize transaction object
-   * @returns {Promise<Object>} Created N11Order record
-   */
-  async createN11OrderRecord(orderId, n11OrderData, transaction) {
-    try {
-      const { N11Order } = require("../../../../../models");
-
-      return await N11Order.create(
-        {
-          orderId: orderId,
-          n11OrderId: n11OrderData.id?.toString(),
-          orderNumber: n11OrderData.orderNumber,
-          sellerId: n11OrderData.sellerId,
-          buyerId: n11OrderData.buyer?.id?.toString(),
-          orderStatus: this.mapToN11ModelStatus(n11OrderData.status),
-          paymentType: this.mapPaymentType(n11OrderData.paymentType),
-          paymentStatus: this.mapPaymentStatus(n11OrderData.paymentStatus),
-          shippingCompany: n11OrderData.shippingCompany?.name,
-          trackingNumber: n11OrderData.trackingNumber,
-          trackingUrl: n11OrderData.trackingUrl,
-          estimatedDeliveryDate: n11OrderData.estimatedDeliveryDate
-            ? new Date(n11OrderData.estimatedDeliveryDate)
-            : null,
-          actualDeliveryDate: n11OrderData.actualDeliveryDate
-            ? new Date(n11OrderData.actualDeliveryDate)
-            : null,
-          shippingAddress:
-            n11OrderData.deliveryAddress || n11OrderData.shippingAddress,
-          billingAddress: n11OrderData.billingAddress,
-          customerInfo: {
-            fullName: n11OrderData.buyer?.fullName,
-            email: n11OrderData.buyer?.email,
-            gsm: n11OrderData.buyer?.gsm,
-            citizenshipId: n11OrderData.citizenshipId,
-          },
-          invoiceInfo: n11OrderData.invoiceInfo,
-          n11OrderDate: n11OrderData.createDate
-            ? new Date(n11OrderData.createDate)
-            : new Date(),
-          lastSyncAt: new Date(),
-          platformFees: n11OrderData.platformFees || n11OrderData.commission,
-          cancellationReason: n11OrderData.cancellationReason,
-          returnReason: n11OrderData.returnReason,
-          platformOrderData: n11OrderData,
-        },
-        { transaction }
-      );
-    } catch (error) {
-      this.logger.error(`Failed to create N11Order record: ${error.message}`, {
-        error,
-        orderId,
-        orderNumber: n11OrderData.orderNumber,
-      });
-      throw error;
-    }
-  }
-
-  /**
    * Map N11 API status to N11Order model status enum
    * @param {string} apiStatus - Status from N11 API
    * @returns {string} N11Order model status
    */
-  mapToN11ModelStatus(apiStatus) {
+  mapOrderStatus(apiStatus) {
     const statusMap = {
-      Confirmed: "Onaylandi",
-      UnConfirmed: "Yeni",
+      Created: "Olusturuldu",
       Picking: "Hazirlaniyor",
       Shipped: "Kargoya_Verildi",
-      Delivered: "Teslim_Edildi",
       Cancelled: "Iptal_Edildi",
-      Rejected: "Iptal_Edildi",
-      Returned: "Iade_Edildi",
-      Completing: "Hazirlaniyor",
+      Delivered: "Teslim_Edildi",
+      UnPacked: "Paketlenmedi",
+      UnSupplied: "Temin_Edilmedi",
     };
 
     return statusMap[apiStatus] || "Yeni";
@@ -664,13 +607,10 @@ class N11Service extends BasePlatformService {
       // Default parameters for N11 order list API
       const defaultParams = {
         status: params.status || "Confirmed",
-        period: params.period || "lastOrderDate",
         startDate: params.startDate || this.getDefaultStartDate(),
         endDate: params.endDate || this.getDefaultEndDate(),
-        pagingData: {
-          currentPage: params.page || 0,
-          pageSize: params.size || 50,
-        },
+        page: params.page || 0,
+        size: params.size || 50,
       };
 
       const queryParams = { ...defaultParams, ...params };
@@ -680,24 +620,20 @@ class N11Service extends BasePlatformService {
       );
 
       const response = await this.retryRequest(() =>
-        this.axiosInstance.post(N11_API.ENDPOINTS.ORDERS, queryParams)
+        this.axiosInstance.get(N11_API.ENDPOINTS.ORDERS, queryParams)
       );
 
-      if (
-        !response.data ||
-        !response.data.result ||
-        response.data.result.status !== "success"
-      ) {
+      if (!response.data.content || response.data.pageCount === 0) {
         return {
           success: false,
           message:
-            response.data?.result?.errorMessage ||
+            response.data.content?.result?.errorMessage ||
             "Failed to fetch orders from N11",
           data: [],
         };
       }
 
-      const orders = response.data.orderList || [];
+      const orders = response.data.content || [];
 
       this.logger.info(`Retrieved ${orders.length} orders from N11`);
 
@@ -797,14 +733,14 @@ class N11Service extends BasePlatformService {
             const { ShippingDetail } = require("../../../../../models");
             const shippingDetail = await ShippingDetail.create(
               {
-                recipientName: order.recipient?.fullName || "",
-                address1: order.billingAddress?.address || "",
-                city: order.billingAddress?.city || "",
-                state: order.billingAddress?.district || "",
-                postalCode: order.billingAddress?.postalCode || "",
+                recipientName: order.shippingAddress?.fullName || "",
+                address1: order.shippingAddress?.address || "",
+                city: order.shippingAddress?.city || "",
+                state: order.shippingAddress?.district || "",
+                postalCode: order.shippingAddress?.postalCode || "",
                 country: "Turkey",
                 phone: phoneNumber || "",
-                email: order.buyer?.email || "",
+                email: order.customerEmail || "",
               },
               { transaction: t }
             );
@@ -815,11 +751,16 @@ class N11Service extends BasePlatformService {
                 externalOrderId: order.id.toString(),
                 connectionId: this.connectionId,
                 userId: this.connection.userId,
-                customerName: order.buyer?.fullName || "Unknown",
-                customerEmail: order.buyer?.email || "",
+                orderNumber: order.orderNumber || "",
+                platform: "n11",
+                customerName: order.customerfullName || "Unknown",
+                customerEmail: order.customerEmail || "",
                 customerPhone: phoneNumber || "",
-                orderDate: new Date(order.createDate),
-                status: this.mapOrderStatus(order.status),
+                orderDate: new Date(
+                  order.packageHistories[0]?.createdDate ||
+                    order.lastModifiedDate
+                ),
+                orderStatus: this.mapOrderStatus(order.shipmentPackageStatus),
                 totalAmount: parseFloat(order.totalAmount || 0),
                 currency: "TRY",
                 shippingDetailId: shippingDetail.id,
@@ -832,26 +773,27 @@ class N11Service extends BasePlatformService {
             );
 
             // Create order items
-            if (order.orderItemList && Array.isArray(order.orderItemList)) {
-              for (const item of order.orderItemList) {
+            if (order.lines && Array.isArray(order.lines)) {
+              for (const item of order.lines) {
                 await OrderItem.create(
                   {
                     orderId: normalizedOrder.id,
                     externalProductId:
                       item.productId?.toString() || item.id?.toString(),
-                    name: item.productName || item.title,
-                    sku: item.productSellerCode || item.sellerStockCode,
+                    title: item.productName || item.title,
+                    sku: item.stockCode || item.sellerStockCode,
                     quantity: parseInt(item.quantity || 1, 10),
                     unitPrice: parseFloat(item.price || 0),
                     totalPrice: parseFloat(
-                      item.totalAmount || item.price * item.quantity || 0
+                      order.totalAmount || item.price * item.quantity || 0
                     ),
-                    discount: parseFloat(item.discount || 0),
-                    options: item.attributes
-                      ? {
-                          attributes: item.attributes,
-                        }
+                    discount: parseFloat(item.sellerDiscount + item.mallDiscount || 0),
+                    invoiceTotal: parseFloat(item.sellerInvoiceAmount || 0),
+                    currency: "TRY",
+                    variantInfo: item.variantAttributes
+                      ? JSON.stringify(item.variantAttributes)
                       : null,
+                    rawData: JSON.stringify(item),
                     metadata: {
                       platformData: item,
                     },
@@ -919,42 +861,42 @@ class N11Service extends BasePlatformService {
           n11OrderId: n11OrderData.id?.toString(),
           orderNumber: n11OrderData.orderNumber,
           sellerId: n11OrderData.sellerId,
-          buyerId: n11OrderData.buyer?.id?.toString(),
-          orderStatus: this.mapToN11ModelStatus(n11OrderData.status),
-          paymentType: this.mapPaymentType(n11OrderData.paymentType),
-          paymentStatus: this.mapPaymentStatus(n11OrderData.paymentStatus),
-          shippingCompany: n11OrderData.shippingCompany?.name,
-          trackingNumber: n11OrderData.trackingNumber,
-          trackingUrl: n11OrderData.trackingUrl,
-          estimatedDeliveryDate: n11OrderData.estimatedDeliveryDate
-            ? new Date(n11OrderData.estimatedDeliveryDate)
+          buyerId: n11OrderData.customerId?.toString(),
+          orderStatus: this.mapOrderStatus(
+            n11OrderData.shipmentPackageStatus
+          ),
+          shippingCompany: n11OrderData.cargoProviderName,
+          trackingNumber: n11OrderData.cargoTrackingNumber,
+          trackingUrl: "According to shippingCompany",
+          estimatedDeliveryDate: n11OrderData.agreedDeliveryDate
+            ? new Date(n11OrderData.agreedDeliveryDate)
             : null,
-          actualDeliveryDate: n11OrderData.actualDeliveryDate
-            ? new Date(n11OrderData.actualDeliveryDate)
+          actualDeliveryDate: n11OrderData.agreedDeliveryDate
+            ? new Date(n11OrderData.agreedDeliveryDate)
             : null,
-          shippingAddress:
-            n11OrderData.deliveryAddress || n11OrderData.shippingAddress,
+          shippingAddress: n11OrderData.shippingAddress,
           billingAddress: n11OrderData.billingAddress,
           customerInfo: {
-            fullName: n11OrderData.buyer?.fullName,
-            email: n11OrderData.buyer?.email,
-            gsm: n11OrderData.buyer?.gsm,
-            citizenshipId: n11OrderData.citizenshipId,
+            fullName: n11OrderData.customerfullName,
+            email: n11OrderData.customerEmail,
+            gsm:
+              n11OrderData.billingAddress?.gsm ||
+              n11OrderData.shippingAddress?.gsm,
+            citizenshipId: n11OrderData.tcIdentityNumber,
           },
-          invoiceInfo: n11OrderData.invoiceInfo,
-          n11OrderDate: n11OrderData.createDate
-            ? new Date(n11OrderData.createDate)
+          n11OrderDate: n11OrderData.lastModifiedDate
+            ? new Date(n11OrderData.lastModifiedDate)
             : new Date(),
           lastSyncAt: new Date(),
-          platformFees: n11OrderData.platformFees || n11OrderData.commission,
-          cancellationReason: n11OrderData.cancellationReason,
-          returnReason: n11OrderData.returnReason,
+          platformFees: n11OrderData.platformFees || n11OrderData.commission || 0,
+          cancellationReason: n11OrderData.cancellationReason || null,
+          returnReason: n11OrderData.returnReason || null,
           platformOrderData: n11OrderData,
         },
         { transaction }
       );
     } catch (error) {
-      this.logger.error(`Failed to create N11Order record: ${error.message}`, {
+      this.logger.error(`Failed to create N11 Order record: ${error.message}`, {
         error,
         orderId,
         orderNumber: n11OrderData.orderNumber,
@@ -968,17 +910,15 @@ class N11Service extends BasePlatformService {
    * @param {string} apiStatus - Status from N11 API
    * @returns {string} N11Order model status
    */
-  mapToN11ModelStatus(apiStatus) {
+  mapOrderStatus(apiStatus) {
     const statusMap = {
-      Confirmed: "Onaylandi",
-      UnConfirmed: "Yeni",
+      Approved: "Onaylandi",
+      New: "Yeni",
       Picking: "Hazirlaniyor",
       Shipped: "Kargoya_Verildi",
       Delivered: "Teslim_Edildi",
       Cancelled: "Iptal_Edildi",
-      Rejected: "Iptal_Edildi",
       Returned: "Iade_Edildi",
-      Completing: "Hazirlaniyor",
     };
 
     return statusMap[apiStatus] || "Yeni";
@@ -1013,892 +953,6 @@ class N11Service extends BasePlatformService {
     };
 
     return statusMap[paymentStatus] || "Bekliyor";
-  }
-
-  /**
-   * Update order status in N11
-   * @param {string} orderId - Order ID
-   * @param {string} status - New status
-   * @param {Array} lineIds - Order line IDs to update
-   * @returns {Promise<Object>} Update result
-   */
-  async updateOrderStatus(orderId, status, lineIds) {
-    try {
-      if (!this.axiosInstance) {
-        await this.setupAxiosInstance();
-      }
-
-      const order = await Order.findByPk(orderId, {
-        include: [{ model: OrderItem }],
-      });
-
-      if (!order) {
-        throw new Error(`Order not found: ${orderId}`);
-      }
-
-      // Map internal status to N11 status
-      const n11Status = this.mapToPlatformStatus(status);
-
-      // Each status has its own endpoint and data structure in N11 API
-      let endpoint;
-      let requestData;
-
-      switch (status) {
-        case "processing":
-          endpoint = "/order/v1/accept";
-          requestData = {
-            orderNumber: order.externalOrderId,
-            lines:
-              lineIds ||
-              order.OrderItems.map((item) => ({ lineId: item.externalLineId })),
-          };
-          break;
-
-        case "shipped":
-          if (!order.trackingNumber) {
-            throw new Error(
-              "Tracking number is required for shipping status update"
-            );
-          }
-          endpoint = "/order/v1/ship";
-          requestData = {
-            orderNumber: order.externalOrderId,
-            lines:
-              lineIds ||
-              order.OrderItems.map((item) => ({ lineId: item.externalLineId })),
-            shipmentInfo: {
-              trackingNumber: order.trackingNumber,
-              trackingUrl: order.trackingUrl || "",
-              shipmentCompany: order.carrierName || "Other",
-            },
-          };
-          break;
-
-        case "cancelled":
-          endpoint = "/order/v1/reject";
-          requestData = {
-            orderNumber: order.externalOrderId,
-            lines:
-              lineIds ||
-              order.OrderItems.map((item) => ({ lineId: item.externalLineId })),
-            rejectReason: order.cancellationReason || "MerchantCancel",
-            rejectDescription: order.cancellationNotes || "",
-          };
-          break;
-
-        case "delivered":
-          endpoint = "/order/v1/delivery";
-          requestData = {
-            orderNumber: order.externalOrderId,
-            lines:
-              lineIds ||
-              order.OrderItems.map((item) => ({ lineId: item.externalLineId })),
-            deliveryInfo: {
-              deliveryDate: new Date().toISOString(),
-            },
-          };
-          break;
-
-        case "return_approved":
-          endpoint = "/order/v1/return/approve";
-          requestData = {
-            orderNumber: order.externalOrderId,
-            lines:
-              lineIds ||
-              order.OrderItems.map((item) => ({ lineId: item.externalLineId })),
-          };
-          break;
-
-        case "return_rejected":
-          endpoint = "/order/v1/return/reject";
-          requestData = {
-            orderNumber: order.externalOrderId,
-            lines:
-              lineIds ||
-              order.OrderItems.map((item) => ({ lineId: item.externalLineId })),
-            rejectReason: order.returnRejectionReason || "Other",
-          };
-          break;
-
-        default:
-          throw new Error(
-            `Status update to '${status}' is not supported by N11 API`
-          );
-      }
-
-      // Make the API request
-      const response = await this.axiosInstance.post(endpoint, requestData);
-
-      // Check response and handle results
-      if (response.data && response.data.result === "success") {
-        // Update local order status with transaction
-        await sequelize.transaction(async (t) => {
-          await order.update(
-            {
-              status,
-              lastSyncedAt: new Date(),
-            },
-            { transaction: t }
-          );
-
-          // Update additional fields based on status
-          if (status === "delivered") {
-            await order.update(
-              {
-                deliveryDate: new Date(),
-              },
-              { transaction: t }
-            );
-          } else if (status === "cancelled") {
-            await order.update(
-              {
-                cancellationDate: new Date(),
-              },
-              { transaction: t }
-            );
-          }
-        });
-
-        return {
-          success: true,
-          message: `Successfully updated order status to ${status}`,
-          data: order,
-        };
-      } else {
-        throw new Error(
-          response.data?.message || "Failed to update status on N11"
-        );
-      }
-    } catch (error) {
-      logger.error(`Failed to update order status in N11: ${error.message}`, {
-        error,
-        orderId,
-        status,
-      });
-
-      throw error;
-    }
-  }
-
-  /**
-   * Update order items using N11 UpdateOrder service
-   * @param {string} orderId - Order ID
-   * @param {Array} orderItems - Updated order items
-   * @returns {Promise<Object>} Update result
-   */
-  async updateOrderItems(orderId, orderItems) {
-    try {
-      await this.initialize();
-
-      const updateData = {
-        orderNumber: orderId,
-        orderItemList: orderItems.map((item) => ({
-          id: item.id,
-          quantity: item.quantity,
-          price: item.price,
-          dueAmount: item.dueAmount,
-        })),
-      };
-
-      const response = await this.retryRequest(() =>
-        this.axiosInstance.post(N11_API.ENDPOINTS.UPDATE_ORDER, updateData)
-      );
-
-      if (
-        response.data &&
-        response.data.result &&
-        response.data.result.status === "success"
-      ) {
-        return {
-          success: true,
-          message: "Order items updated successfully",
-          data: response.data,
-        };
-      } else {
-        throw new Error(
-          response.data?.result?.errorMessage || "Failed to update order items"
-        );
-      }
-    } catch (error) {
-      this.logger.error(`Failed to update order items: ${error.message}`, {
-        error,
-        orderId,
-        connectionId: this.connectionId,
-      });
-
-      return {
-        success: false,
-        message: `Failed to update order items: ${error.message}`,
-        error: error.response?.data || error.message,
-      };
-    }
-  }
-
-  /**
-   * Split or combine packages using N11 splitCombinePackage service
-   * @param {string} orderId - Order ID
-   * @param {Object} packageData - Package split/combine data
-   * @returns {Promise<Object>} Operation result
-   */
-  async splitCombinePackage(orderId, packageData) {
-    try {
-      await this.initialize();
-
-      const response = await this.retryRequest(() =>
-        this.axiosInstance.post(N11_API.ENDPOINTS.SPLIT_PACKAGE, {
-          orderNumber: orderId,
-          ...packageData,
-        })
-      );
-
-      if (
-        response.data &&
-        response.data.result &&
-        response.data.result.status === "success"
-      ) {
-        return {
-          success: true,
-          message: "Package operation completed successfully",
-          data: response.data,
-        };
-      } else {
-        throw new Error(
-          response.data?.result?.errorMessage ||
-            "Failed to split/combine package"
-        );
-      }
-    } catch (error) {
-      this.logger.error(`Failed to split/combine package: ${error.message}`, {
-        error,
-        orderId,
-        connectionId: this.connectionId,
-      });
-
-      return {
-        success: false,
-        message: `Failed to split/combine package: ${error.message}`,
-        error: error.response?.data || error.message,
-      };
-    }
-  }
-
-  /**
-   * Send labor cost to order items using N11 LaborCost service
-   * @param {string} orderId - Order ID
-   * @param {Array} laborCosts - Labor cost data for order items
-   * @returns {Promise<Object>} Operation result
-   */
-  async sendLaborCost(orderId, laborCosts) {
-    try {
-      await this.initialize();
-
-      const laborData = {
-        orderNumber: orderId,
-        orderItemList: laborCosts.map((cost) => ({
-          id: cost.itemId,
-          laborCost: cost.laborCost,
-        })),
-      };
-
-      const response = await this.retryRequest(() =>
-        this.axiosInstance.post(N11_API.ENDPOINTS.LABOR_COST, laborData)
-      );
-
-      if (
-        response.data &&
-        response.data.result &&
-        response.data.result.status === "success"
-      ) {
-        return {
-          success: true,
-          message: "Labor costs sent successfully",
-          data: response.data,
-        };
-      } else {
-        throw new Error(
-          response.data?.result?.errorMessage || "Failed to send labor costs"
-        );
-      }
-    } catch (error) {
-      this.logger.error(`Failed to send labor costs: ${error.message}`, {
-        error,
-        orderId,
-        connectionId: this.connectionId,
-      });
-
-      return {
-        success: false,
-        message: `Failed to send labor costs: ${error.message}`,
-        error: error.response?.data || error.message,
-      };
-    }
-  }
-
-  /**
-   * Get categories using N11 GetCategories service
-   * @returns {Promise<Object>} Categories data
-   */
-  async getCategories() {
-    try {
-      await this.initialize();
-
-      const response = await this.retryRequest(() =>
-        this.axiosInstance.get(N11_API.ENDPOINTS.CATEGORIES)
-      );
-
-      if (
-        response.data &&
-        response.data.result &&
-        response.data.result.status === "success"
-      ) {
-        return {
-          success: true,
-          message: "Categories fetched successfully",
-          data: response.data.categoryList || [],
-        };
-      } else {
-        throw new Error(
-          response.data?.result?.errorMessage || "Failed to fetch categories"
-        );
-      }
-    } catch (error) {
-      this.logger.error(`Failed to fetch categories: ${error.message}`, {
-        error,
-        connectionId: this.connectionId,
-      });
-
-      return {
-        success: false,
-        message: `Failed to fetch categories: ${error.message}`,
-        error: error.response?.data || error.message,
-        data: [],
-      };
-    }
-  }
-
-  /**
-   * Get category attributes using N11 GetCategoryAttributesList service
-   * @param {string} categoryId - Category ID
-   * @returns {Promise<Object>} Category attributes data
-   */
-  async getCategoryAttributes(categoryId) {
-    try {
-      await this.initialize();
-
-      const response = await this.retryRequest(() =>
-        this.axiosInstance.post(N11_API.ENDPOINTS.CATEGORY_ATTRIBUTES, {
-          categoryId: categoryId,
-        })
-      );
-
-      if (
-        response.data &&
-        response.data.result &&
-        response.data.result.status === "success"
-      ) {
-        return {
-          success: true,
-          message: "Category attributes fetched successfully",
-          data: response.data.categoryAttributeList || [],
-        };
-      } else {
-        throw new Error(
-          response.data?.result?.errorMessage ||
-            "Failed to fetch category attributes"
-        );
-      }
-    } catch (error) {
-      this.logger.error(
-        `Failed to fetch category attributes: ${error.message}`,
-        {
-          error,
-          categoryId,
-          connectionId: this.connectionId,
-        }
-      );
-
-      return {
-        success: false,
-        message: `Failed to fetch category attributes: ${error.message}`,
-        error: error.response?.data || error.message,
-        data: [],
-      };
-    }
-  }
-
-  /**
-   * Query seller products using N11 GetProductQuery service
-   * @param {Object} queryParams - Product query parameters
-   * @returns {Promise<Object>} Products data
-   */
-  async getProductQuery(queryParams = {}) {
-    try {
-      await this.initialize();
-
-      const defaultParams = {
-        pagingData: {
-          currentPage: queryParams.page || 0,
-          pageSize: queryParams.size || 50,
-        },
-      };
-
-      const requestData = { ...defaultParams, ...queryParams };
-
-      const response = await this.retryRequest(() =>
-        this.axiosInstance.post(N11_API.ENDPOINTS.PRODUCT_QUERY, requestData)
-      );
-
-      if (
-        response.data &&
-        response.data.result &&
-        response.data.result.status === "success"
-      ) {
-        return {
-          success: true,
-          message: "Products fetched successfully",
-          data: response.data.productList || [],
-          pagination: response.data.pagingData,
-        };
-      } else {
-        throw new Error(
-          response.data?.result?.errorMessage ||
-            "Failed to fetch products from N11"
-        );
-      }
-    } catch (error) {
-      this.logger.error(`Failed to fetch products from N11: ${error.message}`, {
-        error,
-        connectionId: this.connectionId,
-      });
-
-      return {
-        success: false,
-        message: `Failed to fetch products: ${error.message}`,
-        error: error.response?.data || error.message,
-        data: [],
-      };
-    }
-  }
-
-  /**
-   * Fetch products from N11 - Standardized method name for consistency across platforms
-   * @param {Object} params - Query parameters for product fetching
-   * @returns {Promise<Object>} Products data
-   */
-  async fetchProducts(params = {}) {
-    try {
-      this.logger.debug(
-        `Fetching N11 products with params: ${JSON.stringify(params)}`
-      );
-
-      // Call the existing getProductQuery method with standardized parameters
-      const result = await this.getProductQuery({
-        page: params.page || 0,
-        size: params.size || params.limit || 50,
-        ...params,
-      });
-
-      if (result.success) {
-        this.logger.info(
-          `Successfully fetched ${result.data.length} products from N11`
-        );
-
-        return {
-          success: true,
-          message: `Successfully fetched ${result.data.length} products from N11`,
-          data: result.data,
-          pagination: result.pagination
-            ? {
-                page: result.pagination.currentPage || 0,
-                size: result.pagination.pageSize || 50,
-                totalPages: Math.ceil(
-                  (result.pagination.totalCount || 0) /
-                    (result.pagination.pageSize || 50)
-                ),
-                totalElements:
-                  result.pagination.totalCount || result.data.length,
-              }
-            : undefined,
-        };
-      }
-
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to fetch products from N11: ${error.message}`, {
-        error,
-        connectionId: this.connectionId,
-      });
-
-      return {
-        success: false,
-        message: `Failed to fetch products: ${error.message}`,
-        error: error.response?.data || error.message,
-        data: [],
-      };
-    }
-  }
-
-  /**
-   * Search catalog using N11 CatalogService
-   * @param {Object} searchParams - Catalog search parameters
-   * @returns {Promise<Object>} Catalog search results
-   */
-  async searchCatalog(searchParams = {}) {
-    try {
-      await this.initialize();
-
-      const response = await this.retryRequest(() =>
-        this.axiosInstance.post(N11_API.ENDPOINTS.CATALOG_SEARCH, searchParams)
-      );
-
-      if (
-        response.data &&
-        response.data.result &&
-        response.data.result.status === "success"
-      ) {
-        return {
-          success: true,
-          message: "Catalog search completed successfully",
-          data: response.data.productList || [],
-        };
-      } else {
-        throw new Error(
-          response.data?.result?.errorMessage || "Failed to search catalog"
-        );
-      }
-    } catch (error) {
-      this.logger.error(`Failed to search catalog: ${error.message}`, {
-        error,
-        connectionId: this.connectionId,
-      });
-
-      return {
-        success: false,
-        message: `Failed to search catalog: ${error.message}`,
-        error: error.response?.data || error.message,
-        data: [],
-      };
-    }
-  }
-
-  /**
-   * Get return requests using N11 ReturnService
-   * @param {Object} params - Return request parameters
-   * @returns {Promise<Object>} Return requests data
-   */
-  async getReturnRequests(params = {}) {
-    try {
-      await this.initialize();
-
-      const defaultParams = {
-        period: params.period || "lastOrderDate",
-        startDate: params.startDate || this.getDefaultStartDate(),
-        endDate: params.endDate || this.getDefaultEndDate(),
-        pagingData: {
-          currentPage: params.page || 0,
-          pageSize: params.size || 50,
-        },
-      };
-
-      const queryParams = { ...defaultParams, ...params };
-
-      const response = await this.retryRequest(() =>
-        this.axiosInstance.post(N11_API.ENDPOINTS.RETURNS, queryParams)
-      );
-
-      if (
-        response.data &&
-        response.data.result &&
-        response.data.result.status === "success"
-      ) {
-        return {
-          success: true,
-          message: "Return requests fetched successfully",
-          data: response.data.returnList || [],
-          pagination: response.data.pagingData,
-        };
-      } else {
-        throw new Error(
-          response.data?.result?.errorMessage ||
-            "Failed to fetch return requests"
-        );
-      }
-    } catch (error) {
-      this.logger.error(`Failed to fetch return requests: ${error.message}`, {
-        error,
-        connectionId: this.connectionId,
-      });
-
-      return {
-        success: false,
-        message: `Failed to fetch return requests: ${error.message}`,
-        error: error.response?.data || error.message,
-        data: [],
-      };
-    }
-  }
-
-  /**
-   * Approve return request using N11 ReturnService
-   * @param {string} returnId - Return request ID
-   * @returns {Promise<Object>} Operation result
-   */
-  async approveReturn(returnId) {
-    try {
-      await this.initialize();
-
-      const response = await this.retryRequest(() =>
-        this.axiosInstance.post(N11_API.ENDPOINTS.RETURN_APPROVE, {
-          returnId: returnId,
-        })
-      );
-
-      if (
-        response.data &&
-        response.data.result &&
-        response.data.result.status === "success"
-      ) {
-        return {
-          success: true,
-          message: "Return request approved successfully",
-          data: response.data,
-        };
-      } else {
-        throw new Error(
-          response.data?.result?.errorMessage ||
-            "Failed to approve return request"
-        );
-      }
-    } catch (error) {
-      this.logger.error(`Failed to approve return request: ${error.message}`, {
-        error,
-        returnId,
-        connectionId: this.connectionId,
-      });
-
-      return {
-        success: false,
-        message: `Failed to approve return request: ${error.message}`,
-        error: error.response?.data || error.message,
-      };
-    }
-  }
-
-  /**
-   * Reject return request using N11 ReturnService
-   * @param {string} returnId - Return request ID
-   * @param {string} rejectReason - Rejection reason
-   * @returns {Promise<Object>} Operation result
-   */
-  async rejectReturn(returnId, rejectReason) {
-    try {
-      await this.initialize();
-
-      const response = await this.retryRequest(() =>
-        this.axiosInstance.post(N11_API.ENDPOINTS.RETURN_REJECT, {
-          returnId: returnId,
-          rejectReason: rejectReason,
-        })
-      );
-
-      if (
-        response.data &&
-        response.data.result &&
-        response.data.result.status === "success"
-      ) {
-        return {
-          success: true,
-          message: "Return request rejected successfully",
-          data: response.data,
-        };
-      } else {
-        throw new Error(
-          response.data?.result?.errorMessage ||
-            "Failed to reject return request"
-        );
-      }
-    } catch (error) {
-      this.logger.error(`Failed to reject return request: ${error.message}`, {
-        error,
-        returnId,
-        connectionId: this.connectionId,
-      });
-
-      return {
-        success: false,
-        message: `Failed to reject return request: ${error.message}`,
-        error: error.response?.data || error.message,
-      };
-    }
-  }
-
-  /**
-   * Update online delivery order using N11 Online Delivery Update service
-   * @param {string} orderId - Order ID
-   * @param {Object} deliveryData - Delivery update data
-   * @returns {Promise<Object>} Update result
-   */
-  async updateOnlineDelivery(orderId, deliveryData) {
-    try {
-      await this.initialize();
-
-      const response = await this.retryRequest(() =>
-        this.axiosInstance.post(N11_API.ENDPOINTS.ONLINE_DELIVERY_UPDATE, {
-          orderNumber: orderId,
-          ...deliveryData,
-        })
-      );
-
-      if (
-        response.data &&
-        response.data.result &&
-        response.data.result.status === "success"
-      ) {
-        return {
-          success: true,
-          message: "Online delivery updated successfully",
-          data: response.data,
-        };
-      } else {
-        throw new Error(
-          response.data?.result?.errorMessage ||
-            "Failed to update online delivery"
-        );
-      }
-    } catch (error) {
-      this.logger.error(`Failed to update online delivery: ${error.message}`, {
-        error,
-        orderId,
-        connectionId: this.connectionId,
-      });
-
-      return {
-        success: false,
-        message: `Failed to update online delivery: ${error.message}`,
-        error: error.response?.data || error.message,
-      };
-    }
-  }
-
-  /**
-   * Get default start date (7 days ago)
-   * @returns {string} ISO date string
-   */
-  getDefaultStartDate() {
-    const date = new Date();
-    date.setDate(date.getDate() - 7);
-    return date.toISOString().split("T")[0];
-  }
-
-  /**
-   * Get default end date (today)
-   * @returns {string} ISO date string
-   */
-  getDefaultEndDate() {
-    return new Date().toISOString().split("T")[0];
-  }
-
-  /**
-   * Update order status on N11 platform
-   * @param {string} orderId - Internal order ID
-   * @param {string} newStatus - New status to set
-   * @returns {Object} - Result of the status update operation
-   */
-  async updateOrderStatus(orderId, newStatus) {
-    try {
-      await this.initialize();
-
-      const order = await Order.findByPk(orderId);
-
-      if (!order) {
-        throw new Error(`Order with ID ${orderId} not found`);
-      }
-
-      const n11Status = this.mapToPlatformStatus(newStatus);
-      let endpoint;
-      let requestData;
-
-      // Map status to appropriate N11 API endpoint
-      switch (newStatus) {
-        case "processing":
-          endpoint = N11_API.ENDPOINTS.ACCEPT_ORDER;
-          requestData = {
-            orderNumber: order.externalOrderId,
-          };
-          break;
-
-        case "shipped":
-          endpoint = N11_API.ENDPOINTS.SHIP_ORDER;
-          requestData = {
-            orderNumber: order.externalOrderId,
-            trackingNumber: order.trackingNumber || "",
-            shipmentCompany: order.carrierName || "Other",
-          };
-          break;
-
-        case "cancelled":
-          endpoint = N11_API.ENDPOINTS.REJECT_ORDER;
-          requestData = {
-            orderNumber: order.externalOrderId,
-            rejectReason: order.cancellationReason || "MerchantCancel",
-          };
-          break;
-
-        case "delivered":
-          endpoint = N11_API.ENDPOINTS.DELIVER_ORDER;
-          requestData = {
-            orderNumber: order.externalOrderId,
-          };
-          break;
-
-        default:
-          throw new Error(
-            `Status update to '${newStatus}' is not supported by N11 API`
-          );
-      }
-
-      const response = await this.retryRequest(() =>
-        this.axiosInstance.post(endpoint, requestData)
-      );
-
-      if (
-        response.data &&
-        response.data.result &&
-        response.data.result.status === "success"
-      ) {
-        // Update local order status
-        await order.update({
-          status: newStatus,
-          lastSyncedAt: new Date(),
-        });
-
-        return {
-          success: true,
-          message: `Order status updated to ${newStatus}`,
-          data: order,
-        };
-      } else {
-        throw new Error(
-          response.data?.result?.errorMessage ||
-            "Failed to update status on N11"
-        );
-      }
-    } catch (error) {
-      this.logger.error(
-        `Failed to update order status on N11: ${error.message}`,
-        {
-          error,
-          orderId,
-          connectionId: this.connectionId,
-        }
-      );
-
-      return {
-        success: false,
-        message: `Failed to update order status: ${error.message}`,
-        error: error.response?.data || error.message,
-      };
-    }
   }
 }
 

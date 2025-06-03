@@ -1,6 +1,6 @@
-const axios = require('axios');
-const crypto = require('crypto');
-const logger = require('../utils/logger');
+const axios = require("axios");
+const crypto = require("crypto");
+const logger = require("../utils/logger");
 
 /**
  * Turkish Payment Gateway Service
@@ -17,51 +17,52 @@ class TurkishPaymentService {
    */
   initializeGateways() {
     // İyzico (Most popular in Turkey)
-    this.gateways.set('IYZICO', {
-      name: 'İyzico',
-      apiUrl: process.env.IYZICO_API_URL || 'https://api.iyzipay.com',
-      sandboxUrl: 'https://sandbox-api.iyzipay.com',
-      supportedCurrencies: ['TRY', 'USD', 'EUR'],
-      supportedCards: ['VISA', 'MASTERCARD', 'AMERICAN_EXPRESS', 'TROY'],
+    this.gateways.set("IYZICO", {
+      name: "İyzico",
+      apiUrl: process.env.IYZICO_API_URL || "https://api.iyzipay.com",
+      sandboxUrl: "https://sandbox-api.iyzipay.com",
+      supportedCurrencies: ["TRY", "USD", "EUR"],
+      supportedCards: ["VISA", "MASTERCARD", "AMERICAN_EXPRESS", "TROY"],
       installmentSupport: true,
       maxInstallments: 12,
-      features: ['3DS', 'TOKENIZATION', 'RECURRING', 'MARKETPLACE']
+      features: ["3DS", "TOKENIZATION", "RECURRING", "MARKETPLACE"],
     });
 
     // PayU Turkey
-    this.gateways.set('PAYU', {
-      name: 'PayU Türkiye',
-      apiUrl: process.env.PAYU_API_URL || 'https://secure.payu.com.tr',
-      sandboxUrl: 'https://sandbox.payu.com.tr',
-      supportedCurrencies: ['TRY'],
-      supportedCards: ['VISA', 'MASTERCARD', 'AMERICAN_EXPRESS'],
+    this.gateways.set("PAYU", {
+      name: "PayU Türkiye",
+      apiUrl: process.env.PAYU_API_URL || "https://secure.payu.com.tr",
+      sandboxUrl: "https://sandbox.payu.com.tr",
+      supportedCurrencies: ["TRY"],
+      supportedCards: ["VISA", "MASTERCARD", "AMERICAN_EXPRESS"],
       installmentSupport: true,
       maxInstallments: 12,
-      features: ['3DS', 'TOKENIZATION']
+      features: ["3DS", "TOKENIZATION"],
     });
 
     // Garanti BBVA
-    this.gateways.set('GARANTI', {
-      name: 'Garanti BBVA',
-      apiUrl: process.env.GARANTI_API_URL || 'https://sanalposprov.garanti.com.tr',
-      sandboxUrl: 'https://sanalposprovtest.garanti.com.tr',
-      supportedCurrencies: ['TRY', 'USD', 'EUR'],
-      supportedCards: ['VISA', 'MASTERCARD', 'AMERICAN_EXPRESS', 'TROY'],
+    this.gateways.set("GARANTI", {
+      name: "Garanti BBVA",
+      apiUrl:
+        process.env.GARANTI_API_URL || "https://sanalposprov.garanti.com.tr",
+      sandboxUrl: "https://sanalposprovtest.garanti.com.tr",
+      supportedCurrencies: ["TRY", "USD", "EUR"],
+      supportedCards: ["VISA", "MASTERCARD", "AMERICAN_EXPRESS", "TROY"],
       installmentSupport: true,
       maxInstallments: 18,
-      features: ['3DS', 'TOKENIZATION', 'RECURRING']
+      features: ["3DS", "TOKENIZATION", "RECURRING"],
     });
 
     // Akbank
-    this.gateways.set('AKBANK', {
-      name: 'Akbank',
-      apiUrl: process.env.AKBANK_API_URL || 'https://akodeme.akbank.com',
-      sandboxUrl: 'https://akodeme-test.akbank.com',
-      supportedCurrencies: ['TRY'],
-      supportedCards: ['VISA', 'MASTERCARD', 'TROY'],
+    this.gateways.set("AKBANK", {
+      name: "Akbank",
+      apiUrl: process.env.AKBANK_API_URL || "https://akodeme.akbank.com",
+      sandboxUrl: "https://akodeme-test.akbank.com",
+      supportedCurrencies: ["TRY"],
+      supportedCards: ["VISA", "MASTERCARD", "TROY"],
       installmentSupport: true,
       maxInstallments: 12,
-      features: ['3DS', 'TOKENIZATION']
+      features: ["3DS", "TOKENIZATION"],
     });
   }
 
@@ -72,62 +73,62 @@ class TurkishPaymentService {
    */
   async getPaymentMethods(options = {}) {
     try {
-      const { amount, currency = 'TRY', customerType = 'INDIVIDUAL' } = options;
+      const { amount, currency = "TRY", customerType = "INDIVIDUAL" } = options;
 
       const paymentMethods = [];
 
       // Credit/Debit Cards
       paymentMethods.push({
-        type: 'CREDIT_CARD',
-        name: 'Kredi Kartı',
-        icon: 'credit-card',
-        supportedCards: ['VISA', 'MASTERCARD', 'AMERICAN_EXPRESS', 'TROY'],
+        type: "CREDIT_CARD",
+        name: "Kredi Kartı",
+        icon: "credit-card",
+        supportedCards: ["VISA", "MASTERCARD", "AMERICAN_EXPRESS", "TROY"],
         installmentOptions: await this.getInstallmentOptions(amount, currency),
         fees: {
           percentage: 2.5,
-          fixed: 0
-        }
+          fixed: 0,
+        },
       });
 
       // Bank Transfer (EFT/Havale)
       paymentMethods.push({
-        type: 'BANK_TRANSFER',
-        name: 'Havale/EFT',
-        icon: 'bank',
-        processingTime: '1-3 iş günü',
+        type: "BANK_TRANSFER",
+        name: "Havale/EFT",
+        icon: "bank",
+        processingTime: "1-3 iş günü",
         fees: {
           percentage: 0,
-          fixed: 0
-        }
+          fixed: 0,
+        },
       });
 
       // BKM Express (Turkish local payment method)
       paymentMethods.push({
-        type: 'BKM_EXPRESS',
-        name: 'BKM Express',
-        icon: 'mobile-payment',
-        description: 'Mobil bankacılık uygulaması ile ödeme',
+        type: "BKM_EXPRESS",
+        name: "BKM Express",
+        icon: "mobile-payment",
+        description: "Mobil bankacılık uygulaması ile ödeme",
         fees: {
           percentage: 1.5,
-          fixed: 0
-        }
+          fixed: 0,
+        },
       });
 
       // Digital Wallets
       paymentMethods.push({
-        type: 'DIGITAL_WALLET',
-        name: 'Dijital Cüzdan',
-        icon: 'wallet',
-        providers: ['PAPARA', 'ININAL', 'TOSLA'],
+        type: "DIGITAL_WALLET",
+        name: "Dijital Cüzdan",
+        icon: "wallet",
+        providers: ["PAPARA", "ININAL", "TOSLA"],
         fees: {
           percentage: 2.0,
-          fixed: 0
-        }
+          fixed: 0,
+        },
       });
 
       return paymentMethods;
     } catch (error) {
-      logger.error('Failed to get payment methods:', error);
+      logger.error("Failed to get payment methods:", error);
       throw error;
     }
   }
@@ -138,7 +139,7 @@ class TurkishPaymentService {
    * @param {string} currency - Currency code
    * @returns {Promise<Array>} Installment options
    */
-  async getInstallmentOptions(amount, currency = 'TRY') {
+  async getInstallmentOptions(amount, currency = "TRY") {
     try {
       const installmentOptions = [];
 
@@ -151,12 +152,12 @@ class TurkishPaymentService {
 
       // Standard Turkish installment options
       const installmentRates = {
-        1: 0,      // Tek çekim (no interest)
-        2: 0.05,   // 2 taksit
-        3: 0.08,   // 3 taksit
-        6: 0.15,   // 6 taksit
-        9: 0.22,   // 9 taksit
-        12: 0.30   // 12 taksit
+        1: 0, // Tek çekim (no interest)
+        2: 0.05, // 2 taksit
+        3: 0.08, // 3 taksit
+        6: 0.15, // 6 taksit
+        9: 0.22, // 9 taksit
+        12: 0.3, // 12 taksit
       };
 
       for (const [installments, rate] of Object.entries(installmentRates)) {
@@ -168,13 +169,14 @@ class TurkishPaymentService {
           rate: rate,
           monthlyAmount: Math.round(monthlyAmount * 100) / 100,
           totalAmount: Math.round(totalAmount * 100) / 100,
-          description: installments === '1' ? 'Tek Çekim' : `${installments} Taksit`
+          description:
+            installments === "1" ? "Tek Çekim" : `${installments} Taksit`,
         });
       }
 
       return installmentOptions;
     } catch (error) {
-      logger.error('Failed to get installment options:', error);
+      logger.error("Failed to get installment options:", error);
       return [{ installments: 1, rate: 0, total: amount }];
     }
   }
@@ -189,39 +191,39 @@ class TurkishPaymentService {
       const {
         orderId,
         amount,
-        currency = 'TRY',
+        currency = "TRY",
         cardData,
         customerData,
         installments = 1,
-        use3DS = true
+        use3DS = true,
       } = paymentData;
 
-      const gateway = this.gateways.get('IYZICO');
+      const gateway = this.gateways.get("IYZICO");
       const apiKey = process.env.IYZICO_API_KEY;
       const secretKey = process.env.IYZICO_SECRET_KEY;
 
       if (!apiKey || !secretKey) {
-        throw new Error('İyzico credentials not configured');
+        throw new Error("İyzico credentials not configured");
       }
 
       // Prepare payment request
       const paymentRequest = {
-        locale: 'tr',
+        locale: "tr",
         conversationId: orderId,
         price: amount.toString(),
         paidPrice: amount.toString(),
         currency: currency,
         installment: installments,
         basketId: orderId,
-        paymentChannel: 'WEB',
-        paymentGroup: 'PRODUCT',
+        paymentChannel: "WEB",
+        paymentGroup: "PRODUCT",
         paymentCard: {
           cardHolderName: cardData.holderName,
-          cardNumber: cardData.number.replace(/\s/g, ''),
+          cardNumber: cardData.number.replace(/\s/g, ""),
           expireMonth: cardData.expireMonth,
           expireYear: cardData.expireYear,
           cvc: cardData.cvc,
-          registerCard: '0'
+          registerCard: "0",
         },
         buyer: {
           id: customerData.id,
@@ -229,79 +231,88 @@ class TurkishPaymentService {
           surname: customerData.lastName,
           gsmNumber: customerData.phone,
           email: customerData.email,
-          identityNumber: customerData.identityNumber || '11111111111',
+          identityNumber: customerData.identityNumber || "11111111111",
           lastLoginDate: new Date().toISOString(),
-          registrationDate: customerData.registrationDate || new Date().toISOString(),
+          registrationDate:
+            customerData.registrationDate || new Date().toISOString(),
           registrationAddress: customerData.address,
           ip: customerData.ip,
           city: customerData.city,
-          country: 'Turkey',
-          zipCode: customerData.zipCode
+          country: "Turkey",
+          zipCode: customerData.zipCode,
         },
         shippingAddress: {
           contactName: `${customerData.firstName} ${customerData.lastName}`,
           city: customerData.city,
-          country: 'Turkey',
+          country: "Turkey",
           address: customerData.address,
-          zipCode: customerData.zipCode
+          zipCode: customerData.zipCode,
         },
         billingAddress: {
           contactName: `${customerData.firstName} ${customerData.lastName}`,
           city: customerData.city,
-          country: 'Turkey',
+          country: "Turkey",
           address: customerData.address,
-          zipCode: customerData.zipCode
+          zipCode: customerData.zipCode,
         },
-        basketItems: paymentData.basketItems || [{
-          id: orderId,
-          name: 'Order Payment',
-          category1: 'E-commerce',
-          itemType: 'PHYSICAL',
-          price: amount.toString()
-        }]
+        basketItems: paymentData.basketItems || [
+          {
+            id: orderId,
+            name: "Order Payment",
+            category1: "E-commerce",
+            itemType: "PHYSICAL",
+            price: amount.toString(),
+          },
+        ],
       };
 
       // Generate authorization header
-      const authString = this.generateIyzicoAuth(paymentRequest, apiKey, secretKey);
+      const authString = this.generateIyzicoAuth(
+        paymentRequest,
+        apiKey,
+        secretKey
+      );
 
       const response = await axios.post(
         `${gateway.apiUrl}/payment/auth`,
         paymentRequest,
         {
           headers: {
-            'Authorization': authString,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }
+            Authorization: authString,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
         }
       );
 
       const result = response.data;
 
-      if (result.status === 'success') {
+      if (result.status === "success") {
         return {
           success: true,
           paymentId: result.paymentId,
-          transactionId: result.fraudStatus === 1 ? result.paymentItems[0].paymentTransactionId : null,
-          status: result.fraudStatus === 1 ? 'APPROVED' : 'PENDING',
-          message: 'Payment processed successfully',
-          gatewayResponse: result
+          transactionId:
+            result.fraudStatus === 1
+              ? result.paymentItems[0].paymentTransactionId
+              : null,
+          status: result.fraudStatus === 1 ? "APPROVED" : "PENDING",
+          message: "Payment processed successfully",
+          gatewayResponse: result,
         };
       } else {
         return {
           success: false,
-          error: result.errorMessage || 'Payment failed',
+          error: result.errorMessage || "Payment failed",
           errorCode: result.errorCode,
-          gatewayResponse: result
+          gatewayResponse: result,
         };
       }
-
     } catch (error) {
-      logger.error('İyzico payment failed:', error);
+      logger.error("İyzico payment failed:", error);
       return {
         success: false,
-        error: error.message || 'Payment processing failed',
-        gatewayResponse: error.response?.data
+        error: error.message || "Payment processing failed",
+        gatewayResponse: error.response?.data,
       };
     }
   }
@@ -316,18 +327,18 @@ class TurkishPaymentService {
       const {
         orderId,
         amount,
-        currency = 'TRY',
+        currency = "TRY",
         cardData,
         customerData,
-        installments = 1
+        installments = 1,
       } = paymentData;
 
-      const gateway = this.gateways.get('PAYU');
+      const gateway = this.gateways.get("PAYU");
       const merchantId = process.env.PAYU_MERCHANT_ID;
       const secretKey = process.env.PAYU_SECRET_KEY;
 
       if (!merchantId || !secretKey) {
-        throw new Error('PayU credentials not configured');
+        throw new Error("PayU credentials not configured");
       }
 
       // Prepare payment request
@@ -335,17 +346,17 @@ class TurkishPaymentService {
         MERCHANT: merchantId,
         ORDER_REF: orderId,
         ORDER_DATE: new Date().toISOString().slice(0, 19),
-        ORDER_PNAME: 'Order Payment',
+        ORDER_PNAME: "Order Payment",
         ORDER_PCODE: orderId,
-        ORDER_PINFO: 'E-commerce order payment',
+        ORDER_PINFO: "E-commerce order payment",
         ORDER_PRICE: amount,
         ORDER_QTY: 1,
         ORDER_VAT: Math.round(amount * 0.18 * 100) / 100, // 18% KDV
         ORDER_SHIPPING: 0,
         PRICES_CURRENCY: currency,
         DISCOUNT: 0,
-        PAY_METHOD: 'CCVISAMC',
-        CC_NUMBER: cardData.number.replace(/\s/g, ''),
+        PAY_METHOD: "CCVISAMC",
+        CC_NUMBER: cardData.number.replace(/\s/g, ""),
         EXP_MONTH: cardData.expireMonth,
         EXP_YEAR: cardData.expireYear,
         CC_CVV: cardData.cvc,
@@ -356,10 +367,10 @@ class TurkishPaymentService {
         BILL_PHONE: customerData.phone,
         BILL_ADDRESS: customerData.address,
         BILL_CITY: customerData.city,
-        BILL_COUNTRYCODE: 'TR',
+        BILL_COUNTRYCODE: "TR",
         BILL_ZIPCODE: customerData.zipCode,
         INSTALLMENTS_NO: installments,
-        LANGUAGE: 'TR'
+        LANGUAGE: "TR",
       };
 
       // Generate signature
@@ -371,37 +382,36 @@ class TurkishPaymentService {
         new URLSearchParams(paymentRequest),
         {
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          }
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
         }
       );
 
       const result = this.parsePayUResponse(response.data);
 
-      if (result.RESPONSE_CODE === '1') {
+      if (result.RESPONSE_CODE === "1") {
         return {
           success: true,
           paymentId: result.REFNO,
           transactionId: result.REFNO,
-          status: 'APPROVED',
-          message: 'Payment processed successfully',
-          gatewayResponse: result
+          status: "APPROVED",
+          message: "Payment processed successfully",
+          gatewayResponse: result,
         };
       } else {
         return {
           success: false,
-          error: result.RESPONSE_MSG || 'Payment failed',
+          error: result.RESPONSE_MSG || "Payment failed",
           errorCode: result.RESPONSE_CODE,
-          gatewayResponse: result
+          gatewayResponse: result,
         };
       }
-
     } catch (error) {
-      logger.error('PayU payment failed:', error);
+      logger.error("PayU payment failed:", error);
       return {
         success: false,
-        error: error.message || 'Payment processing failed',
-        gatewayResponse: error.response?.data
+        error: error.message || "Payment processing failed",
+        gatewayResponse: error.response?.data,
       };
     }
   }
@@ -416,15 +426,15 @@ class TurkishPaymentService {
       const { gateway, paymentId, amount, reason } = refundData;
 
       switch (gateway) {
-        case 'IYZICO':
+        case "IYZICO":
           return await this.processIyzicoRefund(paymentId, amount, reason);
-        case 'PAYU':
+        case "PAYU":
           return await this.processPayURefund(paymentId, amount, reason);
         default:
           throw new Error(`Unsupported gateway for refund: ${gateway}`);
       }
     } catch (error) {
-      logger.error('Refund processing failed:', error);
+      logger.error("Refund processing failed:", error);
       throw error;
     }
   }
@@ -434,42 +444,48 @@ class TurkishPaymentService {
    */
   async processIyzicoRefund(paymentId, amount, reason) {
     try {
-      const gateway = this.gateways.get('IYZICO');
+      const gateway = this.gateways.get("IYZICO");
       const apiKey = process.env.IYZICO_API_KEY;
       const secretKey = process.env.IYZICO_SECRET_KEY;
 
       const refundRequest = {
-        locale: 'tr',
+        locale: "tr",
         conversationId: `refund_${paymentId}_${Date.now()}`,
         paymentTransactionId: paymentId,
         price: amount.toString(),
-        reason: reason || 'Customer request'
+        reason: reason || "Customer request",
       };
 
-      const authString = this.generateIyzicoAuth(refundRequest, apiKey, secretKey);
+      const authString = this.generateIyzicoAuth(
+        refundRequest,
+        apiKey,
+        secretKey
+      );
 
       const response = await axios.post(
         `${gateway.apiUrl}/payment/refund`,
         refundRequest,
         {
           headers: {
-            'Authorization': authString,
-            'Content-Type': 'application/json'
-          }
+            Authorization: authString,
+            "Content-Type": "application/json",
+          },
         }
       );
 
       const result = response.data;
 
       return {
-        success: result.status === 'success',
+        success: result.status === "success",
         refundId: result.paymentId,
-        message: result.status === 'success' ? 'Refund processed successfully' : result.errorMessage,
-        gatewayResponse: result
+        message:
+          result.status === "success"
+            ? "Refund processed successfully"
+            : result.errorMessage,
+        gatewayResponse: result,
       };
-
     } catch (error) {
-      logger.error('İyzico refund failed:', error);
+      logger.error("İyzico refund failed:", error);
       throw error;
     }
   }
@@ -480,25 +496,25 @@ class TurkishPaymentService {
    * @returns {Object} Validation result
    */
   validateTurkishCreditCard(cardNumber) {
-    const cleanNumber = cardNumber.replace(/\s/g, '');
-    
+    const cleanNumber = cardNumber.replace(/\s/g, "");
+
     // Basic Luhn algorithm
     const luhnCheck = (num) => {
       let sum = 0;
       let isEven = false;
-      
+
       for (let i = num.length - 1; i >= 0; i--) {
         let digit = parseInt(num[i]);
-        
+
         if (isEven) {
           digit *= 2;
           if (digit > 9) digit -= 9;
         }
-        
+
         sum += digit;
         isEven = !isEven;
       }
-      
+
       return sum % 10 === 0;
     };
 
@@ -508,14 +524,14 @@ class TurkishPaymentService {
         VISA: /^4[0-9]{12}(?:[0-9]{3})?$/,
         MASTERCARD: /^5[1-5][0-9]{14}$/,
         AMERICAN_EXPRESS: /^3[47][0-9]{13}$/,
-        TROY: /^9792[0-9]{12}$/ // Turkish national card system
+        TROY: /^9792[0-9]{12}$/, // Turkish national card system
       };
 
       for (const [type, pattern] of Object.entries(patterns)) {
         if (pattern.test(number)) return type;
       }
-      
-      return 'UNKNOWN';
+
+      return "UNKNOWN";
     };
 
     const isValid = luhnCheck(cleanNumber);
@@ -524,9 +540,9 @@ class TurkishPaymentService {
     return {
       isValid,
       cardType,
-      isTurkishCard: cardType === 'TROY',
+      isTurkishCard: cardType === "TROY",
       length: cleanNumber.length,
-      formatted: cleanNumber.replace(/(.{4})/g, '$1 ').trim()
+      formatted: cleanNumber.replace(/(.{4})/g, "$1 ").trim(),
     };
   }
 
@@ -537,8 +553,11 @@ class TurkishPaymentService {
     const randomString = Math.random().toString(36).substring(2, 15);
     const requestString = JSON.stringify(request);
     const hashData = apiKey + randomString + secretKey + requestString;
-    const hash = crypto.createHmac('sha256', secretKey).update(hashData).digest('base64');
-    
+    const hash = crypto
+      .createHmac("sha256", secretKey)
+      .update(hashData)
+      .digest("base64");
+
     return `IYZWS ${apiKey}:${hash}`;
   }
 
@@ -546,11 +565,17 @@ class TurkishPaymentService {
    * Generate PayU signature
    */
   generatePayUSignature(params, secretKey) {
-    const signatureString = params.MERCHANT + params.ORDER_REF + params.ORDER_DATE + 
-                           params.ORDER_PNAME + params.ORDER_PCODE + params.ORDER_PRICE + 
-                           params.PRICES_CURRENCY + secretKey;
-    
-    return crypto.createHash('md5').update(signatureString).digest('hex');
+    const signatureString =
+      params.MERCHANT +
+      params.ORDER_REF +
+      params.ORDER_DATE +
+      params.ORDER_PNAME +
+      params.ORDER_PCODE +
+      params.ORDER_PRICE +
+      params.PRICES_CURRENCY +
+      secretKey;
+
+    return crypto.createHash("md5").update(signatureString).digest("hex");
   }
 
   /**
@@ -558,15 +583,15 @@ class TurkishPaymentService {
    */
   parsePayUResponse(responseData) {
     const result = {};
-    const lines = responseData.split('\n');
-    
-    lines.forEach(line => {
-      const [key, value] = line.split('=');
+    const lines = responseData.split("\n");
+
+    lines.forEach((line) => {
+      const [key, value] = line.split("=");
       if (key && value) {
         result[key] = value;
       }
     });
-    
+
     return result;
   }
 
@@ -577,9 +602,9 @@ class TurkishPaymentService {
    */
   getGatewayStatus(gatewayCode) {
     const gateway = this.gateways.get(gatewayCode);
-    
+
     if (!gateway) {
-      return { available: false, error: 'Gateway not found' };
+      return { available: false, error: "Gateway not found" };
     }
 
     // Check if credentials are configured
@@ -592,7 +617,7 @@ class TurkishPaymentService {
       supportedCurrencies: gateway.supportedCurrencies,
       supportedCards: gateway.supportedCards,
       installmentSupport: gateway.installmentSupport,
-      maxInstallments: gateway.maxInstallments
+      maxInstallments: gateway.maxInstallments,
     };
   }
 
@@ -601,14 +626,18 @@ class TurkishPaymentService {
    */
   checkGatewayCredentials(gatewayCode) {
     switch (gatewayCode) {
-      case 'IYZICO':
+      case "IYZICO":
         return !!(process.env.IYZICO_API_KEY && process.env.IYZICO_SECRET_KEY);
-      case 'PAYU':
+      case "PAYU":
         return !!(process.env.PAYU_MERCHANT_ID && process.env.PAYU_SECRET_KEY);
-      case 'GARANTI':
-        return !!(process.env.GARANTI_TERMINAL_ID && process.env.GARANTI_PASSWORD);
-      case 'AKBANK':
-        return !!(process.env.AKBANK_MERCHANT_ID && process.env.AKBANK_PASSWORD);
+      case "GARANTI":
+        return !!(
+          process.env.GARANTI_TERMINAL_ID && process.env.GARANTI_PASSWORD
+        );
+      case "AKBANK":
+        return !!(
+          process.env.AKBANK_MERCHANT_ID && process.env.AKBANK_PASSWORD
+        );
       default:
         return false;
     }
@@ -627,12 +656,12 @@ class TurkishPaymentService {
    * @returns {Promise<Object>} Payment result
    */
   async processPayment(paymentData) {
-    const { gateway = 'IYZICO' } = paymentData;
-    
+    const { gateway = "IYZICO" } = paymentData;
+
     switch (gateway.toUpperCase()) {
-      case 'IYZICO':
+      case "IYZICO":
         return this.processIyzicoPayment(paymentData);
-      case 'PAYU':
+      case "PAYU":
         return this.processPayUPayment(paymentData);
       default:
         throw new Error(`Unsupported gateway: ${gateway}`);
@@ -647,8 +676,8 @@ class TurkishPaymentService {
   async verifyPayment(paymentId) {
     return {
       paymentId,
-      status: 'VERIFIED',
-      verifiedAt: new Date()
+      status: "VERIFIED",
+      verifiedAt: new Date(),
     };
   }
 
@@ -663,8 +692,8 @@ class TurkishPaymentService {
       pagination: {
         page: options.page,
         limit: options.limit,
-        total: 0
-      }
+        total: 0,
+      },
     };
   }
 
@@ -686,9 +715,9 @@ class TurkishPaymentService {
     return {
       id: Date.now().toString(),
       alias: cardData.cardAlias,
-      maskedNumber: '****-****-****-1234',
+      maskedNumber: "****-****-****-1234",
       cardType: cardData.cardType,
-      savedAt: new Date()
+      savedAt: new Date(),
     };
   }
 
@@ -729,7 +758,7 @@ class TurkishPaymentService {
   async checkPaymentCompliance(options) {
     return {
       compliant: true,
-      checks: []
+      checks: [],
     };
   }
 
@@ -741,9 +770,9 @@ class TurkishPaymentService {
     return {
       USD: 30.5,
       EUR: 33.2,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
   }
 }
 
-module.exports = TurkishPaymentService;
+module.exports = { TurkishPaymentService };

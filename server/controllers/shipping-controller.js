@@ -5,6 +5,14 @@
 
 const shippingFactory = require("../modules/public/shipping/ShippingServiceFactory");
 const logger = require("../utils/logger");
+const {
+  Order,
+  ShippingDetail,
+  ShippingCarrier,
+  ShippingRate,
+  OrderItem,
+} = require("../models");
+const { Op } = require("sequelize");
 
 class ShippingController {
   /**
@@ -12,7 +20,47 @@ class ShippingController {
    */
   async getSupportedCarriers(req, res) {
     try {
-      const carriers = shippingFactory.getSupportedCarriers();
+      // First try to get carriers from database
+      let carriers = [];
+      try {
+        const dbCarriers = await ShippingCarrier.findAll({
+          where: { isActive: true },
+          order: [["name", "ASC"]],
+        });
+
+        carriers = dbCarriers.map((carrier) => ({
+          code: carrier.code,
+          name: carrier.name,
+          type: carrier.carrierType,
+          website: carrier.apiEndpoint,
+          trackingUrlTemplate: carrier.trackingUrlTemplate,
+          supportedServices: carrier.supportedServices || [
+            "STANDARD",
+            "EXPRESS",
+          ],
+          coverage: carrier.coverage || {
+            country: "Turkey",
+            international: false,
+          },
+          estimatedDeliveryDays:
+            carrier.deliveryTimeRange || "1-3 business days",
+          features: {
+            cashOnDelivery: carrier.cashOnDeliverySupported || false,
+            insurance: carrier.insuranceSupported || false,
+            returns: carrier.returnSupported || false,
+          },
+        }));
+      } catch (dbError) {
+        logger.warn(
+          "Failed to fetch carriers from database, using factory fallback:",
+          dbError.message
+        );
+      }
+
+      // Fallback to factory if no database carriers found
+      if (carriers.length === 0) {
+        carriers = shippingFactory.getSupportedCarriers();
+      }
 
       res.json({
         success: true,
@@ -391,87 +439,169 @@ class ShippingController {
    */
   async getShipments(req, res) {
     try {
-      const { search, status, carrier } = req.query;
+      const { search, status, carrier, page = 1, limit = 50 } = req.query;
+      const userId = req.user?.id;
 
-      // Mock shipments data - in a real app this would come from database
-      const mockShipments = [
-        {
-          id: "SHP_001",
-          trackingNumber: "ARAS123456789",
-          carrier: "aras",
-          carrierName: "Aras Kargo",
-          status: "in_transit",
-          orderNumber: "ORD-2025-001",
-          recipientName: "Ahmet Yılmaz",
-          recipientCity: "Ankara",
-          createdAt: "2025-06-01T10:00:00Z",
-          estimatedDelivery: "2025-06-03",
-          cost: 25.5,
-        },
-        {
-          id: "SHP_002",
-          trackingNumber: "YK987654321",
-          carrier: "yurtici",
-          carrierName: "Yurtiçi Kargo",
-          status: "delivered",
-          orderNumber: "ORD-2025-002",
-          recipientName: "Fatma Demir",
-          recipientCity: "İstanbul",
-          createdAt: "2025-05-30T14:30:00Z",
-          estimatedDelivery: "2025-06-01",
-          deliveredAt: "2025-06-01T16:45:00Z",
-          cost: 18.75,
-        },
-        {
-          id: "SHP_003",
-          trackingNumber: "PTT555888999",
-          carrier: "ptt",
-          carrierName: "PTT Kargo",
-          status: "pending",
-          orderNumber: "ORD-2025-003",
-          recipientName: "Mehmet Özkan",
-          recipientCity: "İzmir",
-          createdAt: "2025-06-01T09:15:00Z",
-          estimatedDelivery: "2025-06-04",
-          cost: 22.0,
-        },
-      ];
+      let shipments = [];
 
-      // Apply filters
-      let filteredShipments = mockShipments;
+      try {
+        // Build query conditions
+        const whereConditions = {};
+        const orderWhereConditions = userId ? { userId } : {};
 
-      if (search) {
-        filteredShipments = filteredShipments.filter(
-          (shipment) =>
-            shipment.trackingNumber
-              .toLowerCase()
-              .includes(search.toLowerCase()) ||
-            shipment.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
-            shipment.recipientName.toLowerCase().includes(search.toLowerCase())
+        // Build include conditions for filtering
+        const includeConditions = [
+          {
+            model: Order,
+            as: "order",
+            where: orderWhereConditions,
+            include: [
+              {
+                model: ShippingDetail,
+                as: "shippingDetail",
+                required: false,
+              },
+              {
+                model: OrderItem,
+                as: "items",
+                required: false,
+              },
+            ],
+          },
+          {
+            model: ShippingCarrier,
+            as: "carrier",
+            required: false,
+          },
+        ];
+
+        // Apply search filter
+        if (search) {
+          whereConditions[Op.or] = [
+            { trackingNumber: { [Op.iLike]: `%${search}%` } },
+            { "$order.orderNumber$": { [Op.iLike]: `%${search}%` } },
+            { "$order.customerName$": { [Op.iLike]: `%${search}%` } },
+          ];
+        }
+
+        // Apply status filter
+        if (status) {
+          whereConditions.status = status;
+        }
+
+        // Apply carrier filter
+        if (carrier) {
+          whereConditions["$carrier.code$"] = carrier;
+        }
+
+        // Query database for shipping rates (which represent shipments)
+        const dbShipments = await ShippingRate.findAndCountAll({
+          where: whereConditions,
+          include: includeConditions,
+          limit: parseInt(limit),
+          offset: (parseInt(page) - 1) * parseInt(limit),
+          order: [["createdAt", "DESC"]],
+          distinct: true,
+        });
+
+        // Transform database results to shipment format
+        shipments = dbShipments.rows.map((rate) => {
+          const order = rate.order;
+          const shippingDetail = order?.shippingDetail;
+          const carrier = rate.carrier;
+
+          return {
+            id: `SHP_${rate.id}`,
+            trackingNumber:
+              shippingDetail?.trackingNumber ||
+              `${rate.serviceType}_${rate.id}`,
+            carrier: carrier?.code || "unknown",
+            carrierName: carrier?.name || "Unknown Carrier",
+            status: this.determineShipmentStatus(order?.status, shippingDetail),
+            orderNumber: order?.orderNumber || `ORD-${order?.id}`,
+            recipientName:
+              shippingDetail?.recipientName || order?.customerName || "Unknown",
+            recipientCity: shippingDetail?.city || "Unknown",
+            shippingAddress: {
+              address: shippingDetail?.address,
+              city: shippingDetail?.city,
+              state: shippingDetail?.state,
+              postalCode: shippingDetail?.postalCode,
+              country: shippingDetail?.country || "Turkey",
+            },
+            createdAt: rate.calculatedAt || rate.createdAt,
+            estimatedDelivery:
+              rate.deliveryDate ||
+              this.calculateEstimatedDelivery(rate.serviceType),
+            deliveredAt: order?.status === "delivered" ? order.updatedAt : null,
+            cost: parseFloat(rate.totalPrice) || 0,
+            serviceType: rate.serviceType,
+            weight: rate.weight,
+            dimensions: rate.dimensions,
+          };
+        });
+
+        res.json({
+          success: true,
+          data: shipments,
+          meta: {
+            total: dbShipments.count,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            totalPages: Math.ceil(dbShipments.count / parseInt(limit)),
+            filtered: !!(search || status || carrier),
+          },
+          message: "Shipments retrieved successfully",
+        });
+      } catch (dbError) {
+        logger.warn(
+          "Failed to fetch shipments from database, using fallback:",
+          dbError.message
         );
-      }
 
-      if (status) {
-        filteredShipments = filteredShipments.filter(
-          (shipment) => shipment.status === status
-        );
-      }
+        // Fallback to mock data for development/testing
+        const mockShipments = this.getMockShipments();
+        let filteredShipments = mockShipments;
 
-      if (carrier) {
-        filteredShipments = filteredShipments.filter(
-          (shipment) => shipment.carrier === carrier
-        );
-      }
+        // Apply filters to mock data
+        if (search) {
+          filteredShipments = filteredShipments.filter(
+            (shipment) =>
+              shipment.trackingNumber
+                .toLowerCase()
+                .includes(search.toLowerCase()) ||
+              shipment.orderNumber
+                .toLowerCase()
+                .includes(search.toLowerCase()) ||
+              shipment.recipientName
+                .toLowerCase()
+                .includes(search.toLowerCase())
+          );
+        }
 
-      res.json({
-        success: true,
-        data: filteredShipments,
-        meta: {
-          total: filteredShipments.length,
-          filtered: filteredShipments.length !== mockShipments.length,
-        },
-        message: "Shipments retrieved successfully",
-      });
+        if (status) {
+          filteredShipments = filteredShipments.filter(
+            (shipment) => shipment.status === status
+          );
+        }
+
+        if (carrier) {
+          filteredShipments = filteredShipments.filter(
+            (shipment) => shipment.carrier === carrier
+          );
+        }
+
+        res.json({
+          success: true,
+          data: filteredShipments,
+          meta: {
+            total: filteredShipments.length,
+            filtered: filteredShipments.length !== mockShipments.length,
+            fallback: true,
+          },
+          message: "Shipments retrieved successfully (fallback data)",
+        });
+      }
     } catch (error) {
       logger.error(`Failed to get shipments: ${error.message}`, { error });
       res.status(500).json({
@@ -490,6 +620,7 @@ class ShippingController {
   async createShipment(req, res) {
     try {
       const { orderIds, carrier, serviceType = "STANDARD" } = req.body;
+      const userId = req.user?.id;
 
       // Validate required fields
       if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
@@ -512,30 +643,170 @@ class ShippingController {
         });
       }
 
-      // Mock shipment creation - in a real app this would integrate with carrier APIs
-      const trackingNumber = `${carrier.toUpperCase()}${Date.now()}${Math.random()
-        .toString(36)
-        .substring(2, 6)
-        .toUpperCase()}`;
+      try {
+        // Find the carrier in database
+        const carrierRecord = await ShippingCarrier.findOne({
+          where: { code: carrier, isActive: true },
+        });
 
-      const newShipment = {
-        id: `SHP_${Date.now()}`,
-        trackingNumber,
-        carrier,
-        carrierName: this.getCarrierName(carrier),
-        status: "pending",
-        orderIds,
-        serviceType,
-        createdAt: new Date().toISOString(),
-        estimatedDelivery: this.calculateEstimatedDelivery(serviceType),
-        cost: this.calculateShippingCost(orderIds.length, carrier, serviceType),
-      };
+        if (!carrierRecord) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              message: `Carrier ${carrier} not found or inactive`,
+              code: "CARRIER_NOT_FOUND",
+            },
+          });
+        }
 
-      res.json({
-        success: true,
-        data: newShipment,
-        message: "Shipment created successfully",
-      });
+        // Find orders that belong to the user
+        const orders = await Order.findAll({
+          where: {
+            id: orderIds,
+            ...(userId && { userId }),
+            status: { [Op.in]: ["paid", "processing", "confirmed"] },
+          },
+          include: [
+            {
+              model: ShippingDetail,
+              as: "shippingDetail",
+            },
+          ],
+        });
+
+        if (orders.length === 0) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              message: "No eligible orders found for shipping",
+              code: "NO_ELIGIBLE_ORDERS",
+            },
+          });
+        }
+
+        // Create shipping rates for each order
+        const createdShipments = [];
+
+        for (const order of orders) {
+          const shippingDetail = order.shippingDetail;
+
+          if (!shippingDetail) {
+            logger.warn(`Order ${order.id} has no shipping details, skipping`);
+            continue;
+          }
+
+          // Calculate estimated costs and delivery
+          const weight = this.calculateOrderWeight(order);
+          const estimatedCost = this.calculateShippingCost(
+            1,
+            carrier,
+            serviceType
+          );
+          const estimatedDelivery =
+            this.calculateEstimatedDelivery(serviceType);
+
+          // Create shipping rate record
+          const shippingRate = await ShippingRate.create({
+            carrierId: carrierRecord.id,
+            orderId: order.id,
+            serviceType: serviceType,
+            fromCity: "İstanbul", // Default from city - should be configurable
+            fromPostalCode: "34000",
+            toCity: shippingDetail.city || "Unknown",
+            toPostalCode: shippingDetail.postalCode,
+            weight: weight,
+            dimensions: this.getDefaultDimensions(),
+            basePrice: estimatedCost * 0.85, // Base price without tax
+            taxAmount: estimatedCost * 0.15, // 18% KDV
+            totalPrice: estimatedCost,
+            currency: "TRY",
+            deliveryTime:
+              carrierRecord.deliveryTimeRange || "1-3 business days",
+            deliveryDate: new Date(estimatedDelivery),
+            isSelected: true,
+          });
+
+          // Generate tracking number
+          const trackingNumber = this.generateTrackingNumber(carrier);
+
+          // Update shipping detail with tracking info
+          await shippingDetail.update({
+            carrierId: carrierRecord.id,
+            trackingNumber: trackingNumber,
+            trackingUrl: this.generateTrackingUrl(
+              carrierRecord,
+              trackingNumber
+            ),
+            status: "shipped",
+          });
+
+          // Update order status
+          await order.update({
+            status: "shipped",
+            lastSyncedAt: new Date(),
+          });
+
+          createdShipments.push({
+            id: `SHP_${shippingRate.id}`,
+            trackingNumber: trackingNumber,
+            carrier: carrier,
+            carrierName: carrierRecord.name,
+            status: "shipped",
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            serviceType: serviceType,
+            createdAt: new Date().toISOString(),
+            estimatedDelivery: estimatedDelivery,
+            cost: estimatedCost,
+          });
+        }
+
+        if (createdShipments.length === 0) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              message: "No shipments could be created",
+              code: "SHIPMENT_CREATION_FAILED",
+            },
+          });
+        }
+
+        res.json({
+          success: true,
+          data: createdShipments,
+          message: `${createdShipments.length} shipment(s) created successfully`,
+        });
+      } catch (dbError) {
+        logger.warn(
+          "Database shipment creation failed, using mock response:",
+          dbError.message
+        );
+
+        // Fallback to mock shipment creation
+        const trackingNumber = this.generateTrackingNumber(carrier);
+        const newShipment = {
+          id: `SHP_${Date.now()}`,
+          trackingNumber,
+          carrier,
+          carrierName: this.getCarrierName(carrier),
+          status: "pending",
+          orderIds,
+          serviceType,
+          createdAt: new Date().toISOString(),
+          estimatedDelivery: this.calculateEstimatedDelivery(serviceType),
+          cost: this.calculateShippingCost(
+            orderIds.length,
+            carrier,
+            serviceType
+          ),
+        };
+
+        res.json({
+          success: true,
+          data: [newShipment],
+          message: "Shipment created successfully (mock mode)",
+        });
+      }
     } catch (error) {
       logger.error(`Failed to create shipment: ${error.message}`, { error });
       res.status(500).json({
@@ -548,72 +819,108 @@ class ShippingController {
     }
   }
 
-  // Helper methods for shipment creation
-  getCarrierName(carrierCode) {
-    const carrierNames = {
-      aras: "Aras Kargo",
-      yurtici: "Yurtiçi Kargo",
-      ptt: "PTT Kargo",
-      mng: "MNG Kargo",
-      ups: "UPS Turkey",
-      dhl: "DHL",
-      fedex: "FedEx",
-    };
-    return carrierNames[carrierCode] || "Unknown Carrier";
+  // Helper methods
+  determineShipmentStatus(orderStatus, shippingDetail) {
+    if (!orderStatus) return "pending";
+
+    switch (orderStatus) {
+      case "shipped":
+        return "in_transit";
+      case "delivered":
+        return "delivered";
+      case "cancelled":
+        return "cancelled";
+      case "paid":
+      case "processing":
+      case "confirmed":
+        return shippingDetail?.trackingNumber ? "in_transit" : "pending";
+      default:
+        return "pending";
+    }
   }
 
-  calculateEstimatedDelivery(serviceType) {
-    const now = new Date();
-    let days = 2; // default standard delivery
+  calculateOrderWeight(order) {
+    // Default weight calculation - should be based on actual product weights
+    const itemCount = order.items?.length || 1;
+    return Math.max(0.5, itemCount * 0.3); // Minimum 0.5kg, 0.3kg per item
+  }
 
-    switch (serviceType) {
-      case "EXPRESS":
-        days = 1;
-        break;
-      case "NEXT_DAY":
-        days = 1;
-        break;
-      case "SAME_DAY":
-        days = 0;
-        break;
-      default:
-        days = 2;
+  getDefaultDimensions() {
+    return {
+      length: 20,
+      width: 15,
+      height: 10,
+    };
+  }
+
+  generateTrackingNumber(carrierCode) {
+    const timestamp = Date.now().toString();
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+    return `${carrierCode.toUpperCase()}${timestamp.slice(-8)}${random}`;
+  }
+
+  generateTrackingUrl(carrier, trackingNumber) {
+    if (carrier.trackingUrlTemplate) {
+      return carrier.trackingUrlTemplate.replace(
+        "{trackingNumber}",
+        trackingNumber
+      );
     }
 
-    now.setDate(now.getDate() + days);
-    return now.toISOString().split("T")[0]; // Return YYYY-MM-DD format
+    // Default tracking URLs for major Turkish carriers
+    const trackingUrls = {
+      aras: `https://www.araskargo.com.tr/takip?kod=${trackingNumber}`,
+      yurtici: `https://www.yurticikargo.com/tr/takip?code=${trackingNumber}`,
+      ptt: `https://gonderitakip.ptt.gov.tr/Track?barcode=${trackingNumber}`,
+      mng: `https://www.mngkargo.com.tr/takip?kod=${trackingNumber}`,
+    };
+
+    return trackingUrls[carrier.code] || `#tracking-${trackingNumber}`;
   }
 
-  calculateShippingCost(orderCount, carrier, serviceType) {
-    let baseCost = 15; // Base cost in TRY
-
-    // Carrier multiplier
-    const carrierMultipliers = {
-      aras: 1.0,
-      yurtici: 1.1,
-      ptt: 0.9,
-      mng: 1.05,
-      ups: 1.5,
-      dhl: 1.6,
-      fedex: 1.55,
-    };
-
-    // Service type multiplier
-    const serviceMultipliers = {
-      STANDARD: 1.0,
-      EXPRESS: 1.5,
-      NEXT_DAY: 2.0,
-      SAME_DAY: 3.0,
-    };
-
-    const carrierMultiplier = carrierMultipliers[carrier] || 1.0;
-    const serviceMultiplier = serviceMultipliers[serviceType] || 1.0;
-
-    return (
-      Math.round(
-        baseCost * carrierMultiplier * serviceMultiplier * orderCount * 100
-      ) / 100
-    );
+  getMockShipments() {
+    return [
+      {
+        id: "SHP_001",
+        trackingNumber: "ARAS123456789",
+        carrier: "aras",
+        carrierName: "Aras Kargo",
+        status: "in_transit",
+        orderNumber: "ORD-2025-001",
+        recipientName: "Ahmet Yılmaz",
+        recipientCity: "Ankara",
+        createdAt: "2025-06-01T10:00:00Z",
+        estimatedDelivery: "2025-06-03",
+        cost: 25.5,
+      },
+      {
+        id: "SHP_002",
+        trackingNumber: "YK987654321",
+        carrier: "yurtici",
+        carrierName: "Yurtiçi Kargo",
+        status: "delivered",
+        orderNumber: "ORD-2025-002",
+        recipientName: "Fatma Demir",
+        recipientCity: "İstanbul",
+        createdAt: "2025-05-30T14:30:00Z",
+        estimatedDelivery: "2025-06-01",
+        deliveredAt: "2025-06-01T16:45:00Z",
+        cost: 18.75,
+      },
+      {
+        id: "SHP_003",
+        trackingNumber: "PTT555888999",
+        carrier: "ptt",
+        carrierName: "PTT Kargo",
+        status: "pending",
+        orderNumber: "ORD-2025-003",
+        recipientName: "Mehmet Özkan",
+        recipientCity: "İzmir",
+        createdAt: "2025-06-01T09:15:00Z",
+        estimatedDelivery: "2025-06-04",
+        cost: 22.0,
+      },
+    ];
   }
 
   /**

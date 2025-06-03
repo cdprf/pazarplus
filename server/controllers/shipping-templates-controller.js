@@ -186,6 +186,233 @@ class ShippingTemplatesController {
       });
     }
   }
+
+  /**
+   * Get default shipping template settings
+   */
+  async getDefaultTemplate(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const user = await User.findByPk(userId);
+      const settings = user.settings ? JSON.parse(user.settings) : {};
+      const defaultTemplateId = settings.defaultShippingTemplateId || null;
+      const templates = settings.shippingTemplates || [];
+
+      let defaultTemplate = null;
+      if (defaultTemplateId) {
+        defaultTemplate = templates.find((t) => t.id === defaultTemplateId);
+      }
+
+      res.json({
+        success: true,
+        data: {
+          defaultTemplateId,
+          defaultTemplate,
+          availableTemplates: templates,
+        },
+        message: "Default template settings retrieved successfully",
+      });
+    } catch (error) {
+      logger.error(`Failed to get default template: ${error.message}`, {
+        error,
+        userId: req.user?.id,
+      });
+      res.status(500).json({
+        success: false,
+        message: "Failed to get default template",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Set default shipping template
+   */
+  async setDefaultTemplate(req, res) {
+    try {
+      const userId = req.user.id;
+      const { templateId } = req.body;
+
+      const user = await User.findByPk(userId);
+      const settings = user.settings ? JSON.parse(user.settings) : {};
+      const templates = settings.shippingTemplates || [];
+
+      // Validate template exists if templateId is provided
+      if (templateId && !templates.find((t) => t.id === templateId)) {
+        return res.status(404).json({
+          success: false,
+          message: "Template not found",
+        });
+      }
+
+      // Update default template setting
+      settings.defaultShippingTemplateId = templateId;
+      await user.update({
+        settings: JSON.stringify(settings),
+      });
+
+      res.json({
+        success: true,
+        data: { defaultTemplateId: templateId },
+        message: templateId
+          ? "Default template set successfully"
+          : "Default template cleared successfully",
+      });
+    } catch (error) {
+      logger.error(`Failed to set default template: ${error.message}`, {
+        error,
+        userId: req.user?.id,
+      });
+      res.status(500).json({
+        success: false,
+        message: "Failed to set default template",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Generate shipping slip for an order using default or specified template
+   */
+  async generateShippingSlip(req, res) {
+    try {
+      const userId = req.user.id;
+      const { orderId, templateId } = req.body;
+
+      if (!orderId) {
+        return res.status(400).json({
+          success: false,
+          message: "Order ID is required",
+        });
+      }
+
+      const user = await User.findByPk(userId);
+      const settings = user.settings ? JSON.parse(user.settings) : {};
+      const templates = settings.shippingTemplates || [];
+
+      // Use provided templateId or fall back to default
+      let useTemplateId = templateId || settings.defaultShippingTemplateId;
+
+      if (!useTemplateId && templates.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "No shipping templates found. Please create a template first.",
+        });
+      }
+
+      // If no template specified and no default, use the first available template
+      if (!useTemplateId && templates.length > 0) {
+        useTemplateId = templates[0].id;
+      }
+
+      const template = templates.find((t) => t.id === useTemplateId);
+      if (!template) {
+        return res.status(404).json({
+          success: false,
+          message: "Specified template not found",
+        });
+      }
+
+      // Get order data
+      const { Order, OrderItem, ShippingDetail } = require("../models");
+      const order = await Order.findByPk(orderId, {
+        include: [
+          { model: OrderItem, as: "items" },
+          { model: ShippingDetail, as: "shippingDetail" },
+        ],
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      // Map order data to template format
+      const orderData = this.mapOrderDataForTemplate(order);
+
+      res.json({
+        success: true,
+        data: {
+          template,
+          orderData,
+          generatedAt: new Date().toISOString(),
+        },
+        message: "Shipping slip data generated successfully",
+      });
+    } catch (error) {
+      logger.error(`Failed to generate shipping slip: ${error.message}`, {
+        error,
+        userId: req.user?.id,
+      });
+      res.status(500).json({
+        success: false,
+        message: "Failed to generate shipping slip",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Map order data to shipping template format
+   */
+  mapOrderDataForTemplate(order) {
+    const shippingDetail = order.shippingDetail || order.ShippingDetail;
+    const items = order.items || order.OrderItems || [];
+
+    return {
+      orderNumber: order.orderNumber || order.platformOrderId || order.id,
+      createdAt: order.orderDate || order.createdAt,
+      status: order.status || order.orderStatus,
+      platform: order.platform || order.platformType,
+      totalAmount: order.totalAmount,
+      currency: order.currency || "TRY",
+      customer: {
+        name: order.customerName,
+        phone: order.customerPhone,
+        email: order.customerEmail,
+      },
+      shippingAddress: shippingDetail
+        ? {
+            name: shippingDetail.recipientName || order.customerName,
+            street: shippingDetail.address,
+            city: shippingDetail.city,
+            district: shippingDetail.district,
+            neighborhood: shippingDetail.neighborhood,
+            postalCode: shippingDetail.postalCode,
+            country: shippingDetail.country || "Turkey",
+            phone: shippingDetail.phone || order.customerPhone,
+          }
+        : null,
+      items: items.map((item) => ({
+        product: {
+          name: item.productName || item.name,
+          sku: item.sku,
+          barcode: item.barcode,
+        },
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice || item.amount,
+      })),
+      sender: {
+        company: "Pazar+",
+        address: "Merkez Mahallesi, İş Merkezi No:45",
+        city: "İstanbul",
+        postalCode: "34000",
+        phone: "+90 212 123 45 67",
+        email: "info@pazarplus.com",
+        website: "www.pazarplus.com",
+      },
+      tracking: {
+        number: order.trackingNumber,
+        carrier: order.carrier,
+        url: order.trackingUrl,
+      },
+    };
+  }
 }
 
 module.exports = new ShippingTemplatesController();

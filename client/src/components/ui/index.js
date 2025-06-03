@@ -27,6 +27,7 @@ export { Modal, ModalHeader, ModalContent, ModalFooter } from "./Modal";
 export { Tooltip } from "./Tooltip";
 export { Select } from "./Select";
 export { Switch } from "./Switch";
+export { Slider } from "./Slider";
 export { Textarea } from "./Textarea";
 export { ScrollArea } from "./ScrollArea";
 export {

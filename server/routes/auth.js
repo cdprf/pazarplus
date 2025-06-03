@@ -52,6 +52,7 @@ router.post("/dev-token", authController.generateDevToken);
 // Protected routes
 router.get("/me", auth, authController.getProfile); // Added missing /me endpoint
 router.get("/profile", auth, authController.getProfile);
+router.put("/profile", auth, authController.updateProfile);
 router.post(
   "/change-password",
   auth,

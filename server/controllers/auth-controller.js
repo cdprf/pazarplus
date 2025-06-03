@@ -401,14 +401,15 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { fullName, companyName, businessType, monthlyRevenue } = req.body;
+    const { fullName, email, username, phone, company, bio } = req.body;
 
     const updateData = {};
     if (fullName !== undefined) updateData.fullName = fullName;
-    if (companyName !== undefined) updateData.companyName = companyName;
-    if (businessType !== undefined) updateData.businessType = businessType;
-    if (monthlyRevenue !== undefined)
-      updateData.monthlyRevenue = monthlyRevenue;
+    if (email !== undefined) updateData.email = email;
+    if (username !== undefined) updateData.username = username;
+    if (phone !== undefined) updateData.phone = phone;
+    if (company !== undefined) updateData.companyName = company;
+    if (bio !== undefined) updateData.bio = bio;
 
     const [updatedCount] = await User.update(updateData, {
       where: { id: userId },

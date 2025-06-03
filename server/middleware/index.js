@@ -1,4 +1,12 @@
 const { authorize } = require("./authorize");
+const {
+  auth,
+  adminAuth,
+  optionalAuth,
+  requireFeature,
+  checkUsageLimit,
+  requireTenant,
+} = require("./auth");
 const { errorHandler } = require("./errorHandler");
 const cors = require("./cors");
 const validation = require("./validation");
@@ -145,6 +153,14 @@ const createErrorTrackingMiddleware = () => {
 };
 
 module.exports = {
+  // Authentication middleware
+  auth,
+  adminAuth,
+  optionalAuth,
+  requireFeature,
+  checkUsageLimit,
+  requireTenant,
+
   // Original middleware
   authorize,
   errorHandler,

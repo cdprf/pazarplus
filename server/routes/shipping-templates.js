@@ -9,6 +9,100 @@ router.use(auth);
 
 /**
  * @swagger
+ * /api/shipping/templates/default:
+ *   get:
+ *     summary: Get default shipping template settings
+ *     tags: [Shipping Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Default template settings retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get("/default", shippingTemplatesController.getDefaultTemplate);
+
+/**
+ * @swagger
+ * /api/shipping/templates/default:
+ *   post:
+ *     summary: Set default shipping template
+ *     tags: [Shipping Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               templateId:
+ *                 type: string
+ *                 description: Template ID to set as default (null to clear)
+ *     responses:
+ *       200:
+ *         description: Default template set successfully
+ *       404:
+ *         description: Template not found
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.post(
+  "/default",
+  body("templateId").optional().isString(),
+  shippingTemplatesController.setDefaultTemplate
+);
+
+/**
+ * @swagger
+ * /api/shipping/templates/generate-slip:
+ *   post:
+ *     summary: Generate shipping slip for an order using template
+ *     tags: [Shipping Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderId
+ *             properties:
+ *               orderId:
+ *                 type: integer
+ *                 description: Order ID
+ *               templateId:
+ *                 type: string
+ *                 description: Template ID (uses default if not specified)
+ *     responses:
+ *       200:
+ *         description: Shipping slip generated successfully
+ *       400:
+ *         description: Invalid request
+ *       404:
+ *         description: Order or template not found
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.post(
+  "/generate-slip",
+  body("orderId").isInt().withMessage("Order ID must be an integer"),
+  body("templateId").optional().isString(),
+  shippingTemplatesController.generateShippingSlip
+);
+
+/**
+ * @swagger
  * /api/shipping/templates:
  *   get:
  *     summary: Get all shipping templates for the authenticated user

@@ -168,7 +168,11 @@ const getNotificationSettings = async (req, res) => {
     };
 
     const userSettings = user?.settings ? JSON.parse(user.settings) : {};
-    const notificationSettings = { ...defaultSettings, ...userSettings.notifications };
+    // Fix: Check if userSettings.notifications exists before spreading
+    const notificationSettings = { 
+      ...defaultSettings, 
+      ...(userSettings.notifications || {}) 
+    };
 
     res.json({
       success: true,

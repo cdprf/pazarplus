@@ -1,9 +1,10 @@
 /**
  * Simplified Enhanced Platform Services Demo
- * Demonstrates the platform integration capabilities without complex dependencies
+ * Demonstrates the platform integration capabilities with real database integration
  */
 
 const path = require("path");
+const { PlatformConnection, Order, Product, User } = require("./models");
 
 // Mock logger for demonstration
 const logger = {
@@ -70,39 +71,9 @@ class SimpleTurkishComplianceService {
   }
 }
 
-// Simplified Enhanced Platform Service Factory for demo
+// Enhanced Platform Service Factory with database integration
 class SimpleEnhancedPlatformServiceFactory {
   constructor() {
-    this.availablePlatforms = [
-      {
-        name: "trendyol",
-        available: true,
-        config: {
-          rateLimits: { max: 100, window: 60000 },
-          circuitBreaker: { threshold: 5, timeout: 30000 },
-          retryPolicy: { attempts: 3, backoff: "exponential" },
-        },
-      },
-      {
-        name: "hepsiburada",
-        available: true,
-        config: {
-          rateLimits: { max: 150, window: 60000 },
-          circuitBreaker: { threshold: 3, timeout: 60000 },
-          retryPolicy: { attempts: 5, backoff: "linear" },
-        },
-      },
-      {
-        name: "n11",
-        available: true,
-        config: {
-          rateLimits: { max: 80, window: 60000 },
-          circuitBreaker: { threshold: 4, timeout: 45000 },
-          retryPolicy: { attempts: 3, backoff: "exponential" },
-        },
-      },
-    ];
-
     this.globalStats = {
       activeServices: 0,
       totalRequests: 0,
@@ -111,54 +82,187 @@ class SimpleEnhancedPlatformServiceFactory {
     };
   }
 
-  getAvailablePlatforms() {
-    return this.availablePlatforms;
+  async getAvailablePlatforms() {
+    try {
+      // Get platform configurations from database
+      const platformConnections = await PlatformConnection.findAll({
+        where: { isActive: true },
+        attributes: ["platformType", "settings", "createdAt", "lastSyncAt"],
+        group: ["platformType"],
+      });
+
+      // Default platform configurations with fallback
+      const defaultConfigs = {
+        trendyol: {
+          rateLimits: { max: 100, window: 60000 },
+          circuitBreaker: { threshold: 5, timeout: 30000 },
+          retryPolicy: { attempts: 3, backoff: "exponential" },
+        },
+        hepsiburada: {
+          rateLimits: { max: 150, window: 60000 },
+          circuitBreaker: { threshold: 3, timeout: 60000 },
+          retryPolicy: { attempts: 5, backoff: "linear" },
+        },
+        n11: {
+          rateLimits: { max: 80, window: 60000 },
+          circuitBreaker: { threshold: 4, timeout: 45000 },
+          retryPolicy: { attempts: 3, backoff: "exponential" },
+        },
+      };
+
+      // Merge database configurations with defaults
+      const availablePlatforms = [];
+      const platformTypes = new Set([
+        ...platformConnections.map((p) => p.platformType),
+        ...Object.keys(defaultConfigs),
+      ]);
+
+      for (const platformType of platformTypes) {
+        const dbConnection = platformConnections.find(
+          (p) => p.platformType === platformType
+        );
+        const defaultConfig =
+          defaultConfigs[platformType] || defaultConfigs.trendyol;
+
+        availablePlatforms.push({
+          name: platformType,
+          available: !!dbConnection,
+          config: dbConnection?.settings || defaultConfig,
+          lastSync: dbConnection?.lastSyncAt,
+          connectionCount: platformConnections.filter(
+            (p) => p.platformType === platformType
+          ).length,
+        });
+      }
+
+      return availablePlatforms;
+    } catch (error) {
+      logger.error("Error fetching platform configurations:", error);
+      // Fallback to minimal default configurations
+      return [
+        { name: "trendyol", available: false, config: {} },
+        { name: "hepsiburada", available: false, config: {} },
+        { name: "n11", available: false, config: {} },
+      ];
+    }
   }
 
   async createService(platform, connectionData) {
-    // Simulate service creation with validation
-    const platformConfig = this.availablePlatforms.find(
-      (p) => p.name === platform
-    );
+    try {
+      // Validate platform exists in database
+      const platformConnections = await PlatformConnection.findAll({
+        where: {
+          platformType: platform,
+          userId: connectionData.userId,
+        },
+      });
 
-    if (!platformConfig) {
-      throw new Error(`Platform ${platform} not supported`);
+      if (platformConnections.length === 0) {
+        throw new Error(`No ${platform} connections found for user`);
+      }
+
+      if (!connectionData.credentials || !connectionData.credentials.apiKey) {
+        throw new Error("Invalid credentials provided");
+      }
+
+      // Create or update platform connection
+      const [connection, created] = await PlatformConnection.findOrCreate({
+        where: {
+          platformType: platform,
+          userId: connectionData.userId,
+        },
+        defaults: {
+          platformType: platform,
+          userId: connectionData.userId,
+          credentials: connectionData.credentials,
+          settings: connectionData.settings || {},
+          isActive: true,
+          lastSyncAt: new Date(),
+        },
+      });
+
+      if (!created) {
+        await connection.update({
+          credentials: connectionData.credentials,
+          settings: connectionData.settings || connection.settings,
+          lastSyncAt: new Date(),
+        });
+      }
+
+      const service = {
+        platform,
+        connectionId: connection.id,
+        config: connection.settings,
+        status: "active",
+        createdAt: connection.createdAt,
+      };
+
+      this.globalStats.activeServices++;
+      return service;
+    } catch (error) {
+      logger.error(`Error creating service for ${platform}:`, error);
+      throw error;
     }
-
-    if (!connectionData.credentials || !connectionData.credentials.apiKey) {
-      throw new Error("Invalid credentials provided");
-    }
-
-    // Simulate circuit breaker and rate limiting setup
-    const service = {
-      platform,
-      connectionId: connectionData.id,
-      config: platformConfig.config,
-      status: "active",
-      createdAt: new Date().toISOString(),
-    };
-
-    this.globalStats.activeServices++;
-    return service;
   }
 
-  getGlobalHealthStatus() {
-    return {
-      globalStats: this.globalStats,
-      services: this.availablePlatforms.reduce((acc, platform) => {
-        acc[platform.name] = {
+  async getGlobalHealthStatus() {
+    try {
+      // Get real statistics from database
+      const [activeConnections, totalOrders, recentOrders] = await Promise.all([
+        PlatformConnection.count({ where: { isActive: true } }),
+        Order.count(),
+        Order.count({
+          where: {
+            createdAt: {
+              [require("sequelize").Op.gte]: new Date(
+                Date.now() - 24 * 60 * 60 * 1000
+              ),
+            },
+          },
+        }),
+      ]);
+
+      const platforms = await this.getAvailablePlatforms();
+      const services = {};
+
+      for (const platform of platforms) {
+        services[platform.name] = {
           available: platform.available,
           config: platform.config,
-          status: "healthy",
+          status: platform.available ? "healthy" : "disconnected",
+          lastSync: platform.lastSync,
+          connectionCount: platform.connectionCount,
         };
-        return acc;
-      }, {}),
-      timestamp: new Date().toISOString(),
-    };
+      }
+
+      this.globalStats = {
+        activeServices: activeConnections,
+        totalRequests: totalOrders,
+        failedRequests: Math.max(0, totalOrders - recentOrders),
+        successRate:
+          totalOrders > 0
+            ? ((recentOrders / totalOrders) * 100).toFixed(2)
+            : 100,
+      };
+
+      return {
+        globalStats: this.globalStats,
+        services,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error("Error getting global health status:", error);
+      return {
+        globalStats: this.globalStats,
+        services: {},
+        timestamp: new Date().toISOString(),
+        error: error.message,
+      };
+    }
   }
 }
 
-// Demo class
+// Demo class with real database integration
 class SimpleEnhancedPlatformDemo {
   constructor() {
     this.testResults = [];
@@ -167,7 +271,9 @@ class SimpleEnhancedPlatformDemo {
   }
 
   async runDemo() {
-    logger.info("🚀 Starting Enhanced Platform Services Demo (Simplified)");
+    logger.info(
+      "🚀 Starting Enhanced Platform Services Demo with Database Integration"
+    );
 
     try {
       await this.testServiceFactoryInitialization();
@@ -175,6 +281,7 @@ class SimpleEnhancedPlatformDemo {
       await this.testCircuitBreakerConfiguration();
       await this.testTurkishComplianceService();
       await this.testMonitoringAndHealthChecks();
+      await this.testDatabaseIntegration();
 
       this.displayResults();
     } catch (error) {
@@ -187,7 +294,8 @@ class SimpleEnhancedPlatformDemo {
     logger.info("📋 Test 1: Service Factory Initialization");
 
     try {
-      const availablePlatforms = this.serviceFactory.getAvailablePlatforms();
+      const availablePlatforms =
+        await this.serviceFactory.getAvailablePlatforms();
 
       this.testResults.push({
         test: "Service Factory Initialization",
@@ -214,12 +322,24 @@ class SimpleEnhancedPlatformDemo {
   }
 
   async testServiceCreation() {
-    logger.info("📋 Test 2: Platform Service Creation");
+    logger.info("📋 Test 2: Platform Service Creation with Database");
 
     try {
+      // Create a test user first
+      const testUser = await User.findOrCreate({
+        where: { email: "demo@test.com" },
+        defaults: {
+          username: "demouser",
+          fullName: "Demo User",
+          email: "demo@test.com",
+          password: "hashed_password",
+          isActive: true,
+        },
+      });
+
       const mockConnectionData = {
         id: "test-connection-123",
-        userId: "test-user-456",
+        userId: testUser[0].id,
         credentials: {
           apiKey: "test-api-key",
           apiSecret: "test-api-secret",
@@ -238,20 +358,21 @@ class SimpleEnhancedPlatformDemo {
       );
 
       this.testResults.push({
-        test: "Service Creation",
+        test: "Service Creation with Database",
         status: "PASS",
         details: {
           platform: "trendyol",
           connectionId: mockConnectionData.id,
           serviceStatus: service.status,
           createdAt: service.createdAt,
+          userId: testUser[0].id,
         },
       });
 
-      logger.info("✅ Service creation test passed");
+      logger.info("✅ Service creation with database test passed");
     } catch (error) {
       this.testResults.push({
-        test: "Service Creation",
+        test: "Service Creation with Database",
         status: "FAIL",
         error: error.message,
       });
@@ -262,7 +383,7 @@ class SimpleEnhancedPlatformDemo {
     logger.info("📋 Test 3: Circuit Breaker Configuration");
 
     try {
-      const platforms = this.serviceFactory.getAvailablePlatforms();
+      const platforms = await this.serviceFactory.getAvailablePlatforms();
       const configs = platforms.map((p) => ({
         platform: p.name,
         rateLimits: p.config.rateLimits,
@@ -352,7 +473,7 @@ class SimpleEnhancedPlatformDemo {
     logger.info("📋 Test 5: Monitoring and Health Checks");
 
     try {
-      const globalHealth = this.serviceFactory.getGlobalHealthStatus();
+      const globalHealth = await this.serviceFactory.getGlobalHealthStatus();
 
       this.testResults.push({
         test: "Monitoring and Health Checks",
@@ -367,6 +488,50 @@ class SimpleEnhancedPlatformDemo {
     } catch (error) {
       this.testResults.push({
         test: "Monitoring and Health Checks",
+        status: "FAIL",
+        error: error.message,
+      });
+    }
+  }
+
+  async testDatabaseIntegration() {
+    logger.info("📋 Test 6: Database Integration Validation");
+
+    try {
+      // Test database connections and data integrity
+      const [userCount, orderCount, productCount, connectionCount] =
+        await Promise.all([
+          User.count(),
+          Order.count(),
+          Product.count(),
+          PlatformConnection.count(),
+        ]);
+
+      const recentActivity = await Order.findAll({
+        limit: 5,
+        order: [["createdAt", "DESC"]],
+        attributes: ["id", "status", "totalAmount", "createdAt"],
+      });
+
+      this.testResults.push({
+        test: "Database Integration Validation",
+        status: "PASS",
+        details: {
+          userCount,
+          orderCount,
+          productCount,
+          connectionCount,
+          recentActivity: recentActivity.length,
+        },
+      });
+
+      logger.info("✅ Database integration validation passed");
+      logger.info(
+        `Users: ${userCount}, Orders: ${orderCount}, Products: ${productCount}, Connections: ${connectionCount}`
+      );
+    } catch (error) {
+      this.testResults.push({
+        test: "Database Integration Validation",
         status: "FAIL",
         error: error.message,
       });

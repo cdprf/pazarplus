@@ -29,7 +29,7 @@ const CustomerManagement = () => {
     sortOrder: "asc",
   });
 
-  const { showNotification } = useNotification();
+  const { addNotification } = useNotification();
 
   const fetchCustomers = useCallback(async () => {
     try {
@@ -46,11 +46,15 @@ const CustomerManagement = () => {
       setTotalPages(response.totalPages || 1);
     } catch (error) {
       console.error("Error fetching customers:", error);
-      showNotification("Error fetching customers", "error");
+      addNotification({
+        title: "Error",
+        message: "Error fetching customers",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
-  }, [currentPage, filters, searchTerm, showNotification]);
+  }, [currentPage, filters, searchTerm, addNotification]);
 
   useEffect(() => {
     fetchCustomers();
@@ -90,20 +94,31 @@ const CustomerManagement = () => {
     try {
       if (modalMode === "create") {
         await api.customers.createCustomer(customerData);
-        showNotification("Customer created successfully", "success");
+        addNotification({
+          title: "Success",
+          message: "Customer created successfully",
+          type: "success",
+        });
       } else {
         await api.customers.updateCustomer(selectedCustomer.id, customerData);
-        showNotification("Customer updated successfully", "success");
+        addNotification({
+          title: "Success",
+          message: "Customer updated successfully",
+          type: "success",
+        });
       }
 
       setShowModal(false);
       fetchCustomers();
     } catch (error) {
       console.error("Error saving customer:", error);
-      showNotification(
-        `Error ${modalMode === "create" ? "creating" : "updating"} customer`,
-        "error"
-      );
+      addNotification({
+        title: "Error",
+        message: `Error ${
+          modalMode === "create" ? "creating" : "updating"
+        } customer`,
+        type: "error",
+      });
     }
   };
 
@@ -120,10 +135,18 @@ const CustomerManagement = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      showNotification("Customers exported successfully", "success");
+      addNotification({
+        title: "Success",
+        message: "Customers exported successfully",
+        type: "success",
+      });
     } catch (error) {
       console.error("Error exporting customers:", error);
-      showNotification("Error exporting customers", "error");
+      addNotification({
+        title: "Error",
+        message: "Error exporting customers",
+        type: "error",
+      });
     }
   };
 

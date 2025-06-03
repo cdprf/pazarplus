@@ -164,6 +164,68 @@ class DataMapper {
 
     return [this.getValue(data, path)];
   }
+
+  /**
+   * Maps element data based on element's dataMapping configuration
+   * This is used by the ShippingSlipDesigner to resolve dynamic content
+   *
+   * @param {Object} element - The template element
+   * @param {Object} orderData - The order data to map from
+   * @returns {String} - The resolved content for the element
+   */
+  static mapElementData(element, orderData) {
+    if (!element || !orderData) {
+      return element?.content || "";
+    }
+
+    // If element has no dataMapping, return original content
+    if (!element.dataMapping) {
+      return element.content || "";
+    }
+
+    try {
+      const mappedData = this.mapData(orderData, element.dataMapping);
+
+      // Handle different element types
+      switch (element.type) {
+        case "text":
+        case "header":
+        case "footer":
+        case "custom_field":
+          // Replace placeholders in content with actual data
+          let content = element.content || "";
+          Object.entries(mappedData).forEach(([key, value]) => {
+            const placeholder = `{${key}}`;
+            content = content.replace(
+              new RegExp(placeholder, "g"),
+              value || ""
+            );
+          });
+          return content;
+
+        case "barcode":
+        case "qr_code":
+          // For barcode/QR, return the first mapped value
+          const firstValue = Object.values(mappedData)[0];
+          return firstValue ? String(firstValue) : element.content || "";
+
+        case "table":
+          // For tables, return the mapped data object
+          return mappedData;
+
+        default:
+          // For other types, try to return a string representation
+          const values = Object.values(mappedData).filter((v) => v != null);
+          return values.length > 0 ? values.join(" ") : element.content || "";
+      }
+    } catch (error) {
+      console.error(
+        `DataMapper error: Failed to map element data for element ${element.id}`,
+        error
+      );
+      return element.content || "";
+    }
+  }
 }
 
 export default DataMapper;

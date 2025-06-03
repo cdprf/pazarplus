@@ -308,7 +308,14 @@ class HepsiburadaService extends BasePlatformService {
       let url = `/packages/merchantid/${this.merchantId}`;
 
       const response = await this.retryRequest(() =>
-        this.axiosInstance.get(url, { params: queryParams })
+        this.axiosInstance.get(url, {
+          params: {
+            limit: queryParams.limit,
+            offset: queryParams.offset,
+            begindate: queryParams.startDate,
+            enddate: queryParams.endDate,
+          },
+        })
       );
 
       if (!response.data || !Array.isArray(response.data)) {
@@ -505,8 +512,8 @@ class HepsiburadaService extends BasePlatformService {
     try {
       await this.initialize();
 
-      // If no specific status is requested, fetch completed orders (most common use case)
-      const status = params.status || "completed";
+      // If no specific status is requested, fetch packages (most common use case)
+      const status = params.status || "packages";
 
       switch (status) {
         case "pending_payment":

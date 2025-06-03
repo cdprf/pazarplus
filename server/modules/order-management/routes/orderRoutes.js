@@ -1,9 +1,102 @@
 const express = require("express");
 const router = express.Router();
 const orderController = require("../controllers/order-controller");
-const { auth } = require("../../../middleware/auth"); // Fixed: destructure auth from middleware
+const { auth } = require("../../../middleware/auth");
+const { Order, OrderItem } = require("../../../models");
 
-// Use the middleware
+// Special route for sample data (no auth required)
+router.get("/sample", async (req, res) => {
+  try {
+    // Get actual orders from database for sample data
+    const sampleOrders = await Order.findAll({
+      limit: 3,
+      include: [
+        {
+          model: OrderItem,
+          as: "items",
+          required: false,
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    // If no orders exist, return empty response
+    if (!sampleOrders || sampleOrders.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          orders: [],
+          pagination: {
+            total: 0,
+            currentPage: 1,
+            totalPages: 0,
+            limit: 0,
+            hasNext: false,
+            hasPrev: false,
+          },
+        },
+        message: "No sample orders available. Create some orders first.",
+      });
+    }
+
+    // Transform database orders to sample format
+    const transformedOrders = sampleOrders.map((order) => ({
+      id: order.id,
+      platformOrderId: order.platformOrderId || `SAMPLE-${order.id}`,
+      orderNumber: order.orderNumber,
+      orderDate: order.orderDate || order.createdAt,
+      orderStatus: order.orderStatus || "pending",
+      customerName: order.customerName || "Sample Customer",
+      customerEmail: order.customerEmail || "sample@example.com",
+      customerPhone: order.customerPhone || "+90 555 123 4567",
+      totalAmount: parseFloat(order.totalAmount || 0),
+      currency: order.currency || "TRY",
+      shippingAddress: order.shippingAddress || {
+        name: order.customerName || "Sample Customer",
+        address: "Sample Address",
+        city: "İstanbul",
+        district: "Kadıköy",
+        postalCode: "34710",
+        country: "Turkey",
+      },
+      items:
+        order.items?.map((item) => ({
+          id: item.id,
+          productName: item.productName || "Sample Product",
+          sku: item.productSku || `SAMPLE-SKU-${item.id}`,
+          quantity: item.quantity || 1,
+          unitPrice: parseFloat(item.unitPrice || 0),
+          totalPrice: parseFloat(item.totalPrice || 0),
+        })) || [],
+      platform: order.platform || "sample",
+      platformName: order.platformName || "Sample Platform",
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        orders: transformedOrders,
+        pagination: {
+          total: transformedOrders.length,
+          currentPage: 1,
+          totalPages: 1,
+          limit: transformedOrders.length,
+          hasNext: false,
+          hasPrev: false,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Sample data generation error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error generating sample data",
+      error: error.message,
+    });
+  }
+});
+
+// Use authentication middleware for all other routes
 router.use(auth);
 
 /**

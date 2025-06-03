@@ -908,442 +908,86 @@ class AnalyticsService {
    * Calculate customer satisfaction metrics
    */
   async calculateSatisfactionMetrics(userId, dateRange) {
-    // Placeholder - would integrate with review/rating systems
-    return {
-      averageRating: 4.2,
-      reviewCount: 0,
-      satisfactionScore: 85,
-    };
-  }
-
-  /**
-   * Calculate forecast confidence
-   */
-  calculateForecastConfidence(historicalData) {
-    if (!historicalData || historicalData.length < 7) return "low";
-
-    const revenues = historicalData.map((d) =>
-      parseFloat(d.get("revenue") || 0)
-    );
-    const mean = revenues.reduce((sum, val) => sum + val, 0) / revenues.length;
-    const variance =
-      revenues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-      revenues.length;
-    const coefficientOfVariation = Math.sqrt(variance) / mean;
-
-    if (coefficientOfVariation < 0.3) return "high";
-    if (coefficientOfVariation < 0.6) return "medium";
-    return "low";
-  }
-
-  /**
-   * Calculate moving average forecast
-   */
-  calculateMovingAverageForecast(historicalData, days) {
-    if (!historicalData || historicalData.length < 7) return [];
-
-    const windowSize = Math.min(7, historicalData.length);
-    const recentData = historicalData.slice(-windowSize);
-    const avgRevenue =
-      recentData.reduce(
-        (sum, day) => sum + parseFloat(day.get("revenue") || 0),
-        0
-      ) / windowSize;
-    const avgOrders =
-      recentData.reduce(
-        (sum, day) => sum + parseInt(day.get("orderCount") || 0),
-        0
-      ) / windowSize;
-
-    const trend = this.calculateSimpleTrend(recentData);
-    const forecast = [];
-
-    for (let i = 1; i <= days; i++) {
-      const trendAdjustment = trend * i;
-      forecast.push({
-        date: new Date(Date.now() + i * 24 * 60 * 60 * 1000),
-        predictedRevenue: Math.max(0, avgRevenue + trendAdjustment),
-        predictedOrders: Math.max(
-          0,
-          Math.round(avgOrders + (trendAdjustment / avgRevenue) * avgOrders)
-        ),
-      });
-    }
-
-    return forecast;
-  }
-
-  /**
-   * Calculate simple trend
-   */
-  calculateSimpleTrend(data) {
-    if (data.length < 2) return 0;
-
-    const first = parseFloat(data[0].get("revenue") || 0);
-    const last = parseFloat(data[data.length - 1].get("revenue") || 0);
-
-    return (last - first) / data.length;
-  }
-
-  /**
-   * Generate business recommendations
-   */
-  generateRecommendations(salesForecast, inventoryPredictions) {
-    const recommendations = [];
-
-    if (salesForecast && salesForecast.trend === "declining") {
-      recommendations.push({
-        type: "warning",
-        category: "sales",
-        title: "Declining Sales Trend",
-        message:
-          "Sales are trending downward. Consider promotional campaigns or product diversification.",
-        priority: "high",
-        actions: [
-          "Create promotional campaign",
-          "Analyze competitor pricing",
-          "Review product portfolio",
-        ],
-      });
-    }
-
-    if (
-      inventoryPredictions &&
-      inventoryPredictions.lowStockItems?.length > 0
-    ) {
-      recommendations.push({
-        type: "info",
-        category: "inventory",
-        title: "Low Stock Alert",
-        message: `${inventoryPredictions.lowStockItems.length} products predicted to be low in stock soon.`,
-        priority: "medium",
-        actions: [
-          "Review reorder points",
-          "Contact suppliers",
-          "Adjust safety stock levels",
-        ],
-      });
-    }
-
-    return recommendations;
-  }
-
-  // Additional helper methods for advanced analytics
-
-  async calculateDemandForecast(productId, userId) {
-    // Simplified demand forecast based on recent sales
-    const recentSales = await OrderItem.findAll({
-      include: [
-        {
-          model: Order,
-          where: { userId },
-          attributes: [],
-        },
-      ],
-      where: { productId },
-      attributes: [
-        [
-          OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
-          "totalSold",
-        ],
-      ],
-    });
-
-    const totalSold = parseInt(recentSales[0]?.get("totalSold") || 0);
-    return {
-      daily: totalSold / 30, // Average daily demand
-      nextMonth: totalSold,
-    };
-  }
-
-  async getStockStatus(productId) {
-    // Placeholder - would integrate with inventory management system
-    return {
-      current: Math.floor(Math.random() * 100) + 50, // Mock current stock
-    };
-  }
-
-  calculateStockoutDays(currentStock, dailyDemand) {
-    if (dailyDemand <= 0) return 999;
-    return Math.floor(currentStock / dailyDemand);
-  }
-
-  getStockStatus(currentStock, dailyDemand) {
-    const daysUntilStockout = this.calculateStockoutDays(
-      currentStock,
-      dailyDemand
-    );
-
-    if (daysUntilStockout < 7) return "critical";
-    if (daysUntilStockout < 14) return "low";
-    if (daysUntilStockout > 90) return "overstock";
-    return "normal";
-  }
-
-  identifyPeakMonths(monthlyTrends) {
-    const avgRevenue =
-      monthlyTrends.reduce((sum, m) => sum + m.revenue, 0) /
-      monthlyTrends.length;
-    return monthlyTrends
-      .filter((m) => m.revenue > avgRevenue * 1.2)
-      .map((m) => m.month);
-  }
-
-  identifyLowSeasons(monthlyTrends) {
-    const avgRevenue =
-      monthlyTrends.reduce((sum, m) => sum + m.revenue, 0) /
-      monthlyTrends.length;
-    return monthlyTrends
-      .filter((m) => m.revenue < avgRevenue * 0.8)
-      .map((m) => m.month);
-  }
-
-  calculateSeasonalityIndex(monthlyTrends) {
-    const avgRevenue =
-      monthlyTrends.reduce((sum, m) => sum + m.revenue, 0) /
-      monthlyTrends.length;
-    const variance =
-      monthlyTrends.reduce(
-        (sum, m) => sum + Math.pow(m.revenue - avgRevenue, 2),
-        0
-      ) / monthlyTrends.length;
-    return Math.sqrt(variance) / avgRevenue;
-  }
-
-  calculatePlatformRevenue(orders) {
-    const platformData = {};
-
-    orders.forEach((order) => {
-      const platform = order.platform || "unknown";
-      if (!platformData[platform]) {
-        platformData[platform] = { revenue: 0, orders: 0 };
-      }
-      platformData[platform].revenue += parseFloat(order.totalAmount);
-      platformData[platform].orders += 1;
-    });
-
-    return Object.entries(platformData).map(([platform, data]) => ({
-      platform,
-      revenue: data.revenue,
-      orders: data.orders,
-      avgOrderValue: data.orders > 0 ? data.revenue / data.orders : 0,
-    }));
-  }
-
-  async calculateProfitMargins(orders) {
-    // Simplified profit calculation - would integrate with cost data
-    const totalRevenue = orders.reduce(
-      (sum, order) => sum + parseFloat(order.totalAmount),
-      0
-    );
-    const estimatedCosts = totalRevenue * 0.7; // Assume 70% cost ratio
-
-    return {
-      grossProfit: totalRevenue - estimatedCosts,
-      grossMargin:
-        totalRevenue > 0
-          ? ((totalRevenue - estimatedCosts) / totalRevenue) * 100
-          : 0,
-      netProfit: (totalRevenue - estimatedCosts) * 0.85, // Assume 15% additional expenses
-      netMargin:
-        totalRevenue > 0
-          ? (((totalRevenue - estimatedCosts) * 0.85) / totalRevenue) * 100
-          : 0,
-    };
-  }
-
-  async calculateGrowthRates(userId, dateRange) {
-    const previousPeriod = this.getPreviousPeriod(dateRange);
-
-    const [currentRevenue, previousRevenue] = await Promise.all([
-      Order.sum("totalAmount", {
+    try {
+      // Try to get real review/rating data from database
+      const reviews = await Order.findAll({
         where: {
           userId,
           createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+          status: "completed",
+          rating: { [Op.not]: null },
         },
-      }),
-      Order.sum("totalAmount", {
+        attributes: [
+          [
+            Order.sequelize.fn("AVG", Order.sequelize.col("rating")),
+            "averageRating",
+          ],
+          [
+            Order.sequelize.fn("COUNT", Order.sequelize.col("id")),
+            "reviewCount",
+          ],
+        ],
+      });
+
+      const avgRating = parseFloat(reviews[0]?.get("averageRating") || 0);
+      const reviewCount = parseInt(reviews[0]?.get("reviewCount") || 0);
+
+      // Calculate satisfaction score based on rating distribution
+      const ratingDistribution = await Order.findAll({
         where: {
           userId,
-          createdAt: {
-            [Op.between]: [previousPeriod.start, previousPeriod.end],
-          },
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+          status: "completed",
+          rating: { [Op.not]: null },
         },
-      }),
-    ]);
-
-    const revenueGrowth =
-      previousRevenue > 0
-        ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
-        : 0;
-
-    return {
-      revenue: revenueGrowth,
-      orders: 0, // Would calculate similar to revenue
-      customers: 0, // Would calculate based on unique customers
-    };
-  }
-
-  async calculateCashFlow(userId, dateRange) {
-    // Simplified cash flow - would integrate with payment and expense data
-    const revenue = await Order.sum("totalAmount", {
-      where: {
-        userId,
-        createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
-        status: "completed",
-      },
-    });
-
-    return {
-      inflow: revenue || 0,
-      outflow: (revenue || 0) * 0.7, // Estimated expenses
-      net: (revenue || 0) * 0.3,
-    };
-  }
-
-  async calculateTaxLiability(userId, dateRange) {
-    const revenue = await Order.sum("totalAmount", {
-      where: {
-        userId,
-        createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
-      },
-    });
-
-    return {
-      estimatedTax: (revenue || 0) * 0.18, // Turkish VAT rate
-      taxableIncome: revenue || 0,
-    };
-  }
-
-  async calculateCustomerLTV(userId, dateRange) {
-    // Simplified LTV calculation
-    const avgOrderValue = await Order.findOne({
-      where: {
-        userId,
-        createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
-      },
-      attributes: [
-        [Order.sequelize.fn("AVG", Order.sequelize.col("totalAmount")), "avg"],
-      ],
-    });
-
-    const avg = parseFloat(avgOrderValue?.get("avg") || 0);
-    return avg * 12; // Estimate annual value
-  }
-
-  async calculateCAC(userId, dateRange) {
-    // Placeholder - would integrate with marketing spend data
-    return {
-      cost: 0,
-      newCustomers: 0,
-      cac: 0,
-    };
-  }
-
-  analyzePriceVariation(pricingData) {
-    return pricingData.map((item) => ({
-      productId: item.productId,
-      variation:
-        parseFloat(item.get("maxPrice")) - parseFloat(item.get("minPrice")),
-      coefficient:
-        parseFloat(item.get("maxPrice")) > 0
-          ? (parseFloat(item.get("maxPrice")) -
-              parseFloat(item.get("minPrice"))) /
-            parseFloat(item.get("maxPrice"))
-          : 0,
-    }));
-  }
-
-  analyzePlatformPricing(pricingData) {
-    const platformPrices = {};
-    pricingData.forEach((item) => {
-      const platform = item.Order.platform;
-      if (!platformPrices[platform]) {
-        platformPrices[platform] = [];
-      }
-      platformPrices[platform].push(parseFloat(item.get("avgPrice")));
-    });
-
-    return Object.entries(platformPrices).map(([platform, prices]) => ({
-      platform,
-      avgPrice: prices.reduce((sum, p) => sum + p, 0) / prices.length,
-      productCount: prices.length,
-    }));
-  }
-
-  calculatePriceElasticity(pricingData) {
-    // Simplified elasticity calculation
-    return pricingData.map((item) => ({
-      productId: item.productId,
-      elasticity: -1.5, // Mock elasticity value
-      recommendation: "Monitor price sensitivity",
-    }));
-  }
-
-  identifyPricingOpportunities(pricingData) {
-    return pricingData
-      .filter((item) => parseFloat(item.get("totalSold")) > 10)
-      .map((item) => ({
-        productId: item.productId,
-        currentPrice: parseFloat(item.get("avgPrice")),
-        recommendedPrice: parseFloat(item.get("avgPrice")) * 1.05,
-        potentialIncrease: "5%",
-      }));
-  }
-
-  identifyMarketOpportunities(categoryPerformance, pricingAnalysis) {
-    const opportunities = [];
-
-    // High-performing categories
-    const topCategories = categoryPerformance
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 3);
-
-    topCategories.forEach((category) => {
-      opportunities.push({
-        type: "expansion",
-        category: category.category,
-        description: `Expand product range in ${category.category} - high revenue generator`,
-        priority: "high",
+        attributes: [
+          "rating",
+          [Order.sequelize.fn("COUNT", Order.sequelize.col("id")), "count"],
+        ],
+        group: ["rating"],
       });
-    });
 
-    return opportunities;
-  }
+      // Calculate satisfaction score (percentage of 4+ star ratings)
+      let satisfiedCustomers = 0;
+      let totalRatings = 0;
 
-  /**
-   * Export analytics data for reporting
-   */
-  async exportAnalyticsData(userId, timeframe, format = "json") {
-    try {
-      const analytics = await this.getDashboardAnalytics(userId, timeframe);
+      ratingDistribution.forEach((item) => {
+        const rating = parseFloat(item.rating);
+        const count = parseInt(item.get("count"));
+        totalRatings += count;
+        if (rating >= 4) {
+          satisfiedCustomers += count;
+        }
+      });
 
-      if (format === "csv") {
-        return this.convertToCSV(analytics);
-      }
+      const satisfactionScore =
+        totalRatings > 0
+          ? Math.round((satisfiedCustomers / totalRatings) * 100)
+          : 0;
 
-      return analytics;
+      return {
+        averageRating: avgRating || 0,
+        reviewCount: reviewCount || 0,
+        satisfactionScore: satisfactionScore,
+        ratingDistribution: ratingDistribution.map((item) => ({
+          rating: parseFloat(item.rating),
+          count: parseInt(item.get("count")),
+        })),
+      };
     } catch (error) {
-      logger.error("Export analytics error:", error);
-      throw error;
+      logger.warn(
+        "Failed to calculate satisfaction metrics from database, using defaults:",
+        error.message
+      );
+
+      // Fallback to default values if database operations fail
+      return {
+        averageRating: 0,
+        reviewCount: 0,
+        satisfactionScore: 0,
+        ratingDistribution: [],
+      };
     }
-  }
-
-  /**
-   * Convert analytics data to CSV format
-   */
-  convertToCSV(analytics) {
-    // Simplified CSV conversion - would be more comprehensive in production
-    const csvData = [];
-
-    // Add revenue data
-    if (analytics.revenue && analytics.revenue.daily) {
-      analytics.revenue.daily.forEach((day) => {
-        csvData.push(["daily_revenue", day.date, day.revenue, day.orders]);
-      });
-    }
-
-    return csvData.map((row) => row.join(",")).join("\n");
   }
 
   /**

@@ -51,14 +51,11 @@ const Settings = () => {
 
   // Notification settings
   const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: true,
-    orderUpdates: true,
-    platformAlerts: true,
-    marketingEmails: false,
+    emailNotifications: false,
     smsNotifications: false,
-    pushNotifications: true,
-    weeklyReports: true,
-    systemMaintenance: true,
+    browserNotifications: false,
+    orderUpdates: true,
+    systemAlerts: true,
   });
 
   // App settings
@@ -80,16 +77,9 @@ const Settings = () => {
 
   const loadSettings = async () => {
     try {
-      // Load notification settings
-      const notificationResponse = await api.settings.getNotificationSettings();
-      if (notificationResponse) {
-        setNotificationSettings(notificationResponse);
-      }
-
-      // Load app settings
-      const appResponse = await api.settings.getAppSettings();
-      if (appResponse) {
-        setAppSettings(appResponse);
+      const response = await api.settings.getNotificationSettings();
+      if (response.success && response.data) {
+        setNotificationSettings(response.data);
       }
     } catch (error) {
       console.error("Failed to load settings:", error);
@@ -153,9 +143,10 @@ const Settings = () => {
     setLoading(true);
 
     try {
-      await api.settings.updateNotificationSettings(notificationSettings);
+      await api.settings.saveNotificationSettings(notificationSettings);
       showAlert("Bildirim ayarları güncellendi", "success");
     } catch (error) {
+      console.error("Notification settings save error:", error);
       showAlert("Bildirim ayarları güncellenirken hata oluştu", "error");
     } finally {
       setLoading(false);
@@ -166,7 +157,8 @@ const Settings = () => {
     setLoading(true);
 
     try {
-      await api.settings.updateAppSettings(appSettings);
+      // Save to localStorage for now (until backend API is implemented)
+      localStorage.setItem("appSettings", JSON.stringify(appSettings));
       showAlert("Uygulama ayarları güncellendi", "success");
 
       // Apply theme change immediately if supported
@@ -186,6 +178,7 @@ const Settings = () => {
         }
       }
     } catch (error) {
+      console.error("App settings save error:", error);
       showAlert("Uygulama ayarları güncellenirken hata oluştu", "error");
     } finally {
       setLoading(false);
@@ -558,7 +551,7 @@ const Settings = () => {
             <CardContent className="space-y-6">
               <div>
                 <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-                  E-posta Bildirimleri
+                  Bildirim Tercihleri
                 </h3>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -581,6 +574,62 @@ const Settings = () => {
                           setNotificationSettings({
                             ...notificationSettings,
                             emailNotifications: e.target.checked,
+                          })
+                        }
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <BellIcon className="w-5 h-5 text-gray-400 mr-3" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          SMS bildirimleri
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Önemli güncellemeler için SMS al
+                        </p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={notificationSettings.smsNotifications}
+                        onChange={(e) =>
+                          setNotificationSettings({
+                            ...notificationSettings,
+                            smsNotifications: e.target.checked,
+                          })
+                        }
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <ComputerDesktopIcon className="w-5 h-5 text-gray-400 mr-3" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          Tarayıcı bildirimleri
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Tarayıcı push bildirimlerini etkinleştir
+                        </p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={notificationSettings.browserNotifications}
+                        onChange={(e) =>
+                          setNotificationSettings({
+                            ...notificationSettings,
+                            browserNotifications: e.target.checked,
                           })
                         }
                         className="sr-only peer"
@@ -622,49 +671,21 @@ const Settings = () => {
                       <GlobeAltIcon className="w-5 h-5 text-gray-400 mr-3" />
                       <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          Platform bağlantı uyarıları
+                          Sistem uyarıları
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Platform bağlantı sorunlarında bildirim al
+                          Platform bağlantı ve sistem uyarılarını al
                         </p>
                       </div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={notificationSettings.platformAlerts}
+                        checked={notificationSettings.systemAlerts}
                         onChange={(e) =>
                           setNotificationSettings({
                             ...notificationSettings,
-                            platformAlerts: e.target.checked,
-                          })
-                        }
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                    </label>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <CreditCardIcon className="w-5 h-5 text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                          Pazarlama e-postaları
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Ürün güncellemeleri ve pazarlama e-postalarını al
-                        </p>
-                      </div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={notificationSettings.marketingEmails}
-                        onChange={(e) =>
-                          setNotificationSettings({
-                            ...notificationSettings,
-                            marketingEmails: e.target.checked,
+                            systemAlerts: e.target.checked,
                           })
                         }
                         className="sr-only peer"

@@ -321,6 +321,14 @@ User.init(
       defaultValue: "TR",
       comment: "Billing country code",
     },
+
+    // User settings
+    settings: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: "{}",
+      comment: "User settings stored as JSON string",
+    },
   },
   {
     sequelize,

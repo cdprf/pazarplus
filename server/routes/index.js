@@ -8,6 +8,9 @@ const platformRoutes = require("./platformRoutes");
 const productRoutes = require("./productRoutes");
 const settingsRoutes = require("./settingsRoutes");
 const complianceRoutes = require("./complianceRoutes");
+const paymentRoutes = require("./paymentRoutes");
+const customerRoutes = require("./customerRoutes");
+const importExportRoutes = require("./importExportRoutes");
 const orderManagementRoutes = require("../modules/order-management/routes");
 
 // Import enhanced platform integration routes
@@ -40,6 +43,7 @@ router.get("/api/health", (req, res) => {
       platforms: "/api/platforms",
       enhancedPlatforms: "/api/v1/enhanced-platforms",
       products: "/api/products",
+      customers: "/api/customers",
       settings: "/api/settings",
       compliance: "/api/compliance",
       orderManagement: "/api/order-management",
@@ -60,8 +64,17 @@ router.use("*", (req, res, next) => {
 router.use("/auth", authRoutes);
 router.use("/platforms", platformRoutes);
 router.use("/products", productRoutes);
+router.use("/customers", customerRoutes);
 router.use("/settings", settingsRoutes);
 router.use("/compliance", complianceRoutes);
+router.use("/payments", paymentRoutes);
+
+// Import/Export routes - mount directly at API root level
+router.use("/", importExportRoutes);
+
+// Compatibility route for legacy /api/orders endpoint
+// Forward requests to the order management module
+router.use("/orders", orderManagementRoutes);
 
 // Module-specific routes
 router.use("/order-management", orderManagementRoutes);

@@ -4,7 +4,7 @@ const { Order, OrderItem, User } = require('../../../../models');
 
 // Platform service imports
 const TrendyolService = require('./trendyol/trendyol-service');
-const HepsiburadaService = require('./hepsiburada/hepsiburada-service');
+const HepsiburadaService =  require('./hepsiburada/hepsiburada-service');
 const N11Service = require('./n11/n11-service');
 const CSVImporterService = require('./csv/csv-importer');
 
