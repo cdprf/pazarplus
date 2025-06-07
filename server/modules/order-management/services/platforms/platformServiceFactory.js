@@ -13,20 +13,21 @@ class PlatformServiceFactory {
    * Create a platform service instance based on platform type
    * @param {string} platformType - The platform type (trendyol, hepsiburada, n11, csv)
    * @param {string|Object} connectionData - Connection ID or connection object
+   * @param {Object} directCredentials - Optional direct credentials for testing
    * @returns {Object} Platform service instance
    */
-  static createService(platformType, connectionData) {
+  static createService(platformType, connectionData, directCredentials = null) {
     const normalizedType = platformType.toLowerCase();
     
     switch (normalizedType) {
       case 'trendyol':
-        return new TrendyolService(connectionData);
+        return new TrendyolService(connectionData, directCredentials);
         
       case 'hepsiburada':
-        return new HepsiburadaService(connectionData);
+        return new HepsiburadaService(connectionData, directCredentials);
         
       case 'n11':
-        return new N11Service(connectionData);
+        return new N11Service(connectionData, directCredentials);
         
       case 'csv':
         return new CSVImporterService(connectionData);

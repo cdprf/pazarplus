@@ -6,9 +6,6 @@ import {
   MoreVertical,
   Copy,
   Package,
-  Image,
-  Star,
-  ExternalLink,
   SortAsc,
   SortDesc,
 } from "lucide-react";
@@ -19,12 +16,11 @@ import {
   CardContent,
   Badge,
   Tooltip,
-} from "./UIComponents";
+} from "../../ui";
 import {
   getStockStatus,
   getPlatformBadges,
   getStatusVariant,
-  PlatformIcons,
   formatCurrency,
 } from "./utilities";
 

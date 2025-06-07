@@ -357,6 +357,87 @@ class ShippingTemplatesController {
   }
 
   /**
+   * Link an order to a shipping template
+   */
+  async linkOrderTemplate(req, res) {
+    try {
+      const userId = req.user.id;
+      const { orderId, templateId, autoMap = true } = req.body;
+
+      // Get Order model
+      const { Order, OrderItem, ShippingDetail } = require("../models");
+
+      // Verify order exists and belongs to user
+      const order = await Order.findOne({
+        where: { id: orderId, userId: userId },
+        include: [
+          { model: OrderItem, as: "items" },
+          { model: ShippingDetail, as: "shippingDetail" },
+        ],
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found or access denied",
+        });
+      }
+
+      // Get user settings and verify template exists
+      const user = await User.findByPk(userId);
+      const settings = user.settings ? JSON.parse(user.settings) : {};
+      const templates = settings.shippingTemplates || [];
+
+      const template = templates.find((t) => t.id === templateId);
+      if (!template) {
+        return res.status(404).json({
+          success: false,
+          message: "Template not found",
+        });
+      }
+
+      // Update order with template ID
+      await order.update({ shippingTemplateId: templateId });
+
+      // If autoMap is enabled, prepare the mapped data
+      let mappedData = null;
+      if (autoMap) {
+        mappedData = this.mapOrderDataForTemplate(order);
+      }
+
+      res.json({
+        success: true,
+        data: {
+          orderId: order.id,
+          templateId: template.id,
+          templateName: template.name,
+          autoMapped: autoMap,
+          mappedData: mappedData,
+        },
+        message: `Order successfully linked to template "${template.name}"`,
+      });
+    } catch (error) {
+      logger.error(`Failed to link order to template: ${error.message}`, {
+        error,
+        userId: req.user?.id,
+      });
+      res.status(500).json({
+        success: false,
+        message: "Failed to link order to template",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Helper method to get user by ID
+   */
+  async getUser(userId) {
+    const { User } = require("../models");
+    return await User.findByPk(userId);
+  }
+
+  /**
    * Map order data to shipping template format
    */
   mapOrderDataForTemplate(order) {

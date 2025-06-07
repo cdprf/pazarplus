@@ -62,6 +62,12 @@ const useOrderCounts = () => {
     pending: 0,
     processing: 0,
     shipped: 0,
+    claimCreated: 0,
+    claimApproved: 0,
+    claimRejected: 0,
+    returned: 0,
+    refunded: 0,
+    cancelled: 0,
     delivered: 0,
   });
   const [isLoading, setIsLoading] = useState(false);

@@ -1,26 +1,26 @@
 const { createProxyMiddleware } = require("http-proxy-middleware");
 
 module.exports = function (app) {
-  // Get the local IP address for external device access
-  const LOCAL_IP = "192.168.1.105"; // Your machine's IP address
+  // Use localhost for local development to avoid network connectivity issues
+  const SERVER_HOST = "localhost"; // Use localhost for local development
   const SERVER_PORT = 5001;
 
   // Proxy only API requests to the backend server
   app.use(
     "/api",
     createProxyMiddleware({
-      target: `http://${LOCAL_IP}:${SERVER_PORT}`, // Use local IP for external access
+      target: `http://${SERVER_HOST}:${SERVER_PORT}`, // Use localhost for local development
       changeOrigin: true,
       secure: false,
       logLevel: "info",
       onError: (err, req, res) => {
         console.log("Proxy error:", err.message);
         console.log("Request URL:", req.url);
-        console.log("Target:", `http://${LOCAL_IP}:${SERVER_PORT}`);
+        console.log("Target:", `http://${SERVER_HOST}:${SERVER_PORT}`);
       },
       onProxyReq: (proxyReq, req, res) => {
         console.log(
-          `Proxying ${req.method} ${req.url} -> http://${LOCAL_IP}:${SERVER_PORT}${req.url}`
+          `Proxying ${req.method} ${req.url} -> http://${SERVER_HOST}:${SERVER_PORT}${req.url}`
         );
       },
     })

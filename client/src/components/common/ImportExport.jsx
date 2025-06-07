@@ -8,7 +8,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import api from "../../services/api";
-import { useNotification } from "../../contexts/NotificationContext";
+import { useAlert } from "../../contexts/AlertContext";
 import logger from "../../utils/logger";
 
 const ImportExport = () => {
@@ -18,7 +18,7 @@ const ImportExport = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [importType, setImportType] = useState("orders");
   const fileInputRef = useRef(null);
-  const { showNotification } = useNotification();
+  const { showNotification } = useAlert();
 
   const supportedTypes = [
     {

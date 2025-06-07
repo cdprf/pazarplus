@@ -1,18 +1,6 @@
 import React, { useState, useEffect } from "react";
-import {
-  X,
-  Plus,
-  Tag,
-  Edit,
-  ExternalLink,
-  Copy,
-  Image,
-  CheckCircle,
-  AlertTriangle,
-  AlertCircle,
-  Globe,
-} from "lucide-react";
-import { Button, Card, CardContent, Badge, Modal } from "./UIComponents";
+import { X, Plus, Tag, Edit, ExternalLink, Copy, Image } from "lucide-react";
+import { Button, Card, CardContent, Badge, Modal } from "../../ui";
 import {
   CATEGORIES,
   PLATFORMS,

@@ -67,12 +67,19 @@ Order.init(
         "pending",
         "processing",
         "shipped",
+        "in_transit",
         "delivered",
         "cancelled",
         "returned",
         "failed",
-        "unknown"
-      ), // Enhanced: Added proper ENUM values
+        "unknown",
+        "claim_created",
+        "claim_approved",
+        "claim_rejected",
+        "refunded",
+        "consolidated",
+        "in_batch"
+      ), // Enhanced: Added missing status values for platform compatibility including consolidated and in_batch
       allowNull: false,
       defaultValue: "new", // Changed: Better default status
     },
@@ -143,6 +150,29 @@ Order.init(
       allowNull: true,
       comment: "Last time this order was synced from platform",
     },
+    // Consolidation and batch processing fields
+    isConsolidated: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: "Indicates if this order is part of a consolidated shipment",
+    },
+    consolidatedGroupId: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: "Groups orders that are consolidated together",
+    },
+    batchId: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: "Groups orders that are processed in the same batch",
+    },
+    // Shipping template association
+    shippingTemplateId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "ID of the linked shipping template for this order",
+    },
   },
   {
     sequelize,
@@ -166,6 +196,20 @@ Order.init(
       },
       {
         fields: ["connectionId"], // Added: For platform-based queries
+      },
+      {
+        fields: ["isConsolidated"], // Added: For consolidation queries
+      },
+      {
+        fields: ["batchId"], // Added: For batch processing queries
+        where: {
+          batchId: {
+            [sequelize.Sequelize.Op.ne]: null,
+          },
+        },
+      },
+      {
+        fields: ["shippingTemplateId"], // Added: For template-based queries
       },
       // Keep legacy index for backward compatibility
       {

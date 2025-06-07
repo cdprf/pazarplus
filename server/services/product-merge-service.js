@@ -1,6 +1,6 @@
 /**
- * Product Merge Service
- * Handles fetching and merging products across multiple platforms
+ * Product Merge Service - Enhanced with Database Transaction Management
+ * Handles fetching and merging products across multiple platforms with user-controlled database transaction management
  */
 const logger = require("../utils/logger");
 const {
@@ -11,6 +11,7 @@ const {
 } = require("../models");
 const { Op } = require("sequelize");
 const PlatformServiceFactory = require("../modules/order-management/services/platforms/platformServiceFactory");
+const dbTransactionManager = require("./database-transaction-manager");
 
 class ProductMergeService {
   constructor() {
@@ -54,33 +55,62 @@ class ProductMergeService {
             );
 
             // Initialize service
-            await platformService.initialize();
+            try {
+              await platformService.initialize();
 
-            // Fetch products
-            if (platformService.fetchProducts) {
-              const result = await platformService.fetchProducts(options);
+              // Fetch products
+              if (platformService.fetchProducts) {
+                const result = await platformService.fetchProducts(options);
 
-              // Add source platform info to each product
-              const productsWithSource = (result.data || []).map((product) => ({
-                ...product,
-                sourcePlatform: connection.platformType,
-                connectionId: connection.id,
-                connectionName: connection.name,
-              }));
+                // Add source platform info to each product
+                const productsWithSource = (result.data || []).map(
+                  (product) => ({
+                    ...product,
+                    sourcePlatform: connection.platformType,
+                    connectionId: connection.id,
+                    connectionName: connection.name,
+                  })
+                );
 
-              platformResults.push({
-                platform: connection.platformType,
-                success: result.success,
-                count: productsWithSource.length,
-              });
+                platformResults.push({
+                  platform: connection.platformType,
+                  success: result.success,
+                  count: productsWithSource.length,
+                });
 
-              allProducts.push(...productsWithSource);
-            } else {
-              platformResults.push({
-                platform: connection.platformType,
-                success: false,
-                error: "Platform does not support product fetching",
-              });
+                allProducts.push(...productsWithSource);
+              } else {
+                platformResults.push({
+                  platform: connection.platformType,
+                  success: false,
+                  error: "Platform does not support product fetching",
+                });
+              }
+            } catch (initError) {
+              // Check if this is a credentials error
+              if (
+                initError.message.includes("Missing required") ||
+                initError.message.includes("credentials") ||
+                initError.message.includes("App key") ||
+                initError.message.includes("app secret") ||
+                initError.message.includes("appKey") ||
+                initError.message.includes("appSecret")
+              ) {
+                logger.warn(
+                  `Skipping ${connection.platformType} due to missing credentials: ${initError.message}`,
+                  { connectionId: connection.id }
+                );
+
+                platformResults.push({
+                  platform: connection.platformType,
+                  success: false,
+                  error: `Missing required credentials for ${connection.platformType}`,
+                  skipped: true,
+                });
+              } else {
+                // Re-throw for other types of errors
+                throw initError;
+              }
             }
           } catch (error) {
             logger.error(
@@ -233,9 +263,10 @@ class ProductMergeService {
       return currentScore > bestScore ? current : best;
     }, productGroup[0]);
 
-    // Create a base merged product
+    // Create a base merged product with all extracted fields
     const mergedProduct = {
       ...bestProduct,
+      // Basic product information
       name: this.extractName(bestProduct),
       sku: this.extractSku(bestProduct),
       barcode: this.extractBarcode(bestProduct),
@@ -244,6 +275,36 @@ class ProductMergeService {
       stockQuantity: this.extractStockQuantity(bestProduct),
       images: this.extractImages(bestProduct),
       category: this.extractCategory(bestProduct),
+
+      // Brand and manufacturer information
+      brand: this.extractBrand(bestProduct),
+      brandId: this.extractBrandId(bestProduct),
+      manufacturer: this.extractManufacturer(bestProduct),
+
+      // Product variants and attributes
+      variants: this.extractVariants(bestProduct),
+      variantAttributes: this.extractVariantAttributes(bestProduct),
+      attributes: this.extractAttributes(bestProduct),
+
+      // Physical product details
+      weight: this.extractWeight(bestProduct),
+      dimensions: this.extractDimensions(bestProduct),
+      vatRate: this.extractVatRate(bestProduct),
+
+      // Platform-specific information
+      platformProductId: this.extractPlatformProductId(bestProduct),
+      stockCode: this.extractStockCode(bestProduct),
+      categoryId: this.extractCategoryId(bestProduct),
+
+      // Status and approval information
+      approvalStatus: this.extractApprovalStatus(bestProduct),
+      platformStatus: this.extractPlatformStatus(bestProduct),
+
+      // URLs and metadata
+      urls: this.extractUrls(bestProduct),
+      metadata: this.extractMetadata(bestProduct),
+      shippingInfo: this.extractShippingInfo(bestProduct),
+      errorInfo: this.extractErrorInfo(bestProduct),
 
       // Add sources information
       sources: productGroup.map((p) => ({
@@ -254,6 +315,9 @@ class ProductMergeService {
         sku: this.extractSku(p),
         price: this.extractPrice(p),
         stockQuantity: this.extractStockQuantity(p),
+        platformProductId: this.extractPlatformProductId(p),
+        stockCode: this.extractStockCode(p),
+        metadata: this.extractMetadata(p),
       })),
     };
 
@@ -273,12 +337,578 @@ class ProductMergeService {
       ...productGroup.map((p) => this.extractStockQuantity(p) || 0)
     );
 
+    // Merge variants from all products in the group
+    const allVariants = [];
+    productGroup.forEach((product) => {
+      const variants = this.extractVariants(product);
+      if (Array.isArray(variants) && variants.length > 0) {
+        allVariants.push(...variants);
+      }
+    });
+    if (allVariants.length > 0) {
+      mergedProduct.variants = allVariants;
+    }
+
+    // Merge attributes from all products, with preference for the best product
+    const allAttributes = {};
+    productGroup.forEach((product) => {
+      const attributes = this.extractAttributes(product);
+      if (attributes && typeof attributes === "object") {
+        Object.assign(allAttributes, attributes);
+      }
+    });
+    // Override with best product's attributes last to give them priority
+    const bestAttributes = this.extractAttributes(bestProduct);
+    if (bestAttributes && typeof bestAttributes === "object") {
+      Object.assign(allAttributes, bestAttributes);
+    }
+    if (Object.keys(allAttributes).length > 0) {
+      mergedProduct.attributes = allAttributes;
+    }
+
     return mergedProduct;
   }
 
   /**
+   * Save merged products to database with enhanced transaction management
+   */
+  async saveMergedProducts(mergedProducts, userId) {
+    const operationId = `product_merge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const savedProducts = [];
+    const errors = [];
+    const batchSize = 50;
+
+    // Register the operation with the transaction manager
+    await dbTransactionManager.registerTransaction(operationId, {
+      operationType: "product_merge",
+      userId,
+      totalProducts: mergedProducts.length,
+      batchSize,
+      description: `Merging ${mergedProducts.length} products from multiple platforms`,
+    });
+
+    logger.info(
+      `Processing ${mergedProducts.length} products in batches of ${batchSize} with transaction management`
+    );
+
+    try {
+      // Execute with transaction control
+      const result = await dbTransactionManager.executeWithTransactionControl(
+        operationId,
+        async () => {
+          return await this.processProductBatches(mergedProducts, userId, operationId);
+        },
+        {
+          userControlled: true,
+          pausable: true,
+        }
+      );
+
+      return result;
+    } catch (error) {
+      logger.error(`Product merge operation ${operationId} failed:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process product batches with progress tracking
+   */
+  async processProductBatches(mergedProducts, userId, operationId) {
+    const savedProducts = [];
+    const errors = [];
+    const batchSize = 50;
+
+    // Process products in batches
+    for (let i = 0; i < mergedProducts.length; i += batchSize) {
+      const batch = mergedProducts.slice(i, i + batchSize);
+      const batchNumber = Math.floor(i / batchSize) + 1;
+      const totalBatches = Math.ceil(mergedProducts.length / batchSize);
+
+      // Emit progress update
+      dbTransactionManager.emit("operationProgress", {
+        operationId,
+        batchNumber,
+        totalBatches,
+        processedProducts: i,
+        totalProducts: mergedProducts.length,
+        progress: Math.round((i / mergedProducts.length) * 100),
+      });
+
+      logger.info(
+        `Processing batch ${batchNumber}/${totalBatches} (${batch.length} products)`
+      );
+
+      try {
+        // Process batch with transaction control
+        const batchOperationId = `${operationId}_batch_${batchNumber}`;
+        await dbTransactionManager.registerTransaction(batchOperationId, {
+          operationType: "product_batch",
+          parentOperationId: operationId,
+          batchNumber,
+          batchSize: batch.length,
+        });
+
+        const batchResults = await dbTransactionManager.executeWithTransactionControl(
+          batchOperationId,
+          async () => {
+            return await this.processBatch(batch, userId);
+          },
+          {
+            userControlled: false, // Don't prompt user for each batch
+            pausable: true,
+          }
+        );
+
+        savedProducts.push(...batchResults.savedProducts);
+        errors.push(...batchResults.errors);
+
+        logger.info(`Batch ${batchNumber} completed successfully`);
+      } catch (error) {
+        logger.error(`Batch ${batchNumber} failed:`, error);
+        
+        // Try processing individually as fallback
+        try {
+          const individualResults = await this.processIndividualProducts(batch, userId);
+          savedProducts.push(...individualResults.savedProducts);
+          errors.push(...individualResults.errors);
+        } catch (fallbackError) {
+          logger.error(`Individual processing fallback failed:`, fallbackError);
+          // Mark all products in this batch as failed
+          batch.forEach((product) => {
+            errors.push({
+              product: product.sku || product.name || "unknown",
+              error: "Failed to process - database transaction error",
+            });
+          });
+        }
+      }
+
+      // Small delay between batches
+      if (i + batchSize < mergedProducts.length) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+
+    // Final progress update
+    dbTransactionManager.emit("operationProgress", {
+      operationId,
+      batchNumber: Math.ceil(mergedProducts.length / batchSize),
+      totalBatches: Math.ceil(mergedProducts.length / batchSize),
+      processedProducts: mergedProducts.length,
+      totalProducts: mergedProducts.length,
+      progress: 100,
+      completed: true,
+    });
+
+    if (errors.length > 0) {
+      logger.warn(
+        `Failed to save ${errors.length} products:`,
+        errors.slice(0, 5)
+      );
+    }
+
+    logger.info(
+      `Successfully saved ${savedProducts.length} products out of ${mergedProducts.length} merged products`
+    );
+    
+    return { savedProducts, errors, operationId };
+  }
+
+  /**
+   * Process a batch of products in a single transaction
+   */
+  async processBatch(batch, userId) {
+    const savedProducts = [];
+    const errors = [];
+    const transaction = await sequelize.transaction();
+
+    try {
+      for (const mergedProduct of batch) {
+        try {
+          const product = await this.processSingleProduct(
+            mergedProduct,
+            userId,
+            transaction
+          );
+          if (product) {
+            savedProducts.push(product);
+          }
+        } catch (productError) {
+          logger.error(
+            `Error processing product ${
+              mergedProduct.sku || mergedProduct.name
+            }:`,
+            productError
+          );
+          errors.push({
+            product: mergedProduct.sku || mergedProduct.name || "unknown",
+            error: productError.message,
+          });
+        }
+      }
+
+      // Commit the entire batch transaction
+      await transaction.commit();
+      logger.debug(
+        `Batch processed successfully: ${savedProducts.length} products saved, ${errors.length} errors`
+      );
+
+      return { savedProducts, errors };
+    } catch (error) {
+      await transaction.rollback();
+      logger.error("Batch processing failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process a single product (used by both batch and individual processing)
+   */
+  async processSingleProduct(mergedProduct, userId, transaction) {
+    // Validate required fields before attempting to save
+    if (!mergedProduct.name || mergedProduct.name.trim() === "") {
+      throw new Error("Product name is required");
+    }
+
+    // Generate SKU if missing
+    if (!mergedProduct.sku || mergedProduct.sku.trim() === "") {
+      const namePrefix = mergedProduct.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "")
+        .substring(0, 10);
+      mergedProduct.sku = `${namePrefix}-${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 5)}`;
+      logger.info(
+        `Generated SKU for product "${mergedProduct.name}": ${mergedProduct.sku}`
+      );
+    }
+
+    // Enhanced product lookup - try multiple methods
+    let existingProduct = null;
+
+    // 1. Try to find by platform data first (most reliable)
+    existingProduct = await this.findExistingProductByPlatformData(
+      mergedProduct,
+      userId,
+      transaction
+    );
+
+    // 2. Check if product already exists by SKU
+    if (!existingProduct && mergedProduct.sku) {
+      existingProduct = await Product.findOne({
+        where: { userId, sku: mergedProduct.sku },
+        include: [
+          {
+            model: PlatformData,
+            as: "platformData",
+            where: { entityType: "product" },
+            required: false,
+          },
+        ],
+        transaction,
+      });
+    }
+
+    // 3. Or by barcode if no SKU match
+    if (!existingProduct && mergedProduct.barcode) {
+      existingProduct = await Product.findOne({
+        where: { userId, barcode: mergedProduct.barcode },
+        include: [
+          {
+            model: PlatformData,
+            as: "platformData",
+            where: { entityType: "product" },
+            required: false,
+          },
+        ],
+        transaction,
+      });
+    }
+
+    // Update existing or create new
+    let product;
+    if (existingProduct) {
+      // Update existing product with new extracted fields
+      await existingProduct.update(
+        {
+          name: mergedProduct.name || existingProduct.name,
+          description: mergedProduct.description || existingProduct.description,
+          price: mergedProduct.price || existingProduct.price,
+          stockQuantity:
+            mergedProduct.stockQuantity || existingProduct.stockQuantity,
+          images: mergedProduct.images || existingProduct.images,
+          barcode: mergedProduct.barcode || existingProduct.barcode,
+          category: mergedProduct.category || existingProduct.category,
+          brand: mergedProduct.brand || existingProduct.brand,
+          manufacturer:
+            mergedProduct.manufacturer || existingProduct.manufacturer,
+          variants: mergedProduct.variants || existingProduct.variants,
+          variantAttributes:
+            mergedProduct.variantAttributes ||
+            existingProduct.variantAttributes,
+          attributes: mergedProduct.attributes || existingProduct.attributes,
+          weight: mergedProduct.weight || existingProduct.weight,
+          dimensions: mergedProduct.dimensions || existingProduct.dimensions,
+          vatRate: mergedProduct.vatRate || existingProduct.vatRate,
+          platformProductId:
+            mergedProduct.platformProductId ||
+            existingProduct.platformProductId,
+          stockCode: mergedProduct.stockCode || existingProduct.stockCode,
+          categoryId: mergedProduct.categoryId || existingProduct.categoryId,
+          approvalStatus:
+            mergedProduct.approvalStatus !== null
+              ? mergedProduct.approvalStatus
+              : existingProduct.approvalStatus,
+          platformStatus:
+            mergedProduct.platformStatus || existingProduct.platformStatus,
+          urls: mergedProduct.urls || existingProduct.urls,
+          metadata: mergedProduct.metadata || existingProduct.metadata,
+          shippingInfo:
+            mergedProduct.shippingInfo || existingProduct.shippingInfo,
+          errorInfo: mergedProduct.errorInfo || existingProduct.errorInfo,
+          lastSyncedAt: new Date(),
+        },
+        { transaction }
+      );
+
+      product = existingProduct;
+      logger.debug(`Updated existing product: ${product.sku}`);
+    } else {
+      // Create new product with required fields and all extracted data
+      const productData = {
+        userId,
+        sku: mergedProduct.sku,
+        name: mergedProduct.name,
+        description: mergedProduct.description || "",
+        price: parseFloat(mergedProduct.price) || 0,
+        stockQuantity: parseInt(mergedProduct.stockQuantity) || 0,
+        minStockLevel: parseInt(mergedProduct.minStockLevel) || 0,
+        category: mergedProduct.category || "Uncategorized",
+        images: Array.isArray(mergedProduct.images) ? mergedProduct.images : [],
+        status: "active",
+        platforms: mergedProduct.platforms || {},
+        attributes: mergedProduct.attributes || {},
+        tags: Array.isArray(mergedProduct.tags) ? mergedProduct.tags : [],
+        hasVariants: mergedProduct.hasVariants || false,
+        variantAttributes: Array.isArray(mergedProduct.variantAttributes)
+          ? mergedProduct.variantAttributes
+          : [],
+        dimensions: mergedProduct.dimensions || null,
+        brand: mergedProduct.brand || null,
+        brandId: mergedProduct.brandId || null,
+        manufacturer: mergedProduct.manufacturer || null,
+        variants: Array.isArray(mergedProduct.variants)
+          ? mergedProduct.variants
+          : [],
+        weight: mergedProduct.weight || null,
+        vatRate: mergedProduct.vatRate || null,
+        platformProductId: mergedProduct.platformProductId || null,
+        stockCode: mergedProduct.stockCode || null,
+        categoryId: mergedProduct.categoryId || null,
+        approvalStatus: mergedProduct.approvalStatus,
+        platformStatus: mergedProduct.platformStatus || null,
+        urls: mergedProduct.urls || null,
+        metadata: mergedProduct.metadata || null,
+        shippingInfo: mergedProduct.shippingInfo || null,
+        errorInfo: mergedProduct.errorInfo || null,
+        lastSyncedAt: new Date(),
+      };
+
+      // Only add barcode if it exists and is not empty
+      if (mergedProduct.barcode && mergedProduct.barcode.trim() !== "") {
+        productData.barcode = mergedProduct.barcode;
+      }
+
+      product = await Product.create(productData, { transaction });
+      logger.info(`Created new product: ${product.sku} - ${product.name}`);
+    }
+
+    // Update platform connections if sources exist
+    if (mergedProduct.sources && Array.isArray(mergedProduct.sources)) {
+      for (const source of mergedProduct.sources) {
+        try {
+          if (source.platform && source.externalId) {
+            await this.upsertPlatformData(product, source, transaction);
+          }
+        } catch (platformError) {
+          logger.error(
+            `Error updating platform data for product ${product.sku}:`,
+            platformError
+          );
+          // Continue with other sources instead of failing the entire product
+        }
+      }
+    }
+
+    return product;
+  }
+
+  /**
+   * Process products individually (fallback when batch processing fails)
+   */
+  async processIndividualProducts(products, userId) {
+    const savedProducts = [];
+    const errors = [];
+
+    for (const mergedProduct of products) {
+      const transaction = await sequelize.transaction();
+
+      try {
+        const product = await this.processSingleProduct(
+          mergedProduct,
+          userId,
+          transaction
+        );
+        await transaction.commit();
+
+        if (product) {
+          savedProducts.push(product);
+        }
+      } catch (error) {
+        await transaction.rollback();
+        logger.error(
+          `Error saving individual product ${
+            mergedProduct.sku || mergedProduct.name
+          }:`,
+          error
+        );
+        errors.push({
+          product: mergedProduct.sku || mergedProduct.name || "unknown",
+          error: error.message,
+        });
+      }
+    }
+
+    return { savedProducts, errors };
+  }
+
+  /**
+   * Find existing product by platform data
+   */
+  async findExistingProductByPlatformData(mergedProduct, userId, transaction) {
+    // Try to find by platform entity IDs from sources
+    if (mergedProduct.sources && Array.isArray(mergedProduct.sources)) {
+      for (const source of mergedProduct.sources) {
+        if (source.platform && source.externalId) {
+          const platformData = await PlatformData.findOne({
+            where: {
+              entityType: "product",
+              platformType: source.platform,
+              platformEntityId: source.externalId,
+            },
+            include: [
+              {
+                model: Product,
+                as: "product",
+                where: { userId },
+              },
+            ],
+            transaction,
+          });
+
+          if (platformData && platformData.product) {
+            logger.debug(
+              `Found existing product by platform data: ${source.platform}:${source.externalId} -> ${platformData.product.sku}`
+            );
+            return platformData.product;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Enhanced platform data upsert with better conflict handling
+   */
+  async upsertPlatformData(product, source, transaction) {
+    try {
+      // Prepare platform data
+      const platformDataValues = {
+        entityType: "product",
+        entityId: product.id,
+        platformType: source.platform,
+        platformEntityId: source.externalId,
+        platformSku: source.sku || product.sku,
+        platformPrice: parseFloat(source.price) || 0,
+        platformQuantity: parseInt(source.stockQuantity) || 0,
+        lastSyncedAt: new Date(),
+        status: "active",
+        data: {
+          source,
+          connectionId: source.connectionId,
+          connectionName: source.connectionName,
+        },
+      };
+
+      // Use upsert for better concurrency handling
+      const [platformData, created] = await PlatformData.upsert(
+        platformDataValues,
+        {
+          transaction,
+          conflictFields: ["entityType", "entityId", "platformType"],
+        }
+      );
+
+      logger.debug(
+        `${created ? "Created" : "Updated"} platform data for ${
+          source.platform
+        }: ${source.externalId}`
+      );
+
+      return platformData;
+    } catch (platformError) {
+      // Handle unique constraint violations gracefully
+      if (platformError.name === "SequelizeUniqueConstraintError") {
+        logger.warn(
+          `Constraint violation for product ${product.sku} on ${source.platform}, attempting manual update:`,
+          platformError.message
+        );
+
+        // Try to find and update the existing record
+        const existingPlatformData = await PlatformData.findOne({
+          where: {
+            entityType: "product",
+            entityId: product.id,
+            platformType: source.platform,
+          },
+          transaction,
+        });
+
+        if (existingPlatformData) {
+          await existingPlatformData.update(
+            {
+              platformEntityId: source.externalId,
+              platformSku: source.sku || product.sku,
+              platformPrice: parseFloat(source.price) || 0,
+              platformQuantity: parseInt(source.stockQuantity) || 0,
+              lastSyncedAt: new Date(),
+              status: "active",
+              data: {
+                source,
+                connectionId: source.connectionId,
+                connectionName: source.connectionName,
+              },
+            },
+            { transaction }
+          );
+
+          logger.debug(
+            `Successfully updated existing platform data for ${source.platform}: ${source.externalId}`
+          );
+          return existingPlatformData;
+        }
+      }
+      throw platformError;
+    }
+  }
+
+  // ... [All the existing extraction methods remain the same]
+
+  /**
    * Helper to calculate product completeness score
-   * Higher score = more complete product information
    */
   calculateProductCompleteness(product) {
     let score = 0;
@@ -288,50 +918,32 @@ class ProductMergeService {
     if (this.extractDescription(product)) score += 6;
     if (this.extractPrice(product) > 0) score += 8;
     if (this.extractStockQuantity(product) > 0) score += 8;
-
+    if (this.extractCategory(product)) score += 6;
     const images = this.extractImages(product);
     if (images && Array.isArray(images)) {
-      score += Math.min(images.length * 5, 20); // Up to 20 points for images
+      score += Math.min(images.length * 5, 20);
     }
-
-    if (this.extractCategory(product)) score += 6;
-
     return score;
   }
 
   /**
-   * Calculate string similarity (simple implementation)
-   * Returns a value between 0 and 1, where 1 is an exact match
+   * Calculate string similarity
    */
   calculateStringSimilarity(str1, str2) {
-    // Convert to lowercase and remove special characters
     const normalize = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, "");
-
     const s1 = normalize(str1);
     const s2 = normalize(str2);
-
-    // If strings are exactly the same
     if (s1 === s2) return 1;
-
-    // If one string contains the other
-    if (s1.includes(s2) || s2.includes(s1)) {
-      return 0.8;
-    }
-
-    // Count matching characters
+    if (s1.includes(s2) || s2.includes(s1)) return 0.8;
     let matches = 0;
     for (let i = 0; i < s1.length; i++) {
       if (s2.includes(s1[i])) matches++;
     }
-
-    // Calculate similarity based on avg string length
     const avgLength = (s1.length + s2.length) / 2;
     return matches / avgLength;
   }
 
-  /**
-   * Extract standardized fields from platform-specific data structures
-   */
+  // Extraction methods
   extractSku(product) {
     return (
       product.sku ||
@@ -386,26 +998,13 @@ class ProductMergeService {
   }
 
   extractImages(product) {
-    if (product.images && Array.isArray(product.images)) {
-      return product.images;
-    }
-
-    if (product.image) {
-      return [product.image];
-    }
-
-    if (product.imageUrl) {
-      return [product.imageUrl];
-    }
-
-    if (product.imageUrls && Array.isArray(product.imageUrls)) {
+    if (product.images && Array.isArray(product.images)) return product.images;
+    if (product.image) return [product.image];
+    if (product.imageUrl) return [product.imageUrl];
+    if (product.imageUrls && Array.isArray(product.imageUrls))
       return product.imageUrls;
-    }
-
-    if (product.rawData && product.rawData.images) {
+    if (product.rawData && product.rawData.images)
       return product.rawData.images;
-    }
-
     return [];
   }
 
@@ -417,228 +1016,230 @@ class ProductMergeService {
     );
   }
 
-  /**
-   * Save merged products to database, maintaining platform connections
-   */
-  async saveMergedProducts(mergedProducts, userId) {
-    const savedProducts = [];
-    const errors = [];
+  extractBrand(product) {
+    return (
+      product.brand ||
+      product.brandName ||
+      product.manufacturer ||
+      (product.rawData && (product.rawData.brand || product.rawData.brandName))
+    );
+  }
 
-    for (const mergedProduct of mergedProducts) {
-      const transaction = await sequelize.transaction();
+  extractBrandId(product) {
+    return product.brandId || (product.rawData && product.rawData.brandId);
+  }
 
-      try {
-        // Validate required fields before attempting to save
-        if (!mergedProduct.name || mergedProduct.name.trim() === "") {
-          logger.warn(
-            `Skipping product without name: ${JSON.stringify(
-              mergedProduct,
-              null,
-              2
-            )}`
-          );
-          errors.push({
-            product: mergedProduct.sku || "unknown",
-            error: "Product name is required",
-          });
-          await transaction.rollback();
-          continue;
-        }
+  extractManufacturer(product) {
+    return (
+      product.manufacturer ||
+      product.brand ||
+      product.brandName ||
+      (product.rawData &&
+        (product.rawData.manufacturer || product.rawData.brand))
+    );
+  }
 
-        // Generate SKU if missing
-        if (!mergedProduct.sku || mergedProduct.sku.trim() === "") {
-          // Generate a unique SKU based on name and timestamp
-          const namePrefix = mergedProduct.name
-            .toLowerCase()
-            .replace(/[^a-z0-9]/g, "")
-            .substring(0, 10);
-          mergedProduct.sku = `${namePrefix}-${Date.now()}`;
-          logger.info(
-            `Generated SKU for product "${mergedProduct.name}": ${mergedProduct.sku}`
-          );
-        }
+  extractVariants(product) {
+    if (product.variants && Array.isArray(product.variants))
+      return product.variants;
+    if (
+      product.rawData &&
+      product.rawData.variants &&
+      Array.isArray(product.rawData.variants)
+    )
+      return product.rawData.variants;
+    if (product.variant) return [product.variant];
+    return [];
+  }
 
-        // Check if product already exists by SKU
-        let existingProduct = null;
-        if (mergedProduct.sku) {
-          existingProduct = await Product.findOne({
-            where: {
-              userId,
-              sku: mergedProduct.sku,
-            },
-            transaction,
-          });
-        }
+  extractVariantAttributes(product) {
+    const attributes = {};
+    if (product.color) attributes.color = product.color;
+    if (product.size) attributes.size = product.size;
+    if (product.material) attributes.material = product.material;
+    if (product.pattern) attributes.pattern = product.pattern;
+    if (product.rawData) {
+      if (product.rawData.color) attributes.color = product.rawData.color;
+      if (product.rawData.size) attributes.size = product.rawData.size;
+      if (product.rawData.material)
+        attributes.material = product.rawData.material;
+      if (product.rawData.pattern) attributes.pattern = product.rawData.pattern;
+      if (product.rawData.attributes)
+        Object.assign(attributes, product.rawData.attributes);
+    }
+    if (product.variantAttributes)
+      Object.assign(attributes, product.variantAttributes);
+    return Object.keys(attributes).length > 0 ? attributes : null;
+  }
 
-        // Or by barcode if no SKU match
-        if (!existingProduct && mergedProduct.barcode) {
-          existingProduct = await Product.findOne({
-            where: {
-              userId,
-              barcode: mergedProduct.barcode,
-            },
-            transaction,
-          });
-        }
+  extractAttributes(product) {
+    const attributes = {};
+    if (product.attributes && typeof product.attributes === "object") {
+      Object.assign(attributes, product.attributes);
+    }
+    if (product.rawData && product.rawData.attributes) {
+      Object.assign(attributes, product.rawData.attributes);
+    }
+    return Object.keys(attributes).length > 0 ? attributes : null;
+  }
 
-        // Update existing or create new
-        let product;
-        if (existingProduct) {
-          // Update existing product
-          await existingProduct.update(
-            {
-              name: mergedProduct.name || existingProduct.name,
-              description:
-                mergedProduct.description || existingProduct.description,
-              price: mergedProduct.price || existingProduct.price,
-              stockQuantity:
-                mergedProduct.stockQuantity || existingProduct.stockQuantity,
-              images: mergedProduct.images || existingProduct.images,
-              barcode: mergedProduct.barcode || existingProduct.barcode,
-              category: mergedProduct.category || existingProduct.category,
-              lastSyncedAt: new Date(),
-            },
-            { transaction }
-          );
-          product = existingProduct;
-          logger.debug(`Updated existing product: ${product.sku}`);
-        } else {
-          // Create new product with required fields
-          const productData = {
-            userId,
-            sku: mergedProduct.sku,
-            name: mergedProduct.name,
-            description: mergedProduct.description || "",
-            price: parseFloat(mergedProduct.price) || 0,
-            stockQuantity: parseInt(mergedProduct.stockQuantity) || 0,
-            category: mergedProduct.category || "Uncategorized",
-            images: Array.isArray(mergedProduct.images)
-              ? mergedProduct.images
-              : [],
-            status: "active",
-            lastSyncedAt: new Date(),
-          };
+  extractMetadata(product) {
+    return {
+      sourcePlatform: product.sourcePlatform,
+      connectionId: product.connectionId,
+      connectionName: product.connectionName,
+      lastUpdated: new Date().toISOString(),
+    };
+  }
 
-          // Only add barcode if it exists and is not empty
-          if (mergedProduct.barcode && mergedProduct.barcode.trim() !== "") {
-            productData.barcode = mergedProduct.barcode;
-          }
+  extractWeight(product) {
+    const weight =
+      product.weight ||
+      product.dimensionalWeight ||
+      (product.rawData &&
+        (product.rawData.weight || product.rawData.dimensionalWeight));
+    return weight ? parseFloat(weight) : null;
+  }
 
-          product = await Product.create(productData, { transaction });
-          logger.info(`Created new product: ${product.sku} - ${product.name}`);
-        }
+  extractDimensions(product) {
+    const dimensions = {};
+    if (product.width) dimensions.width = parseFloat(product.width);
+    if (product.height) dimensions.height = parseFloat(product.height);
+    if (product.length) dimensions.length = parseFloat(product.length);
+    if (product.depth) dimensions.depth = parseFloat(product.depth);
+    if (product.rawData) {
+      if (product.rawData.width)
+        dimensions.width = parseFloat(product.rawData.width);
+      if (product.rawData.height)
+        dimensions.height = parseFloat(product.rawData.height);
+      if (product.rawData.length)
+        dimensions.length = parseFloat(product.rawData.length);
+      if (product.rawData.depth)
+        dimensions.depth = parseFloat(product.rawData.depth);
+    }
+    if (product.dimensions && typeof product.dimensions === "object") {
+      Object.assign(dimensions, product.dimensions);
+    }
+    return Object.keys(dimensions).length > 0 ? dimensions : null;
+  }
 
-        // Update platform connections if sources exist
-        if (mergedProduct.sources && Array.isArray(mergedProduct.sources)) {
-          for (const source of mergedProduct.sources) {
-            try {
-              if (source.platform && source.externalId) {
-                // Use upsert for better concurrency handling
-                const [platformData, created] = await PlatformData.upsert(
-                  {
-                    entityType: "product",
-                    entityId: product.id,
-                    platformType: source.platform,
-                    platformEntityId: source.externalId,
-                    platformSku: source.sku || product.sku,
-                    platformPrice: parseFloat(source.price) || 0,
-                    platformQuantity: parseInt(source.stockQuantity) || 0,
-                    lastSyncedAt: new Date(),
-                    status: "active",
-                    data: { source },
-                  },
-                  {
-                    transaction,
-                    conflictFields: ["entityType", "entityId", "platformType"],
-                  }
-                );
+  extractVatRate(product) {
+    const vatRate =
+      product.vatRate ||
+      product.taxRate ||
+      (product.rawData && (product.rawData.vatRate || product.rawData.taxRate));
+    return vatRate ? parseFloat(vatRate) : null;
+  }
 
-                logger.debug(
-                  `${created ? "Created" : "Updated"} platform data for ${
-                    source.platform
-                  }: ${source.externalId}`
-                );
-              }
-            } catch (platformError) {
-              // Check if it's a constraint violation we can handle
-              if (platformError.name === "SequelizeUniqueConstraintError") {
-                logger.warn(
-                  `Constraint violation for product ${product.sku} on ${source.platform}, attempting manual update:`,
-                  platformError.message
-                );
+  extractPlatformProductId(product) {
+    return (
+      product.platformProductId ||
+      product.productId ||
+      product.externalId ||
+      product.id ||
+      (product.rawData &&
+        (product.rawData.id ||
+          product.rawData.productId ||
+          product.rawData.productMainId))
+    );
+  }
 
-                try {
-                  // Try to find and update the existing record
-                  const existingPlatformData = await PlatformData.findOne({
-                    where: {
-                      entityType: "product",
-                      entityId: product.id,
-                      platformType: source.platform,
-                    },
-                    transaction,
-                  });
+  extractStockCode(product) {
+    return (
+      product.stockCode ||
+      product.sku ||
+      product.merchantSku ||
+      product.sellerStockCode ||
+      (product.rawData && (product.rawData.stockCode || product.rawData.sku))
+    );
+  }
 
-                  if (existingPlatformData) {
-                    await existingPlatformData.update(
-                      {
-                        platformEntityId: source.externalId,
-                        platformSku: source.sku || product.sku,
-                        platformPrice: parseFloat(source.price) || 0,
-                        platformQuantity: parseInt(source.stockQuantity) || 0,
-                        lastSyncedAt: new Date(),
-                        status: "active",
-                        data: { source },
-                      },
-                      { transaction }
-                    );
-
-                    logger.debug(
-                      `Successfully updated existing platform data for ${source.platform}: ${source.externalId}`
-                    );
-                  }
-                } catch (retryError) {
-                  logger.error(
-                    `Failed to handle constraint violation for product ${product.sku}:`,
-                    retryError
-                  );
-                  // Continue with other sources instead of failing the entire product
-                }
-              } else {
-                logger.error(
-                  `Error updating platform data for product ${product.sku}:`,
-                  platformError
-                );
-                // Continue with other sources instead of failing the entire product
-              }
-            }
-          }
-        }
-
-        await transaction.commit();
-        savedProducts.push(product);
-      } catch (error) {
-        await transaction.rollback();
-        logger.error(
-          `Error saving merged product ${
-            mergedProduct.sku || mergedProduct.name
-          }:`,
-          error
-        );
-        errors.push({
-          product: mergedProduct.sku || mergedProduct.name || "unknown",
-          error: error.message,
-        });
+  extractApprovalStatus(product) {
+    if (product.approved !== undefined) return product.approved;
+    if (product.status) {
+      const status = product.status.toLowerCase();
+      if (status === "approved" || status === "active") return true;
+      if (status === "rejected" || status === "inactive") return false;
+    }
+    if (product.rawData) {
+      if (product.rawData.approved !== undefined)
+        return product.rawData.approved;
+      if (product.rawData.status) {
+        const status = product.rawData.status.toLowerCase();
+        if (status === "approved" || status === "active") return true;
+        if (status === "rejected" || status === "inactive") return false;
       }
     }
+    return null;
+  }
 
-    if (errors.length > 0) {
-      logger.warn(`Failed to save ${errors.length} products:`, errors);
-    }
-
-    logger.info(
-      `Successfully saved ${savedProducts.length} products out of ${mergedProducts.length} merged products`
+  extractPlatformStatus(product) {
+    return (
+      product.status ||
+      product.platformStatus ||
+      (product.rawData &&
+        (product.rawData.status || product.rawData.platformStatus))
     );
-    return savedProducts;
+  }
+
+  extractErrorInfo(product) {
+    const errorInfo = {};
+    if (product.error) errorInfo.error = product.error;
+    if (product.errorMessage) errorInfo.errorMessage = product.errorMessage;
+    if (product.errorCode) errorInfo.errorCode = product.errorCode;
+    if (product.hasError) errorInfo.hasError = product.hasError;
+    if (product.rawData) {
+      if (product.rawData.error) errorInfo.error = product.rawData.error;
+      if (product.rawData.errorMessage)
+        errorInfo.errorMessage = product.rawData.errorMessage;
+      if (product.rawData.errorCode)
+        errorInfo.errorCode = product.rawData.errorCode;
+      if (product.rawData.hasError)
+        errorInfo.hasError = product.rawData.hasError;
+    }
+    if (product.sourcePlatform && product.failureReasons) {
+      errorInfo.failureReasons = product.failureReasons;
+    }
+    return Object.keys(errorInfo).length > 0 ? errorInfo : null;
+  }
+
+  extractCategoryId(product) {
+    return (
+      product.categoryId || (product.rawData && product.rawData.categoryId)
+    );
+  }
+
+  extractUrls(product) {
+    const urls = {};
+    if (product.productUrl) urls.productUrl = product.productUrl;
+    if (product.platformUrl) urls.platformUrl = product.platformUrl;
+    if (product.detailUrl) urls.detailUrl = product.detailUrl;
+    if (product.rawData) {
+      if (product.rawData.productUrl)
+        urls.productUrl = product.rawData.productUrl;
+      if (product.rawData.platformUrl)
+        urls.platformUrl = product.rawData.platformUrl;
+      if (product.rawData.detailUrl) urls.detailUrl = product.rawData.detailUrl;
+    }
+    return Object.keys(urls).length > 0 ? urls : null;
+  }
+
+  extractShippingInfo(product) {
+    const shipping = {};
+    if (product.shippingWeight)
+      shipping.weight = parseFloat(product.shippingWeight);
+    if (product.freeShipping !== undefined)
+      shipping.freeShipping = product.freeShipping;
+    if (product.shippingTemplate) shipping.template = product.shippingTemplate;
+    if (product.rawData) {
+      if (product.rawData.shippingWeight)
+        shipping.weight = parseFloat(product.rawData.shippingWeight);
+      if (product.rawData.freeShipping !== undefined)
+        shipping.freeShipping = product.rawData.freeShipping;
+      if (product.rawData.shippingTemplate)
+        shipping.template = product.rawData.shippingTemplate;
+    }
+    return Object.keys(shipping).length > 0 ? shipping : null;
   }
 }
 

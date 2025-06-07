@@ -19,7 +19,7 @@ class ProductController {
     try {
       const {
         page = 0,
-        limit = 50,
+        limit = 1000,
         search,
         category,
         platform,

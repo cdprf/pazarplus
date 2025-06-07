@@ -1,29 +1,31 @@
-const TrendyolService = require("./trendyol-service");
-const HepsiburadaService = require("./hepsiburada-service");
-const N11Service = require("./n11-service");
+const PlatformServiceFactory = require("../modules/order-management/services/platforms/platformServiceFactory");
 
 class PlatformServiceManager {
   constructor() {
-    this.services = {
-      trendyol: new TrendyolService(),
-      hepsiburada: new HepsiburadaService(),
-      n11: new N11Service(),
-    };
+    // Don't create services in constructor, create them on demand
+    this.serviceInstances = new Map();
   }
 
   // Enhanced method to get service by platform type
-  getService(platformType) {
-    const service = this.services[platformType.toLowerCase()];
-    if (!service) {
-      throw new Error(`Unsupported platform type: ${platformType}`);
+  getService(platformType, connectionId = null, directCredentials = null) {
+    const serviceKey = `${platformType.toLowerCase()}-${connectionId || 'default'}`;
+    
+    if (!this.serviceInstances.has(serviceKey)) {
+      const service = PlatformServiceFactory.createService(
+        platformType, 
+        connectionId, 
+        directCredentials
+      );
+      this.serviceInstances.set(serviceKey, service);
     }
-    return service;
+    
+    return this.serviceInstances.get(serviceKey);
   }
 
   // Enhanced order fetching with better error handling and data normalization
   async fetchOrders(connection, options = {}) {
     try {
-      const service = this.getService(connection.platformType);
+      const service = this.getService(connection.platformType, connection.id);
 
       // Validate connection credentials
       if (!this.validateConnection(connection)) {
@@ -241,68 +243,42 @@ class PlatformServiceManager {
     }
   }
 
-  // Enhanced status normalization
+  // Enhanced status normalization - delegates to platform services for consistency
   normalizeStatus(platformStatus, platform) {
     if (!platformStatus) return "pending";
 
-    const status = platformStatus.toLowerCase();
+    // Use platform-specific service mappings for consistency
+    try {
+      const service = this.getService(platform);
+      if (service && typeof service.mapOrderStatus === 'function') {
+        return service.mapOrderStatus(platformStatus);
+      }
+    } catch (error) {
+      console.warn(`Could not get platform service for ${platform}:`, error.message);
+    }
 
-    // Common status mappings
-    const statusMappings = {
-      created: "pending",
-      confirmed: "pending",
-      approved: "confirmed",
+    // Fallback to common status mappings if service is not available
+    const status = platformStatus.toLowerCase();
+    const commonStatusMappings = {
+      created: "new",
+      new: "new",
+      confirmed: "pending", 
+      approved: "pending",
       preparing: "processing",
+      picking: "processing",
+      packaged: "shipped",
       shipped: "shipped",
+      intransit: "shipped",
+      in_transit: "shipped",
       delivered: "delivered",
       cancelled: "cancelled",
       returned: "returned",
       refunded: "refunded",
+      failed: "failed",
+      undelivered: "failed",
     };
 
-    // Platform-specific mappings
-    switch (platform) {
-      case "trendyol":
-        const trendyolMappings = {
-          created: "pending",
-          approved: "confirmed",
-          picking: "processing",
-          invoiced: "processing",
-          shipped: "shipped",
-          delivered: "delivered",
-          cancelled: "cancelled",
-          undelivered: "failed",
-          returned: "returned",
-        };
-        return trendyolMappings[status] || statusMappings[status] || "pending";
-
-      case "hepsiburada":
-        const hepsiburadaMappings = {
-          waiting: "pending",
-          confirmed: "confirmed",
-          preparing: "processing",
-          shipped: "shipped",
-          delivered: "delivered",
-          cancelled: "cancelled",
-        };
-        return (
-          hepsiburadaMappings[status] || statusMappings[status] || "pending"
-        );
-
-      case "n11":
-        const n11Mappings = {
-          new: "pending",
-          confirmed: "confirmed",
-          preparing: "processing",
-          shipped: "shipped",
-          completed: "delivered",
-          cancelled: "cancelled",
-        };
-        return n11Mappings[status] || statusMappings[status] || "pending";
-
-      default:
-        return statusMappings[status] || "pending";
-    }
+    return commonStatusMappings[status] || "unknown";
   }
 
   extractCustomerName(order, platform) {

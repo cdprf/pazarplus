@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-  useMemo,
-} from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ShoppingCart,
@@ -60,6 +54,7 @@ const OrderManagement = React.memo(() => {
   const [modalMode, setModalMode] = useState("view");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+  const [pagination, setPagination] = useState({ totalPages: 1, total: 0 });
   const [syncing, setSyncing] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
@@ -91,6 +86,9 @@ const OrderManagement = React.memo(() => {
     shipped: 0,
     delivered: 0,
     cancelled: 0,
+    claimCreated: 0,
+    claimApproved: 0,
+    claimRejected: 0,
     totalRevenue: 0,
   });
 
@@ -111,17 +109,38 @@ const OrderManagement = React.memo(() => {
 
     const newStats = {
       total: ordersData.length,
+      new: 0,
       pending: 0,
       processing: 0,
       shipped: 0,
+      in_transit: 0,
       delivered: 0,
       cancelled: 0,
+      returned: 0,
+      failed: 0,
+      unknown: 0,
+      claimCreated: 0,
+      claimApproved: 0,
+      claimRejected: 0,
+      refunded: 0,
+      consolidated: 0,
+      inBatch: 0,
       totalRevenue: 0,
     };
 
     ordersData.forEach((order) => {
       const status = order.status || order.orderStatus || "pending";
-      if (newStats.hasOwnProperty(status)) {
+
+      // Handle status mapping for stats (convert underscore to camelCase for specific statuses)
+      let statKey = status;
+      if (status === "claim_created") statKey = "claimCreated";
+      else if (status === "claim_approved") statKey = "claimApproved";
+      else if (status === "claim_rejected") statKey = "claimRejected";
+      else if (status === "in_batch") statKey = "inBatch";
+
+      if (newStats.hasOwnProperty(statKey)) {
+        newStats[statKey]++;
+      } else if (newStats.hasOwnProperty(status)) {
         newStats[status]++;
       }
 
@@ -216,6 +235,9 @@ const OrderManagement = React.memo(() => {
       shipped: "🚚",
       delivered: "📦",
       cancelled: "❌",
+      claimCreated: "🆕",
+      claimApproved: "✅",
+      claimRejected: "❌",
       returned: "↩️",
       refunded: "💰",
       failed: "⚠️",
@@ -232,6 +254,9 @@ const OrderManagement = React.memo(() => {
       delivered: "success",
       cancelled: "danger",
       returned: "warning",
+      claimCreated: "info",
+      claimApproved: "success",
+      claimRejected: "danger",
       refunded: "secondary",
       failed: "danger",
     };
@@ -247,6 +272,9 @@ const OrderManagement = React.memo(() => {
       delivered: "Teslim Edildi",
       cancelled: "İptal Edildi",
       returned: "İade Edildi",
+      claimCreated: "Talep Oluşturuldu",
+      claimApproved: "Talep Onaylandı",
+      claimRejected: "Talep Reddedildi",
       refunded: "İade Tamamlandı",
       failed: "Başarısız",
     };
@@ -265,12 +293,48 @@ const OrderManagement = React.memo(() => {
   }, []);
 
   const getPlatformIcon = useCallback((platform) => {
+    // Platform icons as SVG or imported images
     const icons = {
-      trendyol: "🛍️",
-      hepsiburada: "🛒",
-      n11: "🏪",
-      pazarama: "🎯",
-      gittigidiyor: "🔔",
+      trendyol: (
+        <img
+          src="https://cdn.brandfetch.io/idEdTxkWAp/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B"
+          alt="Trendyol"
+          className="inline h-7 w-7 align-middle"
+          style={{ display: "inline", verticalAlign: "middle" }}
+        />
+      ),
+      hepsiburada: (
+        <img
+          src="https://cdn.brandfetch.io/id9XTiaix8/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B"
+          alt="Hepsiburada"
+          className="inline h-9 w-9 align-middle"
+          style={{ display: "inline", verticalAlign: "middle" }}
+        />
+      ),
+      n11: (
+        <img
+          src="https://cdn.brandfetch.io/idIWnXEme7/theme/dark/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B"
+          alt="N11"
+          className="inline h-7 w-7 align-middle"
+          style={{ display: "inline", verticalAlign: "middle" }}
+        />
+      ),
+      pazarama: (
+        <img
+          src="https://cdn.pazaryerilogo.com/pazarama.svg"
+          alt="Pazarama"
+          className="inline h-7 w-7 align-middle"
+          style={{ display: "inline", verticalAlign: "middle" }}
+        />
+      ),
+      gittigidiyor: (
+        <img
+          src="https://cdn.pazaryerilogo.com/gittigidiyor.svg"
+          alt="Gittigidiyor"
+          className="inline h-7 w-7 align-middle"
+          style={{ display: "inline", verticalAlign: "middle" }}
+        />
+      ),
     };
     return icons[platform?.toLowerCase()] || "📦";
   }, []);
@@ -311,6 +375,16 @@ const OrderManagement = React.memo(() => {
           totalCount = response.total || ordersData.length;
           totalPagesCalculated =
             response.totalPages || Math.ceil(totalCount / recordCount);
+        } else if (response.data && Array.isArray(response.data.orders)) {
+          // Main API response structure: data.orders with data.pagination
+          ordersData = response.data.orders;
+          totalCount =
+            response.data.pagination?.total ||
+            response.data.total ||
+            ordersData.length;
+          totalPagesCalculated =
+            response.data.pagination?.totalPages ||
+            Math.ceil(totalCount / recordCount);
         } else if (response.data && Array.isArray(response.data.data)) {
           // Nested data structure
           ordersData = response.data.data;
@@ -320,17 +394,8 @@ const OrderManagement = React.memo(() => {
             response.data.totalPages ||
             response.totalPages ||
             Math.ceil(totalCount / recordCount);
-        } else if (response.data && Array.isArray(response.data.orders)) {
-          // Orders in .orders property
-          ordersData = response.data.orders;
-          totalCount =
-            response.data.total || response.total || ordersData.length;
-          totalPagesCalculated =
-            response.data.totalPages ||
-            response.totalPages ||
-            Math.ceil(totalCount / recordCount);
         } else if (response.pagination) {
-          // Response with pagination object
+          // Response with pagination object at root level
           ordersData = response.data || [];
           totalCount = response.pagination.total || 0;
           totalPagesCalculated =
@@ -379,6 +444,7 @@ const OrderManagement = React.memo(() => {
 
         setOrders(mappedOrders);
         setTotalRecords(totalCount);
+        setPagination({ totalPages: totalPagesCalculated, total: totalCount });
 
         // Update stats with mapped orders data
         updateStatsFromOrders(mappedOrders);
@@ -431,109 +497,17 @@ const OrderManagement = React.memo(() => {
     }
   }, [currentPage, filters, recordCount, fetchOrders, searchTerm]);
 
-  // Memoized filtered and sorted orders
-  const filteredAndSortedOrders = useMemo(() => {
-    if (!Array.isArray(orders)) return [];
-
-    let filtered = [...orders];
-
-    // Apply search filter
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(
-        (order) =>
-          order.orderNumber?.toLowerCase().includes(searchLower) ||
-          order.customerName?.toLowerCase().includes(searchLower) ||
-          order.customerEmail?.toLowerCase().includes(searchLower) ||
-          order.platform?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Apply status filter
-    if (filters.status && filters.status !== "all") {
-      filtered = filtered.filter((order) => order.status === filters.status);
-    }
-
-    // Apply platform filter
-    if (filters.platform && filters.platform !== "all") {
-      filtered = filtered.filter(
-        (order) => order.platform === filters.platform
-      );
-    }
-
-    // Apply price filter
-    if (filters.priceMin) {
-      const minPrice = parseFloat(filters.priceMin);
-      filtered = filtered.filter((order) => order.totalAmount >= minPrice);
-    }
-
-    if (filters.priceMax) {
-      const maxPrice = parseFloat(filters.priceMax);
-      filtered = filtered.filter((order) => order.totalAmount <= maxPrice);
-    }
-
-    // Apply date filter
-    if (filters.dateFrom) {
-      const fromDate = new Date(filters.dateFrom);
-      filtered = filtered.filter((order) => {
-        const orderDate = new Date(
-          order.displayDate || order.orderDate || order.createdAt
-        );
-        return orderDate >= fromDate;
-      });
-    }
-
-    if (filters.dateTo) {
-      const toDate = new Date(filters.dateTo);
-      toDate.setHours(23, 59, 59, 999); // End of day
-      filtered = filtered.filter((order) => {
-        const orderDate = new Date(
-          order.displayDate || order.orderDate || order.createdAt
-        );
-        return orderDate <= toDate;
-      });
-    }
-
-    // Apply sorting
-    return filtered.sort((a, b) => {
-      const aValue = a[sortConfig.key];
-      const bValue = b[sortConfig.key];
-
-      if (aValue === bValue) return 0;
-
-      let comparison = 0;
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        comparison = aValue.localeCompare(bValue);
-      } else if (typeof aValue === "number" && typeof bValue === "number") {
-        comparison = aValue - bValue;
-      } else if (aValue instanceof Date && bValue instanceof Date) {
-        comparison = aValue.getTime() - bValue.getTime();
-      } else {
-        comparison = aValue < bValue ? -1 : 1;
-      }
-
-      return sortConfig.direction === "desc" ? -comparison : comparison;
-    });
-  }, [orders, searchTerm, filters, sortConfig]);
-
-  // Memoized current page orders
-  const currentOrders = useMemo(() => {
-    const startIndex = (currentPage - 1) * recordCount;
-    const endIndex = startIndex + recordCount;
-    return filteredAndSortedOrders.slice(startIndex, endIndex);
-  }, [filteredAndSortedOrders, currentPage, recordCount]);
-
-  // Update total pages based on filtered results
-  const calculatedTotalPages = useMemo(() => {
-    return Math.max(1, Math.ceil(filteredAndSortedOrders.length / recordCount));
-  }, [filteredAndSortedOrders.length, recordCount]);
+  // Use server-provided data directly (no client-side filtering or pagination)
+  // Orders are already filtered and paginated by the server
+  const currentOrders = orders;
+  const totalPages = pagination.totalPages || 1;
 
   // Reset page when it exceeds total pages
   useEffect(() => {
-    if (currentPage > calculatedTotalPages) {
+    if (currentPage > totalPages) {
       setCurrentPage(1);
     }
-  }, [currentPage, calculatedTotalPages]);
+  }, [currentPage, totalPages]);
   // Date range presets handler
   const applyDatePreset = useCallback((preset) => {
     const today = new Date();
@@ -1527,9 +1501,9 @@ const OrderManagement = React.memo(() => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <Badge
                               variant={getPlatformVariant(order.platform)}
-                              className="capitalize"
+                              className="capitalize bg-white"
                             >
-                              {getPlatformIcon(order.platform)} {order.platform}
+                              {getPlatformIcon(order.platform)}
                             </Badge>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -1618,127 +1592,129 @@ const OrderManagement = React.memo(() => {
             )}
 
             {/* Enhanced Pagination */}
-            {calculatedTotalPages > 1 && (
+            {orders.length > 0 && (
               <div className="px-6 py-4 border-t border-gray-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center text-sm text-gray-700">
                     <span>
-                      Sayfa {currentPage} / {calculatedTotalPages}
+                      Sayfa {currentPage} / {totalPages}
                     </span>
                     <span className="ml-4 text-gray-500">
-                      Toplam{" "}
-                      {totalRecords > 0
-                        ? totalRecords
-                        : filteredAndSortedOrders.length}{" "}
-                      kayıt
-                      {filteredAndSortedOrders.length !== orders.length &&
-                        ` (${orders.length} kayıttan filtrelenmiş)`}
+                      Toplam {totalRecords} kayıt
+                    </span>
+                    <span className="ml-4 text-gray-400">
+                      (Sayfa başına {recordCount} kayıt)
+                    </span>
+                    <span className="ml-4 text-gray-600 text-xs">
+                      [Debug: totalPages={totalPages}, pagination.totalPages=
+                      {pagination.totalPages}, totalRecords={totalRecords}]
                     </span>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    {/* First page button */}
-                    <Button
-                      onClick={() => setCurrentPage(1)}
-                      disabled={currentPage === 1}
-                      size="sm"
-                      variant="outline"
-                      className="hidden sm:inline-flex"
-                    >
-                      İlk
-                    </Button>
+                  {orders.length > 0 && (
+                    <div className="flex items-center space-x-1">
+                      {/* Always show Previous/Next controls for testing */}
 
-                    {/* Previous page button */}
-                    <Button
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.max(prev - 1, 1))
-                      }
-                      disabled={currentPage === 1}
-                      size="sm"
-                      variant="outline"
-                    >
-                      Önceki
-                    </Button>
+                      {/* First page button */}
+                      <Button
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                        size="sm"
+                        variant="outline"
+                        className="hidden sm:inline-flex"
+                      >
+                        İlk
+                      </Button>
 
-                    {/* Page numbers */}
-                    <div className="hidden sm:flex items-center space-x-1">
-                      {Array.from(
-                        { length: Math.min(5, calculatedTotalPages) },
-                        (_, i) => {
-                          let pageNumber;
-                          if (calculatedTotalPages <= 5) {
-                            pageNumber = i + 1;
-                          } else if (currentPage <= 3) {
-                            pageNumber = i + 1;
-                          } else if (currentPage >= calculatedTotalPages - 2) {
-                            pageNumber = calculatedTotalPages - 4 + i;
-                          } else {
-                            pageNumber = currentPage - 2 + i;
-                          }
-
-                          return (
-                            <Button
-                              key={pageNumber}
-                              onClick={() => setCurrentPage(pageNumber)}
-                              size="sm"
-                              variant={
-                                currentPage === pageNumber
-                                  ? "primary"
-                                  : "outline"
-                              }
-                              className="min-w-[40px]"
-                            >
-                              {pageNumber}
-                            </Button>
-                          );
+                      {/* Previous page button */}
+                      <Button
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.max(prev - 1, 1))
                         }
-                      )}
+                        disabled={currentPage === 1}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Önceki
+                      </Button>
 
-                      {/* Show ellipsis and last page if needed */}
-                      {calculatedTotalPages > 5 &&
-                        currentPage < calculatedTotalPages - 2 && (
+                      {/* Page numbers - always show at least current page */}
+                      <div className="hidden sm:flex items-center space-x-1">
+                        {Array.from(
+                          { length: Math.max(1, Math.min(5, totalPages)) },
+                          (_, i) => {
+                            let pageNumber;
+                            if (totalPages <= 5) {
+                              pageNumber = i + 1;
+                            } else if (currentPage <= 3) {
+                              pageNumber = i + 1;
+                            } else if (currentPage >= totalPages - 2) {
+                              pageNumber = totalPages - 4 + i;
+                            } else {
+                              pageNumber = currentPage - 2 + i;
+                            }
+
+                            return (
+                              <Button
+                                key={pageNumber}
+                                onClick={() => setCurrentPage(pageNumber)}
+                                size="sm"
+                                variant={
+                                  currentPage === pageNumber
+                                    ? "primary"
+                                    : "outline"
+                                }
+                                className="min-w-[40px]"
+                              >
+                                {pageNumber}
+                              </Button>
+                            );
+                          }
+                        )}
+
+                        {/* Show ellipsis and last page if needed */}
+                        {totalPages > 5 && currentPage < totalPages - 2 && (
                           <>
-                            {currentPage < calculatedTotalPages - 3 && (
+                            {currentPage < totalPages - 3 && (
                               <span className="px-2 text-gray-500">...</span>
                             )}
                             <Button
-                              onClick={() =>
-                                setCurrentPage(calculatedTotalPages)
-                              }
+                              onClick={() => setCurrentPage(totalPages)}
                               size="sm"
                               variant="outline"
                               className="min-w-[40px]"
                             >
-                              {calculatedTotalPages}
+                              {totalPages}
                             </Button>
                           </>
                         )}
+                      </div>
+
+                      {/* Next page button */}
+                      <Button
+                        onClick={() =>
+                          setCurrentPage((prev) =>
+                            Math.min(prev + 1, totalPages)
+                          )
+                        }
+                        disabled={currentPage === totalPages}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Sonraki
+                      </Button>
+
+                      {/* Last page button */}
+                      <Button
+                        onClick={() => setCurrentPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                        size="sm"
+                        variant="outline"
+                        className="hidden sm:inline-flex"
+                      >
+                        Son
+                      </Button>
                     </div>
-
-                    {/* Next page button */}
-                    <Button
-                      onClick={() =>
-                        setCurrentPage((prev) =>
-                          Math.min(prev + 1, calculatedTotalPages)
-                        )
-                      }
-                      disabled={currentPage === calculatedTotalPages}
-                      size="sm"
-                      variant="outline"
-                    >
-                      Sonraki
-                    </Button>
-
-                    {/* Last page button */}
-                    <Button
-                      onClick={() => setCurrentPage(calculatedTotalPages)}
-                      disabled={currentPage === calculatedTotalPages}
-                      size="sm"
-                      variant="outline"
-                      className="hidden sm:inline-flex"
-                    >
-                      Son
-                    </Button>
-                  </div>
+                  )}
                 </div>
 
                 {/* Mobile pagination controls */}
@@ -1748,14 +1724,14 @@ const OrderManagement = React.memo(() => {
                     onChange={(e) => setCurrentPage(parseInt(e.target.value))}
                     className="px-3 py-1 border border-gray-300 rounded text-sm"
                   >
-                    {Array.from({ length: calculatedTotalPages }, (_, i) => (
+                    {Array.from({ length: totalPages }, (_, i) => (
                       <option key={i + 1} value={i + 1}>
                         Sayfa {i + 1}
                       </option>
                     ))}
                   </select>
                   <span className="text-sm text-gray-500">
-                    {calculatedTotalPages} sayfadan {currentPage}
+                    {totalPages} sayfadan {currentPage}
                   </span>
                 </div>
               </div>
@@ -2147,11 +2123,21 @@ const OrderForm = ({
             value={formData.status || "pending"}
             onChange={(e) => handleInputChange("status", e.target.value)}
           >
+            <option value="new">Yeni</option>
             <option value="pending">Bekleyen</option>
             <option value="processing">Hazırlanıyor</option>
             <option value="shipped">Kargoda</option>
+            <option value="in_transit">Yolda</option>
             <option value="delivered">Teslim Edildi</option>
             <option value="cancelled">İptal Edildi</option>
+            <option value="returned">İade Edildi</option>
+            <option value="failed">Başarısız</option>
+            <option value="claim_created">Şikayet Oluşturuldu</option>
+            <option value="claim_approved">Şikayet Onaylandı</option>
+            <option value="claim_rejected">Şikayet Reddedildi</option>
+            <option value="refunded">İade Edildi</option>
+            <option value="consolidated">Konsolide Edildi</option>
+            <option value="in_batch">Toplu Kargoda</option>
           </select>
         </div>
 

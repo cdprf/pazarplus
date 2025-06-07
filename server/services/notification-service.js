@@ -17,19 +17,12 @@ class NotificationService extends EventEmitter {
   }
 
   /**
-   * Initialize WebSocket server
+   * Initialize notification service (without creating WebSocket server)
+   * The unified WebSocket server will route connections to this service
    */
-  initialize(server) {
+  initialize() {
     try {
-      this.wss = new WebSocket.Server({
-        server,
-        path: "/ws/notifications",
-      });
-
-      this.wss.on("connection", (ws, request) => {
-        this.handleConnection(ws, request);
-      });
-
+      // No longer create WebSocket server here - handled by unified server
       this.isInitialized = true;
       logger.info("Real-time notification service initialized");
 
@@ -713,24 +706,22 @@ class NotificationService extends EventEmitter {
    * Shutdown notification service
    */
   shutdown() {
-    if (this.wss) {
-      logger.info("Shutting down notification service...");
+    logger.info("Shutting down notification service...");
 
-      // Close all client connections
-      for (const [clientId, client] of this.clients) {
-        try {
-          client.ws.close();
-        } catch (error) {
-          // Ignore close errors
-        }
+    // Close all client connections
+    for (const [clientId, client] of this.clients) {
+      try {
+        client.ws.close();
+      } catch (error) {
+        // Ignore close errors
       }
-
-      this.clients.clear();
-      this.wss.close();
-      this.isInitialized = false;
-
-      logger.info("Notification service shutdown complete");
     }
+
+    this.clients.clear();
+    // No longer need to close WebSocket server - handled by unified server
+    this.isInitialized = false;
+
+    logger.info("Notification service shutdown complete");
   }
 }
 

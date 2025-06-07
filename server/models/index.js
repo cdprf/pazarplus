@@ -14,6 +14,16 @@ const ShippingRate = require("./ShippingRate");
 const TurkishCompliance = require("./TurkishCompliance");
 const ComplianceDocuments = require("./ComplianceDocuments");
 
+// === PLATFORM-SPECIFIC PRODUCT MODELS ===
+const TrendyolProduct = require("./TrendyolProduct");
+const HepsiburadaProduct = require("./HepsiburadaProduct");
+const N11Product = require("./N11Product");
+
+// === PRODUCT VARIANT AND INVENTORY MODELS ===
+const ProductVariant = require("./ProductVariant")(sequelize);
+const InventoryMovement = require("./InventoryMovement")(sequelize);
+const StockReservation = require("./StockReservation")(sequelize);
+
 // === NEW SUBSCRIPTION MODELS ===
 const Subscription = require("./Subscription");
 const UsageRecord = require("./UsageRecord");
@@ -35,6 +45,16 @@ const models = {
   ShippingRate: ShippingRate,
   TurkishCompliance: TurkishCompliance,
   ComplianceDocuments: ComplianceDocuments,
+
+  // === PLATFORM-SPECIFIC PRODUCT MODELS ===
+  TrendyolProduct: TrendyolProduct,
+  HepsiburadaProduct: HepsiburadaProduct,
+  N11Product: N11Product,
+
+  // === PRODUCT VARIANT AND INVENTORY MODELS ===
+  ProductVariant: ProductVariant,
+  InventoryMovement: InventoryMovement,
+  StockReservation: StockReservation,
 
   // === SUBSCRIPTION MODELS ===
   Subscription: Subscription,
@@ -112,6 +132,38 @@ models.Order.hasOne(models.TrendyolOrder, {
 models.TrendyolOrder.belongsTo(models.Order, {
   foreignKey: "orderId",
   as: "order",
+});
+
+// === PLATFORM-SPECIFIC PRODUCT ASSOCIATIONS ===
+
+// Product <-> TrendyolProduct (One-to-One)
+models.Product.hasOne(models.TrendyolProduct, {
+  foreignKey: "productId",
+  as: "trendyolProduct",
+});
+models.TrendyolProduct.belongsTo(models.Product, {
+  foreignKey: "productId",
+  as: "product",
+});
+
+// Product <-> HepsiburadaProduct (One-to-One)
+models.Product.hasOne(models.HepsiburadaProduct, {
+  foreignKey: "productId",
+  as: "hepsiburadaProduct",
+});
+models.HepsiburadaProduct.belongsTo(models.Product, {
+  foreignKey: "productId",
+  as: "product",
+});
+
+// Product <-> N11Product (One-to-One)
+models.Product.hasOne(models.N11Product, {
+  foreignKey: "productId",
+  as: "n11Product",
+});
+models.N11Product.belongsTo(models.Product, {
+  foreignKey: "productId",
+  as: "product",
 });
 
 // Shipping carrier associations
@@ -249,6 +301,89 @@ models.PlatformData.belongsTo(models.Order, {
   foreignKey: "entityId",
   constraints: false,
   as: "order",
+});
+
+// === PRODUCT VARIANT AND INVENTORY ASSOCIATIONS ===
+// Product <-> ProductVariant (One-to-Many)
+models.Product.hasMany(models.ProductVariant, {
+  foreignKey: "productId",
+  as: "variants",
+});
+models.ProductVariant.belongsTo(models.Product, {
+  foreignKey: "productId",
+  as: "product",
+});
+
+// Product <-> InventoryMovement (One-to-Many)
+models.Product.hasMany(models.InventoryMovement, {
+  foreignKey: "productId",
+  as: "inventoryMovements",
+});
+models.InventoryMovement.belongsTo(models.Product, {
+  foreignKey: "productId",
+  as: "product",
+});
+
+// ProductVariant <-> InventoryMovement (One-to-Many)
+models.ProductVariant.hasMany(models.InventoryMovement, {
+  foreignKey: "variantId",
+  as: "inventoryMovements",
+});
+models.InventoryMovement.belongsTo(models.ProductVariant, {
+  foreignKey: "variantId",
+  as: "variant",
+});
+
+// Product <-> StockReservation (One-to-Many)
+models.Product.hasMany(models.StockReservation, {
+  foreignKey: "productId",
+  as: "stockReservations",
+});
+models.StockReservation.belongsTo(models.Product, {
+  foreignKey: "productId",
+  as: "product",
+});
+
+// ProductVariant <-> StockReservation (One-to-Many)
+models.ProductVariant.hasMany(models.StockReservation, {
+  foreignKey: "variantId",
+  as: "stockReservations",
+});
+models.StockReservation.belongsTo(models.ProductVariant, {
+  foreignKey: "variantId",
+  as: "variant",
+});
+
+// User <-> InventoryMovement (One-to-Many)
+models.User.hasMany(models.InventoryMovement, {
+  foreignKey: "userId",
+  as: "inventoryMovements",
+});
+models.InventoryMovement.belongsTo(models.User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// User <-> StockReservation (One-to-Many)
+models.User.hasMany(models.StockReservation, {
+  foreignKey: "userId",
+  as: "stockReservations",
+});
+models.StockReservation.belongsTo(models.User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// ProductVariant <-> PlatformData (One-to-Many)
+models.ProductVariant.hasMany(models.PlatformData, {
+  foreignKey: "entityId",
+  scope: { entityType: "variant" },
+  as: "platformData",
+});
+models.PlatformData.belongsTo(models.ProductVariant, {
+  foreignKey: "entityId",
+  constraints: false,
+  as: "variant",
 });
 
 module.exports = {

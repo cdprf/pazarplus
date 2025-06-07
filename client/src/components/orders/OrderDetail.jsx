@@ -20,7 +20,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import api from "../../services/api";
-import { useNotification } from "../../contexts/NotificationContext";
+import { useAlert } from "../../contexts/AlertContext";
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -35,19 +35,19 @@ const OrderDetail = () => {
   const [linkingTemplate, setLinkingTemplate] = useState(false);
   const [availableTemplates, setAvailableTemplates] = useState([]);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
-  const { showNotification } = useNotification();
+  const { showNotification } = useAlert();
 
   // Wrap fetchOrder in useCallback to include it in dependency array
   const fetchOrder = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.getOrder(id);
-      setOrder(response);
-      setEditedOrder(response);
+      setOrder(response.data);
+      setEditedOrder(response.data);
 
       // Check if order already has a linked template
-      if (response.shippingTemplateId) {
-        await fetchLinkedTemplate(response.shippingTemplateId);
+      if (response.data.shippingTemplateId) {
+        await fetchLinkedTemplate(response.data.shippingTemplateId);
       }
     } catch (error) {
       console.error("Error fetching order:", error);
@@ -280,6 +280,14 @@ const OrderDetail = () => {
         return "bg-green-100 text-green-800";
       case "cancelled":
         return "bg-red-100 text-red-800";
+      case "returned":
+        return "bg-orange-100 text-orange-800";
+      case "claim_created":
+        return "bg-pink-100 text-pink-800";
+      case "claim_approved":
+        return "bg-teal-100 text-teal-800";
+      case "claim_rejected":
+        return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
     }

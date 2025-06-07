@@ -163,30 +163,30 @@ Product.init(
         fields: ["barcode"],
       },
     ],
-    hooks: {
-      afterCreate: async (product) => {
-        // If product doesn't have variants, create a default variant
-        if (!product.hasVariants) {
-          const ProductVariant = require("./ProductVariant");
-          await ProductVariant.create({
-            productId: product.id,
-            name: "Default",
-            sku: product.sku,
-            barcode: product.barcode,
-            price: product.price,
-            costPrice: product.costPrice,
-            stockQuantity: product.stockQuantity,
-            minStockLevel: product.minStockLevel,
-            weight: product.weight,
-            dimensions: product.dimensions,
-            images: product.images,
-            status: product.status,
-            isDefault: true,
-            sortOrder: 0,
-          });
-        }
-      },
-    },
+    // hooks: {
+    //   afterCreate: async (product) => {
+    //     // If product doesn't have variants, create a default variant
+    //     if (!product.hasVariants) {
+    //       const { ProductVariant } = require("./index");
+    //       await ProductVariant.create({
+    //         productId: product.id,
+    //         name: "Default",
+    //         sku: product.sku,
+    //         barcode: product.barcode,
+    //         price: product.price,
+    //         costPrice: product.costPrice,
+    //         stockQuantity: product.stockQuantity,
+    //         minStockLevel: product.minStockLevel,
+    //         weight: product.weight,
+    //         dimensions: product.dimensions,
+    //         images: product.images,
+    //         status: product.status,
+    //         isDefault: true,
+    //         sortOrder: 0,
+    //       });
+    //     }
+    //   },
+    // },
   }
 );
 

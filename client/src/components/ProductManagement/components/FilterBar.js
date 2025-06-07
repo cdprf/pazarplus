@@ -14,7 +14,7 @@ import {
   TrendingUp,
   Loader,
 } from "lucide-react";
-import { Button, Badge, Card, CardContent } from "./UIComponents";
+import { Button, Badge, Card, CardContent } from "../../ui";
 import {
   CATEGORIES,
   PLATFORMS,

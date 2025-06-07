@@ -306,11 +306,22 @@ const orderService = {
       }
 
       const validStatuses = [
+        "new",
         "pending",
         "processing",
         "shipped",
+        "in_transit",
         "delivered",
         "cancelled",
+        "returned",
+        "failed",
+        "unknown",
+        "claim_created",
+        "claim_approved",
+        "claim_rejected",
+        "refunded",
+        "consolidated",
+        "in_batch",
       ];
       if (!validStatuses.includes(status)) {
         throw new Error(

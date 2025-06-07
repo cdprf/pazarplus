@@ -38,6 +38,7 @@ import Reports from "./components/reports/Reports"; // Add the analytics/reports
 import Settings from "./components/settings/Settings";
 import PrintSettings from "./components/settings/PrintSettings";
 import InventoryInsights from "./components/analytics/InventoryInsights"; // Add inventory component
+import DatabaseBusyModal from "./components/DatabaseBusyModal"; // Database transaction management modal
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -60,6 +61,9 @@ function App() {
               <ThemeProvider>
                 <NotificationProvider>
                   <div className="App">
+                    {/* Database transaction management modal - globally available */}
+                    <DatabaseBusyModal />
+
                     <Routes>
                       {/* Public routes */}
                       <Route

@@ -1,5 +1,8 @@
 const { PlatformConnection, Order, Product } = require("../models");
 const logger = require("../utils/logger");
+const HepsiburadaService = require("../modules/order-management/services/platforms/hepsiburada/hepsiburada-service");
+const TrendyolService = require("../modules/order-management/services/platforms/trendyol/trendyol-service");
+const N11Service = require("../modules/order-management/services/platforms/n11/n11-service");
 
 // Utility function to safely serialize data and prevent circular references
 const safeJsonResponse = (data) => {
@@ -62,26 +65,9 @@ const safeJsonResponse = (data) => {
 // Try to import platform service modules with proper error handling
 let platformServices = {};
 
-try {
-  const HepsiburadaService = require("../modules/order-management/services/platforms/hepsiburada/hepsiburada-service");
-  platformServices.hepsiburada = HepsiburadaService;
-} catch (error) {
-  logger.warn("HepsiburadaService not found");
-}
-
-try {
-  const TrendyolService = require("../modules/order-management/services/platforms/trendyol/trendyol-service");
-  platformServices.trendyol = TrendyolService;
-} catch (error) {
-  logger.warn("TrendyolService not found");
-}
-
-try {
-  const N11Service = require("../modules/order-management/services/platforms/n11/n11-service");
-  platformServices.n11 = N11Service;
-} catch (error) {
-  logger.warn("N11Service not found");
-}
+platformServices.hepsiburada = HepsiburadaService;
+platformServices.trendyol = TrendyolService;
+platformServices.n11 = N11Service;
 
 // Get all platform connections for a user
 const getConnections = async (req, res) => {
@@ -895,14 +881,26 @@ async function testPlatformConnection(connection) {
     }
 
     switch (platformType) {
-      case "hepsiburada":
-        return await testHepsiburadaConnection(credentials);
-      case "trendyol":
-        return await testTrendyolConnection(credentials);
-      case "n11":
-        return await testN11Connection(credentials);
-      case "csv":
-        return await testCsvConnection(credentials);
+      case "hepsiburada": {
+        const hepsiburadaService = new platformServices.hepsiburada(
+          connection.id
+        );
+        return await hepsiburadaService.testConnection();
+      }
+      case "trendyol": {
+        const trendyolService = new platformServices.trendyol(connection.id);
+        return await trendyolService.testConnection();
+      }
+      case "n11": {
+        const n11Service = new platformServices.n11(connection.id);
+        // Set connection directly to avoid having to fetch it again
+        n11Service.connection = connection;
+        return await n11Service.testConnection();
+      }
+      case "csv": {
+        const csvService = new platformServices.csv(connection.id);
+        return await csvService.testConnection();
+      }
       default:
         return {
           success: false,
@@ -915,175 +913,6 @@ async function testPlatformConnection(connection) {
       message: `Connection test failed: ${error.message}`,
     };
   }
-}
-
-// Platform-specific test functions using existing services
-async function testHepsiburadaConnection(credentials) {
-  // Parse credentials if they're stored as JSON string
-  let parsedCredentials = credentials;
-  if (typeof credentials === "string") {
-    try {
-      parsedCredentials = JSON.parse(credentials);
-    } catch (e) {
-      parsedCredentials = credentials;
-    }
-  }
-
-  const { username, merchantId, apiKey, environment } = parsedCredentials;
-
-  if (!username || !merchantId || !apiKey) {
-    return {
-      success: false,
-      message:
-        "Missing required Hepsiburada credentials: username, merchantId, apiKey",
-    };
-  }
-
-  try {
-    const ServiceClass = platformServices.hepsiburada;
-    if (!ServiceClass) {
-      return {
-        success: false,
-        message: "Hepsiburada service not available",
-      };
-    }
-
-    // Create service instance with a placeholder connection ID
-    const service = new ServiceClass("test");
-
-    // Override the findConnection method to return mock connection for testing
-    service.findConnection = async () => ({
-      id: "test",
-      credentials: parsedCredentials,
-      userId: 1,
-      platformType: "hepsiburada",
-    });
-
-    // Initialize the service to set up axios instance
-    await service.initialize();
-
-    // Test connection by making a simple API call
-    const testResult = await service.fetchCompletedOrders({ limit: 1 });
-
-    return {
-      success: testResult.success,
-      message: testResult.success
-        ? "Successfully connected to Hepsiburada"
-        : testResult.message,
-    };
-  } catch (error) {
-    logger.error("Hepsiburada connection test failed:", error);
-    return {
-      success: false,
-      message: `Failed to connect to Hepsiburada: ${error.message}`,
-    };
-  }
-}
-
-async function testTrendyolConnection(credentials) {
-  // Parse credentials if they're stored as JSON string
-  let parsedCredentials = credentials;
-  if (typeof credentials === "string") {
-    try {
-      parsedCredentials = JSON.parse(credentials);
-    } catch (e) {
-      parsedCredentials = credentials;
-    }
-  }
-
-  const { apiKey, apiSecret, supplierId } = parsedCredentials;
-
-  if (!apiKey || !apiSecret || !supplierId) {
-    return {
-      success: false,
-      message:
-        "Missing required Trendyol credentials: apiKey, apiSecret, supplierId",
-    };
-  }
-
-  try {
-    const ServiceClass = platformServices.trendyol;
-    if (!ServiceClass) {
-      return {
-        success: false,
-        message: "Trendyol service not available",
-      };
-    }
-
-    // Create service instance with connection ID and direct credentials
-    const service = new ServiceClass(1, parsedCredentials);
-
-    // Test connection using the service's testConnection method
-    // Now this will work because BasePlatformService has getLogger()
-    const testResult = await service.testConnection();
-
-    return {
-      success: testResult.success,
-      message: testResult.message || "Trendyol connection test completed",
-    };
-  } catch (error) {
-    logger.error("Trendyol connection test failed:", error);
-    return {
-      success: false,
-      message: `Trendyol connection failed: ${error.message}`,
-    };
-  }
-}
-
-async function testN11Connection(credentials) {
-  // Parse credentials if they're stored as JSON string
-  let parsedCredentials = credentials;
-  if (typeof credentials === "string") {
-    try {
-      parsedCredentials = JSON.parse(credentials);
-    } catch (e) {
-      parsedCredentials = credentials;
-    }
-  }
-
-  const { appKey, appSecret } = parsedCredentials;
-
-  if (!appKey || !appSecret) {
-    return {
-      success: false,
-      message: "Missing required N11 credentials: appKey, appSecret",
-    };
-  }
-
-  try {
-    const ServiceClass = platformServices.n11;
-    if (!ServiceClass) {
-      return {
-        success: false,
-        message: "N11 service not available",
-      };
-    }
-
-    // Create service instance with connection ID and credentials
-    const service = new ServiceClass(1, parsedCredentials);
-
-    // Test connection using the service's testConnection method
-    const testResult = await service.testConnection();
-
-    return {
-      success: testResult.success,
-      message: testResult.message || "N11 connection test completed",
-    };
-  } catch (error) {
-    logger.error("N11 connection test failed:", error);
-    return {
-      success: false,
-      message: `N11 connection failed: ${error.message}`,
-    };
-  }
-}
-
-async function testCsvConnection(credentials) {
-  // CSV connections don't require external API validation
-  return {
-    success: true,
-    message: "CSV connection is always available",
-  };
 }
 
 module.exports = {

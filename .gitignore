@@ -29,6 +29,15 @@ yarn-error.log*
 # Database
 *.sqlite
 *.sqlite-*
+test*
+*issue*
+*.db
+*set-dev*
+*.ipynb
+*test*
+*fixed*
+*fix*
+debug-*
 
 # Coverage directory
 coverage/
@@ -43,6 +52,7 @@ tmp/
 .vscode/
 *.sublime-project
 *.sublime-workspace
+.chrome-debug
 
 # Build files
 /dist/
@@ -54,3 +64,4 @@ implementation-roadmap.md
 server/modules/order-management/enhanced-implementation-plan.md
 IMPLEMENTATION_PROGRESS.md
 ENHANCED_PLATFORM_SERVICES_COMPLETE.md
+test-api-endpoints.js

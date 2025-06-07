@@ -31,10 +31,12 @@ router.get("/health", async (req, res) => {
       environment: process.env.NODE_ENV || "development",
     };
 
+    // Consider cache degraded mode as acceptable for development
+    const cacheStatus = healthMetrics.cache?.status;
+    const isCacheOk = cacheStatus === "healthy" || cacheStatus === "degraded";
+
     const overallStatus =
-      healthMetrics.status === "healthy" &&
-      dbStatus === "healthy" &&
-      healthMetrics.cache?.status === "healthy";
+      healthMetrics.status === "healthy" && dbStatus === "healthy" && isCacheOk;
 
     res.status(overallStatus ? 200 : 503).json(response);
   } catch (error) {

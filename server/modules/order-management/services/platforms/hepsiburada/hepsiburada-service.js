@@ -13,12 +13,24 @@ const logger = require("../../../../../utils/logger");
 const BasePlatformService = require("../BasePlatformService"); // Fixed import path
 
 class HepsiburadaService extends BasePlatformService {
-  constructor(connectionId) {
-    super(connectionId);
-    // Default to test environment, will be updated based on environment setting
-    this.apiUrl = "https://oms-external.hepsiburada.com"; // Removed -sit from default
+  constructor(connectionId, directCredentials = null, options = {}) {
+    super(connectionId, directCredentials);
+
+    // Support different base URLs for different API types
+    this.ordersApiUrl =
+      options.ordersApiUrl || "https://oms-external.hepsiburada.com";
+    this.productsApiUrl =
+      options.productsApiUrl || "https://mpop.hepsiburada.com";
+
+    // Default API URL for general operations (orders)
+    this.apiUrl = options.apiUrl || this.ordersApiUrl;
+
     this.merchantId = null;
-    this.isTestEnvironment = true;
+    this.isTestEnvironment = options.environment === "test" || true;
+    this.logger = this.getLogger();
+
+    // Store auth string for reuse across different API calls
+    this.authString = null;
   }
 
   /**
@@ -43,22 +55,26 @@ class HepsiburadaService extends BasePlatformService {
       );
     }
 
-    // Set the correct API URL based on environment
+    // Set the correct API URLs based on environment
     this.isTestEnvironment =
       environment === "test" || environment === "sandbox" || !environment;
-    this.apiUrl = this.isTestEnvironment
-      ? "https://oms-external-sit.hepsiburada.com"
-      : "https://oms-external.hepsiburada.com";
+
+    if (this.isTestEnvironment) {
+      this.ordersApiUrl = "https://oms-external-sit.hepsiburada.com";
+      this.productsApiUrl = "https://mpop-sit.hepsiburada.com"; // Assuming test URL pattern
+    } else {
+      this.ordersApiUrl = "https://oms-external.hepsiburada.com";
+      this.productsApiUrl = "https://mpop.hepsiburada.com";
+    }
 
     // Create Basic auth header with merchantId:apiKey (not username:apiKey)
-    const authString = Buffer.from(`${merchantId}:${apiKey}`).toString(
-      "base64"
-    );
+    this.authString = Buffer.from(`${merchantId}:${apiKey}`).toString("base64");
 
-    this.axiosInstance = await this.createAxiosInstance({
-      baseURL: this.apiUrl,
+    // Set up default axios instance for orders API
+    this.axiosInstance = axios.create({
+      baseURL: this.ordersApiUrl,
       headers: {
-        Authorization: `Basic ${authString}`,
+        Authorization: `Basic ${this.authString}`,
         "User-Agent": "sentosyazilim_dev",
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -68,15 +84,6 @@ class HepsiburadaService extends BasePlatformService {
 
     this.merchantId = merchantId;
     return true;
-  }
-
-  /**
-   * Create an Axios instance - helper method for setupAxiosInstance
-   * @param {Object} config - Axios configuration
-   * @returns {Object} Axios instance
-   */
-  async createAxiosInstance(config) {
-    return axios.create(config);
   }
 
   /**
@@ -135,46 +142,64 @@ class HepsiburadaService extends BasePlatformService {
   }
 
   /**
-   * Fetch completed orders (Ödemesi Tamamlanmış Siparişler)
+   * Find connection in database or use direct credentials
+   * Override to handle direct credentials case
+   * @returns {Promise<Object>} Connection object
+   */
+  async findConnection() {
+    if (this.directCredentials) {
+      return { credentials: JSON.stringify(this.directCredentials) };
+    } else {
+      return await super.findConnection();
+    }
+  }
+
+  /**
+   * Fetch delivered orders (Teslim Edilen Siparişler)
    * These are orders ready to be packaged
    */
-  async fetchCompletedOrders(params = {}) {
+  async fetchDeliveredOrders(params = {}) {
     try {
       await this.initialize();
 
       const defaultParams = {
         offset: 0,
-        limit: 100, // Updated to match API documentation
+        limit: 50, // Updated to match API documentation
       };
 
       const queryParams = { ...defaultParams, ...params };
 
       // Ensure limit doesn't exceed maximum
-      if (queryParams.limit > 100) {
-        queryParams.limit = 100;
+      if (queryParams.limit > 50) {
+        queryParams.limit = 50;
       }
 
       // Use the correct API endpoint for getting orders
-      const url = `/packages/merchantid/${this.merchantId}`;
+      const url = `/packages/merchantid/${this.merchantId}/delivered`;
 
       const response = await this.retryRequest(() =>
-        this.axiosInstance.get(url, { params: queryParams })
+        this.axiosInstance.get(url, {
+          params: {
+            limit: queryParams.limit,
+            offset: queryParams.offset,
+          },
+        })
       );
 
       // Handle empty responses as successful connections (for testing purposes)
       if (
-        !response.data ||
-        (Array.isArray(response.data) && response.data.length === 0)
+        Array.isArray(response.data.items) &&
+        response.data.items.length === 0
       ) {
         return {
           success: true,
           message:
-            "Successfully connected to Hepsiburada API - no packages found (account may be empty)",
+            "Successfully connected to Hepsiburada API - no delivered orders found",
           data: [],
         };
       }
 
-      if (!Array.isArray(response.data)) {
+      if (!Array.isArray(response.data.items)) {
         return {
           success: false,
           message: "Invalid response format from Hepsiburada API",
@@ -184,17 +209,17 @@ class HepsiburadaService extends BasePlatformService {
 
       return {
         success: true,
-        message: `Successfully fetched ${response.data.length} completed orders from Hepsiburada`,
-        data: response.data,
+        message: `Successfully fetched ${response.data.items.length} delivered orders from Hepsiburada`,
+        data: response.data.items,
         pagination: {
           offset: queryParams.offset,
           limit: queryParams.limit,
-          totalCount: response.data.length,
+          totalCount: response.data.items.length,
         },
       };
     } catch (error) {
       logger.error(
-        `Failed to fetch completed orders from Hepsiburada: ${error.message}`,
+        `Failed to fetch delivered orders from Hepsiburada: ${error.message}`,
         {
           error,
           connectionId: this.connectionId,
@@ -203,7 +228,7 @@ class HepsiburadaService extends BasePlatformService {
 
       return {
         success: false,
-        message: `Failed to fetch completed orders: ${error.message}`,
+        message: `Failed to fetch delivered orders: ${error.message}`,
         error: error.response?.data || error.message,
         data: [],
       };
@@ -230,16 +255,22 @@ class HepsiburadaService extends BasePlatformService {
       }
 
       // Use the correct API endpoint pattern
-      const url = `/packages/merchantid/${this.merchantId}/notpaid`;
+      const url = `/orders/merchantid/${this.merchantId}/paymentawaiting`;
 
       const response = await this.retryRequest(() =>
-        this.axiosInstance.get(url, { params: queryParams })
+        this.axiosInstance.get(url, {
+          params: {
+            limit: queryParams.limit,
+            offset: queryParams.offset,
+          },
+        })
       );
 
       // Handle empty responses as successful connections (for testing purposes)
       if (
-        !response.data ||
-        (Array.isArray(response.data) && response.data.length === 0)
+        (Array.isArray(response.data.items) &&
+          response.data.items.length === 0) ||
+        !response.data.items
       ) {
         return {
           success: true,
@@ -249,7 +280,7 @@ class HepsiburadaService extends BasePlatformService {
         };
       }
 
-      if (!Array.isArray(response.data)) {
+      if (!Array.isArray(response.data.items)) {
         return {
           success: false,
           message: "Invalid response format from Hepsiburada API",
@@ -259,12 +290,12 @@ class HepsiburadaService extends BasePlatformService {
 
       return {
         success: true,
-        message: `Successfully fetched ${response.data.length} pending payment orders from Hepsiburada`,
-        data: response.data,
+        message: `Successfully fetched ${response.data.items.length} pending payment orders from Hepsiburada`,
+        data: response.data.items,
         pagination: {
           offset: queryParams.offset,
           limit: queryParams.limit,
-          totalCount: response.data.length,
+          totalCount: response.data.items.length,
         },
       };
     } catch (error) {
@@ -305,20 +336,21 @@ class HepsiburadaService extends BasePlatformService {
       }
 
       // Support both date range and offset/limit pagination
-      let url = `/packages/merchantid/${this.merchantId}`;
+      let url = `/orders/merchantid/${this.merchantId}`;
 
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
           params: {
             limit: queryParams.limit,
             offset: queryParams.offset,
-            begindate: queryParams.startDate,
-            enddate: queryParams.endDate,
           },
         })
       );
 
-      if (!response.data || !Array.isArray(response.data)) {
+      if (
+        Array.isArray(response.data.items) &&
+        response.data.items.length === 0
+      ) {
         return {
           success: false,
           message: "No package data returned from Hepsiburada",
@@ -328,12 +360,12 @@ class HepsiburadaService extends BasePlatformService {
 
       return {
         success: true,
-        message: `Successfully fetched ${response.data.length} packages from Hepsiburada`,
-        data: response.data,
+        message: `Successfully fetched ${response.data.items.length} packages from Hepsiburada`,
+        data: response.data.items,
         pagination: {
           offset: queryParams.offset,
           limit: queryParams.limit,
-          totalCount: response.data.length,
+          totalCount: response.data.items.length,
         },
       };
     } catch (error) {
@@ -358,42 +390,48 @@ class HepsiburadaService extends BasePlatformService {
    * Fetch delivered orders (Teslim Edilen Siparişler)
    * Only last 1 month of data is available
    */
-  async fetchDeliveredOrders(params = {}) {
+  async fetchShippedOrders(params = {}) {
     try {
       await this.initialize();
 
       const defaultParams = {
         offset: 0,
-        limit: 100, // Updated to match API documentation
+        limit: 50, // Updated to match API documentation
       };
 
       const queryParams = { ...defaultParams, ...params };
 
-      if (queryParams.limit > 100) {
-        queryParams.limit = 100;
+      if (queryParams.limit > 50) {
+        queryParams.limit = 50;
       }
 
       // Use the correct API endpoint pattern
-      const url = `/packages/merchantid/${this.merchantId}/delivered`;
+      const url = `/packages/merchantid/${this.merchantId}/shipped`;
 
       const response = await this.retryRequest(() =>
-        this.axiosInstance.get(url, { params: queryParams })
+        this.axiosInstance.get(url, {
+          params: {
+            limit: queryParams.limit,
+            offset: queryParams.offset,
+          },
+        })
       );
 
       // Handle empty responses as successful connections (for testing purposes)
       if (
-        !response.data ||
-        (Array.isArray(response.data) && response.data.length === 0)
+        (Array.isArray(response.data.items) &&
+          response.data.items.length === 0) ||
+        !response.data.items
       ) {
         return {
           success: true,
           message:
-            "Successfully connected to Hepsiburada API - no delivered orders found",
+            "Successfully connected to Hepsiburada API - no shipped orders found",
           data: [],
         };
       }
 
-      if (!Array.isArray(response.data)) {
+      if (!Array.isArray(response.data.items)) {
         return {
           success: false,
           message: "Invalid response format from Hepsiburada API",
@@ -403,17 +441,17 @@ class HepsiburadaService extends BasePlatformService {
 
       return {
         success: true,
-        message: `Successfully fetched ${response.data.length} delivered orders from Hepsiburada`,
-        data: response.data,
+        message: `Successfully fetched ${response.data.items.length} shipped orders from Hepsiburada`,
+        data: response.data.items,
         pagination: {
           offset: queryParams.offset,
           limit: queryParams.limit,
-          totalCount: response.data.length,
+          totalCount: response.data.items.length,
         },
       };
     } catch (error) {
       logger.error(
-        `Failed to fetch delivered orders from Hepsiburada: ${error.message}`,
+        `Failed to fetch shipped orders from Hepsiburada: ${error.message}`,
         {
           error,
           connectionId: this.connectionId,
@@ -422,7 +460,168 @@ class HepsiburadaService extends BasePlatformService {
 
       return {
         success: false,
-        message: `Failed to fetch delivered orders: ${error.message}`,
+        message: `Failed to fetch shipped orders: ${error.message}`,
+        error: error.response?.data || error.message,
+        data: [],
+      };
+    }
+  }
+
+  /**
+   * Fetch unpacked orders (Paketlenmemiş Siparişler)
+   * Only last 1 month of data is available
+   */
+  async fetchUnpackedOrders(params = {}) {
+    try {
+      await this.initialize();
+
+      const defaultParams = {
+        offset: 0,
+        limit: 50, // Updated to match API documentation
+      };
+
+      const queryParams = { ...defaultParams, ...params };
+
+      if (queryParams.limit > 50) {
+        queryParams.limit = 50;
+      }
+
+      // Use the correct API endpoint pattern
+      const url = `/packages/merchantid/${this.merchantId}/status/unpacked`;
+
+      const response = await this.retryRequest(() =>
+        this.axiosInstance.get(url, {
+          params: {
+            limit: queryParams.limit,
+            offset: queryParams.offset,
+          },
+        })
+      );
+
+      // Handle empty responses as successful connections (for testing purposes)
+      if (
+        Array.isArray(response.data.items) &&
+        response.data.items.length === 0
+      ) {
+        return {
+          success: true,
+          message:
+            "Successfully connected to Hepsiburada API - no unpacked orders found",
+          data: [],
+        };
+      }
+
+      if (!Array.isArray(response.data.items)) {
+        return {
+          success: false,
+          message: "Invalid response format from Hepsiburada API",
+          data: [],
+        };
+      }
+
+      return {
+        success: true,
+        message: `Successfully fetched ${response.data.items.length} unpacked orders from Hepsiburada`,
+        data: response.data.items,
+        pagination: {
+          offset: queryParams.offset,
+          limit: queryParams.limit,
+          totalCount: response.data.items.length,
+        },
+      };
+    } catch (error) {
+      logger.error(
+        `Failed to fetch unpacked orders from Hepsiburada: ${error.message}`,
+        {
+          error,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to fetch unpacked orders: ${error.message}`,
+        error: error.response?.data || error.message,
+        data: [],
+      };
+    }
+  }
+
+  /**
+   * Fetch undelivered orders (Teslim Edilmeyen Siparişler)
+   * Only last 1 month of data is available
+   */
+  async fetchUndeliveredOrders(params = {}) {
+    try {
+      await this.initialize();
+
+      const defaultParams = {
+        offset: 0,
+        limit: 50, // Updated to match API documentation
+      };
+
+      const queryParams = { ...defaultParams, ...params };
+
+      if (queryParams.limit > 50) {
+        queryParams.limit = 50;
+      }
+
+      // Use the correct API endpoint pattern
+      const url = `/packages/merchantid/${this.merchantId}/undelivered`;
+
+      const response = await this.retryRequest(() =>
+        this.axiosInstance.get(url, {
+          params: {
+            limit: queryParams.limit,
+            offset: queryParams.offset,
+          },
+        })
+      );
+
+      // Handle empty responses as successful connections (for testing purposes)
+      if (
+        (Array.isArray(response.data.items) &&
+          response.data.items.length === 0) ||
+        !response.data.items
+      ) {
+        return {
+          success: true,
+          message:
+            "Successfully connected to Hepsiburada API - no undelivered orders found",
+          data: [],
+        };
+      }
+
+      if (!Array.isArray(response.data.items)) {
+        return {
+          success: false,
+          message: "Invalid response format from Hepsiburada API",
+          data: [],
+        };
+      }
+
+      return {
+        success: true,
+        message: `Successfully fetched ${response.data.items.length} undelivered orders from Hepsiburada`,
+        data: response.data.items,
+        pagination: {
+          offset: queryParams.offset,
+          limit: queryParams.limit,
+          totalCount: response.data.items.length,
+        },
+      };
+    } catch (error) {
+      logger.error(
+        `Failed to fetch undelivered orders from Hepsiburada: ${error.message}`,
+        {
+          error,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to fetch undelivered orders: ${error.message}`,
         error: error.response?.data || error.message,
         data: [],
       };
@@ -439,26 +638,31 @@ class HepsiburadaService extends BasePlatformService {
 
       const defaultParams = {
         offset: 0,
-        limit: 100, // Updated to match API documentation
+        limit: 50, // Updated to match API documentation
       };
 
       const queryParams = { ...defaultParams, ...params };
 
-      if (queryParams.limit > 100) {
-        queryParams.limit = 100;
+      if (queryParams.limit > 50) {
+        queryParams.limit = 50;
       }
 
       // Use the correct API endpoint pattern
-      const url = `/packages/merchantid/${this.merchantId}/cancelled`;
+      const url = `/orders/merchantid/${this.merchantId}/cancelled`;
 
       const response = await this.retryRequest(() =>
-        this.axiosInstance.get(url, { params: queryParams })
+        this.axiosInstance.get(url, {
+          params: {
+            limit: queryParams.limit,
+            offset: queryParams.offset,
+          },
+        })
       );
 
       // Handle empty responses as successful connections (for testing purposes)
       if (
-        !response.data ||
-        (Array.isArray(response.data) && response.data.length === 0)
+        Array.isArray(response.data.items) &&
+        response.data.items.length === 0
       ) {
         return {
           success: true,
@@ -468,7 +672,7 @@ class HepsiburadaService extends BasePlatformService {
         };
       }
 
-      if (!Array.isArray(response.data)) {
+      if (!Array.isArray(response.data.items)) {
         return {
           success: false,
           message: "Invalid response format from Hepsiburada API",
@@ -478,12 +682,12 @@ class HepsiburadaService extends BasePlatformService {
 
       return {
         success: true,
-        message: `Successfully fetched ${response.data.length} cancelled orders from Hepsiburada`,
-        data: response.data,
+        message: `Successfully fetched ${response.data.items.length} cancelled orders from Hepsiburada`,
+        data: response.data.items,
         pagination: {
           offset: queryParams.offset,
           limit: queryParams.limit,
-          totalCount: response.data.length,
+          totalCount: response.data.items.length,
         },
       };
     } catch (error) {
@@ -512,22 +716,132 @@ class HepsiburadaService extends BasePlatformService {
     try {
       await this.initialize();
 
-      // If no specific status is requested, fetch packages (most common use case)
-      const status = params.status || "packages";
+      // Fetch from all relevant endpoints and combine results
+      const fetchFuncs = [
+        this.fetchDeliveredOrders(params),
+        this.fetchPendingPaymentOrders(params),
+        this.fetchPackages(params),
+        this.fetchShippedOrders(params),
+        this.fetchUnpackedOrders(params),
+        this.fetchUndeliveredOrders(params),
+        this.fetchCancelledOrders(params),
+      ];
 
-      switch (status) {
-        case "pending_payment":
-          return await this.fetchPendingPaymentOrders(params);
-        case "packages":
-          return await this.fetchPackages(params);
-        case "delivered":
-          return await this.fetchDeliveredOrders(params);
-        case "cancelled":
-          return await this.fetchCancelledOrders(params);
-        case "completed":
-        default:
-          return await this.fetchCompletedOrders(params);
+      // Run all fetches in parallel
+      const results = await Promise.all(fetchFuncs);
+
+      // Combine all data arrays, filter out failed fetches
+      const allOrders = results
+        .filter((r) => r && r.success && Array.isArray(r.data))
+        .flatMap((r) => r.data);
+
+      // Remove duplicates by orderNumber
+      const seen = new Set();
+      const uniqueOrders = allOrders.filter((order) => {
+        const key = order.orderNumber || order.OrderNumber;
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // Optionally fetch detailed information for each order
+      let enrichedOrders = uniqueOrders;
+      if (uniqueOrders.length > 0) {
+        logger.info(
+          `Fetching detailed information for ${uniqueOrders.length} orders`
+        );
+
+        // Extract order numbers for bulk fetching
+        const orderNumbers = uniqueOrders
+          .map((order) => order.orderNumber || order.OrderNumber)
+          .filter(Boolean);
+
+        if (orderNumbers.length > 0) {
+          try {
+            // Use bulk fetching for better performance
+            const bulkDetailsResult = await this.getOrderDetailsBulk(
+              orderNumbers,
+              {
+                batchSize: params.detailsBatchSize || 5,
+                delayBetweenBatches: params.detailsDelay || 1000,
+                continueOnError: true,
+              }
+            );
+
+            if (bulkDetailsResult.success) {
+              // Create a map of order details for quick lookup
+              const detailsMap = new Map();
+              bulkDetailsResult.data.forEach((result) => {
+                if (result.success) {
+                  detailsMap.set(
+                    result.orderNumber || result.OrderNumber,
+                    result.data
+                  );
+                }
+              });
+
+              // Enrich orders with detailed information
+              enrichedOrders = uniqueOrders.map((order) => {
+                const orderNumber = order.orderNumber || order.OrderNumber;
+                const details = detailsMap.get(orderNumber);
+
+                return {
+                  ...order,
+                  details: details || null,
+                  detailsFetched: !!details,
+                };
+              });
+
+              const enrichedCount = enrichedOrders.filter(
+                (o) => o.detailsFetched
+              ).length;
+              logger.info(
+                `Successfully enriched ${enrichedCount}/${uniqueOrders.length} orders with detailed information`
+              );
+            } else {
+              logger.warn(
+                `Bulk details fetch failed: ${bulkDetailsResult.message}`
+              );
+              // Add detailsFetched: false to all orders
+              enrichedOrders = uniqueOrders.map((order) => ({
+                ...order,
+                detailsFetched: false,
+              }));
+            }
+          } catch (error) {
+            logger.error(
+              `Error enriching orders with details: ${error.message}`
+            );
+            // Fall back to original orders with detailsFetched: false
+            enrichedOrders = uniqueOrders.map((order) => ({
+              ...order,
+              detailsFetched: false,
+            }));
+          }
+        }
       }
+
+      // Normalize orders into our database format
+      const normalizedResults = await this.normalizeOrders(enrichedOrders);
+
+      return {
+        success: true,
+        message: `Fetched ${
+          enrichedOrders.length
+        } unique orders from Hepsiburada (combined from all endpoints)${
+          params.includeDetails ? " with detailed information" : ""
+        }`,
+        data: normalizedResults,
+        stats: {
+          totalFetched: allOrders.length,
+          unique: uniqueOrders.length,
+          enriched: params.includeDetails
+            ? enrichedOrders.filter((o) => o.detailsFetched).length
+            : 0,
+          endpoints: results.length,
+        },
+        endpointResults: results,
+      };
     } catch (error) {
       logger.error(
         `Failed to fetch orders from Hepsiburada: ${error.message}`,
@@ -549,26 +863,54 @@ class HepsiburadaService extends BasePlatformService {
   /**
    * Get detailed information for a specific order by its order number
    * @param {string} orderNumber - The Hepsiburada order number
+   * @param {Object} options - Additional options for fetching details
    * @returns {Object} - Order details or error
    */
-  async getOrderDetails(orderNumber) {
+  async getOrderDetails(orderNumber, options = {}) {
     try {
       await this.initialize();
 
-      // Use the correct API endpoint pattern
-      const url = `/packages/merchantid/${this.merchantId}/ordernumber/${orderNumber}`;
+      if (!orderNumber) {
+        return {
+          success: false,
+          message: "Order number is required",
+          data: null,
+        };
+      }
 
-      logger.info(`Fetching order details from Hepsiburada: ${orderNumber}`);
+      // Use the correct API endpoint pattern
+      const url = `/orders/merchantid/${this.merchantId}/ordernumber/${orderNumber}`;
+
+      logger.info(`Fetching order details from Hepsiburada: ${orderNumber}`, {
+        connectionId: this.connectionId,
+        options,
+      });
 
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url)
       );
 
-      if (!response.data || !response.data.orderId) {
+      // Handle different response formats
+      if (!response.data) {
         return {
           success: false,
-          message: "Invalid order data returned from Hepsiburada",
+          message: "No data returned from Hepsiburada API",
           data: null,
+        };
+      }
+
+      // Check if we have valid order data
+      const hasValidOrderData =
+        response.data.orderId ||
+        response.data.orderNumber ||
+        response.data.id ||
+        (Array.isArray(response.data.items) && response.data.items.length > 0);
+
+      if (!hasValidOrderData) {
+        return {
+          success: false,
+          message: "Invalid or empty order data returned from Hepsiburada",
+          data: response.data,
         };
       }
 
@@ -576,14 +918,47 @@ class HepsiburadaService extends BasePlatformService {
         success: true,
         message: "Successfully fetched order details",
         data: response.data,
+        orderNumber: orderNumber,
+        fetchedAt: new Date().toISOString(),
       };
     } catch (error) {
+      // Handle specific HTTP errors
+      if (error.response?.status === 404) {
+        logger.warn(`Order not found: ${orderNumber}`, {
+          connectionId: this.connectionId,
+          orderNumber,
+        });
+
+        return {
+          success: false,
+          message: `Order not found: ${orderNumber}`,
+          error: "ORDER_NOT_FOUND",
+          data: null,
+        };
+      }
+
+      if (error.response?.status === 403) {
+        logger.warn(`Access denied for order: ${orderNumber}`, {
+          connectionId: this.connectionId,
+          orderNumber,
+        });
+
+        return {
+          success: false,
+          message: `Access denied for order: ${orderNumber}`,
+          error: "ACCESS_DENIED",
+          data: null,
+        };
+      }
+
       logger.error(
         `Failed to fetch order details from Hepsiburada: ${error.message}`,
         {
           error,
           connectionId: this.connectionId,
           orderNumber,
+          statusCode: error.response?.status,
+          responseData: error.response?.data,
         }
       );
 
@@ -592,6 +967,124 @@ class HepsiburadaService extends BasePlatformService {
         message: `Failed to fetch order details: ${error.message}`,
         error: error.response?.data || error.message,
         data: null,
+        orderNumber: orderNumber,
+      };
+    }
+  }
+
+  /**
+   * Fetch order details for multiple orders in parallel with rate limiting
+   * @param {Array} orderNumbers - Array of order numbers to fetch details for
+   * @param {Object} options - Options for bulk fetching
+   * @returns {Object} - Results of bulk order details fetching
+   */
+  async getOrderDetailsBulk(orderNumbers, options = {}) {
+    try {
+      await this.initialize();
+
+      if (!Array.isArray(orderNumbers) || orderNumbers.length === 0) {
+        return {
+          success: false,
+          message: "Order numbers array is required and cannot be empty",
+          data: [],
+        };
+      }
+
+      const {
+        batchSize = 10, // Process orders in batches to avoid overwhelming the API
+        delayBetweenBatches = 1000, // 1 second delay between batches
+        continueOnError = true, // Continue processing even if some orders fail
+      } = options;
+
+      logger.info(
+        `Fetching details for ${orderNumbers.length} orders in batches of ${batchSize}`,
+        {
+          connectionId: this.connectionId,
+          totalOrders: orderNumbers.length,
+          batchSize,
+        }
+      );
+
+      const results = [];
+      const batches = [];
+
+      // Split order numbers into batches
+      for (let i = 0; i < orderNumbers.length; i += batchSize) {
+        batches.push(orderNumbers.slice(i, i + batchSize));
+      }
+
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex];
+
+        logger.info(
+          `Processing batch ${batchIndex + 1}/${batches.length} with ${
+            batch.length
+          } orders`
+        );
+
+        // Process current batch in parallel
+        const batchPromises = batch.map((orderNumber) =>
+          this.getOrderDetails(orderNumber, { bulkFetch: true })
+        );
+
+        try {
+          const batchResults = await Promise.all(batchPromises);
+          results.push(...batchResults);
+        } catch (error) {
+          if (continueOnError) {
+            logger.warn(
+              `Batch ${batchIndex + 1} failed, continuing with next batch: ${
+                error.message
+              }`
+            );
+            // Add failed results for this batch
+            const failedResults = batch.map((orderNumber) => ({
+              success: false,
+              message: `Batch processing failed: ${error.message}`,
+              data: null,
+              orderNumber,
+            }));
+            results.push(...failedResults);
+          } else {
+            throw error;
+          }
+        }
+
+        // Add delay between batches (except for the last batch)
+        if (batchIndex < batches.length - 1 && delayBetweenBatches > 0) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, delayBetweenBatches)
+          );
+        }
+      }
+
+      const successful = results.filter((r) => r.success);
+      const failed = results.filter((r) => !r.success);
+
+      return {
+        success: true,
+        message: `Bulk fetch completed: ${successful.length} successful, ${failed.length} failed`,
+        data: results,
+        stats: {
+          total: orderNumbers.length,
+          successful: successful.length,
+          failed: failed.length,
+          batches: batches.length,
+          batchSize,
+        },
+      };
+    } catch (error) {
+      logger.error(`Bulk order details fetch failed: ${error.message}`, {
+        error,
+        connectionId: this.connectionId,
+        orderCount: orderNumbers?.length,
+      });
+
+      return {
+        success: false,
+        message: `Bulk order details fetch failed: ${error.message}`,
+        error: error.response?.data || error.message,
+        data: [],
       };
     }
   }
@@ -829,9 +1322,9 @@ class HepsiburadaService extends BasePlatformService {
 
     try {
       // Get array of order numbers for efficient querying
-      const orderNumbers = hepsiburadaOrders
-        .map((order) => order.orderNumber || order.id || order.packageNumber)
-        .filter(Boolean); // Remove undefined/null values
+      const orderNumbers = hepsiburadaOrders.map(
+        (order) => order.orderNumber || order.OrderNumber
+      );
 
       // First query - fetch all orders matching our criteria
       const existingOrders = await Order.findAll({
@@ -841,21 +1334,27 @@ class HepsiburadaService extends BasePlatformService {
             [Op.in]: orderNumbers,
           },
         },
-        include: [{ model: ShippingDetail, as: "shippingDetail" }],
+        attributes: ["id", "externalOrderId", "orderNumber", "orderStatus"], // Limit fields fetched
+        include: [
+          {
+            model: ShippingDetail,
+            as: "shippingDetail",
+            attributes: ["id", "recipientName", "address", "city"], // Limit fields fetched
+          },
+        ],
       });
 
       // Map for fast lookups
       const existingOrdersMap = {};
       existingOrders.forEach((order) => {
-        existingOrdersMap[order.externalOrderId] = order;
+        existingOrdersMap[order.orderNumber] = order;
       });
 
       // Process orders one by one
       for (const order of hepsiburadaOrders) {
         try {
           // Validate and extract order identifier with fallbacks
-          const orderNumber =
-            order.orderNumber || order.id || order.packageNumber;
+          const orderNumber = order.orderNumber || order.OrderNumber;
 
           // Skip orders without valid identifier
           if (!orderNumber) {
@@ -874,9 +1373,7 @@ class HepsiburadaService extends BasePlatformService {
             // Order exists - update it with the latest data
             try {
               await existingOrder.update({
-                status: this.mapOrderStatus(
-                  order.status || order.packageStatus
-                ),
+                status: this.mapOrderStatus(order.details.items[0].status),
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date(),
               });
@@ -900,7 +1397,7 @@ class HepsiburadaService extends BasePlatformService {
 
           // Order doesn't exist - create a new one
           try {
-            this.logger.debug(`Creating new order for ${orderNumber}`);
+            this.logger.info(`Creating new order for ${orderNumber}`);
 
             const result = await sequelize.transaction(async (t) => {
               // Extract phone number from order data
@@ -910,29 +1407,29 @@ class HepsiburadaService extends BasePlatformService {
               const shippingDetail = await ShippingDetail.create(
                 {
                   recipientName:
-                    order.deliveryAddress?.fullName ||
-                    order.customer?.name ||
+                    order.details.deliveryAddress?.name ||
+                    order.details.customer?.name ||
                     "",
                   address1:
-                    order.deliveryAddress?.address ||
-                    order.shippingAddress?.address ||
+                    order.details.deliveryAddress?.address ||
+                    order.details.invoice?.address ||
                     "",
-                  address2: order.deliveryAddress?.district || "",
+                  address2: "",
                   city:
-                    order.deliveryAddress?.city ||
-                    order.shippingAddress?.city ||
+                    order.details.deliveryAddress?.city ||
+                    order.details.invoice.address.city ||
                     "",
                   state:
-                    order.deliveryAddress?.district ||
-                    order.shippingAddress?.district ||
+                    order.details.deliveryAddress?.district ||
+                    order.details.invoice.address.district ||
                     "",
                   postalCode:
-                    order.deliveryAddress?.postalCode ||
-                    order.shippingAddress?.postalCode ||
+                    order.details.deliveryAddress?.postalCode ||
+                    order.details.invoice.address.postalCode ||
                     "",
-                  country: order.deliveryAddress?.country || "TR",
+                  country: order.details.deliveryAddress?.country || "TR",
                   phone: phoneNumber || "",
-                  email: order.customer?.email || "",
+                  email: order.details.deliveryAddress?.email || "",
                 },
                 { transaction: t }
               );
@@ -941,27 +1438,32 @@ class HepsiburadaService extends BasePlatformService {
               const normalizedOrder = await Order.create(
                 {
                   externalOrderId: orderNumber,
-                  platformOrderId: orderNumber,
+                  orderNumber: orderNumber,
+                  platformOrderId: order.Id,
                   platformId: "hepsiburada",
                   connectionId: this.connectionId,
                   userId: this.connection.userId,
                   customerName:
-                    order.customer?.name ||
-                    order.deliveryAddress?.fullName ||
-                    "",
-                  customerEmail: order.customer?.email || "",
+                    order.details.deliveryAddress?.name ||
+                    order.details.customer?.name,
+                  customerEmail: order.details.deliveryAddress?.email || "",
                   customerPhone: phoneNumber || "",
-                  orderDate: order.orderDate
-                    ? new Date(order.orderDate)
+                  orderDate: order.details.orderDate
+                    ? new Date(order.details.orderDate)
                     : new Date(),
-                  status: this.mapOrderStatus(
-                    order.status || order.packageStatus
+                  orderStatus: this.mapOrderStatus(
+                    order.details.items[0]?.status
                   ),
-                  totalAmount: order.totalPrice || order.price || 0,
+                  totalAmount: order.details.items[0]?.totalPrice.amount || 0,
                   currency: "TRY",
                   shippingDetailId: shippingDetail.id,
-                  notes: order.note || "",
-                  paymentStatus: this.mapPaymentStatus(order.paymentStatus),
+                  shippingAddress: order.details.deliveryAddress?.address || {},
+                  notes: "",
+                  paymentStatus: this.mapPaymentStatus(
+                    order.details.paymentStatus
+                  ),
+                  platformStatus: order.details.items[0]?.status || "new",
+                  platform: "hepsiburada",
                   rawData: JSON.stringify(order),
                   lastSyncedAt: new Date(),
                 },
@@ -976,20 +1478,25 @@ class HepsiburadaService extends BasePlatformService {
               );
 
               // Create order items if available
-              if (order.items && Array.isArray(order.items)) {
-                for (const item of order.items) {
+              if (order.items && Array.isArray(order.details.items)) {
+                for (const item of order.details.items) {
                   await OrderItem.create(
                     {
                       orderId: normalizedOrder.id,
                       platformProductId:
-                        item.productId || item.hepsiburadaSku || "",
-                      title:
-                        item.productName || item.title || "Unknown Product",
-                      sku: item.sku || item.merchantSku || "",
+                        item.productBarcode || item.merchantSku || "",
+                      productId: item.productBarcode,
+                      title: item.name || item.title || "Unknown Product",
+                      sku: item.merchantSku || item.sku || "",
                       quantity: item.quantity || 1,
-                      price: item.price || item.unitPrice || 0,
+                      price: item.unitPrice.amount || 0,
+                      discount:
+                        item.merchantDiscount.totalPrice.amount ||
+                        item.hbDiscount.totalPrice.amount,
+                      invoiceTotal: item.totalPrice.amount || 0,
                       currency: "TRY",
                       barcode: item.barcode || "",
+
                       variantInfo: item.variant
                         ? JSON.stringify(item.variant)
                         : null,
@@ -1026,7 +1533,7 @@ class HepsiburadaService extends BasePlatformService {
           }
         } catch (error) {
           this.logger.error(
-            `Failed to process order ${orderNumber}: ${error.message}`,
+            `Failed to process order ${order.orderNumber}: ${error.message}`,
             {
               error,
               orderNumber: orderNumber,
@@ -1181,15 +1688,16 @@ class HepsiburadaService extends BasePlatformService {
    */
   mapOrderStatus(hepsiburadaStatus) {
     const statusMap = {
-      WaitingForPayment: "pending",
+      Open: "pending",
       PaymentCompleted: "processing",
       Packaged: "shipped",
-      Shipped: "shipped",
-      Delivered: "delivered",
-      Cancelled: "cancelled",
-      Returned: "returned",
-      ReadyToShip: "processing",
       InTransit: "shipped",
+      Delivered: "delivered",
+      CancelledByMerchant: "cancelled",
+      CancelledByCustomer: "cancelled",
+      CancelledBySap: "cancelled",
+      ReadyToShip: "processing",
+      ClaimCreated: "claim_created",
     };
 
     const mappedStatus = statusMap[hepsiburadaStatus];
@@ -1335,17 +1843,15 @@ class HepsiburadaService extends BasePlatformService {
       await this.initialize();
 
       const defaultParams = {
-        offset:
-          params.offset ||
-          (params.page || 0) * (params.size || params.limit || 50),
-        limit: params.size || params.limit || 50,
+        page: params.page || 0,
+        size: params.size || params.limit || 1000,
       };
 
       const queryParams = { ...defaultParams, ...params };
 
-      // Ensure limit doesn't exceed maximum
-      if (queryParams.limit > 100) {
-        queryParams.limit = 100;
+      // If no specific page is requested, fetch all products by looping through pages
+      if (queryParams.page === 0 && !params.page) {
+        return this.fetchAllProductsInternal(params);
       }
 
       this.logger.debug(
@@ -1354,72 +1860,136 @@ class HepsiburadaService extends BasePlatformService {
         )}`
       );
 
-      // Use a products endpoint if available, otherwise try to get products from listings
-      // Note: Hepsiburada may require specific endpoints for product listing
-      let url = `/listings/merchantid/${this.merchantId}`;
+      // Use the working products endpoint from our testing
+      let url = `/product/api/products/all-products-of-merchant/${this.merchantId}`;
 
-      // Try the products endpoint first, if it exists
+      this.logger.debug(`Attempting to fetch products from: ${url}`);
+
+      // Try the products endpoint that we verified works
       try {
+        // Create products-specific axios instance
+        const productsAxios = this.createProductsAxiosInstance();
+
         const response = await this.retryRequest(() =>
-          this.axiosInstance.get(url, { params: queryParams })
+          productsAxios.get(url, { params: queryParams })
         );
+
+        // Log response details for debugging
+        this.logger.debug(`Hepsiburada products API response:`, {
+          status: response.status,
+          dataType: typeof response.data,
+          responseStructure: {
+            hasData: !!response.data?.data,
+            hasSuccess: !!response.data?.success,
+            hasCode: response.data?.code !== undefined,
+            hasPagination: !!(
+              response.data?.totalElements || response.data?.totalPages
+            ),
+          },
+          dataArrayLength: Array.isArray(response.data?.data)
+            ? response.data.data.length
+            : "N/A",
+        });
+
+        // Check if response indicates success
+        if (response.data?.code !== 0 && !response.data?.success) {
+          this.logger.warn("Hepsiburada API returned unsuccessful response:", {
+            code: response.data?.code,
+            success: response.data?.success,
+            message: response.data?.message,
+          });
+          return {
+            success: false,
+            message:
+              response.data?.message || "API returned unsuccessful response",
+            data: [],
+          };
+        }
+
+        // Extract the actual products array from nested response structure
+        const productsData = response.data?.data || response.data;
 
         // Handle empty responses
         if (
-          !response.data ||
-          (Array.isArray(response.data) && response.data.length === 0)
+          !productsData ||
+          (Array.isArray(productsData) && productsData.length === 0)
         ) {
           return {
             success: true,
             message: "No products found in Hepsiburada account",
             data: [],
             pagination: {
-              offset: queryParams.offset,
-              limit: queryParams.limit,
-              total: 0,
+              page: queryParams.page,
+              limit: queryParams.size,
+              total: response.data?.totalElements || 0,
+              totalPages: response.data?.totalPages || 0,
+              isFirst: response.data?.first || true,
+              isLast: response.data?.last || true,
             },
           };
         }
 
-        if (!Array.isArray(response.data)) {
+        if (!Array.isArray(productsData)) {
+          this.logger.warn(
+            `Expected array but got ${typeof productsData}:`,
+            productsData
+          );
           return {
             success: false,
-            message: "Invalid response format from Hepsiburada API",
+            message:
+              "Invalid response format from Hepsiburada API - expected array of products",
             data: [],
           };
         }
 
         this.logger.info(
-          `Successfully fetched ${response.data.length} products from Hepsiburada`
+          `Successfully fetched ${
+            productsData.length
+          } products from Hepsiburada (page ${queryParams.page + 1}/${
+            response.data?.totalPages || "unknown"
+          })`
         );
 
         return {
           success: true,
-          message: `Successfully fetched ${response.data.length} products from Hepsiburada`,
-          data: response.data,
+          message: `Successfully fetched ${productsData.length} products from Hepsiburada`,
+          data: productsData,
           pagination: {
-            offset: queryParams.offset,
-            limit: queryParams.limit,
-            total: response.data.length, // Hepsiburada may not provide total count
-            page: Math.floor(queryParams.offset / queryParams.limit),
-            size: queryParams.limit,
+            page: response.data?.number || queryParams.page,
+            limit: queryParams.size,
+            total: response.data?.totalElements || productsData.length,
+            totalPages: response.data?.totalPages || 1,
+            numberOfElements:
+              response.data?.numberOfElements || productsData.length,
+            isFirst: response.data?.first || queryParams.page === 0,
+            isLast: response.data?.last || false,
+            hasNext: !response.data?.last,
+            hasPrevious: !response.data?.first,
           },
         };
       } catch (endpointError) {
-        // If the listings endpoint doesn't work, try alternative approaches
-        this.logger.warn(
-          `Listings endpoint failed: ${endpointError.message}. Trying alternative approach.`
+        this.logger.error(
+          `Products endpoint failed: ${endpointError.message}`,
+          {
+            error: endpointError,
+            url,
+            status: endpointError.response?.status,
+            responseData: endpointError.response?.data,
+          }
         );
 
-        // For now, return a message indicating that product fetching may not be available
-        // This can be enhanced once we know the exact Hepsiburada API structure for products
+        // Return the error details for debugging
         return {
           success: false,
-          message:
-            "Product fetching is not yet fully supported for Hepsiburada. Please check API documentation for the correct endpoint.",
-          error: "Endpoint not implemented",
+          message: `Failed to fetch products from Hepsiburada: ${endpointError.message}`,
+          error: endpointError.response?.data || endpointError.message,
           data: [],
-          note: "This feature requires specific Hepsiburada API endpoints that may not be available in the current integration.",
+          debugInfo: {
+            endpoint: url,
+            status: endpointError.response?.status,
+            method: "GET",
+            baseURL: this.apiUrl,
+          },
         };
       }
     } catch (error) {
@@ -1438,6 +2008,305 @@ class HepsiburadaService extends BasePlatformService {
         data: [],
       };
     }
+  }
+
+  /**
+   * Fetch all products from Hepsiburada by looping through all pages
+   * @param {Object} params - Query parameters for product fetching
+   * @returns {Promise<Object>} All products data
+   */
+  async fetchAllProductsInternal(params = {}) {
+    try {
+      await this.initialize();
+
+      const allProducts = [];
+      let currentPage = 0;
+      let totalPages = 1;
+      let hasMorePages = true;
+
+      const defaultParams = {
+        size: params.size || params.limit || 1000,
+      };
+
+      this.logger.info("Starting to fetch all products from Hepsiburada...");
+
+      while (hasMorePages) {
+        const pageParams = {
+          ...defaultParams,
+          ...params,
+          page: currentPage,
+        };
+
+        this.logger.debug(
+          `Fetching Hepsiburada products page ${currentPage + 1}...`
+        );
+
+        const result = await this.fetchSingleProductPage(pageParams);
+
+        if (!result.success) {
+          this.logger.error(
+            `Failed to fetch page ${currentPage + 1}: ${result.message}`
+          );
+          break;
+        }
+
+        // Add products from this page
+        allProducts.push(...result.data);
+
+        // Update pagination info
+        if (result.pagination) {
+          totalPages = result.pagination.totalPages;
+          currentPage = result.pagination.page + 1;
+          hasMorePages = currentPage < totalPages && !result.pagination.isLast;
+
+          this.logger.info(
+            `Completed page ${
+              result.pagination.page + 1
+            }/${totalPages}, retrieved ${result.data.length} products`
+          );
+        } else {
+          // No pagination info, assume this is the only page
+          hasMorePages = false;
+        }
+
+        // Safety check to prevent infinite loops
+        if (currentPage > 1000) {
+          this.logger.warn("Reached maximum page limit (1000), stopping");
+          break;
+        }
+
+        // If this page had no products or was marked as last, stop
+        if (result.data.length === 0 || result.pagination?.isLast) {
+          hasMorePages = false;
+        }
+      }
+
+      this.logger.info(
+        `Completed fetching all products from Hepsiburada: ${allProducts.length} total products across ${currentPage} pages`
+      );
+
+      return {
+        success: true,
+        message: `Successfully fetched ${allProducts.length} products from Hepsiburada across ${currentPage} pages`,
+        data: allProducts,
+        pagination: {
+          totalPages: currentPage,
+          totalProducts: allProducts.length,
+          pagesProcessed: currentPage,
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch all products from Hepsiburada: ${error.message}`,
+        {
+          error,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to fetch all products: ${error.message}`,
+        error: error.response?.data || error.message,
+        data: [],
+      };
+    }
+  }
+
+  /**
+   * Fetch a single page of products from Hepsiburada
+   * @param {Object} params - Query parameters for product fetching
+   * @returns {Promise<Object>} Products data for a single page
+   */
+  async fetchSingleProductPage(params = {}) {
+    // This is the original fetchProducts logic, now extracted for single page fetching
+    try {
+      await this.initialize();
+
+      const defaultParams = {
+        page: params.page || 0,
+        size: params.size || params.limit || 1000,
+      };
+
+      const queryParams = { ...defaultParams, ...params };
+
+      this.logger.debug(
+        `Fetching Hepsiburada products with params: ${JSON.stringify(
+          queryParams
+        )}`
+      );
+
+      // Use the working products endpoint from our testing
+      let url = `/product/api/products/all-products-of-merchant/${this.merchantId}`;
+
+      this.logger.debug(`Attempting to fetch products from: ${url}`);
+
+      // Try the products endpoint that we verified works
+      try {
+        // Create products-specific axios instance
+        const productsAxios = this.createProductsAxiosInstance();
+
+        const response = await this.retryRequest(() =>
+          productsAxios.get(url, { params: queryParams })
+        );
+
+        // Log response details for debugging
+        this.logger.debug(`Hepsiburada products API response:`, {
+          status: response.status,
+          dataType: typeof response.data,
+          responseStructure: {
+            hasData: !!response.data?.data,
+            hasSuccess: !!response.data?.success,
+            hasCode: response.data?.code !== undefined,
+            hasPagination: !!(
+              response.data?.totalElements || response.data?.totalPages
+            ),
+          },
+          dataArrayLength: Array.isArray(response.data?.data)
+            ? response.data.data.length
+            : "N/A",
+        });
+
+        // Check if response indicates success
+        if (response.data?.code !== 0 && !response.data?.success) {
+          this.logger.warn("Hepsiburada API returned unsuccessful response:", {
+            code: response.data?.code,
+            success: response.data?.success,
+            message: response.data?.message,
+          });
+          return {
+            success: false,
+            message:
+              response.data?.message || "API returned unsuccessful response",
+            data: [],
+          };
+        }
+
+        // Extract the actual products array from nested response structure
+        const productsData = response.data?.data || response.data;
+
+        // Handle empty responses
+        if (
+          !productsData ||
+          (Array.isArray(productsData) && productsData.length === 0)
+        ) {
+          return {
+            success: true,
+            message: "No products found in Hepsiburada account",
+            data: [],
+            pagination: {
+              page: queryParams.page,
+              limit: queryParams.size,
+              total: response.data?.totalElements || 0,
+              totalPages: response.data?.totalPages || 0,
+              isFirst: response.data?.first || true,
+              isLast: response.data?.last || true,
+            },
+          };
+        }
+
+        if (!Array.isArray(productsData)) {
+          this.logger.warn(
+            `Expected array but got ${typeof productsData}:`,
+            productsData
+          );
+          return {
+            success: false,
+            message:
+              "Invalid response format from Hepsiburada API - expected array of products",
+            data: [],
+          };
+        }
+
+        this.logger.info(
+          `Successfully fetched ${
+            productsData.length
+          } products from Hepsiburada (page ${queryParams.page + 1}/${
+            response.data?.totalPages || "unknown"
+          })`
+        );
+
+        return {
+          success: true,
+          message: `Successfully fetched ${productsData.length} products from Hepsiburada`,
+          data: productsData,
+          pagination: {
+            page: response.data?.number || queryParams.page,
+            limit: queryParams.size,
+            total: response.data?.totalElements || productsData.length,
+            totalPages: response.data?.totalPages || 1,
+            numberOfElements:
+              response.data?.numberOfElements || productsData.length,
+            isFirst: response.data?.first || queryParams.page === 0,
+            isLast: response.data?.last || false,
+            hasNext: !response.data?.last,
+            hasPrevious: !response.data?.first,
+          },
+        };
+      } catch (endpointError) {
+        this.logger.error(
+          `Products endpoint failed: ${endpointError.message}`,
+          {
+            error: endpointError,
+            url,
+            status: endpointError.response?.status,
+            responseData: endpointError.response?.data,
+          }
+        );
+
+        // Return the error details for debugging
+        return {
+          success: false,
+          message: `Failed to fetch products from Hepsiburada: ${endpointError.message}`,
+          error: endpointError.response?.data || endpointError.message,
+          data: [],
+          debugInfo: {
+            endpoint: url,
+            status: endpointError.response?.status,
+            method: "GET",
+            baseURL: this.apiUrl,
+          },
+        };
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch products from Hepsiburada: ${error.message}`,
+        {
+          error,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to fetch products: ${error.message}`,
+        error: error.response?.data || error.message,
+        data: [],
+      };
+    }
+  }
+
+  /**
+   * Create axios instance for products API with different base URL
+   * @returns {Object} Axios instance configured for products API
+   */
+  createProductsAxiosInstance() {
+    if (!this.authString) {
+      throw new Error(
+        "Authentication not initialized. Call setupAxiosInstance first."
+      );
+    }
+
+    return axios.create({
+      baseURL: this.productsApiUrl,
+      headers: {
+        Authorization: `Basic ${this.authString}`,
+        "User-Agent": "sentosyazilim_dev",
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      timeout: 30000,
+    });
   }
 }
 

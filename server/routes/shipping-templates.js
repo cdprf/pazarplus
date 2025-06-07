@@ -23,7 +23,9 @@ router.use(auth);
  *       500:
  *         description: Server error
  */
-router.get("/default", shippingTemplatesController.getDefaultTemplate);
+router.get("/default", (req, res) =>
+  shippingTemplatesController.getDefaultTemplate(req, res)
+);
 
 /**
  * @swagger
@@ -53,10 +55,8 @@ router.get("/default", shippingTemplatesController.getDefaultTemplate);
  *       500:
  *         description: Server error
  */
-router.post(
-  "/default",
-  body("templateId").optional().isString(),
-  shippingTemplatesController.setDefaultTemplate
+router.post("/default", body("templateId").optional().isString(), (req, res) =>
+  shippingTemplatesController.setDefaultTemplate(req, res)
 );
 
 /**
@@ -98,7 +98,7 @@ router.post(
   "/generate-slip",
   body("orderId").isInt().withMessage("Order ID must be an integer"),
   body("templateId").optional().isString(),
-  shippingTemplatesController.generateShippingSlip
+  (req, res) => shippingTemplatesController.generateShippingSlip(req, res)
 );
 
 /**
@@ -117,7 +117,9 @@ router.post(
  *       500:
  *         description: Server error
  */
-router.get("/", shippingTemplatesController.getTemplates);
+router.get("/", (req, res) =>
+  shippingTemplatesController.getTemplates(req, res)
+);
 
 /**
  * @swagger
@@ -147,7 +149,7 @@ router.get("/", shippingTemplatesController.getTemplates);
 router.get(
   "/:id",
   param("id").notEmpty().withMessage("Template ID is required"),
-  shippingTemplatesController.getTemplate
+  (req, res) => shippingTemplatesController.getTemplate(req, res)
 );
 
 /**
@@ -206,7 +208,7 @@ router.post(
     .isArray()
     .withMessage("Elements must be an array"),
   body("config").optional().isObject().withMessage("Config must be an object"),
-  shippingTemplatesController.saveTemplate
+  (req, res) => shippingTemplatesController.saveTemplate(req, res)
 );
 
 /**
@@ -300,7 +302,54 @@ router.put(
 router.delete(
   "/:id",
   param("id").notEmpty().withMessage("Template ID is required"),
-  shippingTemplatesController.deleteTemplate
+  (req, res) => shippingTemplatesController.deleteTemplate(req, res)
+);
+
+/**
+ * @swagger
+ * /api/shipping/templates/link-order:
+ *   post:
+ *     summary: Link an order to a shipping template
+ *     tags: [Shipping Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderId
+ *               - templateId
+ *             properties:
+ *               orderId:
+ *                 type: string
+ *                 description: Order ID to link
+ *               templateId:
+ *                 type: string
+ *                 description: Template ID to link to the order
+ *               autoMap:
+ *                 type: boolean
+ *                 description: Whether to automatically map order data to template
+ *     responses:
+ *       200:
+ *         description: Order linked to template successfully
+ *       400:
+ *         description: Invalid request
+ *       404:
+ *         description: Order or template not found
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.post(
+  "/link-order",
+  body("orderId").notEmpty().withMessage("Order ID is required"),
+  body("templateId").notEmpty().withMessage("Template ID is required"),
+  body("autoMap").optional().isBoolean(),
+  (req, res) => shippingTemplatesController.linkOrderTemplate(req, res)
 );
 
 module.exports = router;

@@ -1,16 +1,16 @@
 // src/services/pdfGenerator.js
 
-const PDFDocument = require('pdfkit');
-const fs = require('fs');
-const path = require('path');
-const { Order, OrderItem, User, ShippingDetail } = require('../../../models'); // Fixed: import from models index
-const logger = require('../../../utils/logger');
-const bwipjs = require('bwip-js');
+const PDFDocument = require("pdfkit");
+const fs = require("fs");
+const path = require("path");
+const { Order, OrderItem, User, ShippingDetail } = require("../../../models"); // Fixed: import from models index
+const logger = require("../../../utils/logger");
+const bwipjs = require("bwip-js");
 
 class PDFGeneratorService {
   constructor() {
-    this.outputDir = path.join(__dirname, '../../public/shipping');
-    
+    this.outputDir = path.join(__dirname, "../../public/shipping");
+
     // Create output directory if it doesn't exist
     if (!fs.existsSync(this.outputDir)) {
       fs.mkdirSync(this.outputDir, { recursive: true });
@@ -28,103 +28,116 @@ class PDFGeneratorService {
       // Load order with related data
       const order = await Order.findByPk(orderId, {
         include: [
-          { model: OrderItem },
-          { model: ShippingDetail }
-        ]
+          { model: OrderItem, as: "items" },
+          { model: ShippingDetail, as: "shippingDetail" },
+        ],
       });
-      
+
       if (!order) {
         throw new Error(`Order with ID ${orderId} not found`);
       }
-      
-      if (!order.ShippingDetail) {
+
+      if (!order.shippingDetail) {
         throw new Error(`Shipping details for order ${orderId} not found`);
       }
-      
+
       // Generate tracking number if not provided
       if (!order.trackingNumber) {
-        order.trackingNumber = `TR${Math.floor(Math.random() * 1000000000).toString().padStart(9, '0')}`;
+        order.trackingNumber = `TR${Math.floor(Math.random() * 1000000000)
+          .toString()
+          .padStart(9, "0")}`;
         await order.update({ trackingNumber: order.trackingNumber });
       }
-      
+
       // Determine carrier
-      const carrier = options.carrier || order.carrier || 'Generic';
-      
+      const carrier = options.carrier || order.carrier || "Generic";
+
       // Create file path for PDF
       const fileName = `shipping_label_${order.id}_${Date.now()}.pdf`;
       const filePath = path.join(this.outputDir, fileName);
-      
+
       // Generate barcode/QR code for tracking number
       const barcodeBuffer = await this.generateBarcode(order.trackingNumber);
-      
+
       // Create PDF document
-      const doc = new PDFDocument({ size: 'A6', margin: 10 });
-      
+      const doc = new PDFDocument({ size: "A6", margin: 10 });
+
       // Write to file
       const stream = fs.createWriteStream(filePath);
       doc.pipe(stream);
-      
+
       // Use the appropriate template based on carrier
       switch (carrier.toLowerCase()) {
-        case 'aras':
+        case "aras":
           await this.createArasTemplate(doc, order, barcodeBuffer);
           break;
-        case 'yurtiçi':
-        case 'yurtici':
+        case "yurtiçi":
+        case "yurtici":
           await this.createYurticiTemplate(doc, order, barcodeBuffer);
           break;
-        case 'mng':
+        case "mng":
           await this.createMNGTemplate(doc, order, barcodeBuffer);
           break;
-        case 'ptt':
+        case "ptt":
           await this.createPTTTemplate(doc, order, barcodeBuffer);
           break;
         default:
           await this.createGenericTemplate(doc, order, barcodeBuffer);
       }
-      
+
       // Finalize PDF
       doc.end();
-      
+
       // Wait for the PDF to be fully written
       return new Promise((resolve, reject) => {
-        stream.on('finish', () => {
+        stream.on("finish", () => {
           const publicUrl = `/shipping/${fileName}`;
-          
+
           // Update order with label URL
-          order.update({ labelUrl: publicUrl })
+          order
+            .update({ labelUrl: publicUrl })
             .then(() => {
               resolve({
                 success: true,
-                message: 'Shipping label generated successfully',
+                message: "Shipping label generated successfully",
                 data: {
                   orderId: order.id,
                   platformOrderId: order.platformOrderId,
                   trackingNumber: order.trackingNumber,
                   carrier,
                   labelUrl: publicUrl,
-                  filePath
-                }
+                  filePath,
+                },
               });
             })
-            .catch(error => {
-              logger.error(`Failed to update order with label URL: ${error.message}`, { error, orderId });
+            .catch((error) => {
+              logger.error(
+                `Failed to update order with label URL: ${error.message}`,
+                { error, orderId }
+              );
               reject(error);
             });
         });
-        
-        stream.on('error', (error) => {
-          logger.error(`Error writing PDF file: ${error.message}`, { error, orderId, filePath });
+
+        stream.on("error", (error) => {
+          logger.error(`Error writing PDF file: ${error.message}`, {
+            error,
+            orderId,
+            filePath,
+          });
           reject(error);
         });
       });
     } catch (error) {
-      logger.error(`Failed to generate shipping label: ${error.message}`, { error, orderId });
-      
+      logger.error(`Failed to generate shipping label: ${error.message}`, {
+        error,
+        orderId,
+      });
+
       return {
         success: false,
         message: `Failed to generate shipping label: ${error.message}`,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -136,20 +149,23 @@ class PDFGeneratorService {
    */
   async generateBarcode(trackingNumber) {
     return new Promise((resolve, reject) => {
-      bwipjs.toBuffer({
-        bcid: 'code128',
-        text: trackingNumber,
-        scale: 3,
-        height: 10,
-        includetext: true,
-        textxalign: 'center'
-      }, (err, png) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(png);
+      bwipjs.toBuffer(
+        {
+          bcid: "code128",
+          text: trackingNumber,
+          scale: 3,
+          height: 10,
+          includetext: true,
+          textxalign: "center",
+        },
+        (err, png) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(png);
+          }
         }
-      });
+      );
     });
   }
 
@@ -160,19 +176,22 @@ class PDFGeneratorService {
    */
   async generateQRCode(trackingNumber) {
     return new Promise((resolve, reject) => {
-      bwipjs.toBuffer({
-        bcid: 'qrcode',
-        text: trackingNumber,
-        scale: 3,
-        height: 10,
-        includetext: false
-      }, (err, png) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(png);
+      bwipjs.toBuffer(
+        {
+          bcid: "qrcode",
+          text: trackingNumber,
+          scale: 3,
+          height: 10,
+          includetext: false,
+        },
+        (err, png) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(png);
+          }
         }
-      });
+      );
     });
   }
 
@@ -183,46 +202,58 @@ class PDFGeneratorService {
    * @param {Buffer} barcodeBuffer - Buffer containing barcode image
    */
   async createGenericTemplate(doc, order, barcodeBuffer) {
-    const { ShippingDetail } = order;
-    
+    const { shippingDetail } = order;
+
     // Add company logo/header
-    doc.fontSize(14).text('Pazar+ Shipping', { align: 'center' });
+    doc.fontSize(14).text("Pazar+ Shipping", { align: "center" });
     doc.moveDown(0.5);
-    
+
     // Add barcode
     if (barcodeBuffer) {
-      doc.image(barcodeBuffer, { width: 200, align: 'center' });
+      doc.image(barcodeBuffer, { width: 200, align: "center" });
       doc.moveDown(0.5);
     }
-    
+
     // Order information
-    doc.fontSize(10).text(`Order #: ${order.platformOrderId}`, { align: 'left' });
+    doc
+      .fontSize(10)
+      .text(`Order #: ${order.platformOrderId}`, { align: "left" });
     doc.text(`Date: ${new Date().toLocaleDateString()}`);
     doc.moveDown(0.5);
-    
+
     // Shipping information
-    doc.fontSize(12).text('Ship To:', { underline: true });
-    doc.fontSize(10).text(`${ShippingDetail.recipientName}`);
-    doc.text(`${ShippingDetail.address}`);
-    doc.text(`${ShippingDetail.city}, ${ShippingDetail.state} ${ShippingDetail.postalCode}`);
-    doc.text(`${ShippingDetail.country}`);
-    doc.text(`Phone: ${ShippingDetail.phone}`);
+    doc.fontSize(12).text("Ship To:", { underline: true });
+    doc.fontSize(10).text(`${shippingDetail.recipientName}`);
+    doc.text(`${shippingDetail.address}`);
+    doc.text(
+      `${shippingDetail.city}, ${shippingDetail.state} ${shippingDetail.postalCode}`
+    );
+    doc.text(`${shippingDetail.country}`);
+    doc.text(`Phone: ${shippingDetail.phone}`);
     doc.moveDown(0.5);
-    
+
     // Add tracking information
-    doc.fontSize(12).text('Tracking Information:', { underline: true });
+    doc.fontSize(12).text("Tracking Information:", { underline: true });
     doc.fontSize(10).text(`Tracking #: ${order.trackingNumber}`);
-    doc.text(`Carrier: ${order.carrier || 'Generic'}`);
+    doc.text(`Carrier: ${order.carrier || "Generic"}`);
     doc.moveDown(0.5);
-    
+
     // Order contents summary
-    doc.fontSize(12).text('Package Contents:', { underline: true });
+    doc.fontSize(12).text("Package Contents:", { underline: true });
     doc.fontSize(10).text(`Items: ${order.OrderItems.length}`);
-    const totalQuantity = order.OrderItems.reduce((sum, item) => sum + item.quantity, 0);
+    const totalQuantity = order.OrderItems.reduce(
+      (sum, item) => sum + item.quantity,
+      0
+    );
     doc.text(`Total Quantity: ${totalQuantity}`);
-    
+
     // Footer
-    doc.fontSize(8).text('This shipping label was generated by Pazar+ Order Management System', { align: 'center' });
+    doc
+      .fontSize(8)
+      .text(
+        "This shipping label was generated by Pazar+ Order Management System",
+        { align: "center" }
+      );
   }
 
   /**
@@ -232,43 +263,52 @@ class PDFGeneratorService {
    * @param {Buffer} barcodeBuffer - Buffer containing barcode image
    */
   async createArasTemplate(doc, order, barcodeBuffer) {
-    const { ShippingDetail } = order;
-    
+    const { shippingDetail } = order;
+
     // Add Aras Kargo header
-    doc.fontSize(14).text('ARAS KARGO', { align: 'center' });
+    doc.fontSize(14).text("ARAS KARGO", { align: "center" });
     doc.moveDown(0.5);
-    
+
     // Add barcode
     if (barcodeBuffer) {
-      doc.image(barcodeBuffer, { width: 200, align: 'center' });
+      doc.image(barcodeBuffer, { width: 200, align: "center" });
       doc.moveDown(0.5);
     }
-    
+
     // Shipping information box
     doc.rect(50, doc.y, 300, 150).stroke();
     const boxY = doc.y;
-    
-    doc.fontSize(12).text('ALICI BİLGİLERİ', 55, boxY + 5, { underline: true });
-    doc.fontSize(10).text(`${ShippingDetail.recipientName}`, 55, boxY + 25);
-    doc.fontSize(10).text(`${ShippingDetail.address}`, 55, boxY + 40);
-    doc.fontSize(10).text(`${ShippingDetail.city} / ${ShippingDetail.state}`, 55, boxY + 55);
-    doc.fontSize(10).text(`${ShippingDetail.postalCode}`, 55, boxY + 70);
-    doc.fontSize(10).text(`Tel: ${ShippingDetail.phone}`, 55, boxY + 85);
-    
+
+    doc.fontSize(12).text("ALICI BİLGİLERİ", 55, boxY + 5, { underline: true });
+    doc.fontSize(10).text(`${shippingDetail.recipientName}`, 55, boxY + 25);
+    doc.fontSize(10).text(`${shippingDetail.address}`, 55, boxY + 40);
+    doc
+      .fontSize(10)
+      .text(`${shippingDetail.city} / ${shippingDetail.state}`, 55, boxY + 55);
+    doc.fontSize(10).text(`${shippingDetail.postalCode}`, 55, boxY + 70);
+    doc.fontSize(10).text(`Tel: ${shippingDetail.phone}`, 55, boxY + 85);
+
     // Sender information
-    doc.fontSize(12).text('GÖNDERİCİ BİLGİLERİ', 55, boxY + 105, { underline: true });
+    doc
+      .fontSize(12)
+      .text("GÖNDERİCİ BİLGİLERİ", 55, boxY + 105, { underline: true });
     doc.fontSize(10).text(`Pazar+ / Trendyol`, 55, boxY + 125);
-    
+
     doc.moveDown(8);
-    
+
     // Shipping details
-    doc.fontSize(12).text('Gönderi Bilgileri:', { underline: true });
+    doc.fontSize(12).text("Gönderi Bilgileri:", { underline: true });
     doc.fontSize(10).text(`Takip No: ${order.trackingNumber}`);
     doc.fontSize(10).text(`Sipariş No: ${order.platformOrderId}`);
-    doc.fontSize(10).text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`);
-    
+    doc.fontSize(10).text(`Tarih: ${new Date().toLocaleDateString("tr-TR")}`);
+
     // Footer
-    doc.fontSize(8).text('ARAS KARGO ile gönderilmiştir. Pazar+ Order Management System tarafından oluşturulmuştur.', { align: 'center' });
+    doc
+      .fontSize(8)
+      .text(
+        "ARAS KARGO ile gönderilmiştir. Pazar+ Order Management System tarafından oluşturulmuştur.",
+        { align: "center" }
+      );
   }
 
   /**
@@ -278,43 +318,52 @@ class PDFGeneratorService {
    * @param {Buffer} barcodeBuffer - Buffer containing barcode image
    */
   async createYurticiTemplate(doc, order, barcodeBuffer) {
-    const { ShippingDetail } = order;
-    
+    const { shippingDetail } = order;
+
     // Add Yurtiçi Kargo header
-    doc.fontSize(14).text('YURTİÇİ KARGO', { align: 'center' });
+    doc.fontSize(14).text("YURTİÇİ KARGO", { align: "center" });
     doc.moveDown(0.5);
-    
+
     // Add barcode
     if (barcodeBuffer) {
-      doc.image(barcodeBuffer, { width: 200, align: 'center' });
+      doc.image(barcodeBuffer, { width: 200, align: "center" });
       doc.moveDown(0.5);
     }
-    
+
     // Shipping information box
     doc.rect(50, doc.y, 300, 150).stroke();
     const boxY = doc.y;
-    
-    doc.fontSize(12).text('TESLİM ALINACAK KİŞİ', 55, boxY + 5, { underline: true });
+
+    doc
+      .fontSize(12)
+      .text("TESLİM ALINACAK KİŞİ", 55, boxY + 5, { underline: true });
     doc.fontSize(10).text(`${ShippingDetail.recipientName}`, 55, boxY + 25);
     doc.fontSize(10).text(`${ShippingDetail.address}`, 55, boxY + 40);
-    doc.fontSize(10).text(`${ShippingDetail.city} / ${ShippingDetail.state}`, 55, boxY + 55);
+    doc
+      .fontSize(10)
+      .text(`${ShippingDetail.city} / ${ShippingDetail.state}`, 55, boxY + 55);
     doc.fontSize(10).text(`${ShippingDetail.postalCode}`, 55, boxY + 70);
     doc.fontSize(10).text(`Tel: ${ShippingDetail.phone}`, 55, boxY + 85);
-    
+
     // Sender information
-    doc.fontSize(12).text('GÖNDERİCİ', 55, boxY + 105, { underline: true });
+    doc.fontSize(12).text("GÖNDERİCİ", 55, boxY + 105, { underline: true });
     doc.fontSize(10).text(`Pazar+ / Trendyol`, 55, boxY + 125);
-    
+
     doc.moveDown(8);
-    
+
     // Shipping details
-    doc.fontSize(12).text('Kargo Bilgileri:', { underline: true });
+    doc.fontSize(12).text("Kargo Bilgileri:", { underline: true });
     doc.fontSize(10).text(`Takip No: ${order.trackingNumber}`);
     doc.fontSize(10).text(`Sipariş No: ${order.platformOrderId}`);
-    doc.fontSize(10).text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`);
-    
+    doc.fontSize(10).text(`Tarih: ${new Date().toLocaleDateString("tr-TR")}`);
+
     // Footer
-    doc.fontSize(8).text('YURTİÇİ KARGO ile gönderilmiştir. Pazar+ Order Management System tarafından oluşturulmuştur.', { align: 'center' });
+    doc
+      .fontSize(8)
+      .text(
+        "YURTİÇİ KARGO ile gönderilmiştir. Pazar+ Order Management System tarafından oluşturulmuştur.",
+        { align: "center" }
+      );
   }
 
   /**
@@ -325,42 +374,49 @@ class PDFGeneratorService {
    */
   async createMNGTemplate(doc, order, barcodeBuffer) {
     const { ShippingDetail } = order;
-    
+
     // Add MNG Kargo header
-    doc.fontSize(14).text('MNG KARGO', { align: 'center' });
+    doc.fontSize(14).text("MNG KARGO", { align: "center" });
     doc.moveDown(0.5);
-    
+
     // Add barcode
     if (barcodeBuffer) {
-      doc.image(barcodeBuffer, { width: 200, align: 'center' });
+      doc.image(barcodeBuffer, { width: 200, align: "center" });
       doc.moveDown(0.5);
     }
-    
+
     // Shipping information box
     doc.rect(50, doc.y, 300, 150).stroke();
     const boxY = doc.y;
-    
-    doc.fontSize(12).text('ALICI', 55, boxY + 5, { underline: true });
+
+    doc.fontSize(12).text("ALICI", 55, boxY + 5, { underline: true });
     doc.fontSize(10).text(`${ShippingDetail.recipientName}`, 55, boxY + 25);
     doc.fontSize(10).text(`${ShippingDetail.address}`, 55, boxY + 40);
-    doc.fontSize(10).text(`${ShippingDetail.city} / ${ShippingDetail.state}`, 55, boxY + 55);
+    doc
+      .fontSize(10)
+      .text(`${ShippingDetail.city} / ${ShippingDetail.state}`, 55, boxY + 55);
     doc.fontSize(10).text(`${ShippingDetail.postalCode}`, 55, boxY + 70);
     doc.fontSize(10).text(`Tel: ${ShippingDetail.phone}`, 55, boxY + 85);
-    
+
     // Sender information
-    doc.fontSize(12).text('GÖNDERİCİ', 55, boxY + 105, { underline: true });
+    doc.fontSize(12).text("GÖNDERİCİ", 55, boxY + 105, { underline: true });
     doc.fontSize(10).text(`Pazar+ / Trendyol`, 55, boxY + 125);
-    
+
     doc.moveDown(8);
-    
+
     // Shipping details
-    doc.fontSize(12).text('Gönderi Detayları:', { underline: true });
+    doc.fontSize(12).text("Gönderi Detayları:", { underline: true });
     doc.fontSize(10).text(`Takip No: ${order.trackingNumber}`);
     doc.fontSize(10).text(`Sipariş No: ${order.platformOrderId}`);
-    doc.fontSize(10).text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`);
-    
+    doc.fontSize(10).text(`Tarih: ${new Date().toLocaleDateString("tr-TR")}`);
+
     // Footer
-    doc.fontSize(8).text('MNG KARGO ile gönderilmiştir. Pazar+ Order Management System tarafından oluşturulmuştur.', { align: 'center' });
+    doc
+      .fontSize(8)
+      .text(
+        "MNG KARGO ile gönderilmiştir. Pazar+ Order Management System tarafından oluşturulmuştur.",
+        { align: "center" }
+      );
   }
 
   /**
@@ -371,42 +427,49 @@ class PDFGeneratorService {
    */
   async createPTTTemplate(doc, order, barcodeBuffer) {
     const { ShippingDetail } = order;
-    
+
     // Add PTT header
-    doc.fontSize(14).text('PTT KARGO', { align: 'center' });
+    doc.fontSize(14).text("PTT KARGO", { align: "center" });
     doc.moveDown(0.5);
-    
+
     // Add barcode
     if (barcodeBuffer) {
-      doc.image(barcodeBuffer, { width: 200, align: 'center' });
+      doc.image(barcodeBuffer, { width: 200, align: "center" });
       doc.moveDown(0.5);
     }
-    
+
     // Shipping information box
     doc.rect(50, doc.y, 300, 150).stroke();
     const boxY = doc.y;
-    
-    doc.fontSize(12).text('GÖNDERİLEN', 55, boxY + 5, { underline: true });
+
+    doc.fontSize(12).text("GÖNDERİLEN", 55, boxY + 5, { underline: true });
     doc.fontSize(10).text(`${ShippingDetail.recipientName}`, 55, boxY + 25);
     doc.fontSize(10).text(`${ShippingDetail.address}`, 55, boxY + 40);
-    doc.fontSize(10).text(`${ShippingDetail.city} / ${ShippingDetail.state}`, 55, boxY + 55);
+    doc
+      .fontSize(10)
+      .text(`${ShippingDetail.city} / ${ShippingDetail.state}`, 55, boxY + 55);
     doc.fontSize(10).text(`${ShippingDetail.postalCode}`, 55, boxY + 70);
     doc.fontSize(10).text(`Tel: ${ShippingDetail.phone}`, 55, boxY + 85);
-    
+
     // Sender information
-    doc.fontSize(12).text('GÖNDEREN', 55, boxY + 105, { underline: true });
+    doc.fontSize(12).text("GÖNDEREN", 55, boxY + 105, { underline: true });
     doc.fontSize(10).text(`Pazar+ / Trendyol`, 55, boxY + 125);
-    
+
     doc.moveDown(8);
-    
+
     // Shipping details
-    doc.fontSize(12).text('Gönderi Bilgileri:', { underline: true });
+    doc.fontSize(12).text("Gönderi Bilgileri:", { underline: true });
     doc.fontSize(10).text(`Takip No: ${order.trackingNumber}`);
     doc.fontSize(10).text(`Sipariş No: ${order.platformOrderId}`);
-    doc.fontSize(10).text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`);
-    
+    doc.fontSize(10).text(`Tarih: ${new Date().toLocaleDateString("tr-TR")}`);
+
     // Footer
-    doc.fontSize(8).text('PTT KARGO ile gönderilmiştir. Pazar+ Order Management System tarafından oluşturulmuştur.', { align: 'center' });
+    doc
+      .fontSize(8)
+      .text(
+        "PTT KARGO ile gönderilmiştir. Pazar+ Order Management System tarafından oluşturulmuştur.",
+        { align: "center" }
+      );
   }
 
   /**
@@ -418,89 +481,104 @@ class PDFGeneratorService {
   async generateBulkShippingLabels(orderIds, options = {}) {
     try {
       if (!Array.isArray(orderIds) || orderIds.length === 0) {
-        throw new Error('No order IDs provided for bulk shipping label generation');
+        throw new Error(
+          "No order IDs provided for bulk shipping label generation"
+        );
       }
-      
+
       // Create file path for PDF
       const fileName = `bulk_shipping_labels_${Date.now()}.pdf`;
       const filePath = path.join(this.outputDir, fileName);
-      
+
       // Create PDF document
-      const doc = new PDFDocument({ size: 'A6', margin: 10, autoFirstPage: false });
-      
+      const doc = new PDFDocument({
+        size: "A6",
+        margin: 10,
+        autoFirstPage: false,
+      });
+
       // Write to file
       const stream = fs.createWriteStream(filePath);
       doc.pipe(stream);
-      
+
       // Process each order
       let processedCount = 0;
-      const carrier = options.carrier || 'Generic';
-      
+      const carrier = options.carrier || "Generic";
+
       for (const orderId of orderIds) {
         try {
           // Load order with related data
           const order = await Order.findByPk(orderId, {
             include: [
-              { model: OrderItem },
-              { model: ShippingDetail }
-            ]
+              { model: OrderItem, as: "items" },
+              { model: ShippingDetail, as: "shippingDetail" },
+            ],
           });
-          
-          if (!order || !order.ShippingDetail) {
-            logger.warn(`Skipping order ${orderId}: Order or shipping details not found`);
+
+          if (!order || !order.shippingDetail) {
+            logger.warn(
+              `Skipping order ${orderId}: Order or shipping details not found`
+            );
             continue;
           }
-          
+
           // Generate tracking number if not provided
           if (!order.trackingNumber) {
-            order.trackingNumber = `TR${Math.floor(Math.random() * 1000000000).toString().padStart(9, '0')}`;
+            order.trackingNumber = `TR${Math.floor(Math.random() * 1000000000)
+              .toString()
+              .padStart(9, "0")}`;
             await order.update({ trackingNumber: order.trackingNumber });
           }
-          
+
           // Generate barcode for tracking number
-          const barcodeBuffer = await this.generateBarcode(order.trackingNumber);
-          
+          const barcodeBuffer = await this.generateBarcode(
+            order.trackingNumber
+          );
+
           // Add a new page for each order
           doc.addPage();
-          
+
           // Use the appropriate template based on carrier
           switch (carrier.toLowerCase()) {
-            case 'aras':
+            case "aras":
               await this.createArasTemplate(doc, order, barcodeBuffer);
               break;
-            case 'yurtiçi':
-            case 'yurtici':
+            case "yurtiçi":
+            case "yurtici":
               await this.createYurticiTemplate(doc, order, barcodeBuffer);
               break;
-            case 'mng':
+            case "mng":
               await this.createMNGTemplate(doc, order, barcodeBuffer);
               break;
-            case 'ptt':
+            case "ptt":
               await this.createPTTTemplate(doc, order, barcodeBuffer);
               break;
             default:
               await this.createGenericTemplate(doc, order, barcodeBuffer);
           }
-          
+
           processedCount++;
-          
+
           // Update order with label URL
           const publicUrl = `/shipping/${fileName}#page=${processedCount}`;
           await order.update({ labelUrl: publicUrl });
         } catch (error) {
-          logger.error(`Error processing order ${orderId} for bulk shipping label: ${error.message}`, { error, orderId });
+          logger.error(
+            `Error processing order ${orderId} for bulk shipping label: ${error.message}`,
+            { error, orderId }
+          );
           // Continue with the next order
         }
       }
-      
+
       // Finalize PDF
       doc.end();
-      
+
       // Wait for the PDF to be fully written
       return new Promise((resolve, reject) => {
-        stream.on('finish', () => {
+        stream.on("finish", () => {
           const publicUrl = `/shipping/${fileName}`;
-          
+
           resolve({
             success: true,
             message: `Generated shipping labels for ${processedCount} orders`,
@@ -509,23 +587,30 @@ class PDFGeneratorService {
               totalOrders: orderIds.length,
               carrier,
               labelUrl: publicUrl,
-              filePath
-            }
+              filePath,
+            },
           });
         });
-        
-        stream.on('error', (error) => {
-          logger.error(`Error writing bulk PDF file: ${error.message}`, { error, orderIds, filePath });
+
+        stream.on("error", (error) => {
+          logger.error(`Error writing bulk PDF file: ${error.message}`, {
+            error,
+            orderIds,
+            filePath,
+          });
           reject(error);
         });
       });
     } catch (error) {
-      logger.error(`Failed to generate bulk shipping labels: ${error.message}`, { error, orderIds });
-      
+      logger.error(
+        `Failed to generate bulk shipping labels: ${error.message}`,
+        { error, orderIds }
+      );
+
       return {
         success: false,
         message: `Failed to generate bulk shipping labels: ${error.message}`,
-        error: error.message
+        error: error.message,
       };
     }
   }

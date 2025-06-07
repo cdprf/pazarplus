@@ -710,18 +710,35 @@ class EnhancedPlatformService extends EventEmitter {
 
   /**
    * Map platform-specific status to internal status
+   * Uses consistent mappings with individual platform services
    */
   mapOrderStatus(platformStatus) {
     const statusMap = {
+      // Trendyol mappings (consistent with TrendyolService)
       Created: "new",
-      Confirmed: "processing",
       Picking: "processing",
       Invoiced: "processing",
       Shipped: "shipped",
+      AtCollectionPoint: "shipped",
       Delivered: "delivered",
       Cancelled: "cancelled",
-      Returned: "returned",
       UnDelivered: "failed",
+      Returned: "returned",
+      
+      // Hepsiburada mappings (consistent with HepsiburadaService)
+      Open: "pending",
+      PaymentCompleted: "processing",
+      Packaged: "shipped",
+      InTransit: "shipped",
+      CancelledByMerchant: "cancelled",
+      CancelledByCustomer: "cancelled",
+      CancelledBySap: "cancelled",
+      ReadyToShip: "processing",
+      ClaimCreated: "claim_created",
+      
+      // N11 mappings (consistent with N11Service)
+      Approved: "pending",
+      New: "new",
     };
 
     return statusMap[platformStatus] || "unknown";

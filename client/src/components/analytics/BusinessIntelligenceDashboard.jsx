@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import api from "../../services/api";
 import {
   Card,
   Row,
@@ -79,16 +80,12 @@ const BusinessIntelligenceDashboard = () => {
     try {
       setLoading(true);
       const [analyticsRes, biRes] = await Promise.all([
-        fetch(`/api/analytics/dashboard?timeframe=${timeframe}`),
-        fetch(`/api/analytics/business-intelligence?timeframe=${timeframe}`),
+        api.get(`/api/analytics/dashboard?timeframe=${timeframe}`),
+        api.get(`/api/analytics/business-intelligence?timeframe=${timeframe}`),
       ]);
 
-      if (!analyticsRes.ok || !biRes.ok) {
-        throw new Error("Failed to fetch analytics data");
-      }
-
-      const analyticsData = await analyticsRes.json();
-      const biData = await biRes.json();
+      const analyticsData = analyticsRes.data;
+      const biData = biRes.data;
 
       setAnalytics(analyticsData.data);
       setBusinessIntelligence(biData.data);
@@ -114,12 +111,13 @@ const BusinessIntelligenceDashboard = () => {
   // Export analytics data
   const handleExport = async (format) => {
     try {
-      const response = await fetch(
-        `/api/analytics/export?timeframe=${timeframe}&format=${format}`
+      const response = await api.get(
+        `/api/analytics/export?timeframe=${timeframe}&format=${format}`,
+        { responseType: 'blob' }
       );
 
       if (format === "csv") {
-        const blob = await response.blob();
+        const blob = response.data;
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;

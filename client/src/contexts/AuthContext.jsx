@@ -62,8 +62,12 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log("🔧 Development mode: Attempting auto-authentication...");
 
+      // Use the same base URL as the main API
+      const apiBaseUrl =
+        process.env.REACT_APP_API_URL || "http://localhost:5001";
+
       // Try to generate a fresh token
-      const response = await fetch("http://localhost:3000/api/auth/dev-token", {
+      const response = await fetch(`${apiBaseUrl}/api/auth/dev-token`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -255,6 +259,8 @@ export const AuthProvider = ({ children }) => {
     updateProfile,
     setError,
     devMode: enableDevMode && user?.devMode,
+    // Development mode bypass function (alias for devAutoLogin)
+    bypassLogin: devAutoLogin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

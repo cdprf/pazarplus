@@ -9,11 +9,11 @@ async function testOrderFetching() {
 
     // Get the dev user
     const devUser = await User.findOne({
-      where: { username: "dda" }, // Changed from "test" to "dda" to match existing user
+      where: { username: "devuser" }, // Changed to use existing devuser
     });
 
     if (!devUser) {
-      console.log("❌ dda user not found");
+      console.log("❌ devuser not found");
       return;
     }
 

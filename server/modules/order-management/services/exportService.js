@@ -366,7 +366,10 @@ class ExportService {
     // Fetch orders with related data
     const orders = await Order.findAll({
       where: whereConditions,
-      include: [{ model: OrderItem }, { model: ShippingDetail }],
+      include: [
+        { model: OrderItem, as: "items" }, 
+        { model: ShippingDetail, as: "shippingDetail" }
+      ],
       order: [["orderDate", "DESC"]],
       // Use limit for large exports?
       // limit: 1000

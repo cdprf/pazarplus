@@ -2,24 +2,26 @@
  * Base Platform Service
  * Provides common functionality for all platform services
  */
-const logger = require("../../../../utils/logger"); // Fixed: 5 levels up to reach server/utils/logger
+const logger = require("../../../../utils/logger");
 const {
   Order,
   OrderItem,
   ShippingDetail,
   Product,
   PlatformConnection,
-} = require("../../../../models"); // Fixed: 5 levels up to reach server/models
+} = require("../../../../models");
 const axios = require("axios");
 
 class BasePlatformService {
-  constructor(connectionId) {
+  constructor(connectionId, directCredentials = null) {
     // Handle both string IDs and object inputs
     this.connectionId =
       typeof connectionId === "object" ? connectionId.id : connectionId;
+    this.directCredentials = directCredentials;
     this.connection = null;
     this.apiUrl = null;
     this.axiosInstance = null;
+    this.logger = logger; // Provide direct access to logger
   }
 
   /**
@@ -59,12 +61,32 @@ class BasePlatformService {
   }
 
   /**
-   * Find connection in database
+   * Find connection in database or use direct credentials
    * @returns {Promise<Object>} Platform connection
    */
   async findConnection() {
+    if (this.directCredentials) {
+      return {
+        id: this.connectionId || null,
+        userId: null, // No userId for direct credentials
+        credentials: JSON.stringify(this.directCredentials),
+        type: "direct",
+        createdAt: null,
+        updatedAt: null,
+      };
+    }
     // Use the imported PlatformConnection model directly
-    return await PlatformConnection.findByPk(this.connectionId);
+    const connection = await PlatformConnection.findByPk(this.connectionId);
+    if (!connection) return null;
+    // Standardize the return structure for downstream compatibility
+    return {
+      id: connection.id,
+      userId: connection.userId,
+      credentials: connection.credentials,
+      type: connection.type || "db",
+      createdAt: connection.createdAt,
+      updatedAt: connection.updatedAt,
+    };
   }
 
   /**
@@ -188,15 +210,18 @@ class BasePlatformService {
       // Get orders using the platform-specific implementation
       // Ensure startDate is at least 18 months ago
       const now = new Date();
-      const minStartDate = new Date(now.getFullYear(), now.getMonth() - 18, now.getDate());
-      
+      const minStartDate = new Date(
+        now.getFullYear(),
+        now.getMonth() - 1,
+        now.getDate()
+      );
 
       const options = {
         startDate: minStartDate.getTime(),
         endDate: endDate
           ? endDate instanceof Date
-        ? endDate.getTime()
-        : new Date(endDate).getTime()
+            ? endDate.getTime()
+            : new Date(endDate).getTime()
           : now.getTime(),
       };
 
@@ -374,13 +399,13 @@ class BasePlatformService {
    * @param {Number} delay - Base delay in milliseconds
    * @returns {Promise<any>} - Result from the request
    */
-  async retryRequest(requestFn, maxRetries = 3, delay = 1000) {
+  async retryRequest(requestFn, maxRetries = 3, delay = 1000, apiUrl = null) {
     let retries = 0;
     let lastError = null;
 
     while (retries < maxRetries) {
       try {
-        return await requestFn();
+        return await requestFn(apiUrl);
       } catch (error) {
         lastError = error;
 
@@ -419,6 +444,25 @@ class BasePlatformService {
 
     // If we've exhausted retries
     throw lastError;
+  }
+
+  /**
+   * Get default start date for order fetching (30 days ago)
+   * @returns {string} ISO date string
+   */
+  getDefaultStartDate() {
+    const date = new Date();
+    date.setDate(date.getDate() - 30); // 30 days ago
+    return date.toISOString().split("T")[0]; // Return YYYY-MM-DD format
+  }
+
+  /**
+   * Get default end date for order fetching (today)
+   * @returns {string} ISO date string
+   */
+  getDefaultEndDate() {
+    const date = new Date();
+    return date.toISOString().split("T")[0]; // Return YYYY-MM-DD format
   }
 }
 

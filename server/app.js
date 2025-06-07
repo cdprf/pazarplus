@@ -13,6 +13,7 @@ const {
   apiVersioning,
   deprecationWarning,
 } = require("./middleware/versioning");
+const path = require("path");
 
 // Import enhanced security and performance monitoring
 const {
@@ -27,6 +28,16 @@ const {
 const enhancedPlatformService = require("./services/enhanced-platform-service");
 const inventoryManagementService = require("./services/inventory-management-service");
 const notificationService = require("./services/notification-service");
+
+// Import database transaction management services
+const dbTransactionManager = require("./services/database-transaction-manager");
+const databaseStatusWebSocket = require("./services/database-status-websocket");
+
+// Import unified WebSocket server
+const unifiedWebSocketServer = require("./services/unified-websocket-server");
+
+// Import Swagger configuration
+const { initializeSwagger } = require("./config/swagger");
 
 // Load and validate environment configuration
 const config = loadConfig();
@@ -270,6 +281,65 @@ app.get("/api", (req, res) => {
 // Mount all routes with API prefix
 app.use("/api", routes);
 
+// Initialize Swagger documentation at /api-docs
+initializeSwagger(app);
+
+// Only serve static files in production mode
+// In development, the React dev server handles the frontend on port 3000
+if (process.env.NODE_ENV === "production") {
+  // Serve static files from the React app build directory
+  const clientBuildPath = path.resolve(__dirname, "..", "client", "build");
+  logger.info(`Serving static files from: ${clientBuildPath}`);
+  app.use(express.static(clientBuildPath));
+
+  // For any other request, send back React's index.html file
+  app.get("*", (req, res, next) => {
+    // Skip API and known non-file routes, and WebSocket upgrade paths
+    if (
+      req.path.startsWith("/api") ||
+      req.path === "/health" ||
+      req.path.startsWith("/ws/")
+    ) {
+      return next();
+    }
+
+    logger.debug(`Serving React app for path: ${req.path}`);
+    res.sendFile(path.resolve(clientBuildPath, "index.html"), (err) => {
+      if (err) {
+        logger.error(`Error serving index.html: ${err.message}`, {
+          path: req.path,
+          error: err,
+        });
+        next(err);
+      }
+    });
+  });
+} else {
+  // In development mode, just serve a simple message for non-API routes
+  app.get("*", (req, res, next) => {
+    // Skip API and known non-file routes, and WebSocket upgrade paths
+    if (
+      req.path.startsWith("/api") ||
+      req.path === "/health" ||
+      req.path.startsWith("/api-docs") ||
+      req.path.startsWith("/ws/")
+    ) {
+      return next();
+    }
+
+    res.json({
+      message: "Pazar+ Backend API Server",
+      mode: "development",
+      note: "Frontend is served separately on port 3000",
+      path: req.path,
+      availableEndpoints: {
+        health: "/health",
+        api: "/api/*",
+      },
+    });
+  });
+}
+
 // Handle 404 errors for all unmatched routes
 app.use("*", notFoundHandler);
 
@@ -293,6 +363,9 @@ async function initializeEnhancedServices() {
 
     // Setup inventory management event listeners
     setupInventoryManagementEventListeners();
+
+    // Initialize database transaction manager
+    await dbTransactionManager.initialize();
 
     logger.info(
       "Enhanced platform integration services initialized successfully"
@@ -372,16 +445,21 @@ function setupInventoryManagementEventListeners() {
 // Initialize WebSocket server for real-time notifications
 function initializeWebSocketServer(server) {
   try {
-    // Initialize notification service with HTTP server
-    notificationService.initialize(server);
+    // Initialize notification service (without WebSocket server)
+    notificationService.initialize();
+
+    // Initialize unified WebSocket server (handles all WebSocket paths)
+    unifiedWebSocketServer.initialize(server);
 
     // Setup real-time notification handlers
     notificationService.setupRealTimeNotifications();
 
-    // Start periodic cleanup
+    // Start periodic cleanup for notification service
     notificationService.startPeriodicCleanup();
 
-    logger.info("WebSocket notification service initialized successfully");
+    logger.info(
+      "Unified WebSocket server initialized successfully with all services"
+    );
   } catch (error) {
     logger.error("Failed to initialize WebSocket server:", error);
   }
@@ -395,9 +473,13 @@ const gracefulShutdown = async (signal) => {
   logger.info(`Received ${signal}. Starting graceful shutdown...`);
 
   try {
-    // Shutdown notification service
-    notificationService.shutdown();
-    logger.info("Notification service shut down");
+    // Shutdown unified WebSocket server
+    unifiedWebSocketServer.shutdown();
+    logger.info("Unified WebSocket server shut down");
+
+    // Clean up database transaction manager
+    dbTransactionManager.cleanup();
+    logger.info("Database transaction manager cleaned up");
 
     // Close cache connections
     await cacheService.disconnect();

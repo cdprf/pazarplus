@@ -1,7 +1,7 @@
 // src/services/platforms/trendyol/trendyol-service.js
 
 const axios = require("axios");
-const BasePlatformService = require("../BasePlatformService"); // Fixed import path
+const BasePlatformService = require("../BasePlatformService");
 const {
   Order,
   OrderItem,
@@ -61,10 +61,8 @@ class TrendyolService extends BasePlatformService {
    */
   async findConnection() {
     if (this.directCredentials) {
-      // Skip finding the connection in the database for testing
       return { credentials: JSON.stringify(this.directCredentials) };
     } else {
-      // Use parent implementation for regular case
       return await super.findConnection();
     }
   }
@@ -225,88 +223,16 @@ class TrendyolService extends BasePlatformService {
   async fetchOrders(params = {}) {
     try {
       await this.initialize();
-      const credentials = this.decryptCredentials(this.connection.credentials);
-      const supplierId = credentials.supplierId || credentials.sellerId;
 
-      // Use timestamp format for Trendyol API
-      const defaultEndDate = new Date();
-      const defaultStartDate = new Date();
-      defaultStartDate.setDate(defaultStartDate.getDate() - 7);
+      // Check if this is a request for all orders (no specific page requested)
+      const fetchAllPages = true;
 
-      // Convert to timestamp format (milliseconds since epoch)
-      const startDate = params.startDate
-        ? new Date(params.startDate).getTime()
-        : defaultStartDate.getTime();
-
-      const endDate = params.endDate
-        ? new Date(params.endDate).getTime()
-        : defaultEndDate.getTime();
-
-      const defaultParams = {
-        startDate,
-        endDate,
-        page: 0,
-        size: 50,
-        orderByField: "PackageLastModifiedDate",
-        orderByDirection: "DESC",
-      };
-
-      const queryParams = { ...defaultParams, ...params };
-      queryParams.startDate = startDate;
-      queryParams.endDate = endDate;
-
-      this.logger.debug(
-        `Fetching Trendyol orders with params: ${JSON.stringify(queryParams)}`
-      );
-
-      const response = await this.retryRequest(() =>
-        this.axiosInstance.get(`/suppliers/${supplierId}/orders`, {
-          params: queryParams,
-        })
-      );
-
-      // Handle response format
-      let orders = [];
-      if (response.data) {
-        if (Array.isArray(response.data)) {
-          orders = response.data;
-        } else if (
-          response.data.content &&
-          Array.isArray(response.data.content)
-        ) {
-          orders = response.data.content;
-        } else {
-          this.logger.warn(
-            "Unexpected response format from Trendyol orders API"
-          );
-          return {
-            success: false,
-            message: "Unexpected response format from Trendyol API",
-            error: "Invalid response format",
-            data: [],
-          };
-        }
+      if (fetchAllPages) {
+        return await this.fetchAllOrdersInternal(params);
       }
 
-      this.logger.info(`Retrieved ${orders.length} orders from Trendyol`);
-
-      const normalizeResult = await this.normalizeOrders(orders);
-
-      return {
-        success: true,
-        message: `Successfully fetched ${normalizeResult.data.length} orders from Trendyol`,
-        data: normalizeResult.data,
-        stats: normalizeResult.stats,
-        pagination:
-          response.data && !Array.isArray(response.data)
-            ? {
-                page: response.data.number || queryParams.page,
-                size: response.data.size || queryParams.size,
-                totalPages: response.data.totalPages || 1,
-                totalElements: response.data.totalElements || orders.length,
-              }
-            : undefined,
-      };
+      // Single page fetch
+      return await this.fetchSinglePage(params);
     } catch (error) {
       this.logger.error(
         `Failed to fetch orders from Trendyol: ${error.message}`,
@@ -323,6 +249,190 @@ class TrendyolService extends BasePlatformService {
         data: [],
       };
     }
+  }
+
+  /**
+   * Fetch a single page of orders from Trendyol
+   * @param {Object} params - Query parameters
+   * @returns {Promise<Object>} Result containing order data for single page
+   */
+  async fetchSinglePage(params = {}) {
+    const credentials = this.decryptCredentials(this.connection.credentials);
+    const supplierId = credentials.supplierId || credentials.sellerId;
+
+    // Use timestamp format for Trendyol API
+    const defaultEndDate = new Date();
+    const defaultStartDate = new Date();
+    defaultStartDate.setDate(defaultStartDate.getDate() - 30);
+
+    // Convert to timestamp format (milliseconds since epoch)
+    const startDate = params.startDate
+      ? new Date(params.startDate).getTime()
+      : defaultStartDate.getTime();
+
+    const endDate = params.endDate
+      ? new Date(params.endDate).getTime()
+      : defaultEndDate.getTime();
+
+    const defaultParams = {
+      //startDate,
+      //endDate,
+      page: params.page || 0,
+      size: params.size || 50,
+      orderByField: "PackageLastModifiedDate",
+      orderByDirection: "DESC",
+    };
+
+    const queryParams = { ...defaultParams, ...params };
+    //queryParams.startDate = startDate;
+    //queryParams.endDate = endDate;
+
+    this.logger.debug(
+      `Fetching Trendyol orders (single page) with params: ${JSON.stringify(
+        queryParams
+      )}`
+    );
+
+    const response = await this.retryRequest(() =>
+      this.axiosInstance.get(`/suppliers/${supplierId}/orders`, {
+        params: queryParams,
+      })
+    );
+
+    // Handle response format
+    let orders = [];
+    if (response.data) {
+      if (Array.isArray(response.data)) {
+        orders = response.data;
+      } else if (
+        response.data.content &&
+        Array.isArray(response.data.content)
+      ) {
+        orders = response.data.content;
+      } else {
+        return {
+          success: false,
+          message: "Unexpected response format from Trendyol API",
+          error: "Invalid response format",
+          data: [],
+        };
+      }
+    }
+
+    const pagination = {
+      page:
+        response.data.page !== undefined
+          ? response.data.page
+          : queryParams.page,
+      size: response.data.size || queryParams.size,
+      totalPages: response.data.totalPages || 1,
+      totalElements: response.data.totalElements || orders.length,
+    };
+
+    this.logger.info(
+      `Retrieved ${orders.length} orders from Trendyol (page ${
+        pagination.page + 1
+      }/${pagination.totalPages})`
+    );
+
+    const normalizeResult = await this.normalizeOrders(orders);
+
+    return {
+      success: true,
+      message: `Successfully fetched ${normalizeResult.data.length} orders from Trendyol`,
+      data: normalizeResult.data,
+      stats: normalizeResult.stats,
+      pagination,
+    };
+  }
+
+  /**
+   * Fetch all orders from Trendyol by looping through all pages (internal method)
+   * @param {Object} params - Query parameters
+   * @returns {Promise<Object>} Result containing all order data
+   */
+  async fetchAllOrdersInternal(params = {}) {
+    const allOrders = [];
+    let allStats = {
+      total: 0,
+      success: 0,
+      updated: 0,
+      skipped: 0,
+    };
+
+    let currentPage = 0;
+    let totalPages = 1;
+    let hasMorePages = true;
+
+    this.logger.info("Starting to fetch all orders from Trendyol...");
+
+    while (hasMorePages) {
+      const pageParams = {
+        //...params,
+        page: currentPage,
+        size: params.size || 200,
+      };
+
+      this.logger.debug(`Fetching Trendyol orders page ${currentPage + 1}...`);
+
+      const result = await this.fetchSinglePage(pageParams);
+
+      if (!result.success) {
+        this.logger.error(
+          `Failed to fetch page ${currentPage + 1}: ${result.message}`
+        );
+        break;
+      }
+
+      // Add orders from this page
+      allOrders.push(...result.data);
+
+      // Update stats
+      if (result.stats) {
+        allStats.total += result.stats.total || 0;
+        allStats.success += result.stats.success || 0;
+        allStats.updated += result.stats.updated || 0;
+        allStats.skipped += result.stats.skipped || 0;
+      }
+
+      // Update pagination info
+      if (result.pagination) {
+        totalPages = result.pagination.totalPages;
+        currentPage = result.pagination.page + 1;
+        hasMorePages = currentPage < totalPages;
+
+        this.logger.info(
+          `Completed page ${
+            result.pagination.page + 1
+          }/${totalPages}, retrieved ${result.data.length} orders`
+        );
+      } else {
+        // No pagination info, assume this is the only page
+        hasMorePages = false;
+      }
+
+      // Safety check to prevent infinite loops
+      if (currentPage > 1000) {
+        this.logger.warn("Reached maximum page limit (1000), stopping");
+        break;
+      }
+    }
+
+    this.logger.info(
+      `Completed fetching all orders from Trendyol: ${allOrders.length} total orders across ${currentPage} pages`
+    );
+
+    return {
+      success: true,
+      message: `Successfully fetched ${allOrders.length} orders from Trendyol across ${currentPage} pages`,
+      data: allOrders,
+      stats: allStats,
+      pagination: {
+        totalPages: currentPage,
+        totalOrders: allOrders.length,
+        fetchedAllPages: true,
+      },
+    };
   }
 
   async normalizeOrders(trendyolOrders) {
@@ -371,6 +481,7 @@ class TrendyolService extends BasePlatformService {
               });
 
               updatedCount++;
+              successCount++; // Count updated orders as successful too
               normalizedOrders.push(existingOrder);
               continue;
             } catch (updateError) {
@@ -427,13 +538,19 @@ class TrendyolService extends BasePlatformService {
                     "Unknown Customer",
                   customerEmail: order.customerEmail || "",
                   customerPhone: phoneNumber || "",
+                  platform: this.getPlatformType(),
+                  platformType: this.getPlatformType(),
+                  platformOrderId: order.id, // Add platformOrderId field
+                  platformId: this.connectionId, // Add platformId field
+                  shippingAddress: order.shipmentAddress.fullAddress || {},
+                  shippingDetailId: shippingDetail.id,
+                  invoiceStatus: order.status || "pending", // Use eInvoiceStatus
                   orderDate: new Date(order.orderDate),
                   orderStatus: this.mapOrderStatus(order.status),
                   totalAmount: parseFloat(
                     order.totalPrice || order.grossAmount || 0
                   ),
                   currency: order.currency || "TRY",
-                  shippingDetailId: shippingDetail.id,
                   notes: order.note || "",
                   rawData: JSON.stringify(order),
                   lastSyncedAt: new Date(),
@@ -447,15 +564,17 @@ class TrendyolService extends BasePlatformService {
                   await OrderItem.create(
                     {
                       orderId: normalizedOrder.id,
-                      platformProductId: item.productId
-                        ? item.productId.toString()
-                        : item.productCode?.toString() || "",
+                      productId: null,
+                      platformProductId: item.productCode || "",
                       title: item.productName || "Unknown Product",
                       sku: item.merchantSku || item.productCode || "",
                       quantity: parseInt(item.quantity) || 1,
                       price: parseFloat(item.price) || 0,
                       currency: "TRY",
                       barcode: item.barcode || "",
+                      discount:
+                        parseFloat(item.discount) + (item.tyDiscount || 0),
+                      invoiceTotal: parseFloat(order.totalPrice) || 0,
                       variantInfo: item.variantFeatures
                         ? JSON.stringify(item.variantFeatures)
                         : null,
@@ -546,13 +665,16 @@ class TrendyolService extends BasePlatformService {
 
       return {
         success: true,
-        message: `Successfully processed ${successCount} orders (${updatedCount} updated, ${skippedCount} skipped)`,
+        message: `Successfully processed ${successCount} orders (${
+          successCount - updatedCount
+        } new, ${updatedCount} updated, ${skippedCount} skipped)`,
         data: normalizedOrders,
         stats: {
           total: trendyolOrders.length,
           success: successCount,
           updated: updatedCount,
           skipped: skippedCount,
+          new: successCount - updatedCount,
         },
       };
     } catch (error) {
@@ -607,6 +729,20 @@ class TrendyolService extends BasePlatformService {
         };
       }
 
+      // Shipping detail must be created before the order
+      const shippingDetail = await ShippingDetail.create({
+        recipientName: `${order.shipmentAddress.firstName} ${order.shipmentAddress.lastName}`,
+        address1: order.shipmentAddress.address1 || "",
+        address2: "",
+        city: order.shipmentAddress.city,
+        state: order.shipmentAddress.district,
+        postalCode: order.shipmentAddress.postalCode,
+        country: "Turkey",
+        phone: phoneNumber,
+        email: order.customerEmail || "",
+        shippingMethod: order.cargoProviderName,
+      });
+
       // Create the order with correct field names
       const newOrder = await Order.create({
         externalOrderId: order.orderNumber,
@@ -622,24 +758,17 @@ class TrendyolService extends BasePlatformService {
         customerName: `${order.customerFirstName} ${order.customerLastName}`,
         customerEmail: order.customerEmail,
         customerPhone: phoneNumber,
+        platform: this.getPlatformType(),
+        platformType: platformType,
+        platformOrderId: order.orderNumber, // Add platformOrderId field
+        platformId: this.connectionId, // Add platformId field
+        shippingAddress: order.shipmentAddress,
+        shippingDetailId: shippingDetail.id,
+        invoiceStatus: order.eInvoiceStatus || "pending", // Use eInvoiceStatus
         notes: order.note || "",
         rawData: JSON.stringify(order),
         lastSyncedAt: new Date(),
         // Remove deprecated fields: platformType, platformOrderId, platformId, paymentStatus
-      });
-
-      // Create shipping detail
-      const shippingDetail = await ShippingDetail.create({
-        recipientName: `${order.shipmentAddress.firstName} ${order.shipmentAddress.lastName}`,
-        address1: order.shipmentAddress.address1 || "",
-        address2: "",
-        city: order.shipmentAddress.city,
-        state: order.shipmentAddress.district,
-        postalCode: order.shipmentAddress.postalCode,
-        country: "Turkey",
-        phone: phoneNumber,
-        email: order.customerEmail || "",
-        shippingMethod: order.cargoProviderName,
       });
 
       // Update order with shipping detail ID
@@ -654,15 +783,18 @@ class TrendyolService extends BasePlatformService {
       for (const item of order.lines) {
         await OrderItem.create({
           orderId: newOrder.id,
+          productId: item.productId,
           platformProductId: item.productId
             ? item.productId.toString()
             : item.productCode.toString(),
           title: item.productName || "Unknown Product",
           sku: item.merchantSku,
+          barcode: item.barcode || "",
           quantity: item.quantity,
           price: item.price,
+          discount: item.discount || 0,
+          invoiceTotal: item.invoiceTotal || item.price,
           currency: "TRY",
-          barcode: item.barcode,
           variantInfo: item.variantFeatures
             ? JSON.stringify(item.variantFeatures)
             : null,
@@ -863,6 +995,144 @@ class TrendyolService extends BasePlatformService {
    * @returns {Promise<Object>} Result containing product data
    */
   async fetchProducts(params = {}) {
+    // If a specific page is requested, fetch only that page
+    if (params.page !== undefined && params.page !== null) {
+      return this.fetchSingleProductPage(params);
+    }
+
+    // Otherwise, fetch all products across all pages
+    return this.fetchAllProductsInternal(params);
+  }
+
+  /**
+   * Fetch all products from Trendyol by looping through all pages (internal method)
+   * @param {Object} params - Query parameters
+   * @returns {Promise<Object>} Result containing all product data
+   */
+  async fetchAllProductsInternal(params = {}) {
+    try {
+      await this.initialize();
+      const credentials = this.decryptCredentials(this.connection.credentials);
+      const supplierId = credentials.supplierId || credentials.sellerId;
+
+      if (!supplierId) {
+        this.logger.error(
+          "Product fetch failed: Missing supplierId in credentials"
+        );
+        return {
+          success: false,
+          message:
+            "Product fetch failed: Supplier ID is missing from credentials",
+          error: "Missing required parameter: supplierId",
+          data: [],
+        };
+      }
+
+      const allProducts = [];
+      let currentPage = 0;
+      let totalPages = 1;
+      let hasMorePages = true;
+
+      this.logger.info("Starting to fetch all products from Trendyol...");
+
+      while (hasMorePages) {
+        const pageParams = {
+          ...params,
+          page: currentPage,
+          size: params.size || 1000,
+        };
+
+        this.logger.debug(
+          `Fetching Trendyol products page ${currentPage + 1}...`
+        );
+
+        const result = await this.fetchSingleProductPage(pageParams);
+
+        if (!result.success) {
+          this.logger.error(
+            `Failed to fetch page ${currentPage + 1}: ${result.message}`
+          );
+          break;
+        }
+
+        // Add products from this page
+        allProducts.push(...result.data);
+
+        // Update pagination info
+        if (result.pagination) {
+          totalPages = result.pagination.totalPages;
+          currentPage = result.pagination.page + 1;
+          hasMorePages = currentPage < totalPages;
+
+          this.logger.info(
+            `Completed page ${
+              result.pagination.page + 1
+            }/${totalPages}, retrieved ${result.data.length} products`
+          );
+        } else {
+          // No pagination info, assume this is the only page
+          hasMorePages = false;
+        }
+
+        // Safety check to prevent infinite loops
+        if (currentPage > 1000) {
+          this.logger.warn("Reached maximum page limit (1000), stopping");
+          break;
+        }
+      }
+
+      this.logger.info(
+        `Completed fetching all products from Trendyol: ${allProducts.length} total products across ${currentPage} pages`
+      );
+
+      return {
+        success: true,
+        message: `Successfully fetched ${allProducts.length} products from Trendyol across ${currentPage} pages`,
+        data: allProducts,
+        pagination: {
+          totalPages: currentPage,
+          totalProducts: allProducts.length,
+          fetchedAllPages: true,
+        },
+      };
+    } catch (error) {
+      const statusCode = error.response?.status;
+      const apiError = error.response?.data;
+
+      this.logger.error(
+        `Failed to fetch all products from Trendyol: ${error.message}`,
+        {
+          error,
+          statusCode,
+          apiError,
+          connectionId: this.connectionId,
+        }
+      );
+
+      if (statusCode === 401 || statusCode === 403) {
+        return {
+          success: false,
+          message: "Authentication failed. Please check your API credentials.",
+          error: apiError || error.message,
+          data: [],
+        };
+      }
+
+      return {
+        success: false,
+        message: `Failed to fetch all products: ${error.message}`,
+        error: apiError || error.message,
+        data: [],
+      };
+    }
+  }
+
+  /**
+   * Fetch a single page of products from Trendyol
+   * @param {Object} params - Query parameters
+   * @returns {Promise<Object>} Result containing product data for single page
+   */
+  async fetchSingleProductPage(params = {}) {
     try {
       await this.initialize();
       const credentials = this.decryptCredentials(this.connection.credentials);
@@ -882,14 +1152,16 @@ class TrendyolService extends BasePlatformService {
       }
 
       const defaultParams = {
-        size: 50,
+        size: 1000,
         page: 0,
       };
 
       const queryParams = { ...defaultParams, ...params };
 
       this.logger.debug(
-        `Fetching Trendyol products with params: ${JSON.stringify(queryParams)}`
+        `Fetching Trendyol products (single page) with params: ${JSON.stringify(
+          queryParams
+        )}`
       );
 
       // Use correct endpoint for products
@@ -910,7 +1182,9 @@ class TrendyolService extends BasePlatformService {
       const content = response.data.content || response.data;
 
       this.logger.info(
-        `Successfully fetched ${content.length} products from Trendyol`
+        `Successfully fetched ${content.length} products from Trendyol (page ${
+          queryParams.page + 1
+        }/${response.data.totalPages || "unknown"})`
       );
 
       return {
@@ -923,6 +1197,10 @@ class TrendyolService extends BasePlatformService {
               size: response.data.size || queryParams.size,
               totalPages: response.data.totalPages || 1,
               totalElements: response.data.totalElements || content.length,
+              isFirst: response.data.number === 0,
+              isLast: response.data.last || false,
+              hasNext: !response.data.last,
+              hasPrevious: response.data.number > 0,
             }
           : undefined,
       };

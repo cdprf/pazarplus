@@ -31,8 +31,11 @@ const shippingTemplatesRoutes = require("./shipping-templates");
 // Import main shipping routes
 const shippingRoutes = require("./shippingRoutes");
 
-// Health check endpoint - should be accessible first
-router.get("/api/health", (req, res) => {
+// Import database transaction management routes
+const databaseRoutes = require("./database");
+
+// Health check endpoint - should be accessible at /api/health
+router.get("/health", (req, res) => {
   logger.info("Health check accessed");
   res.json({
     success: true,
@@ -50,6 +53,7 @@ router.get("/api/health", (req, res) => {
       analytics: "/api/analytics", // Month 5 Phase 1
       subscription: "/api/subscription", // Month 5 Phase 2 - NEW
       rateLimits: "/api/admin", // Rate limiting management
+      database: "/api/database", // Database transaction management
     },
   });
 });
@@ -97,6 +101,9 @@ router.use("/shipping/templates", shippingTemplatesRoutes);
 // Main shipping routes
 router.use("/shipping", shippingRoutes);
 
+// Database transaction management routes
+router.use("/database", databaseRoutes);
+
 // Catch-all for debugging
 router.use("/*", (req, res) => {
   logger.warn(`Unmatched API route: ${req.method} ${req.originalUrl}`);
@@ -115,6 +122,7 @@ router.use("/*", (req, res) => {
       "/api/order-management",
       "/api/analytics", // Month 5 Phase 1
       "/api/subscription", // Month 5 Phase 2 - NEW
+      "/api/database", // Database transaction management
     ],
   });
 });

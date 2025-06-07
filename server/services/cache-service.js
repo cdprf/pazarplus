@@ -383,6 +383,26 @@ class CacheService {
       };
     }
   }
+
+  // Get keys matching pattern
+  async getKeys(pattern) {
+    if (!this.isConnected) {
+      // For fallback cache, filter Map keys by pattern
+      const keys = Array.from(this.fallbackCache.keys());
+      if (pattern.includes("*")) {
+        const regex = new RegExp(pattern.replace(/\*/g, ".*"));
+        return keys.filter((key) => regex.test(key));
+      }
+      return keys.filter((key) => key === pattern);
+    }
+
+    try {
+      return await this.client.keys(pattern);
+    } catch (error) {
+      logger.error(`Get keys error for pattern ${pattern}:`, error);
+      return [];
+    }
+  }
 }
 
 // Create singleton instance

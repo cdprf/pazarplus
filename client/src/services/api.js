@@ -132,6 +132,11 @@ const orderService = {
     }
   },
 
+  // Alias for backward compatibility
+  getOrder: async (id) => {
+    return orderService.getOrderById(id);
+  },
+
   createOrder: async (orderData) => {
     try {
       const response = await api.post(
@@ -687,6 +692,28 @@ const shippingAPI = {
     } catch (error) {
       throw error;
     }
+  },
+
+  // Link order with shipping template
+  linkOrderTemplate: async (linkData) => {
+    try {
+      const response = await api.post(
+        "/api/shipping/templates/link-order",
+        linkData
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Aliases for backward compatibility
+  getTemplates: async () => {
+    return shippingAPI.getShippingTemplates();
+  },
+
+  getTemplate: async (id) => {
+    return shippingAPI.getShippingTemplate(id);
   },
 };
 
