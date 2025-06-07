@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Search, Plus, RefreshCw, Loader, X } from "lucide-react";
 import { API_BASE_URL } from "./utils/constants";
 import { useAlert } from "../../contexts/AlertContext";
 import ProductDisplay from "./components/ProductDisplay";
+import { ImagePreviewModal } from "./components/ProductModals";
 
 // API integration
 const api = {
@@ -326,6 +328,8 @@ const ProductForm = ({ product, onSave, onCancel }) => {
 // Main ProductManagement Component
 const ProductManagement = () => {
   const { showAlert } = useAlert();
+  const navigate = useNavigate();
+  const { id: productId } = useParams();
 
   // State management
   const [state, setState] = useState({
@@ -356,6 +360,13 @@ const ProductManagement = () => {
     totalItems: 0,
     productModal: { open: false, product: null },
     detailsModal: { open: false, product: null },
+    imageModal: {
+      open: false,
+      imageUrl: "",
+      productName: "",
+      images: [],
+      currentIndex: 0,
+    },
     activeTab: "all",
   });
 
@@ -498,6 +509,56 @@ const ProductManagement = () => {
     },
     [updateState]
   );
+
+  const handleImageClick = useCallback(
+    (imageUrl, productName, product) => {
+      updateState({
+        imageModal: {
+          open: true,
+          imageUrl,
+          productName,
+          images: product?.images || [imageUrl],
+          currentIndex: product?.images?.indexOf(imageUrl) || 0,
+        },
+      });
+    },
+    [updateState]
+  );
+
+  const handleProductNameClick = useCallback(
+    (product) => {
+      navigate(`/products/${product.id}/edit`);
+    },
+    [navigate]
+  );
+
+  // Handle productId URL parameter for direct edit navigation
+  useEffect(() => {
+    if (productId && state.products.length > 0) {
+      console.log("Looking for product with ID:", productId);
+      console.log(
+        "Available products:",
+        state.products.map((p) => ({ id: p.id, name: p.name }))
+      );
+
+      const product = state.products.find(
+        (p) =>
+          p.id === parseInt(productId) ||
+          p.id === productId ||
+          p.id.toString() === productId
+      );
+      if (product) {
+        console.log("Found product:", product.name);
+        handleEditProduct(product);
+        // Navigate back to clean URL after opening the modal
+        navigate("/products", { replace: true });
+      } else {
+        console.log("Product not found for ID:", productId);
+        showAlert("Ürün bulunamadı", "error");
+        navigate("/products");
+      }
+    }
+  }, [productId, state.products, navigate, showAlert, handleEditProduct]);
 
   // Search handling with debouncing
   const [searchTimeout, setSearchTimeout] = useState(null);
@@ -928,7 +989,7 @@ const ProductManagement = () => {
         currentPage: 1,
         filters: newFilters,
       });
-      
+
       // Trigger immediate fetch after tab change
       setTimeout(() => fetchProducts(), 0);
     },
@@ -1075,6 +1136,8 @@ const ProductManagement = () => {
           onView={handleViewProduct}
           onEdit={handleEditProduct}
           onDelete={handleDeleteProduct}
+          onImageClick={handleImageClick}
+          onProductNameClick={handleProductNameClick}
           onAddProduct={handleAddProduct}
           onSync={handleSync}
           sortField={state.sortField}
@@ -1204,6 +1267,26 @@ const ProductManagement = () => {
           onChange={handleFileImport}
           className="hidden"
           id="file-import"
+        />
+
+        {/* Image Preview Modal */}
+        <ImagePreviewModal
+          isOpen={state.imageModal.open}
+          onClose={() =>
+            updateState({
+              imageModal: {
+                open: false,
+                imageUrl: "",
+                productName: "",
+                images: [],
+                currentIndex: 0,
+              },
+            })
+          }
+          imageUrl={state.imageModal.imageUrl}
+          productName={state.imageModal.productName}
+          images={state.imageModal.images}
+          currentIndex={state.imageModal.currentIndex}
         />
       </div>
     </div>

@@ -6,15 +6,16 @@ import {
   ProductStatusTabs,
   AdvancedFilterPanel,
   BulkOperations,
-  ProductTable,
   ProductGrid,
   EmptyState,
   LoadingState,
   EnhancedPagination,
 } from "./";
+import ProductTableWithVariants from "./EnhancedProductTableWithVariants";
 
 // Import design system components
-import { Button, Card, CardHeader, CardContent } from "../../ui";
+import { Button } from "../../ui";
+import { Card, CardContent, CardHeader } from "../../ui/Card";
 import TableSettingsModal from "./TableSettingsModal";
 
 // Main Product Display Component
@@ -29,6 +30,7 @@ const ProductDisplay = ({
   onEdit,
   onDelete,
   onImageClick,
+  onProductNameClick,
   onAddProduct,
   onSync,
   // Sorting
@@ -129,6 +131,19 @@ const ProductDisplay = ({
     setTableSettings(newSettings);
     // You can save to localStorage or send to backend here
     localStorage.setItem("productTableSettings", JSON.stringify(newSettings));
+  }, []);
+
+  // Load saved table settings on component mount
+  React.useEffect(() => {
+    const savedSettings = localStorage.getItem("productTableSettings");
+    if (savedSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedSettings);
+        setTableSettings(parsedSettings);
+      } catch (error) {
+        console.error("Error loading table settings:", error);
+      }
+    }
   }, []);
 
   // Close menu when clicking outside
@@ -251,12 +266,13 @@ const ProductDisplay = ({
         <Card>
           <CardContent className="p-0">
             {viewMode === "table" ? (
-              <ProductTable
+              <ProductTableWithVariants
                 products={products}
                 onView={onView}
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onImageClick={onImageClick}
+                onProductNameClick={onProductNameClick}
                 selectedProducts={selectedProducts}
                 onSelectProduct={onSelectProduct}
                 onSelectAll={onSelectAll}

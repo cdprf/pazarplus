@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { Button, Card, CardContent } from "../../ui";
+import { Button } from "../../ui";
+import { Card, CardContent } from "../../ui/Card";
 
 const AdvancedFilterPanel = ({
   filters = {},
@@ -68,9 +69,9 @@ const AdvancedFilterPanel = ({
   ).length;
 
   return (
+    isExpanded ? (
     <Card className="mb-6">
       <CardContent className="p-4">
-        {isExpanded && (
           <div>
             <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
               <div className="space-y-2">
@@ -246,47 +247,15 @@ const AdvancedFilterPanel = ({
               <Button onClick={handleApplyFilters} variant="primary" size="sm">
                 Filtrele {activeFilterCount > 0 && `(${activeFilterCount})`}
               </Button>
-              {activeFilterCount > 0 && (
-                <span className="text-xs text-blue-600">
-                  Filtreler otomatik uygulanıyor
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-        {!isExpanded && (
-          <div className="flex items-center justify-between mb-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onToggleExpanded?.()}
-              className="flex items-center space-x-2"
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-              <span>Detaylı Filtreyi Aç</span>
-            </Button>
-
-            <div className="flex-1 max-w-md mx-4">
-              <input
-                type="text"
-                placeholder="Ürün ara..."
-                value={localFilters.search || ""}
-                onChange={(e) => handleFilterChange("search", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <Button onClick={handleClearFilters} variant="outline" size="sm">
+              <Button onClick={handleClearFilters} variant="outline" size="sm">
               Temizle
             </Button>
+            </div>
           </div>
-        )}
+        
       </CardContent>
     </Card>
+    ) : null
   );
 };
 

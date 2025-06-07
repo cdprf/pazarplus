@@ -8,7 +8,8 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
-import { Button, Card, CardContent, Badge, Tooltip } from "../../ui";
+import { Button, Badge, Tooltip } from "../../ui";
+import { Card, CardContent } from "../../ui/Card";
 import CompletionScore from "./CompletionScore";
 import InlineEditor from "./InlineEditor";
 

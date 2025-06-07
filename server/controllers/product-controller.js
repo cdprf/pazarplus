@@ -48,7 +48,7 @@ class ProductController {
         whereClause.category = { [Op.iLike]: `%${category}%` };
       }
 
-      // Build include clause for platform filtering
+      // Build include clause for platform filtering and variants
       const includeClause = [];
 
       // Add PlatformData include with proper model reference
@@ -72,6 +72,18 @@ class ProductController {
           },
         });
       }
+
+      // Add ProductVariant include to fetch variants for products that have them
+      includeClause.push({
+        model: ProductVariant,
+        as: "variants",
+        required: false,
+        order: [
+          ["isDefault", "DESC"],
+          ["sortOrder", "ASC"],
+          ["createdAt", "ASC"],
+        ],
+      });
 
       const { count, rows: products } = await Product.findAndCountAll({
         where: whereClause,

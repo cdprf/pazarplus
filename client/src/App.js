@@ -126,6 +126,10 @@ function App() {
                           element={<ProductManagement />}
                         />
                         <Route
+                          path="products/:id/edit"
+                          element={<ProductManagement />}
+                        />
+                        <Route
                           path="products/inventory"
                           element={<InventoryInsights />}
                         />

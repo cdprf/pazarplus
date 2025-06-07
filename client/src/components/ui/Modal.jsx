@@ -69,29 +69,32 @@ export const Modal = ({
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center p-4 modal-backdrop"
-      onClick={handleOverlayClick}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop"
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? "modal-title" : undefined}
     >
-      {/* Overlay */}
-      <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" />
+      {/* Overlay - clickable background */}
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        onClick={handleOverlayClick}
+      />
 
       {/* Modal */}
       <div
         ref={modalRef}
         className={cn(
-          "relative w-full bg-white dark:bg-gray-900 rounded-lg shadow-xl transform transition-all",
+          "relative w-full bg-white dark:bg-gray-900 rounded-lg shadow-xl transform transition-all max-h-[90vh] flex flex-col z-10",
           sizeClasses[size],
           className
         )}
         tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
         {...props}
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             {title && (
               <h2
                 id="modal-title"
@@ -114,7 +117,7 @@ export const Modal = ({
         )}
 
         {/* Content */}
-        <div className="p-6">{children}</div>
+        <div className="p-6 overflow-y-auto flex-1 min-h-0">{children}</div>
       </div>
     </div>
   );

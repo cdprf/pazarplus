@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   SortAsc,
   SortDesc,
@@ -13,6 +13,8 @@ import {
   MoreVertical,
   ExternalLink,
   Trash2,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { Button, Badge, Tooltip } from "../../ui";
 import CompletionScore from "./CompletionScore";
@@ -61,6 +63,7 @@ const ProductTable = ({
   onEdit,
   onDelete,
   onImageClick,
+  onProductNameClick,
   selectedProducts,
   onSelectProduct,
   onSelectAll,
@@ -72,13 +75,22 @@ const ProductTable = ({
   onInlineEdit,
   tableSettings = null, // Add table settings prop
 }) => {
+  const [expandedProducts, setExpandedProducts] = useState(new Set());
+
+  const toggleProductExpansion = (productId) => {
+    const newExpanded = new Set(expandedProducts);
+    if (newExpanded.has(productId)) {
+      newExpanded.delete(productId);
+    } else {
+      newExpanded.add(productId);
+    }
+    setExpandedProducts(newExpanded);
+  };
   const handleSort = (field) => {
     onSort?.(field);
   };
 
-  // Get visible columns from settings
-  const visibleColumns =
-    tableSettings?.columns?.filter((col) => col.visible) || [];
+  // Get row height class from settings
   const rowHeightClass = {
     compact: "py-2",
     normal: "py-3",
@@ -88,7 +100,7 @@ const ProductTable = ({
   // Helper function to check if column is visible
   const isColumnVisible = (columnId) => {
     if (!tableSettings?.columns?.length) return true; // Show all columns if no settings
-    const column = visibleColumns.find(col => col.id === columnId);
+    const column = tableSettings.columns.find((col) => col.id === columnId);
     return column?.visible !== false;
   };
 
@@ -121,97 +133,142 @@ const ProductTable = ({
         <thead className="bg-gray-50">
           <tr>
             {/* Checkbox Column */}
-            <SortHeader field="checkbox" isVisible={visibleColumns.find(col => col.id === 'checkbox')?.visible !== false}>
-              <input
-                type="checkbox"
-                checked={
-                  selectedProducts.length === products.length &&
-                  products.length > 0
-                }
-                onChange={onSelectAll}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-            </SortHeader>
-            
+            {isColumnVisible("checkbox") && (
+              <th
+                className={`px-6 ${rowHeightClass} text-left sticky left-0 bg-gray-50 z-10`}
+              >
+                <input
+                  type="checkbox"
+                  checked={
+                    selectedProducts.length === products.length &&
+                    products.length > 0
+                  }
+                  onChange={onSelectAll}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+              </th>
+            )}
+
             {/* Product Info Column */}
-            <SortHeader field="product" isVisible={visibleColumns.find(col => col.id === 'product')?.visible !== false}>
-              Ürün Bilgisi
-            </SortHeader>
-            
+            {isColumnVisible("product") && (
+              <th
+                className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-12 bg-gray-50 z-10 min-w-80`}
+              >
+                Ürün Bilgisi
+              </th>
+            )}
+
             {/* Variant Column */}
-            <SortHeader field="variant" isVisible={visibleColumns.find(col => col.id === 'variant')?.visible !== false}>
-              Varyant
-            </SortHeader>
-            
+            {isColumnVisible("variant") && (
+              <th
+                className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-20`}
+              >
+                Varyant
+              </th>
+            )}
+
             {/* Status Column */}
-            <SortHeader field="status" isVisible={visibleColumns.find(col => col.id === 'status')?.visible !== false}>
+            <SortHeader field="status" isVisible={isColumnVisible("status")}>
               Durum
             </SortHeader>
-            
+
             {/* Completion Column */}
-            <SortHeader field="completion" isVisible={visibleColumns.find(col => col.id === 'completion')?.visible !== false}>
-              Doluluk Oranı
-            </SortHeader>
-            
+            {isColumnVisible("completion") && (
+              <th
+                className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 uppercase tracking-wider`}
+              >
+                Doluluk Oranı
+              </th>
+            )}
+
             {/* SKU Column */}
-            <SortHeader field="sku" isVisible={visibleColumns.find(col => col.id === 'sku')?.visible !== false}>
+            <SortHeader field="sku" isVisible={isColumnVisible("sku")}>
               Stok Kodu
             </SortHeader>
-            
+
             {/* Commission Column */}
-            <SortHeader field="commission" isVisible={visibleColumns.find(col => col.id === 'commission')?.visible !== false}>
-              <Tooltip content="Komisyonlara KDV dahildir.">
-                <div className="flex items-center space-x-1 cursor-help">
-                  <Info className="h-4 w-4" />
-                  <span>Komisyon</span>
-                </div>
-              </Tooltip>
-            </SortHeader>
-            
+            {isColumnVisible("commission") && (
+              <th
+                className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 uppercase tracking-wider`}
+              >
+                <Tooltip content="Komisyonlara KDV dahildir.">
+                  <div className="flex items-center space-x-1 cursor-help">
+                    <Info className="h-4 w-4" />
+                    <span>Komisyon</span>
+                  </div>
+                </Tooltip>
+              </th>
+            )}
+
             {/* Price Column */}
-            <SortHeader field="price" isVisible={visibleColumns.find(col => col.id === 'price')?.visible !== false}>
+            <SortHeader field="price" isVisible={isColumnVisible("price")}>
               Satış Fiyatı
             </SortHeader>
-            
+
             {/* Stock Column */}
-            <SortHeader field="stock" isVisible={visibleColumns.find(col => col.id === 'stock')?.visible !== false}>
+            <SortHeader field="stock" isVisible={isColumnVisible("stock")}>
               Stok
             </SortHeader>
-            
+
             {/* Buybox Price Column */}
-            <SortHeader field="buyboxPrice" isVisible={visibleColumns.find(col => col.id === 'buyboxPrice')?.visible !== false}>
-              Buybox Fiyatı
-            </SortHeader>
-            
+            {isColumnVisible("buyboxPrice") && (
+              <th
+                className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 uppercase tracking-wider`}
+              >
+                Buybox Fiyatı
+              </th>
+            )}
+
             {/* Buybox Column */}
-            <SortHeader field="buybox" isVisible={visibleColumns.find(col => col.id === 'buybox')?.visible !== false}>
-              Buybox
-            </SortHeader>
-            
+            {isColumnVisible("buybox") && (
+              <th
+                className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 uppercase tracking-wider`}
+              >
+                Buybox
+              </th>
+            )}
+
             {/* Delivery Time Column */}
-            <SortHeader field="deliveryTime" isVisible={visibleColumns.find(col => col.id === 'deliveryTime')?.visible !== false}>
-              Termin Süresi
-            </SortHeader>
-            
+            {isColumnVisible("deliveryTime") && (
+              <th
+                className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 uppercase tracking-wider`}
+              >
+                Termin Süresi
+              </th>
+            )}
+
             {/* Category Column */}
-            <SortHeader field="category" isVisible={visibleColumns.find(col => col.id === 'category')?.visible !== false}>
+            <SortHeader
+              field="category"
+              isVisible={isColumnVisible("category")}
+            >
               Kategori
             </SortHeader>
-            
+
             {/* Brand Column */}
-            <SortHeader field="brand" isVisible={visibleColumns.find(col => col.id === 'brand')?.visible !== false}>
-              Marka
-            </SortHeader>
-            
+            {isColumnVisible("brand") && (
+              <th
+                className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 uppercase tracking-wider`}
+              >
+                Marka
+              </th>
+            )}
+
             {/* Actions Column */}
-            <SortHeader field="actions" isVisible={visibleColumns.find(col => col.id === 'actions')?.visible !== false}>
-              İşlemler
-            </SortHeader>
+            {isColumnVisible("actions") && (
+              <th
+                className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10`}
+              >
+                İşlemler
+              </th>
+            )}
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {products.map((product) => {
             const stockStatus = getStockStatus(product);
+            const isExpanded = expandedProducts.has(product.id);
+            const hasVariants = product.hasVariants && product.variants && product.variants.length > 0;
 
             // Calculate completion score
             const calculateCompletionScore = (product) => {
@@ -232,10 +289,17 @@ const ProductTable = ({
             const completionScore = calculateCompletionScore(product);
 
             return (
-              <tr key={product.id} className={`hover:bg-gray-50 ${tableSettings?.alternateRowColors ? 'even:bg-gray-25' : ''}`}>
+              <tr
+                key={product.id}
+                className={`hover:bg-gray-50 ${
+                  tableSettings?.alternateRowColors ? "even:bg-gray-25" : ""
+                } ${hasVariants ? "border-l-4 border-l-blue-400" : ""}`}
+              >
                 {/* Checkbox Column */}
-                {isColumnVisible('checkbox') && (
-                  <td className={`px-6 ${rowHeightClass} whitespace-nowrap sticky left-0 bg-white`}>
+                {isColumnVisible("checkbox") && (
+                  <td
+                    className={`px-6 ${rowHeightClass} whitespace-nowrap sticky left-0 bg-white`}
+                  >
                     <input
                       type="checkbox"
                       checked={selectedProducts.includes(product.id)}
@@ -246,117 +310,136 @@ const ProductTable = ({
                 )}
 
                 {/* Enhanced Product Info */}
-                {isColumnVisible('product') && (
-                  <td className={`px-6 ${rowHeightClass} whitespace-nowrap sticky left-12 bg-white`}>
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-16 w-16">
-                      {product.images && product.images.length > 0 ? (
-                        <div className="relative">
-                          <img
-                            className="h-16 w-16 rounded-lg object-cover cursor-pointer hover:opacity-80"
-                            src={product.images[0]}
-                            alt={product.name}
-                            onClick={() =>
-                              onImageClick?.(product.images[0], product.name)
-                            }
-                          />
-                          {product.images.length > 1 && (
-                            <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs px-1 rounded-full">
-                              +{product.images.length - 1}
+                {isColumnVisible("product") && (
+                  <td
+                    className={`px-6 ${rowHeightClass} whitespace-nowrap sticky left-12 bg-white`}
+                  >
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-16 w-16">
+                        {product.images && product.images.length > 0 ? (
+                          <div className="relative">
+                            <img
+                              className="h-16 w-16 rounded-lg object-cover cursor-pointer hover:opacity-80"
+                              src={product.images[0]}
+                              alt={product.name}
+                              onClick={() =>
+                                onImageClick?.(
+                                  product.images[0],
+                                  product.name,
+                                  product
+                                )
+                              }
+                            />
+                            {product.images.length > 1 && (
+                              <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs px-1 rounded-full">
+                                +{product.images.length - 1}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <Image className="h-8 w-8 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="ml-4 flex-1">
+                        <div className="text-sm font-medium text-gray-900 max-w-xs truncate mb-1">
+                          <Tooltip content={product.name}>
+                            <span
+                              className={`${
+                                onProductNameClick
+                                  ? "cursor-pointer hover:text-blue-600 hover:underline"
+                                  : ""
+                              }`}
+                              onClick={() => onProductNameClick?.(product)}
+                            >
+                              {product.name}
+                            </span>
+                          </Tooltip>
+                        </div>
+
+                        {/* Product Metadata */}
+                        <div className="space-y-1 text-xs text-gray-500">
+                          {product.modelCode && (
+                            <div className="flex items-center space-x-2">
+                              <span>Model Kodu:</span>
+                              <code className="bg-gray-100 px-1 rounded text-xs">
+                                {product.modelCode}
+                              </code>
+                              <Button
+                                onClick={() =>
+                                  navigator.clipboard.writeText(
+                                    product.modelCode
+                                  )
+                                }
+                                variant="ghost"
+                                size="sm"
+                                icon={Copy}
+                                className="h-4 w-4 p-0"
+                              />
+                            </div>
+                          )}
+                          <div className="flex items-center space-x-2">
+                            <span>Stok Kodu:</span>
+                            <code className="bg-gray-100 px-1 rounded text-xs">
+                              {product.sku}
+                            </code>
+                            <Button
+                              onClick={() =>
+                                navigator.clipboard.writeText(product.sku)
+                              }
+                              variant="ghost"
+                              size="sm"
+                              icon={Copy}
+                              className="h-4 w-4 p-0"
+                            />
+                          </div>
+                          {product.barcode && (
+                            <div className="flex items-center space-x-2">
+                              <span>Barkod:</span>
+                              <code className="bg-gray-100 px-1 rounded text-xs">
+                                {product.barcode}
+                              </code>
+                              <Button
+                                onClick={() =>
+                                  navigator.clipboard.writeText(product.barcode)
+                                }
+                                variant="ghost"
+                                size="sm"
+                                icon={Copy}
+                                className="h-4 w-4 p-0"
+                              />
+                            </div>
+                          )}
+                          {product.variants && product.variants.length > 0 && (
+                            <div className="flex items-center space-x-2">
+                              <span>Varyant:</span>
+                              <span>{product.variants[0].name}</span>
                             </div>
                           )}
                         </div>
-                      ) : (
-                        <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <Image className="h-8 w-8 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="ml-4 flex-1">
-                      <div className="text-sm font-medium text-gray-900 max-w-xs truncate mb-1">
-                        <Tooltip content={product.name}>
-                          <span>{product.name}</span>
-                        </Tooltip>
-                      </div>
-
-                      {/* Product Metadata */}
-                      <div className="space-y-1 text-xs text-gray-500">
-                        {product.modelCode && (
-                          <div className="flex items-center space-x-2">
-                            <span>Model Kodu:</span>
-                            <code className="bg-gray-100 px-1 rounded text-xs">
-                              {product.modelCode}
-                            </code>
-                            <Button
-                              onClick={() =>
-                                navigator.clipboard.writeText(product.modelCode)
-                              }
-                              variant="ghost"
-                              size="sm"
-                              icon={Copy}
-                              className="h-4 w-4 p-0"
-                            />
-                          </div>
-                        )}
-                        <div className="flex items-center space-x-2">
-                          <span>Stok Kodu:</span>
-                          <code className="bg-gray-100 px-1 rounded text-xs">
-                            {product.sku}
-                          </code>
-                          <Button
-                            onClick={() =>
-                              navigator.clipboard.writeText(product.sku)
-                            }
-                            variant="ghost"
-                            size="sm"
-                            icon={Copy}
-                            className="h-4 w-4 p-0"
-                          />
-                        </div>
-                        {product.barcode && (
-                          <div className="flex items-center space-x-2">
-                            <span>Barkod:</span>
-                            <code className="bg-gray-100 px-1 rounded text-xs">
-                              {product.barcode}
-                            </code>
-                            <Button
-                              onClick={() =>
-                                navigator.clipboard.writeText(product.barcode)
-                              }
-                              variant="ghost"
-                              size="sm"
-                              icon={Copy}
-                              className="h-4 w-4 p-0"
-                            />
-                          </div>
-                        )}
-                        {product.variants && product.variants.length > 0 && (
-                          <div className="flex items-center space-x-2">
-                            <span>Varyant:</span>
-                            <span>{product.variants[0].name}</span>
-                          </div>
-                        )}
                       </div>
                     </div>
-                  </div>
-                </td>
+                  </td>
                 )}
 
                 {/* Variant Info */}
-                {isColumnVisible('variant') && (
-                  <td className={`px-6 ${rowHeightClass} whitespace-nowrap text-sm text-gray-900`}>
-                  {product.variants && product.variants.length > 0 ? (
-                    <Badge variant="outline" className="text-xs">
-                      {product.variants.length} varyant
-                    </Badge>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </td>
+                {isColumnVisible("variant") && (
+                  <td
+                    className={`px-6 ${rowHeightClass} whitespace-nowrap text-sm text-gray-900`}
+                  >
+                    {product.variants && product.variants.length > 0 ? (
+                      <Badge variant="outline" className="text-xs">
+                        {product.variants.length} varyant
+                      </Badge>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
                 )}
 
                 {/* Status */}
-                {isColumnVisible('status') && (
+                {isColumnVisible("status") && (
                   <td className={`px-6 ${rowHeightClass} whitespace-nowrap`}>
                     <div className="flex items-center">
                       {product.status === "active" && (
@@ -383,151 +466,173 @@ const ProductTable = ({
                 )}
 
                 {/* Completion Score */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <CompletionScore score={completionScore} />
-                </td>
+                {isColumnVisible("completion") && (
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <CompletionScore score={completionScore} />
+                  </td>
+                )}
 
                 {/* Stock Code */}
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <code className="bg-gray-100 px-2 py-1 rounded text-xs">
-                    {product.sku}
-                  </code>
-                </td>
+                {isColumnVisible("sku") && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <code className="bg-gray-100 px-2 py-1 rounded text-xs">
+                      {product.sku}
+                    </code>
+                  </td>
+                )}
 
                 {/* Commission */}
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <span className="font-medium">
-                    %{((product.commission || 15) * 100).toFixed(1)}
-                  </span>
-                </td>
+                {isColumnVisible("commission") && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span className="font-medium">
+                      %{((product.commission || 15) * 100).toFixed(1)}
+                    </span>
+                  </td>
+                )}
 
                 {/* Price with Inline Edit */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <InlineEditor
-                    value={product.price || 0}
-                    onSave={(newPrice) =>
-                      onInlineEdit?.("price", product.id, newPrice)
-                    }
-                    type="number"
-                    suffix=" ₺"
-                    className="min-w-24"
-                  />
-                </td>
-
-                {/* Stock with Inline Edit */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center space-x-2">
-                    {stockStatus.icon}
+                {isColumnVisible("price") && (
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <InlineEditor
-                      value={product.stockQuantity || 0}
-                      onSave={(newStock) =>
-                        onInlineEdit?.("stockQuantity", product.id, newStock)
+                      value={product.price || 0}
+                      onSave={(newPrice) =>
+                        onInlineEdit?.("price", product.id, newPrice)
                       }
                       type="number"
-                      min="0"
-                      className="min-w-16"
+                      suffix=" ₺"
+                      className="min-w-24"
                     />
-                  </div>
-                </td>
+                  </td>
+                )}
+
+                {/* Stock with Inline Edit */}
+                {isColumnVisible("stock") && (
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center space-x-2">
+                      {stockStatus.icon}
+                      <InlineEditor
+                        value={product.stockQuantity || 0}
+                        onSave={(newStock) =>
+                          onInlineEdit?.("stockQuantity", product.id, newStock)
+                        }
+                        type="number"
+                        min="0"
+                        className="min-w-16"
+                      />
+                    </div>
+                  </td>
+                )}
 
                 {/* Buybox Price */}
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <span className="text-gray-400">-</span>
-                </td>
+                {isColumnVisible("buyboxPrice") && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span className="text-gray-400">-</span>
+                  </td>
+                )}
 
                 {/* Buybox Status */}
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <span className="text-gray-400">-</span>
-                </td>
+                {isColumnVisible("buybox") && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span className="text-gray-400">-</span>
+                  </td>
+                )}
 
                 {/* Delivery Duration */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <InlineEditor
-                    value={product.deliveryDuration || 1}
-                    onSave={(newDuration) =>
-                      onInlineEdit?.(
-                        "deliveryDuration",
-                        product.id,
-                        newDuration
-                      )
-                    }
-                    type="number"
-                    min="1"
-                    suffix=" gün"
-                    className="min-w-16"
-                  />
-                </td>
+                {isColumnVisible("deliveryTime") && (
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <InlineEditor
+                      value={product.deliveryDuration || 1}
+                      onSave={(newDuration) =>
+                        onInlineEdit?.(
+                          "deliveryDuration",
+                          product.id,
+                          newDuration
+                        )
+                      }
+                      type="number"
+                      min="1"
+                      suffix=" gün"
+                      className="min-w-16"
+                    />
+                  </td>
+                )}
 
                 {/* Category */}
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <Badge variant="secondary" className="text-xs">
-                    {product.category}
-                  </Badge>
-                </td>
+                {isColumnVisible("category") && (
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Badge variant="secondary" className="text-xs">
+                      {product.category}
+                    </Badge>
+                  </td>
+                )}
 
                 {/* Brand */}
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {product.brand || "-"}
-                </td>
+                {isColumnVisible("brand") && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {product.brand || "-"}
+                  </td>
+                )}
 
                 {/* Actions */}
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium sticky right-0 bg-white">
-                  <div className="flex items-center space-x-2">
-                    <Tooltip content="Detayları Görüntüle">
-                      <Button
-                        onClick={() => onView?.(product)}
-                        variant="ghost"
-                        size="sm"
-                        icon={Eye}
-                      />
-                    </Tooltip>
-                    <Tooltip content="Düzenle">
-                      <Button
-                        onClick={() => onEdit?.(product)}
-                        variant="ghost"
-                        size="sm"
-                        icon={Edit}
-                      />
-                    </Tooltip>
-                    <div className="relative">
-                      <Button
-                        onClick={() => onToggleMoreMenu?.(product.id)}
-                        variant="ghost"
-                        size="sm"
-                        icon={MoreVertical}
-                      />
-                      {showMoreMenu === product.id && (
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                          <button
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center"
-                            onClick={() => {
-                              navigator.clipboard.writeText(product.sku);
-                              onToggleMoreMenu?.(null);
-                            }}
-                          >
-                            <Copy className="h-4 w-4 mr-2" />
-                            SKU'yu Kopyala
-                          </button>
-                          <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center">
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Platformda Görüntüle
-                          </button>
-                          <div className="border-t border-gray-100" />
-                          <button
-                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
-                            onClick={() => {
-                              onDelete?.(product.id);
-                              onToggleMoreMenu?.(null);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Sil
-                          </button>
-                        </div>
-                      )}
+                {isColumnVisible("actions") && (
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium sticky right-0 bg-white">
+                    <div className="flex items-center space-x-2">
+                      <Tooltip content="Detayları Görüntüle">
+                        <Button
+                          onClick={() => onView?.(product)}
+                          variant="ghost"
+                          size="sm"
+                          icon={Eye}
+                        />
+                      </Tooltip>
+                      <Tooltip content="Düzenle">
+                        <Button
+                          onClick={() => onEdit?.(product)}
+                          variant="ghost"
+                          size="sm"
+                          icon={Edit}
+                        />
+                      </Tooltip>
+                      <div className="relative">
+                        <Button
+                          onClick={() => onToggleMoreMenu?.(product.id)}
+                          variant="ghost"
+                          size="sm"
+                          icon={MoreVertical}
+                        />
+                        {showMoreMenu === product.id && (
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                            <button
+                              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center"
+                              onClick={() => {
+                                navigator.clipboard.writeText(product.sku);
+                                onToggleMoreMenu?.(null);
+                              }}
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              SKU'yu Kopyala
+                            </button>
+                            <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center">
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Platformda Görüntüle
+                            </button>
+                            <div className="border-t border-gray-100" />
+                            <button
+                              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
+                              onClick={() => {
+                                onDelete?.(product.id);
+                                onToggleMoreMenu?.(null);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Sil
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </td>
+                  </td>
+                )}
               </tr>
             );
           })}

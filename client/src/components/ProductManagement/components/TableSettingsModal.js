@@ -11,7 +11,8 @@ import {
   List,
   Save,
 } from "lucide-react";
-import { Button, Modal, Card, CardContent, Badge } from "../../ui";
+import { Button, Modal, Badge } from "../../ui";
+import { Card, CardContent } from "../../ui/Card";
 
 // Default table columns configuration
 const DEFAULT_COLUMNS = [
@@ -118,7 +119,13 @@ const TableSettingsModal = ({
   const totalColumnsCount = localSettings.columns.length;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Tablo Ayarları" size="lg">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Tablo Ayarları"
+      size="lg"
+      closeOnOverlayClick={true}
+    >
       <div className="space-y-6">
         {/* Column Visibility */}
         <Card>

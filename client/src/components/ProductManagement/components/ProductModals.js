@@ -1,6 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { X, Plus, Tag, Edit, ExternalLink, Copy, Image } from "lucide-react";
-import { Button, Card, CardContent, Badge, Modal } from "../../ui";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  X,
+  Plus,
+  Tag,
+  Edit,
+  ExternalLink,
+  Copy,
+  Image,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { Button, Badge, Modal } from "../../ui";
+import { Card, CardContent } from "../../ui/Card";
 import {
   CATEGORIES,
   PLATFORMS,
@@ -563,7 +574,9 @@ const ProductDetailsModal = ({
                 src={product.images[0]}
                 alt={product.name}
                 className="h-64 w-auto object-contain cursor-pointer hover:opacity-90 rounded-lg border border-gray-200"
-                onClick={() => onImageClick?.(product.images[0], product.name)}
+                onClick={() =>
+                  onImageClick?.(product.images[0], product.name, product)
+                }
               />
               {product.images.length > 1 && (
                 <div className="flex justify-center gap-2">
@@ -573,7 +586,7 @@ const ProductDetailsModal = ({
                       src={img}
                       alt={`${product.name} ${index + 2}`}
                       className="h-16 w-16 object-cover rounded cursor-pointer hover:opacity-80 border border-gray-200"
-                      onClick={() => onImageClick?.(img, product.name)}
+                      onClick={() => onImageClick?.(img, product.name, product)}
                     />
                   ))}
                   {product.images.length > 5 && (
@@ -787,44 +800,138 @@ const ProductDetailsModal = ({
   );
 };
 
-// Image Preview Modal Component
-const ImagePreviewModal = ({ isOpen, onClose, imageUrl, productName }) => {
-  if (!isOpen || !imageUrl) return null;
+// Enhanced Image Preview Modal Component with Multi-Image Support
+const ImagePreviewModal = ({
+  isOpen,
+  onClose,
+  imageUrl,
+  productName,
+  images = [],
+  currentIndex = 0,
+}) => {
+  const [activeIndex, setActiveIndex] = useState(currentIndex);
+
+  useEffect(() => {
+    setActiveIndex(currentIndex);
+  }, [currentIndex, isOpen]);
+
+  const goToPrevious = useCallback(() => {
+    setActiveIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+  }, [images.length]);
+
+  const goToNext = useCallback(() => {
+    setActiveIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+  }, [images.length]);
+
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key === "ArrowLeft") goToPrevious();
+      if (e.key === "ArrowRight") goToNext();
+      if (e.key === "Escape") onClose();
+    },
+    [goToPrevious, goToNext, onClose]
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isOpen, handleKeyDown]);
+
+  if (!isOpen || (!imageUrl && (!images || images.length === 0))) return null;
+
+  const imageList = images.length > 0 ? images : [imageUrl];
+  const currentImage = imageList[activeIndex] || imageUrl;
+  const hasMultipleImages = imageList.length > 1;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={`${productName || "Ürün"} - Resim Önizleme`}
-      size="full"
-      className="flex items-center justify-center"
-    >
-      <div className="flex flex-col items-center justify-center max-h-screen">
-        <img
-          src={imageUrl}
-          alt={productName}
-          className="max-h-[80vh] max-w-full object-contain rounded-lg shadow-lg"
-        />
-        <div className="mt-4 flex space-x-3">
-          <Button
-            onClick={() => window.open(imageUrl, "_blank")}
-            variant="outline"
-            icon={ExternalLink}
+    <div className="fixed inset-0 z-modal bg-black bg-opacity-30 flex items-center justify-center">
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 z-20 bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-2 rounded-full transition-all duration-200"
+        aria-label="Close"
+      >
+        <X className="w-6 h-6" />
+      </button>
+
+      <div className="flex flex-col items-center justify-center w-full h-full relative">
+        {/* Main Image Display */}
+        <div className="relative flex items-center justify-center flex-1 w-fit">
+          {/* Previous Button */}
+          {hasMultipleImages && (
+            <button
+              onClick={goToPrevious}
+              className="absolute left-4 z-10 bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-3 rounded-full transition-all duration-200"
+              aria-label="Previous"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+          )}
+
+          {/* Image */}
+          <img
+            src={currentImage}
+            alt={`${productName} ${activeIndex + 1}`}
+            className="max-h-[80vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
+            style={{ userSelect: "none" }}
+          />
+
+          {/* Next Button */}
+          {hasMultipleImages && (
+            <button
+              onClick={goToNext}
+              className="absolute right-4 z-10 bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-3 rounded-full transition-all duration-200"
+              aria-label="Next"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          )}
+        </div>
+
+        {/* Thumbnails */}
+        {hasMultipleImages && (
+          <div className="flex space-x-2 mt-4 max-w-full overflow-x-auto pb-2">
+            {imageList.map((img, index) => (
+              <button
+                key={index}
+                onClick={() => setActiveIndex(index)}
+                className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                  index === activeIndex
+                    ? "border-blue-500 ring-2 ring-blue-300"
+                    : "border-gray-300 hover:border-gray-400"
+                }`}
+              >
+                <img
+                  src={img}
+                  alt={`Thumbnail ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Action Buttons - minimal and hidden by default, can be shown on hover */}
+        <div className="opacity-0 hover:opacity-100 transition-opacity absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+          <button
+            onClick={() => window.open(currentImage, "_blank")}
+            className="bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-2 rounded-full transition-all duration-200"
+            aria-label="Open in new tab"
           >
-            Yeni Sekmede Aç
-          </Button>
-          <Button
-            onClick={() => {
-              navigator.clipboard.writeText(imageUrl);
-            }}
-            variant="outline"
-            icon={Copy}
+            <ExternalLink className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => navigator.clipboard.writeText(currentImage)}
+            className="bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-2 rounded-full transition-all duration-200"
+            aria-label="Copy URL"
           >
-            URL'yi Kopyala
-          </Button>
+            <Copy className="w-4 h-4" />
+          </button>
         </div>
       </div>
-    </Modal>
+    </div>
   );
 };
 
