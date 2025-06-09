@@ -170,7 +170,7 @@ const CustomerManagement = () => {
             <Users className="mr-3" />
             Customer Management
           </h1>
-          <p className="text-gray-600 mt-1">Manage your customer database</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your customer database</p>
         </div>
         <div className="flex space-x-3">
           <button
@@ -278,7 +278,7 @@ const CustomerManagement = () => {
                   <tr key={customer.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {customer.name}
                         </div>
                         <div className="text-sm text-gray-500">
@@ -288,7 +288,7 @@ const CustomerManagement = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="space-y-1">
-                        <div className="flex items-center text-sm text-gray-900">
+                        <div className="flex items-center text-sm text-gray-900 dark:text-gray-100">
                           <Mail className="w-3 h-3 mr-1" />
                           {customer.email}
                         </div>
@@ -307,7 +307,7 @@ const CustomerManagement = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-gray-900">
+                      <div className="flex items-center text-sm text-gray-900 dark:text-gray-100">
                         <Package className="w-3 h-3 mr-1" />
                         {customer.orderCount || 0} orders
                       </div>
@@ -332,7 +332,7 @@ const CustomerManagement = () => {
                         </button>
                         <button
                           onClick={() => handleEditCustomer(customer)}
-                          className="text-gray-600 hover:text-gray-900"
+                          className="text-gray-600 dark:text-gray-400 hover:text-gray-900"
                           title="Edit Customer"
                         >
                           <Edit className="w-4 h-4" />
@@ -437,7 +437,7 @@ const CustomerModal = ({ customer, mode, onSave, onClose }) => {
             </h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 dark:text-gray-400"
             >
               ✕
             </button>

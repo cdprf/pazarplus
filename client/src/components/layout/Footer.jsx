@@ -50,14 +50,14 @@ const Footer = () => {
     return {
       footer: isDark
         ? "bg-gray-900 border-gray-800 text-gray-100"
-        : "bg-white border-gray-200 text-gray-900",
-      text: isDark ? "text-gray-300" : "text-gray-600",
+        : "bg-white border-gray-200 text-gray-900 dark:text-gray-100",
+      text: isDark ? "text-gray-300" : "text-gray-600 dark:text-gray-400",
       textMuted: isDark ? "text-gray-400" : "text-gray-500",
       border: isDark ? "border-gray-800" : "border-gray-200",
-      heading: isDark ? "text-white" : "text-gray-900",
+      heading: isDark ? "text-white" : "text-gray-900 dark:text-gray-100",
       link: isDark
         ? "text-gray-400 hover:text-blue-400"
-        : "text-gray-600 hover:text-blue-600",
+        : "text-gray-600 dark:text-gray-400 hover:text-blue-600",
       gradient: isDark
         ? "from-blue-400 via-purple-400 to-blue-500"
         : "from-blue-600 via-purple-600 to-blue-700",

@@ -2072,7 +2072,7 @@ const PreviewModal = ({
                             </span>
                           )}
                           {selectedElement.visible === false && (
-                            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                            <span className="px-2 py-1 bg-gray-100 text-gray-600 dark:text-gray-400 text-xs rounded">
                               Hidden
                             </span>
                           )}
@@ -2339,7 +2339,7 @@ const PreviewModal = ({
             </div>
           </div>
 
-          <div className="border-t p-2 bg-gray-50 flex items-center justify-between text-xs text-gray-600">
+          <div className="border-t p-2 bg-gray-50 flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
             <div className="flex items-center gap-4">
               <span>Zoom: {Math.round(zoom * 100)}%</span>
               <span>Tool: {TOOLS[tool]?.label}</span>
@@ -2439,7 +2439,7 @@ const PreviewModal = ({
                 top: contextMenu.y,
               }}
             >
-              <div className="px-3 py-1 text-sm font-medium text-gray-900">
+              <div className="px-3 py-1 text-sm font-medium text-gray-900 dark:text-gray-100">
                 {contextMenu.element.type}
               </div>
               <div className="border-t border-gray-100 my-1"></div>
@@ -2554,7 +2554,7 @@ const PreviewModal = ({
                       />
                     </div>
                   )}
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
                     {exportProgress}% complete
                   </div>
                 </div>
@@ -2590,7 +2590,7 @@ const PreviewModal = ({
 
             {exportProgress > 0 && (
               <div className="space-y-2">
-                <div className="text-sm text-gray-600">Dışa aktarılıyor...</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Dışa aktarılıyor...</div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
                     className="bg-blue-600 h-2 rounded-full transition-all"

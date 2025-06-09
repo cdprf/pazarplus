@@ -18,6 +18,19 @@ router.get("/", auth, productController.getProducts);
 
 /**
  * @swagger
+ * /api/products/stats:
+ *   get:
+ *     summary: Get product statistics
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Product statistics
+ */
+router.get("/stats", auth, productController.getProductStats);
+
+/**
+ * @swagger
  * /api/products/{id}:
  *   get:
  *     summary: Get a single product by ID
@@ -113,19 +126,6 @@ router.put("/:id", auth, productController.updateProduct);
  *         description: Product not found
  */
 router.delete("/:id", auth, productController.deleteProduct);
-
-/**
- * @swagger
- * /api/products/stats:
- *   get:
- *     summary: Get product statistics
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Product statistics
- */
-router.get("/stats", auth, productController.getProductStats);
 
 /**
  * @swagger

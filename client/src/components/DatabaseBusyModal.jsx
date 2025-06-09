@@ -165,9 +165,9 @@ const DatabaseBusyModal = ({ isOpen, onClose, onUserDecision }) => {
       case "queued":
         return "text-purple-600 bg-purple-100";
       case "paused":
-        return "text-gray-600 bg-gray-100";
+        return "text-gray-600 dark:text-gray-400 bg-gray-100";
       default:
-        return "text-gray-600 bg-gray-100";
+        return "text-gray-600 dark:text-gray-400 bg-gray-100";
     }
   };
 
@@ -180,13 +180,13 @@ const DatabaseBusyModal = ({ isOpen, onClose, onUserDecision }) => {
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <Database className="h-6 w-6 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
               Database Transaction Manager
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 dark:text-gray-400 transition-colors"
           >
             <X className="h-6 w-6" />
           </button>
@@ -207,7 +207,7 @@ const DatabaseBusyModal = ({ isOpen, onClose, onUserDecision }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-600">
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   Database Status
                 </span>
                 <div
@@ -223,20 +223,20 @@ const DatabaseBusyModal = ({ isOpen, onClose, onUserDecision }) => {
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-600">
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   Active Transactions
                 </span>
-                <span className="text-lg font-semibold text-gray-900">
+                <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {databaseStatus.activeTransactions?.length || 0}
                 </span>
               </div>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-600">
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   Queued Operations
                 </span>
-                <span className="text-lg font-semibold text-gray-900">
+                <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {databaseStatus.queuedOperations || 0}
                 </span>
               </div>
@@ -329,7 +329,7 @@ const DatabaseBusyModal = ({ isOpen, onClose, onUserDecision }) => {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-3">
-                        <span className="font-medium text-gray-900">
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
                           {transaction.id}
                         </span>
                         <span
@@ -346,7 +346,7 @@ const DatabaseBusyModal = ({ isOpen, onClose, onUserDecision }) => {
                     </div>
 
                     {transaction.metadata && (
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
                         <p>
                           <strong>Type:</strong>{" "}
                           {transaction.metadata.operationType || "Unknown"}
@@ -380,7 +380,7 @@ const DatabaseBusyModal = ({ isOpen, onClose, onUserDecision }) => {
         {/* Footer */}
         <div className="p-6 border-t border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               Real-time database transaction monitoring
             </div>
             <button

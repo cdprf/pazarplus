@@ -15,13 +15,17 @@ export const Button = ({
 }) => {
   const variants = {
     default:
-      "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-blue-500",
-    primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
+      "bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-blue-500",
+    primary:
+      "bg-blue-600 dark:bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-700 focus:ring-blue-500",
     outline:
-      "border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 focus:ring-blue-500",
-    ghost: "text-gray-700 hover:bg-gray-100 focus:ring-blue-500",
-    danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
-    success: "bg-green-600 text-white hover:bg-green-700 focus:ring-green-500",
+      "border border-gray-300 dark:border-gray-600 bg-transparent text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 focus:ring-blue-500",
+    ghost:
+      "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-blue-500",
+    danger:
+      "bg-red-600 dark:bg-red-600 text-white hover:bg-red-700 dark:hover:bg-red-700 focus:ring-red-500",
+    success:
+      "bg-green-600 dark:bg-green-600 text-white hover:bg-green-700 dark:hover:bg-green-700 focus:ring-green-500",
   };
   const sizes = {
     sm: "px-2 py-1 text-sm h-8",
@@ -45,14 +49,16 @@ export const Button = ({
 
 export const Card = ({ children, className = "" }) => (
   <div
-    className={`bg-white rounded-lg border border-gray-200 shadow-sm ${className}`}
+    className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm ${className}`}
   >
     {children}
   </div>
 );
 
 export const CardHeader = ({ children, className = "" }) => (
-  <div className={`px-6 py-4 border-b border-gray-200 ${className}`}>
+  <div
+    className={`px-6 py-4 border-b border-gray-200 dark:border-gray-700 ${className}`}
+  >
     {children}
   </div>
 );
@@ -63,14 +69,17 @@ export const CardContent = ({ children, className = "" }) => (
 
 export const Badge = ({ children, variant = "default", className = "" }) => {
   const variants = {
-    default: "bg-gray-100 text-gray-800",
-    primary: "bg-blue-100 text-blue-800",
-    secondary: "bg-gray-100 text-gray-600",
-    success: "bg-green-100 text-green-800",
-    warning: "bg-amber-100 text-amber-800",
-    danger: "bg-red-100 text-red-800",
-    info: "bg-cyan-100 text-cyan-800",
-    outline: "border border-gray-300 text-gray-700 bg-white",
+    default: "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200",
+    primary: "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200",
+    secondary: "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300",
+    success:
+      "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200",
+    warning:
+      "bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200",
+    danger: "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200",
+    info: "bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-200",
+    outline:
+      "border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800",
   };
 
   return (
@@ -104,18 +113,20 @@ export const Modal = ({
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
         <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          className="fixed inset-0 bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75 transition-opacity"
           onClick={onClose}
         />
         <div
-          className={`inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle ${sizes[size]} sm:w-full ${className}`}
+          className={`inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle ${sizes[size]} sm:w-full ${className}`}
         >
-          <div className="bg-white px-6 pt-6 pb-4">
+          <div className="bg-white dark:bg-gray-800 px-6 pt-6 pb-4">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                {title}
+              </h3>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -131,7 +142,7 @@ export const Modal = ({
 export const Tooltip = ({ children, content }) => (
   <div className="relative group">
     {children}
-    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 dark:bg-gray-700 dark:text-gray-100 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
       {content}
     </div>
   </div>

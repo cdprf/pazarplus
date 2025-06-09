@@ -469,7 +469,28 @@ const forgotPassword = async (req, res) => {
       passwordResetExpires: resetExpires,
     });
 
-    // TODO: Send email with reset link
+    // Send email with reset link
+    try {
+      const emailService = require("../services/emailService");
+      await emailService.sendPasswordResetEmail(
+        user.email,
+        resetToken,
+        user.firstName || user.username || ""
+      );
+      logger.info("Password reset email sent successfully", {
+        userId: user.id,
+        email: user.email,
+        resetToken: resetToken.substring(0, 8) + "...",
+      });
+    } catch (emailError) {
+      logger.error("Failed to send password reset email", {
+        userId: user.id,
+        email: user.email,
+        error: emailError.message,
+      });
+      // Don't fail the request if email sending fails
+    }
+
     logger.info("Password reset requested", {
       userId: user.id,
       email: user.email,
@@ -627,7 +648,28 @@ const resendVerification = async (req, res) => {
       emailVerificationToken: verificationToken,
     });
 
-    // TODO: Send verification email
+    // Send verification email
+    try {
+      const emailService = require("../services/emailService");
+      await emailService.sendVerificationEmail(
+        user.email,
+        verificationToken,
+        user.firstName || user.username || ""
+      );
+      logger.info("Verification email sent successfully", {
+        userId: user.id,
+        email: user.email,
+        token: verificationToken.substring(0, 8) + "...",
+      });
+    } catch (emailError) {
+      logger.error("Failed to send verification email", {
+        userId: user.id,
+        email: user.email,
+        error: emailError.message,
+      });
+      // Don't fail the request if email sending fails
+    }
+
     logger.info("Verification email resent", {
       userId: user.id,
       email: user.email,

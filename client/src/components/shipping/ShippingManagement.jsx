@@ -90,13 +90,13 @@ const ShippingManagement = () => {
       setLoading(true);
       switch (activeTab) {
         case "carriers":
-          const carriersResponse = await api.get("/api/shipping/carriers");
+          const carriersResponse = await api.get("/shipping/carriers");
           if (carriersResponse.data.success) {
             setCarriers(carriersResponse.data.data || []);
           }
           break;
         case "shipments":
-          const shipmentsResponse = await api.get("/api/shipping/shipments", {
+          const shipmentsResponse = await api.get("/shipping/shipments", {
             params: filters,
           });
           if (shipmentsResponse.data.success) {
@@ -128,7 +128,7 @@ const ShippingManagement = () => {
     setRates([]);
 
     try {
-      const response = await api.post("/api/shipping/rates", {
+      const response = await api.post("/shipping/rates", {
         packageInfo,
         fromAddress,
         toAddress,
@@ -168,7 +168,7 @@ const ShippingManagement = () => {
         },
       };
 
-      const response = await api.post("/api/shipping/labels", {
+      const response = await api.post("/shipping/labels", {
         shipmentData,
         carrier,
       });
@@ -210,7 +210,7 @@ const ShippingManagement = () => {
 
     try {
       const response = await api.get(
-        `/api/shipping/track/${trackCarrier}/${trackNum}`
+        `/shipping/track/${trackCarrier}/${trackNum}`
       );
 
       if (response.data.success) {
@@ -241,7 +241,7 @@ const ShippingManagement = () => {
   const handleCreateShipment = async (orderIds) => {
     try {
       setLoading(true);
-      const response = await api.post("/api/shipping/labels/create", {
+      const response = await api.post("/shipping/labels/create", {
         orderIds,
         carrier: "auto",
       });
@@ -271,7 +271,7 @@ const ShippingManagement = () => {
       }
 
       setLoading(true);
-      const response = await api.post("/api/shipping/carriers", newCarrier);
+      const response = await api.post("/shipping/carriers", newCarrier);
       if (response.data.success) {
         showAlert("Carrier added successfully!", "success");
         setShowCarrierModal(false);
@@ -301,7 +301,7 @@ const ShippingManagement = () => {
   const handleTestCarrier = async (carrierCode) => {
     try {
       setLoading(true);
-      const response = await api.post("/api/shipping/carriers/validate", {
+      const response = await api.post("/shipping/carriers/validate", {
         carrier: carrierCode,
       });
 

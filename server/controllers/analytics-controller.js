@@ -60,6 +60,38 @@ const safeJsonResponse = (data) => {
 };
 
 /**
+ * Helper function to generate inventory optimization suggestions
+ * This is outside the class to avoid context binding issues
+ */
+function generateInventoryOptimization(predictions, topProducts) {
+  const optimization = {
+    actions: [],
+    priorities: [],
+    estimatedSavings: 0,
+  };
+
+  if (predictions?.lowStockItems?.length > 0) {
+    optimization.actions.push(
+      "Implement automated reorder system for fast-moving items"
+    );
+    optimization.priorities.push({
+      action: "Restock critical items",
+      items: predictions.lowStockItems.length,
+      urgency: "high",
+    });
+  }
+
+  if (predictions?.overstockItems?.length > 0) {
+    optimization.actions.push(
+      "Create promotional campaigns for overstocked items"
+    );
+    optimization.estimatedSavings += predictions.overstockItems.length * 50; // Estimated savings per item
+  }
+
+  return optimization;
+}
+
+/**
  * Enhanced Analytics Controller for Month 5 Phase 1
  * Business Intelligence & Customer Acquisition Features
  */
@@ -231,6 +263,7 @@ class AnalyticsController {
    * Get inventory optimization insights
    */
   async getInventoryInsights(req, res) {
+    const self = this; // Create a reference to maintain context
     try {
       const { timeframe = "30d" } = req.query;
       const userId = req.user.id;
@@ -252,7 +285,7 @@ class AnalyticsController {
           overstock: inventoryPredictions?.overstockItems || [],
           reorderNeeded: inventoryPredictions?.reorderSuggestions || [],
         },
-        optimization: this.generateInventoryOptimization(
+        optimization: generateInventoryOptimization(
           inventoryPredictions,
           topProducts
         ),
@@ -542,37 +575,6 @@ class AnalyticsController {
     }
 
     return recommendations;
-  }
-
-  /**
-   * Generate inventory optimization suggestions
-   */
-  generateInventoryOptimization(predictions, topProducts) {
-    const optimization = {
-      actions: [],
-      priorities: [],
-      estimatedSavings: 0,
-    };
-
-    if (predictions?.lowStockItems?.length > 0) {
-      optimization.actions.push(
-        "Implement automated reorder system for fast-moving items"
-      );
-      optimization.priorities.push({
-        action: "Restock critical items",
-        items: predictions.lowStockItems.length,
-        urgency: "high",
-      });
-    }
-
-    if (predictions?.overstockItems?.length > 0) {
-      optimization.actions.push(
-        "Create promotional campaigns for overstocked items"
-      );
-      optimization.estimatedSavings += predictions.overstockItems.length * 50; // Estimated savings per item
-    }
-
-    return optimization;
   }
 
   /**

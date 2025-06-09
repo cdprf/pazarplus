@@ -28,12 +28,13 @@ import OrderDetail from "./components/orders/OrderDetail";
 import ProductManagement from "./components/ProductManagement";
 import CustomerManagement from "./components/customers/CustomerManagement";
 import ShippingManagement from "./components/shipping/ShippingManagement";
-import ShippingSlipDesigner from "./components/shipping/ShippingSlipDesigner";
+import EnhancedShippingSlipDesigner from "./components/shipping/EnhancedShippingSlipDesigner";
 import ImportExport from "./components/common/ImportExport";
 import PlatformConnections from "./components/platforms/PlatformConnections";
 import PlatformSettings from "./components/platforms/PlatformSettings";
 import PlatformAnalytics from "./components/platforms/PlatformAnalytics";
 import PlatformSyncHistory from "./components/platforms/PlatformSyncHistory";
+import ProductLinkingDashboard from "./pages/admin/ProductLinkingDashboard";
 import Reports from "./components/reports/Reports"; // Add the analytics/reports page
 import Settings from "./components/settings/Settings";
 import PrintSettings from "./components/settings/PrintSettings";
@@ -171,7 +172,7 @@ function App() {
                         />
                         <Route
                           path="shipping/slip-designer"
-                          element={<ShippingSlipDesigner />}
+                          element={<EnhancedShippingSlipDesigner />}
                         />
 
                         {/* Platform Management - enhanced */}
@@ -213,6 +214,12 @@ function App() {
                         <Route path="orders/:id" element={<OrderDetail />} />
                         <Route path="orders/new" element={<Orders />} />
                         <Route path="orders/completed" element={<Orders />} />
+
+                        {/* Product-Order Linking Management */}
+                        <Route
+                          path="admin/product-linking"
+                          element={<ProductLinkingDashboard />}
+                        />
 
                         {/* Payment Management */}
                         <Route

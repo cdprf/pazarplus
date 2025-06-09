@@ -4,6 +4,10 @@ const { app, initializeWebSocketServer } = require("./app");
 const logger = require("./utils/logger");
 const sequelize = require("./config/database");
 const config = require("./config/config");
+const ProductLinkingJobService = require("./services/product-linking-job-service");
+
+// Initialize background job service
+const productLinkingJobs = new ProductLinkingJobService();
 
 // Validate critical environment variables
 const validateEnvironment = () => {
@@ -79,8 +83,13 @@ async function startServer() {
           "WebSocket Notifications",
           "Stock Reservation System",
           "Turkish Marketplace Compliance",
+          "Automated Product-Order Linking",
         ],
       });
+
+      // Start background jobs
+      productLinkingJobs.start();
+      logger.info("Background job services started", { service: "pazar-plus" });
     });
 
     // Handle server errors
@@ -109,6 +118,10 @@ async function startServer() {
 
       server.close(() => {
         logger.info("HTTP server closed.", { service: "pazar-plus" });
+
+        // Stop background jobs
+        productLinkingJobs.stop();
+        logger.info("Background jobs stopped", { service: "pazar-plus" });
 
         // Close database connections
         sequelize

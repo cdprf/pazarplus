@@ -172,7 +172,13 @@ export const VariantSuggestionCard = ({
         {/* Actions */}
         <div className="flex items-center justify-end space-x-2 mt-4 pt-3 border-t">
           <Button
-            onClick={() => onReject?.(suggestion)}
+            onClick={() => {
+              console.log(
+                "🔴 Reject button clicked for suggestion:",
+                suggestion
+              );
+              onReject?.(suggestion);
+            }}
             variant="ghost"
             size="sm"
             icon={X}
@@ -181,7 +187,13 @@ export const VariantSuggestionCard = ({
             Reddet
           </Button>
           <Button
-            onClick={() => onAccept?.(suggestion)}
+            onClick={() => {
+              console.log(
+                "✅ Accept button clicked for suggestion:",
+                suggestion
+              );
+              onAccept?.(suggestion);
+            }}
             variant="primary"
             size="sm"
             icon={Check}

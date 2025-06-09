@@ -180,8 +180,8 @@ const ProductTable = ({
 
     return (
       <th
-        className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-50 ${
-          tableSettings?.stickyHeaders ? "sticky top-0 bg-gray-50 z-10" : ""
+        className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 ${
+          tableSettings?.stickyHeaders ? "sticky top-0 bg-gray-50 dark:bg-gray-800 z-10" : ""
         }`}
         onClick={() => handleSort(field)}
       >
@@ -219,7 +219,7 @@ const ProductTable = ({
     return (
       <td
         className={`px-6 ${rowHeightClass} whitespace-nowrap ${
-          !isVariant ? "sticky left-12 bg-white" : "bg-blue-50"
+          !isVariant ? "sticky left-12 bg-white dark:bg-gray-800" : "bg-blue-50"
         }`}
       >
         <div className={`flex items-center ${isVariant ? "ml-8" : ""}`}>
@@ -245,20 +245,20 @@ const ProductTable = ({
                 )}
               </div>
             ) : (
-              <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                <Image className="h-8 w-8 text-gray-400" />
+              <div className="h-16 w-16 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                <Image className="h-8 w-8 text-gray-400 dark:text-gray-500" />
               </div>
             )}
           </div>
           <div className="ml-4 flex-1">
-            <div className="text-sm font-medium text-gray-900 max-w-xs truncate mb-1">
+            <div className="text-sm font-medium text-gray-900 dark:text-gray-100 max-w-xs truncate mb-1">
               <Tooltip content={product.name}>
                 <span
                   className={`${
                     onProductNameClick
                       ? "cursor-pointer hover:text-blue-600 hover:underline"
                       : ""
-                  } ${isVariant ? "text-gray-700" : ""}`}
+                  } ${isVariant ? "text-gray-700 dark:text-gray-300" : ""}`}
                   onClick={() => onProductNameClick?.(product)}
                 >
                   {isVariant && <span className="text-blue-500 mr-2">↳</span>}
@@ -267,10 +267,10 @@ const ProductTable = ({
               </Tooltip>
             </div>
 
-            <div className="space-y-1 text-xs text-gray-500">
+            <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
               <div className="flex items-center space-x-2">
                 <span>Stok Kodu:</span>
-                <code className="bg-gray-100 px-1 rounded text-xs">
+                <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">
                   {product.sku}
                 </code>
                 <Button
@@ -285,7 +285,7 @@ const ProductTable = ({
               {product.barcode && (
                 <div className="flex items-center space-x-2">
                   <span>Barkod:</span>
-                  <code className="bg-gray-100 px-1 rounded text-xs">
+                  <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">
                     {product.barcode}
                   </code>
                   <Button
@@ -374,12 +374,12 @@ const ProductTable = ({
 
     return (
       <td
-        className={`px-6 ${rowHeightClass} whitespace-nowrap cursor-pointer hover:bg-gray-100 ${
+        className={`px-6 ${rowHeightClass} whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700 ${
           isVariant ? "bg-blue-50" : ""
         }`}
         onClick={() => handleInlineEditStart(product.id, "price", isVariant)}
       >
-        <div className="text-sm font-medium text-gray-900">
+        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
           ₺
           {(product.price || 0).toLocaleString("tr-TR", {
             minimumFractionDigits: 2,
@@ -425,7 +425,7 @@ const ProductTable = ({
 
     return (
       <td
-        className={`px-6 ${rowHeightClass} whitespace-nowrap cursor-pointer hover:bg-gray-100 ${
+        className={`px-6 ${rowHeightClass} whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700 ${
           isVariant ? "bg-blue-50" : ""
         }`}
         onClick={() => handleInlineEditStart(product.id, "stock", isVariant)}
@@ -456,21 +456,21 @@ const ProductTable = ({
       rows.push(
         <tr
           key={product.id}
-          className={`hover:bg-gray-50 ${
+          className={`hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 ${
             tableSettings?.alternateRowColors ? "even:bg-gray-25" : ""
           } ${hasVariants ? "border-l-4 border-l-blue-400" : ""}`}
         >
           {/* Checkbox Column */}
           {isColumnVisible("checkbox") && (
             <td
-              className={`px-6 ${rowHeightClass} whitespace-nowrap sticky left-0 bg-white`}
+              className={`px-6 ${rowHeightClass} whitespace-nowrap sticky left-0 bg-white dark:bg-gray-800`}
             >
               <div className="flex items-center">
                 <input
                   type="checkbox"
                   checked={selectedProducts.includes(product.id)}
                   onChange={() => onSelectProduct?.(product.id)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
                 />
                 {hasVariants && (
                   <>
@@ -499,7 +499,7 @@ const ProductTable = ({
                         onChange={(e) =>
                           handleVariantBulkSelect(product.id, e.target.checked)
                         }
-                        className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        className="w-3 h-3 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
                         title="Tüm varyantları seç"
                       />
                     </div>
@@ -540,7 +540,7 @@ const ProductTable = ({
           {/* Category Column */}
           {isColumnVisible("category") && (
             <td
-              className={`px-6 ${rowHeightClass} whitespace-nowrap text-sm text-gray-900`}
+              className={`px-6 ${rowHeightClass} whitespace-nowrap text-sm text-gray-900 dark:text-gray-100`}
             >
               {product.category}
             </td>
@@ -556,7 +556,7 @@ const ProductTable = ({
           {/* Actions Column */}
           {isColumnVisible("actions") && (
             <td
-              className={`px-6 ${rowHeightClass} whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white`}
+              className={`px-6 ${rowHeightClass} whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white dark:bg-gray-800`}
             >
               <div className="flex items-center justify-end space-x-2">
                 <Button
@@ -564,21 +564,21 @@ const ProductTable = ({
                   variant="ghost"
                   size="sm"
                   icon={Eye}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:text-gray-500"
                 />
                 <Button
                   onClick={() => onEdit?.(product)}
                   variant="ghost"
                   size="sm"
                   icon={Edit}
-                  className="text-gray-400 hover:text-blue-600"
+                  className="text-gray-400 dark:text-gray-500 hover:text-blue-600"
                 />
                 <Button
                   onClick={() => onDelete?.(product)}
                   variant="ghost"
                   size="sm"
                   icon={Trash2}
-                  className="text-gray-400 hover:text-red-600"
+                  className="text-gray-400 dark:text-gray-500 hover:text-red-600"
                 />
                 <div className="relative">
                   <Button
@@ -586,10 +586,10 @@ const ProductTable = ({
                     variant="ghost"
                     size="sm"
                     icon={MoreVertical}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:text-gray-500"
                   />
                   {showMoreMenu === product.id && (
-                    <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-md shadow-lg z-20 min-w-48">
+                    <div className="absolute right-0 top-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-20 min-w-48">
                       <div className="py-1">
                         <button
                           onClick={() => {
@@ -598,7 +598,7 @@ const ProductTable = ({
                             );
                             onToggleMoreMenu?.(null);
                           }}
-                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700"
                         >
                           <ExternalLink className="w-4 h-4 mr-2" />
                           Linki Kopyala
@@ -608,7 +608,7 @@ const ProductTable = ({
                             onView?.(product);
                             onToggleMoreMenu?.(null);
                           }}
-                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700"
                         >
                           <Info className="w-4 h-4 mr-2" />
                           Detayları Gör
@@ -647,7 +647,7 @@ const ProductTable = ({
                       onChange={() =>
                         onSelectProduct?.(`variant-${variant.id}`)
                       }
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
                     />
                   </div>
                 </td>
@@ -686,7 +686,7 @@ const ProductTable = ({
               {/* Variant Category */}
               {isColumnVisible("category") && (
                 <td
-                  className={`px-6 ${rowHeightClass} whitespace-nowrap text-sm text-gray-700 bg-blue-50`}
+                  className={`px-6 ${rowHeightClass} whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 bg-blue-50`}
                 >
                   <span className="text-blue-600">Varyant</span>
                 </td>
@@ -712,14 +712,14 @@ const ProductTable = ({
                       variant="ghost"
                       size="sm"
                       icon={Eye}
-                      className="text-gray-400 hover:text-gray-600"
+                      className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:text-gray-500"
                     />
                     <Button
                       onClick={() => onEdit?.(variant)}
                       variant="ghost"
                       size="sm"
                       icon={Edit}
-                      className="text-gray-400 hover:text-blue-600"
+                      className="text-gray-400 dark:text-gray-500 hover:text-blue-600"
                     />
                     <div className="relative">
                       <Button
@@ -729,10 +729,10 @@ const ProductTable = ({
                         variant="ghost"
                         size="sm"
                         icon={MoreVertical}
-                        className="text-gray-400 hover:text-gray-600"
+                        className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:text-gray-500"
                       />
                       {showMoreMenu === `variant-${variant.id}` && (
-                        <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-md shadow-lg z-20 min-w-48">
+                        <div className="absolute right-0 top-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-20 min-w-48">
                           <div className="py-1">
                             <button
                               onClick={() => {
@@ -741,7 +741,7 @@ const ProductTable = ({
                                 );
                                 onToggleMoreMenu?.(null);
                               }}
-                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700"
                             >
                               <ExternalLink className="w-4 h-4 mr-2" />
                               Varyant Linki Kopyala
@@ -751,7 +751,7 @@ const ProductTable = ({
                                 onView?.(variant);
                                 onToggleMoreMenu?.(null);
                               }}
-                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-700"
                             >
                               <Info className="w-4 h-4 mr-2" />
                               Varyant Detayları
@@ -775,17 +775,17 @@ const ProductTable = ({
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+        <thead className="bg-gray-50 dark:bg-gray-800">
           <tr>
             {/* Checkbox Header */}
             {isColumnVisible("checkbox") && (
               <th
-                className={`px-6 ${rowHeightClass} text-left sticky left-0 bg-gray-50 z-10`}
+                className={`px-6 ${rowHeightClass} text-left sticky left-0 bg-gray-50 dark:bg-gray-800 z-10`}
               >
                 <input
                   type="checkbox"
                   onChange={onSelectAll}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
                 />
               </th>
             )}
@@ -832,14 +832,14 @@ const ProductTable = ({
             {/* Actions Header */}
             {isColumnVisible("actions") && (
               <th
-                className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10`}
+                className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 dark:bg-gray-800 z-10`}
               >
                 İşlemler
               </th>
             )}
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200">
           {renderProductRows()}
         </tbody>
       </table>

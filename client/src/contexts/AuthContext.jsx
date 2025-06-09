@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback(async (credentials) => {
     try {
-      const response = await api.post("/api/auth/login", credentials);
+      const response = await api.post("/auth/login", credentials);
       const { token: newToken, user: userData } = response.data;
 
       if (!newToken || !userData) {
@@ -109,7 +109,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = useCallback(async (userData) => {
     try {
-      const response = await api.post("/api/auth/register", userData);
+      const response = await api.post("/auth/register", userData);
       return response.data;
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");
@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }) => {
 
   const setupTwoFactor = useCallback(async () => {
     try {
-      const response = await api.post("/api/auth/2fa/setup");
+      const response = await api.post("/auth/2fa/setup");
       return response.data;
     } catch (err) {
       setError(err.response?.data?.message || "Failed to setup 2FA");
@@ -130,7 +130,7 @@ export const AuthProvider = ({ children }) => {
   const verifyTwoFactor = useCallback(
     async (code, secret) => {
       try {
-        const response = await api.post("/api/auth/2fa/verify", {
+        const response = await api.post("/auth/2fa/verify", {
           code,
           secret,
         });
@@ -147,7 +147,7 @@ export const AuthProvider = ({ children }) => {
 
   const disableTwoFactor = useCallback(async () => {
     try {
-      const response = await api.post("/api/auth/2fa/disable");
+      const response = await api.post("/auth/2fa/disable");
       const userData = { ...user, twoFactorEnabled: false };
       setUser(userData);
       return response.data;
@@ -159,7 +159,7 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = useCallback(async (profileData) => {
     try {
-      const response = await api.put("/api/auth/profile", profileData);
+      const response = await api.post("/auth/profile", profileData);
       if (response.data.success && response.data.user) {
         setUser(response.data.user);
       }
@@ -193,7 +193,7 @@ export const AuthProvider = ({ children }) => {
             api.defaults.headers.common["Authorization"] = expectedAuth;
           }
 
-          const response = await api.get("/api/auth/me");
+          const response = await api.get("/auth/me");
           setUser(response.data.user);
           console.log("User authenticated successfully:", response.data.user);
         } catch (err) {

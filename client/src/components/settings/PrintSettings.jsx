@@ -152,10 +152,10 @@ const PrintSettings = () => {
     <div className="container mx-auto p-6 max-w-6xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             Yazdırma Ayarları
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
             Gönderi belgesi ve fatura şablonlarını yapılandırın
           </p>
         </div>

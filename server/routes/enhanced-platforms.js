@@ -570,9 +570,19 @@ enhancedPlatformServiceFactory.on("globalCircuitOpen", (data) => {
   logger.warn("Global circuit breaker opened:", data);
 });
 
-enhancedPlatformServiceFactory.on("platformWideIssue", (data) => {
+enhancedPlatformServiceFactory.on("platformWideIssue", async (data) => {
   logger.error("Platform-wide issue detected:", data);
-  // TODO: Send alerts to administrators
+
+  // Send alerts to administrators
+  try {
+    const alertService = require("../services/alertService");
+    await alertService.sendPlatformWideIssueAlert(data);
+    logger.info("Administrator alert sent for platform issue", {
+      platform: data.platform,
+    });
+  } catch (alertError) {
+    logger.error("Failed to send administrator alert:", alertError);
+  }
 });
 
 module.exports = router;

@@ -116,7 +116,7 @@ const Settings = () => {
     setLoading(true);
 
     try {
-      const response = await api.post("/api/auth/change-password", {
+      const response = await api.post("/auth/change-password", {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
       });

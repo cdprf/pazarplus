@@ -134,6 +134,17 @@ const getDatabaseConfig = (config) => {
       ...baseConfig,
       dialect: "sqlite",
       storage: config.SQLITE_PATH || path.join(__dirname, "../database.sqlite"),
+      dialectOptions: {
+        // SQLite optimizations for better concurrency
+        busy_timeout: 30000, // 30 seconds busy timeout
+      },
+      // Enhanced pool configuration for SQLite
+      pool: {
+        max: 1, // SQLite works best with single connection
+        min: 0,
+        acquire: 60000, // Increased acquire timeout for busy databases
+        idle: 30000, // Increased idle timeout
+      },
     };
   }
 };

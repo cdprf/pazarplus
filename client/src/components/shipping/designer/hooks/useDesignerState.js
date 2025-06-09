@@ -76,6 +76,7 @@ export const useDesignerState = () => {
   const elementOperations = useMemo(
     () => ({
       add: (type, position = { x: 10, y: 10 }) => {
+        console.log("useDesignerState: Adding element", type, position);
         const newElement = {
           id: generateId(),
           type,
@@ -83,11 +84,16 @@ export const useDesignerState = () => {
           position,
           zIndex: elements.length + 1,
         };
+        console.log("useDesignerState: Created new element", newElement);
 
         const newElements = [...elements, newElement];
         setElements(newElements);
         setSelectedElement(newElement);
         saveToHistory(newElements);
+        console.log(
+          "useDesignerState: Element added successfully, total elements:",
+          newElements.length
+        );
       },
 
       update: (id, updates) => {

@@ -64,7 +64,7 @@ const TemplateSettingsPanel = ({
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700">
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 dark:text-white mb-6">
           Şablon Ayarları
         </h3>
 

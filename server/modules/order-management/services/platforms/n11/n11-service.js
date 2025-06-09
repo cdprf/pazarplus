@@ -12,6 +12,7 @@ const {
   PlatformConnection,
 } = require("../../../../../models");
 const logger = require("../../../../../utils/logger");
+const ProductOrderLinkingService = require("../../../../../services/product-order-linking-service");
 
 const BasePlatformService = require("../BasePlatformService");
 
@@ -999,34 +1000,80 @@ class N11Service extends BasePlatformService {
               { transaction: t }
             );
 
-            // Create order items
+            // Create order items with product linking
             if (order.lines && Array.isArray(order.lines)) {
-              for (const item of order.lines) {
-                await OrderItem.create(
+              // Prepare order items data for linking
+              const orderItemsData = order.lines.map((item) => ({
+                orderId: normalizedOrder.id,
+                productId: null, // Will be set by linking service
+                platformProductId: item.productId?.toString(),
+                barcode: item.barcode || null,
+                title: item.productName || item.title,
+                sku: item.stockCode || item.sellerStockCode,
+                quantity: parseInt(item.quantity || 1, 10),
+                price: parseFloat(item.price || 0),
+                discount: parseFloat(
+                  item.sellerDiscount + item.mallDiscount || 0
+                ),
+                invoiceTotal: parseFloat(item.sellerInvoiceAmount || 0),
+                currency: "TRY",
+                variantInfo: item.variantAttributes
+                  ? JSON.stringify(item.variantAttributes)
+                  : null,
+                rawData: JSON.stringify(item),
+                metadata: {
+                  platformData: item,
+                },
+              }));
+
+              try {
+                // Use product linking service to create order items with product associations
+                const linkingService = new ProductOrderLinkingService();
+                const linkingResult =
+                  await linkingService.linkProductsToOrderItems(
+                    orderItemsData,
+                    this.connection.userId,
+                    { transaction: t }
+                  );
+
+                if (linkingResult.success) {
+                  this.logger.info(
+                    `Product linking completed for N11 order ${order.orderNumber}: ${linkingResult.stats.linked}/${linkingResult.stats.total} items linked`,
+                    {
+                      orderNumber: order.orderNumber,
+                      connectionId: this.connectionId,
+                      linkingStats: linkingResult.stats,
+                    }
+                  );
+                } else {
+                  this.logger.warn(
+                    `Product linking failed for N11 order ${order.orderNumber}, creating items without linking: ${linkingResult.message}`,
+                    {
+                      orderNumber: order.orderNumber,
+                      connectionId: this.connectionId,
+                      error: linkingResult.error,
+                    }
+                  );
+
+                  // Fallback: create order items without linking
+                  for (const itemData of orderItemsData) {
+                    await OrderItem.create(itemData, { transaction: t });
+                  }
+                }
+              } catch (linkingError) {
+                this.logger.error(
+                  `Product linking service failed for N11 order ${order.orderNumber}: ${linkingError.message}`,
                   {
-                    orderId: normalizedOrder.id,
-                    productId: null, // Will be set later if product exists
-                    platformProductId: item.productId?.toString(),
-                    barcode: item.barcode || null,
-                    title: item.productName || item.title,
-                    sku: item.stockCode || item.sellerStockCode,
-                    quantity: parseInt(item.quantity || 1, 10),
-                    price: parseFloat(item.price || 0),
-                    discount: parseFloat(
-                      item.sellerDiscount + item.mallDiscount || 0
-                    ),
-                    invoiceTotal: parseFloat(item.sellerInvoiceAmount || 0),
-                    currency: "TRY",
-                    variantInfo: item.variantAttributes
-                      ? JSON.stringify(item.variantAttributes)
-                      : null,
-                    rawData: JSON.stringify(item),
-                    metadata: {
-                      platformData: item,
-                    },
-                  },
-                  { transaction: t }
+                    error: linkingError,
+                    orderNumber: order.orderNumber,
+                    connectionId: this.connectionId,
+                  }
                 );
+
+                // Fallback: create order items without linking
+                for (const itemData of orderItemsData) {
+                  await OrderItem.create(itemData, { transaction: t });
+                }
               }
             }
 

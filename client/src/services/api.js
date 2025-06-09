@@ -1,20 +1,13 @@
 import axios from "axios";
+import { handleJWTError } from "../utils/authRecovery";
 
 // Determine the correct API base URL
 const getApiBaseUrl = () => {
   if (process.env.NODE_ENV === "development") {
-    // Check if we're accessing from a mobile device on the network
-    const hostname = window.location.hostname;
-
-    // If hostname is an IP address (mobile access), use the same IP for API
-    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-      return `http://${hostname}:5001`;
-    }
-
-    // Default to localhost for desktop development
-    return process.env.REACT_APP_API_URL || "http://localhost:5001";
+    // Use relative path in development to let setupProxy.js handle routing
+    return "/api";
   }
-  return process.env.REACT_APP_API_URL || window.location.origin;
+  return process.env.REACT_APP_API_URL || "/api";
 };
 
 // Create axios instance with proper configuration
@@ -88,6 +81,18 @@ api.interceptors.response.use(
       }
       localStorage.removeItem("token");
       window.location.reload();
+      return Promise.reject(error);
+    }
+
+    // Handle JWT authentication errors with recovery
+    if (error.response?.status === 401) {
+      try {
+        handleJWTError(error);
+      } catch (handledError) {
+        // handleJWTError will either recover automatically or re-throw
+        return Promise.reject(handledError);
+      }
+      return Promise.reject(error);
     }
 
     return Promise.reject(error);
@@ -98,7 +103,7 @@ api.interceptors.response.use(
 const orderService = {
   getOrders: async (params = {}) => {
     try {
-      const response = await api.get("/api/order-management/orders", {
+      const response = await api.get("/order-management/orders", {
         params,
       });
       return {
@@ -125,7 +130,7 @@ const orderService = {
 
   getOrderById: async (id) => {
     try {
-      const response = await api.get(`/api/order-management/orders/${id}`);
+      const response = await api.get(`/order-management/orders/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -139,10 +144,7 @@ const orderService = {
 
   createOrder: async (orderData) => {
     try {
-      const response = await api.post(
-        "/api/order-management/orders",
-        orderData
-      );
+      const response = await api.post("/order-management/orders", orderData);
       return response.data;
     } catch (error) {
       throw error;
@@ -152,7 +154,7 @@ const orderService = {
   updateOrder: async (id, orderData) => {
     try {
       const response = await api.put(
-        `/api/order-management/orders/${id}`,
+        `/order-management/orders/${id}`,
         orderData
       );
       return response.data;
@@ -163,7 +165,7 @@ const orderService = {
 
   deleteOrder: async (id) => {
     try {
-      const response = await api.delete(`/api/order-management/orders/${id}`);
+      const response = await api.delete(`/order-management/orders/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -172,10 +174,9 @@ const orderService = {
 
   updateOrderStatus: async (id, status) => {
     try {
-      const response = await api.put(
-        `/api/order-management/orders/${id}/status`,
-        { status }
-      );
+      const response = await api.put(`/order-management/orders/${id}/status`, {
+        status,
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -210,7 +211,7 @@ const orderService = {
       }
 
       const response = await api.post(
-        "/api/order-management/orders/sync",
+        "/order-management/orders/sync",
         requestBody
       );
       return response.data;
@@ -222,13 +223,10 @@ const orderService = {
   // Bulk update order status - Added for OrderManagement component
   bulkUpdateStatus: async (orderIds, status) => {
     try {
-      const response = await api.put(
-        "/api/order-management/orders/bulk/status",
-        {
-          orderIds,
-          status,
-        }
-      );
+      const response = await api.put("/order-management/orders/bulk/status", {
+        orderIds,
+        status,
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -239,7 +237,7 @@ const orderService = {
   exportOrders: async (format = "csv", filters = {}) => {
     try {
       const response = await api.get(
-        `/api/order-management/orders/export?format=${format}`,
+        `/order-management/orders/export?format=${format}`,
         {
           params: filters,
           responseType: "blob",
@@ -254,7 +252,7 @@ const orderService = {
   // Get order statistics
   getOrderStats: async () => {
     try {
-      const response = await api.get("/api/order-management/orders/stats");
+      const response = await api.get("/order-management/orders/stats");
       return response.data;
     } catch (error) {
       throw error;
@@ -265,7 +263,7 @@ const orderService = {
   getOrderTrends: async (timeRange = "30d") => {
     try {
       const response = await api.get(
-        `/api/order-management/orders/trends?timeRange=${timeRange}`
+        `/order-management/orders/trends?timeRange=${timeRange}`
       );
       return response.data;
     } catch (error) {
@@ -273,13 +271,13 @@ const orderService = {
     }
   },
 
-  // Print shipping slip
+  // Print shipping slip (deprecated - use api.shipping.generatePDF instead)
   printShippingSlip: async (orderId, options = {}) => {
     try {
-      const response = await api.post(
-        `/api/order-management/orders/${orderId}/print-shipping-slip`,
-        options
-      );
+      const response = await api.post("/shipping/templates/generate-pdf", {
+        orderId,
+        templateId: options.templateId || null,
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -289,10 +287,10 @@ const orderService = {
   // Print invoice
   printInvoice: async (orderId, options = {}) => {
     try {
-      const response = await api.post(
-        `/api/order-management/orders/${orderId}/print-invoice`,
-        options
-      );
+      const response = await api.post("/shipping/templates/generate-pdf", {
+        orderId,
+        templateId: options.templateId || null,
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -303,7 +301,7 @@ const orderService = {
   cancelOrder: async (orderId, reason = "") => {
     try {
       const response = await api.post(
-        `/api/order-management/orders/${orderId}/cancel`,
+        `/order-management/orders/${orderId}/cancel`,
         { reason }
       );
       return response.data;
@@ -316,7 +314,7 @@ const orderService = {
   generateEInvoice: async (orderId) => {
     try {
       const response = await api.post(
-        `/api/order-management/orders/${orderId}/einvoice`
+        `/order-management/orders/${orderId}/einvoice`
       );
       return response.data;
     } catch (error) {
@@ -328,7 +326,7 @@ const orderService = {
   bulkEInvoice: async (orderIds) => {
     try {
       const response = await api.post(
-        "/api/order-management/orders/bulk-einvoice",
+        "/order-management/orders/bulk-einvoice",
         { orderIds }
       );
       return response.data;
@@ -343,7 +341,7 @@ const platformAPI = {
   // Get all platform connections
   getConnections: async () => {
     try {
-      const response = await api.get("/api/platforms/connections");
+      const response = await api.get("/platforms/connections");
       return response.data;
     } catch (error) {
       // Error will be handled by the calling component
@@ -354,7 +352,7 @@ const platformAPI = {
   // Get specific platform connection
   getConnection: async (id) => {
     try {
-      const response = await api.get(`/api/platforms/connections/${id}`);
+      const response = await api.get(`/platforms/connections/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -364,10 +362,7 @@ const platformAPI = {
   // Create new platform connection
   createConnection: async (connectionData) => {
     try {
-      const response = await api.post(
-        "/api/platforms/connections",
-        connectionData
-      );
+      const response = await api.post("/platforms/connections", connectionData);
       return response.data;
     } catch (error) {
       throw error;
@@ -377,10 +372,7 @@ const platformAPI = {
   // Update platform connection
   updateConnection: async (id, updates) => {
     try {
-      const response = await api.put(
-        `/api/platforms/connections/${id}`,
-        updates
-      );
+      const response = await api.put(`/platforms/connections/${id}`, updates);
       return response.data;
     } catch (error) {
       throw error;
@@ -390,7 +382,7 @@ const platformAPI = {
   // Delete platform connection
   deleteConnection: async (id) => {
     try {
-      const response = await api.delete(`/api/platforms/connections/${id}`);
+      const response = await api.delete(`/platforms/connections/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -400,7 +392,7 @@ const platformAPI = {
   // Test platform connection
   testConnection: async (id) => {
     try {
-      const response = await api.post(`/api/platforms/connections/${id}/test`);
+      const response = await api.post(`/platforms/connections/${id}/test`);
       return response.data;
     } catch (error) {
       throw error;
@@ -410,7 +402,7 @@ const platformAPI = {
   // Force sync platform
   syncPlatform: async (id) => {
     try {
-      const response = await api.post(`/api/platforms/connections/${id}/sync`);
+      const response = await api.post(`/platforms/connections/${id}/sync`);
       return response.data;
     } catch (error) {
       throw error;
@@ -421,7 +413,7 @@ const platformAPI = {
   updateSettings: async (id, settings) => {
     try {
       const response = await api.put(
-        `/api/platforms/connections/${id}/settings`,
+        `/platforms/connections/${id}/settings`,
         settings
       );
       return response.data;
@@ -434,7 +426,7 @@ const platformAPI = {
   getAnalytics: async (id, timeRange = "30d") => {
     try {
       const response = await api.get(
-        `/api/platforms/connections/${id}/analytics?timeRange=${timeRange}`
+        `/platforms/connections/${id}/analytics?timeRange=${timeRange}`
       );
       return response.data;
     } catch (error) {
@@ -445,9 +437,7 @@ const platformAPI = {
   // Get platform statistics (aggregate across all platforms)
   getPlatformStats: async (timeRange = "30d") => {
     try {
-      const response = await api.get(
-        `/api/platforms/stats?timeRange=${timeRange}`
-      );
+      const response = await api.get(`/platforms/stats?timeRange=${timeRange}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -459,7 +449,7 @@ const platformAPI = {
     try {
       const queryString = new URLSearchParams(params).toString();
       const url = queryString
-        ? `/api/platforms/connections/${id}/sync-history?${queryString}`
+        ? `/platforms/connections/${id}/sync-history?${queryString}`
         : `/api/platforms/connections/${id}/sync-history`;
       const response = await api.get(url);
       return response.data;
@@ -472,7 +462,7 @@ const platformAPI = {
   retrySync: async (id, syncId) => {
     try {
       const response = await api.post(
-        `/api/platforms/connections/${id}/sync-history/${syncId}/retry`
+        `/platforms/connections/${id}/sync-history/${syncId}/retry`
       );
       return response.data;
     } catch (error) {
@@ -500,7 +490,7 @@ const customerAPI = {
   // Get single customer by ID
   getCustomer: async (id) => {
     try {
-      const response = await api.get(`/api/customers/${id}`);
+      const response = await api.get(`/customers/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -510,7 +500,7 @@ const customerAPI = {
   // Create new customer
   createCustomer: async (customerData) => {
     try {
-      const response = await api.post("/api/customers", customerData);
+      const response = await api.post("/customers", customerData);
       return response.data;
     } catch (error) {
       throw error;
@@ -520,7 +510,7 @@ const customerAPI = {
   // Update customer
   updateCustomer: async (id, updates) => {
     try {
-      const response = await api.put(`/api/customers/${id}`, updates);
+      const response = await api.put(`/customers/${id}`, updates);
       return response.data;
     } catch (error) {
       throw error;
@@ -547,7 +537,7 @@ const shippingAPI = {
   // Get shipping carriers
   getShippingCarriers: async () => {
     try {
-      const response = await api.get("/api/shipping/carriers");
+      const response = await api.get("/shipping/carriers");
       return response.data;
     } catch (error) {
       throw error;
@@ -557,7 +547,7 @@ const shippingAPI = {
   // Create shipping carrier
   createShippingCarrier: async (carrierData) => {
     try {
-      const response = await api.post("/api/shipping/carriers", carrierData);
+      const response = await api.post("/shipping/carriers", carrierData);
       return response.data;
     } catch (error) {
       throw error;
@@ -567,10 +557,7 @@ const shippingAPI = {
   // Update shipping carrier
   updateShippingCarrier: async (id, carrierData) => {
     try {
-      const response = await api.put(
-        `/api/shipping/carriers/${id}`,
-        carrierData
-      );
+      const response = await api.put(`/shipping/carriers/${id}`, carrierData);
       return response.data;
     } catch (error) {
       throw error;
@@ -580,7 +567,7 @@ const shippingAPI = {
   // Delete shipping carrier
   deleteShippingCarrier: async (id) => {
     try {
-      const response = await api.delete(`/api/shipping/carriers/${id}`);
+      const response = await api.delete(`/shipping/carriers/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -604,7 +591,7 @@ const shippingAPI = {
   // Calculate shipping cost
   calculateShippingCost: async (shippingData) => {
     try {
-      const response = await api.post("/api/shipping/calculate", shippingData);
+      const response = await api.post("/shipping/calculate", shippingData);
       return response.data;
     } catch (error) {
       throw error;
@@ -614,7 +601,7 @@ const shippingAPI = {
   // Shipping Templates
   getShippingTemplates: async () => {
     try {
-      const response = await api.get("/api/shipping/templates");
+      const response = await api.get("/shipping/templates");
       return response.data;
     } catch (error) {
       throw error;
@@ -623,7 +610,7 @@ const shippingAPI = {
 
   getShippingTemplate: async (id) => {
     try {
-      const response = await api.get(`/api/shipping/templates/${id}`);
+      const response = await api.get(`/shipping/templates/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -632,7 +619,7 @@ const shippingAPI = {
 
   saveShippingTemplate: async (templateData) => {
     try {
-      const response = await api.post("/api/shipping/templates", templateData);
+      const response = await api.post("/shipping/templates", templateData);
       return response.data;
     } catch (error) {
       throw error;
@@ -641,10 +628,7 @@ const shippingAPI = {
 
   updateShippingTemplate: async (id, templateData) => {
     try {
-      const response = await api.put(
-        `/api/shipping/templates/${id}`,
-        templateData
-      );
+      const response = await api.put(`/shipping/templates/${id}`, templateData);
       return response.data;
     } catch (error) {
       throw error;
@@ -653,7 +637,7 @@ const shippingAPI = {
 
   deleteShippingTemplate: async (id) => {
     try {
-      const response = await api.delete(`/api/shipping/templates/${id}`);
+      const response = await api.delete(`/shipping/templates/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -663,7 +647,7 @@ const shippingAPI = {
   // Default Template Management
   getDefaultTemplate: async () => {
     try {
-      const response = await api.get("/api/shipping/templates/default");
+      const response = await api.get("/shipping/templates/default");
       return response.data;
     } catch (error) {
       throw error;
@@ -672,7 +656,7 @@ const shippingAPI = {
 
   setDefaultTemplate: async (templateId) => {
     try {
-      const response = await api.post("/api/shipping/templates/default", {
+      const response = await api.post("/shipping/templates/default", {
         templateId,
       });
       return response.data;
@@ -681,10 +665,10 @@ const shippingAPI = {
     }
   },
 
-  // Generate shipping slip with template
+  // Generate shipping slip with template (returns template data only)
   generateShippingSlip: async (orderId, templateId = null) => {
     try {
-      const response = await api.post("/api/shipping/templates/generate-slip", {
+      const response = await api.post("/shipping/templates/generate-slip", {
         orderId,
         templateId,
       });
@@ -694,11 +678,48 @@ const shippingAPI = {
     }
   },
 
+  // Generate PDF using template and order data
+  generatePDF: async (orderId, templateId = null) => {
+    try {
+      console.log(
+        `Generating PDF for order: ${orderId}, template: ${
+          templateId || "default"
+        }`
+      );
+      console.log(`API base URL: ${api.defaults.baseURL}`);
+      console.log(
+        `Request URL: ${api.defaults.baseURL}/shipping/templates/generate-pdf`
+      );
+      
+      // Ensure orderId is sent as string to avoid type issues
+      const payload = {
+        orderId: String(orderId),
+        templateId: templateId || null,
+      };
+      
+      console.log("Sending payload:", payload);
+
+      const response = await api.post("/shipping/templates/generate-pdf", payload);
+      return response.data;
+    } catch (error) {
+      console.error("Error generating PDF:", {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        url: error.config?.url,
+        method: error.config?.method,
+        baseURL: api.defaults.baseURL,
+        data: error.response?.data,
+        message: error.message,
+      });
+      throw error;
+    }
+  },
+
   // Link order with shipping template
   linkOrderTemplate: async (linkData) => {
     try {
       const response = await api.post(
-        "/api/shipping/templates/link-order",
+        "/shipping/templates/link-order",
         linkData
       );
       return response.data;
@@ -722,7 +743,7 @@ const importExportAPI = {
   // Import data from file
   importData: async (formData, config = {}) => {
     try {
-      const response = await api.post("/api/import", formData, {
+      const response = await api.post("/import", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -737,7 +758,7 @@ const importExportAPI = {
   // Export data
   exportData: async (type, format = "csv") => {
     try {
-      const response = await api.get(`/api/export/${type}?format=${format}`, {
+      const response = await api.get(`/export/${type}?format=${format}`, {
         responseType: "blob",
       });
       return response;
@@ -749,7 +770,7 @@ const importExportAPI = {
   // Download template
   downloadTemplate: async (type) => {
     try {
-      const response = await api.get(`/api/templates/${type}`, {
+      const response = await api.get(`/templates/${type}`, {
         responseType: "blob",
       });
       return response;
@@ -764,7 +785,7 @@ const dashboardAPI = {
   // Get dashboard stats
   getDashboardStats: async () => {
     try {
-      const response = await api.get("/api/dashboard/stats");
+      const response = await api.get("/dashboard/stats");
       return response.data;
     } catch (error) {
       throw error;
@@ -774,9 +795,7 @@ const dashboardAPI = {
   // Get recent activities
   getRecentActivities: async (limit = 10) => {
     try {
-      const response = await api.get(
-        `/api/dashboard/activities?limit=${limit}`
-      );
+      const response = await api.get(`/dashboard/activities?limit=${limit}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -787,7 +806,7 @@ const dashboardAPI = {
   getPerformanceMetrics: async (timeRange = "30d") => {
     try {
       const response = await api.get(
-        `/api/dashboard/performance?timeRange=${timeRange}`
+        `/dashboard/performance?timeRange=${timeRange}`
       );
       return response.data;
     } catch (error) {
@@ -801,7 +820,7 @@ const settingsAPI = {
   // Company info methods
   getCompanyInfo: async () => {
     try {
-      const response = await api.get("/api/settings/company");
+      const response = await api.get("/settings/company");
       return response.data;
     } catch (error) {
       throw error;
@@ -810,7 +829,7 @@ const settingsAPI = {
 
   saveCompanyInfo: async (companyData) => {
     try {
-      const response = await api.post("/api/settings/company", companyData);
+      const response = await api.post("/settings/company", companyData);
       return response.data;
     } catch (error) {
       throw error;
@@ -819,7 +838,7 @@ const settingsAPI = {
 
   uploadCompanyLogo: async (formData) => {
     try {
-      const response = await api.post("/api/settings/company/logo", formData, {
+      const response = await api.post("/settings/company/logo", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -833,7 +852,7 @@ const settingsAPI = {
   // General settings methods
   getGeneralSettings: async () => {
     try {
-      const response = await api.get("/api/settings/general");
+      const response = await api.get("/settings/general");
       return response.data;
     } catch (error) {
       throw error;
@@ -842,7 +861,7 @@ const settingsAPI = {
 
   saveGeneralSettings: async (settings) => {
     try {
-      const response = await api.post("/api/settings/general", settings);
+      const response = await api.post("/settings/general", settings);
       return response.data;
     } catch (error) {
       throw error;
@@ -852,7 +871,7 @@ const settingsAPI = {
   // Notification settings methods
   getNotificationSettings: async () => {
     try {
-      const response = await api.get("/api/settings/notifications");
+      const response = await api.get("/settings/notifications");
       return response.data;
     } catch (error) {
       throw error;
@@ -861,7 +880,7 @@ const settingsAPI = {
 
   saveNotificationSettings: async (settings) => {
     try {
-      const response = await api.post("/api/settings/notifications", settings);
+      const response = await api.post("/settings/notifications", settings);
       return response.data;
     } catch (error) {
       throw error;
@@ -871,7 +890,7 @@ const settingsAPI = {
   // Shipping settings methods
   getShippingSettings: async () => {
     try {
-      const response = await api.get("/api/settings/shipping");
+      const response = await api.get("/settings/shipping");
       return response.data;
     } catch (error) {
       throw error;
@@ -880,7 +899,7 @@ const settingsAPI = {
 
   saveShippingSettings: async (settings) => {
     try {
-      const response = await api.post("/api/settings/shipping", settings);
+      const response = await api.post("/settings/shipping", settings);
       return response.data;
     } catch (error) {
       throw error;
@@ -890,7 +909,7 @@ const settingsAPI = {
   // Email settings methods
   getEmailSettings: async () => {
     try {
-      const response = await api.get("/api/settings/email");
+      const response = await api.get("/settings/email");
       return response.data;
     } catch (error) {
       throw error;
@@ -899,7 +918,7 @@ const settingsAPI = {
 
   saveEmailSettings: async (settings) => {
     try {
-      const response = await api.post("/api/settings/email", settings);
+      const response = await api.post("/settings/email", settings);
       return response.data;
     } catch (error) {
       throw error;
@@ -908,7 +927,7 @@ const settingsAPI = {
 
   testEmailSettings: async () => {
     try {
-      const response = await api.post("/api/settings/email/test");
+      const response = await api.post("/settings/email/test");
       return response.data;
     } catch (error) {
       throw error;
@@ -918,7 +937,7 @@ const settingsAPI = {
   // Legacy methods for backward compatibility
   getAppSettings: async () => {
     try {
-      const response = await api.get("/api/settings/general");
+      const response = await api.get("/settings/general");
       return response.data;
     } catch (error) {
       throw error;
@@ -927,7 +946,7 @@ const settingsAPI = {
 
   updateAppSettings: async (settings) => {
     try {
-      const response = await api.post("/api/settings/general", settings);
+      const response = await api.post("/settings/general", settings);
       return response.data;
     } catch (error) {
       throw error;
@@ -936,7 +955,7 @@ const settingsAPI = {
 
   updateNotificationSettings: async (settings) => {
     try {
-      const response = await api.post("/api/settings/notifications", settings);
+      const response = await api.post("/settings/notifications", settings);
       return response.data;
     } catch (error) {
       throw error;
@@ -953,7 +972,7 @@ const reportsAPI = {
         type,
         ...options,
       }).toString();
-      const response = await api.get(`/api/reports/export?${params}`, {
+      const response = await api.get(`/reports/export?${params}`, {
         responseType: "blob",
       });
       return response;
@@ -966,7 +985,7 @@ const reportsAPI = {
   getAnalyticsSummary: async (timeRange = "30d") => {
     try {
       const response = await api.get(
-        `/api/reports/analytics?timeRange=${timeRange}`
+        `/reports/analytics?timeRange=${timeRange}`
       );
       return response.data;
     } catch (error) {
@@ -978,7 +997,7 @@ const reportsAPI = {
   getCustomerAnalytics: async (timeRange = "30d") => {
     try {
       const response = await api.get(
-        `/api/reports/customers?timeRange=${timeRange}`
+        `/reports/customers?timeRange=${timeRange}`
       );
       return response.data;
     } catch (error) {
@@ -990,7 +1009,7 @@ const reportsAPI = {
   getProductPerformance: async (timeRange = "30d") => {
     try {
       const response = await api.get(
-        `/api/reports/products?timeRange=${timeRange}`
+        `/reports/products?timeRange=${timeRange}`
       );
       return response.data;
     } catch (error) {
@@ -1018,7 +1037,7 @@ const productAPI = {
   // Get single product by ID
   getProduct: async (id) => {
     try {
-      const response = await api.get(`/api/products/${id}`);
+      const response = await api.get(`/products/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -1028,7 +1047,7 @@ const productAPI = {
   // Create new product
   createProduct: async (productData) => {
     try {
-      const response = await api.post("/api/products", productData);
+      const response = await api.post("/products", productData);
       return response.data;
     } catch (error) {
       throw error;
@@ -1038,7 +1057,7 @@ const productAPI = {
   // Update product
   updateProduct: async (id, productData) => {
     try {
-      const response = await api.put(`/api/products/${id}`, productData);
+      const response = await api.put(`/products/${id}`, productData);
       return response.data;
     } catch (error) {
       throw error;
@@ -1048,7 +1067,7 @@ const productAPI = {
   // Delete product
   deleteProduct: async (id) => {
     try {
-      const response = await api.delete(`/api/products/${id}`);
+      const response = await api.delete(`/products/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -1058,7 +1077,7 @@ const productAPI = {
   // Bulk delete products
   bulkDelete: async (productIds) => {
     try {
-      const response = await api.delete("/api/products/bulk", {
+      const response = await api.delete("/products/bulk", {
         data: { productIds },
       });
       return response.data;
@@ -1070,7 +1089,7 @@ const productAPI = {
   // Bulk update product status
   bulkUpdateStatus: async (productIds, status) => {
     try {
-      const response = await api.put("/api/products/bulk/status", {
+      const response = await api.post("/products/bulk/status", {
         productIds,
         status,
       });
@@ -1083,7 +1102,7 @@ const productAPI = {
   // Get product statistics
   getProductStats: async () => {
     try {
-      const response = await api.get("/api/products/stats");
+      const response = await api.get("/products/stats");
       return response.data;
     } catch (error) {
       throw error;

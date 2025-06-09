@@ -29,7 +29,7 @@ class TemplateManager {
    */
   static async fetchFromApi() {
     try {
-      const response = await api.get("/api/shipping/templates");
+      const response = await api.get("/shipping/templates");
 
       // Handle the standard API response format: { success: true, data: [...], message: "..." }
       if (
@@ -90,7 +90,7 @@ class TemplateManager {
     try {
       // Try API first
       try {
-        const response = await api.get(`/api/shipping/templates/${id}`);
+        const response = await api.get(`/shipping/templates/${id}`);
         // Handle the standard API response format
         if (response.data && response.data.success && response.data.data) {
           return response.data.data;
@@ -122,6 +122,8 @@ class TemplateManager {
    * @returns {Promise<Object>} Promise resolving to saved template with ID
    */
   static async save(template) {
+    console.log("🔧 DEBUG: TemplateManager.save called with:", template);
+
     if (!template) {
       throw new Error("No template provided");
     }
@@ -148,30 +150,35 @@ class TemplateManager {
         updatedAt: new Date().toISOString(),
       };
 
+      console.log("🔧 DEBUG: Template to save:", templateToSave);
+
       let savedTemplate = null;
       let apiSuccess = false;
 
       // Try to save to API first
       try {
-        const response = await api.post(
-          "/api/shipping/templates",
-          templateToSave
-        );
+        console.log("🔧 DEBUG: Making API call to save template");
+        const response = await api.post("/shipping/templates", templateToSave);
+        console.log("🔧 DEBUG: API response:", response.data);
+
         // Handle the standard API response format
         if (response.data && response.data.success && response.data.data) {
           savedTemplate = response.data.data;
           apiSuccess = true;
+          console.log("🔧 DEBUG: Template saved to API successfully");
         } else if (response.data && response.data.id) {
           // Fallback: direct data response (backward compatibility)
           savedTemplate = response.data;
           apiSuccess = true;
+          console.log(
+            "🔧 DEBUG: Template saved to API successfully (fallback format)"
+          );
         }
       } catch (apiError) {
         console.warn(
-          "Failed to save template to API, will save locally:",
+          "🔧 DEBUG: Failed to save template to API, will save locally:",
           apiError.message
         );
-        savedTemplate = templateToSave;
       }
 
       // Always update local storage (as backup or primary storage)
@@ -194,6 +201,10 @@ class TemplateManager {
         }
       }
 
+      console.log(
+        "🔧 DEBUG: Template save completed, returning:",
+        templateToSave
+      );
       return templateToSave;
     } catch (error) {
       console.error("Failed to save template:", error);
@@ -215,7 +226,7 @@ class TemplateManager {
     try {
       // Try to delete from API first
       try {
-        await api.delete(`/api/shipping/templates/${id}`);
+        await api.delete(`/shipping/templates/${id}`);
       } catch (apiError) {
         console.warn(`Failed to delete template ${id} from API:`, apiError);
         // Continue with local deletion regardless
@@ -313,6 +324,21 @@ class TemplateManager {
       console.error("Failed to import template:", error);
       throw error;
     }
+  }
+
+  /**
+   * Aliases for backward compatibility
+   */
+  static async getTemplates() {
+    return this.getAll();
+  }
+
+  static async saveTemplate(template) {
+    return this.save(template);
+  }
+
+  static async deleteTemplate(id) {
+    return this.delete(id);
   }
 }
 

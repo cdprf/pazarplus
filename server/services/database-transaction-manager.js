@@ -5,6 +5,7 @@
 const EventEmitter = require("events");
 const logger = require("../utils/logger");
 const { sequelize } = require("../models");
+const sqliteOptimizer = require("./sqlite-optimizer");
 
 class DatabaseTransactionManager extends EventEmitter {
   constructor() {
@@ -16,6 +17,30 @@ class DatabaseTransactionManager extends EventEmitter {
     this.busyTimeout = 30000; // 30 seconds
     this.userInteractions = new Map();
     this.pausedOperations = new Map();
+    this.isInitialized = false;
+
+    // Initialize SQLite optimizations
+    this.initializeSQLiteOptimizations();
+  }
+
+  /**
+   * Initialize SQLite optimizations
+   */
+  async initializeSQLiteOptimizations() {
+    if (this.isInitialized) {
+      return;
+    }
+
+    try {
+      await sqliteOptimizer.optimizeSQLite();
+      this.isInitialized = true;
+      logger.info(
+        "Database Transaction Manager initialized with SQLite optimizations"
+      );
+    } catch (error) {
+      logger.error("Failed to initialize SQLite optimizations:", error);
+      // Continue without optimizations rather than failing
+    }
   }
 
   /**
@@ -41,7 +66,7 @@ class DatabaseTransactionManager extends EventEmitter {
   }
 
   /**
-   * Execute a database operation with transaction management
+   * Execute a database operation with transaction management and automatic retry
    */
   async executeWithTransactionControl(operationId, operationFn, options = {}) {
     const transaction = this.activeTransactions.get(operationId);
@@ -49,9 +74,16 @@ class DatabaseTransactionManager extends EventEmitter {
       throw new Error(`Transaction not found: ${operationId}`);
     }
 
-    const { userControlled = true, pausable = true } = options;
+    const {
+      userControlled = true,
+      pausable = true,
+      autoRetry = true,
+    } = options;
 
     try {
+      // Ensure SQLite is optimized before executing
+      await this.initializeSQLiteOptimizations();
+
       // Check if database is busy before starting
       if (this.isDatabaseBusy && userControlled) {
         return await this.handleDatabaseBusy(operationId, operationFn, options);
@@ -71,21 +103,16 @@ class DatabaseTransactionManager extends EventEmitter {
         return await this.queueOperation(operationId, operationFn, options);
       }
 
-      // Mark transaction as running
-      transaction.status = "running";
-      transaction.startTime = Date.now();
-      this.emit("transactionStarted", transaction);
-
-      // Execute the operation
-      const result = await this.executeOperation(operationId, operationFn);
-
-      // Mark as completed
-      transaction.status = "completed";
-      transaction.endTime = Date.now();
-      transaction.duration = transaction.endTime - transaction.startTime;
-      this.emit("transactionCompleted", transaction);
-
-      return result;
+      // Execute operation with automatic retry for SQLite busy errors
+      if (autoRetry) {
+        return await sqliteOptimizer.executeWithRetry(
+          async () => await this.executeOperation(operationId, operationFn),
+          operationId,
+          5 // max retries
+        );
+      } else {
+        return await this.executeOperation(operationId, operationFn);
+      }
     } catch (error) {
       return await this.handleTransactionError(
         operationId,
@@ -103,46 +130,76 @@ class DatabaseTransactionManager extends EventEmitter {
   }
 
   /**
+   * Execute the actual database operation
+   */
+  async executeOperation(operationId, operationFn) {
+    const transaction = this.activeTransactions.get(operationId);
+    if (!transaction) {
+      throw new Error(`Transaction not found: ${operationId}`);
+    }
+
+    // Mark transaction as running
+    transaction.status = "running";
+    transaction.startTime = Date.now();
+    this.emit("transactionStarted", transaction);
+
+    try {
+      // Execute the operation
+      const result = await operationFn();
+
+      // Mark as completed
+      transaction.status = "completed";
+      transaction.endTime = Date.now();
+      transaction.duration = transaction.endTime - transaction.startTime;
+      this.emit("transactionCompleted", transaction);
+
+      logger.debug(
+        `Transaction ${operationId} completed in ${transaction.duration}ms`
+      );
+      return result;
+    } catch (error) {
+      transaction.status = "failed";
+      transaction.error = error.message;
+      transaction.endTime = Date.now();
+      transaction.duration = transaction.endTime - transaction.startTime;
+      this.emit("transactionFailed", transaction);
+      throw error;
+    }
+  }
+
+  /**
    * Handle database busy state with user interaction
    */
   async handleDatabaseBusy(operationId, operationFn, options) {
     const transaction = this.activeTransactions.get(operationId);
-    transaction.status = "waiting_for_user";
 
-    // Check if user interaction already exists for this operation type
-    const operationType = transaction.metadata.operationType || "unknown";
-    const existingInteraction = this.userInteractions.get(operationType);
+    logger.warn(`Database is busy for operation: ${operationId}`);
 
-    if (existingInteraction) {
-      // Wait for existing user decision
-      return await this.waitForUserDecision(operationId, existingInteraction);
-    }
-
-    // Create new user interaction
+    // Create user interaction for handling busy state
+    const interactionId = `${operationId}_busy_${Date.now()}`;
     const userInteraction = {
-      id: `ui_${Date.now()}`,
-      operationType,
+      id: interactionId,
       operationId,
-      status: "pending_user_input",
-      busyTransactions: this.getBusyTransactions(),
-      options: {
-        canWait: true,
-        canForceClose: true,
-        canQueue: true,
-      },
-      createdAt: Date.now(),
+      type: "database_busy",
+      message: "Database is currently busy. What would you like to do?",
+      options: [
+        { id: "wait", label: "Wait and retry automatically", action: "wait" },
+        { id: "queue", label: "Queue operation for later", action: "queue" },
+        {
+          id: "force",
+          label: "Force execute (may cause conflicts)",
+          action: "force",
+        },
+        { id: "cancel", label: "Cancel operation", action: "cancel" },
+      ],
+      timestamp: Date.now(),
+      timeout: this.busyTimeout,
     };
 
-    this.userInteractions.set(operationType, userInteraction);
+    this.userInteractions.set(interactionId, userInteraction);
+    this.emit("userInteractionRequired", userInteraction);
 
-    // Emit event for frontend to show modal
-    this.emit("databaseBusyUserInput", {
-      interaction: userInteraction,
-      transaction,
-      busyDetails: this.getDatabaseBusyDetails(),
-    });
-
-    // Wait for user decision with timeout
+    // Wait for user decision or timeout
     return await this.waitForUserDecision(operationId, userInteraction);
   }
 
@@ -258,20 +315,10 @@ class DatabaseTransactionManager extends EventEmitter {
   }
 
   /**
-   * Check if error is SQLite busy error
+   * Enhanced SQLite busy error detection
    */
   isSQLiteBusyError(error) {
-    const busyIndicators = [
-      "database is locked",
-      "SQLITE_BUSY",
-      "SQLITE_LOCKED",
-      "database busy",
-      "cannot start a transaction within a transaction",
-    ];
-
-    return busyIndicators.some((indicator) =>
-      error.message.toLowerCase().includes(indicator.toLowerCase())
-    );
+    return sqliteOptimizer.isSQLiteBusyError(error);
   }
 
   /**
@@ -398,7 +445,7 @@ class DatabaseTransactionManager extends EventEmitter {
   }
 
   /**
-   * Retry operation
+   * Enhanced retry operation with SQLite optimizer integration
    */
   async retryOperation(operationId) {
     const transaction = this.activeTransactions.get(operationId);
@@ -413,12 +460,13 @@ class DatabaseTransactionManager extends EventEmitter {
     transaction.retryCount++;
     transaction.status = "retrying";
 
-    // Exponential backoff
-    const delay = Math.pow(2, transaction.retryCount) * 1000;
-    await new Promise((resolve) => setTimeout(resolve, delay));
-
-    // Execute operation again
-    return await this.executeOperation(operationId, transaction.operationFn);
+    // Use SQLite optimizer for intelligent retry
+    return await sqliteOptimizer.executeWithRetry(
+      async () =>
+        await this.executeOperation(operationId, transaction.operationFn),
+      operationId,
+      transaction.maxRetries - transaction.retryCount + 1
+    );
   }
 
   /**
@@ -536,6 +584,7 @@ class DatabaseTransactionManager extends EventEmitter {
    */
   getStatus() {
     return {
+      isInitialized: this.isInitialized,
       isDatabaseBusy: this.isDatabaseBusy,
       activeTransactions: Array.from(this.activeTransactions.values()),
       queuedOperations: this.transactionQueue.length,

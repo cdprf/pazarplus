@@ -28,11 +28,14 @@ const rateLimitRoutes = require("./rate-limits");
 // Import shipping templates routes
 const shippingTemplatesRoutes = require("./shipping-templates");
 
-// Import main shipping routes
-const shippingRoutes = require("./shippingRoutes");
+// Import main shipping routes (DEPRECATED - migrated to modular architecture)
+// const shippingRoutes = require("./shippingRoutes");
 
 // Import database transaction management routes
 const databaseRoutes = require("./database");
+
+// Import shipping related routes
+const shippingRoutes = require("./shipping");
 
 // Health check endpoint - should be accessible at /api/health
 router.get("/health", (req, res) => {
@@ -96,10 +99,15 @@ router.use("/subscription", subscriptionRoutes);
 router.use("/admin", rateLimitRoutes);
 
 // Shipping templates routes
+console.log("Mounting shipping templates routes at /shipping/templates");
 router.use("/shipping/templates", shippingTemplatesRoutes);
 
-// Main shipping routes
+// Main shipping routes - direct mounting to match client API calls
+console.log("Mounting shipping routes at /shipping");
 router.use("/shipping", shippingRoutes);
+
+// Main shipping routes (DEPRECATED - using new modular shipping API in order-management)
+// router.use("/shipping", shippingRoutes);
 
 // Database transaction management routes
 router.use("/database", databaseRoutes);

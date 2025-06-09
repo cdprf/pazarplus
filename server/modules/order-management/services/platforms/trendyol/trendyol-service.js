@@ -558,30 +558,59 @@ class TrendyolService extends BasePlatformService {
                 { transaction: t }
               );
 
-              // Create order items
+              // Create order items with product linking
               if (order.lines && Array.isArray(order.lines)) {
-                for (const item of order.lines) {
-                  await OrderItem.create(
-                    {
-                      orderId: normalizedOrder.id,
-                      productId: null,
-                      platformProductId: item.productCode || "",
-                      title: item.productName || "Unknown Product",
-                      sku: item.merchantSku || item.productCode || "",
-                      quantity: parseInt(item.quantity) || 1,
-                      price: parseFloat(item.price) || 0,
-                      currency: "TRY",
-                      barcode: item.barcode || "",
-                      discount:
-                        parseFloat(item.discount) + (item.tyDiscount || 0),
-                      invoiceTotal: parseFloat(order.totalPrice) || 0,
-                      variantInfo: item.variantFeatures
-                        ? JSON.stringify(item.variantFeatures)
-                        : null,
-                      rawData: JSON.stringify(item),
-                    },
-                    { transaction: t }
+                // Prepare order items data
+                const orderItemsData = order.lines.map((item) => ({
+                  orderId: normalizedOrder.id,
+                  productId: null, // Will be set by linking service
+                  platformProductId: item.productCode || "",
+                  title: item.productName || "Unknown Product",
+                  sku: item.merchantSku || item.productCode || "",
+                  quantity: parseInt(item.quantity) || 1,
+                  price: parseFloat(item.price) || 0,
+                  currency: "TRY",
+                  barcode: item.barcode || "",
+                  discount: parseFloat(item.discount) + (item.tyDiscount || 0),
+                  invoiceTotal: parseFloat(order.totalPrice) || 0,
+                  variantInfo: item.variantFeatures
+                    ? JSON.stringify(item.variantFeatures)
+                    : null,
+                  rawData: JSON.stringify(item),
+                }));
+
+                // Try to link products before creating order items
+                try {
+                  const ProductOrderLinkingService = require("../../../../../services/product-order-linking-service");
+                  const linkingService = new ProductOrderLinkingService();
+                  const linkedItemsData =
+                    await linkingService.linkIncomingOrderItems(
+                      orderItemsData,
+                      this.userId
+                    );
+
+                  // Create order items with potential product links
+                  for (const itemData of linkedItemsData) {
+                    await OrderItem.create(itemData, { transaction: t });
+                  }
+
+                  // Log linking results
+                  const linkedCount = linkedItemsData.filter(
+                    (item) => item.productId
+                  ).length;
+                  if (linkedCount > 0) {
+                    this.logger.info(
+                      `Linked ${linkedCount}/${linkedItemsData.length} order items to products for order ${order.orderNumber}`
+                    );
+                  }
+                } catch (linkingError) {
+                  // If linking fails, create order items without product links
+                  this.logger.warn(
+                    `Product linking failed for order ${order.orderNumber}: ${linkingError.message}`
                   );
+                  for (const itemData of orderItemsData) {
+                    await OrderItem.create(itemData, { transaction: t });
+                  }
                 }
               }
 
@@ -779,27 +808,58 @@ class TrendyolService extends BasePlatformService {
       // Create platform-specific order data
       await this.createTrendyolOrderRecord(newOrder.id, order);
 
-      // Create order items
-      for (const item of order.lines) {
-        await OrderItem.create({
-          orderId: newOrder.id,
-          productId: item.productId,
-          platformProductId: item.productId
-            ? item.productId.toString()
-            : item.productCode.toString(),
-          title: item.productName || "Unknown Product",
-          sku: item.merchantSku,
-          barcode: item.barcode || "",
-          quantity: item.quantity,
-          price: item.price,
-          discount: item.discount || 0,
-          invoiceTotal: item.invoiceTotal || item.price,
-          currency: "TRY",
-          variantInfo: item.variantFeatures
-            ? JSON.stringify(item.variantFeatures)
-            : null,
-          rawData: JSON.stringify(item),
-        });
+      // Create order items with product linking
+      const orderItemsData = order.lines.map((item) => ({
+        orderId: newOrder.id,
+        productId: null, // Will be set by linking service
+        platformProductId: item.productId
+          ? item.productId.toString()
+          : item.productCode.toString(),
+        title: item.productName || "Unknown Product",
+        sku: item.merchantSku,
+        barcode: item.barcode || "",
+        quantity: item.quantity,
+        price: item.price,
+        discount: item.discount || 0,
+        invoiceTotal: item.invoiceTotal || item.price,
+        currency: "TRY",
+        variantInfo: item.variantFeatures
+          ? JSON.stringify(item.variantFeatures)
+          : null,
+        rawData: JSON.stringify(item),
+      }));
+
+      // Try to link products before creating order items
+      try {
+        const ProductOrderLinkingService = require("../../../../../services/product-order-linking-service");
+        const linkingService = new ProductOrderLinkingService();
+        const linkedItemsData = await linkingService.linkIncomingOrderItems(
+          orderItemsData,
+          userId
+        );
+
+        // Create order items with potential product links
+        for (const itemData of linkedItemsData) {
+          await OrderItem.create(itemData);
+        }
+
+        // Log linking results
+        const linkedCount = linkedItemsData.filter(
+          (item) => item.productId
+        ).length;
+        if (linkedCount > 0) {
+          this.logger.info(
+            `Linked ${linkedCount}/${linkedItemsData.length} order items to products for order ${order.orderNumber}`
+          );
+        }
+      } catch (linkingError) {
+        // If linking fails, create order items without product links
+        this.logger.warn(
+          `Product linking failed for order ${order.orderNumber}: ${linkingError.message}`
+        );
+        for (const itemData of orderItemsData) {
+          await OrderItem.create(itemData);
+        }
       }
 
       return {

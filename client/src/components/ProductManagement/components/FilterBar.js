@@ -37,10 +37,10 @@ const SearchInput = ({
     <div className={`relative ${className}`}>
       <div
         className={`relative flex items-center border rounded-lg transition-all duration-200 ${
-          isFocused ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-300"
+          isFocused ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-300 dark:border-gray-600"
         }`}
       >
-        <Search className="absolute left-3 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 h-4 w-4 text-gray-400 dark:text-gray-500" />
         <input
           type="text"
           value={value}
@@ -53,7 +53,7 @@ const SearchInput = ({
         {value && (
           <button
             onClick={onClear}
-            className="absolute right-3 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+            className="absolute right-3 p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:text-gray-500 transition-colors"
             title="Aramayı temizle"
           >
             <X className="h-4 w-4" />
@@ -63,9 +63,9 @@ const SearchInput = ({
 
       {/* Search suggestions could go here */}
       {value && isFocused && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-          <div className="p-2 text-xs text-gray-500 border-b">Öneriler:</div>
-          <div className="p-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+          <div className="p-2 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 border-b">Öneriler:</div>
+          <div className="p-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 cursor-pointer">
             "{value}" için tüm ürünlerde ara
           </div>
         </div>
@@ -129,7 +129,7 @@ const FilterPanel = ({
         <Card className="absolute top-full left-0 right-0 mt-2 z-20 min-w-96">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-gray-900">Filtreler</h3>
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Filtreler</h3>
               <div className="flex items-center space-x-2">
                 <Button
                   onClick={onClearFilters}
@@ -146,7 +146,7 @@ const FilterPanel = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Category Filter */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Kategori
                 </label>
                 <select
@@ -154,7 +154,7 @@ const FilterPanel = ({
                   onChange={(e) =>
                     handleFilterChange("category", e.target.value)
                   }
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Tüm Kategoriler</option>
                   {CATEGORIES.map((category) => (
@@ -167,13 +167,13 @@ const FilterPanel = ({
 
               {/* Status Filter */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Durum
                 </label>
                 <select
                   value={filters.status || ""}
                   onChange={(e) => handleFilterChange("status", e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Tüm Durumlar</option>
                   {STATUS_OPTIONS.map((status) => (
@@ -186,7 +186,7 @@ const FilterPanel = ({
 
               {/* Stock Status Filter */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Stok Durumu
                 </label>
                 <select
@@ -194,7 +194,7 @@ const FilterPanel = ({
                   onChange={(e) =>
                     handleFilterChange("stockStatus", e.target.value)
                   }
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Tüm Stok Durumları</option>
                   {STOCK_STATUS_OPTIONS.map((stockStatus) => (
@@ -208,7 +208,7 @@ const FilterPanel = ({
 
             {/* Price Range Filter */}
             <div className="mt-4">
-              <label className="block text-xs font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Fiyat Aralığı (₺)
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -219,7 +219,7 @@ const FilterPanel = ({
                   onChange={(e) =>
                     handleFilterChange("minPrice", e.target.value)
                   }
-                  className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <input
                   type="number"
@@ -228,14 +228,14 @@ const FilterPanel = ({
                   onChange={(e) =>
                     handleFilterChange("maxPrice", e.target.value)
                   }
-                  className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
 
             {/* Stock Range Filter */}
             <div className="mt-4">
-              <label className="block text-xs font-medium text-gray-700 mb-2">
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Stok Aralığı
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -246,7 +246,7 @@ const FilterPanel = ({
                   onChange={(e) =>
                     handleFilterChange("minStock", e.target.value)
                   }
-                  className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <input
                   type="number"
@@ -255,7 +255,7 @@ const FilterPanel = ({
                   onChange={(e) =>
                     handleFilterChange("maxStock", e.target.value)
                   }
-                  className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
@@ -272,7 +272,7 @@ const PlatformFilter = ({ value, onChange, className = "" }) => {
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white ${className}`}
+      className={`px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 ${className}`}
     >
       {PLATFORMS.map((platform) => (
         <option key={platform.value} value={platform.value}>
@@ -293,7 +293,7 @@ const SortSelector = ({ value, onChange, className = "" }) => {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+        className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800"
         title={`Sıralama: ${currentOption?.label || `${field} (${order})`}`}
       >
         {SORT_OPTIONS.map((option) => (
@@ -305,13 +305,13 @@ const SortSelector = ({ value, onChange, className = "" }) => {
 
       {/* Visual sort direction indicator using field and order */}
       <div
-        className="ml-2 p-1 border border-gray-300 rounded bg-gray-50"
+        className="ml-2 p-1 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-800"
         title={`${field} sıralaması`}
       >
         {order === "asc" ? (
-          <SortAsc className="h-4 w-4 text-gray-600" title="Artan sıralama" />
+          <SortAsc className="h-4 w-4 text-gray-600 dark:text-gray-400 dark:text-gray-500" title="Artan sıralama" />
         ) : (
-          <SortDesc className="h-4 w-4 text-gray-600" title="Azalan sıralama" />
+          <SortDesc className="h-4 w-4 text-gray-600 dark:text-gray-400 dark:text-gray-500" title="Azalan sıralama" />
         )}
       </div>
     </div>
@@ -322,7 +322,7 @@ const SortSelector = ({ value, onChange, className = "" }) => {
 const ViewModeToggle = ({ mode, onChange, className = "" }) => {
   return (
     <div
-      className={`flex items-center border border-gray-300 rounded-lg overflow-hidden ${className}`}
+      className={`flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden ${className}`}
     >
       <Button
         onClick={() => onChange("table")}
@@ -337,7 +337,7 @@ const ViewModeToggle = ({ mode, onChange, className = "" }) => {
         variant={mode === "grid" ? "default" : "ghost"}
         size="sm"
         icon={Grid3X3}
-        className="rounded-none border-0 border-l border-gray-300"
+        className="rounded-none border-0 border-l border-gray-300 dark:border-gray-600"
         title="Kart Görünümü"
       />
     </div>
@@ -481,12 +481,12 @@ const QuickFilterTags = ({
 
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-      <span className="text-sm text-gray-600">Aktif filtreler:</span>
+      <span className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">Aktif filtreler:</span>
       {activeFilters.map((filter) => (
         <Badge
           key={`${filter.key}-${filter.value}`}
           variant="outline"
-          className="flex items-center gap-1 cursor-pointer hover:bg-gray-50"
+          className="flex items-center gap-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800"
         >
           {filter.label}
           <button
@@ -497,7 +497,7 @@ const QuickFilterTags = ({
                 onRemoveFilter(filter.key);
               }
             }}
-            className="ml-1 text-gray-500 hover:text-gray-700"
+            className="ml-1 text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-300"
           >
             <X className="h-3 w-3" />
           </button>
@@ -507,7 +507,7 @@ const QuickFilterTags = ({
         onClick={onClearAll}
         variant="ghost"
         size="sm"
-        className="text-xs text-gray-500 hover:text-gray-700"
+        className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-300"
       >
         Tümünü Temizle
       </Button>
@@ -698,9 +698,9 @@ const FilterSearchDemo = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-800 p-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-8">
           Product Management - Filter & Search Components
         </h1>
 
@@ -750,10 +750,10 @@ const FilterSearchDemo = () => {
           <CardContent>
             <div className="text-center py-12">
               <div className="mb-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                   Filter & Search Demo
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-400 dark:text-gray-500">
                   Test the filters above to see how they work
                 </p>
               </div>
@@ -783,7 +783,7 @@ const FilterSearchDemo = () => {
                   </div>
                 </div>
 
-                <div className="mt-4 p-3 bg-white rounded border border-blue-300">
+                <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded border border-blue-300">
                   <h5 className="font-medium text-blue-900 mb-2">
                     Current Filter State:
                   </h5>

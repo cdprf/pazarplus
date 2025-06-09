@@ -203,6 +203,20 @@ router.get("/sync-status", ProductController.getSyncStatus);
 
 /**
  * @swagger
+ * /api/products/stats:
+ *   get:
+ *     summary: Get product statistics
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Product statistics retrieved successfully
+ */
+router.get("/stats", ProductController.getProductStats);
+
+/**
+ * @swagger
  * /api/products/{id}:
  *   put:
  *     summary: Update product information
@@ -592,20 +606,6 @@ router.put(
 
 /**
  * @swagger
- * /api/products/stats:
- *   get:
- *     summary: Get product statistics
- *     tags: [Products]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Product statistics retrieved successfully
- */
-router.get("/stats", ProductController.getProductStats);
-
-/**
- * @swagger
  * /api/products/low-stock:
  *   get:
  *     summary: Get products with low stock
@@ -822,6 +822,124 @@ router.delete(
     validationMiddleware,
   ],
   ProductController.deleteProductVariant
+);
+
+/**
+ * @swagger
+ * /api/products/variants/groups:
+ *   post:
+ *     summary: Create a new variant group
+ *     tags: [Products, Variants]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - groupName
+ *               - baseProduct
+ *               - variants
+ *             properties:
+ *               groupName:
+ *                 type: string
+ *                 description: Name for the variant group
+ *               baseProduct:
+ *                 type: object
+ *                 description: The base product for the group
+ *               variants:
+ *                 type: array
+ *                 description: Array of products to be converted to variants
+ *               confidence:
+ *                 type: number
+ *                 description: Confidence score of the grouping suggestion
+ *               reason:
+ *                 type: string
+ *                 description: Reason for the grouping
+ *     responses:
+ *       201:
+ *         description: Variant group created successfully
+ */
+router.post(
+  "/variants/groups",
+  [
+    body("groupName").notEmpty().withMessage("Group name is required"),
+    body("baseProduct").isObject().withMessage("Base product is required"),
+    body("variants").isArray().withMessage("Variants must be an array"),
+    validationMiddleware,
+  ],
+  ProductController.createVariantGroup
+);
+
+/**
+ * @swagger
+ * /api/products/variants/groups/{groupId}:
+ *   put:
+ *     summary: Update a variant group
+ *     tags: [Products, Variants]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Variant group ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               groupName:
+ *                 type: string
+ *               variants:
+ *                 type: array
+ *     responses:
+ *       200:
+ *         description: Variant group updated successfully
+ */
+router.put(
+  "/variants/groups/:groupId",
+  [
+    param("groupId").isUUID().withMessage("Group ID must be a valid UUID"),
+    validationMiddleware,
+  ],
+  ProductController.updateVariantGroup
+);
+
+/**
+ * @swagger
+ * /api/products/variants/groups/{groupId}:
+ *   delete:
+ *     summary: Delete a variant group
+ *     tags: [Products, Variants]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Variant group ID
+ *     responses:
+ *       200:
+ *         description: Variant group deleted successfully
+ */
+router.delete(
+  "/variants/groups/:groupId",
+  [
+    param("groupId").isUUID().withMessage("Group ID must be a valid UUID"),
+    validationMiddleware,
+  ],
+  ProductController.deleteVariantGroup
 );
 
 /**

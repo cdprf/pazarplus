@@ -11,6 +11,7 @@ const { Op } = require("sequelize");
 const sequelize = require("../../../../../config/database");
 const logger = require("../../../../../utils/logger");
 const BasePlatformService = require("../BasePlatformService"); // Fixed import path
+const ProductOrderLinkingService = require("../../../../../services/product-order-linking-service");
 
 class HepsiburadaService extends BasePlatformService {
   constructor(connectionId, directCredentials = null, options = {}) {
@@ -1479,31 +1480,77 @@ class HepsiburadaService extends BasePlatformService {
 
               // Create order items if available
               if (order.items && Array.isArray(order.details.items)) {
-                for (const item of order.details.items) {
-                  await OrderItem.create(
-                    {
-                      orderId: normalizedOrder.id,
-                      platformProductId:
-                        item.productBarcode || item.merchantSku || "",
-                      productId: item.productBarcode,
-                      title: item.name || item.title || "Unknown Product",
-                      sku: item.merchantSku || item.sku || "",
-                      quantity: item.quantity || 1,
-                      price: item.unitPrice.amount || 0,
-                      discount:
-                        item.merchantDiscount.totalPrice.amount ||
-                        item.hbDiscount.totalPrice.amount,
-                      invoiceTotal: item.totalPrice.amount || 0,
-                      currency: "TRY",
-                      barcode: item.barcode || "",
+                // Prepare order items data for batch processing with product linking
+                const orderItemsData = order.details.items.map((item) => ({
+                  orderId: normalizedOrder.id,
+                  platformProductId:
+                    item.productBarcode || item.merchantSku || "",
+                  productId: null, // Will be set by product linking
+                  title: item.name || item.title || "Unknown Product",
+                  sku: item.merchantSku || item.sku || "",
+                  quantity: item.quantity || 1,
+                  price: item.unitPrice.amount || 0,
+                  discount:
+                    item.merchantDiscount.totalPrice.amount ||
+                    item.hbDiscount.totalPrice.amount,
+                  invoiceTotal: item.totalPrice.amount || 0,
+                  currency: "TRY",
+                  barcode: item.barcode || "",
+                  variantInfo: item.variant
+                    ? JSON.stringify(item.variant)
+                    : null,
+                  rawData: JSON.stringify(item),
+                }));
 
-                      variantInfo: item.variant
-                        ? JSON.stringify(item.variant)
-                        : null,
-                      rawData: JSON.stringify(item),
-                    },
-                    { transaction: t }
+                try {
+                  // Initialize product linking service
+                  const linkingService = new ProductOrderLinkingService();
+
+                  // Create order items with product linking
+                  const linkingResult =
+                    await linkingService.linkProductsToOrderItems(
+                      orderItemsData,
+                      { transaction: t }
+                    );
+
+                  if (linkingResult.success) {
+                    this.logger.info(
+                      `Product linking completed for order ${orderNumber}: ${linkingResult.stats.linked}/${linkingResult.stats.total} items linked`,
+                      {
+                        orderNumber,
+                        connectionId: this.connectionId,
+                        linkingStats: linkingResult.stats,
+                      }
+                    );
+                  } else {
+                    this.logger.warn(
+                      `Product linking failed for order ${orderNumber}, creating items without linking: ${linkingResult.message}`,
+                      {
+                        orderNumber,
+                        connectionId: this.connectionId,
+                        error: linkingResult.error,
+                      }
+                    );
+
+                    // Fallback: create order items without linking
+                    for (const itemData of orderItemsData) {
+                      await OrderItem.create(itemData, { transaction: t });
+                    }
+                  }
+                } catch (linkingError) {
+                  this.logger.error(
+                    `Product linking service failed for order ${orderNumber}, falling back to direct creation: ${linkingError.message}`,
+                    {
+                      error: linkingError,
+                      orderNumber,
+                      connectionId: this.connectionId,
+                    }
                   );
+
+                  // Fallback: create order items without linking
+                  for (const itemData of orderItemsData) {
+                    await OrderItem.create(itemData, { transaction: t });
+                  }
                 }
               }
 

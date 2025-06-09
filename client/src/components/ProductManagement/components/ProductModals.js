@@ -129,12 +129,12 @@ const ProductFormModal = ({
       <div className="space-y-6 max-h-96 overflow-y-auto">
         {/* Basic Information */}
         <div>
-          <h4 className="text-md font-medium text-gray-900 mb-4">
+          <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">
             Temel Bilgiler
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Ürün Adı *
               </label>
               <input
@@ -142,7 +142,7 @@ const ProductFormModal = ({
                 value={formData.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.name ? "border-red-500" : "border-gray-300"
+                  errors.name ? "border-red-500" : "border-gray-300 dark:border-gray-600"
                 }`}
                 placeholder="Ürün adını girin"
               />
@@ -152,7 +152,7 @@ const ProductFormModal = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 SKU *
               </label>
               <input
@@ -160,7 +160,7 @@ const ProductFormModal = ({
                 value={formData.sku}
                 onChange={(e) => handleInputChange("sku", e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.sku ? "border-red-500" : "border-gray-300"
+                  errors.sku ? "border-red-500" : "border-gray-300 dark:border-gray-600"
                 }`}
                 placeholder="Ürün kodunu girin"
               />
@@ -170,7 +170,7 @@ const ProductFormModal = ({
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Açıklama
               </label>
               <textarea
@@ -179,20 +179,20 @@ const ProductFormModal = ({
                   handleInputChange("description", e.target.value)
                 }
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Ürün açıklamasını girin"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Kategori *
               </label>
               <select
                 value={formData.category}
                 onChange={(e) => handleInputChange("category", e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.category ? "border-red-500" : "border-gray-300"
+                  errors.category ? "border-red-500" : "border-gray-300 dark:border-gray-600"
                 }`}
               >
                 <option value="">Kategori seçin</option>
@@ -208,13 +208,13 @@ const ProductFormModal = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Durum
               </label>
               <select
                 value={formData.status}
                 onChange={(e) => handleInputChange("status", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="active">Aktif</option>
                 <option value="inactive">Pasif</option>
@@ -226,12 +226,12 @@ const ProductFormModal = ({
 
         {/* Pricing & Stock */}
         <div>
-          <h4 className="text-md font-medium text-gray-900 mb-4">
+          <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">
             Fiyat ve Stok
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Satış Fiyatı (₺) *
               </label>
               <input
@@ -239,7 +239,7 @@ const ProductFormModal = ({
                 value={formData.price}
                 onChange={(e) => handleInputChange("price", e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.price ? "border-red-500" : "border-gray-300"
+                  errors.price ? "border-red-500" : "border-gray-300 dark:border-gray-600"
                 }`}
                 placeholder="0.00"
                 step="0.01"
@@ -251,14 +251,14 @@ const ProductFormModal = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Maliyet Fiyatı (₺)
               </label>
               <input
                 type="number"
                 value={formData.costPrice}
                 onChange={(e) => handleInputChange("costPrice", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0.00"
                 step="0.01"
                 min="0"
@@ -266,7 +266,7 @@ const ProductFormModal = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Stok Miktarı *
               </label>
               <input
@@ -276,7 +276,7 @@ const ProductFormModal = ({
                   handleInputChange("stockQuantity", e.target.value)
                 }
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.stockQuantity ? "border-red-500" : "border-gray-300"
+                  errors.stockQuantity ? "border-red-500" : "border-gray-300 dark:border-gray-600"
                 }`}
                 placeholder="0"
                 min="0"
@@ -289,7 +289,7 @@ const ProductFormModal = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Minimum Stok
               </label>
               <input
@@ -298,7 +298,7 @@ const ProductFormModal = ({
                 onChange={(e) =>
                   handleInputChange("minStockLevel", e.target.value)
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0"
                 min="0"
               />
@@ -308,12 +308,12 @@ const ProductFormModal = ({
 
         {/* Dimensions & Weight */}
         <div>
-          <h4 className="text-md font-medium text-gray-900 mb-4">
+          <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">
             Boyut ve Ağırlık
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Uzunluk (cm)
               </label>
               <input
@@ -322,28 +322,28 @@ const ProductFormModal = ({
                 onChange={(e) =>
                   handleDimensionChange("length", e.target.value)
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0"
                 min="0"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Genişlik (cm)
               </label>
               <input
                 type="number"
                 value={formData.dimensions.width}
                 onChange={(e) => handleDimensionChange("width", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0"
                 min="0"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Yükseklik (cm)
               </label>
               <input
@@ -352,21 +352,21 @@ const ProductFormModal = ({
                 onChange={(e) =>
                   handleDimensionChange("height", e.target.value)
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0"
                 min="0"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Ağırlık (kg)
               </label>
               <input
                 type="number"
                 value={formData.weight}
                 onChange={(e) => handleInputChange("weight", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0.00"
                 step="0.01"
                 min="0"
@@ -377,7 +377,7 @@ const ProductFormModal = ({
 
         {/* Images */}
         <div>
-          <h4 className="text-md font-medium text-gray-900 mb-4">
+          <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">
             Ürün Görselleri
           </h4>
           <div className="space-y-4">
@@ -387,7 +387,7 @@ const ProductFormModal = ({
                   <img
                     src={image}
                     alt={`Product ${index + 1}`}
-                    className="w-20 h-20 object-cover rounded-lg border border-gray-300"
+                    className="w-20 h-20 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
                   />
                   <button
                     type="button"
@@ -401,9 +401,9 @@ const ProductFormModal = ({
               <button
                 type="button"
                 onClick={addImage}
-                className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-gray-400 transition-colors"
+                className="w-20 h-20 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center hover:border-gray-400 transition-colors"
               >
-                <Plus className="w-6 h-6 text-gray-400" />
+                <Plus className="w-6 h-6 text-gray-400 dark:text-gray-500" />
               </button>
             </div>
           </div>
@@ -411,7 +411,7 @@ const ProductFormModal = ({
 
         {/* Tags */}
         <div>
-          <h4 className="text-md font-medium text-gray-900 mb-4">Etiketler</h4>
+          <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">Etiketler</h4>
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
               {formData.tags.map((tag, index) => (
@@ -425,7 +425,7 @@ const ProductFormModal = ({
                   <button
                     type="button"
                     onClick={() => removeTag(tag)}
-                    className="ml-1 text-gray-500 hover:text-gray-700"
+                    className="ml-1 text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-300"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -438,7 +438,7 @@ const ProductFormModal = ({
                 value={newTag}
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && addTag()}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Yeni etiket ekle"
               />
               <Button onClick={addTag} variant="outline" size="sm">
@@ -450,7 +450,7 @@ const ProductFormModal = ({
 
         {/* Platform Settings */}
         <div>
-          <h4 className="text-md font-medium text-gray-900 mb-4">
+          <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">
             Platform Ayarları
           </h4>
           <div className="space-y-4">
@@ -471,11 +471,11 @@ const ProductFormModal = ({
                             e.target.checked
                           )
                         }
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mr-3"
+                        className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 mr-3"
                       />
                       <div className="flex items-center">
                         {PlatformIcons[platform.value]}
-                        <span className="ml-2 font-medium text-gray-900">
+                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
                           {platform.label}
                         </span>
                       </div>
@@ -485,7 +485,7 @@ const ProductFormModal = ({
                   {formData.platforms[platform.value]?.enabled && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Platform SKU
                         </label>
                         <input
@@ -501,12 +501,12 @@ const ProductFormModal = ({
                               e.target.value
                             )
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Platform SKU"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Platform Fiyatı (₺)
                         </label>
                         <input
@@ -521,7 +521,7 @@ const ProductFormModal = ({
                               e.target.value
                             )
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="0.00"
                           step="0.01"
                           min="0"
@@ -537,7 +537,7 @@ const ProductFormModal = ({
       </div>
 
       {/* Footer */}
-      <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 mt-6">
+      <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700 mt-6">
         <Button onClick={onClose} variant="outline">
           İptal
         </Button>
@@ -573,7 +573,7 @@ const ProductDetailsModal = ({
               <img
                 src={product.images[0]}
                 alt={product.name}
-                className="h-64 w-auto object-contain cursor-pointer hover:opacity-90 rounded-lg border border-gray-200"
+                className="h-64 w-auto object-contain cursor-pointer hover:opacity-90 rounded-lg border border-gray-200 dark:border-gray-700"
                 onClick={() =>
                   onImageClick?.(product.images[0], product.name, product)
                 }
@@ -585,13 +585,13 @@ const ProductDetailsModal = ({
                       key={index}
                       src={img}
                       alt={`${product.name} ${index + 2}`}
-                      className="h-16 w-16 object-cover rounded cursor-pointer hover:opacity-80 border border-gray-200"
+                      className="h-16 w-16 object-cover rounded cursor-pointer hover:opacity-80 border border-gray-200 dark:border-gray-700"
                       onClick={() => onImageClick?.(img, product.name, product)}
                     />
                   ))}
                   {product.images.length > 5 && (
-                    <div className="h-16 w-16 bg-gray-100 rounded flex items-center justify-center border border-gray-200">
-                      <span className="text-sm text-gray-500">
+                    <div className="h-16 w-16 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center border border-gray-200 dark:border-gray-700">
+                      <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
                         +{product.images.length - 5}
                       </span>
                     </div>
@@ -600,36 +600,36 @@ const ProductDetailsModal = ({
               )}
             </div>
           ) : (
-            <div className="h-64 w-64 bg-gray-100 flex items-center justify-center rounded-lg border border-gray-200">
-              <Image className="h-16 w-16 text-gray-400" />
+            <div className="h-64 w-64 bg-gray-100 dark:bg-gray-700 flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700">
+              <Image className="h-16 w-16 text-gray-400 dark:text-gray-500" />
             </div>
           )}
         </div>
 
         {/* Product Info */}
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
             {product.name}
           </h2>
-          <p className="text-gray-600 mb-4">{product.description}</p>
+          <p className="text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">{product.description}</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Basic Info */}
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-500">SKU</label>
-                <p className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">SKU</label>
+                <p className="font-mono text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
                   {product.sku}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">
                   Kategori
                 </label>
                 <p className="font-medium">{product.category}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">
                   Durum
                 </label>
                 <div>
@@ -651,7 +651,7 @@ const ProductDetailsModal = ({
             {/* Pricing & Stock */}
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-500">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">
                   Satış Fiyatı
                 </label>
                 <p className="text-lg font-semibold text-green-600">
@@ -660,7 +660,7 @@ const ProductDetailsModal = ({
               </div>
               {product.costPrice && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500">
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">
                     Maliyet Fiyatı
                   </label>
                   <p className="font-medium">
@@ -669,7 +669,7 @@ const ProductDetailsModal = ({
                 </div>
               )}
               <div>
-                <label className="text-sm font-medium text-gray-500">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">
                   Stok Durumu
                 </label>
                 <div className="flex items-center">
@@ -686,31 +686,31 @@ const ProductDetailsModal = ({
         {/* Dimensions & Weight */}
         {(product.dimensions || product.weight) && (
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-3">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">
               Boyut ve Ağırlık
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               {product.dimensions?.length && (
                 <div>
-                  <label className="text-gray-500">Uzunluk</label>
+                  <label className="text-gray-500 dark:text-gray-400 dark:text-gray-500">Uzunluk</label>
                   <p className="font-medium">{product.dimensions.length} cm</p>
                 </div>
               )}
               {product.dimensions?.width && (
                 <div>
-                  <label className="text-gray-500">Genişlik</label>
+                  <label className="text-gray-500 dark:text-gray-400 dark:text-gray-500">Genişlik</label>
                   <p className="font-medium">{product.dimensions.width} cm</p>
                 </div>
               )}
               {product.dimensions?.height && (
                 <div>
-                  <label className="text-gray-500">Yükseklik</label>
+                  <label className="text-gray-500 dark:text-gray-400 dark:text-gray-500">Yükseklik</label>
                   <p className="font-medium">{product.dimensions.height} cm</p>
                 </div>
               )}
               {product.weight && (
                 <div>
-                  <label className="text-gray-500">Ağırlık</label>
+                  <label className="text-gray-500 dark:text-gray-400 dark:text-gray-500">Ağırlık</label>
                   <p className="font-medium">{product.weight} kg</p>
                 </div>
               )}
@@ -721,7 +721,7 @@ const ProductDetailsModal = ({
         {/* Tags */}
         {product.tags && product.tags.length > 0 && (
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-3">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">
               Etiketler
             </h3>
             <div className="flex flex-wrap gap-2">
@@ -741,7 +741,7 @@ const ProductDetailsModal = ({
 
         {/* Platform Status */}
         <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-3">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">
             Platform Durumu
           </h3>
           {platformBadges.length > 0 ? (
@@ -749,7 +749,7 @@ const ProductDetailsModal = ({
               {platformBadges.map((platform, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+                  className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
                 >
                   <div className="flex items-center">
                     {platform.icon}
@@ -757,15 +757,15 @@ const ProductDetailsModal = ({
                   </div>
                   <div className="flex items-center space-x-4 text-sm">
                     {platform.sku && (
-                      <span className="text-gray-600">SKU: {platform.sku}</span>
+                      <span className="text-gray-600 dark:text-gray-400 dark:text-gray-500">SKU: {platform.sku}</span>
                     )}
                     {platform.stockQuantity !== undefined && (
-                      <span className="text-gray-600">
+                      <span className="text-gray-600 dark:text-gray-400 dark:text-gray-500">
                         Stok: {platform.stockQuantity}
                       </span>
                     )}
                     {platform.price && (
-                      <span className="text-gray-600">
+                      <span className="text-gray-600 dark:text-gray-400 dark:text-gray-500">
                         Fiyat: {formatPrice(platform.price)}
                       </span>
                     )}
@@ -775,13 +775,13 @@ const ProductDetailsModal = ({
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-sm">Platform bağlantısı yok</p>
+            <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm">Platform bağlantısı yok</p>
           )}
         </div>
       </div>
 
       {/* Footer */}
-      <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 mt-6">
+      <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700 mt-6">
         <Button onClick={onClose} variant="outline">
           Kapat
         </Button>
@@ -900,7 +900,7 @@ const ImagePreviewModal = ({
                 className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
                   index === activeIndex
                     ? "border-blue-500 ring-2 ring-blue-300"
-                    : "border-gray-300 hover:border-gray-400"
+                    : "border-gray-300 dark:border-gray-600 hover:border-gray-400"
                 }`}
               >
                 <img
@@ -949,7 +949,7 @@ const ConfirmationModal = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
       <div className="space-y-4">
-        <p className="text-gray-600">{message}</p>
+        <p className="text-gray-600 dark:text-gray-400 dark:text-gray-500">{message}</p>
         <div className="flex justify-end space-x-3">
           <Button onClick={onClose} variant="outline">
             {cancelText}

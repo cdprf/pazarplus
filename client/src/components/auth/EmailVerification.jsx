@@ -1,7 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Container, Row, Col, Card, Alert, Button, Spinner } from 'react-bootstrap';
-import api from '../../services/api';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Alert,
+  Button,
+  Spinner,
+} from "react-bootstrap";
+import api from "../../services/api";
 
 const EmailVerification = () => {
   const [searchParams] = useSearchParams();
@@ -12,25 +20,25 @@ const EmailVerification = () => {
 
   useEffect(() => {
     const verifyEmail = async () => {
-      const token = searchParams.get('token');
+      const token = searchParams.get("token");
       if (!token) {
-        setError('No verification token provided');
+        setError("No verification token provided");
         setVerifying(false);
         return;
       }
 
       try {
-        const response = await api.post('/api/auth/verify-email', { token });
+        const response = await api.post("/auth/verify-email", { token });
         if (response.data.success) {
           setSuccess(true);
           // Store tokens
-          localStorage.setItem('token', response.data.accessToken);
-          localStorage.setItem('refreshToken', response.data.refreshToken);
+          localStorage.setItem("token", response.data.accessToken);
+          localStorage.setItem("refreshToken", response.data.refreshToken);
           // Redirect to dashboard after 3 seconds
-          setTimeout(() => navigate('/dashboard'), 3000);
+          setTimeout(() => navigate("/dashboard"), 3000);
         }
       } catch (err) {
-        setError(err.response?.data?.message || 'Error verifying email');
+        setError(err.response?.data?.message || "Error verifying email");
       } finally {
         setVerifying(false);
       }
@@ -42,19 +50,23 @@ const EmailVerification = () => {
   const handleResendVerification = async () => {
     try {
       setVerifying(true);
-      const email = localStorage.getItem('pendingVerificationEmail');
+      const email = localStorage.getItem("pendingVerificationEmail");
       if (!email) {
-        setError('No email found for verification');
+        setError("No email found for verification");
         return;
       }
 
-      const response = await api.post('/api/auth/resend-verification', { email });
+      const response = await api.post("/auth/resend-verification", {
+        email,
+      });
       if (response.data.success) {
         setSuccess(true);
         setError(null);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Error resending verification email');
+      setError(
+        err.response?.data?.message || "Error resending verification email"
+      );
     } finally {
       setVerifying(false);
     }
@@ -67,7 +79,7 @@ const EmailVerification = () => {
           <Card>
             <Card.Body className="text-center">
               <h2 className="mb-4">Email Verification</h2>
-              
+
               {verifying ? (
                 <>
                   <Spinner animation="border" role="status" />
@@ -82,7 +94,7 @@ const EmailVerification = () => {
                 <Alert variant="danger">
                   <h4>Verification Failed</h4>
                   <p>{error}</p>
-                  <Button 
+                  <Button
                     variant="primary"
                     onClick={handleResendVerification}
                     disabled={verifying}

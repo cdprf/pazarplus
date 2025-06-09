@@ -16,19 +16,23 @@ class AdvancedInventoryService {
   /**
    * Record an inventory movement
    */
-  async recordMovement({
-    productId,
-    variantId,
-    sku,
-    movementType,
-    quantity,
-    reason,
-    userId,
-    orderId = null,
-    reference = null,
-    metadata = {},
-  }) {
-    const transaction = await sequelize.transaction();
+  async recordMovement(
+    {
+      productId,
+      variantId,
+      sku,
+      movementType,
+      quantity,
+      reason,
+      userId,
+      orderId = null,
+      reference = null,
+      metadata = {},
+    },
+    options = {}
+  ) {
+    const transaction = options.transaction || (await sequelize.transaction());
+    const shouldCommitTransaction = !options.transaction;
 
     try {
       // Find the product/variant to update
@@ -106,7 +110,9 @@ class AdvancedInventoryService {
         { transaction }
       );
 
-      await transaction.commit();
+      if (shouldCommitTransaction) {
+        await transaction.commit();
+      }
 
       logger.info(
         `Inventory movement recorded: ${
@@ -121,7 +127,9 @@ class AdvancedInventoryService {
         entity: targetEntity,
       };
     } catch (error) {
-      await transaction.rollback();
+      if (shouldCommitTransaction) {
+        await transaction.rollback();
+      }
       logger.error("Error recording inventory movement:", error);
       throw error;
     }
@@ -189,18 +197,21 @@ class AdvancedInventoryService {
       );
 
       // Record the reservation movement
-      await this.recordMovement({
-        productId,
-        variantId,
-        sku,
-        movementType: "RESERVATION",
-        quantity: -quantity, // Negative because it's reserved
-        reason: `Stock reserved for order ${orderId}`,
-        userId,
-        orderId,
-        reference: reservation.id,
-        metadata: { reservationId: reservation.id },
-      });
+      await this.recordMovement(
+        {
+          productId,
+          variantId,
+          sku,
+          movementType: "RESERVATION",
+          quantity: -quantity, // Negative because it's reserved
+          reason: `Stock reserved for order ${orderId}`,
+          userId,
+          orderId,
+          reference: reservation.id,
+          metadata: { reservationId: reservation.id },
+        },
+        { transaction }
+      );
 
       await transaction.commit();
 
@@ -245,18 +256,21 @@ class AdvancedInventoryService {
       );
 
       // Record the release movement
-      await this.recordMovement({
-        productId: reservation.productId,
-        variantId: reservation.variantId,
-        sku: reservation.sku,
-        movementType: "RELEASE",
-        quantity: reservation.quantity, // Positive because it's released back
-        reason,
-        userId: reservation.userId,
-        orderId: reservation.orderId,
-        reference: reservationId,
-        metadata: { reservationId },
-      });
+      await this.recordMovement(
+        {
+          productId: reservation.productId,
+          variantId: reservation.variantId,
+          sku: reservation.sku,
+          movementType: "RELEASE",
+          quantity: reservation.quantity, // Positive because it's released back
+          reason,
+          userId: reservation.userId,
+          orderId: reservation.orderId,
+          reference: reservationId,
+          metadata: { reservationId },
+        },
+        { transaction }
+      );
 
       await transaction.commit();
 
@@ -302,22 +316,25 @@ class AdvancedInventoryService {
       );
 
       // Record the sale movement (no stock change since it was already reserved)
-      await this.recordMovement({
-        productId: reservation.productId,
-        variantId: reservation.variantId,
-        sku: reservation.sku,
-        movementType: "SALE",
-        quantity: 0, // No stock change since it was already reserved
-        reason,
-        userId: reservation.userId,
-        orderId: reservation.orderId,
-        reference: reservationId,
-        metadata: {
-          reservationId,
-          confirmedReservation: true,
-          originalQuantity: reservation.quantity,
+      await this.recordMovement(
+        {
+          productId: reservation.productId,
+          variantId: reservation.variantId,
+          sku: reservation.sku,
+          movementType: "SALE",
+          quantity: 0, // No stock change since it was already reserved
+          reason,
+          userId: reservation.userId,
+          orderId: reservation.orderId,
+          reference: reservationId,
+          metadata: {
+            reservationId,
+            confirmedReservation: true,
+            originalQuantity: reservation.quantity,
+          },
         },
-      });
+        { transaction }
+      );
 
       await transaction.commit();
 
@@ -538,21 +555,24 @@ class AdvancedInventoryService {
         );
 
         // Release the reserved stock
-        await this.recordMovement({
-          productId: reservation.productId,
-          variantId: reservation.variantId,
-          sku: reservation.sku,
-          movementType: "RELEASE",
-          quantity: reservation.quantity,
-          reason: "Reservation expired automatically",
-          userId: reservation.userId,
-          orderId: reservation.orderId,
-          reference: reservation.id,
-          metadata: {
-            reservationId: reservation.id,
-            autoExpired: true,
+        await this.recordMovement(
+          {
+            productId: reservation.productId,
+            variantId: reservation.variantId,
+            sku: reservation.sku,
+            movementType: "RELEASE",
+            quantity: reservation.quantity,
+            reason: "Reservation expired automatically",
+            userId: reservation.userId,
+            orderId: reservation.orderId,
+            reference: reservation.id,
+            metadata: {
+              reservationId: reservation.id,
+              autoExpired: true,
+            },
           },
-        });
+          { transaction }
+        );
       }
 
       await transaction.commit();

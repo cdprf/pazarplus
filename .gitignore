@@ -1,7 +1,13 @@
 # Dependencies
 node_modules/
 /client/node_modules/
-
+*final*
+*implementation*
+check*
+diagnose*
+*.sh
+*.pdf
+*summary*
 # Production build
 /client/build/
 
@@ -67,3 +73,7 @@ ENHANCED_PLATFORM_SERVICES_COMPLETE.md
 test-api-endpoints.js
 analyze-real-stock-patterns.js
 analyze-stock-patterns.js
+final-linking-verification.js
+DARK_MODE_FINAL_STATUS_REPORT.md
+DARK_MODE_ANALYSIS_REPORT.md
+SHIPPING_DESIGNER_ANALYSIS_COMPLETE.md

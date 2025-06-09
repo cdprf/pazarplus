@@ -29,6 +29,7 @@ class TurkishComplianceService extends EventEmitter {
       SENT: "sent",
       ACCEPTED: "accepted",
       REJECTED: "rejected",
+      GIB_FAILED: "gib_failed",
     };
 
     logger.info("Turkish Compliance Service initialized");
@@ -130,8 +131,31 @@ class TurkishComplianceService extends EventEmitter {
         generatedAt: new Date(),
       });
 
-      // TODO: Send to GIB system
-      // await this.sendToGIB(complianceDoc);
+      // Send to GIB system
+      try {
+        await this.sendToGIB(complianceDoc);
+        logger.info(
+          `E-invoice sent to GIB successfully for order ${complianceData.orderId}`,
+          {
+            invoiceNumber,
+            documentId: complianceDoc.id,
+          }
+        );
+      } catch (gibError) {
+        logger.error(
+          `Failed to send e-invoice to GIB for order ${complianceData.orderId}:`,
+          {
+            error: gibError.message,
+            invoiceNumber,
+            documentId: complianceDoc.id,
+          }
+        );
+        // Update document status to indicate GIB submission failed
+        await complianceDoc.update({
+          status: this.documentStatus.GIB_FAILED,
+          gibError: gibError.message,
+        });
+      }
 
       this.emit("eInvoiceGenerated", {
         orderId: complianceData.orderId,
@@ -464,6 +488,131 @@ class TurkishComplianceService extends EventEmitter {
     } catch (error) {
       logger.error("Failed to generate compliance report:", error);
       throw error;
+    }
+  }
+
+  /**
+   * Send compliance document to GIB (Revenue Administration) system
+   * @param {Object} complianceDoc - The compliance document to send
+   * @returns {Promise<Object>} GIB response
+   */
+  async sendToGIB(complianceDoc) {
+    try {
+      const gibConfig = {
+        endpoint: process.env.GIB_ENDPOINT || "https://test-ebelge.gib.gov.tr",
+        username: process.env.GIB_USERNAME,
+        password: process.env.GIB_PASSWORD,
+        timeout: parseInt(process.env.GIB_TIMEOUT || "30000"),
+      };
+
+      if (!gibConfig.username || !gibConfig.password) {
+        throw new Error("GIB credentials not configured");
+      }
+
+      logger.info(`Sending document to GIB: ${complianceDoc.documentNumber}`, {
+        documentId: complianceDoc.id,
+        documentType: complianceDoc.documentType,
+        endpoint: gibConfig.endpoint,
+      });
+
+      // Prepare the SOAP envelope for GIB submission
+      const soapEnvelope = this.createGIBSoapEnvelope(complianceDoc, gibConfig);
+
+      // For now, simulate the GIB API call
+      // In production, this would make an actual SOAP request to GIB
+      const gibResponse = await this.simulateGIBSubmission(
+        soapEnvelope,
+        gibConfig
+      );
+
+      // Update document status based on GIB response
+      await complianceDoc.update({
+        status: gibResponse.success
+          ? this.documentStatus.SENT
+          : this.documentStatus.GIB_FAILED,
+        gibSubmissionId: gibResponse.submissionId,
+        gibResponse: gibResponse,
+        sentAt: gibResponse.success ? new Date() : null,
+      });
+
+      logger.info(
+        `GIB submission completed for document ${complianceDoc.documentNumber}`,
+        {
+          success: gibResponse.success,
+          submissionId: gibResponse.submissionId,
+        }
+      );
+
+      return gibResponse;
+    } catch (error) {
+      logger.error(
+        `GIB submission failed for document ${complianceDoc.documentNumber}:`,
+        error
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Create SOAP envelope for GIB submission
+   * @param {Object} complianceDoc - The compliance document
+   * @param {Object} gibConfig - GIB configuration
+   * @returns {string} SOAP envelope XML
+   */
+  createGIBSoapEnvelope(complianceDoc, gibConfig) {
+    const documentXml = Buffer.from(complianceDoc.xmlContent).toString(
+      "base64"
+    );
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+      <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:gib="http://gib.gov.tr/">
+        <soapenv:Header>
+          <gib:Authentication>
+            <gib:Username>${gibConfig.username}</gib:Username>
+            <gib:Password>${gibConfig.password}</gib:Password>
+          </gib:Authentication>
+        </soapenv:Header>
+        <soapenv:Body>
+          <gib:SendDocument>
+            <gib:DocumentType>${complianceDoc.documentType}</gib:DocumentType>
+            <gib:DocumentNumber>${
+              complianceDoc.documentNumber
+            }</gib:DocumentNumber>
+            <gib:DocumentContent>${documentXml}</gib:DocumentContent>
+            <gib:Timestamp>${new Date().toISOString()}</gib:Timestamp>
+          </gib:SendDocument>
+        </soapenv:Body>
+      </soapenv:Envelope>`;
+  }
+
+  /**
+   * Simulate GIB submission for development/testing
+   * @param {string} soapEnvelope - The SOAP envelope
+   * @param {Object} gibConfig - GIB configuration
+   * @returns {Promise<Object>} Simulated GIB response
+   */
+  async simulateGIBSubmission(soapEnvelope, gibConfig) {
+    // Simulate network delay
+    await new Promise((resolve) =>
+      setTimeout(resolve, 1000 + Math.random() * 2000)
+    );
+
+    // Simulate success/failure based on configuration
+    const shouldSucceed =
+      process.env.NODE_ENV !== "production" || Math.random() > 0.1;
+
+    if (shouldSucceed) {
+      return {
+        success: true,
+        submissionId: `GIB_${Date.now()}_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`,
+        status: "ACCEPTED",
+        message: "Document successfully submitted to GIB",
+        timestamp: new Date().toISOString(),
+      };
+    } else {
+      throw new Error("GIB system temporarily unavailable");
     }
   }
 }

@@ -5,6 +5,7 @@ import { API_BASE_URL } from "./utils/constants";
 import { useAlert } from "../../contexts/AlertContext";
 import ProductDisplay from "./components/ProductDisplay";
 import { ImagePreviewModal } from "./components/ProductModals";
+import { productUtils } from "./utils/productUtils";
 
 // API integration
 const api = {
@@ -72,11 +73,12 @@ const Button = ({
 }) => {
   const variants = {
     default:
-      "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-blue-500",
+      "bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-blue-500",
     primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
     outline:
-      "border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 focus:ring-blue-500",
-    ghost: "text-gray-700 hover:bg-gray-100 focus:ring-blue-500",
+      "border border-gray-300 dark:border-gray-600 bg-transparent text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-blue-500",
+    ghost:
+      "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:ring-blue-500",
     danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
     success: "bg-green-600 text-white hover:bg-green-700 focus:ring-green-500",
   };
@@ -125,14 +127,16 @@ const Modal = ({
           onClick={onClose}
         />
         <div
-          className={`inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle ${sizes[size]} sm:w-full ${className}`}
+          className={`inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle ${sizes[size]} sm:w-full ${className}`}
         >
-          <div className="bg-white px-6 pt-6 pb-4">
+          <div className="bg-white dark:bg-gray-800 px-6 pt-6 pb-4">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                {title}
+              </h3>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -191,7 +195,7 @@ const ProductForm = ({ product, onSave, onCancel }) => {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Ürün Adı *
           </label>
           <input
@@ -200,13 +204,13 @@ const ProductForm = ({ product, onSave, onCancel }) => {
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, name: e.target.value }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Ürün adını girin"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             SKU *
           </label>
           <input
@@ -215,13 +219,13 @@ const ProductForm = ({ product, onSave, onCancel }) => {
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, sku: e.target.value }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Ürün kodunu girin"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Kategori *
           </label>
           <select
@@ -229,7 +233,7 @@ const ProductForm = ({ product, onSave, onCancel }) => {
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, category: e.target.value }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           >
             <option value="">Kategori seçin</option>
@@ -241,7 +245,7 @@ const ProductForm = ({ product, onSave, onCancel }) => {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Fiyat (₺) *
           </label>
           <input
@@ -255,13 +259,13 @@ const ProductForm = ({ product, onSave, onCancel }) => {
                 price: parseFloat(e.target.value) || 0,
               }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="0.00"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Stok Miktarı *
           </label>
           <input
@@ -274,13 +278,13 @@ const ProductForm = ({ product, onSave, onCancel }) => {
                 stockQuantity: parseInt(e.target.value) || 0,
               }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="0"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Durum
           </label>
           <select
@@ -288,7 +292,7 @@ const ProductForm = ({ product, onSave, onCancel }) => {
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, status: e.target.value }))
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="active">Aktif</option>
             <option value="inactive">Pasif</option>
@@ -298,7 +302,7 @@ const ProductForm = ({ product, onSave, onCancel }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Açıklama
         </label>
         <textarea
@@ -307,7 +311,7 @@ const ProductForm = ({ product, onSave, onCancel }) => {
             setFormData((prev) => ({ ...prev, description: e.target.value }))
           }
           rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="Ürün açıklaması"
         />
       </div>
@@ -327,6 +331,9 @@ const ProductForm = ({ product, onSave, onCancel }) => {
 
 // Main ProductManagement Component
 const ProductManagement = () => {
+  console.log("🚀 [COMPONENT] ProductManagement component rendered!");
+  console.log("🔧 [COMPONENT] API_BASE_URL:", API_BASE_URL);
+
   const { showAlert } = useAlert();
   const navigate = useNavigate();
   const { id: productId } = useParams();
@@ -369,6 +376,20 @@ const ProductManagement = () => {
     },
     activeTab: "all",
   });
+
+  // Add state for all products statistics - Enhanced with comprehensive status tracking
+  const [allProductsStats, setAllProductsStats] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    draft: 0,
+    pending: 0,
+    rejected: 0,
+    outOfStock: 0,
+    lowStock: 0,
+  });
+
+  console.log("📊 [STATE] allProductsStats current value:", allProductsStats);
 
   // Update state helper
   const updateState = useCallback((updates) => {
@@ -434,10 +455,90 @@ const ProductManagement = () => {
     updateState,
   ]);
 
+  // Function to fetch all products statistics
+  const fetchAllProductsStats = useCallback(async () => {
+    try {
+      console.log("🔍 Fetching product statistics...");
+      console.log("📍 API_BASE_URL:", API_BASE_URL);
+      console.log("🔑 Token exists:", !!localStorage.getItem("token"));
+
+      // Try to get stats from a dedicated endpoint first
+      const response = await api.get(`${API_BASE_URL}/products/stats`);
+      console.log("📊 Stats API response:", response);
+
+      if (response.success && response.data?.overview) {
+        // Map server response to client format with enhanced status tracking
+        const { overview } = response.data;
+        console.log("📈 Overview data:", overview);
+
+        const newStats = {
+          total: overview.totalProducts || 0,
+          active: overview.activeProducts || 0,
+          inactive: overview.inactiveProducts || 0,
+          draft: overview.draftProducts || 0,
+          pending: overview.pendingProducts || 0,
+          rejected: overview.rejectedProducts || 0,
+          outOfStock: overview.outOfStockProducts || 0,
+          lowStock: overview.lowStockProducts || 0,
+        };
+
+        console.log("🎯 Setting stats to:", newStats);
+        setAllProductsStats(newStats);
+        return;
+      } else {
+        console.log("⚠️ Stats API failed, using fallback...");
+        console.log("📝 Stats response structure:", response);
+
+        // Fallback: fetch all products without pagination to count them
+        console.log("🔄 Fetching all products for counting...");
+        const allProductsResponse = await api.get(
+          `${API_BASE_URL}/products?limit=999999&page=0`
+        );
+        console.log("📦 All products response:", allProductsResponse);
+
+        if (allProductsResponse.success) {
+          const allProducts = allProductsResponse.data?.products || [];
+          console.log("📊 Found products:", allProducts.length);
+
+          // Use enhanced productUtils for comprehensive counting
+          console.log("🧮 Calculating stats with productUtils...");
+          const comprehensiveStats = productUtils.getStatusCounts(allProducts);
+          console.log("📋 Comprehensive stats:", comprehensiveStats);
+
+          const stats = {
+            total: allProducts.length,
+            active: comprehensiveStats.active,
+            inactive: comprehensiveStats.inactive,
+            draft: comprehensiveStats.draft,
+            pending: comprehensiveStats.pending,
+            rejected: comprehensiveStats.rejected,
+            outOfStock: comprehensiveStats.outOfStock,
+            lowStock: comprehensiveStats.lowStock,
+          };
+
+          console.log("🎯 Setting fallback stats to:", stats);
+          setAllProductsStats(stats);
+        } else {
+          console.error("❌ Fallback API call failed:", allProductsResponse);
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error fetching product statistics:", error);
+      console.error("🔍 Error details:", error.message);
+      console.error("📋 Error stack:", error.stack);
+      // Keep current stats if fetch fails
+    }
+  }, []);
+
   // Initial fetch
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  // Fetch stats on component mount
+  useEffect(() => {
+    fetchAllProductsStats();
+  }, [fetchAllProductsStats]);
 
   // Event Handlers
   const handleSync = useCallback(async () => {
@@ -473,12 +574,13 @@ const ProductManagement = () => {
           await api.delete(`${API_BASE_URL}/products/${productId}`);
           showAlert("Ürün başarıyla silindi", "success");
           fetchProducts();
+          fetchAllProductsStats(); // Refresh stats
         } catch (error) {
           showAlert("Ürün silinirken hata oluştu: " + error.message, "error");
         }
       }
     },
-    [showAlert, fetchProducts]
+    [showAlert, fetchProducts, fetchAllProductsStats]
   );
 
   const handleSaveProduct = useCallback(
@@ -496,11 +598,18 @@ const ProductManagement = () => {
         }
         updateState({ productModal: { open: false, product: null } });
         fetchProducts();
+        fetchAllProductsStats(); // Refresh stats
       } catch (error) {
         showAlert("İşlem sırasında hata oluştu: " + error.message, "error");
       }
     },
-    [state.productModal.product, showAlert, fetchProducts, updateState]
+    [
+      state.productModal.product,
+      showAlert,
+      fetchProducts,
+      updateState,
+      fetchAllProductsStats,
+    ]
   );
 
   const handleViewProduct = useCallback(
@@ -675,6 +784,7 @@ const ProductManagement = () => {
         showAlert(`${count} ürün başarıyla silindi`, "success");
         updateState({ selectedProducts: [] });
         fetchProducts();
+        fetchAllProductsStats(); // Refresh stats
       } catch (error) {
         showAlert(
           "Toplu silme işlemi sırasında hata oluştu: " + error.message,
@@ -684,7 +794,13 @@ const ProductManagement = () => {
         updateState({ loading: false });
       }
     }
-  }, [state.selectedProducts, showAlert, updateState, fetchProducts]);
+  }, [
+    state.selectedProducts,
+    showAlert,
+    updateState,
+    fetchProducts,
+    fetchAllProductsStats,
+  ]);
 
   const handleBulkStatusChange = useCallback(
     async (status) => {
@@ -725,6 +841,7 @@ const ProductManagement = () => {
         );
         updateState({ selectedProducts: [] });
         fetchProducts();
+        fetchAllProductsStats(); // Refresh stats
       } catch (error) {
         showAlert(
           "Toplu durum güncelleme sırasında hata oluştu: " + error.message,
@@ -734,7 +851,13 @@ const ProductManagement = () => {
         updateState({ loading: false });
       }
     },
-    [state.selectedProducts, showAlert, updateState, fetchProducts]
+    [
+      state.selectedProducts,
+      showAlert,
+      updateState,
+      fetchProducts,
+      fetchAllProductsStats,
+    ]
   );
 
   const handleBulkExport = useCallback(async () => {
@@ -819,6 +942,7 @@ const ProductManagement = () => {
           }
 
           fetchProducts();
+          fetchAllProductsStats();
         } else {
           const errorData = await response.json();
           throw new Error(errorData.message || "Import failed");
@@ -832,7 +956,7 @@ const ProductManagement = () => {
         updateState({ importing: false });
       }
     },
-    [showAlert, updateState, fetchProducts]
+    [showAlert, updateState, fetchProducts, fetchAllProductsStats]
   );
 
   const handleExportAll = useCallback(async () => {
@@ -926,31 +1050,29 @@ const ProductManagement = () => {
     updateState,
   ]);
 
-  // Status counts for tabs - Fixed to work with real product data
+  // Status counts for tabs - Enhanced with global stats from all products
   const statusCounts = useMemo(() => {
+    // Use global stats for all tab counts to ensure consistency
+    // Tab counts should reflect total counts across all products, not just current page
+    console.log(
+      "🔢 Computing statusCounts with allProductsStats:",
+      allProductsStats
+    );
+
     const counts = {
-      all: state.totalItems || state.products.length,
-      active: 0,
-      inactive: 0,
-      outOfStock: 0,
+      all: allProductsStats.total,
+      active: allProductsStats.active,
+      inactive: allProductsStats.inactive,
+      draft: allProductsStats.draft,
+      pending: allProductsStats.pending,
+      rejected: allProductsStats.rejected,
+      outOfStock: allProductsStats.outOfStock,
+      lowStock: allProductsStats.lowStock,
     };
 
-    state.products.forEach((product) => {
-      // Check if product is active based on status field
-      if (product.status === "active" || product.status === true) {
-        counts.active++;
-      } else if (product.status === "inactive" || product.status === false) {
-        counts.inactive++;
-      }
-
-      // Check if product is out of stock
-      if ((product.stockQuantity || product.stock_quantity || 0) <= 0) {
-        counts.outOfStock++;
-      }
-    });
-
+    console.log("📊 Final statusCounts:", counts);
     return counts;
-  }, [state.products, state.totalItems]);
+  }, [allProductsStats]);
 
   // File input handler for import
   const handleFileImport = useCallback(
@@ -965,7 +1087,168 @@ const ProductManagement = () => {
     [handleImport]
   );
 
-  // Tab change handler
+  // Variant management handlers
+  const handleAcceptVariantSuggestion = useCallback(
+    async (suggestion) => {
+      console.log("🎯 Accept variant suggestion clicked:", suggestion);
+      try {
+        // Create variant group from suggestion
+        const groupData = {
+          groupName: `${suggestion.products[0].name} Grubu`,
+          baseProduct: suggestion.products[0],
+          variants: suggestion.products.slice(1),
+          confidence: suggestion.confidence,
+          reason: suggestion.reason,
+        };
+
+        console.log("📝 Creating variant group:", groupData);
+
+        // Call API to create variant group
+        const response = await api.post(
+          `${API_BASE_URL}/products/variants/groups`,
+          groupData
+        );
+
+        if (response.success) {
+          showAlert("Varyant grubu başarıyla oluşturuldu", "success");
+          fetchProducts(); // Refresh the product list
+        } else {
+          throw new Error(response.message || "Varyant grubu oluşturulamadı");
+        }
+      } catch (error) {
+        console.error("❌ Error accepting variant suggestion:", error);
+        showAlert(
+          "Varyant önerisi kabul edilirken hata oluştu: " + error.message,
+          "error"
+        );
+      }
+    },
+    [showAlert, fetchProducts]
+  );
+
+  const handleRejectVariantSuggestion = useCallback(
+    async (suggestion) => {
+      try {
+        // Log rejection for future improvements
+        await api.post(`${API_BASE_URL}/products/variants/suggestions/reject`, {
+          suggestionId: suggestion.id,
+          products: suggestion.products,
+          reason: "user_rejected",
+        });
+
+        showAlert("Varyant önerisi reddedildi", "info");
+        // Note: We don't need to refresh products as this is just a suggestion rejection
+      } catch (error) {
+        console.error("Error rejecting variant suggestion:", error);
+        // Don't show error to user as rejection should always work
+        showAlert("Varyant önerisi reddedildi", "info");
+      }
+    },
+    [showAlert]
+  );
+
+  const handleCreateVariantGroup = useCallback(
+    async (groupData) => {
+      try {
+        const response = await api.post(
+          `${API_BASE_URL}/products/variants/groups`,
+          groupData
+        );
+
+        if (response.success) {
+          showAlert("Varyant grubu başarıyla oluşturuldu", "success");
+          fetchProducts();
+        } else {
+          throw new Error(response.message || "Varyant grubu oluşturulamadı");
+        }
+      } catch (error) {
+        console.error("Error creating variant group:", error);
+        showAlert(
+          "Varyant grubu oluşturulurken hata oluştu: " + error.message,
+          "error"
+        );
+      }
+    },
+    [showAlert, fetchProducts]
+  );
+
+  const handleUpdateVariantGroup = useCallback(
+    async (groupData) => {
+      try {
+        const response = await api.put(
+          `${API_BASE_URL}/products/variants/groups/${groupData.id}`,
+          groupData
+        );
+
+        if (response.success) {
+          showAlert("Varyant grubu başarıyla güncellendi", "success");
+          fetchProducts();
+        } else {
+          throw new Error(response.message || "Varyant grubu güncellenemedi");
+        }
+      } catch (error) {
+        console.error("Error updating variant group:", error);
+        showAlert(
+          "Varyant grubu güncellenirken hata oluştu: " + error.message,
+          "error"
+        );
+      }
+    },
+    [showAlert, fetchProducts]
+  );
+
+  const handleDeleteVariantGroup = useCallback(
+    async (product) => {
+      try {
+        const response = await api.delete(
+          `${API_BASE_URL}/products/variants/groups/${product.variantGroupId}`
+        );
+
+        if (response.success) {
+          showAlert("Varyant grubu başarıyla silindi", "success");
+          fetchProducts();
+        } else {
+          throw new Error(response.message || "Varyant grubu silinemedi");
+        }
+      } catch (error) {
+        console.error("Error deleting variant group:", error);
+        showAlert(
+          "Varyant grubu silinirken hata oluştu: " + error.message,
+          "error"
+        );
+      }
+    },
+    [showAlert, fetchProducts]
+  );
+
+  const handleInlineEdit = useCallback(
+    async (productId, field, value, isVariant = false) => {
+      try {
+        const endpoint = isVariant
+          ? `${API_BASE_URL}/products/variants/${productId}`
+          : `${API_BASE_URL}/products/${productId}`;
+
+        const updateData = { [field]: value };
+        const response = await api.put(endpoint, updateData);
+
+        if (response.success) {
+          showAlert(`${field} başarıyla güncellendi`, "success");
+          fetchProducts();
+        } else {
+          throw new Error(response.message || "Güncelleme başarısız");
+        }
+      } catch (error) {
+        console.error("Error in inline edit:", error);
+        showAlert(
+          "Güncelleme sırasında hata oluştu: " + error.message,
+          "error"
+        );
+      }
+    },
+    [showAlert, fetchProducts]
+  );
+
+  // Tab change handler - Enhanced for comprehensive status filtering
   const handleTabChange = useCallback(
     (tab) => {
       let newFilters = { ...state.filters };
@@ -973,16 +1256,39 @@ const ProductManagement = () => {
       // Clear previous tab filters
       delete newFilters.status;
       delete newFilters.stockStatus;
+      delete newFilters.approvalStatus;
+      delete newFilters.maxStock;
+      delete newFilters.minStock;
 
-      // Apply new tab filter
-      if (tab === "active") {
-        newFilters.status = "active";
-      } else if (tab === "inactive") {
-        newFilters.status = "inactive";
-      } else if (tab === "outOfStock") {
-        newFilters.maxStock = "0"; // Filter for products with 0 stock
+      // Apply new tab filter based on enhanced status system
+      switch (tab) {
+        case "active":
+          newFilters.status = "active";
+          break;
+        case "inactive":
+          newFilters.status = "inactive";
+          break;
+        case "draft":
+          newFilters.status = "draft";
+          break;
+        case "pending":
+          // Filter for approval pending status
+          newFilters.status = "pending";
+          break;
+        case "rejected":
+          newFilters.approvalStatus = "rejected";
+          break;
+        case "out_of_stock":
+          newFilters.maxStock = "0"; // Filter for products with 0 stock
+          break;
+        case "low_stock":
+          newFilters.stockStatus = "low_stock";
+          break;
+        case "all":
+        default:
+          // "all" tab doesn't add any filters
+          break;
       }
-      // "all" tab doesn't add any filters
 
       updateState({
         activeTab: tab,
@@ -997,16 +1303,16 @@ const ProductManagement = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Compact Header */}
         <div className="mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4">
             <div className="flex items-center space-x-4 mb-3 lg:mb-0">
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Ürün Yönetimi
               </h1>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
                 {state.totalItems} ürün
               </span>
             </div>
@@ -1016,13 +1322,13 @@ const ProductManagement = () => {
               {/* Search - Inline */}
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
+                  <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                 </div>
                 <input
                   type="text"
                   value={state.searchValue}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  className="block w-64 pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-md bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="block w-64 pl-9 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Ürün ara..."
                 />
                 {state.searchValue && (
@@ -1030,7 +1336,7 @@ const ProductManagement = () => {
                     onClick={() => handleSearchChange("")}
                     className="absolute inset-y-0 right-0 pr-2 flex items-center"
                   >
-                    <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                    <X className="h-4 w-4 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400" />
                   </button>
                 )}
               </div>
@@ -1091,9 +1397,9 @@ const ProductManagement = () => {
         {/* Compact Results Summary */}
         {(state.searchValue ||
           Object.values(state.filters).some((f) => f && f !== "all")) && (
-          <div className="mb-4 px-4 py-2 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="mb-4 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-md">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-blue-900">
+              <span className="text-sm text-blue-900 dark:text-blue-200">
                 {state.products.length} sonuç
                 {state.searchValue && ` - "${state.searchValue}"`}
               </span>
@@ -1104,7 +1410,7 @@ const ProductManagement = () => {
                 }}
                 variant="ghost"
                 size="sm"
-                className="text-blue-700 hover:text-blue-900 text-xs"
+                className="text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-200 text-xs"
               >
                 Temizle
               </Button>
@@ -1177,6 +1483,14 @@ const ProductManagement = () => {
           // Loading states
           importing={state.importing}
           exporting={state.exporting}
+          // Variant management props
+          enableVariantManagement={true}
+          onCreateVariantGroup={handleCreateVariantGroup}
+          onUpdateVariantGroup={handleUpdateVariantGroup}
+          onDeleteVariantGroup={handleDeleteVariantGroup}
+          onAcceptVariantSuggestion={handleAcceptVariantSuggestion}
+          onRejectVariantSuggestion={handleRejectVariantSuggestion}
+          onInlineEdit={handleInlineEdit}
         />
 
         {/* Product Form Modal */}
@@ -1210,7 +1524,7 @@ const ProductManagement = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-2">
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
                     Temel Bilgiler
                   </h4>
                   <div className="space-y-1 text-sm">
@@ -1233,7 +1547,7 @@ const ProductManagement = () => {
                   </div>
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-2">
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
                     Stok Bilgileri
                   </h4>
                   <div className="space-y-1 text-sm">
@@ -1250,8 +1564,10 @@ const ProductManagement = () => {
               </div>
               {state.detailsModal.product.description && (
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Açıklama</h4>
-                  <p className="text-sm text-gray-600">
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    Açıklama
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">
                     {state.detailsModal.product.description}
                   </p>
                 </div>

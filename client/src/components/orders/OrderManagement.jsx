@@ -230,6 +230,7 @@ const OrderManagement = React.memo(() => {
   const getStatusIcon = useCallback((status) => {
     const iconMap = {
       pending: "⏳",
+      new: "⏳",
       confirmed: "✅",
       processing: "⚙️",
       shipped: "🚚",
@@ -879,18 +880,104 @@ const OrderManagement = React.memo(() => {
   const handlePrintShippingSlip = useCallback(
     async (orderId) => {
       try {
-        const response = await api.orders.printShippingSlip(orderId);
-        if (response.success) {
-          const pdfWindow = window.open(response.data.pdfUrl, "_blank");
+        console.log(`Starting shipping slip printing for order ID: ${orderId}`);
+
+        if (!orderId) {
+          showAlert("Sipariş kimliği eksik", "error");
+          console.error("Attempted to print shipping slip without order ID");
+          return;
+        }
+
+        // Check if default template exists, if not check if any templates exist
+        let defaultTemplateId = null;
+        try {
+          // First, try to get the default template
+          const defaultTemplateResponse =
+            await api.shipping.getDefaultTemplate();
+          console.log("Default template response:", defaultTemplateResponse);
+
+          if (
+            defaultTemplateResponse.success &&
+            defaultTemplateResponse.data?.defaultTemplateId
+          ) {
+            defaultTemplateId = defaultTemplateResponse.data.defaultTemplateId;
+            console.log(`Using default template: ${defaultTemplateId}`);
+          } else {
+            console.log(
+              "No default template found, checking for any available templates"
+            );
+
+            // If no default template, check if any templates exist
+            const templatesResponse = await api.shipping.getTemplates();
+            console.log("Available templates:", templatesResponse);
+
+            if (
+              !templatesResponse.success ||
+              !templatesResponse.data ||
+              templatesResponse.data.length === 0
+            ) {
+              console.log("No templates found, need to create one first");
+              showAlert(
+                "Kargo şablonu bulunamadı. Lütfen önce bir şablon oluşturun.",
+                "warning"
+              );
+              // In a real implementation, you might redirect to template creation page
+              return;
+            }
+
+            // Use the first available template if no default is set
+            defaultTemplateId = templatesResponse.data[0].id;
+            console.log(
+              `No default template, using first available: ${defaultTemplateId}`
+            );
+          }
+        } catch (templateError) {
+          console.error("Error getting templates:", templateError);
+          showAlert("Şablon bilgisi alınırken hata oluştu", "error");
+          return;
+        }
+
+        console.log(
+          `Generating PDF with orderId: ${orderId}, templateId: ${defaultTemplateId}`
+        );
+        const response = await api.shipping.generatePDF(
+          orderId,
+          defaultTemplateId
+        );
+        console.log("Response from generatePDF:", response);
+
+        if (response.success && response.data?.labelUrl) {
+          console.log(`Opening PDF URL: ${response.data.labelUrl}`);
+          const pdfWindow = window.open(response.data.labelUrl, "_blank");
           if (pdfWindow) {
             pdfWindow.onload = () => {
               pdfWindow.print();
             };
+          } else {
+            showAlert(
+              "Gönderi belgesi açılamadı. Lütfen popup engelleyicisini devre dışı bırakın.",
+              "warning"
+            );
           }
           showAlert("Gönderi belgesi hazırlandı", "success");
+        } else {
+          console.error("Invalid PDF response:", response);
+          showAlert(response.message || "PDF URL alınamadı", "error");
         }
       } catch (error) {
         console.error("Error printing shipping slip:", error);
+
+        // Provide more specific error messages based on the error type
+        const errorMessage =
+          error.response?.data?.message ||
+          error.message ||
+          "Gönderi belgesi yazdırılırken bir hata oluştu";
+        showAlert(errorMessage, "error");
+        console.error("Error details:", {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
         showAlert("Gönderi belgesi yazdırılırken hata oluştu", "error");
       }
     },
@@ -958,10 +1045,10 @@ const OrderManagement = React.memo(() => {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
               Bir hata oluştu
             </h3>
-            <p className="text-gray-600 mb-4">{error}</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
             <Button onClick={fetchOrders} variant="primary">
               <RefreshCw className="h-4 w-4 mr-2" />
               Tekrar Dene
@@ -974,17 +1061,17 @@ const OrderManagement = React.memo(() => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header Section */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <ShoppingCart className="h-8 w-8 text-blue-600" />
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     Sipariş Yönetimi
                   </h1>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     Tüm platform siparişlerinizi tek yerden yönetin
                   </p>
                 </div>
@@ -1036,10 +1123,10 @@ const OrderManagement = React.memo(() => {
               <div className="flex items-center">
                 <BarChart3 className="h-8 w-8 text-blue-600" />
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Toplam Sipariş
                   </p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {stats.total}
                   </p>
                 </div>
@@ -1052,8 +1139,10 @@ const OrderManagement = React.memo(() => {
               <div className="flex items-center">
                 <Clock className="h-8 w-8 text-yellow-600" />
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">Bekleyen</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Bekleyen
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {stats.pending}
                   </p>
                 </div>
@@ -1066,10 +1155,10 @@ const OrderManagement = React.memo(() => {
               <div className="flex items-center">
                 <Package className="h-8 w-8 text-blue-600" />
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Hazırlanıyor
                   </p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {stats.processing}
                   </p>
                 </div>
@@ -1082,8 +1171,10 @@ const OrderManagement = React.memo(() => {
               <div className="flex items-center">
                 <Truck className="h-8 w-8 text-purple-600" />
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">Kargoda</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Kargoda
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {stats.shipped}
                   </p>
                 </div>
@@ -1096,10 +1187,10 @@ const OrderManagement = React.memo(() => {
               <div className="flex items-center">
                 <CheckCircle className="h-8 w-8 text-green-600" />
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Teslim Edildi
                   </p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {stats.delivered}
                   </p>
                 </div>
@@ -1112,10 +1203,10 @@ const OrderManagement = React.memo(() => {
               <div className="flex items-center">
                 <DollarSign className="h-8 w-8 text-green-600" />
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Toplam Gelir
                   </p>
-                  <p className="text-lg font-bold text-gray-900">
+                  <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
                     {formatCurrency(stats.totalRevenue)}
                   </p>
                 </div>
@@ -1444,7 +1535,7 @@ const OrderManagement = React.memo(() => {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {currentOrders.map((order) => {
                       const statusIcon = getStatusIcon(order.status);
                       return (
@@ -1463,7 +1554,7 @@ const OrderManagement = React.memo(() => {
                             />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                               {order.orderNumber}
                             </div>
                             {order.tags && order.tags.length > 0 && (
@@ -1487,7 +1578,7 @@ const OrderManagement = React.memo(() => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="mt-1 flex items-center">
                               <User className="h-4 w-4 text-gray-400 mr-2" />
-                              <p className="text-sm text-gray-900">
+                              <p className="text-sm text-gray-900 dark:text-gray-100">
                                 {order.customerName}
                               </p>
                             </div>
@@ -1514,16 +1605,16 @@ const OrderManagement = React.memo(() => {
                               </Badge>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             {formatCurrency(order.totalAmount, order.currency)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             <div className="flex items-center">
                               <CalendarDays className="h-4 w-4 mr-1" />
                               {formatDate(order)}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             <div className="flex items-center space-x-2">
                               <Button
                                 onClick={() => handleViewOrder(order)}
@@ -1599,7 +1690,7 @@ const OrderManagement = React.memo(() => {
                     <span>
                       Sayfa {currentPage} / {totalPages}
                     </span>
-                    <span className="ml-4 text-gray-500">
+                    <span className="ml-4 text-gray-500 dark:text-gray-400">
                       Toplam {totalRecords} kayıt
                     </span>
                     <span className="ml-4 text-gray-400">
@@ -1675,7 +1766,9 @@ const OrderManagement = React.memo(() => {
                         {totalPages > 5 && currentPage < totalPages - 2 && (
                           <>
                             {currentPage < totalPages - 3 && (
-                              <span className="px-2 text-gray-500">...</span>
+                              <span className="px-2 text-gray-500 dark:text-gray-400">
+                                ...
+                              </span>
                             )}
                             <Button
                               onClick={() => setCurrentPage(totalPages)}
@@ -1730,7 +1823,7 @@ const OrderManagement = React.memo(() => {
                       </option>
                     ))}
                   </select>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
                     {totalPages} sayfadan {currentPage}
                   </span>
                 </div>
@@ -1868,7 +1961,9 @@ const OrderForm = ({
             <label className="block text-sm font-medium text-gray-700">
               Sipariş Numarası
             </label>
-            <p className="mt-1 text-sm text-gray-900">{order.orderNumber}</p>
+            <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
+              {order.orderNumber}
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">
@@ -1891,9 +1986,13 @@ const OrderForm = ({
             <label className="block text-sm font-medium text-gray-700">
               Müşteri
             </label>
-            <p className="mt-1 text-sm text-gray-900">{order.customerName}</p>
+            <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
+              {order.customerName}
+            </p>
             {order.customerEmail && (
-              <p className="text-sm text-gray-500">{order.customerEmail}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {order.customerEmail}
+              </p>
             )}
           </div>
           <div>
@@ -1923,7 +2022,7 @@ const OrderForm = ({
             <label className="block text-sm font-medium text-gray-700">
               Toplam Tutar
             </label>
-            <p className="mt-1 text-sm font-bold text-gray-900">
+            <p className="mt-1 text-sm font-bold text-gray-900 dark:text-gray-100">
               {formatCurrency(order.totalAmount, order.currency)}
             </p>
           </div>
@@ -1931,7 +2030,9 @@ const OrderForm = ({
             <label className="block text-sm font-medium text-gray-700">
               Sipariş Tarihi
             </label>
-            <p className="mt-1 text-sm text-gray-900">{formatDate(order)}</p>
+            <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">
+              {formatDate(order)}
+            </p>
           </div>
         </div>
 
@@ -1950,7 +2051,7 @@ const OrderForm = ({
                   >
                     <div>
                       <p className="font-medium">{item.productName}</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         Adet: {item.quantity}
                         {item.sku && ` • SKU: ${item.sku}`}
                         {item.productColor && ` • Renk: ${item.productColor}`}
@@ -1965,7 +2066,7 @@ const OrderForm = ({
                         )}
                       </p>
                       {item.unitPrice && (
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                           Birim:{" "}
                           {formatCurrency(item.unitPrice, order.currency)}
                         </p>

@@ -8,7 +8,7 @@ import {
 } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
-import { Label } from "../ui/label";
+import { Label } from "../ui/Label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/Tabs";
 import { Badge } from "../ui/Badge";
 import { Switch } from "../ui/Switch";
@@ -49,7 +49,8 @@ import {
 import { useToast } from "../ui/use-toast";
 import api from "../../services/api";
 import TemplateManager from "../../services/TemplateManager";
-import ShippingSlipDesigner from "../shipping/ShippingSlipDesigner";
+import EnhancedShippingSlipDesigner from "../shipping/EnhancedShippingSlipDesigner";
+import PreviewModal from "../shipping/designer/components/PreviewModal";
 
 const ShippingTemplateSettings = () => {
   const [templates, setTemplates] = useState([]);
@@ -60,23 +61,29 @@ const ShippingTemplateSettings = () => {
   const [showDesigner, setShowDesigner] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [viewMode, setViewMode] = useState("grid");
+  const [templatePreviewSettings, setTemplatePreviewSettings] = useState({
+    showGrid: true,
+    showRulers: true,
+    showElementOutlines: false,
+  });
   const { toast } = useToast();
 
-  // Load templates and default settings
-  useEffect(() => {
-    loadTemplates();
-    loadDefaultTemplate();
-  }, []);
-
-  const loadTemplates = async () => {
+  const loadTemplates = React.useCallback(async () => {
+    console.log("🔧 DEBUG: loadTemplates called");
     try {
       setLoading(true);
-      const response = await api.get("/api/shipping/templates");
+      console.log("🔧 DEBUG: Making API call to /shipping/templates");
+      const response = await api.get("/shipping/templates");
+      console.log("🔧 DEBUG: API response:", response.data);
+
       if (response.data.success) {
-        setTemplates(response.data.data || []);
+        const templatesData = response.data.data || [];
+        console.log("🔧 DEBUG: Setting templates:", templatesData);
+        setTemplates(templatesData);
+        console.log("🔧 DEBUG: Templates updated successfully");
       }
     } catch (error) {
-      console.error("Failed to load templates:", error);
+      console.error("🔧 DEBUG: Failed to load templates:", error);
       toast({
         title: "Error",
         description: "Failed to load shipping templates",
@@ -85,22 +92,53 @@ const ShippingTemplateSettings = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const loadDefaultTemplate = async () => {
+  const loadDefaultTemplate = React.useCallback(async () => {
     try {
-      const response = await api.get("/api/shipping/templates/default");
+      const response = await api.get("/shipping/templates/default");
       if (response.data.success) {
         setDefaultTemplateId(response.data.data.defaultTemplateId);
       }
     } catch (error) {
       console.error("Failed to load default template:", error);
     }
-  };
+  }, []);
+
+  // Load templates and default settings
+  useEffect(() => {
+    loadTemplates();
+    loadDefaultTemplate();
+
+    // Load saved preview settings from localStorage
+    try {
+      const savedPreviewSettings = localStorage.getItem(
+        "templatePreviewSettings"
+      );
+      if (savedPreviewSettings) {
+        setTemplatePreviewSettings(JSON.parse(savedPreviewSettings));
+      }
+    } catch (error) {
+      console.error("Failed to load preview settings:", error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadTemplates, loadDefaultTemplate]);
+
+  // Save preview settings to localStorage when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "templatePreviewSettings",
+        JSON.stringify(templatePreviewSettings)
+      );
+    } catch (error) {
+      console.error("Failed to save preview settings:", error);
+    }
+  }, [templatePreviewSettings]);
 
   const handleSetDefault = async (templateId) => {
     try {
-      const response = await api.post("/api/shipping/templates/default", {
+      const response = await api.post("/shipping/templates/default", {
         templateId,
       });
       if (response.data.success) {
@@ -122,9 +160,7 @@ const ShippingTemplateSettings = () => {
 
   const handleDeleteTemplate = async (templateId) => {
     try {
-      const response = await api.delete(
-        `/api/shipping/templates/${templateId}`
-      );
+      const response = await api.delete(`/shipping/templates/${templateId}`);
       if (response.data.success) {
         setTemplates((prev) => prev.filter((t) => t.id !== templateId));
         if (defaultTemplateId === templateId) {
@@ -155,7 +191,7 @@ const ShippingTemplateSettings = () => {
         updatedAt: new Date().toISOString(),
       };
 
-      const response = await api.post("/api/shipping/templates", duplicated);
+      const response = await api.post("/shipping/templates", duplicated);
       if (response.data.success) {
         setTemplates((prev) => [...prev, response.data.data]);
         toast({
@@ -190,13 +226,28 @@ const ShippingTemplateSettings = () => {
     }
   };
 
+  const handlePreviewTemplate = (template) => {
+    // Check if template has required properties to render
+    if (!template || !template.elements || !template.elements.length) {
+      toast({
+        title: "Preview not available",
+        description: "This template has no elements to preview.",
+        variant: "warning",
+      });
+      return;
+    }
+
+    setSelectedTemplate(template);
+    setShowPreview(true);
+  };
+
   const handleImportTemplate = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     try {
       const template = await TemplateManager.import(file);
-      const response = await api.post("/api/shipping/templates", template);
+      const response = await api.post("/shipping/templates", template);
       if (response.data.success) {
         setTemplates((prev) => [...prev, response.data.data]);
         toast({
@@ -234,16 +285,45 @@ const ShippingTemplateSettings = () => {
   if (showDesigner) {
     return (
       <div className="h-screen">
-        <ShippingSlipDesigner
+        <EnhancedShippingSlipDesigner
           initialTemplate={selectedTemplate}
           onSave={async (template) => {
-            await loadTemplates();
-            setShowDesigner(false);
-            setSelectedTemplate(null);
-            toast({
-              title: "Success",
-              description: "Template saved successfully",
-            });
+            console.log(
+              "🔧 DEBUG: onSave callback in ShippingTemplateSettings called"
+            );
+            console.log("🔧 DEBUG: template received:", template);
+
+            try {
+              console.log(
+                "🔧 DEBUG: Saving template with TemplateManager.save"
+              );
+              await TemplateManager.save(template);
+              console.log("🔧 DEBUG: Template saved successfully");
+
+              console.log("🔧 DEBUG: Calling loadTemplates()");
+              await loadTemplates();
+              console.log("🔧 DEBUG: loadTemplates() completed");
+
+              console.log(
+                "🔧 DEBUG: Hiding designer and clearing selected template"
+              );
+              setShowDesigner(false);
+              setSelectedTemplate(null);
+
+              console.log("🔧 DEBUG: Showing success toast");
+              toast({
+                title: "Success",
+                description: "Template saved successfully",
+              });
+              console.log("🔧 DEBUG: onSave callback completed successfully");
+            } catch (error) {
+              console.error("🔧 DEBUG: Error in onSave callback:", error);
+              toast({
+                title: "Error",
+                description: "Failed to refresh templates after save",
+                variant: "destructive",
+              });
+            }
           }}
           onCancel={() => {
             setShowDesigner(false);
@@ -260,7 +340,7 @@ const ShippingTemplateSettings = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Shipping Template Settings</h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             Manage your shipping slip templates and configure default settings
           </p>
         </div>
@@ -335,12 +415,12 @@ const ShippingTemplateSettings = () => {
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading templates...</p>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">Loading templates...</p>
             </div>
           ) : filteredTemplates.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                 {searchTerm ? "No templates found" : "No templates yet"}
               </h3>
               <p className="text-gray-500 mb-6">
@@ -433,6 +513,15 @@ const ShippingTemplateSettings = () => {
                       >
                         <Download className="w-3 h-3 mr-1" />
                         Export
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handlePreviewTemplate(template)}
+                      >
+                        <Eye className="w-3 h-3 mr-1" />
+                        Preview
                       </Button>
 
                       <Button
@@ -562,7 +651,7 @@ const ShippingTemplateSettings = () => {
                     <div className="text-2xl font-bold text-blue-600">
                       {templates.length}
                     </div>
-                    <div className="text-sm text-gray-600">Total Templates</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Total Templates</div>
                   </div>
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
                     <div className="text-2xl font-bold text-green-600">
@@ -571,7 +660,7 @@ const ShippingTemplateSettings = () => {
                         0
                       )}
                     </div>
-                    <div className="text-sm text-gray-600">Total Elements</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">Total Elements</div>
                   </div>
                 </div>
 
@@ -595,9 +684,104 @@ const ShippingTemplateSettings = () => {
                 </div>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Preview Settings</CardTitle>
+                <CardDescription>
+                  Configure preview options for shipping templates
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="show-grid">Show Grid</Label>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Display grid lines in template preview
+                    </p>
+                  </div>
+                  <Switch
+                    id="show-grid"
+                    checked={templatePreviewSettings.showGrid}
+                    onCheckedChange={(checked) =>
+                      setTemplatePreviewSettings((prev) => ({
+                        ...prev,
+                        showGrid: checked,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="show-rulers">Show Rulers</Label>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Display rulers in template preview
+                    </p>
+                  </div>
+                  <Switch
+                    id="show-rulers"
+                    checked={templatePreviewSettings.showRulers}
+                    onCheckedChange={(checked) =>
+                      setTemplatePreviewSettings((prev) => ({
+                        ...prev,
+                        showRulers: checked,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="show-element-outlines">
+                      Show Element Outlines
+                    </Label>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Display outlines around template elements
+                    </p>
+                  </div>
+                  <Switch
+                    id="show-element-outlines"
+                    checked={templatePreviewSettings.showElementOutlines}
+                    onCheckedChange={(checked) =>
+                      setTemplatePreviewSettings((prev) => ({
+                        ...prev,
+                        showElementOutlines: checked,
+                      }))
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Preview Modal */}
+      {showPreview && selectedTemplate && (
+        <PreviewModal
+          isOpen={showPreview}
+          onClose={() => setShowPreview(false)}
+          elements={selectedTemplate.elements || []}
+          paperDimensions={
+            selectedTemplate.config?.paperSize
+              ? {
+                  width: selectedTemplate.config.paperSize.width || 210,
+                  height: selectedTemplate.config.paperSize.height || 297,
+                }
+              : { width: 210, height: 297 }
+          }
+          templateConfig={
+            selectedTemplate.config || { name: selectedTemplate.name }
+          }
+          enableEdit={false}
+          showToolbar={true}
+          theme="light"
+          enableGrid={templatePreviewSettings.showGrid}
+          enableRulers={templatePreviewSettings.showRulers}
+          showElementOutlines={templatePreviewSettings.showElementOutlines}
+        />
+      )}
     </div>
   );
 };

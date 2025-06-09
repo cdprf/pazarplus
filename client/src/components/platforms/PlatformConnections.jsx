@@ -152,7 +152,7 @@ const PlatformConnections = () => {
         payload: { ...payload, credentials: "[REDACTED]" },
       });
 
-      const response = await api.post("/api/platforms/connections", payload);
+      const response = await api.post("/platforms/connections", payload);
 
       console.log("✅ Platform connected successfully:", response.data);
 
@@ -180,9 +180,7 @@ const PlatformConnections = () => {
     try {
       console.log("🗑️ Disconnecting platform:", platformId);
 
-      const response = await api.delete(
-        `/api/platforms/connections/${platformId}`
-      );
+      const response = await api.delete(`/platforms/connections/${platformId}`);
 
       console.log("✅ Platform disconnected successfully:", response.data);
 
@@ -206,7 +204,7 @@ const PlatformConnections = () => {
       console.log("🧪 Testing platform connection:", platformId);
 
       const response = await api.post(
-        `/api/platforms/connections/${platformId}/test`
+        `/platforms/connections/${platformId}/test`
       );
 
       console.log("✅ Connection test completed:", response.data);

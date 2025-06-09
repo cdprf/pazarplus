@@ -47,6 +47,12 @@ export const ELEMENT_TYPES = {
   FOOTER: "footer",
   DIVIDER: "divider",
   SPACER: "spacer",
+  LINE: "line",
+  RECTANGLE: "rectangle",
+
+  // Date & Time
+  DATE: "date",
+  TRACKING_NUMBER: "tracking_number",
 
   // Custom Fields
   CUSTOM_FIELD: "custom_field",

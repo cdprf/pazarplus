@@ -5,14 +5,12 @@ import AdvancedSidebar from "../sidebar/AdvancedSidebar";
 import Footer from "./Footer";
 import { useWebSocketConnection } from "../../hooks/useWebSocketConnection";
 import { useAuth } from "../../hooks/useAuth";
-import { useTheme } from "../../contexts/ThemeContext";
 import { Button } from "../ui/Button";
 import { WifiOff } from "lucide-react";
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const { isAuthenticated } = useAuth();
-  const { isDark } = useTheme();
   const { isConnected, reconnectAttempt, reconnect } = useWebSocketConnection();
   const location = useLocation();
 
@@ -28,7 +26,7 @@ const Layout = () => {
     isAuthenticated && !isConnected && reconnectAttempt > 0 && !isAuthPage;
 
   return (
-    <div className={`app-container ${isDark ? "dark" : ""}`}>
+    <div className="app-container min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Fixed Navbar */}
       <div className="fixed top-0 left-0 right-0 z-50">
         <Navbar toggleSidebar={toggleSidebar} />
@@ -54,14 +52,14 @@ const Layout = () => {
       </div>
 
       {/* Main content area with proper top padding */}
-      <div className="pt-16 min-h-screen flex flex-col">
+      <div className="pt-16 min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
         <div className="flex flex-1">
           {isAuthenticated && (
             <AdvancedSidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
           )}
 
-          <main className={`flex-1 transition-all duration-300`}>
-            <div className="min-h-full">
+          <main className="flex-1 transition-all duration-300 bg-gray-50 dark:bg-gray-900">
+            <div className="min-h-full bg-gray-50 dark:bg-gray-900">
               <Outlet />
             </div>
           </main>

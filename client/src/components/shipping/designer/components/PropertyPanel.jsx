@@ -106,7 +106,7 @@ const PropertyPanel = ({
           <div className="text-gray-400 mb-2">
             <Move className="h-12 w-12 mx-auto" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 dark:text-white mb-2">
             Öğe Seçilmedi
           </h3>
           <p className="text-gray-500 dark:text-gray-400 text-sm">
@@ -262,7 +262,7 @@ const PropertyPanel = ({
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 dark:text-white mb-2">
           Öğe Özellikleri
         </h3>
         <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -301,7 +301,7 @@ const PropertyPanel = ({
             onClick={() => toggleSection("position")}
             className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800"
           >
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="font-medium text-gray-900 dark:text-gray-100 dark:text-white">
               Konum & Boyut
             </span>
             {expandedSections.position ? (
@@ -373,7 +373,7 @@ const PropertyPanel = ({
             onClick={() => toggleSection("content")}
             className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800"
           >
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="font-medium text-gray-900 dark:text-gray-100 dark:text-white">
               İçerik
             </span>
             {expandedSections.content ? (
@@ -394,7 +394,7 @@ const PropertyPanel = ({
             onClick={() => toggleSection("style")}
             className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800"
           >
-            <span className="font-medium text-gray-900 dark:text-white">
+            <span className="font-medium text-gray-900 dark:text-gray-100 dark:text-white">
               Stil
             </span>
             {expandedSections.style ? (

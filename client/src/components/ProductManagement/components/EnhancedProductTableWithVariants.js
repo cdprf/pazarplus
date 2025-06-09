@@ -26,6 +26,8 @@ import { Button, Badge, Tooltip } from "../../ui";
 import CompletionScore from "./CompletionScore";
 import InlineEditor from "./InlineEditor";
 import SKUVariantDetector from "../utils/skuVariantDetector";
+import ComprehensivePatternDetector from "../utils/comprehensivePatternDetector";
+import PatternManagementInterface from "./PatternManagementInterface";
 import {
   VariantSuggestionsPanel,
   ManualGroupingInterface,
@@ -63,36 +65,116 @@ const ProductTableWithVariants = ({
   const [expandedProducts, setExpandedProducts] = useState(new Set());
   const [editingCell, setEditingCell] = useState(null);
   const [variantDetector] = useState(() => new SKUVariantDetector());
+  const [comprehensiveDetector] = useState(
+    () => new ComprehensivePatternDetector()
+  );
   const [showVariantSuggestions, setShowVariantSuggestions] = useState(false);
   const [showManualGrouping, setShowManualGrouping] = useState(false);
   const [showVariantModal, setShowVariantModal] = useState(false);
+  const [showPatternManagement, setShowPatternManagement] = useState(false);
   const [selectedVariantProduct, setSelectedVariantProduct] = useState(null);
   const [manualGroupingProducts, setManualGroupingProducts] = useState([]);
   const [isProcessingVariants, setIsProcessingVariants] = useState(false);
 
-  // Process products with variant detection
+  // Pattern detection configuration
+  const [patternDetectionConfig, setPatternDetectionConfig] = useState({
+    sensitivity: 0.8, // Detection sensitivity (0.1 - 1.0)
+    enableMultiLanguage: true,
+    enableBrandGrouping: true,
+    enableSizeColorVariants: true,
+    minGroupSize: 2,
+  });
+
+  // Process products with enhanced variant detection
   const processedProductsData = useMemo(() => {
     if (!enableVariantManagement) {
-      return { products, suggestions: [], analysis: null };
+      return {
+        products,
+        suggestions: [],
+        analysis: null,
+        comprehensiveAnalysis: null,
+      };
     }
 
-    const analysis = variantDetector.analyzeProducts(products);
+    // Run both SKU-based and comprehensive pattern detection
+    const skuAnalysis = variantDetector.analyzeProducts(products);
     const processed = variantDetector.processProducts(products);
 
-    // Generate suggestions with unique IDs - Convert Map to Array
-    const suggestions = Array.from(analysis.suggestions.values()).map((suggestion, index) => ({
-      ...suggestion,
-      id: `suggestion-${index}`,
-    }));
+    // Enhanced comprehensive pattern detection with configuration
+    const comprehensiveAnalysis = comprehensiveDetector.analyzePatterns(
+      products,
+      {
+        sensitivity: patternDetectionConfig.sensitivity,
+        enableMultiLanguage: patternDetectionConfig.enableMultiLanguage,
+        enableBrandGrouping: patternDetectionConfig.enableBrandGrouping,
+        enableSizeColorVariants: patternDetectionConfig.enableSizeColorVariants,
+        minGroupSize: patternDetectionConfig.minGroupSize,
+      }
+    );
+
+    // Merge suggestions from both detectors
+    const skuSuggestions = Array.from(skuAnalysis.suggestions.values()).map(
+      (suggestion, index) => ({
+        ...suggestion,
+        id: `sku-suggestion-${index}`,
+        source: "sku",
+        type: "sku-based",
+      })
+    );
+
+    // Generate comprehensive pattern suggestions
+    const comprehensiveSuggestions =
+      comprehensiveAnalysis.suggestions?.map((suggestion, index) => ({
+        ...suggestion,
+        id: `comprehensive-suggestion-${index}`,
+        source: "comprehensive",
+        type: "pattern-based",
+      })) || [];
+
+    // Combine and deduplicate suggestions
+    const allSuggestions = [...skuSuggestions, ...comprehensiveSuggestions];
+    const uniqueSuggestions = allSuggestions.filter(
+      (suggestion, index, self) => {
+        // Simple deduplication based on product IDs
+        const key = suggestion.products
+          ?.map((p) => p.id)
+          .sort()
+          .join("-");
+        return (
+          index ===
+          self.findIndex(
+            (s) =>
+              s.products
+                ?.map((p) => p.id)
+                .sort()
+                .join("-") === key
+          )
+        );
+      }
+    );
 
     return {
       products: processed.products,
-      suggestions,
+      suggestions: uniqueSuggestions,
       analysis: processed.analysis,
+      comprehensiveAnalysis,
+      skuAnalysis,
     };
-  }, [products, variantDetector, enableVariantManagement]);
+  }, [
+    products,
+    variantDetector,
+    comprehensiveDetector,
+    enableVariantManagement,
+    patternDetectionConfig,
+  ]);
 
-  const { products: processedProducts, suggestions } = processedProductsData;
+  const {
+    products: processedProducts,
+    suggestions,
+    analysis,
+    comprehensiveAnalysis,
+    skuAnalysis,
+  } = processedProductsData;
 
   // Helper functions
   const getStockStatus = (product) => {
@@ -192,17 +274,27 @@ const ProductTableWithVariants = ({
     );
   };
 
-  // Variant suggestion handlers
+  // Enhanced variant suggestion handlers with learning
   const handleAcceptSuggestion = useCallback(
     async (suggestion) => {
       setIsProcessingVariants(true);
       try {
         await onAcceptVariantSuggestion?.(suggestion);
+
+        // Learn from user acceptance for future improvements
+        if (suggestion.source === "comprehensive") {
+          comprehensiveDetector.learnFromUserAction({
+            action: "suggestion_accepted",
+            suggestion,
+            timestamp: Date.now(),
+            confidence: suggestion.confidence,
+          });
+        }
       } finally {
         setIsProcessingVariants(false);
       }
     },
-    [onAcceptVariantSuggestion]
+    [onAcceptVariantSuggestion, comprehensiveDetector]
   );
 
   const handleRejectSuggestion = useCallback(
@@ -210,11 +302,21 @@ const ProductTableWithVariants = ({
       setIsProcessingVariants(true);
       try {
         await onRejectVariantSuggestion?.(suggestion);
+
+        // Learn from user rejection to improve future suggestions
+        if (suggestion.source === "comprehensive") {
+          comprehensiveDetector.learnFromUserAction({
+            action: "suggestion_rejected",
+            suggestion,
+            timestamp: Date.now(),
+            reason: "user_rejected",
+          });
+        }
       } finally {
         setIsProcessingVariants(false);
       }
     },
-    [onRejectVariantSuggestion]
+    [onRejectVariantSuggestion, comprehensiveDetector]
   );
 
   // Manual grouping handlers
@@ -230,13 +332,23 @@ const ProductTableWithVariants = ({
       setIsProcessingVariants(true);
       try {
         await onCreateVariantGroup?.(groupData);
+
+        // Learn from manual grouping to improve future pattern detection
+        comprehensiveDetector.learnFromUserAction({
+          action: "manual_group_created",
+          groupData,
+          products: groupData.products,
+          timestamp: Date.now(),
+          type: "manual",
+        });
+
         setShowManualGrouping(false);
         setManualGroupingProducts([]);
       } finally {
         setIsProcessingVariants(false);
       }
     },
-    [onCreateVariantGroup]
+    [onCreateVariantGroup, comprehensiveDetector]
   );
 
   // Variant management handlers
@@ -261,6 +373,50 @@ const ProductTableWithVariants = ({
     setSelectedVariantProduct(product);
     setShowVariantModal(true);
   }, []);
+
+  // Enhanced pattern management handlers
+  const handlePatternsApplied = useCallback(
+    async (results, appliedPatterns) => {
+      setIsProcessingVariants(true);
+      try {
+        // Process the pattern application results using comprehensive analysis
+        for (const pattern of appliedPatterns) {
+          const groupData = {
+            name: pattern.basePattern || pattern.name,
+            products: pattern.products,
+            pattern: pattern,
+            type: "intelligent",
+            confidence: pattern.confidence,
+            source: "comprehensive",
+          };
+          await onCreateVariantGroup?.(groupData);
+        }
+
+        // Learn from the applied patterns to improve future detection
+        if (comprehensiveAnalysis?.patterns) {
+          comprehensiveDetector.learnFromUserAction({
+            action: "patterns_applied",
+            patterns: appliedPatterns,
+            timestamp: Date.now(),
+          });
+        }
+
+        // Close pattern management interface
+        setShowPatternManagement(false);
+
+        // Show success message
+        console.log(
+          "Applied comprehensive patterns successfully:",
+          appliedPatterns.length
+        );
+      } catch (error) {
+        console.error("Failed to apply comprehensive patterns:", error);
+      } finally {
+        setIsProcessingVariants(false);
+      }
+    },
+    [onCreateVariantGroup, comprehensiveAnalysis, comprehensiveDetector]
+  );
 
   // Inline editing
   const handleInlineEditStart = (productId, field, isVariant = false) => {
@@ -927,6 +1083,15 @@ const ProductTableWithVariants = ({
               </Button>
             )}
             <Button
+              onClick={() => setShowPatternManagement(!showPatternManagement)}
+              variant="outline"
+              size="sm"
+              icon={Settings}
+              className="text-blue-600"
+            >
+              Akıllı Algılama
+            </Button>
+            <Button
               onClick={handleStartManualGrouping}
               variant="outline"
               size="sm"
@@ -934,6 +1099,28 @@ const ProductTableWithVariants = ({
             >
               Manuel Gruplama
             </Button>
+
+            {/* Pattern Detection Configuration */}
+            <div className="flex items-center space-x-2 ml-4 pl-4 border-l border-gray-200">
+              <span className="text-sm text-gray-600">Hassasiyet:</span>
+              <input
+                type="range"
+                min="0.1"
+                max="1.0"
+                step="0.1"
+                value={patternDetectionConfig.sensitivity}
+                onChange={(e) =>
+                  setPatternDetectionConfig((prev) => ({
+                    ...prev,
+                    sensitivity: parseFloat(e.target.value),
+                  }))
+                }
+                className="w-20 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+              />
+              <span className="text-xs text-gray-500">
+                {Math.round(patternDetectionConfig.sensitivity * 100)}%
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -952,6 +1139,18 @@ const ProductTableWithVariants = ({
         />
       )}
 
+      {/* Enhanced Pattern Management Interface */}
+      {enableVariantManagement && showPatternManagement && (
+        <PatternManagementInterface
+          products={products}
+          onPatternsApplied={handlePatternsApplied}
+          detector={comprehensiveDetector}
+          comprehensiveAnalysis={comprehensiveAnalysis}
+          skuAnalysis={skuAnalysis}
+          existingSuggestions={suggestions}
+        />
+      )}
+
       {/* Manual Grouping Interface */}
       {showManualGrouping && (
         <ManualGroupingInterface
@@ -967,6 +1166,62 @@ const ProductTableWithVariants = ({
           onCancel={() => setShowManualGrouping(false)}
           isProcessing={isProcessingVariants}
         />
+      )}
+
+      {/* Enhanced Pattern Analysis Summary */}
+      {enableVariantManagement && (comprehensiveAnalysis || analysis) && (
+        <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {comprehensiveAnalysis?.statistics?.patternGroups || 0}
+              </div>
+              <div className="text-sm text-gray-600">Akıllı Gruplar</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {analysis?.stats?.potentialGroups || 0}
+              </div>
+              <div className="text-sm text-gray-600">SKU Grupları</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">
+                {suggestions.length}
+              </div>
+              <div className="text-sm text-gray-600">Toplam Öneri</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">
+                {Math.round(patternDetectionConfig.sensitivity * 100)}%
+              </div>
+              <div className="text-sm text-gray-600">Hassasiyet</div>
+            </div>
+          </div>
+
+          {comprehensiveAnalysis?.patterns &&
+            comprehensiveAnalysis.patterns.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-blue-200">
+                <div className="text-sm text-gray-700">
+                  <strong>Tespit Edilen Desenler:</strong>{" "}
+                  {comprehensiveAnalysis.patterns
+                    .slice(0, 3)
+                    .map((pattern, index) => (
+                      <span
+                        key={index}
+                        className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs mr-2"
+                      >
+                        {pattern.name || pattern.basePattern}
+                      </span>
+                    ))}
+                  {comprehensiveAnalysis.patterns.length > 3 && (
+                    <span className="text-gray-500">
+                      +{comprehensiveAnalysis.patterns.length - 3} daha
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+        </div>
       )}
 
       {/* Product Table */}

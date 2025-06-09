@@ -1,32 +1,32 @@
 // Centralized settings controller
 
-const { User } = require('../models');
-const logger = require('../utils/logger');
-const path = require('path');
-const fs = require('fs');
+const { User } = require("../models");
+const logger = require("../utils/logger");
+const path = require("path");
+const fs = require("fs");
 
 // Get company info
 const getCompanyInfo = async (req, res) => {
   try {
     // For now, return mock data until we have a CompanyInfo model
     const companyInfo = {
-      name: '',
-      address: '',
-      phone: '',
-      email: '',
-      website: '',
-      logo: null
+      name: "",
+      address: "",
+      phone: "",
+      email: "",
+      website: "",
+      logo: null,
     };
 
     res.json({
       success: true,
-      data: companyInfo
+      data: companyInfo,
     });
   } catch (error) {
     logger.error(`Get company info error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch company information'
+      message: "Failed to fetch company information",
     });
   }
 };
@@ -35,19 +35,70 @@ const getCompanyInfo = async (req, res) => {
 const saveCompanyInfo = async (req, res) => {
   try {
     const { name, address, phone, email, website } = req.body;
+    const userId = req.user?.id || 1; // Default to user ID 1 if not authenticated
 
-    // TODO: Implement actual saving to database
-    // For now, just return success
+    // Import Settings model
+    const Settings = require("../models/Settings");
+
+    // Find or create company settings for this user
+    const [settings, created] = await Settings.findOrCreate({
+      where: {
+        userId: userId,
+        category: "company",
+      },
+      defaults: {
+        userId: userId,
+        category: "company",
+        name,
+        address,
+        phone,
+        email,
+        website,
+      },
+    });
+
+    // If not created, update existing settings
+    if (!created) {
+      await settings.update({
+        name,
+        address,
+        phone,
+        email,
+        website,
+        updatedAt: new Date(),
+      });
+    }
+
+    logger.info(
+      `Company information ${
+        created ? "created" : "updated"
+      } for user ${userId}`,
+      {
+        userId,
+        companyName: name,
+      }
+    );
+
     res.json({
       success: true,
-      message: 'Company information saved successfully',
-      data: { name, address, phone, email, website }
+      message: "Company information saved successfully",
+      data: {
+        id: settings.id,
+        name,
+        address,
+        phone,
+        email,
+        website,
+        createdAt: settings.createdAt,
+        updatedAt: settings.updatedAt,
+      },
     });
   } catch (error) {
     logger.error(`Save company info error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: 'Failed to save company information'
+      message: "Failed to save company information",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -58,7 +109,7 @@ const uploadCompanyLogo = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'No file uploaded'
+        message: "No file uploaded",
       });
     }
 
@@ -66,17 +117,17 @@ const uploadCompanyLogo = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Logo uploaded successfully',
+      message: "Logo uploaded successfully",
       data: {
         logoPath,
-        filename: req.file.filename
-      }
+        filename: req.file.filename,
+      },
     });
   } catch (error) {
     logger.error(`Upload logo error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: 'Failed to upload logo'
+      message: "Failed to upload logo",
     });
   }
 };
@@ -86,14 +137,14 @@ const getGeneralSettings = async (req, res) => {
   try {
     // Get actual user settings from database
     const user = await User.findByPk(req.user.id, {
-      attributes: ['settings']
+      attributes: ["settings"],
     });
 
     const defaultSettings = {
-      language: 'en',
-      timezone: 'UTC',
-      dateFormat: 'YYYY-MM-DD',
-      currency: 'USD'
+      language: "en",
+      timezone: "UTC",
+      dateFormat: "YYYY-MM-DD",
+      currency: "USD",
     };
 
     const userSettings = user?.settings ? JSON.parse(user.settings) : {};
@@ -101,13 +152,13 @@ const getGeneralSettings = async (req, res) => {
 
     res.json({
       success: true,
-      data: settings
+      data: settings,
     });
   } catch (error) {
     logger.error(`Get general settings error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch general settings'
+      message: "Failed to fetch general settings",
     });
   }
 };
@@ -116,12 +167,12 @@ const getGeneralSettings = async (req, res) => {
 const saveGeneralSettings = async (req, res) => {
   try {
     const { language, timezone, dateFormat, currency } = req.body;
-    
+
     const user = await User.findByPk(req.user.id);
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
     }
 
@@ -131,23 +182,23 @@ const saveGeneralSettings = async (req, res) => {
       language,
       timezone,
       dateFormat,
-      currency
+      currency,
     };
 
     await user.update({
-      settings: JSON.stringify(newSettings)
+      settings: JSON.stringify(newSettings),
     });
 
     res.json({
       success: true,
-      message: 'General settings saved successfully',
-      data: newSettings
+      message: "General settings saved successfully",
+      data: newSettings,
     });
   } catch (error) {
     logger.error(`Save general settings error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: 'Failed to save general settings'
+      message: "Failed to save general settings",
     });
   }
 };
@@ -156,7 +207,7 @@ const saveGeneralSettings = async (req, res) => {
 const getNotificationSettings = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: ['settings']
+      attributes: ["settings"],
     });
 
     const defaultSettings = {
@@ -164,25 +215,27 @@ const getNotificationSettings = async (req, res) => {
       smsNotifications: false,
       browserNotifications: true,
       orderUpdates: true,
-      systemAlerts: true
+      systemAlerts: true,
     };
 
     const userSettings = user?.settings ? JSON.parse(user.settings) : {};
     // Fix: Check if userSettings.notifications exists before spreading
-    const notificationSettings = { 
-      ...defaultSettings, 
-      ...(userSettings.notifications || {}) 
+    const notificationSettings = {
+      ...defaultSettings,
+      ...(userSettings.notifications || {}),
     };
 
     res.json({
       success: true,
-      data: notificationSettings
+      data: notificationSettings,
     });
   } catch (error) {
-    logger.error(`Get notification settings error: ${error.message}`, { error });
+    logger.error(`Get notification settings error: ${error.message}`, {
+      error,
+    });
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch notification settings'
+      message: "Failed to fetch notification settings",
     });
   }
 };
@@ -190,13 +243,19 @@ const getNotificationSettings = async (req, res) => {
 // Save notification settings
 const saveNotificationSettings = async (req, res) => {
   try {
-    const { emailNotifications, smsNotifications, browserNotifications, orderUpdates, systemAlerts } = req.body;
+    const {
+      emailNotifications,
+      smsNotifications,
+      browserNotifications,
+      orderUpdates,
+      systemAlerts,
+    } = req.body;
 
     const user = await User.findByPk(req.user.id);
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
     }
 
@@ -208,24 +267,32 @@ const saveNotificationSettings = async (req, res) => {
         smsNotifications,
         browserNotifications,
         orderUpdates,
-        systemAlerts
-      }
+        systemAlerts,
+      },
     };
 
     await user.update({
-      settings: JSON.stringify(newSettings)
+      settings: JSON.stringify(newSettings),
     });
 
     res.json({
       success: true,
-      message: 'Notification settings saved successfully',
-      data: { emailNotifications, smsNotifications, browserNotifications, orderUpdates, systemAlerts }
+      message: "Notification settings saved successfully",
+      data: {
+        emailNotifications,
+        smsNotifications,
+        browserNotifications,
+        orderUpdates,
+        systemAlerts,
+      },
     });
   } catch (error) {
-    logger.error(`Save notification settings error: ${error.message}`, { error });
+    logger.error(`Save notification settings error: ${error.message}`, {
+      error,
+    });
     res.status(500).json({
       success: false,
-      message: 'Failed to save notification settings'
+      message: "Failed to save notification settings",
     });
   }
 };
@@ -234,21 +301,21 @@ const saveNotificationSettings = async (req, res) => {
 const getShippingSettings = async (req, res) => {
   try {
     const settings = {
-      defaultShippingMethod: 'standard',
+      defaultShippingMethod: "standard",
       freeShippingThreshold: 100,
       shippingZones: [],
-      trackingEnabled: true
+      trackingEnabled: true,
     };
 
     res.json({
       success: true,
-      data: settings
+      data: settings,
     });
   } catch (error) {
     logger.error(`Get shipping settings error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch shipping settings'
+      message: "Failed to fetch shipping settings",
     });
   }
 };
@@ -256,18 +323,28 @@ const getShippingSettings = async (req, res) => {
 // Save shipping settings
 const saveShippingSettings = async (req, res) => {
   try {
-    const { defaultShippingMethod, freeShippingThreshold, shippingZones, trackingEnabled } = req.body;
+    const {
+      defaultShippingMethod,
+      freeShippingThreshold,
+      shippingZones,
+      trackingEnabled,
+    } = req.body;
 
     res.json({
       success: true,
-      message: 'Shipping settings saved successfully',
-      data: { defaultShippingMethod, freeShippingThreshold, shippingZones, trackingEnabled }
+      message: "Shipping settings saved successfully",
+      data: {
+        defaultShippingMethod,
+        freeShippingThreshold,
+        shippingZones,
+        trackingEnabled,
+      },
     });
   } catch (error) {
     logger.error(`Save shipping settings error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: 'Failed to save shipping settings'
+      message: "Failed to save shipping settings",
     });
   }
 };
@@ -276,24 +353,24 @@ const saveShippingSettings = async (req, res) => {
 const getEmailSettings = async (req, res) => {
   try {
     const settings = {
-      smtpHost: '',
+      smtpHost: "",
       smtpPort: 587,
-      smtpUser: '',
-      smtpPassword: '',
+      smtpUser: "",
+      smtpPassword: "",
       smtpSecure: false,
-      fromEmail: '',
-      fromName: ''
+      fromEmail: "",
+      fromName: "",
     };
 
     res.json({
       success: true,
-      data: settings
+      data: settings,
     });
   } catch (error) {
     logger.error(`Get email settings error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch email settings'
+      message: "Failed to fetch email settings",
     });
   }
 };
@@ -301,17 +378,25 @@ const getEmailSettings = async (req, res) => {
 // Save email settings
 const saveEmailSettings = async (req, res) => {
   try {
-    const { smtpHost, smtpPort, smtpUser, smtpPassword, smtpSecure, fromEmail, fromName } = req.body;
+    const {
+      smtpHost,
+      smtpPort,
+      smtpUser,
+      smtpPassword,
+      smtpSecure,
+      fromEmail,
+      fromName,
+    } = req.body;
 
     res.json({
       success: true,
-      message: 'Email settings saved successfully'
+      message: "Email settings saved successfully",
     });
   } catch (error) {
     logger.error(`Save email settings error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: 'Failed to save email settings'
+      message: "Failed to save email settings",
     });
   }
 };
@@ -321,13 +406,13 @@ const testEmailSettings = async (req, res) => {
   try {
     res.json({
       success: true,
-      message: 'Test email sent successfully'
+      message: "Test email sent successfully",
     });
   } catch (error) {
     logger.error(`Test email error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: 'Failed to send test email'
+      message: "Failed to send test email",
     });
   }
 };
@@ -344,5 +429,5 @@ module.exports = {
   saveShippingSettings,
   getEmailSettings,
   saveEmailSettings,
-  testEmailSettings
+  testEmailSettings,
 };

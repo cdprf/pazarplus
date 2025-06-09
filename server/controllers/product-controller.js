@@ -3,7 +3,7 @@ const logger = require("../utils/logger");
 const ProductMergeService = require("../services/product-merge-service");
 const PlatformServiceFactory = require("../modules/order-management/services/platforms/platformServiceFactory");
 const { validationResult } = require("express-validator");
-const { Op } = require("sequelize");
+const { Op, sequelize } = require("sequelize");
 const AdvancedInventoryService = require("../services/advanced-inventory-service");
 const {
   ProductVariant,
@@ -23,7 +23,13 @@ class ProductController {
         search,
         category,
         platform,
-        status = "active",
+        status,
+        approvalStatus,
+        stockStatus,
+        minPrice,
+        maxPrice,
+        minStock,
+        maxStock,
         sortBy = "updatedAt",
         sortOrder = "DESC",
       } = req.query;
@@ -31,8 +37,12 @@ class ProductController {
       const offset = parseInt(page) * parseInt(limit);
       const whereClause = {
         userId: req.user.id,
-        status: status,
       };
+
+      // Status filter - only add if specified (remove default "active")
+      if (status) {
+        whereClause.status = status;
+      }
 
       // Add search filter
       if (search) {
@@ -48,30 +58,103 @@ class ProductController {
         whereClause.category = { [Op.iLike]: `%${category}%` };
       }
 
+      // Add price range filters
+      if (minPrice) {
+        whereClause.price = {
+          ...whereClause.price,
+          [Op.gte]: parseFloat(minPrice),
+        };
+      }
+      if (maxPrice) {
+        whereClause.price = {
+          ...whereClause.price,
+          [Op.lte]: parseFloat(maxPrice),
+        };
+      }
+
+      // Add stock range filters
+      if (minStock) {
+        whereClause.stockQuantity = {
+          ...whereClause.stockQuantity,
+          [Op.gte]: parseInt(minStock),
+        };
+      }
+      if (maxStock) {
+        whereClause.stockQuantity = {
+          ...whereClause.stockQuantity,
+          [Op.lte]: parseInt(maxStock),
+        };
+      }
+
+      // Add stock status filter
+      if (stockStatus) {
+        switch (stockStatus) {
+          case "out_of_stock":
+            whereClause.stockQuantity = { [Op.lte]: 0 };
+            break;
+          case "low_stock":
+            // Low stock: greater than 0 but less than or equal to minStockLevel
+            whereClause.stockQuantity = {
+              [Op.and]: [
+                { [Op.gt]: 0 },
+                { [Op.lte]: 10 }, // Using a default threshold of 10 for low stock
+              ],
+            };
+            break;
+          case "in_stock":
+            whereClause.stockQuantity = { [Op.gt]: 10 }; // Above low stock threshold
+            break;
+        }
+      }
+
+      // Handle approval status filtering through platform data
+      let platformDataWhere = {
+        entityType: "product",
+      };
+
+      if (platform) {
+        platformDataWhere.platformType = platform;
+      }
+
+      if (approvalStatus) {
+        // Map approval status to platform-specific fields
+        switch (approvalStatus) {
+          case "pending":
+            platformDataWhere[Op.or] = [
+              { "data.approved": false },
+              { "data.approvalStatus": "Pending" },
+              { "data.status": "pending" },
+            ];
+            break;
+          case "approved":
+            platformDataWhere[Op.or] = [
+              { "data.approved": true },
+              { "data.approvalStatus": "Approved" },
+              { "data.status": "active" },
+            ];
+            break;
+          case "rejected":
+            platformDataWhere[Op.or] = [
+              { "data.rejected": true },
+              { "data.approvalStatus": "Rejected" },
+              { "data.status": "rejected" },
+            ];
+            break;
+        }
+      }
+
       // Build include clause for platform filtering and variants
       const includeClause = [];
 
-      // Add PlatformData include with proper model reference
-      if (platform) {
-        includeClause.push({
-          model: PlatformData,
-          as: "platformData",
-          required: false,
-          where: {
-            platformType: platform,
-            entityType: "product",
-          },
-        });
-      } else {
-        includeClause.push({
-          model: PlatformData,
-          as: "platformData",
-          required: false,
-          where: {
-            entityType: "product",
-          },
-        });
-      }
+      // Add PlatformData include with conditional filtering
+      const platformDataInclude = {
+        model: PlatformData,
+        as: "platformData",
+        required: false,
+        where: platformDataWhere,
+      };
+
+      includeClause.push(platformDataInclude);
 
       // Add ProductVariant include to fetch variants for products that have them
       includeClause.push({
@@ -821,6 +904,40 @@ class ProductController {
         },
       });
 
+      // Get out of stock products count
+      const outOfStockProducts = await Product.count({
+        where: {
+          userId,
+          stockQuantity: {
+            [Op.lte]: 0,
+          },
+        },
+      });
+
+      // Get approval status counts through platform data
+      const pendingProducts = await Product.count({
+        where: { userId, status: "pending" },
+      });
+
+      const rejectedProducts = await PlatformData.count({
+        where: {
+          entityType: "product",
+          [Op.or]: [
+            { "data.rejected": true },
+            { "data.approvalStatus": "Rejected" },
+            { "data.status": "rejected" },
+          ],
+        },
+        include: [
+          {
+            model: Product,
+            as: "product",
+            where: { userId },
+            attributes: [],
+          },
+        ],
+      });
+
       // Get products by category
       const categoryCounts = await Product.findAll({
         where: { userId },
@@ -845,7 +962,7 @@ class ProductController {
           [
             PlatformData.sequelize.fn(
               "COUNT",
-              PlatformData.sequelize.col("id")
+              PlatformData.sequelize.col("PlatformData.id")
             ),
             "count",
           ],
@@ -871,7 +988,10 @@ class ProductController {
             activeProducts,
             inactiveProducts,
             draftProducts,
+            pendingProducts,
+            rejectedProducts,
             lowStockProducts,
+            outOfStockProducts,
             inventoryValue: parseFloat(inventoryValue).toFixed(2),
           },
           categories: categoryCounts,
@@ -1636,6 +1756,318 @@ class ProductController {
       res.status(500).json({
         success: false,
         message: "Failed to release stock reservation",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Create a variant group from suggested products
+   */
+  async createVariantGroup(req, res) {
+    try {
+      const userId = req.user.id;
+      const { groupName, baseProduct, variants, confidence, reason } = req.body;
+
+      logger.info(`Creating variant group: ${groupName} by user ${userId}`);
+
+      // Verify all products belong to the user
+      const allProductIds = [baseProduct.id, ...variants.map((v) => v.id)];
+      const userProducts = await Product.findAll({
+        where: {
+          id: allProductIds,
+          userId,
+        },
+      });
+
+      if (userProducts.length !== allProductIds.length) {
+        return res.status(403).json({
+          success: false,
+          message: "Some products do not belong to the user",
+        });
+      }
+
+      // Start a transaction for the variant group creation
+      const { sequelize } = require("../models");
+      const transaction = await sequelize.transaction();
+
+      try {
+        // Update the base product name if needed
+        const updatedBaseProduct = await Product.findByPk(baseProduct.id, {
+          transaction,
+        });
+        if (updatedBaseProduct.name !== groupName) {
+          await updatedBaseProduct.update({ name: groupName }, { transaction });
+        }
+
+        // Convert other products to variants
+        const createdVariants = [];
+        for (const variantProduct of variants) {
+          // Create a unique SKU for the variant if it doesn't have one or conflicts
+          let variantSku =
+            variantProduct.sku || `${baseProduct.sku}-VAR-${Date.now()}`;
+
+          // Check if SKU already exists as a variant for the base product
+          const existingVariant = await ProductVariant.findOne({
+            where: { productId: baseProduct.id, sku: variantSku },
+            transaction,
+          });
+
+          if (existingVariant) {
+            variantSku = `${variantProduct.sku}-${Date.now()}`;
+          }
+
+          // Create the variant
+          const variant = await ProductVariant.create(
+            {
+              productId: baseProduct.id,
+              name: variantProduct.name,
+              sku: variantSku,
+              barcode: variantProduct.barcode,
+              attributes: {
+                originalProductId: variantProduct.id,
+                convertedFromProduct: true,
+                confidence,
+                reason,
+              },
+              price: variantProduct.price,
+              costPrice: variantProduct.costPrice,
+              stockQuantity: variantProduct.stockQuantity || 0,
+              minStockLevel: variantProduct.minStockLevel || 0,
+              weight: variantProduct.weight,
+              dimensions: variantProduct.dimensions,
+              images: variantProduct.images || [],
+              isDefault: false,
+              sortOrder: createdVariants.length + 1,
+            },
+            { transaction }
+          );
+
+          createdVariants.push(variant);
+
+          // Record initial stock movement if needed
+          if (variantProduct.stockQuantity > 0) {
+            await AdvancedInventoryService.recordMovement(
+              {
+                variantId: variant.id,
+                sku: variant.sku,
+                movementType: "IN_STOCK",
+                quantity: variantProduct.stockQuantity,
+                reason: "Stock transfer from converted product",
+                userId,
+                metadata: {
+                  variantGroupCreation: true,
+                  originalProductId: variantProduct.id,
+                },
+              },
+              { transaction }
+            );
+          }
+
+          // Transfer platform data if exists
+          const platformData = await PlatformData.findAll({
+            where: {
+              entityType: "product",
+              entityId: variantProduct.id,
+            },
+            transaction,
+          });
+
+          for (const platformDataItem of platformData) {
+            await PlatformData.create(
+              {
+                ...platformDataItem.dataValues,
+                id: undefined, // Let it generate a new ID
+                entityType: "variant",
+                entityId: variant.id,
+                metadata: {
+                  ...platformDataItem.metadata,
+                  convertedFromProduct: true,
+                  originalProductId: variantProduct.id,
+                },
+              },
+              { transaction }
+            );
+          }
+
+          // Mark the original product as converted/inactive
+          await Product.update(
+            {
+              status: "converted_to_variant",
+              metadata: {
+                ...(variantProduct.metadata || {}),
+                convertedToVariant: true,
+                variantGroupId: baseProduct.id,
+                variantId: variant.id,
+              },
+            },
+            {
+              where: { id: variantProduct.id },
+              transaction,
+            }
+          );
+        }
+
+        await transaction.commit();
+
+        logger.info(
+          `Variant group created successfully: ${groupName} with ${createdVariants.length} variants`
+        );
+
+        res.status(201).json({
+          success: true,
+          message: "Variant group created successfully",
+          data: {
+            baseProduct: updatedBaseProduct,
+            variants: createdVariants,
+            groupName,
+            variantCount: createdVariants.length,
+          },
+        });
+      } catch (error) {
+        await transaction.rollback();
+        throw error;
+      }
+    } catch (error) {
+      logger.error("Error creating variant group:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to create variant group",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Update a variant group
+   */
+  async updateVariantGroup(req, res) {
+    try {
+      const { groupId } = req.params;
+      const userId = req.user.id;
+      const { groupName, variants } = req.body;
+
+      // Verify the base product (group) belongs to the user
+      const baseProduct = await Product.findOne({
+        where: { id: groupId, userId },
+      });
+
+      if (!baseProduct) {
+        return res.status(404).json({
+          success: false,
+          message: "Variant group not found",
+        });
+      }
+
+      // Update group name if provided
+      if (groupName && groupName !== baseProduct.name) {
+        await baseProduct.update({ name: groupName });
+      }
+
+      // Update variants if provided
+      if (variants && Array.isArray(variants)) {
+        for (const variantData of variants) {
+          if (variantData.id) {
+            const variant = await ProductVariant.findOne({
+              where: { id: variantData.id, productId: groupId },
+            });
+
+            if (variant) {
+              await variant.update(variantData);
+            }
+          }
+        }
+      }
+
+      logger.info(`Variant group updated: ${groupId} by user ${userId}`);
+
+      res.json({
+        success: true,
+        message: "Variant group updated successfully",
+      });
+    } catch (error) {
+      logger.error("Error updating variant group:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update variant group",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Delete a variant group
+   */
+  async deleteVariantGroup(req, res) {
+    try {
+      const { groupId } = req.params;
+      const userId = req.user.id;
+
+      // Verify the base product (group) belongs to the user
+      const baseProduct = await Product.findOne({
+        where: { id: groupId, userId },
+      });
+
+      if (!baseProduct) {
+        return res.status(404).json({
+          success: false,
+          message: "Variant group not found",
+        });
+      }
+
+      // Get all variants in the group
+      const variants = await ProductVariant.findAll({
+        where: { productId: groupId },
+      });
+
+      const { sequelize } = require("../models");
+      const transaction = await sequelize.transaction();
+
+      try {
+        // Delete all variants and their associated data
+        for (const variant of variants) {
+          // Delete platform data for variant
+          await PlatformData.destroy({
+            where: {
+              entityType: "variant",
+              entityId: variant.id,
+            },
+            transaction,
+          });
+
+          // Delete the variant
+          await variant.destroy({ transaction });
+        }
+
+        // Delete platform data for base product
+        await PlatformData.destroy({
+          where: {
+            entityType: "product",
+            entityId: groupId,
+          },
+          transaction,
+        });
+
+        // Delete the base product
+        await baseProduct.destroy({ transaction });
+
+        await transaction.commit();
+
+        logger.info(`Variant group deleted: ${groupId} by user ${userId}`);
+
+        res.json({
+          success: true,
+          message: "Variant group deleted successfully",
+        });
+      } catch (error) {
+        await transaction.rollback();
+        throw error;
+      }
+    } catch (error) {
+      logger.error("Error deleting variant group:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to delete variant group",
         error: error.message,
       });
     }

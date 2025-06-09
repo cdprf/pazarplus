@@ -37,6 +37,47 @@ const OrderDetail = () => {
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const { showNotification } = useAlert();
 
+  // Auto-link order with default template
+  const handleAutoLinkTemplate = useCallback(
+    async (template) => {
+      try {
+        setLinkingTemplate(true);
+
+        const response = await api.shipping.linkOrderTemplate({
+          orderId: order.id,
+          templateId: template.id,
+          autoMap: true, // Automatically map order data to template fields
+        });
+
+        if (response.success) {
+          setLinkedTemplate(template);
+          setOrder((prev) => ({ ...prev, shippingTemplateId: template.id }));
+          showNotification(
+            `Order automatically linked with template "${template.name}"`,
+            "success"
+          );
+        }
+      } catch (error) {
+        console.error("Error auto-linking template:", error);
+        showNotification("Failed to link template automatically", "warning");
+      } finally {
+        setLinkingTemplate(false);
+      }
+    },
+    [order, showNotification]
+  );
+
+  const fetchLinkedTemplate = useCallback(async (templateId) => {
+    try {
+      const response = await api.shipping.getTemplate(templateId);
+      if (response.success) {
+        setLinkedTemplate(response.data);
+      }
+    } catch (error) {
+      console.error("Error loading linked template:", error);
+    }
+  }, []);
+
   // Wrap fetchOrder in useCallback to include it in dependency array
   const fetchOrder = useCallback(async () => {
     try {
@@ -55,7 +96,7 @@ const OrderDetail = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, showNotification]);
+  }, [id, showNotification, fetchLinkedTemplate]);
 
   const fetchDefaultTemplate = useCallback(async () => {
     try {
@@ -74,18 +115,7 @@ const OrderDetail = () => {
         console.error("Error loading default template:", error);
       }
     }
-  }, [order, linkedTemplate]);
-
-  const fetchLinkedTemplate = useCallback(async (templateId) => {
-    try {
-      const response = await api.shipping.getTemplate(templateId);
-      if (response.success) {
-        setLinkedTemplate(response.data);
-      }
-    } catch (error) {
-      console.error("Error loading linked template:", error);
-    }
-  }, []);
+  }, [order, linkedTemplate, handleAutoLinkTemplate]);
 
   const fetchAvailableTemplates = useCallback(async () => {
     try {
@@ -97,33 +127,6 @@ const OrderDetail = () => {
       console.error("Error loading available templates:", error);
     }
   }, []);
-
-  // Auto-link order with default template
-  const handleAutoLinkTemplate = async (template) => {
-    try {
-      setLinkingTemplate(true);
-
-      const response = await api.shipping.linkOrderTemplate({
-        orderId: order.id,
-        templateId: template.id,
-        autoMap: true, // Automatically map order data to template fields
-      });
-
-      if (response.success) {
-        setLinkedTemplate(template);
-        setOrder((prev) => ({ ...prev, shippingTemplateId: template.id }));
-        showNotification(
-          `Order automatically linked with template "${template.name}"`,
-          "success"
-        );
-      }
-    } catch (error) {
-      console.error("Error auto-linking template:", error);
-      showNotification("Failed to link template automatically", "warning");
-    } finally {
-      setLinkingTemplate(false);
-    }
-  };
 
   // Manually link order with selected template
   const handleLinkTemplate = async (templateId) => {
@@ -166,22 +169,17 @@ const OrderDetail = () => {
 
       const templateToUse = linkedTemplate || defaultTemplate;
 
-      const response = await api.shipping.generateShippingSlip({
-        orderId: order.id,
-        templateId: templateToUse.id,
-        options: {
-          format: "PDF",
-          autoOpen: true,
-          autoMap: true,
-        },
-      });
+      const response = await api.shipping.generatePDF(
+        order.id,
+        templateToUse.id
+      );
 
       if (response.success) {
         showNotification("Shipping slip generated successfully", "success");
 
         // Open the generated PDF in a new window for printing
-        if (response.data.pdfUrl) {
-          const pdfWindow = window.open(response.data.pdfUrl, "_blank");
+        if (response.data.labelUrl) {
+          const pdfWindow = window.open(response.data.labelUrl, "_blank");
           if (pdfWindow) {
             pdfWindow.onload = () => {
               pdfWindow.print();
@@ -190,11 +188,13 @@ const OrderDetail = () => {
         }
 
         // Update order with generated slip info
-        if (response.data.slipUrl) {
+        if (response.data.labelUrl) {
           setOrder((prev) => ({
             ...prev,
-            shippingSlipUrl: response.data.slipUrl,
+            shippingSlipUrl: response.data.labelUrl,
             shippingSlipGeneratedAt: new Date().toISOString(),
+            labelUrl: response.data.labelUrl,
+            shippingTemplateId: templateToUse.id,
           }));
         }
       }
@@ -232,6 +232,119 @@ const OrderDetail = () => {
     window.open(url, "_blank");
   };
 
+  // Print PDF using shipping API
+  const handlePrintPDF = async (templateId = null) => {
+    if (!order?.id) {
+      showNotification("No order selected", "error");
+      return;
+    }
+
+    setGeneratingSlip(true);
+    try {
+      const response = await api.shipping.generatePDF(
+        order.id,
+        templateId || linkedTemplate?.id || defaultTemplate?.id
+      );
+
+      if (response.success && response.pdfUrl) {
+        window.open(response.pdfUrl, "_blank");
+        showNotification("PDF generated successfully", "success");
+      } else if (response.pdfBlob) {
+        const blob = new Blob([response.pdfBlob], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        window.open(url, "_blank");
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showNotification("PDF generated successfully", "success");
+      } else {
+        throw new Error("No PDF data received");
+      }
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      showNotification(`Failed to generate PDF: ${error.message}`, "error");
+    } finally {
+      setGeneratingSlip(false);
+    }
+  };
+
+  // Print shipping slip
+  const handlePrintShippingSlip = async () => {
+    if (!order?.id) {
+      showNotification("No order selected", "error");
+      return;
+    }
+
+    setGeneratingSlip(true);
+    try {
+      const response = await api.shipping.generatePDF(order.id);
+
+      if (response.success && response.data?.labelUrl) {
+        window.open(response.data.labelUrl, "_blank");
+        showNotification("Shipping slip generated successfully", "success");
+      } else {
+        throw new Error("Failed to generate shipping slip");
+      }
+    } catch (error) {
+      console.error("Error generating shipping slip:", error);
+      showNotification(
+        `Failed to generate shipping slip: ${error.message}`,
+        "error"
+      );
+    } finally {
+      setGeneratingSlip(false);
+    }
+  };
+
+  // Print invoice using order API
+  const handlePrintInvoice = async () => {
+    if (!order?.id) {
+      showNotification("No order selected", "error");
+      return;
+    }
+
+    setGeneratingSlip(true);
+    try {
+      const response = await api.orders.printInvoice(order.id);
+
+      if (response.success && response.pdfUrl) {
+        window.open(response.pdfUrl, "_blank");
+        showNotification("Invoice generated successfully", "success");
+      } else {
+        throw new Error("Failed to generate invoice");
+      }
+    } catch (error) {
+      console.error("Error generating invoice:", error);
+      showNotification(`Failed to generate invoice: ${error.message}`, "error");
+    } finally {
+      setGeneratingSlip(false);
+    }
+  };
+
+  // Load available templates
+  const loadAvailableTemplates = useCallback(async () => {
+    try {
+      const [templatesResponse, defaultResponse] = await Promise.all([
+        api.shipping.getShippingTemplates(),
+        api.shipping.getDefaultTemplate(),
+      ]);
+
+      const templates =
+        templatesResponse.data || templatesResponse.templates || [];
+      const defaultTemplateId = defaultResponse.success
+        ? defaultResponse.data.defaultTemplateId
+        : null;
+
+      // Mark the default template
+      const templatesWithDefault = templates.map((template) => ({
+        ...template,
+        isDefault: template.id === defaultTemplateId,
+      }));
+
+      setAvailableTemplates(templatesWithDefault);
+    } catch (error) {
+      console.error("Error loading templates:", error);
+    }
+  }, []);
+
   useEffect(() => {
     if (id) {
       fetchOrder();
@@ -242,8 +355,14 @@ const OrderDetail = () => {
     if (order) {
       fetchDefaultTemplate();
       fetchAvailableTemplates();
+      loadAvailableTemplates();
     }
-  }, [order, fetchDefaultTemplate, fetchAvailableTemplates]);
+  }, [
+    order,
+    fetchDefaultTemplate,
+    fetchAvailableTemplates,
+    loadAvailableTemplates,
+  ]);
 
   const handleStatusUpdate = async (newStatus) => {
     try {
@@ -315,7 +434,7 @@ const OrderDetail = () => {
       <div className="p-6">
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="ml-4 text-gray-600">Loading order details...</p>
+          <p className="ml-4 text-gray-600 dark:text-gray-400">Loading order details...</p>
         </div>
       </div>
     );
@@ -355,10 +474,10 @@ const OrderDetail = () => {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
               Order #{order.orderNumber || order.id}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               Placed on {formatDate(order.orderDate)} • {order.platform}
             </p>
           </div>
@@ -409,7 +528,7 @@ const OrderDetail = () => {
         {/* Main Order Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Order Items */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Order Items
             </h2>
@@ -423,7 +542,7 @@ const OrderDetail = () => {
                     <Package className="w-6 h-6 text-gray-400" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-medium text-gray-900">
+                    <h3 className="font-medium text-gray-900 dark:text-gray-100">
                       {item.productName}
                     </h3>
                     <p className="text-sm text-gray-500">SKU: {item.sku}</p>
@@ -432,7 +551,7 @@ const OrderDetail = () => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium text-gray-900">
+                    <p className="font-medium text-gray-900 dark:text-gray-100">
                       {formatCurrency(item.price)}
                     </p>
                     <p className="text-sm text-gray-500">
@@ -447,7 +566,7 @@ const OrderDetail = () => {
           </div>
 
           {/* Order Timeline */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Order Timeline
             </h2>
@@ -457,7 +576,7 @@ const OrderDetail = () => {
                   <Clock className="w-4 h-4 text-green-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">Order Placed</p>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">Order Placed</p>
                   <p className="text-sm text-gray-500">
                     {formatDate(order.createdAt)}
                   </p>
@@ -486,7 +605,7 @@ const OrderDetail = () => {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Enhanced Shipping Actions */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <Truck className="w-5 h-5 mr-2" />
               Shipping Actions
@@ -619,6 +738,33 @@ const OrderDetail = () => {
                       Download Last Generated Slip
                     </button>
                   )}
+
+                  {/* Print Buttons */}
+                  <div className="border-t pt-4">
+                    <button
+                      onClick={() => handlePrintPDF()}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center"
+                    >
+                      <Printer className="w-4 h-4 mr-2" />
+                      Print PDF
+                    </button>
+
+                    <button
+                      onClick={handlePrintShippingSlip}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center"
+                    >
+                      <Printer className="w-4 h-4 mr-2" />
+                      Print Shipping Slip
+                    </button>
+
+                    <button
+                      onClick={handlePrintInvoice}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center"
+                    >
+                      <Printer className="w-4 h-4 mr-2" />
+                      Print Invoice
+                    </button>
+                  </div>
                 </>
               )}
             </div>
@@ -670,7 +816,7 @@ const OrderDetail = () => {
           </div>
 
           {/* Status Actions */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Update Status
             </h2>
@@ -700,14 +846,14 @@ const OrderDetail = () => {
           </div>
 
           {/* Customer Info */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <User className="w-5 h-5 mr-2" />
               Customer
             </h2>
             <div className="space-y-3">
               <div>
-                <p className="font-medium text-gray-900">
+                <p className="font-medium text-gray-900 dark:text-gray-100">
                   {order.customerName}
                 </p>
                 <p className="text-sm text-gray-500">{order.customerEmail}</p>
@@ -719,12 +865,12 @@ const OrderDetail = () => {
           </div>
 
           {/* Shipping Address */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <MapPin className="w-5 h-5 mr-2" />
               Shipping Address
             </h2>
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               {editing ? (
                 <textarea
                   value={editedOrder.shippingAddress || ""}
@@ -744,34 +890,34 @@ const OrderDetail = () => {
           </div>
 
           {/* Payment Info */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <CreditCard className="w-5 h-5 mr-2" />
               Payment
             </h2>
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600">Subtotal:</span>
+                <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
                 <span className="font-medium">
                   {formatCurrency(order.subtotal || 0)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Shipping:</span>
+                <span className="text-gray-600 dark:text-gray-400">Shipping:</span>
                 <span className="font-medium">
                   {formatCurrency(order.shippingCost || 0)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Tax:</span>
+                <span className="text-gray-600 dark:text-gray-400">Tax:</span>
                 <span className="font-medium">
                   {formatCurrency(order.taxAmount || 0)}
                 </span>
               </div>
               <div className="border-t pt-2">
                 <div className="flex justify-between">
-                  <span className="font-semibold text-gray-900">Total:</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">Total:</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">
                     {formatCurrency(order.totalAmount)}
                   </span>
                 </div>
@@ -786,20 +932,20 @@ const OrderDetail = () => {
 
           {/* Shipping Info */}
           {order.trackingNumber && (
-            <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <Truck className="w-5 h-5 mr-2" />
                 Shipping
               </h2>
               <div className="space-y-2">
                 <div>
-                  <span className="text-gray-600">Carrier:</span>
+                  <span className="text-gray-600 dark:text-gray-400">Carrier:</span>
                   <span className="ml-2 font-medium">
                     {order.shippingCarrier || "N/A"}
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-600">Tracking:</span>
+                  <span className="text-gray-600 dark:text-gray-400">Tracking:</span>
                   <span className="ml-2 font-medium">
                     {order.trackingNumber}
                   </span>

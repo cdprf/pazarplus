@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import ElementLibrary from "./designer/components/ElementLibrary";
 import ElementRenderer from "./designer/components/ElementRenderer";
 import ElementToolbar from "./designer/components/ElementToolbar";
-import PreviewModal from "./designer/components/PreviewModal";
+import SimplePreviewModal from "./designer/components/SimplePreviewModal";
 import PropertyPanel from "./designer/components/PropertyPanel";
 import TemplateModal from "./designer/components/TemplateModal";
 import TemplateSettingsPanel from "./designer/components/TemplateSettingsPanel";
@@ -16,7 +16,6 @@ import { getPaperDimensions } from "./designer/utils/designerUtils";
 // UI Components and services
 import { useAlert } from "../../contexts/AlertContext";
 import TemplateManager from "../../services/TemplateManager";
-import def from "ajv/dist/vocabularies/discriminator";
 
 // Main ShippingSlipDesigner Component
 const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
@@ -215,7 +214,7 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
           newPosition.x = resizeInfo.startPosition.x + percentDeltaX;
           newPosition.y = resizeInfo.startPosition.y + percentDeltaY;
           break;
-          default:
+        default:
           console.warn("Unknown resize corner:", resizeInfo.corner);
           return;
       }
@@ -417,13 +416,12 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
       </div>
 
       {/* Preview Modal */}
-      <PreviewModal
+      <SimplePreviewModal
         isOpen={showPreviewModal}
         onClose={() => setShowPreviewModal(false)}
         elements={elements}
         paperDimensions={paperDimensions}
         templateConfig={templateConfig}
-        onElementsChange={setElements}
       />
 
       {/* Template Library Modal */}

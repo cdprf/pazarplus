@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import {
   CheckCircle,
   AlertTriangle,
@@ -6,6 +6,10 @@ import {
   FileText,
   ShoppingBag,
   Globe,
+  Edit,
+  XCircle,
+  RefreshCw,
+  Clock,
 } from "lucide-react";
 import { API_BASE_URL } from "./constants";
 
@@ -137,7 +141,110 @@ const STOCK_STATUS_CONFIG = {
   },
 };
 
-const PRODUCT_CATEGORIES = [
+// Product Status Configuration
+const PRODUCT_STATUS_CONFIG = {
+  active: {
+    value: "active",
+    label: "Aktif",
+    variant: "success",
+    icon: CheckCircle,
+    color: "text-green-500",
+  },
+  inactive: {
+    value: "inactive",
+    label: "Pasif",
+    variant: "secondary",
+    icon: AlertCircle,
+    color: "text-gray-500",
+  },
+  draft: {
+    value: "draft",
+    label: "Taslak",
+    variant: "warning",
+    icon: Edit,
+    color: "text-yellow-500",
+  },
+};
+
+// Approval Status Configuration
+const APPROVAL_STATUS_CONFIG = {
+  pending: {
+    value: "pending",
+    label: "Onay Bekliyor",
+    variant: "warning",
+    icon: Clock,
+    color: "text-yellow-500",
+  },
+  approved: {
+    value: "approved",
+    label: "Onaylandı",
+    variant: "success",
+    icon: CheckCircle,
+    color: "text-green-500",
+  },
+  rejected: {
+    value: "rejected",
+    label: "Reddedildi",
+    variant: "danger",
+    icon: XCircle,
+    color: "text-red-500",
+  },
+  unapproved: {
+    value: "unapproved",
+    label: "Onaysız",
+    variant: "secondary",
+    icon: AlertCircle,
+    color: "text-gray-500",
+  },
+};
+
+// Sync Status Configuration
+const SYNC_STATUS_CONFIG = {
+  synced: {
+    value: "synced",
+    label: "Senkronize Edildi",
+    variant: "success",
+    icon: CheckCircle,
+    color: "text-green-500",
+  },
+  syncing: {
+    value: "syncing",
+    label: "Senkronizasyon Devam Ediyor",
+    variant: "info",
+    icon: RefreshCw,
+    color: "text-blue-500",
+  },
+  sync_pending: {
+    value: "sync_pending",
+    label: "Senkronizasyon Bekliyor",
+    variant: "warning",
+    icon: Clock,
+    color: "text-yellow-500",
+  },
+  sync_error: {
+    value: "sync_error",
+    label: "Senkronizasyon Hatası",
+    variant: "danger",
+    icon: AlertTriangle,
+    color: "text-red-500",
+  },
+  sync_failed: {
+    value: "sync_failed",
+    label: "Senkronizasyon Başarısız",
+    variant: "danger",
+    icon: XCircle,
+    color: "text-red-600",
+  },
+  partial: {
+    value: "partial",
+    label: "Kısmi Senkronize",
+    variant: "warning",
+    icon: AlertTriangle,
+    color: "text-orange-500",
+  },
+};
+
+export const PRODUCT_CATEGORIES = [
   "Elektronik",
   "Giyim & Aksesuar",
   "Ev & Yaşam",
@@ -156,6 +263,10 @@ const PRODUCT_STATUSES = [
   { value: "active", label: "Aktif", variant: "success" },
   { value: "inactive", label: "Pasif", variant: "secondary" },
   { value: "draft", label: "Taslak", variant: "warning" },
+  { value: "pending_approval", label: "Onay Bekliyor", variant: "info" },
+  { value: "rejected", label: "Reddedildi", variant: "danger" },
+  { value: "synced", label: "Senkrone", variant: "success" },
+  { value: "not_synced", label: "Senkrone Edilmedi", variant: "warning" },
 ];
 
 // Utility Functions
@@ -170,12 +281,125 @@ export const productUtils = {
       return STOCK_STATUS_CONFIG.out_of_stock;
     }
 
-    if (product.stockQuantity <= (product.minStockLevel || 0)) {
+    if (product.stockQuantity <= (product.minStockLevel || 5)) {
       return STOCK_STATUS_CONFIG.low_stock;
     }
 
     return STOCK_STATUS_CONFIG.in_stock;
   },
+
+  // Get product status configuration
+  getProductStatus: (status) => {
+    return PRODUCT_STATUS_CONFIG[status] || PRODUCT_STATUS_CONFIG.draft;
+  },
+
+  // Get approval status configuration
+  getApprovalStatus: (status) => {
+    return APPROVAL_STATUS_CONFIG[status] || APPROVAL_STATUS_CONFIG.pending;
+  },
+
+  // Get sync status configuration
+  getSyncStatus: (status) => {
+    return SYNC_STATUS_CONFIG[status] || SYNC_STATUS_CONFIG.sync_pending;
+  },
+
+  // Count products by status for tabs
+  getStatusCounts: (products) => {
+    const counts = {
+      all: products.length,
+      active: 0,
+      inactive: 0,
+      draft: 0,
+      pending: 0,
+      rejected: 0,
+      outOfStock: 0,
+      lowStock: 0,
+    };
+
+    products.forEach((product) => {
+      // Core status counts
+      if (product.status === "active") counts.active++;
+      else if (product.status === "inactive") counts.inactive++;
+      else if (product.status === "draft") counts.draft++;
+
+      // Approval status counts
+      if (
+        product.approvalStatus === "pending" ||
+        product.status === "pending"
+      ) {
+        counts.pending++;
+      }
+      if (product.approvalStatus === "rejected") counts.rejected++;
+
+      // Stock status counts
+      const stockStatus = productUtils.getStockStatus(product);
+      if (stockStatus.value === "out_of_stock") counts.outOfStock++;
+      else if (stockStatus.value === "low_stock") counts.lowStock++;
+    });
+
+    return counts;
+  },
+
+  // Filter products by status
+  filterByStatus: (products, statusType, statusValue) => {
+    return products.filter((product) => {
+      switch (statusType) {
+        case "product":
+          return product.status === statusValue;
+        case "approval":
+          return (
+            product.approvalStatus === statusValue ||
+            (statusValue === "pending" && product.status === "pending")
+          );
+        case "stock":
+          const stockStatus = productUtils.getStockStatus(product);
+          return stockStatus.value === statusValue;
+        case "sync":
+          return product.syncStatus === statusValue;
+        default:
+          return true;
+      }
+    });
+  },
+
+  // Get status badge component
+  getStatusBadge: (status, type = "product") => {
+    let config;
+    switch (type) {
+      case "product":
+        config = productUtils.getProductStatus(status);
+        break;
+      case "approval":
+        config = productUtils.getApprovalStatus(status);
+        break;
+      case "stock":
+        config =
+          STOCK_STATUS_CONFIG[status] || STOCK_STATUS_CONFIG.out_of_stock;
+        break;
+      case "sync":
+        config = productUtils.getSyncStatus(status);
+        break;
+      default:
+        config = productUtils.getProductStatus(status);
+    }
+
+    const IconComponent = config.icon;
+
+    return (
+      <Badge variant={config.variant} className="flex items-center gap-1">
+        <IconComponent className="h-3 w-3" />
+        {config.label}
+      </Badge>
+    );
+  },
+
+  // Export status configurations for external use
+  getStatusConfigs: () => ({
+    product: PRODUCT_STATUS_CONFIG,
+    approval: APPROVAL_STATUS_CONFIG,
+    stock: STOCK_STATUS_CONFIG,
+    sync: SYNC_STATUS_CONFIG,
+  }),
 
   // Get platform badges for a product
   getPlatformBadges: (product) => {

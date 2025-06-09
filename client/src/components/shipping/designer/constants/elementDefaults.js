@@ -49,6 +49,63 @@ export const elementDefaults = {
     },
   },
 
+  // Layout & Design Elements
+  [ELEMENT_TYPES.LINE]: {
+    content: "",
+    style: {
+      backgroundColor: "var(--border-primary)",
+      border: "none",
+    },
+    size: { width: 50, height: 0.5 },
+  },
+
+  [ELEMENT_TYPES.RECTANGLE]: {
+    content: "",
+    style: {
+      backgroundColor: "var(--surface-secondary)",
+      border: "1px solid var(--border-primary)",
+      borderRadius: "var(--radius-sm)",
+    },
+    size: { width: 20, height: 15 },
+  },
+
+  // Date & Tracking Elements
+  [ELEMENT_TYPES.DATE]: {
+    content: "",
+    style: {
+      fontSize: 12,
+      fontFamily: "Inter, Arial, sans-serif",
+      color: "var(--text-primary)",
+      textAlign: "left",
+      backgroundColor: "transparent",
+    },
+    size: { width: 25, height: 6 },
+    options: {
+      format: "DD/MM/YYYY",
+      source: "order.createdAt", // Default to order creation date
+    },
+  },
+
+  [ELEMENT_TYPES.TRACKING_NUMBER]: {
+    content: "",
+    style: {
+      fontSize: 14,
+      fontFamily: "Courier New, monospace",
+      color: "var(--text-primary)",
+      textAlign: "center",
+      backgroundColor: "var(--surface-secondary)",
+      padding: "var(--space-sm)",
+      border: "1px solid var(--border-primary)",
+      borderRadius: "var(--radius-sm)",
+      fontWeight: "bold",
+    },
+    size: { width: 40, height: 8 },
+    options: {
+      source: "order.trackingNumber",
+      showBarcode: false,
+    },
+  },
+
   // Contact & Address Elements
   [ELEMENT_TYPES.RECIPIENT]: {
     content: "",

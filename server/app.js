@@ -14,6 +14,7 @@ const {
   deprecationWarning,
 } = require("./middleware/versioning");
 const path = require("path");
+const fs = require("fs");
 
 // Import enhanced security and performance monitoring
 const {
@@ -280,6 +281,43 @@ app.get("/api", (req, res) => {
 
 // Mount all routes with API prefix
 app.use("/api", routes);
+
+// Serve shipping PDFs statically with proper headers for Turkish character support
+const shippingPublicPath = path.join(__dirname, "public", "shipping");
+
+// Custom middleware for PDF files to ensure proper headers
+app.use("/shipping", (req, res, next) => {
+  if (req.path.endsWith(".pdf")) {
+    // Set proper content type and encoding for Turkish characters
+    res.setHeader("Content-Type", "application/pdf; charset=utf-8");
+    res.setHeader("Content-Disposition", "inline");
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
+
+    // Ensure browser can display and print the PDF
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  }
+  next();
+});
+
+app.use("/shipping", express.static(shippingPublicPath));
+logger.info(`Serving shipping PDFs from: ${shippingPublicPath}`);
+
+// Also serve PDFs from order-management module
+const orderManagementShippingPath = path.join(
+  __dirname,
+  "modules",
+  "order-management",
+  "public",
+  "shipping"
+);
+if (fs.existsSync(orderManagementShippingPath)) {
+  app.use("/order-shipping", express.static(orderManagementShippingPath));
+  logger.info(
+    `Serving order management shipping PDFs from: ${orderManagementShippingPath}`
+  );
+}
 
 // Initialize Swagger documentation at /api-docs
 initializeSwagger(app);

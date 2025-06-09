@@ -20,6 +20,7 @@ import {
   ClockIcon,
   ShoppingCartIcon,
 } from "@heroicons/react/24/outline";
+import api from "../../services/api";
 import {
   BarChart,
   Bar,
@@ -52,19 +53,14 @@ const InventoryInsights = () => {
   const fetchInsights = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `/api/analytics/inventory-insights?timeframe=${timeframe}`
+      const response = await api.get(
+        `/analytics/inventory-insights?timeframe=${timeframe}`
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch inventory insights");
-      }
-
-      const data = await response.json();
-      setInsights(data.data);
+      setInsights(response.data.data);
       setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to fetch inventory insights");
     } finally {
       setLoading(false);
     }

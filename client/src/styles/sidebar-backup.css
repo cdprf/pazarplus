@@ -1,0 +1,1593 @@
+/* Foundational Sidebar Styles - Design System Compliant */
+.sidebar {
+  /* Consistent backdrop blur following design system - 8px for mobile */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 256px;
+  /* Use design system color variables with improved transparency */
+  background: rgba(255, 255, 255, 0.95);
+  border-right: 1px solid rgba(229, 231, 235, 0.8); /* --gray-200 with opacity */
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Design system z-index hierarchy - below navbar (50) but above content */
+  z-index: 40;
+  overflow-y: auto;
+  /* Performance optimization */
+  will-change: transform;
+}
+
+/* Dark mode support following design system */
+[data-theme="dark"] .sidebar {
+  background: rgba(17, 24, 39, 0.95);
+  border-right-color: rgba(55, 65, 81, 0.8); /* --gray-700 with opacity */
+}
+
+.sidebar.open {
+  transform: translateX(0);
+}
+
+/* Enhanced scrollbar for sidebar navigation */
+.sidebar.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.sidebar.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 3px;
+}
+
+.sidebar.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-muted);
+}
+
+/* Sidebar navigation item hover effects */
+.sidebar nav a {
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar nav a::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.sidebar nav a:hover::before {
+  left: 100%;
+}
+
+/* Enhanced dropdown animations for sidebar sections */
+.sidebar .space-y-1 {
+  overflow: hidden;
+}
+
+/* Gradient text effect for navigation titles */
+.sidebar .bg-clip-text {
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+/* Enhanced quick action buttons */
+.sidebar .quick-actions button {
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar .quick-actions button::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s;
+}
+
+.sidebar .quick-actions button:hover::after {
+  width: 100px;
+  height: 100px;
+}
+
+/* Status indicator animations */
+.sidebar .status-indicator .animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Enhanced user section styling */
+.sidebar .user-section {
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.05),
+    rgba(139, 92, 246, 0.05)
+  );
+  border-radius: 12px;
+  margin: 8px;
+  padding: 4px;
+}
+
+[data-theme="dark"] .sidebar .user-section {
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.1),
+    rgba(139, 92, 246, 0.1)
+  );
+}
+
+/* Enhanced search input styling */
+.sidebar .search-input {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+[data-theme="dark"] .sidebar .search-input {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Enhanced section headers */
+.sidebar .section-header {
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+}
+
+.sidebar .section-header:hover {
+  color: var(--text-secondary);
+}
+
+/* Badge animations */
+.sidebar .badge {
+  animation: fadeInScale 0.3s ease-out;
+}
+
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Enhanced sub-navigation styling */
+.sidebar .sub-nav {
+  position: relative;
+}
+
+.sidebar .sub-nav::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--primary-500), transparent);
+  border-radius: 1px;
+}
+
+/* Enhanced mobile sidebar overlay with consistent backdrop blur */
+@media (max-width: 1023px) {
+  .sidebar {
+    position: fixed;
+    /* Improved z-index for mobile - below navbar (50) */
+    z-index: 40;
+    width: 100%;
+    max-width: 280px; /* Slightly wider for better touch targets */
+    /* Enhanced backdrop blur for mobile */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
+/* Desktop sidebar positioning */
+@media (min-width: 1024px) {
+  .sidebar {
+    position: static;
+    transform: translateX(0) !important;
+    width: 256px;
+    /* Reduced blur for desktop performance */
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+}
+
+/* Improved mobile responsiveness with design system compliance */
+@media (max-width: 640px) {
+  .sidebar {
+    width: 100vw;
+    max-width: none;
+    /* Enhanced mobile backdrop blur */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .sidebar .header {
+    padding: 1rem;
+  }
+
+  .sidebar .brand-text {
+    font-size: 1.125rem;
+  }
+}
+
+/* Enhanced focus states for accessibility */
+.sidebar button:focus-visible,
+.sidebar a:focus-visible {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Smooth state transitions */
+.sidebar * {
+  transition-property: color, background-color, border-color, transform, opacity;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Main content layout adjustments */
+.main-content.sidebar-open {
+  margin-left: 0;
+}
+
+@media (min-width: 1024px) {
+  .main-content.sidebar-open {
+    margin-left: 256px;
+  }
+}
+
+/* Sidebar Component Styles - Following Design System */
+.sidebar-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 35; /* Below sidebar (40) but above content */
+  transition: opacity 0.3s ease-in-out;
+  display: none; /* Hidden by default on desktop */
+}
+
+@media (max-width: 1023px) {
+  .sidebar-backdrop {
+    display: block;
+  }
+}
+
+.sidebar-container {
+  @apply fixed top-16 bottom-0 left-0 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700;
+  @apply transform transition-transform duration-300 ease-in-out z-30;
+  @apply shadow-xl lg:shadow-none;
+  /* Ensure sidebar starts below header and reaches footer */
+  height: calc(100vh - 4rem);
+}
+
+/* Desktop collapsed state */
+@media (min-width: 1024px) {
+  .sidebar-container.desktop-collapsed {
+    @apply w-16;
+  }
+
+  /* Hide header title and keep only toggle button */
+  .sidebar-container.desktop-collapsed .sidebar-header {
+    @apply justify-center px-2;
+  }
+
+  .sidebar-container.desktop-collapsed .sidebar-title,
+  .sidebar-container.desktop-collapsed .nav-text,
+  .sidebar-container.desktop-collapsed .user-name,
+  .sidebar-container.desktop-collapsed .user-role,
+  .sidebar-container.desktop-collapsed .quick-actions-header,
+  .sidebar-container.desktop-collapsed .quick-actions,
+  .sidebar-container.desktop-collapsed .user-profile,
+  .sidebar-container.desktop-collapsed .sidebar-section-title span:first-child,
+  .sidebar-container.desktop-collapsed .user-action-btn span {
+    @apply hidden;
+  }
+
+  /* Hide entire footer when collapsed */
+  .sidebar-container.desktop-collapsed .sidebar-footer {
+    @apply hidden;
+  }
+
+  /* Adjust navigation padding */
+  .sidebar-container.desktop-collapsed .sidebar-nav {
+    @apply px-2;
+  }
+
+  .sidebar-container.desktop-collapsed .nav-item {
+    @apply justify-center px-2 py-3;
+    position: relative;
+  }
+
+  .sidebar-container.desktop-collapsed .nav-item .nav-icon {
+    @apply mr-0;
+  }
+
+  .sidebar-container.desktop-collapsed .nav-item .badge,
+  .sidebar-container.desktop-collapsed .nav-item .description,
+  .sidebar-container.desktop-collapsed .sidebar-section-chevron {
+    @apply hidden;
+  }
+
+  /* Hide sub-items when collapsed */
+  .sidebar-container.desktop-collapsed .ml-8 {
+    @apply hidden;
+  }
+
+  /* Center section headers and hide text */
+  .sidebar-container.desktop-collapsed .sidebar-section-header {
+    @apply justify-center px-2;
+  }
+
+  .sidebar-container.desktop-collapsed
+    .sidebar-section-header
+    .sidebar-section-title {
+    @apply hidden;
+  }
+
+  /* Add tooltips on hover for collapsed items */
+  .sidebar-container.desktop-collapsed .nav-item:hover::after {
+    content: attr(data-tooltip);
+    @apply absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded-md whitespace-nowrap z-50;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  /* Remove shadows and borders when collapsed for cleaner look */
+  .sidebar-container.desktop-collapsed {
+    @apply shadow-none border-r-0;
+  }
+}
+
+.sidebar-container-closed {
+  @apply -translate-x-full lg:translate-x-0;
+}
+
+.sidebar-container-open {
+  @apply translate-x-0;
+}
+
+.sidebar {
+  @apply flex flex-col h-full;
+  /* Ensure proper flex layout for sticky footer */
+}
+
+/* Sidebar Header Styles */
+.sidebar-header {
+  @apply flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700;
+  @apply bg-gray-50 dark:bg-gray-800/50;
+  flex-shrink: 0; /* Prevent header from shrinking */
+}
+
+.sidebar-title {
+  @apply text-lg font-semibold text-gray-900 dark:text-gray-100;
+}
+
+.sidebar-close-btn {
+  @apply p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors lg:hidden;
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1;
+}
+
+/* Sidebar Navigation - Scrollable Middle Section */
+.sidebar-nav {
+  @apply flex-1 overflow-y-auto px-4 py-4;
+  @apply scrollbar-thin;
+  /* Remove bottom padding since footer is now in flex layout */
+  min-height: 0; /* Allow flex child to shrink */
+}
+
+.sidebar-sections {
+  @apply space-y-6;
+}
+
+/* Sidebar Section Styles */
+.sidebar-section {
+  @apply space-y-3;
+}
+
+.sidebar-section-header {
+  @apply w-full text-left transition-all duration-200 px-3 py-2 rounded-lg;
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1;
+  @apply focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900;
+}
+
+.sidebar-section-header-collapsible {
+  @apply hover:text-primary-600 dark:hover:text-primary-400 cursor-pointer;
+  @apply hover:bg-gray-100 dark:hover:bg-gray-800;
+}
+
+.sidebar-section-header-static {
+  @apply cursor-default;
+}
+
+.sidebar-section-title {
+  @apply text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider;
+  @apply flex items-center justify-between;
+}
+
+.sidebar-section-chevron {
+  @apply w-3 h-3 transition-transform duration-300 ease-in-out;
+}
+
+.sidebar-section-items {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+/* Sidebar Footer - Flex layout for proper bottom positioning */
+.sidebar-footer {
+  @apply px-4 py-4 border-t border-gray-200 dark:border-gray-700;
+  @apply bg-gradient-to-t from-gray-50 to-gray-50/50 dark:from-gray-800/80 dark:to-gray-800/40;
+  @apply backdrop-blur-sm space-y-4;
+  flex-shrink: 0; /* Prevent footer from shrinking */
+  /* Enhanced styling following design system */
+  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* Enhanced footer styling for dark mode */
+[data-theme="dark"] .sidebar-footer {
+  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* Main content positioning for desktop with sidebar */
+@media (min-width: 1024px) {
+  .sidebar-container {
+    /* On desktop, sidebar is part of layout, not fixed */
+    position: relative;
+    top: 0;
+    height: 100%;
+    z-index: auto;
+  }
+
+  .sidebar-backdrop {
+    @apply hidden;
+  }
+
+  /* Ensure main content has proper margin for sidebar */
+  .main-content {
+    margin-left: 256px; /* Width of sidebar */
+  }
+}
+
+/* Quick Actions Styles - Compact Design */
+.quick-actions {
+  @apply space-y-3;
+}
+
+.quick-actions-header {
+  @apply font-medium text-gray-700 dark:text-gray-300 px-1 text-xs uppercase tracking-wider;
+  @apply mb-2;
+}
+
+.quick-actions-grid {
+  @apply space-y-2;
+}
+
+.quick-action-btn {
+  @apply w-full justify-between text-gray-700 dark:text-gray-300 px-3 py-2.5 text-sm;
+  @apply hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100;
+  @apply transition-all duration-200 rounded-lg;
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1;
+}
+
+/* User Profile Styles - Compact Design */
+.user-profile {
+  @apply space-y-3;
+}
+
+.user-info {
+  @apply flex items-center space-x-3 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg;
+  /* Enhanced background with subtle gradient */
+  background: linear-gradient(
+    135deg,
+    rgba(249, 250, 251, 0.8) 0%,
+    rgba(243, 244, 246, 0.9) 100%
+  );
+}
+
+[data-theme="dark"] .user-info {
+  background: linear-gradient(
+    135deg,
+    rgba(31, 41, 55, 0.8) 0%,
+    rgba(17, 24, 39, 0.9) 100%
+  );
+}
+
+.user-avatar {
+  @apply w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center flex-shrink-0;
+  /* Enhanced gradient for avatar */
+  background: linear-gradient(
+    135deg,
+    var(--brand-primary) 0%,
+    var(--brand-secondary) 100%
+  );
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.user-avatar-text {
+  @apply text-white font-medium text-sm;
+}
+
+.user-details {
+  @apply flex-1 min-w-0;
+}
+
+.user-name {
+  @apply text-sm font-medium text-gray-900 dark:text-gray-100 truncate;
+}
+
+.user-role {
+  @apply text-xs text-gray-500 dark:text-gray-400 leading-tight;
+}
+
+.user-actions {
+  @apply flex items-center space-x-2;
+}
+
+.user-action-btn {
+  @apply flex-1 justify-center text-xs px-3 py-2;
+  @apply hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md;
+  @apply transition-all duration-200;
+}
+
+/* Part 7: Advanced CSS Enhancements and Responsive Design */
+/* Add these CSS enhancements to your existing sidebar styles */
+
+/* Advanced Performance Optimizations */
+.sidebar-container {
+  /* GPU acceleration for smooth animations */
+  transform: translateZ(0);
+  will-change: transform, width;
+  /* Enable hardware acceleration */
+  -webkit-transform: translateZ(0);
+  -moz-transform: translateZ(0);
+  -ms-transform: translateZ(0);
+  -o-transform: translateZ(0);
+}
+
+/* Advanced Responsive Breakpoints */
+@media (min-width: 640px) and (max-width: 767px) {
+  /* Tablet portrait */
+  .sidebar-container {
+    @apply w-72; /* Slightly wider on tablets */
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Tablet landscape */
+  .sidebar-container {
+    @apply w-80; /* Even wider on landscape tablets */
+  }
+
+  .sidebar-nav {
+    @apply px-6; /* More padding on tablets */
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  /* Small desktop */
+  .sidebar-container.desktop-collapsed {
+    @apply w-20; /* Slightly wider collapsed state */
+  }
+}
+
+@media (min-width: 1280px) {
+  /* Large desktop */
+  .sidebar-container {
+    @apply w-72; /* Wider on large screens */
+  }
+
+  .sidebar-container.desktop-collapsed {
+    @apply w-24; /* More spacious collapsed state */
+  }
+}
+
+/* Advanced Container Queries (when supported) */
+@container sidebar (min-width: 200px) {
+  .nav-item {
+    @apply px-4 py-3; /* More padding when space available */
+  }
+}
+
+/* Enhanced Dark Mode with Better Color Schemes */
+@media (prefers-color-scheme: dark) {
+  .sidebar-container {
+    /* Enhanced dark mode shadows */
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3),
+      0 10px 10px -5px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .nav-item-active {
+    /* Enhanced active state in dark mode */
+    background: linear-gradient(
+      135deg,
+      rgba(59, 130, 246, 0.2) 0%,
+      rgba(139, 92, 246, 0.2) 100%
+    );
+    border-left: 4px solid rgb(59, 130, 246);
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Advanced Animation System */
+@keyframes slideInFromLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px) scale(0.95);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translateX(-5px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes slideOutToLeft {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-100%) scale(0.8);
+  }
+}
+
+@keyframes slideInFromRight {
+  0% {
+    opacity: 0;
+    transform: translateX(20px) scale(0.95);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translateX(5px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes slideOutToRight {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(100%) scale(0.8);
+  }
+}
+
+@keyframes pulseGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Enhanced Loading States */
+.nav-item.loading {
+  background: linear-gradient(
+    90deg,
+    rgba(243, 244, 246, 0.8) 25%,
+    rgba(229, 231, 235, 0.8) 50%,
+    rgba(243, 244, 246, 0.8) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .nav-item.loading {
+  background: linear-gradient(
+    90deg,
+    rgba(55, 65, 81, 0.8) 25%,
+    rgba(75, 85, 99, 0.8) 50%,
+    rgba(55, 65, 81, 0.8) 75%
+  );
+  background-size: 200% 100%;
+}
+
+/* Advanced Tooltip System */
+.nav-item-tooltip {
+  @apply absolute left-full ml-2 px-3 py-2 text-sm rounded-lg whitespace-nowrap z-50;
+  @apply opacity-0 pointer-events-none;
+  @apply transform translate-x-2 transition-all duration-200 ease-in-out;
+
+  /* Enhanced tooltip styling */
+  background: linear-gradient(
+    135deg,
+    rgba(17, 24, 39, 0.95) 0%,
+    rgba(31, 41, 55, 0.95) 100%
+  );
+  color: white;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3),
+    0 10px 10px -5px rgba(0, 0, 0, 0.1);
+
+  /* Tooltip arrow */
+  &::before {
+    content: "";
+    @apply absolute right-full w-0 h-0;
+    top: 50%;
+    transform: translateY(-50%);
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-right: 6px solid rgba(17, 24, 39, 0.95);
+  }
+}
+
+.nav-item:hover .nav-item-tooltip {
+  @apply opacity-100;
+  transform: translateX(0);
+}
+
+/* Enhanced Badge System */
+.badge-animated {
+  animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.badge-pulse {
+  animation: pulseGlow 2s infinite;
+}
+
+.badge-new {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+.badge-beta {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+.badge-count {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+/* Advanced Search Component Styling */
+.navigation-search {
+  @apply relative;
+}
+
+.search-input {
+  @apply w-full px-4 py-2 text-sm rounded-lg transition-all duration-200;
+  @apply border-2 border-gray-200 dark:border-gray-700;
+  @apply bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100;
+  @apply focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20;
+  @apply placeholder:text-gray-400 dark:placeholder:text-gray-500;
+}
+
+.search-results {
+  @apply absolute top-full left-0 right-0 mt-2;
+  @apply bg-white dark:bg-gray-800 rounded-lg shadow-xl;
+  @apply border border-gray-200 dark:border-gray-700;
+  @apply max-h-64 overflow-y-auto z-50;
+  @apply backdrop-blur-sm;
+
+  /* Enhanced shadow for search results */
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.dark .search-results {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3),
+    0 10px 10px -5px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.search-result-item {
+  @apply flex items-center px-4 py-3 text-sm;
+  @apply hover:bg-gray-50 dark:hover:bg-gray-700;
+  @apply transition-all duration-150 cursor-pointer;
+  @apply border-b border-gray-100 dark:border-gray-700 last:border-b-0;
+}
+
+.search-result-item:hover {
+  transform: translateX(4px);
+}
+
+/* Enhanced PWA Support Styles */
+.pwa-install-prompt {
+  @apply fixed bottom-4 left-4 right-4 z-50;
+  @apply bg-gradient-to-r from-primary-500 to-primary-600;
+  @apply text-white rounded-lg p-4 shadow-xl;
+  @apply transform transition-all duration-300 ease-in-out;
+  @apply translate-y-0 opacity-100;
+}
+
+.pwa-install-prompt.hidden {
+  @apply translate-y-full opacity-0 pointer-events-none;
+}
+
+@media (min-width: 1024px) {
+  .pwa-install-prompt {
+    @apply left-72 right-4; /* Account for sidebar width */
+  }
+}
+
+/* Advanced Notification System */
+.notification-container {
+  @apply fixed top-4 right-4 z-50 space-y-2;
+  @apply max-w-sm w-full;
+}
+
+.notification-item {
+  @apply bg-white dark:bg-gray-800 rounded-lg shadow-lg;
+  @apply border border-gray-200 dark:border-gray-700;
+  @apply p-4 transition-all duration-300;
+  @apply transform translate-x-0 opacity-100;
+
+  /* Enhanced notification shadow */
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.notification-item.entering {
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+.notification-item.exiting {
+  animation: slideOutToRight 0.3s ease-in;
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutToRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .nav-item {
+    @apply border-2 border-transparent;
+  }
+
+  .nav-item-active {
+    @apply border-primary-500 bg-primary-50;
+  }
+
+  .nav-item:hover {
+    @apply border-gray-500;
+  }
+
+  .sidebar-container {
+    @apply border-2 border-gray-800;
+  }
+
+  .dark .sidebar-container {
+    @apply border-gray-200;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-container,
+  .nav-item,
+  .badge-animated,
+  .notification-item,
+  .search-result-item {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .nav-item:hover {
+    transform: none !important;
+  }
+
+  .search-result-item:hover {
+    transform: none !important;
+  }
+}
+
+/* Print Styles for Sidebar */
+@media print {
+  .sidebar-container {
+    @apply hidden;
+  }
+
+  /* Adjust main content when sidebar hidden */
+  .main-content {
+    margin-left: 0 !important;
+  }
+}
+
+/* Enhanced Focus Management */
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500;
+  @apply focus-visible:ring-offset-2 focus-visible:ring-offset-white;
+  @apply dark:focus-visible:ring-offset-gray-900;
+}
+
+/* Skip to content link for accessibility */
+.skip-to-content {
+  @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4;
+  @apply bg-primary-600 text-white px-4 py-2 rounded-lg z-50;
+  @apply transform -translate-y-8 focus:translate-y-0;
+  @apply transition-transform duration-200;
+}
+
+/* Advanced Grid System for Navigation */
+.nav-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.nav-grid-collapsed {
+  grid-template-columns: auto;
+  justify-items: center;
+}
+
+/* Enhanced Scrollbar Styling */
+.sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.dark .sidebar-nav::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dark .sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Advanced Layout for Different Screen Orientations */
+@media (orientation: landscape) and (max-height: 600px) {
+  /* Landscape mobile/tablet adjustments */
+  .sidebar-container {
+    @apply w-56; /* Narrower on landscape mobile */
+  }
+
+  .sidebar-nav {
+    @apply py-2; /* Less vertical padding */
+  }
+
+  .nav-item {
+    @apply py-2; /* Compact navigation items */
+  }
+
+  .sidebar-footer {
+    @apply py-2; /* Compact footer */
+  }
+}
+
+/* Advanced Micro-interactions */
+.nav-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.nav-item:hover::before {
+  left: 100%;
+}
+
+/* Enhanced Badge Positioning */
+.badge-container {
+  @apply relative;
+}
+
+.badge-floating {
+  @apply absolute -top-1 -right-1;
+  @apply min-w-5 h-5 text-xs;
+  @apply flex items-center justify-center;
+  @apply bg-red-500 text-white rounded-full;
+  @apply animate-pulse;
+  box-shadow: 0 0 0 2px white, 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.dark .badge-floating {
+  box-shadow: 0 0 0 2px rgb(17, 24, 39), 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+/* Advanced State Indicators */
+.connection-indicator {
+  @apply flex items-center space-x-2 text-xs px-3 py-2 rounded-lg;
+  @apply transition-all duration-300;
+}
+
+.connection-indicator.online {
+  @apply bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400;
+}
+
+.connection-indicator.offline {
+  @apply bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400;
+}
+
+.connection-indicator.poor {
+  @apply bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400;
+}
+
+/* Loading Pulse Animation */
+@keyframes loadingPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.loading-pulse {
+  animation: loadingPulse 1.5s ease-in-out infinite;
+}
+
+/* Advanced Typography Scale */
+.text-nav-primary {
+  @apply text-gray-900 dark:text-gray-100 font-medium;
+}
+
+.text-nav-secondary {
+  @apply text-gray-600 dark:text-gray-400 text-sm;
+}
+
+.text-nav-muted {
+  @apply text-gray-500 dark:text-gray-500 text-xs;
+}
+
+/* Enhanced Interactive States */
+.interactive-element {
+  @apply transition-all duration-200 ease-in-out;
+  @apply transform-gpu; /* Enable hardware acceleration */
+}
+
+.interactive-element:hover {
+  @apply scale-105;
+}
+
+.interactive-element:active {
+  @apply scale-95;
+}
+
+/* Advanced Layout Stability */
+.layout-stable {
+  contain: layout style paint;
+}
+
+/* Performance Optimizations */
+.nav-icon {
+  /* Optimize icon rendering */
+  shape-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Advanced Color Themes */
+.theme-blue {
+  --nav-primary: #3b82f6;
+  --nav-primary-hover: #2563eb;
+  --nav-active-bg: rgb(59 130 246 / 0.1);
+}
+
+.theme-purple {
+  --nav-primary: #8b5cf6;
+  --nav-primary-hover: #7c3aed;
+  --nav-active-bg: rgb(139 92 246 / 0.1);
+}
+
+.theme-green {
+  --nav-primary: #10b981;
+  --nav-primary-hover: #059669;
+  --nav-active-bg: rgb(16 185 129 / 0.1);
+}
+
+/* Advanced Responsive Containers */
+@container sidebar (max-width: 200px) {
+  .nav-text {
+    @apply hidden;
+  }
+
+  .nav-description {
+    @apply hidden;
+  }
+
+  .nav-badge {
+    @apply absolute -top-1 -right-1 scale-75;
+  }
+}
+
+/* Enhanced Error States */
+.error-state {
+  @apply relative;
+}
+
+.error-state::after {
+  content: "";
+  @apply absolute inset-0 border-2 border-red-500 rounded-lg;
+  @apply animate-pulse opacity-50;
+}
+
+.error-message {
+  @apply text-red-600 dark:text-red-400 text-xs mt-1;
+  @apply flex items-center space-x-1;
+}
+
+/* Advanced Spacing System */
+.spacing-xs {
+  gap: 0.25rem;
+}
+.spacing-sm {
+  gap: 0.5rem;
+}
+.spacing-md {
+  gap: 0.75rem;
+}
+.spacing-lg {
+  gap: 1rem;
+}
+.spacing-xl {
+  gap: 1.5rem;
+}
+
+/* Enhanced Mobile Gestures */
+@media (hover: none) and (pointer: coarse) {
+  /* Touch device optimizations */
+  .nav-item {
+    @apply py-3; /* Larger touch targets */
+    min-height: 44px; /* iOS recommended touch target size */
+  }
+
+  .sidebar-close-btn {
+    @apply p-3; /* Larger close button for touch */
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Remove hover effects on touch devices */
+  .nav-item:hover {
+    @apply bg-transparent;
+    transform: none;
+  }
+}
+
+/* Advanced Focus Indicators */
+.focus-indicator {
+  @apply relative;
+}
+
+.focus-indicator:focus-visible::before {
+  content: "";
+  @apply absolute -inset-1 border-2 border-primary-500 rounded-lg;
+  @apply animate-pulse;
+}
+
+/* Enhanced Keyboard Navigation */
+.keyboard-nav-active .nav-item:focus {
+  @apply bg-primary-50 dark:bg-primary-900/20;
+  @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+}
+
+/* Advanced Performance Monitoring Styles */
+.perf-slow-render {
+  @apply border-l-4 border-yellow-500;
+}
+
+.perf-slow-render::after {
+  content: "⚠️";
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  font-size: 0.75rem;
+}
+
+/* Mobile Toggle Button Styles */
+.sidebar-toggle {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 50;
+  padding: 0.5rem;
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(229, 231, 235, 1);
+  transition: all 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+  background: rgba(249, 250, 251, 1);
+}
+
+[data-theme="dark"] .sidebar-toggle {
+  background: rgba(31, 41, 55, 1);
+  border-color: rgba(75, 85, 99, 1);
+}
+
+[data-theme="dark"] .sidebar-toggle:hover {
+  background: rgba(55, 65, 81, 1);
+}
+
+/* Navigation Item Base Styles */
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  color: rgba(55, 65, 81, 1);
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .nav-item {
+  color: rgba(209, 213, 219, 1);
+}
+
+.nav-item:hover {
+  background: rgba(249, 250, 251, 1);
+  color: rgba(17, 24, 39, 1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .nav-item:hover {
+  background: rgba(55, 65, 81, 0.5);
+  color: rgba(243, 244, 246, 1);
+}
+
+.nav-item-active {
+  background: rgba(239, 246, 255, 1);
+  color: rgba(29, 78, 216, 1);
+  border-left: 4px solid rgba(59, 130, 246, 1);
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+  font-weight: 600;
+}
+
+[data-theme="dark"] .nav-item-active {
+  background: rgba(30, 58, 138, 0.3);
+  color: rgba(147, 197, 253, 1);
+}
+
+.nav-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 0.75rem;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.nav-text {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+}
+
+.nav-item:hover .nav-icon {
+  color: rgba(59, 130, 246, 1);
+  transform: scale(1.1);
+}
+
+[data-theme="dark"] .nav-item:hover .nav-icon {
+  color: rgba(147, 197, 253, 1);
+}
+
+.nav-item-active .nav-icon {
+  color: rgba(59, 130, 246, 1);
+}
+
+[data-theme="dark"] .nav-item-active .nav-icon {
+  color: rgba(147, 197, 253, 1);
+}
+
+/* Badge Styles */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  animation: fadeInScale 0.3s ease-out;
+}
+
+.badge-success {
+  background: rgba(220, 252, 231, 1);
+  color: rgba(22, 101, 52, 1);
+}
+
+.badge-warning {
+  background: rgba(254, 243, 199, 1);
+  color: rgba(146, 64, 14, 1);
+}
+
+.badge-info {
+  background: rgba(219, 234, 254, 1);
+  color: rgba(30, 64, 175, 1);
+}
+
+[data-theme="dark"] .badge-success {
+  background: rgba(6, 78, 59, 0.3);
+  color: rgba(52, 211, 153, 1);
+}
+
+[data-theme="dark"] .badge-warning {
+  background: rgba(146, 64, 14, 0.3);
+  color: rgba(251, 191, 36, 1);
+}
+
+[data-theme="dark"] .badge-info {
+  background: rgba(30, 58, 138, 0.3);
+  color: rgba(147, 197, 253, 1);
+}
+
+/* Description Text */
+.description {
+  font-size: 0.75rem;
+  color: rgba(107, 114, 128, 1);
+  margin-top: 0.125rem;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+[data-theme="dark"] .description {
+  color: rgba(156, 163, 175, 1);
+}
+
+.nav-item:hover .description {
+  opacity: 1;
+}
+
+/* Chevron Styles */
+.chevron {
+  width: 1rem;
+  height: 1rem;
+  margin-left: 0.5rem;
+  transition: transform 0.3s ease-in-out;
+  flex-shrink: 0;
+}
+
+.chevron.rotated {
+  transform: rotate(180deg);
+}
+
+/* Sub-navigation Styles */
+.sub-nav {
+  margin-left: 2rem;
+  margin-top: 0.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease-in-out;
+}
+
+.sub-nav.collapsed {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.sub-nav.expanded {
+  max-height: 24rem;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.sub-nav-item {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+  color: rgba(75, 85, 99, 1);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.sub-nav-item::before {
+  content: "";
+  width: 0.375rem;
+  height: 0.375rem;
+  background: currentColor;
+  border-radius: 50%;
+  margin-right: 0.75rem;
+  opacity: 0.6;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.sub-nav-item:hover {
+  background: rgba(243, 244, 246, 1);
+  color: rgba(17, 24, 39, 1);
+  transform: translateX(4px);
+}
+
+.sub-nav-item-active {
+  background: rgba(239, 246, 255, 1);
+  color: rgba(29, 78, 216, 1);
+  border-left: 2px solid rgba(59, 130, 246, 1);
+  font-weight: 500;
+}
+
+[data-theme="dark"] .sub-nav-item {
+  color: rgba(156, 163, 175, 1);
+}
+
+[data-theme="dark"] .sub-nav-item:hover {
+  background: rgba(55, 65, 81, 0.5);
+  color: rgba(243, 244, 246, 1);
+}
+
+[data-theme="dark"] .sub-nav-item-active {
+  background: rgba(30, 58, 138, 0.2);
+  color: rgba(147, 197, 253, 1);
+}
+
+/* Error and Loading States */
+.error-indicator {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  color: rgba(239, 68, 68, 1);
+}
+
+.error-message {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  color: rgba(220, 38, 38, 1);
+  background: rgba(254, 242, 242, 1);
+  border-radius: 0.375rem;
+  margin-top: 0.25rem;
+}
+
+[data-theme="dark"] .error-message {
+  color: rgba(248, 113, 113, 1);
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.loading-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(209, 213, 219, 1);
+  border-top: 2px solid rgba(59, 130, 246, 1);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 0.75rem;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Ripple Effect */
+.ripple-effect {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(59, 130, 246, 0.05),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.nav-item:hover .ripple-effect {
+  opacity: 1;
+}
+
+/* Advanced Performance Monitoring Styles */
+.perf-slow-render::after {
+  content: "⚠️";
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  font-size: 0.75rem;
+}

@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
-import { Form, Button, Card, Container, Row, Col, Alert, Spinner } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
-import api from '../../services/api';
+import React, { useState } from "react";
+import {
+  Form,
+  Button,
+  Card,
+  Container,
+  Row,
+  Col,
+  Alert,
+  Spinner,
+} from "react-bootstrap";
+import { Link } from "react-router-dom";
+import api from "../../services/api";
 
 const ForgotPassword = () => {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
@@ -15,12 +24,14 @@ const ForgotPassword = () => {
     setError(null);
 
     try {
-      const response = await api.post('/api/auth/forgot-password', { email });
+      const response = await api.post("/auth/forgot-password", { email });
       if (response.data.success) {
         setSuccess(true);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred. Please try again.');
+      setError(
+        err.response?.data?.message || "An error occurred. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -35,8 +46,14 @@ const ForgotPassword = () => {
               <Card.Body className="text-center">
                 <h2 className="mb-4">Check Your Email</h2>
                 <Alert variant="success">
-                  <p>If an account exists with this email, you will receive a password reset link shortly.</p>
-                  <p>Please check your inbox and follow the instructions to reset your password.</p>
+                  <p>
+                    If an account exists with this email, you will receive a
+                    password reset link shortly.
+                  </p>
+                  <p>
+                    Please check your inbox and follow the instructions to reset
+                    your password.
+                  </p>
                 </Alert>
                 <Link to="/login" className="btn btn-primary">
                   Return to Login
@@ -95,7 +112,7 @@ const ForgotPassword = () => {
                       Sending Reset Link...
                     </>
                   ) : (
-                    'Send Reset Link'
+                    "Send Reset Link"
                   )}
                 </Button>
               </Form>

@@ -20,6 +20,7 @@ import {
   BoltIcon,
   DocumentArrowDownIcon,
   WifiIcon,
+  LinkIcon,
 } from "@heroicons/react/24/outline";
 
 // Enhanced Order Counts Hook with Real-time Updates
@@ -428,6 +429,13 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
             ariaLabel: "Kullanıcı yönetimi",
           },
         ],
+      },
+      {
+        name: "Product Linking",
+        href: "/admin/product-linking",
+        icon: LinkIcon,
+        description: "Ürün bağlama işlemleri",
+        ariaLabel: "Ürün bağlama dashboard",
       },
       {
         name: "Help & Support",

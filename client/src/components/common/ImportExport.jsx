@@ -179,32 +179,32 @@ const ImportExport = () => {
     <div className="p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100 flex items-center">
           <Upload className="mr-3" />
           Import & Export
         </h1>
-        <p className="text-gray-600 mt-1">
+        <p className="text-gray-600 dark:text-gray-400 dark:text-gray-400 mt-1">
           Import data from CSV/Excel files or export your data
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Import Section */}
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+        <div className="bg-white dark:bg-gray-800 dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100 mb-4 flex items-center">
             <Upload className="w-5 h-5 mr-2" />
             Import Data
           </h2>
 
           {/* Data Type Selection */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
               Data Type
             </label>
             <select
               value={importType}
               onChange={(e) => setImportType(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               {supportedTypes.map((type) => (
                 <option key={type.value} value={type.value}>
@@ -212,14 +212,14 @@ const ImportExport = () => {
                 </option>
               ))}
             </select>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {supportedTypes.find((t) => t.value === importType)?.description}
             </p>
           </div>
 
           {/* File Upload */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Select File
             </label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
@@ -233,10 +233,10 @@ const ImportExport = () => {
               />
               <label htmlFor="file-upload" className="cursor-pointer">
                 <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <p className="text-lg font-medium text-gray-900 mb-2">
+                <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                   {selectedFile ? selectedFile.name : "Choose a file"}
                 </p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   CSV, Excel files up to 10MB
                 </p>
               </label>
@@ -247,7 +247,7 @@ const ImportExport = () => {
           <div className="mb-4">
             <button
               onClick={downloadTemplate}
-              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center justify-center"
+              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg flex items-center justify-center"
             >
               <FileText className="w-4 h-4 mr-2" />
               Download Template
@@ -293,24 +293,29 @@ const ImportExport = () => {
                   <span className="ml-2">{importResults.successful || 0}</span>
                 </div>
                 <div>
-                  <span className="text-red-600 font-medium">Failed:</span>
+                  <span className="text-red-600 dark:text-red-400 font-medium">
+                    Failed:
+                  </span>
                   <span className="ml-2">{importResults.failed || 0}</span>
                 </div>
               </div>
 
               {importResults.errors && importResults.errors.length > 0 && (
                 <div className="mt-3">
-                  <h4 className="text-sm font-medium text-red-700 mb-2">
+                  <h4 className="text-sm font-medium text-red-700 dark:text-red-300 mb-2">
                     Errors:
                   </h4>
                   <div className="max-h-32 overflow-y-auto">
                     {importResults.errors.slice(0, 5).map((error, index) => (
-                      <p key={index} className="text-xs text-red-600 mb-1">
+                      <p
+                        key={index}
+                        className="text-xs text-red-600 dark:text-red-400 mb-1"
+                      >
                         Row {error.row}: {error.message}
                       </p>
                     ))}
                     {importResults.errors.length > 5 && (
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         And {importResults.errors.length - 5} more errors...
                       </p>
                     )}
@@ -322,21 +327,21 @@ const ImportExport = () => {
         </div>
 
         {/* Export Section */}
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+        <div className="bg-white dark:bg-gray-800 dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100 mb-4 flex items-center">
             <Download className="w-5 h-5 mr-2" />
             Export Data
           </h2>
 
           {/* Data Type Selection */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
               Data Type
             </label>
             <select
               value={importType}
               onChange={(e) => setImportType(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               {supportedTypes.map((type) => (
                 <option key={type.value} value={type.value}>
@@ -371,11 +376,11 @@ const ImportExport = () => {
           </div>
 
           {/* Export Info */}
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="text-sm font-medium text-blue-800 mb-2">
+          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+            <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
               Export Information
             </h3>
-            <ul className="text-xs text-blue-700 space-y-1">
+            <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
               <li>
                 • All data will be exported based on your current permissions
               </li>
@@ -388,34 +393,34 @@ const ImportExport = () => {
       </div>
 
       {/* Instructions */}
-      <div className="mt-8 bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="mt-8 bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
           Import Instructions
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">
+            <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
               1. Prepare Your File
             </h4>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               Download the template for your data type and fill it with your
               data. Ensure all required fields are included.
             </p>
           </div>
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">
+            <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
               2. Upload & Import
             </h4>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               Select your file and click import. The system will validate your
               data and show any errors that need to be fixed.
             </p>
           </div>
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">
+            <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
               3. Review Results
             </h4>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               Check the import results to see how many records were successfully
               imported and fix any errors if needed.
             </p>

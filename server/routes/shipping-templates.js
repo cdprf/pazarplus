@@ -103,6 +103,57 @@ router.post(
 
 /**
  * @swagger
+ * /api/shipping/templates/generate-pdf:
+ *   post:
+ *     summary: Generate PDF using template and order data
+ *     tags: [Shipping Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderId
+ *             properties:
+ *               orderId:
+ *                 type: integer
+ *                 description: Order ID
+ *               templateId:
+ *                 type: string
+ *                 description: Template ID (uses default if not specified)
+ *     responses:
+ *       200:
+ *         description: PDF generated successfully
+ *       400:
+ *         description: Invalid request
+ *       404:
+ *         description: Order or template not found
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.post(
+  "/generate-pdf",
+  body("orderId").notEmpty().withMessage("Order ID is required"),
+  body("templateId").optional().isString(),
+  (req, res) => {
+    console.log("Received generate-pdf request:", {
+      url: req.originalUrl,
+      method: req.method,
+      body: req.body,
+      path: req.path,
+      baseUrl: req.baseUrl,
+    });
+    return shippingTemplatesController.generatePDF(req, res);
+  }
+);
+
+/**
+ * @swagger
  * /api/shipping/templates:
  *   get:
  *     summary: Get all shipping templates for the authenticated user

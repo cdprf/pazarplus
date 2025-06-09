@@ -80,8 +80,8 @@ const BusinessIntelligenceDashboard = () => {
     try {
       setLoading(true);
       const [analyticsRes, biRes] = await Promise.all([
-        api.get(`/api/analytics/dashboard?timeframe=${timeframe}`),
-        api.get(`/api/analytics/business-intelligence?timeframe=${timeframe}`),
+        api.get(`/analytics/dashboard?timeframe=${timeframe}`),
+        api.get(`/analytics/business-intelligence?timeframe=${timeframe}`),
       ]);
 
       const analyticsData = analyticsRes.data;
@@ -112,8 +112,8 @@ const BusinessIntelligenceDashboard = () => {
   const handleExport = async (format) => {
     try {
       const response = await api.get(
-        `/api/analytics/export?timeframe=${timeframe}&format=${format}`,
-        { responseType: 'blob' }
+        `/analytics/export?timeframe=${timeframe}&format=${format}`,
+        { responseType: "blob" }
       );
 
       if (format === "csv") {

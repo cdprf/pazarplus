@@ -105,8 +105,8 @@ const ProductCard = ({
             )}
           </div>
         ) : (
-          <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
-            <Image className="h-12 w-12 text-gray-400" />
+          <div className="w-full h-48 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+            <Image className="h-12 w-12 text-gray-400 dark:text-gray-500" />
           </div>
         )}
 
@@ -132,7 +132,7 @@ const ProductCard = ({
             type="checkbox"
             checked={isSelected}
             onChange={() => onSelect?.(product.id)}
-            className="w-4 h-4 text-blue-600 bg-white border-2 border-gray-300 rounded focus:ring-blue-500"
+            className="w-4 h-4 text-blue-600 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
           />
         </div>
       </div>
@@ -140,28 +140,28 @@ const ProductCard = ({
       <CardContent className="p-4">
         {/* Product Info */}
         <div className="mb-3">
-          <h3 className="font-medium text-gray-900 line-clamp-2 mb-1">
+          <h3 className="font-medium text-gray-900 dark:text-gray-100 line-clamp-2 mb-1">
             {product.name}
           </h3>
 
           {/* Product Details */}
-          <div className="space-y-1 text-xs text-gray-500">
+          <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
             {product.modelCode && (
               <div className="flex items-center justify-between">
                 <span>Model Kodu:</span>
-                <code className="bg-gray-100 px-1 rounded">
+                <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">
                   {product.modelCode}
                 </code>
               </div>
             )}
             <div className="flex items-center justify-between">
               <span>Stok Kodu:</span>
-              <code className="bg-gray-100 px-1 rounded">{product.sku}</code>
+              <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{product.sku}</code>
             </div>
             {product.barcode && (
               <div className="flex items-center justify-between">
                 <span>Barkod:</span>
-                <code className="bg-gray-100 px-1 rounded">
+                <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">
                   {product.barcode}
                 </code>
               </div>
@@ -172,14 +172,14 @@ const ProductCard = ({
         {/* Metadata */}
         <div className="space-y-2 mb-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">Kategori:</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Kategori:</span>
             <Badge variant="secondary" className="text-xs">
               {product.category}
             </Badge>
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">Fiyat:</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Fiyat:</span>
             <InlineEditor
               value={product.price}
               onSave={(newPrice) =>
@@ -192,7 +192,7 @@ const ProductCard = ({
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">Stok:</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Stok:</span>
             <div className="flex items-center space-x-1">
               {stockStatus.icon}
               <InlineEditor
@@ -208,7 +208,7 @@ const ProductCard = ({
 
           {/* Completion Score Row */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">Doluluk:</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Doluluk:</span>
             <CompletionScore score={completionScore} />
           </div>
         </div>
@@ -268,9 +268,9 @@ const ProductCard = ({
               icon={MoreVertical}
             />
             {showMoreMenu === product.id && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-10">
                 <button
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center"
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 flex items-center"
                   onClick={() => {
                     navigator.clipboard.writeText(product.sku);
                     onToggleMoreMenu?.(null);
@@ -280,7 +280,7 @@ const ProductCard = ({
                   SKU'yu Kopyala
                 </button>
                 <button
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center"
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 flex items-center"
                   onClick={() => {
                     // Toggle favorite logic here
                     onToggleMoreMenu?.(null);
@@ -289,7 +289,7 @@ const ProductCard = ({
                   <Star className="h-4 w-4 mr-2" />
                   Favorilere Ekle
                 </button>
-                <div className="border-t border-gray-100" />
+                <div className="border-t border-gray-100 dark:border-gray-700" />
                 <button
                   className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center"
                   onClick={() => {

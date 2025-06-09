@@ -30,8 +30,16 @@ import {
 } from "lucide-react";
 import { ELEMENT_TYPES } from "./elementTypes.js";
 
-// Enhanced Element Categories with Comprehensive Field Support
+// Simple category constants for ElementLibrary compatibility
 export const ELEMENT_CATEGORIES = {
+  BASIC: "basic",
+  SHIPPING: "shipping",
+  CODES: "codes",
+  LAYOUT: "layout",
+};
+
+// Enhanced Element Categories with Comprehensive Field Support
+export const ELEMENT_CATEGORIES_DETAILED = {
   basic: {
     name: "Temel Öğeler",
     icon: Type,

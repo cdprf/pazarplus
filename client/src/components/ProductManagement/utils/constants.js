@@ -82,13 +82,21 @@ export const PlatformIcons = {
 
 // API Base Configuration
 export const API_BASE_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:5001/api";
+  process.env.REACT_APP_API_URL || "/api";
 
-// Status Options
+// Core Status Options
 export const STATUS_OPTIONS = [
   { value: "active", label: "Aktif", variant: "success" },
   { value: "inactive", label: "Pasif", variant: "secondary" },
   { value: "draft", label: "Taslak", variant: "warning" },
+];
+
+// Approval Status Options
+export const APPROVAL_STATUS_OPTIONS = [
+  { value: "pending", label: "Onay Bekliyor", variant: "warning" },
+  { value: "approved", label: "Onaylandı", variant: "success" },
+  { value: "rejected", label: "Reddedildi", variant: "danger" },
+  { value: "unapproved", label: "Onaysız", variant: "secondary" },
 ];
 
 // Stock Status Options
@@ -96,6 +104,31 @@ export const STOCK_STATUS_OPTIONS = [
   { value: "in_stock", label: "Stokta", variant: "success" },
   { value: "low_stock", label: "Az Stok", variant: "warning" },
   { value: "out_of_stock", label: "Stok Yok", variant: "danger" },
+];
+
+// Sync Status Options
+export const SYNC_STATUS_OPTIONS = [
+  { value: "synced", label: "Senkronize Edildi", variant: "success" },
+  { value: "syncing", label: "Senkronizasyon Devam Ediyor", variant: "info" },
+  {
+    value: "sync_pending",
+    label: "Senkronizasyon Bekliyor",
+    variant: "warning",
+  },
+  { value: "sync_error", label: "Senkronizasyon Hatası", variant: "danger" },
+  {
+    value: "sync_failed",
+    label: "Senkronizasyon Başarısız",
+    variant: "danger",
+  },
+  { value: "partial", label: "Kısmi Senkronize", variant: "warning" },
+];
+
+// Combined Status Options for Filtering
+export const ALL_STATUS_OPTIONS = [
+  ...STATUS_OPTIONS,
+  ...APPROVAL_STATUS_OPTIONS,
+  ...SYNC_STATUS_OPTIONS,
 ];
 
 // Pagination Options
@@ -123,4 +156,16 @@ export const DEFAULT_PRODUCT_FORM = {
     amazon: { enabled: false, platformSku: "", price: "" },
   },
   tags: [],
+};
+
+// Status Tab Configuration
+export const STATUS_TAB_CONFIG = {
+  all: { key: "all", label: "Tüm Ürünler", icon: "Package" },
+  active: { key: "active", label: "Aktif", icon: "CheckCircle" },
+  inactive: { key: "inactive", label: "Pasif", icon: "AlertCircle" },
+  draft: { key: "draft", label: "Taslak", icon: "Edit" },
+  pending: { key: "pending", label: "Onay Bekliyor", icon: "AlertTriangle" },
+  rejected: { key: "rejected", label: "Reddedildi", icon: "XCircle" },
+  out_of_stock: { key: "out_of_stock", label: "Stok Yok", icon: "Package" },
+  low_stock: { key: "low_stock", label: "Az Stok", icon: "AlertTriangle" },
 };

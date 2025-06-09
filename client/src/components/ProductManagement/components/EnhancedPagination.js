@@ -26,10 +26,10 @@ const EnhancedPagination = ({
 
   return (
     <div
-      className={`flex items-center justify-between bg-gray-50 px-6 py-3 border-t ${className}`}
+      className={`flex items-center justify-between bg-gray-50 dark:bg-gray-800 px-6 py-3 border-t ${className}`}
     >
       <div className="flex items-center space-x-4">
-        <div className="text-sm text-gray-700">
+        <div className="text-sm text-gray-700 dark:text-gray-300">
           <span className="font-medium">
             {startItem}-{endItem}
           </span>{" "}
@@ -37,11 +37,11 @@ const EnhancedPagination = ({
         </div>
 
         <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-600">Her Sayfada:</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">Her Sayfada:</span>
           <select
             value={itemsPerPage}
             onChange={(e) => onPageSizeChange?.(parseInt(e.target.value))}
-            className="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
+            className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
           >
             {pageSizeOptions.map((size) => (
               <option key={size} value={size}>
@@ -54,7 +54,7 @@ const EnhancedPagination = ({
 
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-600">Sayfaya Git:</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">Sayfaya Git:</span>
           <input
             type="number"
             value={pageInput}
@@ -63,7 +63,7 @@ const EnhancedPagination = ({
             placeholder={currentPage.toString()}
             min="1"
             max={totalPages}
-            className="w-16 border border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
+            className="w-16 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
           />
           <Button onClick={handlePageJump} variant="outline" size="sm">
             Git
@@ -79,7 +79,7 @@ const EnhancedPagination = ({
           >
             Önceki
           </Button>
-          <span className="text-sm text-gray-700">
+          <span className="text-sm text-gray-700 dark:text-gray-300">
             Sayfa {currentPage} / {totalPages}
           </span>
           <Button

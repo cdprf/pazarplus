@@ -17,21 +17,27 @@ const Button = React.forwardRef(
     },
     ref
   ) => {
-    const baseClasses = "btn transition-base";
+    const baseClasses =
+      "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
 
     const variants = {
-      primary: "btn-primary",
-      secondary: "btn-secondary",
-      ghost: "btn-ghost",
-      danger: "btn-danger",
-      success: "btn-success",
-      warning: "btn-warning",
+      primary: "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800",
+      secondary:
+        "bg-gray-100 text-gray-900 dark:text-gray-100 hover:bg-gray-200 active:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700",
+      ghost:
+        "hover:bg-gray-100 hover:text-gray-900 dark:text-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-100",
+      outline:
+        "border border-gray-300 bg-transparent hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800",
+      danger: "bg-red-600 text-white hover:bg-red-700 active:bg-red-800",
+      success: "bg-green-600 text-white hover:bg-green-700 active:bg-green-800",
+      warning:
+        "bg-yellow-600 text-white hover:bg-yellow-700 active:bg-yellow-800",
     };
 
     const sizes = {
-      sm: "btn-sm",
-      md: "btn-md",
-      lg: "btn-lg",
+      sm: "h-8 px-3 text-sm",
+      md: "h-10 px-4 py-2",
+      lg: "h-12 px-8 text-lg",
     };
 
     const renderIcon = () => {
@@ -94,12 +100,10 @@ const Button = React.forwardRef(
       <button
         className={cn(
           baseClasses,
-          variants[variant],
-          sizes[size],
+          variants[variant] || variants.primary,
+          sizes[size] || sizes.md,
           {
             "opacity-50 cursor-not-allowed": disabled || loading,
-            "hover:shadow-lg hover:scale-105 active:scale-95":
-              !disabled && !loading,
             "w-full": fullWidth,
           },
           className
@@ -110,11 +114,11 @@ const Button = React.forwardRef(
         {...props}
       >
         {iconElement && iconPosition === "left" && (
-          <span className="mr-2">{iconElement}</span>
+          <span className="mr-2 flex">{iconElement}</span>
         )}
         {children}
         {iconElement && iconPosition === "right" && (
-          <span className="ml-2">{iconElement}</span>
+          <span className="ml-2 flex">{iconElement}</span>
         )}
       </button>
     );
