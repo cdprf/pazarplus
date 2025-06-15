@@ -25,7 +25,6 @@ const {
   calculateTaxLiability,
   calculateProductProfitMargin,
   calculateDemandForecast,
-  calculateStockoutDays,
   calculateGrowthTrend,
   calculateSeasonalityIndex,
   calculateReturnRate,
@@ -40,6 +39,7 @@ const {
   calculateElasticity,
   calculateGrowthRate,
   calculatePlatformRevenue,
+  getPricingAnalysis,
 } = require("./analytic-calculation-utils");
 
 const {
@@ -302,7 +302,7 @@ class AnalyticsService {
           categoryPerformance,
           pricingAnalysis
         ),
-        marketTrends: analyzeMarketTrends(categoryPerformance),
+        marketTrends: this.analyzeMarketTrends(categoryPerformance),
         recommendations: generateMarketRecommendations(
           categoryPerformance,
           pricingAnalysis
@@ -616,13 +616,13 @@ class AnalyticsService {
    * Get cohort analysis for retention insights
    */
   async getCohortAnalysis(userId, timeframe = "90d") {
-    const cacheKey = `${cachePrefix}cohort-analysis:${userId}:${timeframe}`;
+    const cacheKey = `${this.cachePrefix}cohort-analysis:${userId}:${timeframe}`;
 
     try {
       const cached = await cacheService.get(cacheKey);
       if (cached) return cached;
 
-      const dateRange = getDateRange(timeframe);
+      const dateRange = this.getDateRange(timeframe);
 
       // Get customer first order dates
       const firstOrders = await Order.findAll({
@@ -722,7 +722,7 @@ class AnalyticsService {
         ],
       };
 
-      await cacheService.set(cacheKey, result, defaultCacheTTL);
+      await cacheService.set(cacheKey, result, this.defaultCacheTTL);
       return result;
     } catch (error) {
       logger.error("Error getting cohort analysis:", error);
@@ -740,13 +740,13 @@ class AnalyticsService {
    * Get competitive analysis and market positioning
    */
   async getCompetitiveAnalysis(userId, timeframe = "30d") {
-    const cacheKey = `${cachePrefix}competitive-analysis:${userId}:${timeframe}`;
+    const cacheKey = `${this.cachePrefix}competitive-analysis:${userId}:${timeframe}`;
 
     try {
       const cached = await cacheService.get(cacheKey);
       if (cached) return cached;
 
-      const dateRange = getDateRange(timeframe);
+      const dateRange = this.getDateRange(timeframe);
 
       // Get user's products and performance
       const userProducts = await Product.findAll({
@@ -841,7 +841,7 @@ class AnalyticsService {
         insights,
       };
 
-      await cacheService.set(cacheKey, result, defaultCacheTTL);
+      await cacheService.set(cacheKey, result, this.defaultCacheTTL);
       return result;
     } catch (error) {
       logger.error("Error getting competitive analysis:", error);
@@ -861,13 +861,13 @@ class AnalyticsService {
    * Get conversion funnel analysis
    */
   async getFunnelAnalysis(userId, timeframe = "30d") {
-    const cacheKey = `${cachePrefix}funnel-analysis:${userId}:${timeframe}`;
+    const cacheKey = `${this.cachePrefix}funnel-analysis:${userId}:${timeframe}`;
 
     try {
       const cached = await cacheService.get(cacheKey);
       if (cached) return cached;
 
-      const dateRange = getDateRange(timeframe);
+      const dateRange = this.getDateRange(timeframe);
 
       // Simulate funnel stages based on order data
       const totalOrders = await Order.count({
@@ -971,7 +971,7 @@ class AnalyticsService {
         ],
       };
 
-      await cacheService.set(cacheKey, result, defaultCacheTTL);
+      await cacheService.set(cacheKey, result, this.defaultCacheTTL);
       return result;
     } catch (error) {
       logger.error("Error getting funnel analysis:", error);
@@ -1122,13 +1122,13 @@ class AnalyticsService {
    * Get marketing attribution analysis
    */
   async getAttributionAnalysis(userId, timeframe = "30d") {
-    const cacheKey = `${cachePrefix}attribution-analysis:${userId}:${timeframe}`;
+    const cacheKey = `${this.cachePrefix}attribution-analysis:${userId}:${timeframe}`;
 
     try {
       const cached = await cacheService.get(cacheKey);
       if (cached) return cached;
 
-      const dateRange = getDateRange(timeframe);
+      const dateRange = this.getDateRange(timeframe);
 
       // Analyze orders by platform (as a proxy for marketing channels)
       const platformOrders = await Order.findAll({
@@ -1207,7 +1207,7 @@ class AnalyticsService {
         ],
       };
 
-      await cacheService.set(cacheKey, result, defaultCacheTTL);
+      await cacheService.set(cacheKey, result, this.defaultCacheTTL);
       return result;
     } catch (error) {
       logger.error("Error getting attribution analysis:", error);
@@ -1319,6 +1319,790 @@ class AnalyticsService {
       return [];
     }
   }
+
+  /**
+   * Get date range object from timeframe string
+   */
+  getDateRange(timeframe) {
+    const end = new Date();
+    const start = new Date();
+
+    const timeframeMap = {
+      "7d": 7,
+      "30d": 30,
+      "90d": 90,
+      "180d": 180,
+      "365d": 365,
+      "1y": 365,
+    };
+
+    const days = timeframeMap[timeframe] || 30;
+    start.setDate(start.getDate() - days);
+
+    return { start, end };
+  }
+
+  /**
+   * Main dashboard analytics orchestrator
+   */
+  async getDashboardAnalytics(userId, timeframe = "30d") {
+    try {
+      const cacheKey = `${this.cachePrefix}dashboard:${userId}:${timeframe}`;
+      const cached = await cacheService.get(cacheKey);
+      if (cached) return cached;
+
+      const dateRange = this.getDateRange(timeframe);
+
+      // Get all analytics data using the utility functions
+      const [
+        orderSummary,
+        revenue,
+        platformComparison,
+        topProducts,
+        orderTrends,
+        performanceMetrics,
+        predictiveInsights,
+        marketIntelligence,
+        financialKPIs,
+      ] = await Promise.all([
+        this.getOrderSummary(userId, dateRange),
+        getRevenueAnalytics(userId, dateRange),
+        this.getPlatformComparison(userId, dateRange),
+        this.getTopProducts(userId, dateRange),
+        this.getOrderTrends(userId, dateRange),
+        this.getPerformanceMetrics(userId, dateRange),
+        this.getPredictiveInsights(userId, dateRange),
+        this.getMarketIntelligence(userId, dateRange),
+        this.getFinancialKPIs(userId, dateRange),
+      ]);
+
+      const result = {
+        orderSummary,
+        revenue,
+        platformComparison,
+        topProducts,
+        orderTrends,
+        performanceMetrics,
+        predictiveInsights,
+        marketIntelligence,
+        financialKPIs,
+        insights: predictiveInsights?.insights || [],
+        recommendations: predictiveInsights?.recommendations || [],
+        metadata: {
+          timeframe,
+          generatedAt: new Date(),
+          userId,
+        },
+      };
+
+      await cacheService.set(cacheKey, result, this.defaultCacheTTL);
+      return result;
+    } catch (error) {
+      logger.error("Dashboard analytics error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get predictive insights
+   */
+  async getPredictiveInsights(userId, dateRange) {
+    try {
+      const [
+        salesForecast,
+        inventoryPredictions,
+        cohortAnalysis,
+        competitiveAnalysis,
+      ] = await Promise.all([
+        this.getSalesForecast(userId, dateRange),
+        this.getInventoryPredictions(userId, dateRange),
+        this.getCohortAnalysis(userId),
+        this.getCompetitiveAnalysis(userId),
+      ]);
+
+      return {
+        salesForecast,
+        inventoryPredictions,
+        cohortAnalysis,
+        competitiveAnalysis,
+        insights: [
+          ...(salesForecast?.insights || []),
+          ...(inventoryPredictions?.insights || []),
+          ...(cohortAnalysis?.insights || []),
+        ],
+        recommendations: [
+          ...(salesForecast?.recommendations || []),
+          ...(inventoryPredictions?.recommendations || []),
+          ...(competitiveAnalysis?.recommendations || []),
+        ],
+        confidence: calculateOverallConfidence(
+          salesForecast,
+          inventoryPredictions,
+          cohortAnalysis
+        ),
+      };
+    } catch (error) {
+      logger.error("Predictive insights error:", error);
+      return {
+        salesForecast: { nextMonth: [], confidence: 50 },
+        inventoryPredictions: { predictions: [] },
+        cohortAnalysis: { cohorts: [] },
+        competitiveAnalysis: { insights: [] },
+        insights: [],
+        recommendations: [],
+        confidence: 50,
+      };
+    }
+  }
+
+  /**
+   * Get order summary for the dashboard
+   */
+  async getOrderSummary(userId, dateRange) {
+    try {
+      const orders = await Order.findAll({
+        where: {
+          userId,
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+        },
+      });
+
+      const totalOrders = orders.length;
+      const totalRevenue = orders.reduce(
+        (sum, order) => sum + parseFloat(order.totalAmount || 0),
+        0
+      );
+      const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+      // Get previous period for comparison
+      const previousPeriod = this.getPreviousPeriod(dateRange);
+      const previousOrders = await Order.findAll({
+        where: {
+          userId,
+          createdAt: {
+            [Op.between]: [previousPeriod.start, previousPeriod.end],
+          },
+        },
+      });
+
+      const previousTotalOrders = previousOrders.length;
+      const previousTotalRevenue = previousOrders.reduce(
+        (sum, order) => sum + parseFloat(order.totalAmount || 0),
+        0
+      );
+      const previousAvgOrderValue =
+        previousTotalOrders > 0
+          ? previousTotalRevenue / previousTotalOrders
+          : 0;
+
+      return {
+        totalOrders,
+        totalRevenue,
+        avgOrderValue,
+        previousOrders: previousTotalOrders,
+        previousRevenue: previousTotalRevenue,
+        previousAvgOrderValue,
+        conversionRate: calculateConversionRate(orders),
+        previousConversionRate: calculateConversionRate(previousOrders),
+      };
+    } catch (error) {
+      logger.error("Order summary error:", error);
+      return {
+        totalOrders: 0,
+        totalRevenue: 0,
+        avgOrderValue: 0,
+        previousOrders: 0,
+        previousRevenue: 0,
+        previousAvgOrderValue: 0,
+        conversionRate: 0,
+        previousConversionRate: 0,
+      };
+    }
+  }
+
+  /**
+   * Get top products
+   */
+  async getTopProducts(userId, dateRange, limit = 10) {
+    try {
+      const topProducts = await OrderItem.findAll({
+        include: [
+          {
+            model: Order,
+            as: "order",
+            where: {
+              userId,
+              createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+            },
+            attributes: [],
+          },
+          {
+            model: Product,
+            as: "product",
+            attributes: ["name", "category"],
+          },
+        ],
+        attributes: [
+          "productId",
+          [
+            OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
+            "totalSold",
+          ],
+          [
+            OrderItem.sequelize.fn(
+              "SUM",
+              OrderItem.sequelize.literal(
+                "OrderItem.price * OrderItem.quantity"
+              )
+            ),
+            "revenue",
+          ],
+          [
+            OrderItem.sequelize.fn(
+              "AVG",
+              OrderItem.sequelize.col("OrderItem.price")
+            ),
+            "avgPrice",
+          ],
+        ],
+        group: ["productId"],
+        order: [[OrderItem.sequelize.literal("revenue"), "DESC"]],
+        limit,
+      });
+
+      return topProducts.map((item) => ({
+        productId: item.get("productId"),
+        name: item.product?.name || "Unknown Product",
+        category: item.product?.category || "Uncategorized",
+        totalSold: parseInt(item.get("totalSold")),
+        unitsSold: parseInt(item.get("totalSold")), // Alias for compatibility
+        revenue: parseFloat(item.get("revenue")),
+        avgPrice: parseFloat(item.get("avgPrice")),
+      }));
+    } catch (error) {
+      logger.error("Top products error:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get order trends
+   */
+  async getOrderTrends(userId, dateRange) {
+    try {
+      const trends = await Order.findAll({
+        where: {
+          userId,
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+        },
+        attributes: [
+          [
+            Order.sequelize.fn("DATE", Order.sequelize.col("createdAt")),
+            "date",
+          ],
+          [Order.sequelize.fn("COUNT", Order.sequelize.col("id")), "orders"],
+          [
+            Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")),
+            "revenue",
+          ],
+        ],
+        group: [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt"))],
+        order: [
+          [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt")), "ASC"],
+        ],
+      });
+
+      return trends.map((trend) => ({
+        date: trend.get("date"),
+        orders: parseInt(trend.get("orders")),
+        revenue: parseFloat(trend.get("revenue")),
+      }));
+    } catch (error) {
+      logger.error("Order trends error:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get performance metrics
+   */
+  async getPerformanceMetrics(userId, dateRange) {
+    try {
+      const orders = await Order.findAll({
+        where: {
+          userId,
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+        },
+      });
+
+      const totalRevenue = orders.reduce(
+        (sum, order) => sum + parseFloat(order.totalAmount || 0),
+        0
+      );
+      const returnRate = await calculateReturnRate(userId, dateRange);
+      const satisfactionMetrics = await calculateSatisfactionMetrics(
+        userId,
+        dateRange
+      );
+      const customerMetrics = await getCustomerMetrics(userId, dateRange);
+
+      return {
+        totalRevenue,
+        returnRate,
+        satisfaction: satisfactionMetrics,
+        customers: customerMetrics,
+        avgResponseTime: Math.random() * 24 + 1, // Mock data
+        fulfillmentRate: 95 + Math.random() * 5, // Mock data
+      };
+    } catch (error) {
+      logger.error("Performance metrics error:", error);
+      return {
+        totalRevenue: 0,
+        returnRate: 0,
+        satisfaction: { averageRating: 4.0, totalReviews: 0 },
+        customers: { totalCustomers: 0, repeatCustomers: 0 },
+        avgResponseTime: 12,
+        fulfillmentRate: 95,
+      };
+    }
+  }
+
+  /**
+   * Get revenue analytics data
+   */
+  async getRevenueAnalytics(userId, dateRange) {
+    try {
+      const cacheKey = `${this.cachePrefix}revenue:${userId}:${dateRange.start}:${dateRange.end}`;
+      const cached = await cacheService.get(cacheKey);
+      if (cached) return cached;
+
+      const result = await getRevenueAnalytics(userId, dateRange);
+      await cacheService.set(cacheKey, result, this.defaultCacheTTL);
+      return result;
+    } catch (error) {
+      logger.error("Revenue analytics error:", error);
+      return {
+        totalRevenue: 0,
+        growth: { rate: 0, trend: "stable" },
+        breakdown: { daily: [], monthly: [], platforms: [] },
+      };
+    }
+  }
+
+  /**
+   * Get product analytics data
+   */
+  async getProductAnalytics(userId, productId = null, dateRange) {
+    try {
+      // Handle parameter order - if productId is actually dateRange (when called with 2 params)
+      if (productId && typeof productId === "object" && productId.start) {
+        dateRange = productId;
+        productId = null;
+      }
+
+      // If dateRange is still undefined, generate default date range
+      if (
+        !dateRange ||
+        typeof dateRange !== "object" ||
+        !dateRange.start ||
+        !dateRange.end
+      ) {
+        dateRange = this.getDateRange("30d");
+      }
+
+      const cacheKey = `${this.cachePrefix}products:${userId}:${
+        productId || "all"
+      }:${dateRange.start}:${dateRange.end}`;
+      const cached = await cacheService.get(cacheKey);
+      if (cached) return cached;
+
+      const result = await getProductAnalytics(userId, productId, dateRange);
+      await cacheService.set(cacheKey, result, this.defaultCacheTTL);
+      return result;
+    } catch (error) {
+      logger.error("Product analytics error:", error);
+      return {
+        topProducts: [],
+        categories: [],
+        performance: {},
+      };
+    }
+  }
+
+  /**
+   * Get customer segmentation data
+   */
+  async getCustomerSegmentation(userId, dateRange) {
+    try {
+      const cacheKey = `${this.cachePrefix}customer_seg:${userId}:${dateRange.start}:${dateRange.end}`;
+      const cached = await cacheService.get(cacheKey);
+      if (cached) return cached;
+
+      const result = await getCustomerSegmentation(userId, dateRange);
+      await cacheService.set(cacheKey, result, this.defaultCacheTTL);
+      return result;
+    } catch (error) {
+      logger.error("Customer segmentation error:", error);
+      return {
+        segments: [],
+        totalCustomers: 0,
+        breakdown: {},
+      };
+    }
+  }
+
+  /**
+   * Get comprehensive dashboard analytics
+   */
+  async getDashboardAnalytics(userId, timeframe = "30d") {
+    try {
+      const dateRange = this.getDateRange(timeframe);
+
+      const cacheKey = `${this.cachePrefix}dashboard:${userId}:${timeframe}`;
+      const cached = await cacheService.get(cacheKey);
+      if (cached) return cached;
+
+      // Get all analytics data in parallel
+      const [
+        orderSummary,
+        revenue,
+        platformStats,
+        topProducts,
+        categories,
+        customerMetrics,
+      ] = await Promise.all([
+        this.getOrderSummary(userId, dateRange),
+        this.getRevenueAnalytics(userId, dateRange),
+        this.getPlatformComparison(userId, dateRange),
+        this.getTopProducts(userId, dateRange),
+        this.getCategoryAnalytics(userId, dateRange),
+        this.getCustomerMetrics(userId, dateRange),
+      ]);
+
+      const dashboard = {
+        orderSummary,
+        revenue,
+        platforms: platformStats,
+        topProducts,
+        categories,
+        customerMetrics,
+        timeframe,
+        generatedAt: new Date(),
+      };
+
+      await cacheService.set(cacheKey, dashboard, this.defaultCacheTTL);
+      return dashboard;
+    } catch (error) {
+      logger.error("Dashboard analytics error:", error);
+      return {
+        orderSummary: { total: 0, completed: 0, pending: 0, cancelled: 0 },
+        revenue: { total: 0, previous: 0, growth: 0 },
+        platforms: [],
+        topProducts: [],
+        categories: [],
+        customerMetrics: {},
+        timeframe,
+        generatedAt: new Date(),
+      };
+    }
+  }
+
+  /**
+   * Get order summary analytics
+   */
+  async getOrderSummary(userId, dateRange) {
+    try {
+      const orders = await Order.findAll({
+        where: {
+          userId,
+          createdAt: {
+            [Op.between]: [dateRange.start, dateRange.end],
+          },
+        },
+        attributes: ["orderStatus", "totalAmount"],
+      });
+
+      const summary = {
+        total: orders.length,
+        completed: 0,
+        pending: 0,
+        cancelled: 0,
+        delivered: 0,
+        shipped: 0,
+        new: 0,
+      };
+
+      orders.forEach((order) => {
+        const status = order.orderStatus;
+        if (status === "completed" || status === "delivered") {
+          summary.completed++;
+          summary.delivered++;
+        } else if (status === "shipped") {
+          summary.shipped++;
+        } else if (status === "new") {
+          summary.new++;
+        } else if (status === "cancelled") {
+          summary.cancelled++;
+        } else {
+          summary.pending++;
+        }
+      });
+
+      return summary;
+    } catch (error) {
+      logger.error("Order summary error:", error);
+      return { total: 0, completed: 0, pending: 0, cancelled: 0 };
+    }
+  }
+
+  /**
+   * Get revenue analytics
+   */
+  async getRevenueAnalytics(userId, dateRange) {
+    try {
+      const validStatuses = ["completed", "delivered", "shipped"];
+
+      const currentRevenue = await Order.sum("totalAmount", {
+        where: {
+          userId,
+          createdAt: {
+            [Op.between]: [dateRange.start, dateRange.end],
+          },
+          orderStatus: { [Op.in]: validStatuses },
+        },
+      });
+
+      // Get previous period for comparison
+      const previousStart = new Date(dateRange.start);
+      const previousEnd = new Date(dateRange.end);
+      const diffMs = dateRange.end.getTime() - dateRange.start.getTime();
+      previousStart.setTime(previousStart.getTime() - diffMs);
+      previousEnd.setTime(previousEnd.getTime() - diffMs);
+
+      const previousRevenue = await Order.sum("totalAmount", {
+        where: {
+          userId,
+          createdAt: {
+            [Op.between]: [previousStart, previousEnd],
+          },
+          orderStatus: { [Op.in]: validStatuses },
+        },
+      });
+
+      const total = parseFloat(currentRevenue) || 0;
+      const previous = parseFloat(previousRevenue) || 0;
+      const growth = previous > 0 ? ((total - previous) / previous) * 100 : 0;
+
+      return {
+        total,
+        previous,
+        growth,
+        trend: growth > 0 ? "up" : growth < 0 ? "down" : "stable",
+      };
+    } catch (error) {
+      logger.error("Revenue analytics error:", error);
+      return { total: 0, previous: 0, growth: 0, trend: "stable" };
+    }
+  }
+
+  /**
+   * Get top products analytics
+   */
+  async getTopProducts(userId, dateRange, limit = 10) {
+    try {
+      const topProducts = await Order.findAll({
+        where: {
+          userId,
+          createdAt: {
+            [Op.between]: [dateRange.start, dateRange.end],
+          },
+          orderStatus: { [Op.notIn]: ["cancelled"] },
+        },
+        include: [
+          {
+            model: OrderItem,
+            as: "items",
+            include: [
+              {
+                model: Product,
+                as: "product",
+                attributes: ["id", "name", "category"],
+              },
+            ],
+          },
+        ],
+        order: [["totalAmount", "DESC"]],
+        limit: limit * 3, // Get more to process
+      });
+
+      const productMap = new Map();
+
+      topProducts.forEach((order) => {
+        if (order.items && order.items.length > 0) {
+          order.items.forEach((item) => {
+            if (item.product) {
+              const productId = item.product.id;
+              const existing = productMap.get(productId) || {
+                id: productId,
+                name: item.product.name || `Product ${productId}`,
+                category: item.product.category || "Unknown",
+                totalRevenue: 0,
+                totalQuantity: 0,
+                orderCount: 0,
+              };
+
+              existing.totalRevenue +=
+                parseFloat(item.price) * parseInt(item.quantity) || 0;
+              existing.totalQuantity += parseInt(item.quantity) || 0;
+              existing.orderCount += 1;
+
+              productMap.set(productId, existing);
+            }
+          });
+        }
+      });
+
+      return Array.from(productMap.values())
+        .sort((a, b) => b.totalRevenue - a.totalRevenue)
+        .slice(0, limit);
+    } catch (error) {
+      logger.error("Top products error:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get category analytics
+   */
+  async getCategoryAnalytics(userId, dateRange) {
+    try {
+      const categoryData = await Order.findAll({
+        where: {
+          userId,
+          createdAt: {
+            [Op.between]: [dateRange.start, dateRange.end],
+          },
+          orderStatus: { [Op.notIn]: ["cancelled"] },
+        },
+        include: [
+          {
+            model: OrderItem,
+            as: "items",
+            include: [
+              {
+                model: Product,
+                as: "product",
+                attributes: ["category"],
+              },
+            ],
+          },
+        ],
+      });
+
+      const categoryMap = new Map();
+
+      categoryData.forEach((order) => {
+        if (order.items && order.items.length > 0) {
+          order.items.forEach((item) => {
+            if (item.product && item.product.category) {
+              const category = item.product.category;
+              const existing = categoryMap.get(category) || {
+                name: category,
+                revenue: 0,
+                count: 0,
+              };
+
+              existing.revenue +=
+                parseFloat(item.price) * parseInt(item.quantity) || 0;
+              existing.count += 1;
+
+              categoryMap.set(category, existing);
+            }
+          });
+        }
+      });
+
+      return Array.from(categoryMap.values()).sort(
+        (a, b) => b.revenue - a.revenue
+      );
+    } catch (error) {
+      logger.error("Category analytics error:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get customer metrics
+   */
+  async getCustomerMetrics(userId, dateRange) {
+    try {
+      // Count unique customers by email (since there's no customerId)
+      const uniqueCustomers = await Order.findAll({
+        where: {
+          userId,
+          createdAt: {
+            [Op.between]: [dateRange.start, dateRange.end],
+          },
+          customerEmail: { [Op.ne]: null },
+        },
+        attributes: ["customerEmail"],
+        group: ["customerEmail"],
+      });
+
+      const avgOrderValue = await Order.findOne({
+        where: {
+          userId,
+          createdAt: {
+            [Op.between]: [dateRange.start, dateRange.end],
+          },
+          orderStatus: { [Op.notIn]: ["cancelled"] },
+        },
+        attributes: [
+          [
+            Order.sequelize.fn("AVG", Order.sequelize.col("totalAmount")),
+            "avgValue",
+          ],
+        ],
+      });
+
+      return {
+        totalCustomers: uniqueCustomers.length || 0,
+        avgOrderValue: parseFloat(avgOrderValue?.dataValues?.avgValue) || 0,
+      };
+    } catch (error) {
+      logger.error("Customer metrics error:", error);
+      return { totalCustomers: 0, avgOrderValue: 0 };
+    }
+  }
+
+  /**
+   * Get date range helper
+   */
+  getDateRange(timeframe) {
+    const end = new Date();
+    const start = new Date();
+
+    switch (timeframe) {
+      case "7d":
+        start.setDate(start.getDate() - 7);
+        break;
+      case "30d":
+        start.setDate(start.getDate() - 30);
+        break;
+      case "90d":
+        start.setDate(start.getDate() - 90);
+        break;
+      case "365d":
+        start.setDate(start.getDate() - 365);
+        break;
+      default:
+        start.setDate(start.getDate() - 30);
+    }
+
+    return { start, end };
+  }
+
+  // ...existing code...
 }
 
 module.exports = new AnalyticsService();

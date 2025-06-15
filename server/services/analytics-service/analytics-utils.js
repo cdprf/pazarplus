@@ -66,6 +66,15 @@ function getDateRange(timeframe) {
   return { start, end };
 }
 
+// Helper function to get previous period
+function getPreviousPeriod(dateRange) {
+  const duration = dateRange.end - dateRange.start;
+  const previousEnd = new Date(dateRange.start.getTime() - 1);
+  const previousStart = new Date(previousEnd.getTime() - duration);
+
+  return { start: previousStart, end: previousEnd };
+}
+
 /**
  * Get accurate analytics that properly handle returns and cancellations
  * This provides a comprehensive view of business performance with clean data

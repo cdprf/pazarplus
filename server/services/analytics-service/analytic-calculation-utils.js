@@ -1,4 +1,7 @@
+const { Op } = require("sequelize");
+const { Order, OrderItem, Product } = require("../../models");
 const logger = require("../../utils/logger");
+const { detectSeasonality } = require("./detection-utils");
 
 // Helper methods for product analytics
 
@@ -740,62 +743,27 @@ async function calculateSatisfactionMetrics(userId, dateRange) {
   }
 }
 
-/**
- * Calculate days until product is out of stock
- */
-async function calculateDaysUntilOutOfStock(productId, currentStock) {
-  try {
-    // Get sales velocity (average daily sales over last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const salesData = await OrderItem.findAll({
-      attributes: [
-        [
-          OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
-          "totalSold",
-        ],
-      ],
-      include: [
-        {
-          model: Order,
-          as: "order",
-          where: {
-            createdAt: {
-              [Op.gte]: thirtyDaysAgo,
-            },
-          },
-        },
-      ],
-      where: {
-        productId: productId,
-      },
-    });
-
-    const totalSold = salesData[0]
-      ? parseInt(salesData[0].get("totalSold")) || 0
-      : 0;
-    const dailyVelocity = totalSold / 30;
-
-    if (dailyVelocity <= 0) {
-      return null; // No sales, can't predict
-    }
-
-    return Math.floor(currentStock / dailyVelocity);
-  } catch (error) {
-    logger.error("Days until out of stock calculation error:", error);
-    return null;
-  }
+// Helper function to get previous period
+function getPreviousPeriod(dateRange) {
+  const duration = dateRange.end - dateRange.start;
+  const previousEnd = new Date(dateRange.start.getTime() - 1);
+  const previousStart = new Date(previousEnd.getTime() - duration);
+  return { start: previousStart, end: previousEnd };
 }
 
-/**
- * Calculate days until stockout based on current stock and demand
- */
-function calculateStockoutDays(currentStock, dailyDemand) {
-  if (dailyDemand <= 0 || currentStock <= 0) {
+// Helper function to calculate days until out of stock
+async function calculateDaysUntilOutOfStock(
+  productId,
+  currentStock,
+  avgDailySales
+) {
+  try {
+    if (!avgDailySales || avgDailySales <= 0) return null;
+    return Math.ceil(currentStock / avgDailySales);
+  } catch (error) {
+    logger.error("Error calculating days until out of stock:", error);
     return null;
   }
-  return Math.floor(currentStock / dailyDemand);
 }
 
 /**
@@ -1063,6 +1031,60 @@ function calculateForecastConfidence(historicalData) {
   return parseFloat(confidence.toFixed(2));
 }
 
+// Helper function for pricing analysis
+async function getPricingAnalysis(userId, dateRange) {
+  try {
+    // Simple pricing analysis implementation
+    const orders = await Order.findAll({
+      where: {
+        userId,
+        createdAt: {
+          [Op.between]: [dateRange.start, dateRange.end],
+        },
+      },
+      include: [{ model: OrderItem, as: "items", include: [{ model: Product, as: "product" }] }],
+    });
+
+    let totalRevenue = 0;
+    let totalItems = 0;
+    const platformPrices = {};
+
+    orders.forEach((order) => {
+      order.OrderItems?.forEach((item) => {
+        totalRevenue +=
+          parseFloat(item.price || 0) * parseInt(item.quantity || 0);
+        totalItems += parseInt(item.quantity || 0);
+
+        const platform = order.platform || "unknown";
+        if (!platformPrices[platform]) {
+          platformPrices[platform] = { total: 0, count: 0 };
+        }
+        platformPrices[platform].total += parseFloat(item.price || 0);
+        platformPrices[platform].count += 1;
+      });
+    });
+
+    return {
+      averagePrice: totalItems > 0 ? totalRevenue / totalItems : 0,
+      platformPrices,
+      totalRevenue,
+      priceRange: {
+        min: 0,
+        max: 1000,
+        average: totalItems > 0 ? totalRevenue / totalItems : 0,
+      },
+    };
+  } catch (error) {
+    logger.error("Error in pricing analysis:", error);
+    return {
+      averagePrice: 0,
+      platformPrices: {},
+      totalRevenue: 0,
+      priceRange: { min: 0, max: 0, average: 0 },
+    };
+  }
+}
+
 module.exports = {
   calculateProfitMargins,
   calculateOverallConfidence,
@@ -1078,7 +1100,6 @@ module.exports = {
   calculateTaxLiability,
   calculateProductProfitMargin,
   calculateDemandForecast,
-  calculateStockoutDays,
   calculateGrowthTrend,
   calculateSeasonalityIndex,
   calculateReturnRate,
@@ -1097,4 +1118,5 @@ module.exports = {
   calculateGrowthRate,
   calculateInventoryTurnover,
   calculatePlatformRevenue,
+  getPricingAnalysis,
 };

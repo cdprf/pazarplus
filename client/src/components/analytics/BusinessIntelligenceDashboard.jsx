@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import api from "../../services/api";
+import analyticsService from "../../services/analyticsService";
 import {
   Card,
   Row,
@@ -15,14 +15,19 @@ import {
 } from "react-bootstrap";
 import {
   ChartBarIcon,
+  ArrowPathIcon,
+  DocumentArrowDownIcon,
+  DocumentArrowUpIcon,
+  ExclamationCircleIcon,
+  InformationCircleIcon,
+} from "@heroicons/react/24/outline";
+import {
   TrendingUpIcon,
   TrendingDownIcon,
   BellIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
-  ArrowPathIcon,
-  DocumentArrowDownIcon,
-} from "@heroicons/react/24/outline";
+} from "@heroicons/react/24/solid";
 import {
   LineChart,
   Line,
@@ -79,20 +84,56 @@ const BusinessIntelligenceDashboard = () => {
   const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true);
-      const [analyticsRes, biRes] = await Promise.all([
-        api.get(`/analytics/dashboard?timeframe=${timeframe}`),
-        api.get(`/analytics/business-intelligence?timeframe=${timeframe}`),
-      ]);
-
-      const analyticsData = analyticsRes.data;
-      const biData = biRes.data;
-
-      setAnalytics(analyticsData.data);
-      setBusinessIntelligence(biData.data);
-      setLastUpdated(new Date());
       setError(null);
+
+      // Use the analytics service to get comprehensive data
+      const analyticsData = await analyticsService.getDashboardAnalytics(
+        timeframe
+      );
+
+      if (analyticsData && analyticsData.data) {
+        setAnalytics(analyticsData.data);
+        setBusinessIntelligence({
+          insights: analyticsData.data.insights || [],
+          recommendations: analyticsData.data.recommendations || [],
+          predictions: analyticsData.data.predictions || {},
+        });
+      } else {
+        // Fallback to basic structure if no data
+        setAnalytics({
+          orderSummary: { totalOrders: 0, totalRevenue: 0 },
+          revenue: { trends: [], total: 0 },
+          orders: { trends: [] },
+          platforms: { comparison: [] },
+          topProducts: [],
+          performance: { metrics: {} },
+        });
+        setBusinessIntelligence({
+          insights: [],
+          recommendations: [],
+          predictions: {},
+        });
+      }
+
+      setLastUpdated(new Date());
     } catch (err) {
-      setError(err.message);
+      console.error("Error fetching analytics:", err);
+      setError(err.message || "Failed to load analytics data");
+
+      // Set empty state on error
+      setAnalytics({
+        orderSummary: { totalOrders: 0, totalRevenue: 0 },
+        revenue: { trends: [], total: 0 },
+        orders: { trends: [] },
+        platforms: { comparison: [] },
+        topProducts: [],
+        performance: { metrics: {} },
+      });
+      setBusinessIntelligence({
+        insights: [],
+        recommendations: [],
+        predictions: {},
+      });
     } finally {
       setLoading(false);
     }
@@ -111,34 +152,29 @@ const BusinessIntelligenceDashboard = () => {
   // Export analytics data
   const handleExport = async (format) => {
     try {
-      const response = await api.get(
-        `/analytics/export?timeframe=${timeframe}&format=${format}`,
-        { responseType: "blob" }
+      const data = await analyticsService.exportAnalytics(
+        "dashboard",
+        timeframe,
+        format
       );
 
-      if (format === "csv") {
-        const blob = response.data;
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `analytics-${timeframe}.csv`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-      } else {
-        const data = await response.json();
-        const blob = new Blob([JSON.stringify(data.data, null, 2)], {
-          type: "application/json",
-        });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `analytics-${timeframe}.json`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-      }
+      const blob = new Blob([data], {
+        type:
+          format === "csv"
+            ? "text/csv"
+            : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `analytics-dashboard-${timeframe}.${format}`;
+      a.click();
+      window.URL.revokeObjectURL(url);
       setShowExportModal(false);
-    } catch (err) {
-      console.error("Export failed:", err);
+    } catch (error) {
+      console.error("Export failed:", error);
+      setError("Failed to export data");
     }
   };
 
@@ -158,9 +194,9 @@ const BusinessIntelligenceDashboard = () => {
   // Get trend icon
   const getTrendIcon = (value) => {
     return value > 0 ? (
-      <TrendingUpIcon className="h-4 w-4 text-success" />
+      <DocumentArrowUpIcon className="h-4 w-4 text-success" />
     ) : (
-      <TrendingDownIcon className="h-4 w-4 text-danger" />
+      <DocumentArrowDownIcon className="h-4 w-4 text-danger" />
     );
   };
 

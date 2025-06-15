@@ -823,6 +823,21 @@ async function getTopProducts(userId, dateRange, limit = 10) {
   });
 }
 
+// Helper function to calculate days until out of stock
+async function calculateDaysUntilOutOfStock(
+  productId,
+  currentStock,
+  avgDailySales
+) {
+  try {
+    if (!avgDailySales || avgDailySales <= 0) return null;
+    return Math.ceil(currentStock / avgDailySales);
+  } catch (error) {
+    logger.error("Error calculating days until out of stock:", error);
+    return null;
+  }
+}
+
 module.exports = {
   getProductAnalytics,
   getProductDailyTrends,

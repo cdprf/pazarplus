@@ -35,12 +35,10 @@ import PlatformSettings from "./components/platforms/PlatformSettings";
 import PlatformAnalytics from "./components/platforms/PlatformAnalytics";
 import PlatformSyncHistory from "./components/platforms/PlatformSyncHistory";
 import ProductLinkingDashboard from "./pages/admin/ProductLinkingDashboard";
-import Reports from "./components/reports/Reports"; // Add the analytics/reports page
+import Analytics from "./pages/Analytics"; // Analytics dashboard
 import Settings from "./components/settings/Settings";
 import PrintSettings from "./components/settings/PrintSettings";
-import InventoryInsights from "./components/analytics/InventoryInsights"; // Add inventory component
 import DatabaseBusyModal from "./components/DatabaseBusyModal"; // Database transaction management modal
-import SKUSystemDemo from "./components/demos/SKUSystemDemo"; // Enhanced SKU system demo
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -123,6 +121,7 @@ function App() {
                         <Route path="dashboard" element={<Dashboard />} />
                         <Route path="orders" element={<Orders />} />
                         <Route path="orders/:id" element={<OrderDetail />} />
+                        <Route path="analytics" element={<Analytics />} />
                         <Route
                           path="products"
                           element={<ProductManagement />}
@@ -130,10 +129,6 @@ function App() {
                         <Route
                           path="products/:id/edit"
                           element={<ProductManagement />}
-                        />
-                        <Route
-                          path="products/inventory"
-                          element={<InventoryInsights />}
                         />
                         <Route
                           path="products/categories"
@@ -230,27 +225,6 @@ function App() {
 
                         {/* Compliance */}
                         <Route path="compliance" element={<Settings />} />
-
-                        {/* Reports - enhanced structure */}
-                        <Route path="reports" element={<Reports />} />
-                        <Route path="reports/sales" element={<Reports />} />
-                        <Route path="reports/tax" element={<Reports />} />
-                        <Route path="reports/inventory" element={<Reports />} />
-
-                        {/* Analytics */}
-                        <Route path="analytics" element={<Reports />} />
-                        <Route path="analytics/sales" element={<Reports />} />
-                        <Route
-                          path="analytics/performance"
-                          element={<Reports />}
-                        />
-                        <Route path="analytics/trends" element={<Reports />} />
-
-                        {/* Demos */}
-                        <Route
-                          path="demos/sku-system"
-                          element={<SKUSystemDemo />}
-                        />
 
                         {/* User Profile */}
                         <Route path="profile" element={<Settings />} />
