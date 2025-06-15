@@ -879,44 +879,50 @@ const OrderManagement = React.memo(() => {
   // Print handlers
   const handlePrintShippingSlip = useCallback(
     async (orderId) => {
+      console.log("🚀 handlePrintShippingSlip called with orderId:", orderId);
+
       try {
         console.log(`Starting shipping slip printing for order ID: ${orderId}`);
 
         if (!orderId) {
+          console.log("❌ No orderId provided");
           showAlert("Sipariş kimliği eksik", "error");
           console.error("Attempted to print shipping slip without order ID");
           return;
         }
 
+        console.log("📋 Checking for default template...");
         // Check if default template exists, if not check if any templates exist
         let defaultTemplateId = null;
         try {
           // First, try to get the default template
+          console.log("🔍 Calling api.shipping.getDefaultTemplate()");
           const defaultTemplateResponse =
             await api.shipping.getDefaultTemplate();
-          console.log("Default template response:", defaultTemplateResponse);
+          console.log("📄 Default template response:", defaultTemplateResponse);
 
           if (
             defaultTemplateResponse.success &&
             defaultTemplateResponse.data?.defaultTemplateId
           ) {
             defaultTemplateId = defaultTemplateResponse.data.defaultTemplateId;
-            console.log(`Using default template: ${defaultTemplateId}`);
+            console.log(`✅ Using default template: ${defaultTemplateId}`);
           } else {
             console.log(
-              "No default template found, checking for any available templates"
+              "❌ No default template found, checking for any available templates"
             );
 
             // If no default template, check if any templates exist
+            console.log("🔍 Calling api.shipping.getTemplates()");
             const templatesResponse = await api.shipping.getTemplates();
-            console.log("Available templates:", templatesResponse);
+            console.log("📋 Available templates response:", templatesResponse);
 
             if (
               !templatesResponse.success ||
               !templatesResponse.data ||
               templatesResponse.data.length === 0
             ) {
-              console.log("No templates found, need to create one first");
+              console.log("❌ No templates found, need to create one first");
               showAlert(
                 "Kargo şablonu bulunamadı. Lütfen önce bir şablon oluşturun.",
                 "warning"
@@ -928,27 +934,39 @@ const OrderManagement = React.memo(() => {
             // Use the first available template if no default is set
             defaultTemplateId = templatesResponse.data[0].id;
             console.log(
-              `No default template, using first available: ${defaultTemplateId}`
+              `✅ No default template, using first available: ${defaultTemplateId}`
             );
           }
         } catch (templateError) {
-          console.error("Error getting templates:", templateError);
+          console.error("❌ Error getting templates:", templateError);
+          console.error("Template error details:", {
+            message: templateError.message,
+            response: templateError.response?.data,
+            status: templateError.response?.status,
+          });
           showAlert("Şablon bilgisi alınırken hata oluştu", "error");
           return;
         }
 
         console.log(
-          `Generating PDF with orderId: ${orderId}, templateId: ${defaultTemplateId}`
+          `🖨️ Generating PDF with orderId: ${orderId}, templateId: ${defaultTemplateId}`
         );
+        console.log("🔍 Calling api.shipping.generatePDF()");
         const response = await api.shipping.generatePDF(
           orderId,
           defaultTemplateId
         );
-        console.log("Response from generatePDF:", response);
+        console.log("📄 Response from generatePDF:", response);
 
         if (response.success && response.data?.labelUrl) {
-          console.log(`Opening PDF URL: ${response.data.labelUrl}`);
-          const pdfWindow = window.open(response.data.labelUrl, "_blank");
+          // Construct full URL for PDF access
+          const baseUrl = process.env.NODE_ENV === 'development' 
+            ? 'http://localhost:5001' 
+            : window.location.origin;
+          const fullPdfUrl = `${baseUrl}${response.data.labelUrl}`;
+          
+          console.log(`✅ Opening PDF URL: ${fullPdfUrl}`);
+          const pdfWindow = window.open(fullPdfUrl, "_blank");
           if (pdfWindow) {
             pdfWindow.onload = () => {
               pdfWindow.print();
@@ -961,11 +979,11 @@ const OrderManagement = React.memo(() => {
           }
           showAlert("Gönderi belgesi hazırlandı", "success");
         } else {
-          console.error("Invalid PDF response:", response);
+          console.error("❌ Invalid PDF response:", response);
           showAlert(response.message || "PDF URL alınamadı", "error");
         }
       } catch (error) {
-        console.error("Error printing shipping slip:", error);
+        console.error("❌ Error printing shipping slip:", error);
 
         // Provide more specific error messages based on the error type
         const errorMessage =

@@ -107,8 +107,8 @@ const EnhancedShippingSlipDesigner = ({
   const canvasRef = useRef(null);
   const { showAlert } = useAlert();
 
-  // Get paper dimensions
-  const paperDimensions = getPaperDimensions(templateConfig.paperSize);
+  // Get paper dimensions (with safety check)
+  const paperDimensions = getPaperDimensions(templateConfig?.paperSize || "A4");
 
   // Quick action functions
   const quickActions = [
@@ -309,7 +309,7 @@ const EnhancedShippingSlipDesigner = ({
   const handleExportTemplate = useCallback(async () => {
     try {
       const templateData = {
-        name: templateConfig.name,
+        name: templateConfig?.name || "Özel Şablon",
         config: templateConfig,
         elements: elements,
         exportedAt: new Date().toISOString(),
@@ -321,7 +321,7 @@ const EnhancedShippingSlipDesigner = ({
 
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${templateConfig.name || "template"}.json`;
+      link.download = `${templateConfig?.name || "template"}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -515,7 +515,7 @@ const EnhancedShippingSlipDesigner = ({
     try {
       setLoading(true);
       const templateData = {
-        name: templateConfig.name,
+        name: templateConfig?.name || "Özel Şablon",
         config: templateConfig,
         elements: elements,
         createdAt: new Date().toISOString(),
@@ -543,6 +543,7 @@ const EnhancedShippingSlipDesigner = ({
     }
   }, [templateConfig, elements, onSave, showAlert]);
 
+  
   // Event handlers for mouse events
   useEffect(() => {
     const handleMouseMove = (event) => {
@@ -684,6 +685,24 @@ const EnhancedShippingSlipDesigner = ({
     setShowGrid,
     setShowRulers,
   ]);
+
+
+  // Early return if templateConfig is not initialized
+  if (!templateConfig) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="text-lg font-medium text-gray-900 dark:text-gray-100">
+            Şablon yükleniyor...
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            Lütfen bekleyin...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
@@ -862,7 +881,7 @@ const EnhancedShippingSlipDesigner = ({
         <div className="flex items-center space-x-4">
           <div className="text-center">
             <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              {templateConfig.name || "İsimsiz Şablon"}
+              {templateConfig?.name || "İsimsiz Şablon"}
             </div>
             <div className="text-xs text-gray-500">
               {elements.length} öğe • Son kaydedilme:{" "}
@@ -1233,7 +1252,7 @@ const EnhancedShippingSlipDesigner = ({
 
             <div className="text-sm text-gray-600 dark:text-gray-400">
               {paperDimensions.width} × {paperDimensions.height}px •{" "}
-              {templateConfig.paperSize || "A4"}
+              {templateConfig?.paperSize || "A4"}
             </div>
           </div>
 

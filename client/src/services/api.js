@@ -589,9 +589,17 @@ const shippingAPI = {
   // Shipping Templates
   getShippingTemplates: async () => {
     try {
+      console.log("🔍 API: Getting shipping templates...");
       const response = await api.get("/shipping/templates");
+      console.log("📄 API: Shipping templates response:", response.data);
       return response.data;
     } catch (error) {
+      console.error("❌ API: Error getting shipping templates:", error);
+      console.error("❌ API: Error details:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
       throw error;
     }
   },
@@ -635,9 +643,17 @@ const shippingAPI = {
   // Default Template Management
   getDefaultTemplate: async () => {
     try {
+      console.log("🔍 API: Getting default template...");
       const response = await api.get("/shipping/templates/default");
+      console.log("📄 API: Default template response:", response.data);
       return response.data;
     } catch (error) {
+      console.error("❌ API: Error getting default template:", error);
+      console.error("❌ API: Error details:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
       throw error;
     }
   },
@@ -670,13 +686,13 @@ const shippingAPI = {
   generatePDF: async (orderId, templateId = null) => {
     try {
       console.log(
-        `Generating PDF for order: ${orderId}, template: ${
+        `🖨️ API: Generating PDF for order: ${orderId}, template: ${
           templateId || "default"
         }`
       );
-      console.log(`API base URL: ${api.defaults.baseURL}`);
+      console.log(`🔗 API: Base URL: ${api.defaults.baseURL}`);
       console.log(
-        `Request URL: ${api.defaults.baseURL}/shipping/templates/generate-pdf`
+        `🔗 API: Request URL: ${api.defaults.baseURL}/shipping/templates/generate-pdf`
       );
 
       // Ensure orderId is sent as string to avoid type issues
@@ -685,15 +701,16 @@ const shippingAPI = {
         templateId: templateId || null,
       };
 
-      console.log("Sending payload:", payload);
+      console.log("📦 API: Sending payload:", payload);
 
       const response = await api.post(
         "/shipping/templates/generate-pdf",
         payload
       );
+      console.log("✅ API: PDF generation response:", response.data);
       return response.data;
     } catch (error) {
-      console.error("Error generating PDF:", {
+      console.error("❌ API: Error generating PDF:", {
         status: error.response?.status,
         statusText: error.response?.statusText,
         url: error.config?.url,
@@ -721,7 +738,15 @@ const shippingAPI = {
 
   // Aliases for backward compatibility
   getTemplates: async () => {
-    return shippingAPI.getShippingTemplates();
+    try {
+      console.log("🔍 API: Getting all templates...");
+      const response = await shippingAPI.getShippingTemplates();
+      console.log("📄 API: Templates response:", response);
+      return response;
+    } catch (error) {
+      console.error("❌ API: Error getting templates:", error);
+      throw error;
+    }
   },
 
   getTemplate: async (id) => {

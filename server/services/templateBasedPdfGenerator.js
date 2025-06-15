@@ -113,6 +113,25 @@ class TemplateBasedPDFGenerator {
         pdfVersion: "1.4",
       });
 
+      // Register Unicode-compatible fonts for Turkish character support
+      try {
+        const fontsPath = path.join(__dirname, '../fonts');
+        const dejavuSansPath = path.join(fontsPath, 'DejaVuSans.ttf');
+        const dejavuSansBoldPath = path.join(fontsPath, 'DejaVuSans-Bold.ttf');
+        
+        if (fs.existsSync(dejavuSansPath)) {
+          doc.registerFont('DejaVuSans', dejavuSansPath);
+          logger.debug('DejaVuSans font registered successfully');
+        }
+        
+        if (fs.existsSync(dejavuSansBoldPath)) {
+          doc.registerFont('DejaVuSans-Bold', dejavuSansBoldPath);
+          logger.debug('DejaVuSans-Bold font registered successfully');
+        }
+      } catch (fontError) {
+        logger.warn('Failed to register custom fonts, using built-in fonts', { error: fontError.message });
+      }
+
       // Write to file
       const stream = fs.createWriteStream(filePath);
       doc.pipe(stream);
@@ -776,8 +795,21 @@ class TemplateBasedPDFGenerator {
     const fontWeight = style.fontWeight || "normal";
 
     // Set font
-    const font = fontWeight === "bold" ? `${fontFamily}-Bold` : fontFamily;
-    doc.font(font).fontSize(fontSize);
+    let font = fontFamily;
+    if (fontWeight === "bold" && fontFamily === "DejaVuSans") {
+      font = "DejaVuSans-Bold";
+    } else if (fontWeight === "bold") {
+      font = `${fontFamily}-Bold`;
+    }
+    
+    // Fallback to built-in fonts if custom fonts are not available
+    try {
+      doc.font(font).fontSize(fontSize);
+    } catch (fontError) {
+      logger.warn(`Font ${font} not available, falling back to Helvetica`, { error: fontError.message });
+      const fallbackFont = fontWeight === "bold" ? "Helvetica-Bold" : "Helvetica";
+      doc.font(fallbackFont).fontSize(fontSize);
+    }
 
     // Set text color - ALWAYS set a default color
     const textColor = style.color || "#000000"; // Default to black if no color specified
@@ -2030,19 +2062,19 @@ class TemplateBasedPDFGenerator {
    */
   getFontFamily(fontFamily) {
     const fontMap = {
-      Arial: "Helvetica",
-      Times: "Times-Roman",
-      Courier: "Courier",
-      Helvetica: "Helvetica",
-      "Times New Roman": "Times-Roman",
-      "Courier New": "Courier",
+      Arial: "DejaVuSans",
+      Times: "DejaVuSans",
+      Courier: "DejaVuSans",
+      Helvetica: "DejaVuSans",
+      "Times New Roman": "DejaVuSans",
+      "Courier New": "DejaVuSans",
       // Add system fonts that better support Turkish characters
-      "DejaVu Sans": "Helvetica", // Fallback to Helvetica but with better handling
-      "Liberation Sans": "Helvetica",
-      "Noto Sans": "Helvetica",
+      "DejaVu Sans": "DejaVuSans",
+      "Liberation Sans": "DejaVuSans",
+      "Noto Sans": "DejaVuSans",
     };
 
-    return fontMap[fontFamily] || "Helvetica";
+    return fontMap[fontFamily] || "DejaVuSans";
   }
 
   /**
