@@ -1,4 +1,3 @@
-import React from "react";
 import {
   Type,
   Image,
@@ -131,7 +130,7 @@ const ElementLibrary = ({ onAddElement, selectedCategory = "all" }) => {
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 dark:text-white mb-4">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
           Öğe Kütüphanesi
         </h3>
 
@@ -174,7 +173,7 @@ const ElementLibrary = ({ onAddElement, selectedCategory = "all" }) => {
                     <Icon className="h-5 w-5 text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
                       {config.label}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">

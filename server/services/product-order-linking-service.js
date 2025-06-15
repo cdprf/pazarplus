@@ -1,4 +1,12 @@
-const { Product, OrderItem, Order, sequelize } = require("../models");
+const {
+  Product,
+  OrderItem,
+  Order,
+  TrendyolProduct,
+  HepsiburadaProduct,
+  N11Product,
+  sequelize,
+} = require("../models");
 const { Op } = require("sequelize");
 const logger = require("../utils/logger");
 
@@ -313,6 +321,16 @@ class ProductOrderLinkingService {
       // Update order items with product links if not dry run
       if (!dryRun && linkedItems.length > 0) {
         const updatePromises = linkedItems.map((item) => {
+          // Ensure the item has a valid ID before attempting update
+          if (!item.id) {
+            logger.warn(`Skipping update for order item without ID:`, {
+              title: item.title,
+              sku: item.sku,
+              productId: item.productId,
+            });
+            return Promise.resolve();
+          }
+
           const updateOptions = { where: { id: item.id } };
           if (transaction) {
             updateOptions.transaction = transaction;
@@ -418,15 +436,26 @@ class ProductOrderLinkingService {
   async getUserProducts(userId) {
     const products = await Product.findAll({
       where: { userId },
-      attributes: [
-        "id",
-        "name",
-        "sku",
-        "barcode",
-        "platformProductId",
-        "category",
-        "brand",
-        "stockQuantity",
+      attributes: ["id", "name", "sku", "barcode", "category", "stockQuantity"],
+      include: [
+        {
+          model: TrendyolProduct,
+          as: "trendyolProduct",
+          attributes: ["trendyolProductId", "stockCode", "barcode"],
+          required: false,
+        },
+        {
+          model: HepsiburadaProduct,
+          as: "hepsiburadaProduct",
+          attributes: ["merchantSku", "barcode"],
+          required: false,
+        },
+        {
+          model: N11Product,
+          as: "n11Product",
+          attributes: ["n11ProductId", "sellerCode", "barcode"],
+          required: false,
+        },
       ],
       order: [["updatedAt", "DESC"]],
     });
@@ -531,11 +560,32 @@ class ProductOrderLinkingService {
 
     // Strategy 3: Platform product ID match
     if (orderItem.platformProductId) {
-      const match = products.find(
-        (p) =>
-          p.platformProductId &&
-          p.platformProductId === orderItem.platformProductId
-      );
+      const match = products.find((p) => {
+        // Check Trendyol product ID
+        if (
+          p.trendyolProduct &&
+          p.trendyolProduct.trendyolProductId === orderItem.platformProductId
+        ) {
+          return true;
+        }
+        // Check Hepsiburada merchant SKU
+        if (
+          p.hepsiburadaProduct &&
+          p.hepsiburadaProduct.merchantSku === orderItem.platformProductId
+        ) {
+          return true;
+        }
+        // Check N11 product ID or seller code
+        if (
+          p.n11Product &&
+          (p.n11Product.n11ProductId === orderItem.platformProductId ||
+            p.n11Product.sellerCode === orderItem.platformProductId)
+        ) {
+          return true;
+        }
+        return false;
+      });
+
       if (match) {
         this.matchingStats.platformProductId++;
         this.lastMatchStrategy = "platformProductId";
@@ -987,11 +1037,32 @@ class ProductOrderLinkingService {
 
       // Strategy 3: Platform product ID match
       if (orderItem.platformProductId) {
-        const platformMatches = products.filter(
-          (p) =>
-            p.platformProductId &&
-            p.platformProductId === orderItem.platformProductId
-        );
+        const platformMatches = products.filter((p) => {
+          // Check Trendyol product ID
+          if (
+            p.trendyolProduct &&
+            p.trendyolProduct.trendyolProductId === orderItem.platformProductId
+          ) {
+            return true;
+          }
+          // Check Hepsiburada merchant SKU
+          if (
+            p.hepsiburadaProduct &&
+            p.hepsiburadaProduct.merchantSku === orderItem.platformProductId
+          ) {
+            return true;
+          }
+          // Check N11 product ID or seller code
+          if (
+            p.n11Product &&
+            (p.n11Product.n11ProductId === orderItem.platformProductId ||
+              p.n11Product.sellerCode === orderItem.platformProductId)
+          ) {
+            return true;
+          }
+          return false;
+        });
+
         platformMatches.forEach((match) => {
           matches.push({
             ...match.toJSON(),

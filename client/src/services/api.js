@@ -434,23 +434,13 @@ const platformAPI = {
     }
   },
 
-  // Get platform statistics (aggregate across all platforms)
-  getPlatformStats: async (timeRange = "30d") => {
-    try {
-      const response = await api.get(`/platforms/stats?timeRange=${timeRange}`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
   // Get platform sync history
   getSyncHistory: async (id, params = {}) => {
     try {
       const queryString = new URLSearchParams(params).toString();
       const url = queryString
         ? `/platforms/connections/${id}/sync-history?${queryString}`
-        : `/api/platforms/connections/${id}/sync-history`;
+        : `/platforms/connections/${id}/sync-history`;
       const response = await api.get(url);
       return response.data;
     } catch (error) {
@@ -477,9 +467,7 @@ const customerAPI = {
   getCustomers: async (params = {}) => {
     try {
       const queryString = new URLSearchParams(params).toString();
-      const url = queryString
-        ? `/api/customers?${queryString}`
-        : "/api/customers";
+      const url = queryString ? `/customers?${queryString}` : "/customers";
       const response = await api.get(url);
       return response.data;
     } catch (error) {
@@ -522,8 +510,8 @@ const customerAPI = {
     try {
       const queryString = new URLSearchParams(params).toString();
       const url = queryString
-        ? `/api/customers/${id}/orders?${queryString}`
-        : `/api/customers/${id}/orders`;
+        ? `/customers/${id}/orders?${queryString}`
+        : `/customers/${id}/orders`;
       const response = await api.get(url);
       return response.data;
     } catch (error) {
@@ -579,8 +567,8 @@ const shippingAPI = {
     try {
       const queryString = new URLSearchParams(params).toString();
       const url = queryString
-        ? `/api/shipping/rates?${queryString}`
-        : "/api/shipping/rates";
+        ? `/shipping/rates?${queryString}`
+        : "/shipping/rates";
       const response = await api.get(url);
       return response.data;
     } catch (error) {
@@ -690,16 +678,19 @@ const shippingAPI = {
       console.log(
         `Request URL: ${api.defaults.baseURL}/shipping/templates/generate-pdf`
       );
-      
+
       // Ensure orderId is sent as string to avoid type issues
       const payload = {
         orderId: String(orderId),
         templateId: templateId || null,
       };
-      
+
       console.log("Sending payload:", payload);
 
-      const response = await api.post("/shipping/templates/generate-pdf", payload);
+      const response = await api.post(
+        "/shipping/templates/generate-pdf",
+        payload
+      );
       return response.data;
     } catch (error) {
       console.error("Error generating PDF:", {
@@ -972,7 +963,7 @@ const reportsAPI = {
         type,
         ...options,
       }).toString();
-      const response = await api.get(`/reports/export?${params}`, {
+      const response = await api.get(`/analytics/export?${params}`, {
         responseType: "blob",
       });
       return response;
@@ -1024,9 +1015,7 @@ const productAPI = {
   getProducts: async (params = {}) => {
     try {
       const queryString = new URLSearchParams(params).toString();
-      const url = queryString
-        ? `/api/products?${queryString}`
-        : "/api/products";
+      const url = queryString ? `/products?${queryString}` : "/products";
       const response = await api.get(url);
       return response.data;
     } catch (error) {
@@ -1133,7 +1122,6 @@ api.syncOrders = orderService.syncOrders;
 
 // Add new methods for reports
 api.getConnections = platformAPI.getConnections;
-api.getPlatformStats = platformAPI.getPlatformStats;
 api.exportReport = reportsAPI.exportReport;
 
 export default api;

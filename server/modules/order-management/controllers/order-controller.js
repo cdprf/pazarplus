@@ -973,9 +973,9 @@ function groupOrdersByDate(orders, groupByFormat) {
 
     grouped[key].totalOrders++;
 
-    if (order.status === "new") {
+    if (order.orderStatus === "new") {
       grouped[key].newOrders++;
-    } else if (order.status === "shipped") {
+    } else if (order.orderStatus === "shipped") {
       grouped[key].shippedOrders++;
     }
 

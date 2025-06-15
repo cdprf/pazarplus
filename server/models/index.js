@@ -24,6 +24,12 @@ const ProductVariant = require("./ProductVariant")(sequelize);
 const InventoryMovement = require("./InventoryMovement")(sequelize);
 const StockReservation = require("./StockReservation")(sequelize);
 
+// === NEW PRODUCT MANAGEMENT MODELS ===
+const ProductTemplate = require("./ProductTemplate")(sequelize);
+const ProductMedia = require("./ProductMedia")(sequelize);
+const PlatformCategory = require("./PlatformCategory")(sequelize);
+const BulkOperation = require("./BulkOperation")(sequelize);
+
 // === NEW SUBSCRIPTION MODELS ===
 const Subscription = require("./Subscription");
 const UsageRecord = require("./UsageRecord");
@@ -55,6 +61,12 @@ const models = {
   ProductVariant: ProductVariant,
   InventoryMovement: InventoryMovement,
   StockReservation: StockReservation,
+
+  // === NEW PRODUCT MANAGEMENT MODELS ===
+  ProductTemplate: ProductTemplate,
+  ProductMedia: ProductMedia,
+  PlatformCategory: PlatformCategory,
+  BulkOperation: BulkOperation,
 
   // === SUBSCRIPTION MODELS ===
   Subscription: Subscription,
@@ -384,6 +396,91 @@ models.PlatformData.belongsTo(models.ProductVariant, {
   foreignKey: "entityId",
   constraints: false,
   as: "variant",
+});
+
+// === NEW PRODUCT MANAGEMENT ASSOCIATIONS ===
+
+// Product <-> ProductTemplate (Many-to-One)
+models.Product.belongsTo(models.ProductTemplate, {
+  foreignKey: "templateId",
+  as: "template",
+});
+models.ProductTemplate.hasMany(models.Product, {
+  foreignKey: "templateId",
+  as: "products",
+});
+
+// User <-> ProductTemplate (One-to-Many)
+models.User.hasMany(models.ProductTemplate, {
+  foreignKey: "userId",
+  as: "productTemplates",
+});
+models.ProductTemplate.belongsTo(models.User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// Product <-> ProductMedia (One-to-Many)
+models.Product.hasMany(models.ProductMedia, {
+  foreignKey: "productId",
+  as: "media",
+});
+models.ProductMedia.belongsTo(models.Product, {
+  foreignKey: "productId",
+  as: "product",
+});
+
+// ProductVariant <-> ProductMedia (One-to-Many)
+models.ProductVariant.hasMany(models.ProductMedia, {
+  foreignKey: "variantId",
+  as: "media",
+});
+models.ProductMedia.belongsTo(models.ProductVariant, {
+  foreignKey: "variantId",
+  as: "variant",
+});
+
+// User <-> ProductMedia (One-to-Many)
+models.User.hasMany(models.ProductMedia, {
+  foreignKey: "userId",
+  as: "productMedia",
+});
+models.ProductMedia.belongsTo(models.User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// User <-> PlatformCategory (One-to-Many)
+models.User.hasMany(models.PlatformCategory, {
+  foreignKey: "userId",
+  as: "platformCategories",
+});
+models.PlatformCategory.belongsTo(models.User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// ProductTemplate <-> PlatformCategory (Many-to-One)
+// NOTE: Temporarily commented out due to field mismatch - needs review
+// models.ProductTemplate.belongsTo(models.PlatformCategory, {
+//   foreignKey: "categoryId",
+//   targetKey: "categoryId",
+//   as: "platformCategory",
+// });
+// models.PlatformCategory.hasMany(models.ProductTemplate, {
+//   foreignKey: "categoryId",
+//   sourceKey: "categoryId",
+//   as: "templates",
+// });
+
+// User <-> BulkOperation (One-to-Many)
+models.User.hasMany(models.BulkOperation, {
+  foreignKey: "userId",
+  as: "bulkOperations",
+});
+models.BulkOperation.belongsTo(models.User, {
+  foreignKey: "userId",
+  as: "user",
 });
 
 module.exports = {

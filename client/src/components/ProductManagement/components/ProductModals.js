@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { Button, Badge, Modal } from "../../ui";
 import { Card, CardContent } from "../../ui/Card";
+import EnhancedSKUInput from "../../common/EnhancedSKUInput";
+import ProductVariantManager from "./ProductVariantManager";
 import {
   CATEGORIES,
   PLATFORMS,
@@ -142,7 +144,9 @@ const ProductFormModal = ({
                 value={formData.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.name ? "border-red-500" : "border-gray-300 dark:border-gray-600"
+                  errors.name
+                    ? "border-red-500"
+                    : "border-gray-300 dark:border-gray-600"
                 }`}
                 placeholder="Ürün adını girin"
               />
@@ -155,14 +159,16 @@ const ProductFormModal = ({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 SKU *
               </label>
-              <input
-                type="text"
+              <EnhancedSKUInput
                 value={formData.sku}
-                onChange={(e) => handleInputChange("sku", e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.sku ? "border-red-500" : "border-gray-300 dark:border-gray-600"
-                }`}
-                placeholder="Ürün kodunu girin"
+                onChange={(sku) => handleInputChange("sku", sku)}
+                productInfo={{
+                  name: formData.name,
+                  category: formData.category,
+                  description: formData.description,
+                }}
+                error={errors.sku}
+                placeholder="Ürün kodunu girin veya otomatik oluşturun"
               />
               {errors.sku && (
                 <p className="text-red-500 text-xs mt-1">{errors.sku}</p>
@@ -192,7 +198,9 @@ const ProductFormModal = ({
                 value={formData.category}
                 onChange={(e) => handleInputChange("category", e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.category ? "border-red-500" : "border-gray-300 dark:border-gray-600"
+                  errors.category
+                    ? "border-red-500"
+                    : "border-gray-300 dark:border-gray-600"
                 }`}
               >
                 <option value="">Kategori seçin</option>
@@ -239,7 +247,9 @@ const ProductFormModal = ({
                 value={formData.price}
                 onChange={(e) => handleInputChange("price", e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.price ? "border-red-500" : "border-gray-300 dark:border-gray-600"
+                  errors.price
+                    ? "border-red-500"
+                    : "border-gray-300 dark:border-gray-600"
                 }`}
                 placeholder="0.00"
                 step="0.01"
@@ -276,7 +286,9 @@ const ProductFormModal = ({
                   handleInputChange("stockQuantity", e.target.value)
                 }
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.stockQuantity ? "border-red-500" : "border-gray-300 dark:border-gray-600"
+                  errors.stockQuantity
+                    ? "border-red-500"
+                    : "border-gray-300 dark:border-gray-600"
                 }`}
                 placeholder="0"
                 min="0"
@@ -411,7 +423,9 @@ const ProductFormModal = ({
 
         {/* Tags */}
         <div>
-          <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">Etiketler</h4>
+          <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">
+            Etiketler
+          </h4>
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
               {formData.tags.map((tag, index) => (
@@ -425,7 +439,7 @@ const ProductFormModal = ({
                   <button
                     type="button"
                     onClick={() => removeTag(tag)}
-                    className="ml-1 text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-300"
+                    className="ml-1 text-gray-500  dark:text-gray-500 hover:text-gray-700"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -534,6 +548,25 @@ const ProductFormModal = ({
             ))}
           </div>
         </div>
+
+        {/* Product Variants */}
+        <div>
+          <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">
+            Ürün Varyantları
+          </h4>
+          <ProductVariantManager
+            baseSKU={formData.sku}
+            productInfo={{
+              name: formData.name,
+              category: formData.category,
+              description: formData.description,
+            }}
+            onChange={(variants) => {
+              // You can store variants in formData if needed
+              console.log("Variants updated:", variants);
+            }}
+          />
+        </div>
       </div>
 
       {/* Footer */}
@@ -591,7 +624,7 @@ const ProductDetailsModal = ({
                   ))}
                   {product.images.length > 5 && (
                     <div className="h-16 w-16 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center border border-gray-200 dark:border-gray-700">
-                      <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         +{product.images.length - 5}
                       </span>
                     </div>
@@ -611,25 +644,29 @@ const ProductDetailsModal = ({
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
             {product.name}
           </h2>
-          <p className="text-gray-600 dark:text-gray-400 dark:text-gray-500 mb-4">{product.description}</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            {product.description}
+          </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Basic Info */}
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">SKU</label>
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  SKU
+                </label>
                 <p className="font-mono text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
                   {product.sku}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
                   Kategori
                 </label>
                 <p className="font-medium">{product.category}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
                   Durum
                 </label>
                 <div>
@@ -651,7 +688,7 @@ const ProductDetailsModal = ({
             {/* Pricing & Stock */}
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-500">
                   Satış Fiyatı
                 </label>
                 <p className="text-lg font-semibold text-green-600">
@@ -660,7 +697,7 @@ const ProductDetailsModal = ({
               </div>
               {product.costPrice && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-500">
                     Maliyet Fiyatı
                   </label>
                   <p className="font-medium">
@@ -669,7 +706,7 @@ const ProductDetailsModal = ({
                 </div>
               )}
               <div>
-                <label className="text-sm font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
                   Stok Durumu
                 </label>
                 <div className="flex items-center">
@@ -692,25 +729,33 @@ const ProductDetailsModal = ({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               {product.dimensions?.length && (
                 <div>
-                  <label className="text-gray-500 dark:text-gray-400 dark:text-gray-500">Uzunluk</label>
+                  <label className="text-gray-500 dark:text-gray-400">
+                    Uzunluk
+                  </label>
                   <p className="font-medium">{product.dimensions.length} cm</p>
                 </div>
               )}
               {product.dimensions?.width && (
                 <div>
-                  <label className="text-gray-500 dark:text-gray-400 dark:text-gray-500">Genişlik</label>
+                  <label className="text-gray-500 dark:text-gray-400">
+                    Genişlik
+                  </label>
                   <p className="font-medium">{product.dimensions.width} cm</p>
                 </div>
               )}
               {product.dimensions?.height && (
                 <div>
-                  <label className="text-gray-500 dark:text-gray-400 dark:text-gray-500">Yükseklik</label>
+                  <label className="text-gray-500 dark:text-gray-400">
+                    Yükseklik
+                  </label>
                   <p className="font-medium">{product.dimensions.height} cm</p>
                 </div>
               )}
               {product.weight && (
                 <div>
-                  <label className="text-gray-500 dark:text-gray-400 dark:text-gray-500">Ağırlık</label>
+                  <label className="text-gray-500 dark:text-gray-400">
+                    Ağırlık
+                  </label>
                   <p className="font-medium">{product.weight} kg</p>
                 </div>
               )}
@@ -757,15 +802,17 @@ const ProductDetailsModal = ({
                   </div>
                   <div className="flex items-center space-x-4 text-sm">
                     {platform.sku && (
-                      <span className="text-gray-600 dark:text-gray-400 dark:text-gray-500">SKU: {platform.sku}</span>
+                      <span className="text-gray-600 dark:text-gray-400">
+                        SKU: {platform.sku}
+                      </span>
                     )}
                     {platform.stockQuantity !== undefined && (
-                      <span className="text-gray-600 dark:text-gray-400 dark:text-gray-500">
+                      <span className="text-gray-600 dark:text-gray-400">
                         Stok: {platform.stockQuantity}
                       </span>
                     )}
                     {platform.price && (
-                      <span className="text-gray-600 dark:text-gray-400 dark:text-gray-500">
+                      <span className="text-gray-600 dark:text-gray-400">
                         Fiyat: {formatPrice(platform.price)}
                       </span>
                     )}
@@ -775,7 +822,9 @@ const ProductDetailsModal = ({
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm">Platform bağlantısı yok</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              Platform bağlantısı yok
+            </p>
           )}
         </div>
       </div>
@@ -949,7 +998,9 @@ const ConfirmationModal = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
       <div className="space-y-4">
-        <p className="text-gray-600 dark:text-gray-400 dark:text-gray-500">{message}</p>
+        <p className="text-gray-600 dark:text-gray-400">
+          {message}
+        </p>
         <div className="flex justify-end space-x-3">
           <Button onClick={onClose} variant="outline">
             {cancelText}

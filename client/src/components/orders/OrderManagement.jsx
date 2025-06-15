@@ -129,7 +129,7 @@ const OrderManagement = React.memo(() => {
     };
 
     ordersData.forEach((order) => {
-      const status = order.status || order.orderStatus || "pending";
+      const status = order.orderStatus || order.orderStatus || "pending";
 
       // Handle status mapping for stats (convert underscore to camelCase for specific statuses)
       let statKey = status;
@@ -414,7 +414,7 @@ const OrderManagement = React.memo(() => {
           ...order,
           id: order.id || order._id || order.orderId,
           // Ensure status field is available (map orderStatus to status)
-          status: order.status || order.orderStatus || "pending",
+          status: order.orderStatus || order.orderStatus || "pending",
           // Ensure platform field is available (map platformType to platform)
           platform: order.platform || order.platformType || "unknown",
           // Ensure we have proper date fields
@@ -1062,7 +1062,7 @@ const OrderManagement = React.memo(() => {
     <div className="min-h-screen bg-gray-50">
       {/* Header Section */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -1116,7 +1116,7 @@ const OrderManagement = React.memo(() => {
       </div>
 
       {/* Stats Cards */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
           <Card>
             <CardContent className="p-4">
@@ -1537,7 +1537,7 @@ const OrderManagement = React.memo(() => {
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {currentOrders.map((order) => {
-                      const statusIcon = getStatusIcon(order.status);
+                      const statusIcon = getStatusIcon(order.orderStatus);
                       return (
                         <tr
                           key={order.id}
@@ -1600,8 +1600,10 @@ const OrderManagement = React.memo(() => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <span className="mr-2 text-sm">{statusIcon}</span>
-                              <Badge variant={getStatusVariant(order.status)}>
-                                {getStatusText(order.status)}
+                              <Badge
+                                variant={getStatusVariant(order.orderStatus)}
+                              >
+                                {getStatusText(order.orderStatus)}
                               </Badge>
                             </div>
                           </td>
@@ -2000,13 +2002,13 @@ const OrderForm = ({
               Durum
             </label>
             <div className="mt-1 flex items-center space-x-2">
-              <Badge variant={getStatusVariant(order.status)}>
-                {getStatusText(order.status)}
+              <Badge variant={getStatusVariant(order.orderStatus)}>
+                {getStatusText(order.orderStatus)}
               </Badge>
               {onUpdateStatus && (
                 <select
                   className="text-sm border border-gray-300 rounded px-2 py-1"
-                  value={order.status}
+                  value={order.orderStatus}
                   onChange={(e) => onUpdateStatus(order.id, e.target.value)}
                 >
                   <option value="pending">Bekleyen</option>

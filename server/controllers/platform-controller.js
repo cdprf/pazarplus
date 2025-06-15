@@ -533,7 +533,7 @@ const getPlatformAnalytics = async (req, res) => {
 
       // Group orders by status
       const statusCounts = orders.reduce((acc, order) => {
-        acc[order.status] = (acc[order.status] || 0) + 1;
+        acc[order.orderStatus] = (acc[order.orderStatus] || 0) + 1;
         return acc;
       }, {});
 

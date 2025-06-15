@@ -2072,6 +2072,450 @@ class ProductController {
       });
     }
   }
+
+  // === NEW PRODUCT MANAGEMENT ENDPOINTS ===
+
+  /**
+   * Get comprehensive product dashboard data
+   */
+  async getProductDashboard(req, res) {
+    try {
+      const { productId } = req.params;
+      const userId = req.user.id;
+      const {
+        ProductTemplate,
+        ProductMedia,
+        PlatformCategory,
+        BulkOperation,
+      } = require("../models");
+
+      // Get product with all related data
+      const product = await Product.findOne({
+        where: { id: productId, userId },
+        include: [
+          {
+            model: ProductVariant,
+            as: "variants",
+            order: [
+              ["isDefault", "DESC"],
+              ["sortOrder", "ASC"],
+            ],
+          },
+          {
+            model: ProductMedia,
+            as: "media",
+            order: [
+              ["isPrimary", "DESC"],
+              ["sortOrder", "ASC"],
+            ],
+          },
+          {
+            model: ProductTemplate,
+            as: "template",
+          },
+          {
+            model: PlatformData,
+            as: "platformData",
+          },
+        ],
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      // Get publishing status across platforms
+      const publishingStatus = {};
+      if (product.platformData) {
+        product.platformData.forEach((pd) => {
+          publishingStatus[pd.platformType] = {
+            status: pd.data.status || "unknown",
+            approved: pd.data.approved || false,
+            lastSync: pd.updatedAt,
+            errors: pd.data.errors || [],
+          };
+        });
+      }
+
+      // Get recent bulk operations for this product
+      const recentOperations = await BulkOperation.findAll({
+        where: {
+          userId,
+          "configuration.productIds": { [Op.contains]: [productId] },
+        },
+        order: [["createdAt", "DESC"]],
+        limit: 5,
+      });
+
+      res.json({
+        success: true,
+        data: {
+          product,
+          publishingStatus,
+          recentOperations,
+          analytics: {
+            totalVariants: product.variants?.length || 0,
+            totalMedia: product.media?.length || 0,
+            platformsPublished: Object.keys(publishingStatus).length,
+            lastUpdated: product.updatedAt,
+          },
+        },
+      });
+    } catch (error) {
+      logger.error("Error fetching product dashboard:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch product dashboard",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Bulk publish products to selected platforms
+   */
+  async bulkPublishProducts(req, res) {
+    try {
+      const { productIds, platforms, publishingSettings } = req.body;
+      const userId = req.user.id;
+      const { BulkOperation } = require("../models");
+
+      // Validate input
+      if (
+        !productIds ||
+        !Array.isArray(productIds) ||
+        productIds.length === 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Product IDs are required",
+        });
+      }
+
+      if (!platforms || !Array.isArray(platforms) || platforms.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "At least one platform must be selected",
+        });
+      }
+
+      // Create bulk operation record
+      const bulkOperation = await BulkOperation.create({
+        type: "platform_publish",
+        status: "pending",
+        totalItems: productIds.length * platforms.length,
+        configuration: {
+          productIds,
+          platforms,
+          publishingSettings: publishingSettings || {},
+        },
+        userId,
+      });
+
+      // Queue the bulk operation for processing
+      // This would typically be handled by a job queue like Bull or Agenda
+      setTimeout(() => {
+        this.processBulkPublishing(bulkOperation.id);
+      }, 100);
+
+      res.json({
+        success: true,
+        data: {
+          operationId: bulkOperation.id,
+          message: "Bulk publishing operation started",
+          estimatedTime: `${Math.ceil(
+            (productIds.length * platforms.length) / 10
+          )} minutes`,
+        },
+      });
+    } catch (error) {
+      logger.error("Error starting bulk publish:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to start bulk publishing",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get bulk operation status and progress
+   */
+  async getBulkOperationStatus(req, res) {
+    try {
+      const { operationId } = req.params;
+      const userId = req.user.id;
+      const { BulkOperation } = require("../models");
+
+      const operation = await BulkOperation.findOne({
+        where: { id: operationId, userId },
+      });
+
+      if (!operation) {
+        return res.status(404).json({
+          success: false,
+          message: "Operation not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: operation,
+      });
+    } catch (error) {
+      logger.error("Error fetching operation status:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch operation status",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Upload and manage product media
+   */
+  async uploadProductMedia(req, res) {
+    try {
+      const { productId } = req.params;
+      const { variantId, type, isPrimary, sortOrder, altText, caption, tags } =
+        req.body;
+      const userId = req.user.id;
+      const { ProductMedia } = require("../models");
+
+      // Validate product ownership
+      const product = await Product.findOne({
+        where: { id: productId, userId },
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      // Handle file upload (this would typically use multer or similar)
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No file uploaded",
+        });
+      }
+
+      // If setting as primary, unset other primary media
+      if (isPrimary) {
+        await ProductMedia.update(
+          { isPrimary: false },
+          {
+            where: {
+              productId,
+              ...(variantId ? { variantId } : { variantId: null }),
+            },
+          }
+        );
+      }
+
+      // Create media record
+      const media = await ProductMedia.create({
+        productId,
+        variantId: variantId || null,
+        type: type || "image",
+        url: req.file.location || req.file.path, // Assuming S3 or local storage
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        mimeType: req.file.mimetype,
+        size: req.file.size,
+        isPrimary: isPrimary || false,
+        sortOrder: sortOrder || 0,
+        altText: altText || "",
+        caption: caption || "",
+        tags: tags ? JSON.parse(tags) : [],
+        userId,
+      });
+
+      res.json({
+        success: true,
+        data: media,
+        message: "Media uploaded successfully",
+      });
+    } catch (error) {
+      logger.error("Error uploading media:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to upload media",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Auto-detect and create variants from platform data
+   */
+  async autoDetectVariants(req, res) {
+    try {
+      const { productId } = req.params;
+      const { detectionRules } = req.body;
+      const userId = req.user.id;
+      const VariantDetectionService = require("../services/variant-detection-service");
+
+      // Validate product ownership
+      const product = await Product.findOne({
+        where: { id: productId, userId },
+        include: [
+          {
+            model: PlatformData,
+            as: "platformData",
+          },
+        ],
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      // Run variant detection
+      const detectionResult = await VariantDetectionService.detectVariants(
+        product,
+        detectionRules
+      );
+
+      res.json({
+        success: true,
+        data: detectionResult,
+        message: `Detected ${detectionResult.variants.length} potential variants`,
+      });
+    } catch (error) {
+      logger.error("Error detecting variants:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to detect variants",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Sync platform categories
+   */
+  async syncPlatformCategories(req, res) {
+    try {
+      const { platformType } = req.params;
+      const userId = req.user.id;
+      const PlatformCategoryService = require("../services/platform-category-service");
+
+      // Start category sync
+      const syncResult = await PlatformCategoryService.syncCategories(
+        platformType,
+        userId
+      );
+
+      res.json({
+        success: true,
+        data: syncResult,
+        message: `Category sync started for ${platformType}`,
+      });
+    } catch (error) {
+      logger.error("Error syncing categories:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to sync categories",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Process bulk publishing operation (would typically run in background)
+   */
+  async processBulkPublishing(operationId) {
+    try {
+      const { BulkOperation } = require("../models");
+      const operation = await BulkOperation.findByPk(operationId);
+
+      if (!operation) return;
+
+      // Update status to processing
+      await operation.update({
+        status: "processing",
+        startedAt: new Date(),
+      });
+
+      const { productIds, platforms, publishingSettings } =
+        operation.configuration;
+      let processedItems = 0;
+      let successfulItems = 0;
+      let failedItems = 0;
+      const errors = [];
+
+      // Process each product on each platform
+      for (const productId of productIds) {
+        for (const platform of platforms) {
+          try {
+            // Get platform service
+            const platformService = PlatformServiceFactory.getService(platform);
+
+            // Publish product
+            await platformService.publishProduct(productId, publishingSettings);
+
+            successfulItems++;
+          } catch (error) {
+            failedItems++;
+            errors.push({
+              productId,
+              platform,
+              error: error.message,
+            });
+            logger.error(
+              `Failed to publish ${productId} to ${platform}:`,
+              error
+            );
+          }
+
+          processedItems++;
+
+          // Update progress
+          const progress = (processedItems / operation.totalItems) * 100;
+          await operation.update({
+            processedItems,
+            successfulItems,
+            failedItems,
+            progress: Math.round(progress * 100) / 100,
+            errors,
+          });
+        }
+      }
+
+      // Mark as completed
+      await operation.update({
+        status:
+          processedItems === operation.totalItems ? "completed" : "partial",
+        completedAt: new Date(),
+        processingTimeMs: Date.now() - new Date(operation.startedAt).getTime(),
+      });
+
+      logger.info(`Bulk publishing completed for operation ${operationId}`);
+    } catch (error) {
+      logger.error(`Error processing bulk operation ${operationId}:`, error);
+
+      // Mark as failed
+      const { BulkOperation } = require("../models");
+      await BulkOperation.update(
+        {
+          status: "failed",
+          errors: [{ error: error.message }],
+          completedAt: new Date(),
+        },
+        { where: { id: operationId } }
+      );
+    }
+  }
 }
 
 module.exports = new ProductController();

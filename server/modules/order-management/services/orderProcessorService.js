@@ -576,7 +576,7 @@ class OrderProcessorService {
       );
 
       // If payment is completed, update order status if needed
-      if (paymentStatus === "completed" && order.status === "pending") {
+      if (paymentStatus === "completed" && order.orderStatus === "pending") {
         await order.update(
           {
             status: "processing",
@@ -746,14 +746,14 @@ class OrderProcessorService {
       switch (data.event.toLowerCase()) {
         case "order_created":
           // Update if we already have it but with different status
-          if (order.status !== "new") {
-            order.status = "new";
+          if (order.orderStatus !== "new") {
+            order.orderStatus = "new";
             await order.save();
           }
           break;
 
         case "order_shipped":
-          order.status = "shipped";
+          order.orderStatus = "shipped";
           if (data.trackingNumber) {
             order.trackingNumber = data.trackingNumber;
           }
@@ -761,7 +761,7 @@ class OrderProcessorService {
           break;
 
         case "order_cancelled":
-          order.status = "cancelled";
+          order.orderStatus = "cancelled";
           if (data.cancellationReason) {
             order.cancellationReason = data.cancellationReason;
           }
@@ -770,7 +770,7 @@ class OrderProcessorService {
           break;
 
         case "order_delivered":
-          order.status = "delivered";
+          order.orderStatus = "delivered";
           order.deliveryDate = new Date();
           await order.save();
           break;
@@ -788,7 +788,7 @@ class OrderProcessorService {
         success: true,
         message: `Successfully processed ${data.event} event`,
         orderId: order.id,
-        status: order.status,
+        status: order.orderStatus,
       };
     } catch (error) {
       logger.error("Error processing Trendyol webhook:", error);
@@ -826,19 +826,19 @@ class OrderProcessorService {
 
       switch (data.event.toLowerCase()) {
         case "created":
-          if (order.status !== "new") {
-            order.status = "new";
+          if (order.orderStatus !== "new") {
+            order.orderStatus = "new";
             await order.save();
           }
           break;
 
         case "packaging":
-          order.status = "processing";
+          order.orderStatus = "processing";
           await order.save();
           break;
 
         case "shipped":
-          order.status = "shipped";
+          order.orderStatus = "shipped";
           if (data.cargoTrackingNumber) {
             order.trackingNumber = data.cargoTrackingNumber;
           }
@@ -849,20 +849,20 @@ class OrderProcessorService {
           break;
 
         case "delivered":
-          order.status = "delivered";
+          order.orderStatus = "delivered";
           order.deliveryDate = new Date();
           await order.save();
           break;
 
         case "cancelled":
-          order.status = "cancelled";
+          order.orderStatus = "cancelled";
           order.cancellationReason = data.reason || "";
           order.cancellationDate = new Date();
           await order.save();
           break;
 
         case "returned":
-          order.status = "returned";
+          order.orderStatus = "returned";
           order.returnReason = data.reason || "";
           order.returnDate = new Date();
           await order.save();
@@ -881,7 +881,7 @@ class OrderProcessorService {
         success: true,
         message: `Successfully processed ${data.event} event`,
         orderId: order.id,
-        status: order.status,
+        status: order.orderStatus,
       };
     } catch (error) {
       logger.error("Error processing Hepsiburada webhook:", error);
@@ -919,20 +919,20 @@ class OrderProcessorService {
 
       switch (data.event.toLowerCase()) {
         case "new":
-          if (order.status !== "new") {
-            order.status = "new";
+          if (order.orderStatus !== "new") {
+            order.orderStatus = "new";
             await order.save();
           }
           break;
 
         case "accepted":
         case "picking":
-          order.status = "processing";
+          order.orderStatus = "processing";
           await order.save();
           break;
 
         case "shipped":
-          order.status = "shipped";
+          order.orderStatus = "shipped";
           if (data.shipmentInfo) {
             order.trackingNumber = data.shipmentInfo.trackingNumber;
             order.trackingUrl = data.shipmentInfo.trackingUrl;
@@ -942,21 +942,21 @@ class OrderProcessorService {
           break;
 
         case "delivered":
-          order.status = "delivered";
+          order.orderStatus = "delivered";
           order.deliveryDate = new Date();
           await order.save();
           break;
 
         case "rejected":
         case "cancelled":
-          order.status = "cancelled";
+          order.orderStatus = "cancelled";
           order.cancellationReason = data.reason || "";
           order.cancellationDate = new Date();
           await order.save();
           break;
 
         case "returned":
-          order.status = "returned";
+          order.orderStatus = "returned";
           order.returnReason = data.reason || "";
           order.returnDate = new Date();
           await order.save();
@@ -975,7 +975,7 @@ class OrderProcessorService {
         success: true,
         message: `Successfully processed ${data.event} event`,
         orderId: order.id,
-        status: order.status,
+        status: order.orderStatus,
       };
     } catch (error) {
       logger.error("Error processing N11 webhook:", error);

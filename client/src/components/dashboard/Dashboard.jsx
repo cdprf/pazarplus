@@ -556,7 +556,7 @@ const Dashboard = () => {
               <div className="space-y-4">
                 {stats.recentOrders?.length > 0 ? (
                   stats.recentOrders.slice(0, 5).map((order, index) => {
-                    const StatusIcon = getStatusIcon(order.status);
+                    const StatusIcon = getStatusIcon(order.orderStatus);
                     return (
                       <div
                         key={index}
@@ -594,10 +594,10 @@ const Dashboard = () => {
                               </span>
                             </div>
                             <Badge
-                              variant={getStatusVariant(order.status)}
+                              variant={getStatusVariant(order.orderStatus)}
                               icon={StatusIcon}
                             >
-                              {order.status}
+                              {order.orderStatus}
                             </Badge>
                           </div>
                         </div>

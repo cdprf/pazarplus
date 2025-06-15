@@ -20,6 +20,8 @@ import { Button, Badge, Tooltip } from "../../ui";
 import CompletionScore from "./CompletionScore";
 import InlineEditor from "./InlineEditor";
 
+// Import the table fixes CSS
+
 // Helper functions
 const getStockStatus = (product) => {
   const stock = product.stockQuantity || 0;
@@ -129,8 +131,8 @@ const ProductTable = ({
   };
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
+    <div className="enhanced-table-container">
+      <table className="enhanced-table">
         <thead className="bg-gray-50">
           <tr>
             {/* Checkbox Column */}

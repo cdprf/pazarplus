@@ -1,7 +1,7 @@
-// Enhanced ProductTableWithVariants with Variant Management
-// Integrates automatic detection, manual grouping, suggestions, and enhanced display
+// Enhanced ProductTableWithVariants with AI-Powered Variant Management
+// Integrates with Product Intelligence API for advanced pattern detection and suggestions
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   SortAsc,
   SortDesc,
@@ -25,15 +25,15 @@ import {
 import { Button, Badge, Tooltip } from "../../ui";
 import CompletionScore from "./CompletionScore";
 import InlineEditor from "./InlineEditor";
-import SKUVariantDetector from "../utils/skuVariantDetector";
-import ComprehensivePatternDetector from "../utils/comprehensivePatternDetector";
-import PatternManagementInterface from "./PatternManagementInterface";
+import IntelligentVariantPanel from "./IntelligentVariantPanel";
+import IntelligentAnalysisConfig from "./IntelligentAnalysisConfig";
+import ProductIntelligenceApi from "../../../services/productIntelligenceApi";
 import {
-  VariantSuggestionsPanel,
-  ManualGroupingInterface,
-  EnhancedVariantDisplay,
   VariantManagementModal,
+  EnhancedVariantDisplay,
+  ManualGroupingInterface,
 } from "./VariantComponents";
+
 
 // Enhanced ProductTableWithVariants Component
 const ProductTableWithVariants = ({
@@ -64,117 +64,168 @@ const ProductTableWithVariants = ({
   // State for variant management
   const [expandedProducts, setExpandedProducts] = useState(new Set());
   const [editingCell, setEditingCell] = useState(null);
-  const [variantDetector] = useState(() => new SKUVariantDetector());
-  const [comprehensiveDetector] = useState(
-    () => new ComprehensivePatternDetector()
-  );
   const [showVariantSuggestions, setShowVariantSuggestions] = useState(false);
   const [showManualGrouping, setShowManualGrouping] = useState(false);
   const [showVariantModal, setShowVariantModal] = useState(false);
   const [showPatternManagement, setShowPatternManagement] = useState(false);
   const [selectedVariantProduct, setSelectedVariantProduct] = useState(null);
   const [manualGroupingProducts, setManualGroupingProducts] = useState([]);
-  const [isProcessingVariants, setIsProcessingVariants] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [lastAnalysisTime, setLastAnalysisTime] = useState(null);
+  const [analysisError, setAnalysisError] = useState(null);
 
-  // Pattern detection configuration
-  const [patternDetectionConfig, setPatternDetectionConfig] = useState({
-    sensitivity: 0.8, // Detection sensitivity (0.1 - 1.0)
+  // AI Analysis configuration
+  const [analysisConfig, setAnalysisConfig] = useState({
+    sensitivity: 0.8,
+    minConfidence: 0.6,
+    minGroupSize: 2,
+    detectVariants: true,
+    analyzeNaming: true,
+    analyzeClassification: true,
+    generateSuggestions: true,
     enableMultiLanguage: true,
     enableBrandGrouping: true,
     enableSizeColorVariants: true,
-    minGroupSize: 2,
+    enablePriceAnalysis: true,
+    enableCategoryGrouping: true,
+    maxPatternLength: 5,
+    enableSmartExclusions: true,
+    useAiEnhancement: true,
+    enableLearning: true,
+    batchSize: 100,
+    maxAnalysisTime: 30000,
   });
 
-  // Process products with enhanced variant detection
+  // Analysis results state
+  const [analysisResults, setAnalysisResults] = useState({
+    suggestions: [],
+    statistics: {},
+    variantGroups: [],
+    patterns: [],
+    error: null,
+  });
+
+  // API-based analysis functions
+  const performApiAnalysis = useCallback(
+    async (forceRefresh = false) => {
+      if (!enableVariantManagement || products.length === 0) {
+        setAnalysisResults({
+          suggestions: [],
+          statistics: {},
+          variantGroups: [],
+          patterns: [],
+          error: null,
+        });
+        return;
+      }
+
+      // Skip if already analyzing or recent analysis exists
+      if (
+        isAnalyzing ||
+        (!forceRefresh &&
+          lastAnalysisTime &&
+          Date.now() - lastAnalysisTime < 30000)
+      ) {
+        return;
+      }
+
+      setIsAnalyzing(true);
+      setAnalysisError(null);
+
+      try {
+        const api = new ProductIntelligenceApi();
+
+        // Perform complete analysis using the API
+        const analysisResult = await api.performCompleteAnalysis(
+          products,
+          analysisConfig
+        );
+
+        if (analysisResult.success) {
+          setAnalysisResults({
+            suggestions: analysisResult.data.suggestions || [],
+            statistics: analysisResult.data.statistics || {},
+            variantGroups: analysisResult.data.variantGroups || [],
+            patterns: analysisResult.data.patterns || [],
+            error: null,
+          });
+          setLastAnalysisTime(Date.now());
+        } else {
+          throw new Error(analysisResult.error?.message || "Analysis failed");
+        }
+      } catch (error) {
+        console.error("API Analysis failed:", error);
+        setAnalysisError(error.message);
+        setAnalysisResults({
+          suggestions: [],
+          statistics: {},
+          variantGroups: [],
+          patterns: [],
+          error: error.message,
+        });
+      } finally {
+        setIsAnalyzing(false);
+      }
+    },
+    [
+      products,
+      enableVariantManagement,
+      analysisConfig,
+      isAnalyzing,
+      lastAnalysisTime,
+    ]
+  );
+
+  // Trigger analysis when products or config changes
+  useEffect(() => {
+    performApiAnalysis();
+  }, [performApiAnalysis]);
+
+  // Process products with API-based analysis results
   const processedProductsData = useMemo(() => {
     if (!enableVariantManagement) {
       return {
         products,
         suggestions: [],
-        analysis: null,
-        comprehensiveAnalysis: null,
+        analysis: analysisResults,
+        apiAnalysis: analysisResults,
       };
     }
 
-    // Run both SKU-based and comprehensive pattern detection
-    const skuAnalysis = variantDetector.analyzeProducts(products);
-    const processed = variantDetector.processProducts(products);
+    // Use the results from API analysis
+    const { suggestions, variantGroups, patterns, statistics } =
+      analysisResults;
 
-    // Enhanced comprehensive pattern detection with configuration
-    const comprehensiveAnalysis = comprehensiveDetector.analyzePatterns(
-      products,
-      {
-        sensitivity: patternDetectionConfig.sensitivity,
-        enableMultiLanguage: patternDetectionConfig.enableMultiLanguage,
-        enableBrandGrouping: patternDetectionConfig.enableBrandGrouping,
-        enableSizeColorVariants: patternDetectionConfig.enableSizeColorVariants,
-        minGroupSize: patternDetectionConfig.minGroupSize,
+    // Process products to include variant information from API results
+    const processedProducts = products.map((product) => {
+      const variantGroup = variantGroups.find((group) =>
+        group.products.some((p) => p.id === product.id)
+      );
+
+      if (variantGroup) {
+        return {
+          ...product,
+          hasVariants: true,
+          variantGroup: variantGroup.id,
+          variants: variantGroup.products.filter((p) => p.id !== product.id),
+          isMainVariant: variantGroup.mainProductId === product.id,
+        };
       }
-    );
 
-    // Merge suggestions from both detectors
-    const skuSuggestions = Array.from(skuAnalysis.suggestions.values()).map(
-      (suggestion, index) => ({
-        ...suggestion,
-        id: `sku-suggestion-${index}`,
-        source: "sku",
-        type: "sku-based",
-      })
-    );
-
-    // Generate comprehensive pattern suggestions
-    const comprehensiveSuggestions =
-      comprehensiveAnalysis.suggestions?.map((suggestion, index) => ({
-        ...suggestion,
-        id: `comprehensive-suggestion-${index}`,
-        source: "comprehensive",
-        type: "pattern-based",
-      })) || [];
-
-    // Combine and deduplicate suggestions
-    const allSuggestions = [...skuSuggestions, ...comprehensiveSuggestions];
-    const uniqueSuggestions = allSuggestions.filter(
-      (suggestion, index, self) => {
-        // Simple deduplication based on product IDs
-        const key = suggestion.products
-          ?.map((p) => p.id)
-          .sort()
-          .join("-");
-        return (
-          index ===
-          self.findIndex(
-            (s) =>
-              s.products
-                ?.map((p) => p.id)
-                .sort()
-                .join("-") === key
-          )
-        );
-      }
-    );
+      return product;
+    });
 
     return {
-      products: processed.products,
-      suggestions: uniqueSuggestions,
-      analysis: processed.analysis,
-      comprehensiveAnalysis,
-      skuAnalysis,
+      products: processedProducts,
+      suggestions: suggestions || [],
+      analysis: analysisResults,
+      apiAnalysis: analysisResults,
+      statistics,
+      patterns,
     };
-  }, [
-    products,
-    variantDetector,
-    comprehensiveDetector,
-    enableVariantManagement,
-    patternDetectionConfig,
-  ]);
+  }, [products, analysisResults, enableVariantManagement]);
 
-  const {
-    products: processedProducts,
-    suggestions,
-    analysis,
-    comprehensiveAnalysis,
-    skuAnalysis,
-  } = processedProductsData;
+  const { products: processedProducts, suggestions } = processedProductsData;
 
   // Helper functions
   const getStockStatus = (product) => {
@@ -274,49 +325,68 @@ const ProductTableWithVariants = ({
     );
   };
 
-  // Enhanced variant suggestion handlers with learning
+  // Enhanced variant suggestion handlers with API feedback
   const handleAcceptSuggestion = useCallback(
     async (suggestion) => {
-      setIsProcessingVariants(true);
+      setIsAnalyzing(true);
       try {
         await onAcceptVariantSuggestion?.(suggestion);
 
-        // Learn from user acceptance for future improvements
-        if (suggestion.source === "comprehensive") {
-          comprehensiveDetector.learnFromUserAction({
-            action: "suggestion_accepted",
-            suggestion,
-            timestamp: Date.now(),
-            confidence: suggestion.confidence,
-          });
-        }
+        // Send feedback to API for learning
+        const api = new ProductIntelligenceApi();
+        await api.submitFeedback({
+          suggestionId: suggestion.id,
+          action: "accepted",
+          confidence: suggestion.confidence,
+          timestamp: Date.now(),
+          metadata: {
+            source: suggestion.source,
+            type: suggestion.type,
+          },
+        });
+
+        // Refresh analysis to get updated suggestions
+        setTimeout(() => performApiAnalysis(true), 1000);
+      } catch (error) {
+        console.error("Error accepting suggestion:", error);
+        setAnalysisError("Failed to accept suggestion");
       } finally {
-        setIsProcessingVariants(false);
+        setIsAnalyzing(false);
       }
     },
-    [onAcceptVariantSuggestion, comprehensiveDetector]
+    [onAcceptVariantSuggestion, performApiAnalysis]
   );
 
   const handleRejectSuggestion = useCallback(
     async (suggestion) => {
-      setIsProcessingVariants(true);
+      setIsAnalyzing(true);
       try {
         await onRejectVariantSuggestion?.(suggestion);
 
-        // Learn from user rejection to improve future suggestions
-        if (suggestion.source === "comprehensive") {
-          comprehensiveDetector.learnFromUserAction({
-            action: "suggestion_rejected",
-            suggestion,
-            timestamp: Date.now(),
-            reason: "user_rejected",
-          });
-        }
+        // Send feedback to API for learning
+        const api = new ProductIntelligenceApi();
+        await api.submitFeedback({
+          suggestionId: suggestion.id,
+          action: "rejected",
+          confidence: suggestion.confidence,
+          timestamp: Date.now(),
+          reason: "user_rejected",
+          metadata: {
+            source: suggestion.source,
+            type: suggestion.type,
+          },
+        });
+
+        // Refresh analysis to get updated suggestions
+        setTimeout(() => performApiAnalysis(true), 1000);
+      } catch (error) {
+        console.error("Error rejecting suggestion:", error);
+        setAnalysisError("Failed to reject suggestion");
       } finally {
-        setIsProcessingVariants(false);
+        setIsAnalyzing(false);
       }
     },
-    [onRejectVariantSuggestion, comprehensiveDetector]
+    [onRejectVariantSuggestion, performApiAnalysis]
   );
 
   // Manual grouping handlers
@@ -329,26 +399,37 @@ const ProductTableWithVariants = ({
 
   const handleCreateManualGroup = useCallback(
     async (groupData) => {
-      setIsProcessingVariants(true);
+      setIsAnalyzing(true);
       try {
         await onCreateVariantGroup?.(groupData);
 
-        // Learn from manual grouping to improve future pattern detection
-        comprehensiveDetector.learnFromUserAction({
+        // Send feedback to API for learning from manual grouping
+        const api = new ProductIntelligenceApi();
+        await api.submitFeedback({
           action: "manual_group_created",
           groupData,
           products: groupData.products,
           timestamp: Date.now(),
           type: "manual",
+          metadata: {
+            groupName: groupData.name,
+            productCount: groupData.products.length,
+          },
         });
 
         setShowManualGrouping(false);
         setManualGroupingProducts([]);
+
+        // Refresh analysis to get updated suggestions
+        setTimeout(() => performApiAnalysis(true), 1000);
+      } catch (error) {
+        console.error("Error creating manual group:", error);
+        setAnalysisError("Failed to create manual group");
       } finally {
-        setIsProcessingVariants(false);
+        setIsAnalyzing(false);
       }
     },
-    [onCreateVariantGroup, comprehensiveDetector]
+    [onCreateVariantGroup, performApiAnalysis]
   );
 
   // Variant management handlers
@@ -373,50 +454,6 @@ const ProductTableWithVariants = ({
     setSelectedVariantProduct(product);
     setShowVariantModal(true);
   }, []);
-
-  // Enhanced pattern management handlers
-  const handlePatternsApplied = useCallback(
-    async (results, appliedPatterns) => {
-      setIsProcessingVariants(true);
-      try {
-        // Process the pattern application results using comprehensive analysis
-        for (const pattern of appliedPatterns) {
-          const groupData = {
-            name: pattern.basePattern || pattern.name,
-            products: pattern.products,
-            pattern: pattern,
-            type: "intelligent",
-            confidence: pattern.confidence,
-            source: "comprehensive",
-          };
-          await onCreateVariantGroup?.(groupData);
-        }
-
-        // Learn from the applied patterns to improve future detection
-        if (comprehensiveAnalysis?.patterns) {
-          comprehensiveDetector.learnFromUserAction({
-            action: "patterns_applied",
-            patterns: appliedPatterns,
-            timestamp: Date.now(),
-          });
-        }
-
-        // Close pattern management interface
-        setShowPatternManagement(false);
-
-        // Show success message
-        console.log(
-          "Applied comprehensive patterns successfully:",
-          appliedPatterns.length
-        );
-      } catch (error) {
-        console.error("Failed to apply comprehensive patterns:", error);
-      } finally {
-        setIsProcessingVariants(false);
-      }
-    },
-    [onCreateVariantGroup, comprehensiveAnalysis, comprehensiveDetector]
-  );
 
   // Inline editing
   const handleInlineEditStart = (productId, field, isVariant = false) => {
@@ -450,14 +487,19 @@ const ProductTableWithVariants = ({
     return column?.visible !== false;
   };
 
-  const SortHeader = ({ field, children, isVisible = true }) => {
+  const SortHeader = ({
+    field,
+    children,
+    isVisible = true,
+    className = "",
+  }) => {
     if (!isVisible) return null;
 
     return (
       <th
         className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-50 ${
           tableSettings?.stickyHeaders ? "sticky top-0 bg-gray-50 z-10" : ""
-        }`}
+        } ${className}`}
         onClick={() => handleSort(field)}
       >
         <div className="flex items-center space-x-1">
@@ -491,11 +533,11 @@ const ProductTableWithVariants = ({
 
     return (
       <td
-        className={`px-6 ${rowHeightClass} whitespace-nowrap ${
-          !isVariant ? "sticky left-12 bg-white" : "bg-blue-50"
+        className={`table-col-product px-6 ${rowHeightClass} ${
+          !isVariant ? "table-sticky-left-2" : "bg-blue-50"
         }`}
       >
-        <div className={`flex items-center ${isVariant ? "ml-8" : ""}`}>
+        <div className={`product-info-cell ${isVariant ? "ml-8" : ""}`}>
           <div className="flex-shrink-0 h-16 w-16 relative">
             {images.length > 0 ? (
               <div className="relative">
@@ -524,8 +566,8 @@ const ProductTableWithVariants = ({
             )}
           </div>
 
-          <div className="ml-4 flex-1 min-w-0">
-            <div className="text-sm font-medium text-gray-900 max-w-xs truncate mb-1">
+          <div className="ml-4 flex-1 product-name-container">
+            <div className="text-sm font-medium text-gray-900 product-name-text mb-1">
               <Tooltip content={product.name}>
                 <span
                   className={`${
@@ -611,7 +653,7 @@ const ProductTableWithVariants = ({
   // Price Cell Component
   const PriceCell = ({ product, isVariant = false }) => (
     <td
-      className={`px-6 ${rowHeightClass} whitespace-nowrap ${
+      className={`table-col-price px-6 ${rowHeightClass} ${
         isVariant ? "bg-blue-50" : ""
       }`}
     >
@@ -629,7 +671,9 @@ const ProductTableWithVariants = ({
         }
         type="number"
         suffix=" ₺"
-        className="min-w-24"
+        className="min-w-20 w-full"
+        min="0"
+        step="0.01"
       />
     </td>
   );
@@ -639,7 +683,7 @@ const ProductTableWithVariants = ({
     const stockStatus = getStockStatus(product);
     return (
       <td
-        className={`px-6 ${rowHeightClass} whitespace-nowrap ${
+        className={`table-col-stock px-6 ${rowHeightClass} ${
           isVariant ? "bg-blue-50" : ""
         }`}
         onClick={() => handleInlineEditStart(product.id, "stock", isVariant)}
@@ -667,7 +711,7 @@ const ProductTableWithVariants = ({
             }
             type="number"
             min="0"
-            className="min-w-16"
+            className="min-w-16 w-full"
           />
         </div>
       </td>
@@ -696,9 +740,7 @@ const ProductTableWithVariants = ({
         >
           {/* Checkbox Column */}
           {isColumnVisible("checkbox") && (
-            <td
-              className={`px-6 ${rowHeightClass} whitespace-nowrap sticky left-0 bg-white`}
-            >
+            <td className="table-col-checkbox table-sticky-left-1 px-6 py-3">
               <div className="flex items-center">
                 <input
                   type="checkbox"
@@ -760,7 +802,7 @@ const ProductTableWithVariants = ({
 
           {/* Status Column */}
           {isColumnVisible("status") && (
-            <td className={`px-6 ${rowHeightClass} whitespace-nowrap`}>
+            <td className="table-col-status px-6 py-3">
               <Badge variant={getStatusVariant(product.status)}>
                 {product.status === "active"
                   ? "Aktif"
@@ -773,25 +815,21 @@ const ProductTableWithVariants = ({
 
           {/* Category Column */}
           {isColumnVisible("category") && (
-            <td
-              className={`px-6 ${rowHeightClass} whitespace-nowrap text-sm text-gray-900`}
-            >
-              {product.category}
+            <td className="table-col-category px-6 py-3 text-sm text-gray-900">
+              <span className="category-cell-content">{product.category}</span>
             </td>
           )}
 
           {/* Completion Score Column */}
           {isColumnVisible("completion") && (
-            <td className={`px-6 ${rowHeightClass} whitespace-nowrap`}>
+            <td className="table-col-completion px-6 py-3">
               <CompletionScore score={completionScore} />
             </td>
           )}
 
           {/* Actions Column */}
           {isColumnVisible("actions") && (
-            <td
-              className={`px-6 ${rowHeightClass} whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white`}
-            >
+            <td className="table-col-actions table-sticky-right px-6 py-3 text-right text-sm font-medium">
               <div className="flex items-center justify-end space-x-2">
                 <Button
                   onClick={() => onView?.(product)}
@@ -895,7 +933,7 @@ const ProductTableWithVariants = ({
               {/* Checkbox Column for Variant */}
               {isColumnVisible("checkbox") && (
                 <td
-                  className={`px-6 ${rowHeightClass} whitespace-nowrap sticky left-0 bg-blue-50`}
+                  className={`w-16 px-6 ${rowHeightClass} sticky left-0 bg-blue-50 z-10 border-r border-gray-200`}
                 >
                   <div className="flex items-center pl-8">
                     <input
@@ -929,9 +967,7 @@ const ProductTableWithVariants = ({
 
               {/* Variant Status */}
               {isColumnVisible("status") && (
-                <td
-                  className={`px-6 ${rowHeightClass} whitespace-nowrap bg-blue-50`}
-                >
+                <td className={`w-28 px-6 ${rowHeightClass} bg-blue-50`}>
                   <Badge variant={getStatusVariant(variant.status || "active")}>
                     {variant.status === "active"
                       ? "Aktif"
@@ -945,17 +981,15 @@ const ProductTableWithVariants = ({
               {/* Variant Category */}
               {isColumnVisible("category") && (
                 <td
-                  className={`px-6 ${rowHeightClass} whitespace-nowrap text-sm text-gray-700 bg-blue-50`}
+                  className={`w-40 px-6 ${rowHeightClass} text-sm text-gray-700 bg-blue-50`}
                 >
-                  <span className="text-blue-600">Varyant</span>
+                  <span className="text-blue-600 truncate block">Varyant</span>
                 </td>
               )}
 
               {/* Variant Completion Score */}
               {isColumnVisible("completion") && (
-                <td
-                  className={`px-6 ${rowHeightClass} whitespace-nowrap bg-blue-50`}
-                >
+                <td className={`w-32 px-6 ${rowHeightClass} bg-blue-50`}>
                   <CompletionScore score={variantCompletionScore} />
                 </td>
               )}
@@ -963,7 +997,7 @@ const ProductTableWithVariants = ({
               {/* Variant Actions */}
               {isColumnVisible("actions") && (
                 <td
-                  className={`px-6 ${rowHeightClass} whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-blue-50`}
+                  className={`w-40 px-6 ${rowHeightClass} text-right text-sm font-medium sticky right-0 bg-blue-50 z-10 border-l border-gray-200`}
                 >
                   <div className="flex items-center justify-end space-x-2">
                     <Button
@@ -1100,7 +1134,7 @@ const ProductTableWithVariants = ({
               Manuel Gruplama
             </Button>
 
-            {/* Pattern Detection Configuration */}
+            {/* Analysis Configuration */}
             <div className="flex items-center space-x-2 ml-4 pl-4 border-l border-gray-200">
               <span className="text-sm text-gray-600">Hassasiyet:</span>
               <input
@@ -1108,9 +1142,9 @@ const ProductTableWithVariants = ({
                 min="0.1"
                 max="1.0"
                 step="0.1"
-                value={patternDetectionConfig.sensitivity}
+                value={analysisConfig.sensitivity}
                 onChange={(e) =>
-                  setPatternDetectionConfig((prev) => ({
+                  setAnalysisConfig((prev) => ({
                     ...prev,
                     sensitivity: parseFloat(e.target.value),
                   }))
@@ -1118,16 +1152,16 @@ const ProductTableWithVariants = ({
                 className="w-20 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
               />
               <span className="text-xs text-gray-500">
-                {Math.round(patternDetectionConfig.sensitivity * 100)}%
+                {Math.round(analysisConfig.sensitivity * 100)}%
               </span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Variant Suggestions Panel */}
+      {/* Intelligent Variant Suggestions Panel */}
       {enableVariantManagement && suggestions.length > 0 && (
-        <VariantSuggestionsPanel
+        <IntelligentVariantPanel
           suggestions={suggestions}
           onAcceptSuggestion={handleAcceptSuggestion}
           onRejectSuggestion={handleRejectSuggestion}
@@ -1136,18 +1170,19 @@ const ProductTableWithVariants = ({
           onToggleExpanded={() =>
             setShowVariantSuggestions(!showVariantSuggestions)
           }
+          isAnalyzing={isAnalyzing}
+          analysisConfig={analysisConfig}
         />
       )}
 
-      {/* Enhanced Pattern Management Interface */}
+      {/* Enhanced Analysis Interface */}
       {enableVariantManagement && showPatternManagement && (
-        <PatternManagementInterface
-          products={products}
-          onPatternsApplied={handlePatternsApplied}
-          detector={comprehensiveDetector}
-          comprehensiveAnalysis={comprehensiveAnalysis}
-          skuAnalysis={skuAnalysis}
-          existingSuggestions={suggestions}
+        <IntelligentAnalysisConfig
+          config={analysisConfig}
+          onConfigChange={setAnalysisConfig}
+          onClose={() => setShowPatternManagement(false)}
+          onAnalyze={() => performApiAnalysis(true)}
+          isAnalyzing={isAnalyzing}
         />
       )}
 
@@ -1164,25 +1199,27 @@ const ProductTableWithVariants = ({
           }}
           onCreateGroup={handleCreateManualGroup}
           onCancel={() => setShowManualGrouping(false)}
-          isProcessing={isProcessingVariants}
+          isProcessing={isAnalyzing}
         />
       )}
 
-      {/* Enhanced Pattern Analysis Summary */}
-      {enableVariantManagement && (comprehensiveAnalysis || analysis) && (
+      {/* Enhanced Analysis Summary */}
+      {enableVariantManagement && analysisResults && (
         <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {comprehensiveAnalysis?.statistics?.patternGroups || 0}
+                {analysisResults.variantGroups?.length || 0}
               </div>
-              <div className="text-sm text-gray-600">Akıllı Gruplar</div>
+              <div className="text-sm text-gray-600">Varyant Grupları</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {analysis?.stats?.potentialGroups || 0}
+                {analysisResults.patterns?.length || 0}
               </div>
-              <div className="text-sm text-gray-600">SKU Grupları</div>
+              <div className="text-sm text-gray-600">
+                Tespit Edilen Desenler
+              </div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-yellow-600">
@@ -1192,48 +1229,60 @@ const ProductTableWithVariants = ({
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
-                {Math.round(patternDetectionConfig.sensitivity * 100)}%
+                {Math.round(analysisConfig.sensitivity * 100)}%
               </div>
               <div className="text-sm text-gray-600">Hassasiyet</div>
             </div>
           </div>
 
-          {comprehensiveAnalysis?.patterns &&
-            comprehensiveAnalysis.patterns.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-blue-200">
-                <div className="text-sm text-gray-700">
-                  <strong>Tespit Edilen Desenler:</strong>{" "}
-                  {comprehensiveAnalysis.patterns
-                    .slice(0, 3)
-                    .map((pattern, index) => (
-                      <span
-                        key={index}
-                        className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs mr-2"
-                      >
-                        {pattern.name || pattern.basePattern}
-                      </span>
-                    ))}
-                  {comprehensiveAnalysis.patterns.length > 3 && (
-                    <span className="text-gray-500">
-                      +{comprehensiveAnalysis.patterns.length - 3} daha
-                    </span>
-                  )}
-                </div>
+          {analysisResults.patterns && analysisResults.patterns.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-blue-200">
+              <div className="text-sm text-gray-700">
+                <strong>API Tespit Edilen Desenler:</strong>{" "}
+                {analysisResults.patterns.slice(0, 3).map((pattern, index) => (
+                  <span
+                    key={index}
+                    className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs mr-2"
+                  >
+                    {pattern.name || pattern.type}
+                  </span>
+                ))}
+                {analysisResults.patterns.length > 3 && (
+                  <span className="text-gray-500">
+                    +{analysisResults.patterns.length - 3} daha
+                  </span>
+                )}
               </div>
-            )}
+            </div>
+          )}
+
+          {isAnalyzing && (
+            <div className="mt-3 pt-3 border-t border-blue-200">
+              <div className="flex items-center justify-center text-sm text-gray-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                API Analizi Yapılıyor...
+              </div>
+            </div>
+          )}
+
+          {analysisError && (
+            <div className="mt-3 pt-3 border-t border-red-200">
+              <div className="text-sm text-red-600">
+                <strong>Hata:</strong> {analysisError}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Product Table */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="enhanced-table-container">
+        <table className="enhanced-table">
+          <thead className="table-header-sticky">
             <tr>
               {/* Checkbox Header */}
               {isColumnVisible("checkbox") && (
-                <th
-                  className={`px-6 ${rowHeightClass} text-left sticky left-0 bg-gray-50 z-10`}
-                >
+                <th className="table-col-checkbox table-header-sticky table-sticky-left-1 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <input
                     type="checkbox"
                     onChange={onSelectAll}
@@ -1243,12 +1292,20 @@ const ProductTableWithVariants = ({
               )}
 
               {/* Product Header */}
-              <SortHeader field="name" isVisible={isColumnVisible("product")}>
+              <SortHeader
+                field="name"
+                isVisible={isColumnVisible("product")}
+                className="table-col-product table-header-sticky table-sticky-left-2"
+              >
                 Ürün
               </SortHeader>
 
               {/* Price Header */}
-              <SortHeader field="price" isVisible={isColumnVisible("price")}>
+              <SortHeader
+                field="price"
+                isVisible={isColumnVisible("price")}
+                className="table-col-price table-header-sticky"
+              >
                 Fiyat
               </SortHeader>
 
@@ -1256,12 +1313,17 @@ const ProductTableWithVariants = ({
               <SortHeader
                 field="stockQuantity"
                 isVisible={isColumnVisible("stock")}
+                className="table-col-stock table-header-sticky"
               >
                 Stok
               </SortHeader>
 
               {/* Status Header */}
-              <SortHeader field="status" isVisible={isColumnVisible("status")}>
+              <SortHeader
+                field="status"
+                isVisible={isColumnVisible("status")}
+                className="table-col-status table-header-sticky"
+              >
                 Durum
               </SortHeader>
 
@@ -1269,6 +1331,7 @@ const ProductTableWithVariants = ({
               <SortHeader
                 field="category"
                 isVisible={isColumnVisible("category")}
+                className="table-col-category table-header-sticky"
               >
                 Kategori
               </SortHeader>
@@ -1277,15 +1340,14 @@ const ProductTableWithVariants = ({
               <SortHeader
                 field="completionScore"
                 isVisible={isColumnVisible("completion")}
+                className="table-col-completion table-header-sticky"
               >
                 Tamamlanma
               </SortHeader>
 
               {/* Actions Header */}
               {isColumnVisible("actions") && (
-                <th
-                  className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 z-10`}
-                >
+                <th className="table-col-actions table-header-sticky table-sticky-right px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   İşlemler
                 </th>
               )}

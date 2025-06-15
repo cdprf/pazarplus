@@ -434,7 +434,9 @@ const OrderDetail = () => {
       <div className="p-6">
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="ml-4 text-gray-600 dark:text-gray-400">Loading order details...</p>
+          <p className="ml-4 text-gray-600 dark:text-gray-400">
+            Loading order details...
+          </p>
         </div>
       </div>
     );
@@ -486,10 +488,10 @@ const OrderDetail = () => {
         <div className="flex items-center space-x-3">
           <span
             className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(
-              order.status
+              order.orderStatus
             )}`}
           >
-            {order.status}
+            {order.orderStatus}
           </span>
 
           {!editing ? (
@@ -576,14 +578,16 @@ const OrderDetail = () => {
                   <Clock className="w-4 h-4 text-green-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">Order Placed</p>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                    Order Placed
+                  </p>
                   <p className="text-sm text-gray-500">
                     {formatDate(order.createdAt)}
                   </p>
                 </div>
               </div>
 
-              {order.statusHistory?.map((status, index) => (
+              {order.orderStatusHistory?.map((status, index) => (
                 <div key={index} className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                     <Clock className="w-4 h-4 text-blue-600" />
@@ -831,10 +835,10 @@ const OrderDetail = () => {
                 <button
                   key={status}
                   onClick={() => handleStatusUpdate(status)}
-                  disabled={order.status === status}
+                  disabled={order.orderStatus === status}
                   className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors
                     ${
-                      order.status === status
+                      order.orderStatus === status
                         ? "bg-gray-100 text-gray-500 cursor-not-allowed"
                         : "hover:bg-gray-50 text-gray-700"
                     }`}
@@ -897,13 +901,17 @@ const OrderDetail = () => {
             </h2>
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  Subtotal:
+                </span>
                 <span className="font-medium">
                   {formatCurrency(order.subtotal || 0)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">Shipping:</span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  Shipping:
+                </span>
                 <span className="font-medium">
                   {formatCurrency(order.shippingCost || 0)}
                 </span>
@@ -916,7 +924,9 @@ const OrderDetail = () => {
               </div>
               <div className="border-t pt-2">
                 <div className="flex justify-between">
-                  <span className="font-semibold text-gray-900 dark:text-gray-100">Total:</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">
+                    Total:
+                  </span>
                   <span className="font-semibold text-gray-900 dark:text-gray-100">
                     {formatCurrency(order.totalAmount)}
                   </span>
@@ -939,13 +949,17 @@ const OrderDetail = () => {
               </h2>
               <div className="space-y-2">
                 <div>
-                  <span className="text-gray-600 dark:text-gray-400">Carrier:</span>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Carrier:
+                  </span>
                   <span className="ml-2 font-medium">
                     {order.shippingCarrier || "N/A"}
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-600 dark:text-gray-400">Tracking:</span>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Tracking:
+                  </span>
                   <span className="ml-2 font-medium">
                     {order.trackingNumber}
                   </span>

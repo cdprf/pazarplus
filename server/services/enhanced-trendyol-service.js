@@ -418,7 +418,7 @@ class EnhancedTrendyolService extends EventEmitter {
         customerEmail: trendyolOrder.customerEmail,
         customerPhone: trendyolOrder.shipmentAddress?.phone,
         orderDate: new Date(trendyolOrder.orderDate),
-        orderStatus: this.mapOrderStatus(trendyolOrder.status),
+        orderStatus: this.mapOrderStatus(trendyolorder.orderStatus),
         totalAmount: trendyolOrder.totalPrice || 0,
         currency: "TRY",
         shippingDetailId: shippingDetail.id,
@@ -459,7 +459,7 @@ class EnhancedTrendyolService extends EventEmitter {
   async updateExistingOrder(existingOrder, trendyolOrder, transaction) {
     await existingOrder.update(
       {
-        orderStatus: this.mapOrderStatus(trendyolOrder.status),
+        orderStatus: this.mapOrderStatus(trendyolorder.orderStatus),
         rawData: JSON.stringify(trendyolOrder),
         lastSyncedAt: new Date(),
       },

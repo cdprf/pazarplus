@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "../../ui";
 import { Card, CardContent } from "../../ui/Card";
 

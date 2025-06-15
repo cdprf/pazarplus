@@ -179,26 +179,26 @@ const ImportExport = () => {
     <div className="p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 dark:text-gray-100 flex items-center">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center">
           <Upload className="mr-3" />
           Import & Export
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 dark:text-gray-400 mt-1">
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
           Import data from CSV/Excel files or export your data
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Import Section */}
-        <div className="bg-white dark:bg-gray-800 dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100 mb-4 flex items-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center">
             <Upload className="w-5 h-5 mr-2" />
             Import Data
           </h2>
 
           {/* Data Type Selection */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Data Type
             </label>
             <select
@@ -327,15 +327,15 @@ const ImportExport = () => {
         </div>
 
         {/* Export Section */}
-        <div className="bg-white dark:bg-gray-800 dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100 mb-4 flex items-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center">
             <Download className="w-5 h-5 mr-2" />
             Export Data
           </h2>
 
           {/* Data Type Selection */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Data Type
             </label>
             <select

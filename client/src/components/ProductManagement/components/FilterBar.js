@@ -53,7 +53,7 @@ const SearchInput = ({
         {value && (
           <button
             onClick={onClear}
-            className="absolute right-3 p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:text-gray-500 transition-colors"
+            className="absolute right-3 p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 transition-colors"
             title="Aramayı temizle"
           >
             <X className="h-4 w-4" />
@@ -64,7 +64,7 @@ const SearchInput = ({
       {/* Search suggestions could go here */}
       {value && isFocused && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-          <div className="p-2 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 border-b">Öneriler:</div>
+          <div className="p-2 text-xs text-gray-500  dark:text-gray-500 border-b">Öneriler:</div>
           <div className="p-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 cursor-pointer">
             "{value}" için tüm ürünlerde ara
           </div>
@@ -309,9 +309,9 @@ const SortSelector = ({ value, onChange, className = "" }) => {
         title={`${field} sıralaması`}
       >
         {order === "asc" ? (
-          <SortAsc className="h-4 w-4 text-gray-600 dark:text-gray-400 dark:text-gray-500" title="Artan sıralama" />
+          <SortAsc className="h-4 w-4 text-gray-600 dark:text-gray-500" title="Artan sıralama" />
         ) : (
-          <SortDesc className="h-4 w-4 text-gray-600 dark:text-gray-400 dark:text-gray-500" title="Azalan sıralama" />
+          <SortDesc className="h-4 w-4 text-gray-600 dark:text-gray-500" title="Azalan sıralama" />
         )}
       </div>
     </div>
@@ -481,7 +481,7 @@ const QuickFilterTags = ({
 
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-      <span className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">Aktif filtreler:</span>
+      <span className="text-sm text-gray-600 dark:text-gray-500">Aktif filtreler:</span>
       {activeFilters.map((filter) => (
         <Badge
           key={`${filter.key}-${filter.value}`}
@@ -497,7 +497,7 @@ const QuickFilterTags = ({
                 onRemoveFilter(filter.key);
               }
             }}
-            className="ml-1 text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-300"
+            className="ml-1 text-gray-500  dark:text-gray-500 hover:text-gray-700"
           >
             <X className="h-3 w-3" />
           </button>
@@ -507,7 +507,7 @@ const QuickFilterTags = ({
         onClick={onClearAll}
         variant="ghost"
         size="sm"
-        className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-300"
+        className="text-xs text-gray-500  dark:text-gray-500 hover:text-gray-700 "
       >
         Tümünü Temizle
       </Button>
@@ -659,155 +659,4 @@ const FiltersBar = ({
   );
 };
 
-// Demo Component
-const FilterSearchDemo = () => {
-  const [searchValue, setSearchValue] = useState("");
-  const [filters, setFilters] = useState({
-    category: "",
-    status: "",
-    stockStatus: "",
-    minPrice: "",
-    maxPrice: "",
-    minStock: "",
-    maxStock: "",
-  });
-  const [platformFilter, setPlatformFilter] = useState("all");
-  const [sortValue, setSortValue] = useState("updatedAt-desc");
-  const [viewMode, setViewMode] = useState("table");
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [syncLoading, setSyncLoading] = useState(false);
-  const [importLoading, setImportLoading] = useState(false);
-
-  // Mock handlers
-  const handleSync = () => {
-    setSyncLoading(true);
-    setTimeout(() => setSyncLoading(false), 2000);
-  };
-
-  const handleImport = () => {
-    setImportLoading(true);
-    setTimeout(() => setImportLoading(false), 1500);
-  };
-
-  const handleDownloadTemplate = () => {
-    console.log("Downloading template...");
-  };
-
-  const handleToggleAnalytics = () => {
-    console.log("Toggling analytics...");
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-800 p-6">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-8">
-          Product Management - Filter & Search Components
-        </h1>
-
-        {/* Main Filters Bar */}
-        <Card className="mb-6">
-          <CardContent>
-            <FiltersBar
-              searchValue={searchValue}
-              onSearchChange={setSearchValue}
-              filters={filters}
-              onFiltersChange={setFilters}
-              platformFilter={platformFilter}
-              onPlatformFilterChange={setPlatformFilter}
-              sortValue={sortValue}
-              onSortChange={setSortValue}
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-              showAdvancedFilters={showAdvancedFilters}
-              onToggleAdvancedFilters={() =>
-                setShowAdvancedFilters(!showAdvancedFilters)
-              }
-              onClearAllFilters={() => {
-                setSearchValue("");
-                setFilters({
-                  category: "",
-                  status: "",
-                  stockStatus: "",
-                  minPrice: "",
-                  maxPrice: "",
-                  minStock: "",
-                  maxStock: "",
-                });
-                setPlatformFilter("all");
-              }}
-              onSync={handleSync}
-              onImport={handleImport}
-              onDownloadTemplate={handleDownloadTemplate}
-              onToggleAnalytics={handleToggleAnalytics}
-              syncLoading={syncLoading}
-              importLoading={importLoading}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Demo Results */}
-        <Card>
-          <CardContent>
-            <div className="text-center py-12">
-              <div className="mb-6">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                  Filter & Search Demo
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 dark:text-gray-500">
-                  Test the filters above to see how they work
-                </p>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-left max-w-2xl mx-auto">
-                <h4 className="font-medium text-blue-900 mb-4">
-                  ✨ Part 3 Features
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
-                  <div>
-                    <h5 className="font-medium mb-2">Search Components:</h5>
-                    <ul className="space-y-1">
-                      <li>• Smart search input with suggestions</li>
-                      <li>• Real-time search with debouncing</li>
-                      <li>• Advanced filter panel</li>
-                      <li>• Quick filter tags</li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h5 className="font-medium mb-2">Filter Features:</h5>
-                    <ul className="space-y-1">
-                      <li>• Multi-criteria filtering</li>
-                      <li>• Platform-specific filters</li>
-                      <li>• Price and stock ranges</li>
-                      <li>• Sort and view options</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded border border-blue-300">
-                  <h5 className="font-medium text-blue-900 mb-2">
-                    Current Filter State:
-                  </h5>
-                  <pre className="text-xs text-blue-700 overflow-x-auto">
-                    {JSON.stringify(
-                      {
-                        search: searchValue,
-                        filters,
-                        platform: platformFilter,
-                        sort: sortValue,
-                        view: viewMode,
-                      },
-                      null,
-                      2
-                    )}
-                  </pre>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-};
-
-export default FilterSearchDemo;
+export default FiltersBar;

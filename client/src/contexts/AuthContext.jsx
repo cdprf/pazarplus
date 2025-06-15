@@ -62,33 +62,24 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log("🔧 Development mode: Attempting auto-authentication...");
 
-      // Use the same base URL as the main API
-      const apiBaseUrl =
-        process.env.REACT_APP_API_URL || "http://localhost:5001";
+      // Use relative path to let setupProxy.js handle routing
+      const response = await api.post("/auth/dev-token", { devMode: true });
 
-      // Try to generate a fresh token
-      const response = await fetch(`${apiBaseUrl}/api/auth/dev-token`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ devMode: true }),
-      });
+      if (response.data.success && response.data.token && response.data.user) {
+        const { token: newToken, user: userData } = response.data;
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.token && data.user) {
-          setToken(data.token);
-          setUser(data.user);
-          localStorage.setItem("token", data.token);
-          api.defaults.headers.common["Authorization"] = `Bearer ${data.token}`;
-          console.log("✅ Development auto-authentication successful");
-          return true;
-        }
+        setToken(newToken);
+        setUser(userData);
+        localStorage.setItem("token", newToken);
+        api.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
+
+        console.log("✅ Development auto-authentication successful", userData);
+        return true;
       }
     } catch (err) {
       console.warn(
-        "⚠️ Development auto-authentication failed, using fallback..."
+        "⚠️ Development auto-authentication failed:",
+        err.response?.data?.message || err.message
       );
     }
 

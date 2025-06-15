@@ -238,7 +238,7 @@ export const elementDefaults = {
     dataMapping: {
       orderNumber: "order.orderNumber",
       orderDate: "order.createdAt",
-      status: "order.status",
+      status: "order.orderStatus",
       platform: "order.connection.platform",
       totalAmount: "order.totalAmount",
       currency: "order.currency",

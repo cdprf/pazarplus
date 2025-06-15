@@ -143,9 +143,15 @@ class AnalyticsController {
       ]);
 
       const businessIntelligence = {
-        predictiveInsights: insights[0],
-        marketIntelligence: insights[1],
-        financialKPIs: insights[2],
+        insights: {
+          predictiveInsights: insights[0],
+          marketIntelligence: insights[1],
+          financialKPIs: insights[2],
+        },
+        predictions: insights[0], // Main predictions data
+        predictiveInsights: insights[0], // Keep backward compatibility
+        marketIntelligence: insights[1], // Keep backward compatibility
+        financialKPIs: insights[2], // Keep backward compatibility
         recommendations: this.generateActionableRecommendations(insights),
         generatedAt: new Date(),
       };
@@ -223,9 +229,21 @@ class AnalyticsController {
         dateRange
       );
 
-      // Add performance scores and recommendations
+      // Calculate total revenue for percentage calculation
+      const totalRevenue = platformComparison.reduce(
+        (sum, p) => sum + (p.totalRevenue || p.revenue || 0),
+        0
+      );
+
+      // Add performance scores, recommendations, and calculated percentages
       const enhancedPlatforms = platformComparison.map((platform) => ({
         ...platform,
+        percentage:
+          totalRevenue > 0
+            ? ((platform.totalRevenue || platform.revenue || 0) /
+                totalRevenue) *
+              100
+            : 0,
         performanceScore: this.calculatePerformanceScore(platform),
         recommendations: this.generatePlatformRecommendations(platform),
       }));
@@ -235,12 +253,16 @@ class AnalyticsController {
         message: "Platform performance analysis retrieved successfully",
         data: {
           platforms: safeJsonResponse(enhancedPlatforms),
+          comparison: safeJsonResponse(enhancedPlatforms), // Add comparison key
+          recommendations: enhancedPlatforms
+            .map((p) => p.recommendations)
+            .flat(), // Add recommendations key
           summary: {
             bestPerforming: enhancedPlatforms.reduce((best, current) =>
               current.performanceScore > best.performanceScore ? current : best
             ),
             totalRevenue: enhancedPlatforms.reduce(
-              (sum, p) => sum + p.totalRevenue,
+              (sum, p) => sum + (p.totalRevenue || p.revenue || 0),
               0
             ),
             avgCompletionRate:
@@ -377,13 +399,18 @@ class AnalyticsController {
    */
   async exportAnalyticsData(req, res) {
     try {
-      const { timeframe = "30d", format = "json" } = req.query;
+      const {
+        timeframe = "30d",
+        format = "json",
+        type = "dashboard",
+      } = req.query;
       const userId = req.user.id;
 
       const data = await analyticsService.exportAnalyticsData(
         userId,
-        timeframe,
-        format
+        type,
+        format,
+        timeframe
       );
 
       if (format === "csv") {
@@ -406,6 +433,269 @@ class AnalyticsController {
       res.status(500).json({
         success: false,
         message: "Failed to export analytics data",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get comprehensive product analytics
+   */
+  async getProductAnalytics(req, res) {
+    try {
+      const { timeframe = "30d", productId = null } = req.query;
+      const userId = req.user.id;
+      const dateRange = analyticsService.getDateRange(timeframe);
+
+      const productAnalytics = await analyticsService.getProductAnalytics(
+        userId,
+        productId,
+        dateRange
+      );
+
+      res.json({
+        success: true,
+        message: "Product analytics retrieved successfully",
+        data: safeJsonResponse(productAnalytics),
+        timeframe,
+        productId,
+        generatedAt: new Date(),
+      });
+    } catch (error) {
+      logger.error("Product analytics error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve product analytics",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get product performance comparison
+   */
+  async getProductPerformanceComparison(req, res) {
+    try {
+      const { timeframe = "30d", limit = 20 } = req.query;
+      const userId = req.user.id;
+      const dateRange = analyticsService.getDateRange(timeframe);
+
+      const topProducts = await analyticsService.getTopProducts(
+        userId,
+        dateRange,
+        parseInt(limit)
+      );
+
+      // Enhanced with additional metrics
+      const enhancedProducts = await Promise.all(
+        topProducts.map(async (product) => {
+          const demandForecast = await analyticsService.calculateDemandForecast(
+            product.productId,
+            userId
+          );
+          const stockStatus = await analyticsService.getStockStatus(
+            product.productId
+          );
+
+          return {
+            ...product,
+            demandForecast,
+            stockStatus,
+            salesVelocity: analyticsService.calculateSalesVelocity(
+              product.totalSold,
+              dateRange
+            ),
+            performanceScore: this.calculateProductPerformanceScore(product),
+          };
+        })
+      );
+
+      res.json({
+        success: true,
+        message: "Product performance comparison retrieved successfully",
+        data: {
+          products: safeJsonResponse(enhancedProducts),
+          summary: {
+            totalProducts: enhancedProducts.length,
+            topPerformer: enhancedProducts[0],
+            averageRevenue:
+              enhancedProducts.reduce((sum, p) => sum + p.totalRevenue, 0) /
+              enhancedProducts.length,
+            totalRevenue: enhancedProducts.reduce(
+              (sum, p) => sum + p.totalRevenue,
+              0
+            ),
+          },
+        },
+        timeframe,
+        generatedAt: new Date(),
+      });
+    } catch (error) {
+      logger.error("Product performance comparison error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve product performance comparison",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get product insights and recommendations
+   */
+  async getProductInsights(req, res) {
+    try {
+      const { timeframe = "30d", productId = null } = req.query;
+      const userId = req.user.id;
+      const dateRange = analyticsService.getDateRange(timeframe);
+
+      const insights = await analyticsService.generateProductInsights(
+        userId,
+        productId,
+        dateRange
+      );
+
+      // Add competitive analysis and market intelligence
+      const marketIntelligence = await analyticsService.getMarketIntelligence(
+        userId,
+        dateRange
+      );
+
+      const enhancedInsights = {
+        ...insights,
+        marketContext: {
+          categoryPerformance: marketIntelligence?.categoryPerformance || [],
+          seasonalTrends: marketIntelligence?.seasonalTrends || [],
+          competitivePosition: "متوسط", // Would be calculated based on market data
+        },
+        actionableRecommendations: this.generateProductActionables(insights),
+      };
+
+      res.json({
+        success: true,
+        message: "Product insights retrieved successfully",
+        data: safeJsonResponse(enhancedInsights),
+        timeframe,
+        productId,
+        generatedAt: new Date(),
+      });
+    } catch (error) {
+      logger.error("Product insights error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve product insights",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get real-time product metrics
+   */
+  async getRealtimeProductMetrics(req, res) {
+    try {
+      const { productId = null } = req.query;
+      const userId = req.user.id;
+
+      // Get today's data
+      const today = new Date();
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+      const dateRange = { start: startOfDay, end: new Date() };
+
+      const realtimeData = await analyticsService.getProductAnalytics(
+        userId,
+        productId,
+        dateRange
+      );
+
+      // Get hourly breakdown for today
+      const hourlyBreakdown = await analyticsService.getHourlyProductBreakdown(
+        userId,
+        productId,
+        dateRange
+      );
+
+      // Get live inventory status
+      const inventoryAlerts = await analyticsService.getLiveInventoryAlerts(
+        userId
+      );
+
+      res.json({
+        success: true,
+        message: "Real-time product metrics retrieved successfully",
+        data: {
+          todaySummary: realtimeData.summary,
+          hourlyTrends: hourlyBreakdown,
+          inventoryAlerts,
+          lastUpdated: new Date(),
+          refreshInterval: 60000, // 1 minute
+        },
+        productId,
+      });
+    } catch (error) {
+      logger.error("Real-time product metrics error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve real-time product metrics",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get trends analysis
+   */
+  async getTrends(req, res) {
+    try {
+      const { timeframe = "30d" } = req.query;
+      const userId = req.user.id;
+      const dateRange = analyticsService.getDateRange(timeframe);
+
+      const trends = await analyticsService.getOrderTrends(userId, dateRange);
+
+      res.json({
+        success: true,
+        message: "Trends data retrieved successfully",
+        data: trends.daily || trends, // Return daily trends array
+        timeframe,
+        generatedAt: new Date(),
+      });
+    } catch (error) {
+      logger.error("Trends error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve trends data",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get accurate analytics that properly handle returns and cancellations
+   */
+  async getAccurateAnalytics(req, res) {
+    try {
+      const { timeframe = "30d" } = req.query;
+      const userId = req.user.id;
+
+      const analytics = await analyticsService.getAccurateAnalytics(
+        userId,
+        timeframe
+      );
+
+      res.json({
+        success: true,
+        message: "Accurate analytics retrieved successfully",
+        data: safeJsonResponse(analytics),
+        timeframe,
+        note: "Revenue calculations exclude returned, cancelled, and refunded orders",
+        generatedAt: new Date(),
+      });
+    } catch (error) {
+      logger.error("Accurate analytics error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve accurate analytics",
         error: error.message,
       });
     }
@@ -627,6 +917,552 @@ class AnalyticsController {
     }
 
     return opportunities;
+  }
+
+  /**
+   * Calculate product performance score
+   */
+  calculateProductPerformanceScore(product) {
+    const revenueWeight = 0.4;
+    const salesWeight = 0.3;
+    const velocityWeight = 0.3;
+
+    // Normalize scores (simplified scoring system)
+    const revenueScore = Math.min(product.totalRevenue / 1000, 100);
+    const salesScore = Math.min(product.totalSold / 50, 100);
+    const velocityScore = Math.min((product.totalSold / 30) * 10, 100); // Assuming 30-day period
+
+    const score =
+      revenueWeight * revenueScore +
+      salesWeight * salesScore +
+      velocityWeight * velocityScore;
+
+    return {
+      overall: Math.round(score),
+      breakdown: {
+        revenue: Math.round(revenueScore),
+        sales: Math.round(salesScore),
+        velocity: Math.round(velocityScore),
+      },
+    };
+  }
+
+  /**
+   * Generate actionable recommendations from insights
+   */
+  generateProductActionables(insights) {
+    const actionables = [];
+
+    insights.recommendations?.forEach((rec) => {
+      const actionable = {
+        ...rec,
+        actions: this.generateSpecificActions(rec),
+        timeline: this.getRecommendationTimeline(rec.priority),
+        resources: this.getRequiredResources(rec.category),
+      };
+      actionables.push(actionable);
+    });
+
+    return actionables;
+  }
+
+  /**
+   * Generate specific actions for recommendations
+   */
+  generateSpecificActions(recommendation) {
+    const actionMap = {
+      inventory: [
+        "Mevcut stok seviyelerini gözden geçirin",
+        "Tedarikçilerle iletişime geçin",
+        "Otomatik sipariş noktaları belirleyin",
+        "Güvenlik stoku hesaplayın",
+      ],
+      pricing: [
+        "Rakip fiyatlarını analiz edin",
+        "A/B test için farklı fiyatlar deneyin",
+        "Dinamik fiyatlandırma stratejisi uygulayın",
+        "Kar marjı hedeflerini belirleyin",
+      ],
+      marketing: [
+        "Hedefli reklam kampanyaları oluşturun",
+        "Sosyal medya stratejisi geliştirin",
+        "E-posta pazarlama kampanyaları başlatın",
+        "İçerik pazarlama planı yapın",
+      ],
+      platform: [
+        "Platform performansını karşılaştırın",
+        "Düşük performanslı platformları optimize edin",
+        "Yeni platform entegrasyonları değerlendirin",
+        "Platform özel stratejiler geliştirin",
+      ],
+    };
+
+    return (
+      actionMap[recommendation.category] || [
+        "Detaylı analiz yapın",
+        "Stratejik plan oluşturun",
+        "Uygulama takvimine alın",
+        "Sonuçları takip edin",
+      ]
+    );
+  }
+
+  /**
+   * Get recommendation timeline based on priority
+   */
+  getRecommendationTimeline(priority) {
+    const timelineMap = {
+      high: "1-2 hafta",
+      medium: "2-4 hafta",
+      low: "1-3 ay",
+    };
+    return timelineMap[priority] || "Belirsiz";
+  }
+
+  /**
+   * Get required resources for recommendation category
+   */
+  getRequiredResources(category) {
+    const resourceMap = {
+      inventory: ["Satın alma ekibi", "Depo yönetimi", "Tedarikçi ilişkileri"],
+      pricing: ["Fiyatlandırma ekibi", "Pazar araştırması", "Analitik araçlar"],
+      marketing: ["Pazarlama ekibi", "Kreatif ekip", "Reklam bütçesi"],
+      platform: ["E-ticaret ekibi", "Teknik destek", "Platform yöneticileri"],
+    };
+    return resourceMap[category] || ["Genel ekip desteği"];
+  }
+
+  /**
+   * Get hourly product breakdown for today
+   */
+  async getHourlyProductBreakdown(userId, productId) {
+    try {
+      const today = new Date();
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+
+      const whereClause = {
+        include: [
+          {
+            model: Order,
+            as: "order",
+            where: {
+              userId,
+              createdAt: { [Op.gte]: startOfDay },
+            },
+            attributes: [],
+          },
+        ],
+        attributes: [
+          [
+            OrderItem.sequelize.fn(
+              "HOUR",
+              OrderItem.sequelize.col("order.createdAt")
+            ),
+            "hour",
+          ],
+          [
+            OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
+            "soldQuantity",
+          ],
+          [
+            OrderItem.sequelize.fn(
+              "SUM",
+              OrderItem.sequelize.literal("quantity * price")
+            ),
+            "revenue",
+          ],
+        ],
+        group: [
+          OrderItem.sequelize.fn(
+            "HOUR",
+            OrderItem.sequelize.col("order.createdAt")
+          ),
+        ],
+        order: [
+          [
+            OrderItem.sequelize.fn(
+              "HOUR",
+              OrderItem.sequelize.col("order.createdAt")
+            ),
+            "ASC",
+          ],
+        ],
+      };
+
+      if (productId) {
+        whereClause.where = { productId };
+      }
+
+      const hourlyData = await OrderItem.findAll(whereClause);
+
+      // Fill in missing hours with zero values
+      const hourlyBreakdown = Array.from({ length: 24 }, (_, hour) => {
+        const data = hourlyData.find(
+          (item) => parseInt(item.get("hour")) === hour
+        );
+        return {
+          hour,
+          soldQuantity: data ? parseInt(data.get("soldQuantity")) : 0,
+          revenue: data ? parseFloat(data.get("revenue")) : 0,
+        };
+      });
+
+      return hourlyBreakdown;
+    } catch (error) {
+      logger.error("Hourly breakdown error:", error);
+      return Array.from({ length: 24 }, (_, hour) => ({
+        hour,
+        soldQuantity: 0,
+        revenue: 0,
+      }));
+    }
+  }
+
+  /**
+   * Get live inventory alerts
+   */
+  async getLiveInventoryAlerts(userId, productId) {
+    try {
+      const alerts = [];
+
+      if (productId) {
+        // Get specific product alerts
+        const product = await Product.findOne({
+          where: { id: productId, userId },
+        });
+
+        if (product) {
+          const demandForecast = await analyticsService.calculateDemandForecast(
+            productId,
+            userId
+          );
+          const daysUntilStockout = analyticsService.calculateStockoutDays(
+            product.currentStock,
+            demandForecast.daily
+          );
+
+          if (daysUntilStockout < 7) {
+            alerts.push({
+              type: "stockout_warning",
+              severity: daysUntilStockout < 3 ? "high" : "medium",
+              productId,
+              productName: product.name,
+              message: `${daysUntilStockout} gün içinde stok tükenmesi bekleniyor`,
+              recommendedAction: "Acil stok siparişi verin",
+            });
+          }
+
+          if (product.currentStock === 0) {
+            alerts.push({
+              type: "out_of_stock",
+              severity: "high",
+              productId,
+              productName: product.name,
+              message: "Ürün stokta yok",
+              recommendedAction: "Acil stok temini gerekli",
+            });
+          }
+        }
+      } else {
+        // Get all product alerts
+        const lowStockProducts = await Product.findAll({
+          where: {
+            userId,
+            currentStock: { [Op.lt]: 10 }, // Assuming 10 is low stock threshold
+          },
+          limit: 10,
+        });
+
+        lowStockProducts.forEach((product) => {
+          alerts.push({
+            type: "low_stock",
+            severity: "medium",
+            productId: product.id,
+            productName: product.name,
+            currentStock: product.currentStock,
+            message: `Düşük stok seviyesi: ${product.currentStock} adet`,
+            recommendedAction: "Stok sipariş etmeyi değerlendirin",
+          });
+        });
+      }
+
+      return alerts;
+    } catch (error) {
+      logger.error("Live inventory alerts error:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get advanced customer segmentation and behavior analytics
+   * Modern standard: RFM analysis, behavioral segments, customer lifetime value
+   */
+  async getCustomerAnalytics(req, res) {
+    try {
+      const userId = req.user.id;
+      const { timeframe = "30d" } = req.query;
+
+      logger.info(
+        `Getting customer analytics for user ${userId}, timeframe: ${timeframe}`
+      );
+
+      const customerAnalytics = await analyticsService.getCustomerSegmentation(
+        userId,
+        timeframe
+      );
+
+      res.json({
+        success: true,
+        data: safeJsonResponse(customerAnalytics),
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error("Error getting customer analytics:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to get customer analytics",
+        details: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get customer cohort analysis for retention insights
+   * Modern standard: Monthly cohorts, retention rates, churn analysis
+   */
+  async getCohortAnalysis(req, res) {
+    try {
+      const userId = req.user.id;
+      const { timeframe = "90d" } = req.query;
+
+      logger.info(
+        `Getting cohort analysis for user ${userId}, timeframe: ${timeframe}`
+      );
+
+      const cohortData = await analyticsService.getCohortAnalysis(
+        userId,
+        timeframe
+      );
+
+      res.json({
+        success: true,
+        data: safeJsonResponse(cohortData),
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error("Error getting cohort analysis:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to get cohort analysis",
+        details: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get competitive analysis and market positioning
+   * Modern standard: Price comparison, market share analysis, competitive intelligence
+   */
+  async getCompetitiveAnalysis(req, res) {
+    try {
+      const userId = req.user.id;
+      const { timeframe = "30d" } = req.query;
+
+      logger.info(
+        `Getting competitive analysis for user ${userId}, timeframe: ${timeframe}`
+      );
+
+      const competitiveData = await analyticsService.getCompetitiveAnalysis(
+        userId,
+        timeframe
+      );
+
+      res.json({
+        success: true,
+        data: safeJsonResponse(competitiveData),
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error("Error getting competitive analysis:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to get competitive analysis",
+        details: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get conversion funnel analysis
+   * Modern standard: Multi-step funnel tracking, conversion optimization insights
+   */
+  async getFunnelAnalysis(req, res) {
+    try {
+      const userId = req.user.id;
+      const { timeframe = "30d" } = req.query;
+
+      logger.info(
+        `Getting funnel analysis for user ${userId}, timeframe: ${timeframe}`
+      );
+
+      const funnelData = await analyticsService.getFunnelAnalysis(
+        userId,
+        timeframe
+      );
+
+      res.json({
+        success: true,
+        data: safeJsonResponse(funnelData),
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error("Error getting funnel analysis:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to get funnel analysis",
+        details: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get real-time analytics dashboard
+   * Modern standard: Live metrics, instant updates, real-time KPIs
+   */
+  async getRealTimeAnalytics(req, res) {
+    try {
+      const userId = req.user.id;
+
+      logger.info(`Getting real-time analytics for user ${userId}`);
+
+      const realTimeData = await analyticsService.getRealTimeMetrics(userId);
+
+      res.json({
+        success: true,
+        data: safeJsonResponse(realTimeData),
+        generatedAt: new Date().toISOString(),
+        isRealTime: true,
+      });
+    } catch (error) {
+      logger.error("Error getting real-time analytics:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to get real-time analytics",
+        details: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get marketing attribution analysis
+   * Modern standard: Multi-touch attribution, channel performance, ROI analysis
+   */
+  async getAttributionAnalysis(req, res) {
+    try {
+      const userId = req.user.id;
+      const { timeframe = "30d" } = req.query;
+
+      logger.info(
+        `Getting attribution analysis for user ${userId}, timeframe: ${timeframe}`
+      );
+
+      const attributionData = await analyticsService.getAttributionAnalysis(
+        userId,
+        timeframe
+      );
+
+      res.json({
+        success: true,
+        data: safeJsonResponse(attributionData),
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error("Error getting attribution analysis:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to get attribution analysis",
+        details: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get anomaly detection insights
+   * Modern standard: Statistical anomalies, trend breaks, automated alerts
+   */
+  async getAnomalyDetection(req, res) {
+    try {
+      const userId = req.user.id;
+      const { timeframe = "30d" } = req.query;
+
+      logger.info(
+        `Getting anomaly detection for user ${userId}, timeframe: ${timeframe}`
+      );
+
+      const anomalies = await analyticsService.detectAnomalies(
+        userId,
+        timeframe
+      );
+
+      res.json({
+        success: true,
+        data: safeJsonResponse(anomalies),
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error("Error getting anomaly detection:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to get anomaly detection",
+        details: error.message,
+      });
+    }
+  }
+
+  /**
+   * Generate custom analytics reports
+   * Modern standard: Flexible reporting, custom dimensions and metrics
+   */
+  async generateCustomReport(req, res) {
+    try {
+      const userId = req.user.id;
+      const { metrics, dimensions, filters, timeframe = "30d" } = req.body;
+
+      if (!metrics || !Array.isArray(metrics) || metrics.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Metrics array is required and cannot be empty",
+        });
+      }
+
+      logger.info(`Generating custom report for user ${userId}`, {
+        metrics,
+        dimensions,
+        filters,
+        timeframe,
+      });
+
+      const customReport = await analyticsService.generateCustomReport(userId, {
+        metrics,
+        dimensions,
+        filters,
+        timeframe,
+      });
+
+      res.json({
+        success: true,
+        data: safeJsonResponse(customReport),
+        generatedAt: new Date().toISOString(),
+        reportConfig: { metrics, dimensions, filters, timeframe },
+      });
+    } catch (error) {
+      logger.error("Error generating custom report:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to generate custom report",
+        details: error.message,
+      });
+    }
   }
 }
 

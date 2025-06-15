@@ -8,17 +8,19 @@ class PlatformServiceManager {
 
   // Enhanced method to get service by platform type
   getService(platformType, connectionId = null, directCredentials = null) {
-    const serviceKey = `${platformType.toLowerCase()}-${connectionId || 'default'}`;
-    
+    const serviceKey = `${platformType.toLowerCase()}-${
+      connectionId || "default"
+    }`;
+
     if (!this.serviceInstances.has(serviceKey)) {
       const service = PlatformServiceFactory.createService(
-        platformType, 
-        connectionId, 
+        platformType,
+        connectionId,
         directCredentials
       );
       this.serviceInstances.set(serviceKey, service);
     }
-    
+
     return this.serviceInstances.get(serviceKey);
   }
 
@@ -233,13 +235,13 @@ class PlatformServiceManager {
   extractStatus(order, platform) {
     switch (platform) {
       case "trendyol":
-        return order.status || order.orderStatus || order.state;
+        return order.orderStatus || order.orderStatus || order.state;
       case "hepsiburada":
-        return order.status || order.orderStatus;
+        return order.orderStatus || order.orderStatus;
       case "n11":
-        return order.status || order.orderStatus;
+        return order.orderStatus || order.orderStatus;
       default:
-        return order.status || order.orderStatus;
+        return order.orderStatus || order.orderStatus;
     }
   }
 
@@ -250,11 +252,14 @@ class PlatformServiceManager {
     // Use platform-specific service mappings for consistency
     try {
       const service = this.getService(platform);
-      if (service && typeof service.mapOrderStatus === 'function') {
+      if (service && typeof service.mapOrderStatus === "function") {
         return service.mapOrderStatus(platformStatus);
       }
     } catch (error) {
-      console.warn(`Could not get platform service for ${platform}:`, error.message);
+      console.warn(
+        `Could not get platform service for ${platform}:`,
+        error.message
+      );
     }
 
     // Fallback to common status mappings if service is not available
@@ -262,7 +267,7 @@ class PlatformServiceManager {
     const commonStatusMappings = {
       created: "new",
       new: "new",
-      confirmed: "pending", 
+      confirmed: "pending",
       approved: "pending",
       preparing: "processing",
       picking: "processing",

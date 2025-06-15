@@ -486,10 +486,10 @@ const OrderDetail = () => {
         <div className="flex items-center space-x-3">
           <span
             className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(
-              order.status
+              order.orderStatus
             )}`}
           >
-            {order.status}
+            {order.orderStatus}
           </span>
 
           {!editing ? (
@@ -583,7 +583,7 @@ const OrderDetail = () => {
                 </div>
               </div>
 
-              {order.statusHistory?.map((status, index) => (
+              {order.orderStatusHistory?.map((status, index) => (
                 <div key={index} className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                     <Clock className="w-4 h-4 text-blue-600" />
@@ -831,10 +831,10 @@ const OrderDetail = () => {
                 <button
                   key={status}
                   onClick={() => handleStatusUpdate(status)}
-                  disabled={order.status === status}
+                  disabled={order.orderStatus === status}
                   className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors
                     ${
-                      order.status === status
+                      order.orderStatus === status
                         ? "bg-gray-100 text-gray-500 cursor-not-allowed"
                         : "hover:bg-gray-50 text-gray-700"
                     }`}

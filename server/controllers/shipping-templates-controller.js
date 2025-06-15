@@ -616,7 +616,7 @@ class ShippingTemplatesController {
       id: order.id, // Add id field for filename generation
       orderNumber: order.orderNumber || order.platformOrderId || order.id,
       createdAt: order.orderDate || order.createdAt,
-      status: order.status || order.orderStatus,
+      status: order.orderStatus || order.orderStatus,
       platform: order.platform || order.platformType,
       totalAmount: order.totalAmount,
       currency: order.currency || "TRY",

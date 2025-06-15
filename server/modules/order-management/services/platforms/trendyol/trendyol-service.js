@@ -475,7 +475,7 @@ class TrendyolService extends BasePlatformService {
             // Order exists - update it with the latest data
             try {
               await existingOrder.update({
-                orderStatus: this.mapOrderStatus(order.status), // Fixed: use orderStatus
+                orderStatus: this.mapOrderStatus(order.orderStatus), // Fixed: use orderStatus
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date(),
               });
@@ -544,9 +544,9 @@ class TrendyolService extends BasePlatformService {
                   platformId: this.connectionId, // Add platformId field
                   shippingAddress: order.shipmentAddress.fullAddress || {},
                   shippingDetailId: shippingDetail.id,
-                  invoiceStatus: order.status || "pending", // Use eInvoiceStatus
+                  invoiceStatus: order.orderStatus || "pending", // Use eInvoiceStatus
                   orderDate: new Date(order.orderDate),
-                  orderStatus: this.mapOrderStatus(order.status),
+                  orderStatus: this.mapOrderStatus(order.orderStatus),
                   totalAmount: parseFloat(
                     order.totalPrice || order.grossAmount || 0
                   ),
@@ -586,7 +586,7 @@ class TrendyolService extends BasePlatformService {
                   const linkedItemsData =
                     await linkingService.linkIncomingOrderItems(
                       orderItemsData,
-                      this.userId
+                      this.connection?.userId
                     );
 
                   // Create order items with potential product links
@@ -746,7 +746,7 @@ class TrendyolService extends BasePlatformService {
       if (existingOrder) {
         // Update it instead
         await existingOrder.update({
-          orderStatus: this.mapOrderStatus(order.status), // Use orderStatus instead of status
+          orderStatus: this.mapOrderStatus(order.orderStatus), // Use orderStatus instead of status
           rawData: JSON.stringify(order),
           lastSyncedAt: new Date(),
         });
@@ -781,7 +781,7 @@ class TrendyolService extends BasePlatformService {
         orderDate: order.orderDate
           ? new Date(parseInt(order.orderDate))
           : new Date(),
-        orderStatus: this.mapOrderStatus(order.status), // Use orderStatus instead of status
+        orderStatus: this.mapOrderStatus(order.orderStatus), // Use orderStatus instead of status
         totalAmount: order.totalPrice,
         currency: "TRY",
         customerName: `${order.customerFirstName} ${order.customerLastName}`,
@@ -835,7 +835,7 @@ class TrendyolService extends BasePlatformService {
         const linkingService = new ProductOrderLinkingService();
         const linkedItemsData = await linkingService.linkIncomingOrderItems(
           orderItemsData,
-          userId
+          this.connection?.userId
         );
 
         // Create order items with potential product links

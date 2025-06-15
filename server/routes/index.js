@@ -16,10 +16,10 @@ const orderManagementRoutes = require("../modules/order-management/routes");
 // Import enhanced platform integration routes
 const enhancedPlatformRoutes = require("./enhanced-platforms");
 
-// Import Month 5 Phase 1: Analytics & Business Intelligence routes
+// Analytics & Business Intelligence routes
 const analyticsRoutes = require("./analytics");
 
-// Import Month 5 Phase 2: Subscription & Multi-tenant routes
+// Subscription & Multi-tenant routes
 const subscriptionRoutes = require("./subscription");
 
 // Import rate limiting management routes
@@ -28,14 +28,14 @@ const rateLimitRoutes = require("./rate-limits");
 // Import shipping templates routes
 const shippingTemplatesRoutes = require("./shipping-templates");
 
-// Import main shipping routes (DEPRECATED - migrated to modular architecture)
-// const shippingRoutes = require("./shippingRoutes");
-
 // Import database transaction management routes
 const databaseRoutes = require("./database");
 
 // Import shipping related routes
 const shippingRoutes = require("./shipping");
+
+// Import enhanced SKU system routes
+const skuRoutes = require("./sku-enhanced");
 
 // Health check endpoint - should be accessible at /api/health
 router.get("/health", (req, res) => {
@@ -49,6 +49,7 @@ router.get("/health", (req, res) => {
       platforms: "/api/platforms",
       enhancedPlatforms: "/api/v1/enhanced-platforms",
       products: "/api/products",
+      sku: "/api/sku",
       customers: "/api/customers",
       settings: "/api/settings",
       compliance: "/api/compliance",
@@ -71,6 +72,7 @@ router.use("*", (req, res, next) => {
 router.use("/auth", authRoutes);
 router.use("/platforms", platformRoutes);
 router.use("/products", productRoutes);
+router.use("/sku", skuRoutes);
 router.use("/customers", customerRoutes);
 router.use("/settings", settingsRoutes);
 router.use("/compliance", complianceRoutes);
@@ -112,6 +114,13 @@ router.use("/shipping", shippingRoutes);
 // Database transaction management routes
 router.use("/database", databaseRoutes);
 
+// Enhanced SKU system routes
+router.use("/enhanced-sku", skuRoutes);
+
+// Unified Product Intelligence routes
+const unifiedIntelligenceRoutes = require("./unified-product-intelligence");
+router.use("/product-intelligence", unifiedIntelligenceRoutes);
+
 // Catch-all for debugging
 router.use("/*", (req, res) => {
   logger.warn(`Unmatched API route: ${req.method} ${req.originalUrl}`);
@@ -125,6 +134,9 @@ router.use("/*", (req, res) => {
       "/api/platforms",
       "/api/v1/enhanced-platforms",
       "/api/products",
+      "/api/sku",
+      "/api/enhanced-sku", // Enhanced SKU system
+      "/api/product-intelligence", // Unified Product Intelligence System
       "/api/settings",
       "/api/compliance",
       "/api/order-management",

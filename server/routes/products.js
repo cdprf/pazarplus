@@ -238,4 +238,178 @@ router.post("/import/csv", auth, productController.importProductsFromCSV);
  */
 router.get("/import/template", auth, productController.getCSVTemplate);
 
+// === NEW PRODUCT MANAGEMENT ROUTES ===
+
+/**
+ * @swagger
+ * /api/products/{id}/dashboard:
+ *   get:
+ *     summary: Get comprehensive product dashboard data
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Product dashboard data
+ */
+router.get("/:id/dashboard", auth, productController.getProductDashboard);
+
+/**
+ * @swagger
+ * /api/products/bulk/publish:
+ *   post:
+ *     summary: Bulk publish products to selected platforms
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - productIds
+ *               - platforms
+ *             properties:
+ *               productIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               platforms:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               publishingSettings:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Bulk publishing operation started
+ */
+router.post("/bulk/publish", auth, productController.bulkPublishProducts);
+
+/**
+ * @swagger
+ * /api/products/bulk/operations/{operationId}:
+ *   get:
+ *     summary: Get bulk operation status and progress
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: operationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Bulk operation status
+ */
+router.get(
+  "/bulk/operations/:operationId",
+  auth,
+  productController.getBulkOperationStatus
+);
+
+/**
+ * @swagger
+ * /api/products/{id}/media:
+ *   post:
+ *     summary: Upload and manage product media
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               variantId:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *                 enum: [image, video, gif, document]
+ *               isPrimary:
+ *                 type: boolean
+ *               sortOrder:
+ *                 type: integer
+ *               altText:
+ *                 type: string
+ *               caption:
+ *                 type: string
+ *               tags:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Media uploaded successfully
+ */
+router.post("/:id/media", auth, productController.uploadProductMedia);
+
+/**
+ * @swagger
+ * /api/products/{id}/variants/detect:
+ *   post:
+ *     summary: Auto-detect and create variants from platform data
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               detectionRules:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Variants detected successfully
+ */
+router.post("/:id/variants/detect", auth, productController.autoDetectVariants);
+
+/**
+ * @swagger
+ * /api/products/categories/sync/{platformType}:
+ *   post:
+ *     summary: Sync platform categories
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: platformType
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [trendyol, hepsiburada, n11, pazarama, amazon]
+ *     responses:
+ *       200:
+ *         description: Category sync started
+ */
+router.post(
+  "/categories/sync/:platformType",
+  auth,
+  productController.syncPlatformCategories
+);
+
 module.exports = router;

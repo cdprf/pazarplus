@@ -25,7 +25,7 @@ import EmailVerification from "./components/auth/EmailVerification";
 import Dashboard from "./components/dashboard/Dashboard";
 import Orders from "./pages/Orders"; // Consolidated order management
 import OrderDetail from "./components/orders/OrderDetail";
-import ProductManagement from "./components/ProductManagement";
+import ProductManagement from "./components/ProductManagement/index.modern.js"; // Modernized product management
 import CustomerManagement from "./components/customers/CustomerManagement";
 import ShippingManagement from "./components/shipping/ShippingManagement";
 import EnhancedShippingSlipDesigner from "./components/shipping/EnhancedShippingSlipDesigner";
@@ -40,6 +40,7 @@ import Settings from "./components/settings/Settings";
 import PrintSettings from "./components/settings/PrintSettings";
 import InventoryInsights from "./components/analytics/InventoryInsights"; // Add inventory component
 import DatabaseBusyModal from "./components/DatabaseBusyModal"; // Database transaction management modal
+import SKUSystemDemo from "./components/demos/SKUSystemDemo"; // Enhanced SKU system demo
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -244,6 +245,12 @@ function App() {
                           element={<Reports />}
                         />
                         <Route path="analytics/trends" element={<Reports />} />
+
+                        {/* Demos */}
+                        <Route
+                          path="demos/sku-system"
+                          element={<SKUSystemDemo />}
+                        />
 
                         {/* User Profile */}
                         <Route path="profile" element={<Settings />} />

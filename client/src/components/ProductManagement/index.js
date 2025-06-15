@@ -5,6 +5,10 @@ import { API_BASE_URL } from "./utils/constants";
 import { useAlert } from "../../contexts/AlertContext";
 import ProductDisplay from "./components/ProductDisplay";
 import { ImagePreviewModal } from "./components/ProductModals";
+import EnhancedProductAnalytics from "./components/ProductAnalyticsFixed";
+import BulkEditModal from "./components/BulkEditModal";
+import MobileFilterDrawer from "./components/MobileFilterDrawer";
+import AdvancedSearchPanel from "./components/AdvancedSearchPanel";
 import { productUtils } from "./utils/productUtils";
 
 // API integration
@@ -375,6 +379,10 @@ const ProductManagement = () => {
       currentIndex: 0,
     },
     activeTab: "all",
+    showMobileFilters: false,
+    showBulkEditModal: false,
+    recentSearches: [],
+    analyticsTimeRange: "week",
   });
 
   // Add state for all products statistics - Enhanced with comprehensive status tracking
@@ -1474,6 +1482,7 @@ const ProductManagement = () => {
           onBulkDelete={handleBulkDelete}
           onBulkStatusChange={handleBulkStatusChange}
           onBulkExport={handleBulkExport}
+          onBulkEdit={() => updateState({ showBulkEditModal: true })}
           // Import/Export
           onImport={handleImport}
           onExportAll={handleExportAll}
@@ -1491,6 +1500,14 @@ const ProductManagement = () => {
           onAcceptVariantSuggestion={handleAcceptVariantSuggestion}
           onRejectVariantSuggestion={handleRejectVariantSuggestion}
           onInlineEdit={handleInlineEdit}
+          // Mobile responsiveness
+          onToggleMobileFilters={() =>
+            updateState({ showMobileFilters: !state.showMobileFilters })
+          }
+          // Analytics
+          onToggleAnalytics={() =>
+            updateState({ showAnalytics: !state.showAnalytics })
+          }
         />
 
         {/* Product Form Modal */}
@@ -1567,7 +1584,7 @@ const ProductManagement = () => {
                   <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
                     Açıklama
                   </h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">
+                  <p className="text-sm text-gray-600 dark:text-gray-500">
                     {state.detailsModal.product.description}
                   </p>
                 </div>
@@ -1603,6 +1620,115 @@ const ProductManagement = () => {
           productName={state.imageModal.productName}
           images={state.imageModal.images}
           currentIndex={state.imageModal.currentIndex}
+        />
+
+        {/* Bulk Edit Modal */}
+        <BulkEditModal
+          isOpen={state.showBulkEditModal}
+          onClose={() => updateState({ showBulkEditModal: false })}
+          selectedProducts={state.selectedProducts}
+          products={state.products}
+          onSave={async (selectedProducts, updateData) => {
+            updateState({ loading: true });
+            try {
+              // Process bulk updates
+              await Promise.all(
+                selectedProducts.map((id) => {
+                  const data = {};
+
+                  // Handle price updates
+                  if (updateData.price) {
+                    if (updateData.price.operation === "set") {
+                      data.price = updateData.price.value;
+                    } else {
+                      const product = state.products.find((p) => p.id === id);
+                      const currentPrice = product?.price || 0;
+                      const percentage = updateData.price.value / 100;
+
+                      if (updateData.price.operation === "increase") {
+                        data.price = currentPrice * (1 + percentage);
+                      } else {
+                        data.price = currentPrice * (1 - percentage);
+                      }
+                    }
+                  }
+
+                  // Handle status updates
+                  if (updateData.status) {
+                    data.status = updateData.status;
+                  }
+
+                  // Handle category updates
+                  if (updateData.category) {
+                    data.category = updateData.category;
+                  }
+
+                  // Handle stock updates
+                  if (updateData.stock) {
+                    if (updateData.stock.operation === "set") {
+                      data.stockQuantity = updateData.stock.value;
+                    } else {
+                      const product = state.products.find((p) => p.id === id);
+                      const currentStock = product?.stockQuantity || 0;
+
+                      if (updateData.stock.operation === "increase") {
+                        data.stockQuantity =
+                          currentStock + updateData.stock.value;
+                      } else {
+                        data.stockQuantity = Math.max(
+                          0,
+                          currentStock - updateData.stock.value
+                        );
+                      }
+                    }
+                  }
+
+                  return api.put(`${API_BASE_URL}/products/${id}`, data);
+                })
+              );
+
+              showAlert(
+                `${selectedProducts.length} ürün başarıyla güncellendi`,
+                "success"
+              );
+              fetchProducts();
+              fetchAllProductsStats();
+            } catch (error) {
+              showAlert(
+                "Toplu güncelleme sırasında hata oluştu: " + error.message,
+                "error"
+              );
+            } finally {
+              updateState({ loading: false, showBulkEditModal: false });
+            }
+          }}
+        />
+
+        {/* Mobile Filter Drawer */}
+        <MobileFilterDrawer
+          isOpen={state.showMobileFilters}
+          onClose={() => updateState({ showMobileFilters: false })}
+          filters={state.filters}
+          onFiltersChange={handleFilterChange}
+          onClearFilters={handleClearFilters}
+          platformFilter={state.filters.platform}
+          onPlatformFilterChange={(platform) => {
+            handleFilterChange({
+              ...state.filters,
+              platform,
+            });
+          }}
+        />
+
+        {/* Enhanced Product Analytics */}
+        <EnhancedProductAnalytics
+          isOpen={state.showAnalytics}
+          onClose={() => updateState({ showAnalytics: false })}
+          timeRange={state.analyticsTimeRange}
+          onTimeRangeChange={(range) =>
+            updateState({ analyticsTimeRange: range })
+          }
+          productId={state.detailsModal.product?.id} // Show specific product analytics if in details modal
         />
       </div>
     </div>
