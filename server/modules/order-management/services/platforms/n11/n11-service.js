@@ -992,6 +992,11 @@ class N11Service extends BasePlatformService {
                 currency: "TRY",
                 shippingAddress: order.shippingAddress.address || {},
                 shippingDetailId: shippingDetail.id,
+                cargoTrackingNumber: order.cargoTrackingNumber
+                  ? this.preserveCargoTrackingNumber(order.cargoTrackingNumber)
+                  : null,
+                cargoTrackingLink: order.cargoTrackingLink || null,
+                cargoCompany: order.cargoProviderName || null,
                 notes: order.note || "",
                 invoiceStatus: "pending",
                 rawData: JSON.stringify(order),
@@ -1229,6 +1234,28 @@ class N11Service extends BasePlatformService {
     };
 
     return statusMap[paymentStatus] || "Bekliyor";
+  }
+
+  // Preserve cargo tracking number as string to avoid scientific notation
+  preserveCargoTrackingNumber(cargoTrackingNumber) {
+    if (!cargoTrackingNumber) return null;
+
+    // If it's already a string, return as-is
+    if (typeof cargoTrackingNumber === "string") {
+      return cargoTrackingNumber;
+    }
+
+    // If it's a number, check if it's in scientific notation
+    if (typeof cargoTrackingNumber === "number") {
+      // Convert to string using toFixed to avoid scientific notation
+      if (cargoTrackingNumber > 1e15 || cargoTrackingNumber < -1e15) {
+        return cargoTrackingNumber.toFixed(0);
+      }
+      return String(cargoTrackingNumber);
+    }
+
+    // Fallback to string conversion
+    return String(cargoTrackingNumber);
   }
 }
 

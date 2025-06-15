@@ -118,6 +118,22 @@ Order.init(
         key: "id",
       },
     },
+    // Cargo tracking information
+    cargoTrackingNumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Cargo tracking number from shipping provider (Trendyol, N11, etc.)",
+    },
+    cargoTrackingLink: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Link to the cargo tracking page",
+    },
+    cargoCompany: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Name of the shipping provider",
+    },
     // Invoice fields - updated names for consistency
     invoiceStatus: {
       // Changed: Renamed from eInvoiceStatus for consistency

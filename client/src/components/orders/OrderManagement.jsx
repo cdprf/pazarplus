@@ -129,7 +129,8 @@ const OrderManagement = React.memo(() => {
     };
 
     ordersData.forEach((order) => {
-      const status = order.orderStatus || order.orderStatus || "pending";
+      // Fix: properly get the status field from the order
+      const status = order.status || order.orderStatus || "unknown";
 
       // Handle status mapping for stats (convert underscore to camelCase for specific statuses)
       let statKey = status;
@@ -242,6 +243,7 @@ const OrderManagement = React.memo(() => {
       returned: "↩️",
       refunded: "💰",
       failed: "⚠️",
+      unknown: "❓",
     };
     return iconMap[status] || "❓";
   }, []);
@@ -260,6 +262,7 @@ const OrderManagement = React.memo(() => {
       claimRejected: "danger",
       refunded: "secondary",
       failed: "danger",
+      unknown: "secondary",
     };
     return variantMap[status] || "secondary";
   }, []);
@@ -278,6 +281,7 @@ const OrderManagement = React.memo(() => {
       claimRejected: "Talep Reddedildi",
       refunded: "İade Tamamlandı",
       failed: "Başarısız",
+      unknown: "Bilinmeyen Durum",
     };
     return textMap[status] || status;
   }, []);
@@ -414,7 +418,7 @@ const OrderManagement = React.memo(() => {
           ...order,
           id: order.id || order._id || order.orderId,
           // Ensure status field is available (map orderStatus to status)
-          status: order.orderStatus || order.orderStatus || "pending",
+          status: order.orderStatus || order.status || "unknown",
           // Ensure platform field is available (map platformType to platform)
           platform: order.platform || order.platformType || "unknown",
           // Ensure we have proper date fields
@@ -1135,7 +1139,7 @@ const OrderManagement = React.memo(() => {
 
       {/* Stats Cards */}
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 mb-6">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center">
@@ -1219,6 +1223,22 @@ const OrderManagement = React.memo(() => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center">
+                <AlertTriangle className="h-8 w-8 text-red-600" />
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Bilinmeyen
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    {stats.unknown}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center">
                 <DollarSign className="h-8 w-8 text-green-600" />
                 <div className="ml-3">
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -1268,6 +1288,7 @@ const OrderManagement = React.memo(() => {
                   <option value="shipped">Kargoda</option>
                   <option value="delivered">Teslim Edildi</option>
                   <option value="cancelled">İptal Edildi</option>
+                  <option value="unknown">Bilinmeyen Durum</option>
                 </select>
 
                 <select

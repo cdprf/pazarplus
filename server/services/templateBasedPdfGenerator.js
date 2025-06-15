@@ -115,21 +115,23 @@ class TemplateBasedPDFGenerator {
 
       // Register Unicode-compatible fonts for Turkish character support
       try {
-        const fontsPath = path.join(__dirname, '../fonts');
-        const dejavuSansPath = path.join(fontsPath, 'DejaVuSans.ttf');
-        const dejavuSansBoldPath = path.join(fontsPath, 'DejaVuSans-Bold.ttf');
-        
+        const fontsPath = path.join(__dirname, "../fonts");
+        const dejavuSansPath = path.join(fontsPath, "DejaVuSans.ttf");
+        const dejavuSansBoldPath = path.join(fontsPath, "DejaVuSans-Bold.ttf");
+
         if (fs.existsSync(dejavuSansPath)) {
-          doc.registerFont('DejaVuSans', dejavuSansPath);
-          logger.debug('DejaVuSans font registered successfully');
+          doc.registerFont("DejaVuSans", dejavuSansPath);
+          logger.debug("DejaVuSans font registered successfully");
         }
-        
+
         if (fs.existsSync(dejavuSansBoldPath)) {
-          doc.registerFont('DejaVuSans-Bold', dejavuSansBoldPath);
-          logger.debug('DejaVuSans-Bold font registered successfully');
+          doc.registerFont("DejaVuSans-Bold", dejavuSansBoldPath);
+          logger.debug("DejaVuSans-Bold font registered successfully");
         }
       } catch (fontError) {
-        logger.warn('Failed to register custom fonts, using built-in fonts', { error: fontError.message });
+        logger.warn("Failed to register custom fonts, using built-in fonts", {
+          error: fontError.message,
+        });
       }
 
       // Write to file
@@ -801,13 +803,16 @@ class TemplateBasedPDFGenerator {
     } else if (fontWeight === "bold") {
       font = `${fontFamily}-Bold`;
     }
-    
+
     // Fallback to built-in fonts if custom fonts are not available
     try {
       doc.font(font).fontSize(fontSize);
     } catch (fontError) {
-      logger.warn(`Font ${font} not available, falling back to Helvetica`, { error: fontError.message });
-      const fallbackFont = fontWeight === "bold" ? "Helvetica-Bold" : "Helvetica";
+      logger.warn(`Font ${font} not available, falling back to Helvetica`, {
+        error: fontError.message,
+      });
+      const fallbackFont =
+        fontWeight === "bold" ? "Helvetica-Bold" : "Helvetica";
       doc.font(fallbackFont).fontSize(fontSize);
     }
 
@@ -1126,6 +1131,70 @@ class TemplateBasedPDFGenerator {
    * @returns {Any} - Field value
    */
   getFieldValue(obj, path) {
+    // Handle special placeholders
+    switch (path.toUpperCase()) {
+      case "CARGO_TRACKING_NUMBER":
+      case "TRACKING_NUMBER":
+        // Try to get cargo tracking number from multiple sources
+        let trackingNumber =
+          obj.cargoTrackingNumber || obj.trackingNumber || obj.tracking?.number;
+
+        // Check for cargoTrackingNumber in raw data (Trendyol and N11)
+        if (!trackingNumber && obj.rawData) {
+          if (obj.rawData.cargoTrackingNumber) {
+            trackingNumber = obj.rawData.cargoTrackingNumber;
+          }
+        }
+
+        return trackingNumber || "TRK" + Date.now();
+
+      case "ORDER_NUMBER":
+        return obj.orderNumber || obj.externalOrderId;
+
+      case "ORDER_DATE":
+        return obj.orderDate
+          ? new Date(obj.orderDate).toLocaleDateString("tr-TR")
+          : "";
+
+      case "SENDER_NAME":
+        return "PAZAR PLUS";
+
+      case "SENDER_ADDRESS":
+        return "Merkez Mahallesi, Merkezi No:45";
+
+      case "SENDER_CITY":
+        return "İstanbul";
+
+      case "SENDER_POSTAL_CODE":
+        return "34000";
+
+      case "RECIPIENT_NAME":
+        return (
+          obj.customerName ||
+          obj.customer?.firstName + " " + obj.customer?.lastName ||
+          "Müşteri"
+        );
+
+      case "RECIPIENT_ADDRESS":
+        return obj.shippingAddress || obj.customer?.address || "";
+
+      case "RECIPIENT_CITY":
+        return obj.customer?.city || "";
+
+      case "RECIPIENT_POSTAL_CODE":
+        return obj.customer?.postalCode || "";
+
+      case "RECIPIENT_PHONE":
+        return obj.customerPhone || obj.customer?.phone || "";
+
+      case "CARGO_TRACKING_LINK":
+        return obj.cargoTrackingLink || "";
+
+      case "CARGO_COMPANY":
+        return obj.cargoCompany || "";
+    }
+
+    // Default dot notation handling
     return path.split(".").reduce((current, key) => {
       return current && current[key] !== undefined ? current[key] : undefined;
     }, obj);
@@ -1891,10 +1960,20 @@ class TemplateBasedPDFGenerator {
     width,
     height
   ) {
-    const trackingNumber =
-      orderData.trackingNumber ||
-      orderData.tracking?.number ||
-      "TRK" + Date.now();
+    // Try to get cargo tracking number from platform-specific data
+    let trackingNumber = orderData.trackingNumber || orderData.tracking?.number;
+
+    // Check for cargoTrackingNumber in raw data (Trendyol and N11)
+    if (!trackingNumber && orderData.rawData) {
+      if (orderData.rawData.cargoTrackingNumber) {
+        trackingNumber = orderData.rawData.cargoTrackingNumber;
+      }
+    }
+
+    // Fallback to generated tracking if none found
+    if (!trackingNumber) {
+      trackingNumber = "TRK" + Date.now();
+    }
 
     await this.renderFormattedText(
       doc,

@@ -547,6 +547,10 @@ class TrendyolService extends BasePlatformService {
                   invoiceStatus: order.orderStatus || "pending", // Use eInvoiceStatus
                   orderDate: new Date(order.orderDate),
                   orderStatus: this.mapOrderStatus(order.orderStatus),
+                  cargoTrackingNumber: this.preserveCargoTrackingNumber(order.cargoTrackingNumber) || "",
+                  cargoCompany: order.cargoProviderName || "",
+                  cargoTrackingUrl: order.cargoTrackingLink || "",
+                  invoiceTotal: parseFloat(order.totalPrice) || 0,
                   totalAmount: parseFloat(
                     order.totalPrice || order.grossAmount || 0
                   ),
@@ -787,6 +791,9 @@ class TrendyolService extends BasePlatformService {
         customerName: `${order.customerFirstName} ${order.customerLastName}`,
         customerEmail: order.customerEmail,
         customerPhone: phoneNumber,
+        cargoCompany: order.cargoProviderName || "",
+        cargoTrackingNumber: this.preserveCargoTrackingNumber(order.cargoTrackingNumber),
+        cargoTrackingUrl: order.cargoTrackingLink || "",
         platform: this.getPlatformType(),
         platformType: platformType,
         platformOrderId: order.orderNumber, // Add platformOrderId field
@@ -918,6 +925,28 @@ class TrendyolService extends BasePlatformService {
     return super.extractPhoneNumber(order);
   }
 
+  // Preserve cargo tracking number as string to avoid scientific notation
+  preserveCargoTrackingNumber(cargoTrackingNumber) {
+    if (!cargoTrackingNumber) return null;
+    
+    // If it's already a string, return as-is
+    if (typeof cargoTrackingNumber === 'string') {
+      return cargoTrackingNumber;
+    }
+    
+    // If it's a number, check if it's in scientific notation
+    if (typeof cargoTrackingNumber === 'number') {
+      // Convert to string using toFixed to avoid scientific notation
+      if (cargoTrackingNumber > 1e15 || cargoTrackingNumber < -1e15) {
+        return cargoTrackingNumber.toFixed(0);
+      }
+      return String(cargoTrackingNumber);
+    }
+    
+    // Fallback to string conversion
+    return String(cargoTrackingNumber);
+  }
+
   /**
    * Map Trendyol order status to internal status
    * @param {String} trendyolStatus - Trendyol-specific status
@@ -925,15 +954,26 @@ class TrendyolService extends BasePlatformService {
    */
   mapOrderStatus(trendyolStatus) {
     const statusMap = {
-      Created: "new",
-      Picking: "processing",
-      Invoiced: "processing",
-      Shipped: "shipped",
-      AtCollectionPoint: "shipped", // Package is available for pickup at collection point
-      Delivered: "delivered",
-      Cancelled: "cancelled",
-      UnDelivered: "failed",
-      Returned: "returned",
+      // Trendyol Order Statuses
+      "Awaiting": "new",
+      "Created": "new", 
+      "ReadyToShip": "processing",
+      "Picking": "processing",
+      "Invoiced": "processing",
+      "Shipped": "shipped",
+      "InTransit": "in_transit",
+      "AtCollectionPoint": "shipped", // Package available for pickup
+      "Delivered": "delivered",
+      "Cancelled": "cancelled",
+      "UnDelivered": "failed",
+      "Returned": "returned",
+      "Refunded": "refunded",
+      // Additional shipment package statuses
+      "Processing": "processing",
+      "InProcess": "processing",
+      "ReadyForShipping": "processing",
+      "OnTheWay": "in_transit",
+      "DeliveredToCustomer": "delivered",
     };
 
     const mappedStatus = statusMap[trendyolStatus];

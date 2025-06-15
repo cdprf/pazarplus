@@ -670,7 +670,7 @@ class ShippingTemplatesController {
         website: "www.pazarplus.com",
       },
       tracking: {
-        number: order.trackingNumber,
+        number: order.cargoTrackingNumber,
         carrier: order.carrier,
         url: order.trackingUrl,
       },
