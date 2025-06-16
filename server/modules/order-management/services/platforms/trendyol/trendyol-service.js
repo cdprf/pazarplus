@@ -18,13 +18,20 @@ const TRENDYOL_API = {
   BASE_URL: "https://api.trendyol.com/sapigw",
   INTEGRATION_URL: "https://api.trendyol.com/sapigw/integration",
   SUPPLIERS_URL: "https://api.trendyol.com/sapigw/suppliers",
+  // New recommended API endpoints from documentation
+  NEW_BASE_URL: "https://apigw.trendyol.com",
   ENDPOINTS: {
+    // Old endpoints (deprecated but still functional)
     ORDERS: "/suppliers/{supplierId}/orders",
     ORDER_BY_ID: "/suppliers/{supplierId}/orders/{orderNumber}",
-    ORDER_SHIPMENT_PACKAGES:
-      "/suppliers/{supplierId}/orders/{orderNumber}/shipment-packages",
+    ORDER_SHIPMENT_PACKAGES: "/suppliers/{supplierId}/orders/{orderNumber}/shipment-packages",
     ORDER_STATUS_UPDATE: "/suppliers/{supplierId}/orders/{orderNumber}/status",
-    PRODUCTS: "/suppliers/{supplierId}/products", // Fixed: should be suppliers, not integration
+    
+    // New recommended endpoints from documentation
+    NEW_ORDERS: "/integration/order/sellers/{sellerId}/orders",
+    NEW_ORDER_BY_ID: "/integration/order/sellers/{sellerId}/orders/{orderNumber}",
+    
+    PRODUCTS: "/suppliers/{supplierId}/products",
     CLAIMS: "/suppliers/{supplierId}/claims",
     SETTLEMENT: "/suppliers/{supplierId}/settlements",
     BATCH_REQUEST: "/suppliers/{supplierId}/batch-requests",
@@ -260,12 +267,12 @@ class TrendyolService extends BasePlatformService {
     const credentials = this.decryptCredentials(this.connection.credentials);
     const supplierId = credentials.supplierId || credentials.sellerId;
 
-    // Use timestamp format for Trendyol API
+    // Use timestamp format for Trendyol API (GMT +3 as specified in documentation)
     const defaultEndDate = new Date();
     const defaultStartDate = new Date();
-    defaultStartDate.setDate(defaultStartDate.getDate() - 30);
+    defaultStartDate.setDate(defaultStartDate.getDate() - 7); // Default to 1 week as per documentation
 
-    // Convert to timestamp format (milliseconds since epoch)
+    // Convert to timestamp format (milliseconds since epoch) - GMT +3
     const startDate = params.startDate
       ? new Date(params.startDate).getTime()
       : defaultStartDate.getTime();
@@ -274,18 +281,29 @@ class TrendyolService extends BasePlatformService {
       ? new Date(params.endDate).getTime()
       : defaultEndDate.getTime();
 
+    // Default parameters as per Trendyol API documentation
     const defaultParams = {
-      //startDate,
-      //endDate,
+      startDate: startDate,
+      endDate: endDate,
       page: params.page || 0,
-      size: params.size || 50,
-      orderByField: "PackageLastModifiedDate",
-      orderByDirection: "DESC",
+      size: Math.min(params.size || 50, 200), // Max 200 as per documentation
+      orderByField: "PackageLastModifiedDate", // Required by documentation
+      orderByDirection: "DESC", // Recommended by documentation
     };
 
     const queryParams = { ...defaultParams, ...params };
-    //queryParams.startDate = startDate;
-    //queryParams.endDate = endDate;
+    
+    // Add status filter if provided (official status values only)
+    if (params.status) {
+      const validStatuses = [
+        "Created", "Picking", "Invoiced", "Shipped", "Cancelled", 
+        "Delivered", "UnDelivered", "Returned", "AtCollectionPoint", 
+        "UnPacked", "UnSupplied", "Awaiting"
+      ];
+      if (validStatuses.includes(params.status)) {
+        queryParams.status = params.status;
+      }
+    }
 
     this.logger.debug(
       `Fetching Trendyol orders (single page) with params: ${JSON.stringify(
@@ -475,7 +493,30 @@ class TrendyolService extends BasePlatformService {
             // Order exists - update it with the latest data
             try {
               await existingOrder.update({
-                orderStatus: this.mapOrderStatus(order.orderStatus), // Fixed: use orderStatus
+                orderStatus: this.mapOrderStatus(
+                  order.shipmentPackageStatus || order.status
+                ), // Fixed: use correct Trendyol API fields
+                
+                // Update enhanced fields from Trendyol API
+                isCommercial: order.commercial || false,
+                isMicroExport: order.micro || false,
+                fastDeliveryType: order.fastDeliveryType || null,
+                deliveryType: order.deliveryType || "normal",
+                deliveryAddressType: order.deliveryAddressType || "Shipment",
+                isGiftBoxRequested: order.giftBoxRequested || false,
+                etgbNo: order.etgbNo || null,
+                etgbDate: order.etgbDate ? new Date(order.etgbDate) : null,
+                is3pByTrendyol: order["3pByTrendyol"] || false,
+                containsDangerousProduct: order.containsDangerousProduct || false,
+                identityNumber: order.identityNumber || null,
+                
+                // Update cargo information
+                cargoTrackingNumber: this.preserveCargoTrackingNumber(
+                  order.cargoTrackingNumber
+                ) || existingOrder.cargoTrackingNumber,
+                cargoCompany: order.cargoProviderName || existingOrder.cargoCompany,
+                cargoTrackingUrl: order.cargoTrackingLink || existingOrder.cargoTrackingUrl,
+                
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date(),
               });
@@ -540,43 +581,90 @@ class TrendyolService extends BasePlatformService {
                   customerPhone: phoneNumber || "",
                   platform: this.getPlatformType(),
                   platformType: this.getPlatformType(),
-                  platformOrderId: order.id, // Add platformOrderId field
-                  platformId: this.connectionId, // Add platformId field
-                  shippingAddress: order.shipmentAddress.fullAddress || {},
+                  platformOrderId: order.id, // shipmentPackageId from API
+                  platformId: this.connectionId,
+                  shippingAddress: order.shipmentAddress?.fullAddress || "",
                   shippingDetailId: shippingDetail.id,
-                  invoiceStatus: order.orderStatus || "pending", // Use eInvoiceStatus
-                  orderDate: new Date(order.orderDate),
-                  orderStatus: this.mapOrderStatus(order.orderStatus),
-                  cargoTrackingNumber: this.preserveCargoTrackingNumber(order.cargoTrackingNumber) || "",
+                  invoiceStatus: order.status || "pending",
+                  orderDate: new Date(order.orderDate), // GMT +3 timestamp
+                  orderStatus: this.mapOrderStatus(
+                    order.shipmentPackageStatus || order.status
+                  ),
+                  cargoTrackingNumber:
+                    this.preserveCargoTrackingNumber(
+                      order.cargoTrackingNumber
+                    ) || "",
                   cargoCompany: order.cargoProviderName || "",
                   cargoTrackingUrl: order.cargoTrackingLink || "",
                   invoiceTotal: parseFloat(order.totalPrice) || 0,
                   totalAmount: parseFloat(
                     order.totalPrice || order.grossAmount || 0
                   ),
-                  currency: order.currency || "TRY",
+                  currency: order.currencyCode || "TRY",
                   notes: order.note || "",
+                  
+                  // Additional fields from Trendyol API documentation
+                  isCommercial: order.commercial || false, // Corporate order flag
+                  isMicroExport: order.micro || false, // Micro export order flag
+                  fastDeliveryType: order.fastDeliveryType || null, // Fast delivery type
+                  deliveryType: order.deliveryType || "normal", // Delivery type
+                  deliveryAddressType: order.deliveryAddressType || "Shipment", // Shipment or CollectionPoint
+                  isGiftBoxRequested: order.giftBoxRequested || false, // Gift box request
+                  etgbNo: order.etgbNo || null, // ETGB number for micro export
+                  etgbDate: order.etgbDate ? new Date(order.etgbDate) : null, // ETGB date
+                  is3pByTrendyol: order["3pByTrendyol"] || false, // 3P by Trendyol flag
+                  containsDangerousProduct: order.containsDangerousProduct || false, // Dangerous product flag
+                  identityNumber: order.identityNumber || null, // TCKN for high-value orders
+                  
                   rawData: JSON.stringify(order),
                   lastSyncedAt: new Date(),
                 },
                 { transaction: t }
               );
 
-              // Create order items with product linking
+              // Create order items with enhanced product information
               if (order.lines && Array.isArray(order.lines)) {
-                // Prepare order items data
+                // Prepare order items data with comprehensive field mapping
                 const orderItemsData = order.lines.map((item) => ({
                   orderId: normalizedOrder.id,
                   productId: null, // Will be set by linking service
                   platformProductId: item.productCode || "",
                   title: item.productName || "Unknown Product",
-                  sku: item.merchantSku || item.productCode || "",
+                  sku: item.merchantSku || item.sku || item.productCode || "",
                   quantity: parseInt(item.quantity) || 1,
                   price: parseFloat(item.price) || 0,
-                  currency: "TRY",
+                  currency: item.currencyCode || order.currencyCode || "TRY",
                   barcode: item.barcode || "",
-                  discount: parseFloat(item.discount) + (item.tyDiscount || 0),
-                  invoiceTotal: parseFloat(order.totalPrice) || 0,
+                  
+                  // Enhanced discount calculation including Trendyol discounts
+                  discount: parseFloat(item.discount || 0) + parseFloat(item.tyDiscount || 0),
+                  platformDiscount: parseFloat(item.tyDiscount || 0), // Trendyol platform discount
+                  merchantDiscount: parseFloat(item.discount || 0), // Merchant discount
+                  
+                  invoiceTotal: parseFloat(item.amount) || parseFloat(item.price) || 0,
+                  
+                  // Product attributes from API
+                  productSize: item.productSize || null,
+                  productColor: item.productColor || null,
+                  productCategoryId: item.productCategoryId || null,
+                  productOrigin: item.productOrigin || null, // Important for micro export orders
+                  salesCampaignId: item.salesCampaignId || null,
+                  
+                  // Order line status
+                  lineItemStatus: item.orderLineItemStatusName || null,
+                  
+                  // VAT information
+                  vatBaseAmount: parseFloat(item.vatBaseAmount || 0),
+                  laborCost: parseFloat(item.laborCost || 0),
+                  
+                  // Fast delivery options
+                  fastDeliveryOptions: item.fastDeliveryOptions ? 
+                    JSON.stringify(item.fastDeliveryOptions) : null,
+                  
+                  // Discount details breakdown
+                  discountDetails: item.discountDetails ? 
+                    JSON.stringify(item.discountDetails) : null,
+                    
                   variantInfo: item.variantFeatures
                     ? JSON.stringify(item.variantFeatures)
                     : null,
@@ -750,7 +838,23 @@ class TrendyolService extends BasePlatformService {
       if (existingOrder) {
         // Update it instead
         await existingOrder.update({
-          orderStatus: this.mapOrderStatus(order.orderStatus), // Use orderStatus instead of status
+          orderStatus: this.mapOrderStatus(
+            order.shipmentPackageStatus || order.status
+          ), // Use correct Trendyol API fields
+          
+          // Update enhanced fields from Trendyol API
+          isCommercial: order.commercial || false,
+          isMicroExport: order.micro || false,
+          fastDeliveryType: order.fastDeliveryType || null,
+          deliveryType: order.deliveryType || "normal",
+          deliveryAddressType: order.deliveryAddressType || "Shipment",
+          isGiftBoxRequested: order.giftBoxRequested || false,
+          etgbNo: order.etgbNo || null,
+          etgbDate: order.etgbDate ? new Date(order.etgbDate) : null,
+          is3pByTrendyol: order["3pByTrendyol"] || false,
+          containsDangerousProduct: order.containsDangerousProduct || false,
+          identityNumber: order.identityNumber || null,
+          
           rawData: JSON.stringify(order),
           lastSyncedAt: new Date(),
         });
@@ -785,26 +889,43 @@ class TrendyolService extends BasePlatformService {
         orderDate: order.orderDate
           ? new Date(parseInt(order.orderDate))
           : new Date(),
-        orderStatus: this.mapOrderStatus(order.orderStatus), // Use orderStatus instead of status
+        orderStatus: this.mapOrderStatus(
+          order.shipmentPackageStatus || order.status
+        ), // Use correct Trendyol API fields
         totalAmount: order.totalPrice,
-        currency: "TRY",
+        currency: order.currencyCode || "TRY",
         customerName: `${order.customerFirstName} ${order.customerLastName}`,
         customerEmail: order.customerEmail,
         customerPhone: phoneNumber,
         cargoCompany: order.cargoProviderName || "",
-        cargoTrackingNumber: this.preserveCargoTrackingNumber(order.cargoTrackingNumber),
+        cargoTrackingNumber: this.preserveCargoTrackingNumber(
+          order.cargoTrackingNumber
+        ),
         cargoTrackingUrl: order.cargoTrackingLink || "",
         platform: this.getPlatformType(),
         platformType: platformType,
-        platformOrderId: order.orderNumber, // Add platformOrderId field
-        platformId: this.connectionId, // Add platformId field
-        shippingAddress: order.shipmentAddress,
+        platformOrderId: order.id || order.orderNumber, // Use shipmentPackageId if available
+        platformId: this.connectionId,
+        shippingAddress: order.shipmentAddress?.fullAddress || JSON.stringify(order.shipmentAddress),
         shippingDetailId: shippingDetail.id,
-        invoiceStatus: order.eInvoiceStatus || "pending", // Use eInvoiceStatus
+        invoiceStatus: order.status || "pending",
+        
+        // Enhanced fields from Trendyol API documentation
+        isCommercial: order.commercial || false,
+        isMicroExport: order.micro || false,
+        fastDeliveryType: order.fastDeliveryType || null,
+        deliveryType: order.deliveryType || "normal",
+        deliveryAddressType: order.deliveryAddressType || "Shipment",
+        isGiftBoxRequested: order.giftBoxRequested || false,
+        etgbNo: order.etgbNo || null,
+        etgbDate: order.etgbDate ? new Date(order.etgbDate) : null,
+        is3pByTrendyol: order["3pByTrendyol"] || false,
+        containsDangerousProduct: order.containsDangerousProduct || false,
+        identityNumber: order.identityNumber || null,
+        
         notes: order.note || "",
         rawData: JSON.stringify(order),
         lastSyncedAt: new Date(),
-        // Remove deprecated fields: platformType, platformOrderId, platformId, paymentStatus
       });
 
       // Update order with shipping detail ID
@@ -815,21 +936,47 @@ class TrendyolService extends BasePlatformService {
       // Create platform-specific order data
       await this.createTrendyolOrderRecord(newOrder.id, order);
 
-      // Create order items with product linking
+      // Create order items with product linking and all enhanced fields
       const orderItemsData = order.lines.map((item) => ({
         orderId: newOrder.id,
         productId: null, // Will be set by linking service
-        platformProductId: item.productId
-          ? item.productId.toString()
-          : item.productCode.toString(),
+        platformProductId: item.productCode || "",
         title: item.productName || "Unknown Product",
-        sku: item.merchantSku,
+        sku: item.merchantSku || item.sku || item.productCode || "",
+        quantity: parseInt(item.quantity) || 1,
+        price: parseFloat(item.price) || 0,
+        currency: item.currencyCode || order.currencyCode || "TRY",
         barcode: item.barcode || "",
-        quantity: item.quantity,
-        price: item.price,
-        discount: item.discount || 0,
-        invoiceTotal: item.invoiceTotal || item.price,
-        currency: "TRY",
+        
+        // Enhanced discount calculation including Trendyol discounts
+        discount: parseFloat(item.discount || 0) + parseFloat(item.tyDiscount || 0),
+        platformDiscount: parseFloat(item.tyDiscount || 0), // Trendyol platform discount
+        merchantDiscount: parseFloat(item.discount || 0), // Merchant discount
+        
+        invoiceTotal: parseFloat(item.amount) || parseFloat(item.price) || 0,
+        
+        // Product attributes from API
+        productSize: item.productSize || null,
+        productColor: item.productColor || null,
+        productCategoryId: item.productCategoryId || null,
+        productOrigin: item.productOrigin || null, // Important for micro export orders
+        salesCampaignId: item.salesCampaignId || null,
+        
+        // Order line status
+        lineItemStatus: item.orderLineItemStatusName || null,
+        
+        // VAT information
+        vatBaseAmount: parseFloat(item.vatBaseAmount || 0),
+        laborCost: parseFloat(item.laborCost || 0),
+        
+        // Fast delivery options
+        fastDeliveryOptions: item.fastDeliveryOptions ? 
+          JSON.stringify(item.fastDeliveryOptions) : null,
+        
+        // Discount details breakdown
+        discountDetails: item.discountDetails ? 
+          JSON.stringify(item.discountDetails) : null,
+          
         variantInfo: item.variantFeatures
           ? JSON.stringify(item.variantFeatures)
           : null,
@@ -928,21 +1075,21 @@ class TrendyolService extends BasePlatformService {
   // Preserve cargo tracking number as string to avoid scientific notation
   preserveCargoTrackingNumber(cargoTrackingNumber) {
     if (!cargoTrackingNumber) return null;
-    
+
     // If it's already a string, return as-is
-    if (typeof cargoTrackingNumber === 'string') {
+    if (typeof cargoTrackingNumber === "string") {
       return cargoTrackingNumber;
     }
-    
+
     // If it's a number, check if it's in scientific notation
-    if (typeof cargoTrackingNumber === 'number') {
+    if (typeof cargoTrackingNumber === "number") {
       // Convert to string using toFixed to avoid scientific notation
       if (cargoTrackingNumber > 1e15 || cargoTrackingNumber < -1e15) {
         return cargoTrackingNumber.toFixed(0);
       }
       return String(cargoTrackingNumber);
     }
-    
+
     // Fallback to string conversion
     return String(cargoTrackingNumber);
   }
@@ -953,27 +1100,61 @@ class TrendyolService extends BasePlatformService {
    * @returns {String} Internal status
    */
   mapOrderStatus(trendyolStatus) {
+    // Debug logging for status mapping
+    if (process.env.NODE_ENV === "development") {
+      this.logger.info(
+        `Mapping Trendyol status: "${trendyolStatus}" (type: ${typeof trendyolStatus})`
+      );
+    }
+
     const statusMap = {
-      // Trendyol Order Statuses
-      "Awaiting": "new",
-      "Created": "new", 
-      "ReadyToShip": "processing",
-      "Picking": "processing",
-      "Invoiced": "processing",
-      "Shipped": "shipped",
+      // Official Trendyol Order Statuses from API documentation
+      "Awaiting": "pending", // Waiting for payment confirmation - do not process yet
+      "Created": "new", // Ready to ship - new order
+      "Picking": "processing", // Being prepared/picked
+      "Invoiced": "processing", // Invoice created
+      "Shipped": "shipped", // In transit
+      "AtCollectionPoint": "shipped", // At pickup point (PUDO)
+      "Delivered": "delivered", // Successfully delivered
+      "Cancelled": "cancelled", // Cancelled orders
+      "UnDelivered": "failed", // Failed delivery
+      "Returned": "returned", // Returned to seller
+      "UnPacked": "processing", // Split package (being reprocessed)
+      "UnSupplied": "cancelled", // Unable to supply - cancelled
+      
+      // Legacy statuses (keep for backward compatibility)
+      Created: "new",
+      ReadyToShip: "processing",
+      Picking: "processing",
+      Invoiced: "processing",
+      Shipped: "shipped",
+      InTransit: "in_transit",
+      AtCollectionPoint: "shipped",
+      Delivered: "delivered",
+      Cancelled: "cancelled",
+      UnDelivered: "failed",
+      Returned: "returned",
+      Refunded: "refunded",
+      
+      // Shipment Package Statuses (more granular)
+      "ReturnAccepted": "returned",
       "InTransit": "in_transit",
-      "AtCollectionPoint": "shipped", // Package available for pickup
-      "Delivered": "delivered",
-      "Cancelled": "cancelled",
-      "UnDelivered": "failed",
-      "Returned": "returned",
-      "Refunded": "refunded",
-      // Additional shipment package statuses
-      "Processing": "processing",
-      "InProcess": "processing",
-      "ReadyForShipping": "processing",
-      "OnTheWay": "in_transit",
-      "DeliveredToCustomer": "delivered",
+      Processing: "processing",
+      InProcess: "processing",
+      ReadyForShipping: "processing",
+      OnTheWay: "in_transit",
+      DeliveredToCustomer: "delivered",
+      
+      // Turkish statuses that might come from API responses
+      "Hazırlanıyor": "new", // Being prepared - should show as "Yeni" (new)
+      "Kargoya Verildi": "shipped",
+      "Kargoda": "in_transit", 
+      "Teslim Edildi": "delivered",
+      "İptal Edildi": "cancelled",
+      "İade Edildi": "returned",
+      "Beklemede": "pending",
+      "Onaylandı": "confirmed",
+      "Oluşturuldu": "new",
     };
 
     const mappedStatus = statusMap[trendyolStatus];
@@ -1003,7 +1184,16 @@ class TrendyolService extends BasePlatformService {
       return "unknown";
     }
 
-    return mappedStatus || "unknown";
+    const finalStatus = mappedStatus || "unknown";
+
+    // Debug logging for final result
+    if (process.env.NODE_ENV === "development") {
+      this.logger.info(
+        `Trendyol status mapping result: "${trendyolStatus}" -> "${finalStatus}"`
+      );
+    }
+
+    return finalStatus;
   }
 
   /**

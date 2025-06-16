@@ -1735,16 +1735,28 @@ class HepsiburadaService extends BasePlatformService {
    */
   mapOrderStatus(hepsiburadaStatus) {
     const statusMap = {
+      // Hepsiburada statuses mapped to Turkish status names for consistency
       Open: "pending",
-      PaymentCompleted: "processing",
+      PaymentCompleted: "processing", 
       Packaged: "shipped",
-      InTransit: "shipped",
+      InTransit: "in_transit",
       Delivered: "delivered",
       CancelledByMerchant: "cancelled",
-      CancelledByCustomer: "cancelled",
+      CancelledByCustomer: "cancelled", 
       CancelledBySap: "cancelled",
       ReadyToShip: "processing",
       ClaimCreated: "claim_created",
+      // Turkish versions for consistency
+      "Açık": "pending",
+      "Ödeme Tamamlandı": "processing",
+      "Paketlendi": "shipped", 
+      "Kargoda": "in_transit",
+      "Teslim Edildi": "delivered",
+      "Satıcı Tarafından İptal": "cancelled",
+      "Müşteri Tarafından İptal": "cancelled",
+      "Sistem Tarafından İptal": "cancelled",
+      "Kargoya Hazır": "processing",
+      "Talep Oluşturuldu": "claim_created",
     };
 
     const mappedStatus = statusMap[hepsiburadaStatus];

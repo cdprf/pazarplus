@@ -103,6 +103,7 @@ const EnhancedShippingSlipDesigner = ({
   const [showRulers, setShowRulers] = useState(true);
   const [showSnapGuides, setShowSnapGuides] = useState(true);
   const [currentTab, setCurrentTab] = useState("elements"); // elements, layers, templates
+  const [selectedCategory, setSelectedCategory] = useState("all"); // Category filter for elements
 
   const canvasRef = useRef(null);
   const { showAlert } = useAlert();
@@ -543,7 +544,55 @@ const EnhancedShippingSlipDesigner = ({
     }
   }, [templateConfig, elements, onSave, showAlert]);
 
-  
+  // Handle template configuration changes
+  const handleConfigChange = useCallback((newConfig) => {
+    console.log("🔧 DEBUG: handleConfigChange called", newConfig);
+
+    // Check if we need to apply default font to all text elements
+    if (newConfig.applyDefaultFontToAll && newConfig.defaultFont) {
+      console.log(
+        "🔧 DEBUG: Applying default font to all text elements",
+        newConfig.defaultFont
+      );
+
+      // Find all text-based elements and update them
+      const updatedElements = elements.map((element) => {
+        // Check if this element has font properties (text-based elements)
+        if (element.style && (element.style.fontSize || element.type === "text")) {
+          const updatedStyle = {
+            ...element.style,
+            fontFamily:
+              newConfig.defaultFont.fontFamily || element.style.fontFamily,
+            fontSize: newConfig.defaultFont.fontSize || element.style.fontSize,
+            fontWeight:
+              newConfig.defaultFont.fontWeight || element.style.fontWeight,
+            fontStyle: newConfig.defaultFont.fontStyle || element.style.fontStyle,
+            color: newConfig.defaultFont.color || element.style.color,
+            lineHeight:
+              newConfig.defaultFont.lineHeight || element.style.lineHeight,
+          };
+
+          return {
+            ...element,
+            style: updatedStyle,
+          };
+        }
+        return element;
+      });
+
+      // Update elements and clear the apply flag
+      setElements(updatedElements);
+      const configWithoutApplyFlag = { ...newConfig };
+      delete configWithoutApplyFlag.applyDefaultFontToAll;
+      setTemplateConfig(configWithoutApplyFlag);
+
+      showAlert("Varsayılan font ayarları tüm metin öğelerine uygulandı", "success");
+    } else {
+      // Normal config change
+      setTemplateConfig(newConfig);
+    }
+  }, [elements, setElements, setTemplateConfig, showAlert]);
+
   // Event handlers for mouse events
   useEffect(() => {
     const handleMouseMove = (event) => {
@@ -686,7 +735,6 @@ const EnhancedShippingSlipDesigner = ({
     setShowRulers,
   ]);
 
-
   // Early return if templateConfig is not initialized
   if (!templateConfig) {
     return (
@@ -702,7 +750,6 @@ const EnhancedShippingSlipDesigner = ({
       </div>
     );
   }
-
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
@@ -1116,7 +1163,8 @@ const EnhancedShippingSlipDesigner = ({
               {currentTab === "elements" && (
                 <ElementLibrary
                   onAddElement={addElement}
-                  selectedCategory="all"
+                  selectedCategory={selectedCategory}
+                  onCategoryChange={setSelectedCategory}
                 />
               )}
 
@@ -1425,7 +1473,7 @@ const EnhancedShippingSlipDesigner = ({
               ) : (
                 <TemplateSettingsPanel
                   config={templateConfig}
-                  onConfigChange={setTemplateConfig}
+                  onConfigChange={handleConfigChange}
                   onSave={handleSaveTemplate}
                   onShowTemplates={() => setShowTemplateModal(true)}
                   savedTemplates={savedTemplates}

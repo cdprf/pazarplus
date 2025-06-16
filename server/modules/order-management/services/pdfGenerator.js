@@ -6,6 +6,25 @@ const path = require("path");
 const { Order, OrderItem, User, ShippingDetail } = require("../../../models"); // Fixed: import from models index
 const logger = require("../../../utils/logger");
 const bwipjs = require("bwip-js");
+const config = require("../../../config/config");
+
+// Helper function to get the proper URL for network access
+const getNetworkAccessibleUrl = (relativePath) => {
+  // Check if we're in development and have network configuration
+  if (process.env.NODE_ENV === "development") {
+    // Try to get the host IP from environment or detect it
+    const host = process.env.HOST_IP || process.env.SERVER_HOST || 'localhost';
+    const port = config.server.port || 5001;
+    
+    // If host is not localhost, use it for network access
+    if (host !== 'localhost' && host !== '127.0.0.1') {
+      return `http://${host}:${port}${relativePath}`;
+    }
+  }
+  
+  // Fall back to relative path for localhost access
+  return relativePath;
+};
 
 class PDFGeneratorService {
   constructor() {
@@ -111,7 +130,16 @@ class PDFGeneratorService {
       // Wait for the PDF to be fully written
       return new Promise((resolve, reject) => {
         stream.on("finish", () => {
-          const publicUrl = `/shipping/${fileName}`;
+          const relativePath = `/shipping/${fileName}`;
+          const publicUrl = getNetworkAccessibleUrl(relativePath);
+
+          logger.info(`Shipping label generated with URL: ${publicUrl}`, {
+            orderId: order.id,
+            carrier,
+            relativePath,
+            publicUrl,
+            isNetworkAccessible: publicUrl !== relativePath
+          });
 
           // Update order with label URL
           order

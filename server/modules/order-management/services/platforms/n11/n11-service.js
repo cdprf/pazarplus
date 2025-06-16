@@ -952,23 +952,54 @@ class N11Service extends BasePlatformService {
 
           // Create new order
           const result = await sequelize.transaction(async (t) => {
-            // Create shipping detail first
+            // Create shipping detail first with comprehensive N11 address mapping
             const { ShippingDetail } = require("../../../../../models");
+            const shippingAddress = order.shippingAddress || {};
+            const billingAddress = order.billingAddress || {};
+
             const shippingDetail = await ShippingDetail.create(
               {
-                recipientName: order.shippingAddress?.fullName || "",
-                address1: order.shippingAddress?.address || "",
-                city: order.shippingAddress?.city || "",
-                state: order.shippingAddress?.district || "",
-                postalCode: order.shippingAddress?.postalCode || "",
+                recipientName:
+                  shippingAddress.fullName ||
+                  billingAddress.fullName ||
+                  order.customerfullName ||
+                  "",
+                address:
+                  shippingAddress.address || billingAddress.address || "",
+                address1:
+                  shippingAddress.address || billingAddress.address || "",
+                city: shippingAddress.city || billingAddress.city || "",
+                district:
+                  shippingAddress.district || billingAddress.district || "",
+                neighborhood:
+                  shippingAddress.neighborhood ||
+                  billingAddress.neighborhood ||
+                  "",
+                state:
+                  shippingAddress.district || billingAddress.district || "",
+                postalCode:
+                  shippingAddress.postalCode || billingAddress.postalCode || "",
                 country: "Turkey",
-                phone: phoneNumber || "",
+                phone:
+                  phoneNumber ||
+                  shippingAddress.gsm ||
+                  billingAddress.gsm ||
+                  "",
                 email: order.customerEmail || "",
+                // Additional N11-specific fields
+                tcId:
+                  shippingAddress.tcId ||
+                  billingAddress.tcId ||
+                  order.tcIdentityNumber ||
+                  "",
+                taxId: billingAddress.taxId || order.taxId || "",
+                taxOffice: billingAddress.taxHouse || order.taxOffice || "",
+                invoiceType: billingAddress.invoiceType || 1,
               },
               { transaction: t }
             );
 
-            // Create the order record
+            // Create the order record with comprehensive N11 field mapping
             const normalizedOrder = await Order.create(
               {
                 externalOrderId: order.id.toString(),
@@ -980,23 +1011,51 @@ class N11Service extends BasePlatformService {
                 platformId: "n11",
                 platformOrderId: order.id.toString(),
                 customerName:
-                  order.customerfullName || order.billingAddress.fullName,
+                  order.customerfullName ||
+                  shippingAddress.fullName ||
+                  billingAddress.fullName ||
+                  "",
                 customerEmail: order.customerEmail || "",
-                customerPhone: phoneNumber || "",
+                customerPhone:
+                  phoneNumber ||
+                  shippingAddress.gsm ||
+                  billingAddress.gsm ||
+                  "",
                 orderDate: new Date(
-                  order.packageHistories[0]?.createdDate ||
-                    order.lastModifiedDate
+                  order.packageHistories?.[0]?.createdDate ||
+                    order.lastModifiedDate ||
+                    Date.now()
                 ),
                 orderStatus: this.mapOrderStatus(order.shipmentPackageStatus),
                 totalAmount: parseFloat(order.totalAmount || 0),
                 currency: "TRY",
-                shippingAddress: order.shippingAddress.address || {},
+                shippingAddress: JSON.stringify(shippingAddress),
                 shippingDetailId: shippingDetail.id,
+                // Cargo and tracking information
                 cargoTrackingNumber: order.cargoTrackingNumber
                   ? this.preserveCargoTrackingNumber(order.cargoTrackingNumber)
                   : null,
                 cargoTrackingLink: order.cargoTrackingLink || null,
+                cargoTrackingUrl: order.cargoTrackingLink || null,
                 cargoCompany: order.cargoProviderName || null,
+                // Additional N11-specific fields
+                identityNumber:
+                  order.tcIdentityNumber ||
+                  shippingAddress.tcId ||
+                  billingAddress.tcId ||
+                  "",
+                invoiceTotal: parseFloat(order.totalAmount || 0),
+                // Commercial transaction fields
+                isCommercial: billingAddress.invoiceType === 2 ? 1 : 0,
+                // Delivery information
+                deliveryType: this.mapDeliveryType(order.shipmentMethod),
+                // Discount information
+                totalDiscountAmount: parseFloat(order.totalDiscountAmount || 0),
+                // Timestamps
+                agreedDeliveryDate: order.agreedDeliveryDate
+                  ? new Date(order.agreedDeliveryDate)
+                  : null,
+                // Standard fields
                 notes: order.note || "",
                 invoiceStatus: "pending",
                 rawData: JSON.stringify(order),
@@ -1005,38 +1064,80 @@ class N11Service extends BasePlatformService {
               { transaction: t }
             );
 
-            // Create order items with product linking
+            // Create order items with comprehensive N11 line item mapping
             if (order.lines && Array.isArray(order.lines)) {
-              // Prepare order items data for linking
+              // Map order items data with all N11-specific fields
               const orderItemsData = order.lines.map((item) => ({
                 orderId: normalizedOrder.id,
                 productId: null, // Will be set by linking service
                 platformProductId: item.productId?.toString(),
                 barcode: item.barcode || null,
-                title: item.productName || item.title,
-                sku: item.stockCode || item.sellerStockCode,
+                title: item.productName || item.title || "",
+                sku: item.stockCode || item.sellerStockCode || "",
                 quantity: parseInt(item.quantity || 1, 10),
                 price: parseFloat(item.price || 0),
+                // Calculate total discount (seller + mall discounts)
                 discount: parseFloat(
-                  item.sellerDiscount + item.mallDiscount || 0
+                  (item.sellerDiscount || 0) + (item.mallDiscount || 0)
                 ),
+                platformDiscount: parseFloat(item.mallDiscount || 0),
+                merchantDiscount: parseFloat(item.sellerDiscount || 0),
                 invoiceTotal: parseFloat(item.sellerInvoiceAmount || 0),
                 currency: "TRY",
-                variantInfo: item.variantAttributes
-                  ? JSON.stringify(item.variantAttributes)
-                  : null,
+                // N11-specific fields
+                vatBaseAmount: parseFloat(item.vatBaseAmount || 0),
+                laborCost: parseFloat(item.totalLaborCostExcludingVAT || 0),
+                lineItemStatus: item.orderItemLineItemStatusName || "Created",
+                // Additional pricing fields
+                vatRate: parseFloat(item.vatRate || 20),
+                commissionRate: parseFloat(item.commissionRate || 0),
+                taxDeductionRate: parseFloat(item.taxDeductionRate || 0),
+                // Marketing and marketplace fees
+                netMarketingFeeRate: parseFloat(item.netMarketingFeeRate || 0),
+                netMarketplaceFeeRate: parseFloat(
+                  item.netMarketplaceFeeRate || 0
+                ),
+                // Installment information
+                installmentChargeWithVAT: parseFloat(
+                  item.installmentChargeWithVAT || 0
+                ),
+                // Coupon discounts
+                sellerCouponDiscount: parseFloat(
+                  item.sellerCouponDiscount || 0
+                ),
+                // Variant information
+                variantInfo:
+                  item.variantAttributes && item.variantAttributes.length > 0
+                    ? JSON.stringify(item.variantAttributes)
+                    : null,
+                // Store complete raw data for debugging
                 rawData: JSON.stringify(item),
-                metadata: {
-                  platformData: item,
-                },
               }));
 
               try {
-                // Use product linking service to create order items with product associations
+                // Create OrderItem records first
+                const createdOrderItems = [];
+                for (const itemData of orderItemsData) {
+                  const createdItem = await OrderItem.create(itemData, {
+                    transaction: t,
+                  });
+                  createdOrderItems.push(createdItem);
+                }
+
+                this.logger.info(
+                  `Created ${createdOrderItems.length} order items for N11 order ${order.orderNumber}`,
+                  {
+                    orderNumber: order.orderNumber,
+                    connectionId: this.connectionId,
+                    itemCount: createdOrderItems.length,
+                  }
+                );
+
+                // Now try to link them with products
                 const linkingService = new ProductOrderLinkingService();
                 const linkingResult =
                   await linkingService.linkProductsToOrderItems(
-                    orderItemsData,
+                    createdOrderItems,
                     this.connection.userId,
                     { transaction: t }
                   );
@@ -1052,22 +1153,17 @@ class N11Service extends BasePlatformService {
                   );
                 } else {
                   this.logger.warn(
-                    `Product linking failed for N11 order ${order.orderNumber}, creating items without linking: ${linkingResult.message}`,
+                    `Product linking had issues for N11 order ${order.orderNumber}: ${linkingResult.message}`,
                     {
                       orderNumber: order.orderNumber,
                       connectionId: this.connectionId,
                       error: linkingResult.error,
                     }
                   );
-
-                  // Fallback: create order items without linking
-                  for (const itemData of orderItemsData) {
-                    await OrderItem.create(itemData, { transaction: t });
-                  }
                 }
               } catch (linkingError) {
                 this.logger.error(
-                  `Product linking service failed for N11 order ${order.orderNumber}: ${linkingError.message}`,
+                  `Failed to create order items for N11 order ${order.orderNumber}: ${linkingError.message}`,
                   {
                     error: linkingError,
                     orderNumber: order.orderNumber,
@@ -1075,9 +1171,11 @@ class N11Service extends BasePlatformService {
                   }
                 );
 
-                // Fallback: create order items without linking
-                for (const itemData of orderItemsData) {
-                  await OrderItem.create(itemData, { transaction: t });
+                // Fallback: create order items without linking (if creation failed)
+                if (linkingError.message.includes("create")) {
+                  for (const itemData of orderItemsData) {
+                    await OrderItem.create(itemData, { transaction: t });
+                  }
                 }
               }
             }
@@ -1184,12 +1282,29 @@ class N11Service extends BasePlatformService {
   }
 
   /**
+   * Map N11 shipment method to delivery type
+   * @param {number} shipmentMethod - Shipment method from N11 API
+   * @returns {string} Delivery type
+   */
+  mapDeliveryType(shipmentMethod) {
+    const deliveryMap = {
+      1: "normal", // Standard delivery
+      2: "fast", // Fast delivery
+      3: "express", // Express delivery
+      4: "same_day", // Same day delivery
+    };
+
+    return deliveryMap[shipmentMethod] || "normal";
+  }
+
+  /**
    * Map N11 API status to internal order status enum
    * @param {string} apiStatus - Status from N11 API
    * @returns {string} Internal order status compatible with Order model ENUM
    */
   mapOrderStatus(apiStatus) {
     const statusMap = {
+      // N11 statuses mapped to Turkish status names for consistency
       Approved: "pending",
       New: "new",
       Picking: "processing",
@@ -1200,6 +1315,17 @@ class N11Service extends BasePlatformService {
       Created: "new",
       UnPacked: "failed",
       UnSupplied: "failed",
+      // Turkish versions for consistency
+      Onaylandı: "pending",
+      Yeni: "new",
+      Hazırlanıyor: "processing",
+      Kargoda: "shipped",
+      "Teslim Edildi": "delivered",
+      "İptal Edildi": "cancelled",
+      "İade Edildi": "returned",
+      Oluşturuldu: "new",
+      Paketlenmedi: "failed",
+      "Tedarik Edilmedi": "failed",
     };
 
     return statusMap[apiStatus] || "new";
@@ -1234,6 +1360,46 @@ class N11Service extends BasePlatformService {
     };
 
     return statusMap[paymentStatus] || "Bekliyor";
+  }
+
+  /**
+   * Extract phone number from N11 order data
+   * @param {Object} order - N11 order object
+   * @returns {string|null} Formatted phone number
+   */
+  extractPhoneNumber(order) {
+    // Try to get phone number from various sources
+    let phone =
+      order.shippingAddress?.gsm ||
+      order.billingAddress?.gsm ||
+      order.customerPhone ||
+      null;
+
+    if (!phone) return null;
+
+    // Clean and format phone number
+    // Remove any non-digit characters except + at the beginning
+    phone = phone.replace(/[^\d+]/g, "");
+
+    // If phone starts with 90, add + to make it +90
+    if (phone.startsWith("90") && phone.length === 12) {
+      phone = "+" + phone;
+    }
+
+    // If phone starts with 5 and is 10 digits, add +90
+    if (phone.startsWith("5") && phone.length === 10) {
+      phone = "+90" + phone;
+    }
+
+    // If phone has 'X' characters (masked), keep the original
+    if (
+      order.shippingAddress?.gsm?.includes("X") ||
+      order.billingAddress?.gsm?.includes("X")
+    ) {
+      return order.shippingAddress?.gsm || order.billingAddress?.gsm;
+    }
+
+    return phone;
   }
 
   // Preserve cargo tracking number as string to avoid scientific notation

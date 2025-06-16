@@ -30,6 +30,7 @@ import {
   Mail,
   User,
   DollarSign,
+  Trash2,
 } from "lucide-react";
 import api from "../../services/api";
 import { useAlert } from "../../contexts/AlertContext";
@@ -130,7 +131,7 @@ const OrderManagement = React.memo(() => {
 
     ordersData.forEach((order) => {
       // Fix: properly get the status field from the order
-      const status = order.status || order.orderStatus || "unknown";
+      const status = order.status || order.orderStatus || "pending";
 
       // Handle status mapping for stats (convert underscore to camelCase for specific statuses)
       let statKey = status;
@@ -230,17 +231,18 @@ const OrderManagement = React.memo(() => {
   // Status and platform helper functions
   const getStatusIcon = useCallback((status) => {
     const iconMap = {
-      pending: "⏳",
-      new: "⏳",
+      new: "🆕",
+      pending: "⏳", 
       confirmed: "✅",
       processing: "⚙️",
       shipped: "🚚",
+      in_transit: "🚚",
       delivered: "📦",
       cancelled: "❌",
-      claimCreated: "🆕",
-      claimApproved: "✅",
-      claimRejected: "❌",
       returned: "↩️",
+      claimCreated: "🆕",
+      claimApproved: "✅", 
+      claimRejected: "❌",
       refunded: "💰",
       failed: "⚠️",
       unknown: "❓",
@@ -250,10 +252,12 @@ const OrderManagement = React.memo(() => {
 
   const getStatusVariant = useCallback((status) => {
     const variantMap = {
+      new: "info",
       pending: "warning",
       confirmed: "info",
       processing: "primary",
       shipped: "info",
+      in_transit: "info", 
       delivered: "success",
       cancelled: "danger",
       returned: "warning",
@@ -269,19 +273,24 @@ const OrderManagement = React.memo(() => {
 
   const getStatusText = useCallback((status) => {
     const textMap = {
+      new: "Yeni",
       pending: "Beklemede",
-      confirmed: "Onaylandı",
+      confirmed: "Onaylandı", 
       processing: "Hazırlanıyor",
       shipped: "Kargoda",
+      in_transit: "Yolda",
       delivered: "Teslim Edildi",
       cancelled: "İptal Edildi",
       returned: "İade Edildi",
       claimCreated: "Talep Oluşturuldu",
-      claimApproved: "Talep Onaylandı",
+      claimApproved: "Talep Onaylandı", 
       claimRejected: "Talep Reddedildi",
       refunded: "İade Tamamlandı",
       failed: "Başarısız",
-      unknown: "Bilinmeyen Durum",
+      unknown: "Bilinmeyen",
+      claim_created: "Talep Oluşturuldu",
+      claim_approved: "Talep Onaylandı",
+      claim_rejected: "Talep Reddedildi",
     };
     return textMap[status] || status;
   }, []);
@@ -418,7 +427,7 @@ const OrderManagement = React.memo(() => {
           ...order,
           id: order.id || order._id || order.orderId,
           // Ensure status field is available (map orderStatus to status)
-          status: order.orderStatus || order.status || "unknown",
+          status: order.orderStatus || order.status || "pending",
           // Ensure platform field is available (map platformType to platform)
           platform: order.platform || order.platformType || "unknown",
           // Ensure we have proper date fields
@@ -876,7 +885,7 @@ const OrderManagement = React.memo(() => {
       showAlert("Siparişler başarıyla dışa aktarıldı", "success");
     } catch (error) {
       console.error("Error exporting orders:", error);
-      showAlert("Dışa aktarım sırasında bir hata oluştu", "error");
+      showAlert("Eksport işlemi başarısız", "error");
     }
   }, [showAlert]);
 
@@ -1021,33 +1030,93 @@ const OrderManagement = React.memo(() => {
         }
       } catch (error) {
         console.error("Error printing invoice:", error);
-        showAlert("Fatura yazdırılırken hata oluştu", "error");
+        showAlert("Fatura yazdırma işlemi başarısız", "error");
       }
     },
     [showAlert]
   );
 
-  const handleCancelOrder = useCallback(
-    async (orderId) => {
-      if (
-        !window.confirm("Bu siparişi iptal etmek istediğinizden emin misiniz?")
-      ) {
-        return;
-      }
+  // Delete operations
+  const handleDeleteSelected = useCallback(async () => {
+    if (selectedOrders.length === 0) {
+      showAlert("Lütfen silinecek siparişleri seçin", "warning");
+      return;
+    }
 
-      try {
-        const response = await api.orders.cancelOrder(orderId);
-        if (response.success) {
-          showAlert("Sipariş başarıyla iptal edildi", "success");
-          fetchOrders();
-        }
-      } catch (error) {
-        console.error("Error canceling order:", error);
-        showAlert("Sipariş iptal edilirken hata oluştu", "error");
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `${selectedOrders.length} siparişi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const result = await api.orders.bulkDeleteOrders(selectedOrders);
+      if (result.success) {
+        showAlert(
+          `${selectedOrders.length} sipariş başarıyla silindi`,
+          "success"
+        );
+        setSelectedOrders([]);
+        fetchOrders();
+      } else {
+        showAlert(result.message || "Siparişler silinirken hata oluştu", "error");
       }
-    },
-    [showAlert, fetchOrders]
-  );
+    } catch (error) {
+      console.error("Error deleting orders:", error);
+      showAlert("Siparişler silinirken hata oluştu", "error");
+    }
+  }, [selectedOrders, showAlert, fetchOrders]);
+
+  const handleCancelOrder = useCallback(async (orderId) => {
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      "Bu siparişi iptal etmek istediğinizden emin misiniz?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const result = await api.orders.updateOrderStatus(orderId, "cancelled");
+      if (result.success) {
+        showAlert("Sipariş başarıyla iptal edildi", "success");
+        fetchOrders();
+      } else {
+        showAlert(result.message || "Sipariş iptal edilirken hata oluştu", "error");
+      }
+    } catch (error) {
+      console.error("Error cancelling order:", error);
+      showAlert("Sipariş iptal edilirken hata oluştu", "error");
+    }
+  }, [showAlert, fetchOrders]);
+
+  const handleDeleteOrder = useCallback(async (orderId) => {
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      "Bu siparişi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const result = await api.orders.deleteOrder(orderId);
+      if (result.success) {
+        showAlert("Sipariş başarıyla silindi", "success");
+        fetchOrders();
+      } else {
+        showAlert(result.message || "Sipariş silinirken hata oluştu", "error");
+      }
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      showAlert("Sipariş silinirken hata oluştu", "error");
+    }
+  }, [showAlert, fetchOrders]);
 
   // Loading and error states
   if (loading) {
@@ -1139,7 +1208,7 @@ const OrderManagement = React.memo(() => {
 
       {/* Stats Cards */}
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center">
@@ -1223,22 +1292,6 @@ const OrderManagement = React.memo(() => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center">
-                <AlertTriangle className="h-8 w-8 text-red-600" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Bilinmeyen
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    {stats.unknown}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center">
                 <DollarSign className="h-8 w-8 text-green-600" />
                 <div className="ml-3">
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -1288,7 +1341,6 @@ const OrderManagement = React.memo(() => {
                   <option value="shipped">Kargoda</option>
                   <option value="delivered">Teslim Edildi</option>
                   <option value="cancelled">İptal Edildi</option>
-                  <option value="unknown">Bilinmeyen Durum</option>
                 </select>
 
                 <select
@@ -1475,6 +1527,15 @@ const OrderManagement = React.memo(() => {
                     variant="outline"
                   >
                     Kargoda Olarak İşaretle
+                  </Button>
+                  <Button
+                    onClick={handleDeleteSelected}
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 hover:text-red-700 hover:border-red-300"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Seçilenleri Sil
                   </Button>
                   <Button
                     onClick={() => setSelectedOrders([])}
@@ -1712,6 +1773,15 @@ const OrderManagement = React.memo(() => {
                                 title="Siparişi İptal Et"
                               >
                                 <Ban className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => handleDeleteOrder(order.id)}
+                                size="sm"
+                                variant="ghost"
+                                className="p-1 text-red-600"
+                                title="Siparişi Sil"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </td>
@@ -2050,6 +2120,7 @@ const OrderForm = ({
                   value={order.orderStatus}
                   onChange={(e) => onUpdateStatus(order.id, e.target.value)}
                 >
+                  <option value="new">Yeni</option>
                   <option value="pending">Bekleyen</option>
                   <option value="processing">Hazırlanıyor</option>
                   <option value="shipped">Kargoda</option>

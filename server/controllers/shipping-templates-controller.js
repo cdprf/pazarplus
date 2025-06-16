@@ -612,6 +612,33 @@ class ShippingTemplatesController {
     const shippingDetail = order.shippingDetail || order.ShippingDetail;
     const items = order.items || order.OrderItems || [];
 
+    console.log(`MapOrderData: Order ID ${order.id}`);
+    console.log(
+      `MapOrderData: order.items length: ${
+        order.items ? order.items.length : "undefined"
+      }`
+    );
+    console.log(
+      `MapOrderData: order.OrderItems length: ${
+        order.OrderItems ? order.OrderItems.length : "undefined"
+      }`
+    );
+    console.log(`MapOrderData: Final items array length: ${items.length}`);
+
+    if (items.length === 0) {
+      console.warn(`MapOrderData: No items found for order ${order.id}`);
+      console.log(
+        `MapOrderData: Available order properties:`,
+        Object.keys(order)
+      );
+      if (order.dataValues) {
+        console.log(
+          `MapOrderData: Available dataValues properties:`,
+          Object.keys(order.dataValues)
+        );
+      }
+    }
+
     return {
       id: order.id, // Add id field for filename generation
       orderNumber: order.orderNumber || order.platformOrderId || order.id,
@@ -652,7 +679,7 @@ class ShippingTemplatesController {
         : null,
       items: items.map((item) => ({
         product: {
-          name: item.productName || item.name,
+          name: item.title,
           sku: item.sku,
           barcode: item.barcode,
         },

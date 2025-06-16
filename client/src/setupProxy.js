@@ -1,15 +1,15 @@
 const { createProxyMiddleware } = require("http-proxy-middleware");
 
 module.exports = function (app) {
-  // Use localhost for local development to avoid network connectivity issues
-  const SERVER_HOST = "localhost"; // Use localhost for local development
+  // Get the server host from environment or use localhost as fallback
+  const SERVER_HOST = process.env.REACT_APP_SERVER_HOST || "localhost";
   const SERVER_PORT = 5001;
 
   // Proxy only API requests to the backend server
   app.use(
     "/api",
     createProxyMiddleware({
-      target: `http://${SERVER_HOST}:${SERVER_PORT}`, // Use localhost for local development
+      target: `http://${SERVER_HOST}:${SERVER_PORT}`,
       changeOrigin: true,
       secure: false,
       logLevel: "info",

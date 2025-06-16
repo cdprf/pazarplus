@@ -11,11 +11,22 @@ import {
   FileText,
   Calendar,
   Hash,
+  ShoppingBag,
+  CreditCard,
+  Truck,
+  Phone,
+  Mail,
+  Building,
+  Clock,
+  DollarSign,
+  Info,
+  Tag,
+  CheckCircle,
 } from "lucide-react";
 import { ELEMENT_TYPES, ELEMENT_CATEGORIES } from "../constants/index.js";
 
 // ElementLibrary Component - Draggable element library
-const ElementLibrary = ({ onAddElement, selectedCategory = "all" }) => {
+const ElementLibrary = ({ onAddElement, selectedCategory = "all", onCategoryChange }) => {
   const elementConfig = {
     [ELEMENT_TYPES.TEXT]: {
       icon: Type,
@@ -83,6 +94,84 @@ const ElementLibrary = ({ onAddElement, selectedCategory = "all" }) => {
       category: ELEMENT_CATEGORIES.SHIPPING,
       description: "Kargo takip kodu",
     },
+    [ELEMENT_TYPES.TRACKING_INFO]: {
+      icon: Package,
+      label: "Takip Bilgileri",
+      category: ELEMENT_CATEGORIES.SHIPPING,
+      description: "Detaylı takip bilgileri",
+    },
+    [ELEMENT_TYPES.ORDER_ITEMS]: {
+      icon: Package,
+      label: "Sipariş Ürünleri",
+      category: ELEMENT_CATEGORIES.SHIPPING,
+      description: "Sipariş edilen ürünler",
+    },
+    [ELEMENT_TYPES.CUSTOMER_INFO]: {
+      icon: User,
+      label: "Müşteri Bilgileri",
+      category: ELEMENT_CATEGORIES.SHIPPING,
+      description: "Müşteri detayları",
+    },
+    [ELEMENT_TYPES.ORDER_ITEMS]: {
+      icon: ShoppingBag,
+      label: "Sipariş Ürünleri",
+      category: ELEMENT_CATEGORIES.SHIPPING,
+      description: "Sipariş edilen ürünler",
+    },
+    [ELEMENT_TYPES.PAYMENT_INFO]: {
+      icon: CreditCard,
+      label: "Ödeme Bilgileri",
+      category: ELEMENT_CATEGORIES.BUSINESS,
+      description: "Ödeme yöntemi ve durumu",
+    },
+    [ELEMENT_TYPES.SHIPPING_METHOD]: {
+      icon: Truck,
+      label: "Kargo Yöntemi",
+      category: ELEMENT_CATEGORIES.SHIPPING,
+      description: "Teslimat yöntemi",
+    },
+    [ELEMENT_TYPES.PLATFORM_INFO]: {
+      icon: Building,
+      label: "Platform Bilgisi",
+      category: ELEMENT_CATEGORIES.BUSINESS,
+      description: "Satış platformu (N11, Trendyol, vb.)",
+    },
+    [ELEMENT_TYPES.ORDER_TOTALS]: {
+      icon: DollarSign,
+      label: "Sipariş Toplamları",
+      category: ELEMENT_CATEGORIES.BUSINESS,
+      description: "Fiyat detayları ve toplamlar",
+    },
+    [ELEMENT_TYPES.CUSTOM_FIELD]: {
+      icon: Tag,
+      label: "Özel Alan",
+      category: ELEMENT_CATEGORIES.BASIC,
+      description: "Özelleştirilebilir metin alanı",
+    },
+    [ELEMENT_TYPES.INVOICE_INFO]: {
+      icon: FileText,
+      label: "Fatura Bilgileri",
+      category: ELEMENT_CATEGORIES.BUSINESS,
+      description: "Fatura ve vergi bilgileri",
+    },
+    [ELEMENT_TYPES.DELIVERY_INFO]: {
+      icon: Clock,
+      label: "Teslimat Bilgileri",
+      category: ELEMENT_CATEGORIES.SHIPPING,
+      description: "Teslimat tarihi ve saati",
+    },
+    [ELEMENT_TYPES.CARRIER_INFO]: {
+      icon: Truck,
+      label: "Kargo Firması",
+      category: ELEMENT_CATEGORIES.SHIPPING,
+      description: "Kargo şirketi bilgileri",
+    },
+    [ELEMENT_TYPES.COMPLIANCE_DATA]: {
+      icon: CheckCircle,
+      label: "Uygunluk Verileri",
+      category: ELEMENT_CATEGORIES.SHIPPING,
+      description: "Yasal ve uygunluk bilgileri",
+    },
     [ELEMENT_TYPES.DATE]: {
       icon: Calendar,
       label: "Tarih",
@@ -101,6 +190,7 @@ const ElementLibrary = ({ onAddElement, selectedCategory = "all" }) => {
     { key: "all", label: "Tümü", icon: Square },
     { key: ELEMENT_CATEGORIES.BASIC, label: "Temel", icon: Type },
     { key: ELEMENT_CATEGORIES.SHIPPING, label: "Kargo", icon: Package },
+    { key: ELEMENT_CATEGORIES.BUSINESS, label: "İş", icon: CreditCard },
     { key: ELEMENT_CATEGORIES.CODES, label: "Kodlar", icon: QrCode },
   ];
 
@@ -136,11 +226,12 @@ const ElementLibrary = ({ onAddElement, selectedCategory = "all" }) => {
 
         {/* Category Filter */}
         <div className="grid grid-cols-2 gap-2 mb-4">
-          {categories.map((category) => {
+          {categories.slice(0, 4).map((category) => {
             const Icon = category.icon;
             return (
               <button
                 key={category.key}
+                onClick={() => onCategoryChange && onCategoryChange(category.key)}
                 className={`p-2 text-xs rounded-md border transition-colors ${
                   selectedCategory === category.key
                     ? "bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-900 dark:border-blue-600 dark:text-blue-300"
@@ -153,6 +244,28 @@ const ElementLibrary = ({ onAddElement, selectedCategory = "all" }) => {
             );
           })}
         </div>
+        {/* Second row for remaining categories */}
+        {categories.length > 4 && (
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {categories.slice(4).map((category) => {
+              const Icon = category.icon;
+              return (
+                <button
+                  key={category.key}
+                  onClick={() => onCategoryChange && onCategoryChange(category.key)}
+                  className={`p-2 text-xs rounded-md border transition-colors ${
+                    selectedCategory === category.key
+                      ? "bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-900 dark:border-blue-600 dark:text-blue-300"
+                      : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  <Icon className="h-4 w-4 mx-auto mb-1" />
+                  {category.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">

@@ -122,12 +122,18 @@ Order.init(
     cargoTrackingNumber: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Cargo tracking number from shipping provider (Trendyol, N11, etc.)",
+      comment:
+        "Cargo tracking number from shipping provider (Trendyol, N11, etc.)",
     },
     cargoTrackingLink: {
       type: DataTypes.STRING,
       allowNull: true,
       comment: "Link to the cargo tracking page",
+    },
+    cargoTrackingUrl: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: "URL for cargo tracking",
     },
     cargoCompany: {
       type: DataTypes.STRING,
@@ -150,6 +156,80 @@ Order.init(
       // Changed: Renamed from eInvoiceDate for consistency
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    invoiceTotal: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
+      defaultValue: 0,
+      comment: "Total invoice amount",
+    },
+
+    // Enhanced Trendyol-specific fields from API documentation
+    isCommercial: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment:
+        "Indicates if this is a corporate/commercial order (Trendyol commercial field)",
+    },
+    isMicroExport: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment:
+        "Indicates if this is a micro export order (Trendyol micro field)",
+    },
+    fastDeliveryType: {
+      type: DataTypes.ENUM("TodayDelivery", "SameDayShipping", "FastDelivery"),
+      allowNull: true,
+      comment: "Fast delivery type from Trendyol API",
+    },
+    deliveryType: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      defaultValue: "normal",
+      comment: "Delivery type (normal, fast, etc.)",
+    },
+    deliveryAddressType: {
+      type: DataTypes.ENUM("Shipment", "CollectionPoint"),
+      allowNull: false,
+      defaultValue: "Shipment",
+      comment: "Delivery address type - Shipment or CollectionPoint (PUDO)",
+    },
+    isGiftBoxRequested: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: "Indicates if customer requested gift box packaging",
+    },
+    etgbNo: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: "ETGB number for micro export orders",
+    },
+    etgbDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: "ETGB date for micro export orders",
+    },
+    is3pByTrendyol: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: "3P by Trendyol partnership flag",
+    },
+    containsDangerousProduct: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment:
+        "Indicates if order contains dangerous products (batteries, perfumes, etc.)",
+    },
+    identityNumber: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+      comment:
+        "TCKN for high-value orders (gold, fertilizer, orders over 5000₺)",
     },
     notes: {
       type: DataTypes.TEXT,
@@ -226,6 +306,15 @@ Order.init(
       },
       {
         fields: ["shippingTemplateId"], // Added: For template-based queries
+      },
+      {
+        fields: ["isCommercial"], // Added: For commercial order queries
+      },
+      {
+        fields: ["isMicroExport"], // Added: For micro export order queries
+      },
+      {
+        fields: ["fastDeliveryType"], // Added: For fast delivery filtering
       },
       // Keep legacy index for backward compatibility
       {

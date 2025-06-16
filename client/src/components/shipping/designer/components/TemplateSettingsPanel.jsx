@@ -64,7 +64,7 @@ const TemplateSettingsPanel = ({
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700">
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 dark:text-white mb-6">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">
           Şablon Ayarları
         </h3>
 
@@ -241,6 +241,231 @@ const TemplateSettingsPanel = ({
                 />
               </div>
             </div>
+          </div>
+
+          <div className="form-group">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Varsayılan Font Ailesi
+            </label>
+            <select
+              value={config.defaultFont?.fontFamily || "Arial"}
+              onChange={(e) => {
+                const newConfig = {
+                  ...config,
+                  defaultFont: {
+                    ...config.defaultFont,
+                    fontFamily: e.target.value,
+                  },
+                  applyDefaultFontToAll: true, // Auto-apply to all existing elements
+                };
+                onConfigChange(newConfig);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+            >
+              <optgroup label="Sans Serif">
+                <option value="Arial">Arial</option>
+                <option value="Helvetica">Helvetica</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Calibri">Calibri</option>
+                <option value="Tahoma">Tahoma</option>
+                <option value="'Segoe UI'">Segoe UI</option>
+                <option value="'Open Sans'">Open Sans</option>
+                <option value="'Roboto'">Roboto</option>
+              </optgroup>
+              <optgroup label="Serif">
+                <option value="'Times New Roman'">Times New Roman</option>
+                <option value="Georgia">Georgia</option>
+                <option value="'Book Antiqua'">Book Antiqua</option>
+                <option value="Garamond">Garamond</option>
+                <option value="'Palatino Linotype'">Palatino</option>
+              </optgroup>
+              <optgroup label="Monospace">
+                <option value="'Courier New'">Courier New</option>
+                <option value="Monaco">Monaco</option>
+                <option value="'Lucida Console'">Lucida Console</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Varsayılan Font Boyutu
+            </label>
+            <div className="flex space-x-2">
+              <input
+                type="number"
+                min="6"
+                max="120"
+                value={parseInt(config.defaultFont?.fontSize) || 14}
+                onChange={(e) => {
+                  const newConfig = {
+                    ...config,
+                    defaultFont: {
+                      ...config.defaultFont,
+                      fontSize: `${e.target.value}px`,
+                    },
+                    applyDefaultFontToAll: true,
+                  };
+                  onConfigChange(newConfig);
+                }}
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              />
+              <select
+                value={parseInt(config.defaultFont?.fontSize) || 14}
+                onChange={(e) => {
+                  const newConfig = {
+                    ...config,
+                    defaultFont: {
+                      ...config.defaultFont,
+                      fontSize: `${e.target.value}px`,
+                    },
+                    applyDefaultFontToAll: true,
+                  };
+                  onConfigChange(newConfig);
+                }}
+                className="w-20 px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              >
+                <option value="8">8</option>
+                <option value="10">10</option>
+                <option value="12">12</option>
+                <option value="14">14</option>
+                <option value="16">16</option>
+                <option value="18">18</option>
+                <option value="20">20</option>
+                <option value="24">24</option>
+                <option value="28">28</option>
+                <option value="32">32</option>
+                <option value="36">36</option>
+                <option value="48">48</option>
+                <option value="72">72</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Varsayılan Font Stili
+            </label>
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="default-bold"
+                  checked={config.defaultFont?.fontWeight === "bold"}
+                  onChange={(e) => {
+                    const newConfig = {
+                      ...config,
+                      defaultFont: {
+                        ...config.defaultFont,
+                        fontWeight: e.target.checked ? "bold" : "normal",
+                      },
+                      applyDefaultFontToAll: true,
+                    };
+                    onConfigChange(newConfig);
+                  }}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label
+                  htmlFor="default-bold"
+                  className="ml-2 text-sm text-gray-700 dark:text-gray-300 font-bold"
+                >
+                  Kalın
+                </label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="default-italic"
+                  checked={config.defaultFont?.fontStyle === "italic"}
+                  onChange={(e) => {
+                    const newConfig = {
+                      ...config,
+                      defaultFont: {
+                        ...config.defaultFont,
+                        fontStyle: e.target.checked ? "italic" : "normal",
+                      },
+                      applyDefaultFontToAll: true,
+                    };
+                    onConfigChange(newConfig);
+                  }}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label
+                  htmlFor="default-italic"
+                  className="ml-2 text-sm text-gray-700 dark:text-gray-300 italic"
+                >
+                  İtalik
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Varsayılan Metin Rengi
+            </label>
+            <div className="flex space-x-2">
+              <input
+                type="color"
+                value={config.defaultFont?.color || "#000000"}
+                onChange={(e) => {
+                  const newConfig = {
+                    ...config,
+                    defaultFont: {
+                      ...config.defaultFont,
+                      color: e.target.value,
+                    },
+                    applyDefaultFontToAll: true,
+                  };
+                  onConfigChange(newConfig);
+                }}
+                className="w-12 h-10 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <input
+                type="text"
+                value={config.defaultFont?.color || "#000000"}
+                onChange={(e) => {
+                  const newConfig = {
+                    ...config,
+                    defaultFont: {
+                      ...config.defaultFont,
+                      color: e.target.value,
+                    },
+                    applyDefaultFontToAll: true,
+                  };
+                  onConfigChange(newConfig);
+                }}
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                placeholder="#000000"
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Varsayılan Satır Yüksekliği
+            </label>
+            <select
+              value={config.defaultFont?.lineHeight || "1.4"}
+              onChange={(e) => {
+                const newConfig = {
+                  ...config,
+                  defaultFont: {
+                    ...config.defaultFont,
+                    lineHeight: e.target.value,
+                  },
+                  applyDefaultFontToAll: true,
+                };
+                onConfigChange(newConfig);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+            >
+              <option value="1">1 (Sık)</option>
+              <option value="1.2">1.2 (Yakın)</option>
+              <option value="1.4">1.4 (Normal)</option>
+              <option value="1.6">1.6 (Geniş)</option>
+              <option value="2">2 (Çok Geniş)</option>
+            </select>
           </div>
         </div>
       </div>

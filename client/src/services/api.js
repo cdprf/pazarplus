@@ -708,6 +708,40 @@ const shippingAPI = {
         payload
       );
       console.log("✅ API: PDF generation response:", response.data);
+      
+      // Validate the response contains a valid labelUrl
+      if (response.data.success && response.data.data?.labelUrl) {
+        const labelUrl = response.data.data.labelUrl;
+        
+        // Check if the URL is accessible from this device
+        console.log(`🔍 API: Generated PDF URL: ${labelUrl}`);
+        
+        // If the URL starts with /shipping/ and we're not on localhost, 
+        // we might need to construct the full URL
+        if (labelUrl.startsWith('/shipping/') && 
+            !window.location.hostname.includes('localhost') && 
+            !window.location.hostname.includes('127.0.0.1')) {
+          
+          // Try to construct a network-accessible URL
+          const currentHost = window.location.hostname;
+          const serverPort = 5001; // Default server port
+          const fullUrl = `http://${currentHost}:${serverPort}${labelUrl}`;
+          
+          console.log(`🌐 API: Network access detected, trying full URL: ${fullUrl}`);
+          
+          // Test if the full URL is accessible
+          try {
+            const testResponse = await fetch(fullUrl, { method: 'HEAD' });
+            if (testResponse.ok) {
+              console.log(`✅ API: Full URL is accessible, updating response`);
+              response.data.data.labelUrl = fullUrl;
+            }
+          } catch (testError) {
+            console.warn(`⚠️ API: Full URL test failed, keeping original URL:`, testError.message);
+          }
+        }
+      }
+      
       return response.data;
     } catch (error) {
       console.error("❌ API: Error generating PDF:", {

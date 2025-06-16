@@ -77,10 +77,29 @@ export const useDesignerState = () => {
     () => ({
       add: (type, position = { x: 10, y: 10 }) => {
         console.log("useDesignerState: Adding element", type, position);
+        
+        // Get base element defaults
+        const baseDefaults = elementDefaults[type] || {};
+        
+        // Apply global font settings if this is a text-based element and template has default font
+        let elementStyle = { ...baseDefaults.style };
+        if (templateConfig.defaultFont && (type === ELEMENT_TYPES.TEXT || baseDefaults.style?.fontSize)) {
+          elementStyle = {
+            ...elementStyle,
+            fontFamily: templateConfig.defaultFont.fontFamily || elementStyle.fontFamily,
+            fontSize: templateConfig.defaultFont.fontSize || elementStyle.fontSize,
+            fontWeight: templateConfig.defaultFont.fontWeight || elementStyle.fontWeight,
+            fontStyle: templateConfig.defaultFont.fontStyle || elementStyle.fontStyle,
+            color: templateConfig.defaultFont.color || elementStyle.color,
+            lineHeight: templateConfig.defaultFont.lineHeight || elementStyle.lineHeight,
+          };
+        }
+        
         const newElement = {
           id: generateId(),
           type,
-          ...elementDefaults[type],
+          ...baseDefaults,
+          style: elementStyle,
           position,
           zIndex: elements.length + 1,
         };
@@ -96,13 +115,25 @@ export const useDesignerState = () => {
         );
       },
 
-      update: (id, updates) => {
+      update: (elementOrId, updates) => {
+        // Handle both element object and id + updates patterns
+        let id, elementUpdates;
+        if (typeof elementOrId === 'object' && elementOrId.id) {
+          // Called with full element object
+          id = elementOrId.id;
+          elementUpdates = elementOrId;
+        } else {
+          // Called with id and updates separately
+          id = elementOrId;
+          elementUpdates = { ...elements.find(el => el.id === id), ...updates };
+        }
+
         const newElements = elements.map((el) =>
-          el.id === id ? { ...el, ...updates } : el
+          el.id === id ? elementUpdates : el
         );
         setElements(newElements);
         if (selectedElement?.id === id) {
-          setSelectedElement({ ...selectedElement, ...updates });
+          setSelectedElement(elementUpdates);
         }
         saveToHistory(newElements);
       },
@@ -180,7 +211,7 @@ export const useDesignerState = () => {
         setSelectedElement(null);
       },
     }),
-    [elements, selectedElement, saveToHistory]
+    [elements, selectedElement, saveToHistory, templateConfig.defaultFont]
   );
 
   // Undo/Redo operations

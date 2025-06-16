@@ -33,8 +33,9 @@ import { ELEMENT_TYPES } from "./elementTypes.js";
 // Simple category constants for ElementLibrary compatibility
 export const ELEMENT_CATEGORIES = {
   BASIC: "basic",
-  SHIPPING: "shipping",
+  SHIPPING: "shipping", 
   CODES: "codes",
+  BUSINESS: "business",
   LAYOUT: "layout",
 };
 

@@ -1,5 +1,11 @@
 require("dotenv").config();
 
+// Import network detection utility
+const { setNetworkEnvironment } = require("./utils/networkDetection");
+
+// Set network environment variables for proper URL generation
+const networkIP = setNetworkEnvironment();
+
 const { app, initializeWebSocketServer } = require("./app");
 const logger = require("./utils/logger");
 const sequelize = require("./config/database");
@@ -63,12 +69,18 @@ async function startServer() {
       service: "pazar-plus",
     });
 
-    // Start server with error handling
-    const server = app.listen(PORT, () => {
-      logger.info(`Server running on port ${PORT}`, {
+    // Start server with error handling - bind to all interfaces for network access
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      logger.info(`Server running on port ${PORT} (accessible from network)`, {
         service: "pazar-plus",
         port: PORT,
         environment: process.env.NODE_ENV || "development",
+        host: '0.0.0.0',
+        networkIP: networkIP,
+        accessUrls: {
+          local: `http://localhost:${PORT}`,
+          network: `http://${networkIP}:${PORT}`
+        }
       });
 
       // Initialize WebSocket server for real-time notifications

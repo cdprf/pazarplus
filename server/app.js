@@ -109,12 +109,34 @@ app.use(
 // CORS configuration with environment-based origins
 app.use(
   cors({
-    origin: [
-      ...config.CORS_ORIGINS,
-      "http://192.168.1.105:3000", // Your machine's IP for external device access
-      "http://localhost:3000", // Keep localhost for local development
-      "http://127.0.0.1:3000", // Alternative localhost
-    ],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      // Allow any localhost/127.0.0.1 variations
+      if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+        return callback(null, true);
+      }
+
+      // Allow any local network IP (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+      const localNetworkRegex =
+        /^https?:\/\/(192\.168\.|10\.|172\.(?:1[6-9]|2[0-9]|3[01])\.)[\d.]+:\d+$/;
+      if (localNetworkRegex.test(origin)) {
+        return callback(null, true);
+      }
+
+      // Check configured origins
+      if (config.CORS_ORIGINS.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // For development, allow all origins
+      if (process.env.NODE_ENV === "development") {
+        return callback(null, true);
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: [

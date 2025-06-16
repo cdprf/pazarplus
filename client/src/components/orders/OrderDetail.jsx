@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 import { useAlert } from "../../contexts/AlertContext";
+import PrintDiagnostics from "./PrintDiagnostics";
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -233,29 +234,100 @@ const OrderDetail = () => {
   };
 
   // Print PDF using shipping API
-  const handlePrintPDF = async (templateId = null) => {
+  const handlePrintPDF = async (e, templateId = null) => {
+    // Prevent any default browser behavior
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    console.log("🖨️ Print PDF clicked");
+    
     if (!order?.id) {
+      console.warn("No order ID available for PDF generation");
       showNotification("No order selected", "error");
       return;
     }
 
     setGeneratingSlip(true);
+    console.log(`🖨️ Starting PDF generation for order ${order.id}`);
+    
     try {
       const response = await api.shipping.generatePDF(
         order.id,
         templateId || linkedTemplate?.id || defaultTemplate?.id
       );
+      console.log("📄 PDF generation response:", response);
 
       if (response.success && response.pdfUrl) {
-        window.open(response.pdfUrl, "_blank");
-        showNotification("PDF generated successfully", "success");
+        const pdfUrl = response.pdfUrl;
+        console.log(`🖨️ Attempting to open PDF: ${pdfUrl}`);
+        
+        // Try multiple approaches to open the PDF
+        let pdfWindow = null;
+        
+        try {
+          // Method 1: Standard window.open
+          pdfWindow = window.open(pdfUrl, "_blank", "noopener,noreferrer");
+          console.log("🖨️ window.open result:", pdfWindow);
+        } catch (windowOpenError) {
+          console.error("🖨️ window.open failed:", windowOpenError);
+        }
+        
+        if (!pdfWindow || pdfWindow.closed) {
+          console.warn("🖨️ Popup blocked or failed, trying alternative methods");
+          
+          // Method 2: Try opening using a temporary link
+          try {
+            const link = document.createElement('a');
+            link.href = pdfUrl;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            console.log("🖨️ Alternative link click method used");
+            showNotification("PDF opened in new tab", "success");
+          } catch (linkError) {
+            console.error("🖨️ Link click method failed:", linkError);
+            
+            // Method 3: Direct navigation as last resort
+            showNotification("Opening PDF in current tab due to popup restrictions", "info");
+            window.location.href = pdfUrl;
+          }
+        } else {
+          console.log("✅ PDF window opened successfully");
+          showNotification("PDF generated successfully", "success");
+        }
       } else if (response.pdfBlob) {
+        console.log("🖨️ Creating PDF blob URL");
         const blob = new Blob([response.pdfBlob], { type: "application/pdf" });
         const url = URL.createObjectURL(blob);
-        window.open(url, "_blank");
+        
+        // Try to open blob URL
+        let pdfWindow = null;
+        try {
+          pdfWindow = window.open(url, "_blank", "noopener,noreferrer");
+        } catch (windowOpenError) {
+          console.error("🖨️ window.open failed for blob:", windowOpenError);
+        }
+        
+        if (!pdfWindow || pdfWindow.closed) {
+          // Alternative method for blob
+          const link = document.createElement('a');
+          link.href = url;
+          link.target = '_blank';
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+        
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         showNotification("PDF generated successfully", "success");
       } else {
+        console.error("PDF generation failed - no valid response", response);
         throw new Error("No PDF data received");
       }
     } catch (error) {
@@ -263,34 +335,103 @@ const OrderDetail = () => {
       showNotification(`Failed to generate PDF: ${error.message}`, "error");
     } finally {
       setGeneratingSlip(false);
+      console.log("🖨️ PDF generation process completed");
     }
   };
 
   // Print shipping slip
-  const handlePrintShippingSlip = async () => {
+  const handlePrintShippingSlip = async (e) => {
+    // Prevent any default browser behavior
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    console.log("🖨️ Print shipping slip clicked");
+    
     if (!order?.id) {
+      console.warn("No order ID available");
       showNotification("No order selected", "error");
       return;
     }
 
     setGeneratingSlip(true);
+    console.log(`🖨️ Starting PDF generation for order ${order.id}`);
+    
     try {
       const response = await api.shipping.generatePDF(order.id);
+      console.log("📄 PDF generation response:", response);
 
       if (response.success && response.data?.labelUrl) {
-        window.open(response.data.labelUrl, "_blank");
-        showNotification("Shipping slip generated successfully", "success");
+        const labelUrl = response.data.labelUrl;
+        console.log(`🖨️ Attempting to open PDF: ${labelUrl}`);
+        
+        // Try multiple approaches to open the PDF
+        let pdfWindow = null;
+        
+        try {
+          // Method 1: Standard window.open
+          pdfWindow = window.open(labelUrl, "_blank", "noopener,noreferrer");
+          console.log("🖨️ window.open result:", pdfWindow);
+        } catch (windowOpenError) {
+          console.error("🖨️ window.open failed:", windowOpenError);
+        }
+        
+        if (!pdfWindow || pdfWindow.closed) {
+          console.warn("🖨️ Popup blocked or failed, trying alternative methods");
+          
+          // Method 2: Try opening in same window if popup blocked
+          try {
+            // Create a temporary link and click it
+            const link = document.createElement('a');
+            link.href = labelUrl;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            console.log("🖨️ Alternative link click method used");
+            showNotification("PDF opened in new tab", "success");
+          } catch (linkError) {
+            console.error("🖨️ Link click method failed:", linkError);
+            
+            // Method 3: Direct navigation as last resort
+            showNotification("Opening PDF in current tab due to popup restrictions", "info");
+            window.location.href = labelUrl;
+          }
+        } else {
+          console.log("✅ PDF window opened successfully");
+          
+          // Check if the window loaded successfully after a short delay
+          setTimeout(() => {
+            try {
+              if (pdfWindow.location.href === 'about:blank') {
+                console.warn("⚠️ PDF window seems to be blank, possible network issue");
+                showNotification("PDF may not have loaded correctly. Please check your network connection.", "warning");
+                pdfWindow.close();
+              }
+            } catch (e) {
+              // Cross-origin error is expected for successful loads
+              console.log("✅ PDF window loaded successfully (cross-origin expected)");
+            }
+          }, 2000);
+          
+          showNotification("Shipping slip generated successfully", "success");
+        }
       } else {
-        throw new Error("Failed to generate shipping slip");
+        console.error("PDF generation failed - no success or labelUrl", response);
+        throw new Error("Failed to generate shipping slip - no valid response");
       }
     } catch (error) {
       console.error("Error generating shipping slip:", error);
       showNotification(
-        `Failed to generate shipping slip: ${error.message}`,
+        `Failed to generate shipping slip: ${error.message}. This might be a network connectivity issue.`,
         "error"
       );
     } finally {
       setGeneratingSlip(false);
+      console.log("🖨️ PDF generation process completed");
     }
   };
 
@@ -746,28 +887,39 @@ const OrderDetail = () => {
                   {/* Print Buttons */}
                   <div className="border-t pt-4">
                     <button
+                      type="button"
                       onClick={() => handlePrintPDF()}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center"
+                      disabled={generatingSlip}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Printer className="w-4 h-4 mr-2" />
-                      Print PDF
+                      {generatingSlip ? "Generating..." : "Print PDF"}
                     </button>
 
                     <button
+                      type="button"
                       onClick={handlePrintShippingSlip}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center"
+                      disabled={generatingSlip}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Printer className="w-4 h-4 mr-2" />
-                      Print Shipping Slip
+                      {generatingSlip ? "Generating..." : "Print Shipping Slip"}
                     </button>
 
                     <button
+                      type="button"
                       onClick={handlePrintInvoice}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center"
+                      disabled={generatingSlip}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Printer className="w-4 h-4 mr-2" />
-                      Print Invoice
+                      {generatingSlip ? "Generating..." : "Print Invoice"}
                     </button>
+                  </div>
+
+                  {/* Print Diagnostics - For troubleshooting network printing issues */}
+                  <div className="border-t pt-4">
+                    <PrintDiagnostics order={order} />
                   </div>
                 </>
               )}

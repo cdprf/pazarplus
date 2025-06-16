@@ -38,9 +38,40 @@ const PrintOrderActions = ({ order }) => {
         selectedTemplate || null
       );
 
-      if (response.success && response.pdfUrl) {
-        // Open PDF in new window
-        window.open(response.pdfUrl, "_blank");
+      if (response.success && response.data?.labelUrl) {
+        const labelUrl = response.data.labelUrl;
+        console.log(`🖨️ Opening PDF: ${labelUrl}`);
+        
+        // Try to open the PDF in a new window
+        const pdfWindow = window.open(labelUrl, "_blank");
+        
+        if (!pdfWindow) {
+          // If popup was blocked, show alternative
+          // eslint-disable-next-line no-restricted-globals
+          if (confirm("Popup blocked. Would you like to download the PDF instead?")) {
+            // Create a temporary link to download the file
+            const link = document.createElement('a');
+            link.href = labelUrl;
+            link.download = `shipping-slip-${order.id}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+        } else {
+          // Check if the window loaded successfully
+          setTimeout(() => {
+            try {
+              if (pdfWindow.location.href === 'about:blank') {
+                console.warn("⚠️ PDF window seems to be blank, possible network issue");
+                alert("The PDF may not have loaded correctly. Please check your network connection and try again.");
+                pdfWindow.close();
+              }
+            } catch (e) {
+              // Cross-origin error is expected for successful loads
+              console.log("✅ PDF window loaded successfully (cross-origin error is normal)");
+            }
+          }, 2000);
+        }
       } else if (response.pdfBlob) {
         // Handle blob response
         const blob = new Blob([response.pdfBlob], { type: "application/pdf" });
@@ -53,7 +84,7 @@ const PrintOrderActions = ({ order }) => {
       }
     } catch (error) {
       console.error("Error generating PDF:", error);
-      alert("Failed to generate PDF: " + error.message);
+      alert(`Failed to generate PDF: ${error.message}\n\nThis might be a network connectivity issue. Please ensure you're connected to the same network as the server.`);
     } finally {
       setLoading(false);
     }

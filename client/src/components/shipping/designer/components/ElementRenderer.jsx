@@ -1,5 +1,13 @@
 import React from "react";
 import { ELEMENT_TYPES } from "../constants/elementTypes";
+import { generatePreviewContent } from "../constants/mockPreviewData";
+import BarcodeRenderer from "./BarcodeRenderer";
+import QRCodeRenderer from "./QRCodeRenderer";
+import {
+  ensureProperEncoding,
+  formatTextForDisplay,
+  getOptimalFontStack,
+} from "../utils/textEncoding";
 
 // Element renderer component for displaying different element types
 const ElementRenderer = ({
@@ -16,6 +24,30 @@ const ElementRenderer = ({
   isResizable = false,
 }) => {
   const { type, content, style, size, position, options = {} } = element;
+
+  // Use mock data for preview purposes
+  const displayContent = generatePreviewContent(
+    type,
+    content,
+    element.dataField
+  );
+
+  // Helper function to get comprehensive padding value
+  const getPadding = (style) => {
+    if (
+      style?.paddingTop ||
+      style?.paddingBottom ||
+      style?.paddingLeft ||
+      style?.paddingRight
+    ) {
+      // Use individual values if any are set
+      return `${style?.paddingTop || "4px"} ${style?.paddingRight || "4px"} ${
+        style?.paddingBottom || "4px"
+      } ${style?.paddingLeft || "4px"}`;
+    }
+    // Use simple padding value
+    return style?.padding || "4px";
+  };
 
   const handleClick = (e) => {
     e.stopPropagation();
@@ -45,33 +77,74 @@ const ElementRenderer = ({
     }
   };
 
+  // Helper function for date formatting
+  const formatDate = (dateString, format = "DD/MM/YYYY") => {
+    if (!dateString) {
+      return new Date().toLocaleDateString("tr-TR");
+    }
+
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return dateString; // Return original if not a valid date
+    }
+
+    // Simple date formatting
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+
+    switch (format) {
+      case "DD/MM/YYYY":
+        return `${day}/${month}/${year}`;
+      case "MM/DD/YYYY":
+        return `${month}/${day}/${year}`;
+      case "YYYY-MM-DD":
+        return `${year}-${month}-${day}`;
+      default:
+        return date.toLocaleDateString("tr-TR");
+    }
+  };
+
   const renderContent = () => {
+    // Process display content with proper Turkish encoding
+    const processedContent = formatTextForDisplay(displayContent, type);
+
     switch (type) {
       case ELEMENT_TYPES.TEXT:
       case "text":
         return (
           <div
-            className="w-full h-full flex items-center"
+            className="w-full h-full flex items-start"
             style={{
               fontSize: style.fontSize,
-              fontFamily: style.fontFamily,
+              fontFamily:
+                style.fontFamily ||
+                getOptimalFontStack(processedContent, style.fontFamily),
               color: style.color,
               textAlign: style.textAlign,
               fontWeight: style.fontWeight,
               lineHeight: style.lineHeight || "1.4",
+              whiteSpace: "pre-wrap",
+              overflow: "hidden",
+              padding: getPadding(style),
             }}
           >
-            {content || "Sample Text"}
+            {ensureProperEncoding(processedContent)}
           </div>
         );
 
       case ELEMENT_TYPES.IMAGE:
       case "image":
         return (
-          <div className="w-full h-full flex items-center justify-center">
-            {content ? (
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{
+              padding: getPadding(style),
+            }}
+          >
+            {displayContent ? (
               <img
-                src={content}
+                src={displayContent}
                 alt="Element"
                 className="max-w-full max-h-full object-contain"
                 style={{ objectFit: style.objectFit }}
@@ -87,46 +160,41 @@ const ElementRenderer = ({
       case ELEMENT_TYPES.BARCODE:
       case "barcode":
         return (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="text-xs text-center">
-              <div className="mb-1">Barkod: {content}</div>
-              <div className="border border-gray-300 p-2 bg-white">
-                {/* Barcode placeholder */}
-                <div className="flex space-x-1">
-                  {Array.from({ length: 20 }, (_, i) => (
-                    <div
-                      key={i}
-                      className="bg-black"
-                      style={{
-                        width: Math.random() > 0.5 ? "2px" : "1px",
-                        height: "30px",
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{
+              padding: getPadding(style),
+            }}
+          >
+            <BarcodeRenderer
+              content={displayContent}
+              type={element.barcodeType || "code128"}
+              showText={element.showText !== false}
+              scale={element.scale || 2}
+              width={size?.width * 4 || 200}
+              height={size?.height * 4 || 60}
+            />
           </div>
         );
 
       case ELEMENT_TYPES.QR_CODE:
       case "qr_code":
         return (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="border border-gray-300 bg-white p-2">
-              <div
-                className="grid grid-cols-8 gap-px"
-                style={{ width: "60px", height: "60px" }}
-              >
-                {Array.from({ length: 64 }, (_, i) => (
-                  <div
-                    key={i}
-                    className={Math.random() > 0.5 ? "bg-black" : "bg-white"}
-                    style={{ width: "100%", height: "100%" }}
-                  />
-                ))}
-              </div>
-            </div>
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{
+              padding: getPadding(style),
+            }}
+          >
+            <QRCodeRenderer
+              content={displayContent}
+              size={Math.min(
+                120,
+                Math.max(size?.width * 2 || 100, size?.height * 2 || 100)
+              )}
+              errorCorrectionLevel={element.errorCorrectionLevel || "M"}
+              quietZone={element.quietZone || 4}
+            />
           </div>
         );
 
@@ -158,23 +226,22 @@ const ElementRenderer = ({
 
       case ELEMENT_TYPES.DATE:
       case "date":
-        const formatDate = (dateString, format = "DD/MM/YYYY") => {
-          if (!dateString) return new Date().toLocaleDateString("tr-TR");
-          const date = new Date(dateString);
-          return date.toLocaleDateString("tr-TR");
-        };
-
         return (
           <div
             className="w-full h-full flex items-center"
             style={{
               fontSize: style.fontSize,
-              fontFamily: style.fontFamily,
+              fontFamily:
+                style.fontFamily ||
+                getOptimalFontStack(processedContent, style.fontFamily),
               color: style.color,
               textAlign: style.textAlign,
+              padding: getPadding(style),
             }}
           >
-            {content || formatDate(null, options?.format)}
+            {content && content !== "Sample Text" && content !== ""
+              ? ensureProperEncoding(formatDate(content, options?.format))
+              : ensureProperEncoding(processedContent)}
           </div>
         );
 
@@ -185,24 +252,40 @@ const ElementRenderer = ({
             className="w-full h-full flex items-center justify-center"
             style={{
               fontSize: style.fontSize,
-              fontFamily: style.fontFamily,
+              fontFamily:
+                style.fontFamily ||
+                getOptimalFontStack(processedContent, style.fontFamily),
               color: style.color,
               textAlign: style.textAlign,
               backgroundColor: style.backgroundColor,
               border: style.border,
               borderRadius: style.borderRadius,
-              padding: style.padding,
               fontWeight: style.fontWeight,
+              padding: getPadding(style),
             }}
           >
-            {content || "TRK123456789"}
+            {ensureProperEncoding(processedContent)}
           </div>
         );
 
       default:
         return (
-          <div className="w-full h-full flex items-center justify-center text-xs text-gray-500 border border-dashed border-gray-300 bg-gray-50">
-            {type.toUpperCase()}
+          <div
+            className="w-full h-full flex items-start text-xs border border-gray-200 bg-white overflow-hidden"
+            style={{
+              fontSize: style?.fontSize || "12px",
+              fontFamily:
+                style?.fontFamily ||
+                getOptimalFontStack(processedContent, style?.fontFamily),
+              color: style?.color || "#333",
+              textAlign: style?.textAlign || "left",
+              fontWeight: style?.fontWeight || "normal",
+              lineHeight: style?.lineHeight || "1.4",
+              whiteSpace: "pre-wrap",
+              padding: getPadding(style),
+            }}
+          >
+            {ensureProperEncoding(processedContent)}
           </div>
         );
     }
@@ -222,7 +305,6 @@ const ElementRenderer = ({
         backgroundColor: style.backgroundColor,
         border: style.border,
         borderRadius: style.borderRadius,
-        padding: style.padding,
         pointerEvents: isPreview ? "none" : "auto",
         ...style,
       }}

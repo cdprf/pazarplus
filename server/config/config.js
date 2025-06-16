@@ -78,6 +78,18 @@ const config = {
         : parseInt(process.env.RATE_LIMIT_MAX || "100", 10), // 100 requests for production
   },
 
+  // CORS configuration for network access
+  CORS_ORIGINS: [
+    process.env.CLIENT_URL || "http://localhost:3000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    // Allow connections from any device on the local network
+    // These can be overridden by environment variables
+    ...(process.env.ADDITIONAL_CORS_ORIGINS
+      ? process.env.ADDITIONAL_CORS_ORIGINS.split(",")
+      : []),
+  ],
+
   // Logging
   logging: {
     level: process.env.LOG_LEVEL || "info",

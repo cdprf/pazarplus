@@ -57,6 +57,18 @@ OrderItem.init(
       allowNull: true,
       defaultValue: 0,
     },
+    platformDiscount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+      comment: "Platform discount (Trendyol tyDiscount)",
+    },
+    merchantDiscount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+      comment: "Merchant discount (separate from platform discount)",
+    },
     invoiceTotal: {
       type: DataTypes.FLOAT(10, 2),
       allowNull: false,
@@ -66,6 +78,60 @@ OrderItem.init(
       type: DataTypes.STRING(3),
       allowNull: false,
       defaultValue: "TRY",
+    },
+
+    // Enhanced product information from Trendyol API
+    productSize: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: "Product size from Trendyol API",
+    },
+    productColor: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: "Product color from Trendyol API",
+    },
+    productCategoryId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: "Product category ID from Trendyol API",
+    },
+    productOrigin: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+      comment: "Product origin (important for micro export orders)",
+    },
+    salesCampaignId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: "Sales campaign ID from Trendyol API",
+    },
+    lineItemStatus: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: "Individual line item status (orderLineItemStatusName)",
+    },
+    vatBaseAmount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+      comment: "VAT base amount",
+    },
+    laborCost: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+      comment: "Labor cost",
+    },
+    fastDeliveryOptions: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: "Fast delivery options array from Trendyol API",
+    },
+    discountDetails: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: "Detailed discount breakdown from Trendyol API",
     },
     variantInfo: {
       type: DataTypes.TEXT,
@@ -90,6 +156,12 @@ OrderItem.init(
       },
       {
         fields: ["barcode"],
+      },
+      {
+        fields: ["productOrigin"], // Added: For export order queries
+      },
+      {
+        fields: ["salesCampaignId"], // Added: For campaign tracking
       },
     ],
   }
