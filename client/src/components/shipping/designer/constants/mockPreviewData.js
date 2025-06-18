@@ -67,9 +67,9 @@ export const generatePreviewContent = (
       return "KARGO ETİKETİ";
 
     case "recipient":
-      return `Alıcı: ${MOCK_PREVIEW_DATA.customer.name}
-${MOCK_PREVIEW_DATA.customer.address}
-Tel: ${MOCK_PREVIEW_DATA.customer.phone}`;
+      return `Sipariş No: ${MOCK_PREVIEW_DATA.order.orderNumber}
+Alıcı Ad / Soyad: ${MOCK_PREVIEW_DATA.customer.name}
+Adres: ${MOCK_PREVIEW_DATA.customer.address}`;
 
     case "sender":
       return `Gönderen: ${MOCK_PREVIEW_DATA.sender.name}
@@ -100,6 +100,10 @@ Durum: Yolda`;
 
     case "barcode":
       return "1234567890123"; // 13 digits - valid for EAN-13
+
+    case "image":
+      // Return a placeholder image path for preview
+      return "images/placeholder-image.svg";
 
     case "qr_code":
       return `https://kargotakip.com/track/${MOCK_PREVIEW_DATA.order.cargoTrackingNumber}`;

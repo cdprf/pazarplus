@@ -19,7 +19,7 @@ try {
 // Fallback Barcode component
 export const FallbackBarcode = ({
   value = "1234567890",
-  format = "CODE128",
+  format = "code128",
   displayValue = true,
 }) => (
   <div className="flex flex-col items-center justify-center h-full bg-gray-50 border border-gray-300 rounded">

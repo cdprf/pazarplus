@@ -1,6 +1,9 @@
 import React from "react";
 import { ELEMENT_TYPES } from "../constants/elementTypes";
-import { generatePreviewContent } from "../constants/mockPreviewData";
+import {
+  generatePreviewContent,
+  MOCK_PREVIEW_DATA,
+} from "../constants/mockPreviewData";
 import BarcodeRenderer from "./BarcodeRenderer";
 import QRCodeRenderer from "./QRCodeRenderer";
 import {
@@ -159,20 +162,34 @@ const ElementRenderer = ({
 
       case ELEMENT_TYPES.BARCODE:
       case "barcode":
+        // Professional barcode rendering with standardized options
         return (
           <div
             className="w-full h-full flex items-center justify-center"
             style={{
               padding: getPadding(style),
+              width: "100%",
+              height: "100%",
             }}
           >
             <BarcodeRenderer
               content={displayContent}
               type={element.barcodeType || "code128"}
               showText={element.showText !== false}
-              scale={element.scale || 2}
-              width={size?.width * 4 || 200}
-              height={size?.height * 4 || 60}
+              width={size?.width ? size.width * scale : 200}
+              height={size?.height ? size.height * scale : 60}
+              moduleWidth={element.moduleWidth}
+              moduleHeight={element.moduleHeight}
+              quietZone={element.quietZone}
+              fontSize={element.fontSize}
+              textDistance={element.textDistance}
+              backgroundColor={element.backgroundColor || "transparent"}
+              foregroundColor={element.foregroundColor || "#000000"}
+              centerText={element.centerText !== false}
+              barcodeScale={element.barcodeScale || 2.5}
+              // Pass element size and scale for proper PDF-matching dimensions
+              elementSize={size}
+              zoom={scale}
             />
           </div>
         );
@@ -265,6 +282,120 @@ const ElementRenderer = ({
             }}
           >
             {ensureProperEncoding(processedContent)}
+          </div>
+        );
+
+      case ELEMENT_TYPES.RECIPIENT:
+      case "recipient":
+        return (
+          <div
+            className="w-full h-full flex flex-col justify-start"
+            style={{
+              fontSize: `${parseInt(style?.fontSize) || 12}px`,
+              fontFamily:
+                style?.fontFamily ||
+                getOptimalFontStack(processedContent, style?.fontFamily) ||
+                "Arial, sans-serif",
+              color: style?.color || "#000",
+              lineHeight: style?.lineHeight || "1.4",
+              letterSpacing: style?.letterSpacing
+                ? `${style.letterSpacing}px`
+                : "normal",
+              textAlign: style?.textAlign || "left",
+              padding: getPadding(style),
+              wordWrap: "break-word",
+              wordBreak: "break-word",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                marginBottom: `${element.lineSpacing || 2}px`,
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "baseline",
+              }}
+            >
+              <span style={{ fontWeight: "bold", flexShrink: 0 }}>
+                Sipariş No:
+              </span>
+              <span
+                style={{
+                  marginLeft: `${element.labelSpacing || 5}px`,
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {ensureProperEncoding(MOCK_PREVIEW_DATA.order.orderNumber)}
+              </span>
+            </div>
+            <div
+              style={{
+                marginBottom: `${element.lineSpacing || 2}px`,
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "baseline",
+              }}
+            >
+              <span style={{ fontWeight: "bold", flexShrink: 0 }}>
+                Alıcı Ad / Soyad:
+              </span>
+              <span
+                style={{
+                  marginLeft: `${element.labelSpacing || 5}px`,
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {ensureProperEncoding(MOCK_PREVIEW_DATA.customer.name)}
+              </span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection:
+                  MOCK_PREVIEW_DATA.customer.address.length > 30
+                    ? "column"
+                    : "row",
+                alignItems:
+                  MOCK_PREVIEW_DATA.customer.address.length > 30
+                    ? "flex-start"
+                    : "baseline",
+                flex: 1,
+                minHeight: 0,
+              }}
+            >
+              <span style={{ fontWeight: "bold", flexShrink: 0 }}>Adres:</span>
+              <span
+                style={{
+                  marginLeft:
+                    MOCK_PREVIEW_DATA.customer.address.length > 30
+                      ? "10px"
+                      : `${element.labelSpacing || 5}px`,
+                  marginTop:
+                    MOCK_PREVIEW_DATA.customer.address.length > 30
+                      ? "2px"
+                      : "0",
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: "vertical",
+                  whiteSpace: "normal",
+                  wordWrap: "break-word",
+                }}
+              >
+                {ensureProperEncoding(MOCK_PREVIEW_DATA.customer.address)}
+              </span>
+            </div>
           </div>
         );
 

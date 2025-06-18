@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Image,
   Move,
@@ -9,42 +9,16 @@ import {
   Settings,
   Palette,
   Type,
-  Layout,
 } from "lucide-react";
 import {
   DATA_FIELDS,
   DATA_FIELD_CATEGORIES,
   getFieldsByCategory,
-  COMMON_BARCODE_FIELDS,
   COMMON_QR_FIELDS,
+  BARCODE_FORMATS as COMMON_BARCODE_FIELDS,
 } from "../constants/dataFields.js";
-
-// Helper function to get appropriate sample content for barcode types
-const getSampleBarcodeContent = (barcodeType) => {
-  switch (barcodeType?.toLowerCase()) {
-    case "ean8":
-      return "1234567"; // 7 digits (8th is check digit)
-    case "ean13":
-      return "123456789012"; // 12 digits (13th is check digit)
-    case "upca":
-      return "12345678901"; // 11 digits (12th is check digit)
-    case "upce":
-      return "123456"; // 6 digits
-    case "code39":
-      return "HELLO123";
-    case "code93":
-      return "ABC123";
-    case "codabar":
-      return "A123456B";
-    case "itf14":
-      return "12345678901234";
-    case "msi":
-      return "1234567890";
-    case "code128":
-    default:
-      return "1234567890";
-  }
-};
+import { elementDefaults } from "../constants/elementDefaults.js";
+import { BarcodePropertiesPanel } from "./BarcodePropertySections.jsx";
 
 // Enhanced Section Component
 const PropertySection = ({
@@ -98,6 +72,13 @@ const PropertyPanel = ({
     layout: false,
     style: true,
     content: true,
+    // Barcode-specific sections
+    barcodeContent: true,
+    barcodeBasic: true,
+    barcodeText: false,
+    barcodeStyle: false,
+    barcodeBorder: false,
+    barcodeAdvanced: false,
   });
   const fileInputRef = useRef(null);
 
@@ -118,6 +99,58 @@ const PropertyPanel = ({
 
     onUpdateElement(updatedElement);
   };
+
+  // Initialize missing barcode properties for existing elements
+  useEffect(() => {
+    if (selectedElement && selectedElement.type === "barcode") {
+      const barcodeDefaults = elementDefaults.barcode || {};
+      const missingProperties = [];
+
+      // Check for missing barcode properties
+      const requiredProps = [
+        "moduleWidth",
+        "moduleHeight",
+        "quietZone",
+        "fontSize",
+        "textDistance",
+        "backgroundColor",
+        "foregroundColor",
+        "centerText",
+        "barcodeScale",
+      ];
+
+      requiredProps.forEach((prop) => {
+        if (selectedElement[prop] === undefined) {
+          missingProperties.push(prop);
+        }
+      });
+
+      // If any properties are missing, update the element
+      if (missingProperties.length > 0) {
+        const updatedElement = {
+          ...selectedElement,
+          // Add missing properties with defaults
+          moduleWidth:
+            selectedElement.moduleWidth ?? barcodeDefaults.moduleWidth,
+          moduleHeight:
+            selectedElement.moduleHeight ?? barcodeDefaults.moduleHeight,
+          quietZone: selectedElement.quietZone ?? barcodeDefaults.quietZone,
+          fontSize: selectedElement.fontSize ?? barcodeDefaults.fontSize,
+          textDistance:
+            selectedElement.textDistance ?? barcodeDefaults.textDistance,
+          backgroundColor:
+            selectedElement.backgroundColor ?? barcodeDefaults.backgroundColor,
+          foregroundColor:
+            selectedElement.foregroundColor ?? barcodeDefaults.foregroundColor,
+          centerText: selectedElement.centerText ?? barcodeDefaults.centerText,
+          barcodeScale:
+            selectedElement.barcodeScale ?? barcodeDefaults.barcodeScale,
+        };
+
+        onUpdateElement(updatedElement);
+      }
+    }
+  }, [selectedElement, onUpdateElement]);
 
   const handleStyleChange = (styleProperty, value) => {
     if (!selectedElement) return;
@@ -490,6 +523,187 @@ const PropertyPanel = ({
           </div>
         );
 
+      case "recipient":
+        return (
+          <div className="space-y-4">
+            {/* Font Options */}
+            <div className="border-b border-gray-200 dark:border-gray-700 pb-3">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+                Font Ayarları
+              </h4>
+
+              {/* Font Family */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Font Ailesi
+                </label>
+                <select
+                  value={selectedElement.style?.fontFamily || "Helvetica"}
+                  onChange={(e) =>
+                    handleStyleChange("fontFamily", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="Helvetica">Helvetica</option>
+                  <option value="DejaVuSans">DejaVu Sans</option>
+                  <option value="Times-Roman">Times</option>
+                  <option value="Courier">Courier</option>
+                </select>
+              </div>
+
+              {/* Font Size */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Font Boyutu ({selectedElement.style?.fontSize || "12"}pt)
+                </label>
+                <input
+                  type="range"
+                  min="8"
+                  max="24"
+                  value={parseInt(selectedElement.style?.fontSize) || 12}
+                  onChange={(e) =>
+                    handleStyleChange("fontSize", e.target.value)
+                  }
+                  className="w-full"
+                />
+              </div>
+
+              {/* Line Height */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Satır Yüksekliği ({selectedElement.style?.lineHeight || "1.4"}
+                  )
+                </label>
+                <input
+                  type="range"
+                  min="1.0"
+                  max="2.5"
+                  step="0.1"
+                  value={parseFloat(selectedElement.style?.lineHeight) || 1.4}
+                  onChange={(e) =>
+                    handleStyleChange("lineHeight", e.target.value)
+                  }
+                  className="w-full"
+                />
+              </div>
+
+              {/* Font Weight */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Font Kalınlığı
+                </label>
+                <select
+                  value={selectedElement.style?.fontWeight || "normal"}
+                  onChange={(e) =>
+                    handleStyleChange("fontWeight", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="normal">Normal</option>
+                  <option value="bold">Kalın</option>
+                </select>
+              </div>
+
+              {/* Letter Spacing */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Harf Aralığı ({selectedElement.style?.letterSpacing || "0"}px)
+                </label>
+                <input
+                  type="range"
+                  min="-2"
+                  max="5"
+                  step="0.1"
+                  value={parseFloat(selectedElement.style?.letterSpacing) || 0}
+                  onChange={(e) =>
+                    handleStyleChange("letterSpacing", e.target.value)
+                  }
+                  className="w-full"
+                />
+              </div>
+
+              {/* Text Alignment */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Metin Hizalama
+                </label>
+                <select
+                  value={selectedElement.style?.textAlign || "left"}
+                  onChange={(e) =>
+                    handleStyleChange("textAlign", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="left">Sol</option>
+                  <option value="center">Orta</option>
+                  <option value="right">Sağ</option>
+                  <option value="justify">İki Yana Yasla</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Spacing Options */}
+            <div className="border-b border-gray-200 dark:border-gray-700 pb-3">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+                Boşluk Ayarları
+              </h4>
+
+              {/* Label Spacing */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Etiket Aralığı ({selectedElement.labelSpacing || "5"}px)
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="20"
+                  value={selectedElement.labelSpacing || 5}
+                  onChange={(e) =>
+                    handlePropertyChange(
+                      "labelSpacing",
+                      parseInt(e.target.value)
+                    )
+                  }
+                  className="w-full"
+                />
+              </div>
+
+              {/* Line Spacing */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Satır Aralığı ({selectedElement.lineSpacing || "2"}px)
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  value={selectedElement.lineSpacing || 2}
+                  onChange={(e) =>
+                    handlePropertyChange(
+                      "lineSpacing",
+                      parseInt(e.target.value)
+                    )
+                  }
+                  className="w-full"
+                />
+              </div>
+            </div>
+
+            {/* Color */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Metin Rengi
+              </label>
+              <input
+                type="color"
+                value={selectedElement.style?.color || "#000000"}
+                onChange={(e) => handleStyleChange("color", e.target.value)}
+                className="w-full h-10 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+              />
+            </div>
+          </div>
+        );
+
       case "barcode":
       case "qr_code":
         return (
@@ -598,147 +812,6 @@ const PropertyPanel = ({
                   </div>
                 </div>
               )}
-
-            {selectedElement.type === "barcode" && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Barkod Türü
-                  </label>
-                  <select
-                    value={selectedElement.barcodeType || "code128"}
-                    onChange={(e) => {
-                      const newType = e.target.value;
-                      handlePropertyChange("barcodeType", newType);
-                      // Also update content with appropriate sample for the barcode type
-                      if (
-                        !selectedElement.content ||
-                        selectedElement.content === "Sample Text"
-                      ) {
-                        handlePropertyChange(
-                          "content",
-                          getSampleBarcodeContent(newType)
-                        );
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-                  >
-                    <option value="code128">Code 128</option>
-                    <option value="code39">Code 39</option>
-                    <option value="code93">Code 93</option>
-                    <option value="ean8">EAN-8</option>
-                    <option value="ean13">EAN-13</option>
-                    <option value="upca">UPC-A</option>
-                    <option value="upce">UPC-E</option>
-                    <option value="codabar">Codabar</option>
-                    <option value="itf14">ITF-14</option>
-                    <option value="msi">MSI</option>
-                  </select>
-                </div>
-
-                {/* Barcode Preview */}
-                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border">
-                  <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
-                    Önizleme -{" "}
-                    {selectedElement.barcodeType?.toUpperCase() || "CODE128"}
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                    Ölçek: {selectedElement.scale || 2}x | Metin:{" "}
-                    {selectedElement.showText !== false ? "Açık" : "Kapalı"}
-                  </div>
-                  <div className="text-xs text-blue-600 dark:text-blue-400">
-                    Örnek:{" "}
-                    {getSampleBarcodeContent(
-                      selectedElement.barcodeType || "code128"
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="showText"
-                    checked={selectedElement.showText !== false}
-                    onChange={(e) =>
-                      handlePropertyChange("showText", e.target.checked)
-                    }
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label
-                    htmlFor="showText"
-                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    Metin Göster
-                  </label>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Barkod Ölçeği
-                  </label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    step="0.5"
-                    value={selectedElement.scale || 2}
-                    onChange={(e) =>
-                      handlePropertyChange("scale", parseFloat(e.target.value))
-                    }
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    <span>Küçük</span>
-                    <span>{selectedElement.scale || 2}x</span>
-                    <span>Büyük</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Padding (İç Boşluk)
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-gray-500 dark:text-gray-400">
-                        Yatay
-                      </label>
-                      <input
-                        type="number"
-                        value={selectedElement.paddingWidth || 1}
-                        onChange={(e) =>
-                          handlePropertyChange(
-                            "paddingWidth",
-                            parseInt(e.target.value)
-                          )
-                        }
-                        className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-                        min="0"
-                        max="50"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 dark:text-gray-400">
-                        Dikey
-                      </label>
-                      <input
-                        type="number"
-                        value={selectedElement.paddingHeight || 1}
-                        onChange={(e) =>
-                          handlePropertyChange(
-                            "paddingHeight",
-                            parseInt(e.target.value)
-                          )
-                        }
-                        className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-                        min="0"
-                        max="50"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
 
             {selectedElement.type === "qr_code" && (
               <>
@@ -957,28 +1030,161 @@ const PropertyPanel = ({
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
-                  onClick={() => handleQuickAlignment(5)}
+                  onClick={() => handleQuickAlignment(5, 5)}
                   className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  title="Sol Üst"
                 >
-                  Sol
+                  ↖
                 </button>
                 <button
                   type="button"
                   onClick={() =>
-                    handleQuickAlignment(50 - selectedElement.size.width / 2)
+                    handleQuickAlignment(50 - selectedElement.size.width / 2, 5)
                   }
                   className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  title="Orta Üst"
                 >
-                  Orta
+                  ↑
                 </button>
                 <button
                   type="button"
                   onClick={() =>
-                    handleQuickAlignment(95 - selectedElement.size.width)
+                    handleQuickAlignment(95 - selectedElement.size.width, 5)
                   }
                   className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  title="Sağ Üst"
                 >
-                  Sağ
+                  ↗
+                </button>
+
+                {/* Middle Row */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleQuickAlignment(
+                      5,
+                      50 - selectedElement.size.height / 2
+                    )
+                  }
+                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  title="Sol Orta"
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleQuickAlignment(
+                      50 - selectedElement.size.width / 2,
+                      50 - selectedElement.size.height / 2
+                    )
+                  }
+                  className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                  title="Tam Orta"
+                >
+                  ●
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleQuickAlignment(
+                      95 - selectedElement.size.width,
+                      50 - selectedElement.size.height / 2
+                    )
+                  }
+                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  title="Sağ Orta"
+                >
+                  →
+                </button>
+
+                {/* Bottom Row */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleQuickAlignment(5, 95 - selectedElement.size.height)
+                  }
+                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  title="Sol Alt"
+                >
+                  ↙
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleQuickAlignment(
+                      50 - selectedElement.size.width / 2,
+                      95 - selectedElement.size.height
+                    )
+                  }
+                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  title="Orta Alt"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleQuickAlignment(
+                      95 - selectedElement.size.width,
+                      95 - selectedElement.size.height
+                    )
+                  }
+                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  title="Sağ Alt"
+                >
+                  ↘
+                </button>
+              </div>
+            </div>
+
+            {/* Distribution Controls */}
+            <div>
+              <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Sayfada Konumlandırma
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleQuickAlignment(0, selectedElement.position.y)
+                  }
+                  className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Sol Kenar
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleQuickAlignment(
+                      100 - selectedElement.size.width,
+                      selectedElement.position.y
+                    )
+                  }
+                  className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Sağ Kenar
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleQuickAlignment(selectedElement.position.x, 0)
+                  }
+                  className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Üst Kenar
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleQuickAlignment(
+                      selectedElement.position.x,
+                      100 - selectedElement.size.height
+                    )
+                  }
+                  className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Alt Kenar
                 </button>
               </div>
             </div>
@@ -1327,184 +1533,6 @@ const PropertyPanel = ({
           </div>
         </PropertySection>
 
-        {/* Layout & Alignment Section */}
-        <PropertySection
-          title="Düzen & Hizalama"
-          icon={Layout}
-          isExpanded={expandedSections.layout || false}
-          onToggle={() => toggleSection("layout")}
-        >
-          <div className="px-4 pb-4 space-y-4">
-            {/* Alignment Grid */}
-            <div>
-              <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Hızlı Hizalama
-              </div>
-              <div className="grid grid-cols-3 gap-1 p-2 border border-gray-200 dark:border-gray-600 rounded">
-                {/* Top Row */}
-                <button
-                  type="button"
-                  onClick={() => handleQuickAlignment(5, 5)}
-                  className="aspect-square p-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center"
-                  title="Sol Üst"
-                >
-                  ↖
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(50 - selectedElement.size.width / 2, 5)
-                  }
-                  className="aspect-square p-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center"
-                  title="Orta Üst"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(95 - selectedElement.size.width, 5)
-                  }
-                  className="aspect-square p-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center"
-                  title="Sağ Üst"
-                >
-                  ↗
-                </button>
-
-                {/* Middle Row */}
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(
-                      5,
-                      50 - selectedElement.size.height / 2
-                    )
-                  }
-                  className="aspect-square p-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center"
-                  title="Sol Orta"
-                >
-                  ←
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(
-                      50 - selectedElement.size.width / 2,
-                      50 - selectedElement.size.height / 2
-                    )
-                  }
-                  className="aspect-square p-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors flex items-center justify-center"
-                  title="Tam Orta"
-                >
-                  ●
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(
-                      95 - selectedElement.size.width,
-                      50 - selectedElement.size.height / 2
-                    )
-                  }
-                  className="aspect-square p-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center"
-                  title="Sağ Orta"
-                >
-                  →
-                </button>
-
-                {/* Bottom Row */}
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(5, 95 - selectedElement.size.height)
-                  }
-                  className="aspect-square p-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center"
-                  title="Sol Alt"
-                >
-                  ↙
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(
-                      50 - selectedElement.size.width / 2,
-                      95 - selectedElement.size.height
-                    )
-                  }
-                  className="aspect-square p-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center"
-                  title="Orta Alt"
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(
-                      95 - selectedElement.size.width,
-                      95 - selectedElement.size.height
-                    )
-                  }
-                  className="aspect-square p-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center"
-                  title="Sağ Alt"
-                >
-                  ↘
-                </button>
-              </div>
-            </div>
-
-            {/* Distribution Controls */}
-            <div>
-              <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Sayfada Konumlandırma
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(0, selectedElement.position.y)
-                  }
-                  className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                >
-                  Sol Kenar
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(
-                      100 - selectedElement.size.width,
-                      selectedElement.position.y
-                    )
-                  }
-                  className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                >
-                  Sağ Kenar
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(selectedElement.position.x, 0)
-                  }
-                  className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                >
-                  Üst Kenar
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(
-                      selectedElement.position.x,
-                      100 - selectedElement.size.height
-                    )
-                  }
-                  className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                >
-                  Alt Kenar
-                </button>
-              </div>
-            </div>
-          </div>
-        </PropertySection>
-
         {/* Content Section */}
         <PropertySection
           title="İçerik"
@@ -1514,6 +1542,27 @@ const PropertyPanel = ({
         >
           <div className="px-4 pb-4">{renderContentEditor()}</div>
         </PropertySection>
+
+        {/* Barcode Specific Sections */}
+        {selectedElement.type === "barcode" && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="px-4 mb-3">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center">
+                <Settings className="w-4 h-4 mr-2" />
+                Barkod Ayarları
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Barkod görünümü ve davranışını özelleştirin
+              </p>
+            </div>
+            <BarcodePropertiesPanel
+              element={selectedElement}
+              onPropertyChange={handlePropertyChange}
+              expandedSections={expandedSections}
+              onToggleSection={toggleSection}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -127,7 +127,13 @@ const getDatabaseConfig = (config) => {
               rejectUnauthorized: false,
             }
           : false,
+        // Ensure UTF-8 encoding for Turkish characters
+        charset: "utf8",
+        collate: "utf8_unicode_ci",
       },
+      // Ensure proper charset and timezone
+      timezone: "+03:00", // Turkey timezone
+      charset: "utf8",
     };
   } else {
     return {
@@ -137,6 +143,8 @@ const getDatabaseConfig = (config) => {
       dialectOptions: {
         // SQLite optimizations for better concurrency
         busy_timeout: 30000, // 30 seconds busy timeout
+        // Ensure UTF-8 encoding for Turkish characters
+        charset: "utf8",
       },
       // Enhanced pool configuration for SQLite
       pool: {
@@ -145,6 +153,9 @@ const getDatabaseConfig = (config) => {
         acquire: 60000, // Increased acquire timeout for busy databases
         idle: 30000, // Increased idle timeout
       },
+      // Ensure proper charset
+      charset: "utf8",
+      collate: "utf8_unicode_ci",
     };
   }
 };

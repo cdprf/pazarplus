@@ -16,7 +16,7 @@ export const elementDefaults = {
   },
 
   [ELEMENT_TYPES.IMAGE]: {
-    content: "",
+    content: "", // This will store the base64 data URL or image path
     style: {
       objectFit: "contain",
       border: "2px dashed var(--border-secondary)",
@@ -24,6 +24,9 @@ export const elementDefaults = {
       borderRadius: "var(--radius-md)",
     },
     size: { width: 20, height: 15 },
+    // Add additional properties for image handling
+    alt: "Image",
+    imageSrc: "", // Alternative property for image source
   },
 
   [ELEMENT_TYPES.BARCODE]: {
@@ -32,10 +35,18 @@ export const elementDefaults = {
       backgroundColor: "transparent",
     },
     size: { width: 35, height: 12 },
-    options: {
-      format: "CODE128",
-      displayValue: true,
-    },
+    barcodeType: "code128",
+    showText: true,
+    barcodeScale: 2.5, // Scale factor for barcode rendering
+    // Barcode styling properties
+    moduleWidth: null, // Will use defaults if null
+    moduleHeight: null, // Will use defaults if null
+    quietZone: null, // Will use defaults if null
+    fontSize: null, // Will use defaults if null
+    textDistance: null, // Will use defaults if null
+    backgroundColor: "transparent",
+    foregroundColor: "#000000",
+    centerText: true,
   },
 
   [ELEMENT_TYPES.QR_CODE]: {
@@ -44,9 +55,7 @@ export const elementDefaults = {
       backgroundColor: "transparent",
     },
     size: { width: 15, height: 15 },
-    options: {
-      errorCorrectionLevel: "M",
-    },
+    errorCorrectionLevel: "M",
   },
 
   // Layout & Design Elements

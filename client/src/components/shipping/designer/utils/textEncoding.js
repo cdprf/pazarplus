@@ -109,15 +109,16 @@ export const formatTextForDisplay = (
 
 /**
  * Gets appropriate font stack for text rendering
+ * Prioritizes DejaVu Sans to match PDF output for better preview accuracy
  * @param {string} text - Input text to analyze
  * @param {string} preferredFont - User's preferred font
  * @returns {string} - CSS font stack
  */
 export const getOptimalFontStack = (text, preferredFont = null) => {
-  // Build font stack with Unicode-supporting fonts
+  // Build font stack with DejaVu Sans prioritized to match PDF output
   const unicodeFonts = [
-    '"Segoe UI"',
     '"DejaVu Sans"',
+    '"Segoe UI"',
     '"Noto Sans"',
     '"Liberation Sans"',
     '"Helvetica Neue"',
@@ -125,11 +126,19 @@ export const getOptimalFontStack = (text, preferredFont = null) => {
     "sans-serif",
   ];
 
-  if (preferredFont) {
-    return `"${preferredFont}", ${unicodeFonts.join(", ")}`;
+  // If no preferred font specified, use DejaVu Sans first for PDF consistency
+  if (!preferredFont) {
+    return unicodeFonts.join(", ");
   }
 
-  return unicodeFonts.join(", ");
+  // If user prefers Arial, Helvetica, or similar, still prioritize DejaVu Sans for consistency
+  const systemFonts = ["Arial", "Helvetica", "Times New Roman", "Courier New"];
+  if (systemFonts.includes(preferredFont)) {
+    return unicodeFonts.join(", ");
+  }
+
+  // For other custom fonts, include user preference but still use DejaVu Sans as fallback
+  return `"${preferredFont}", ${unicodeFonts.join(", ")}`;
 };
 
 /**

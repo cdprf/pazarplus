@@ -62,7 +62,7 @@ export const ELEMENT_CATEGORIES_DETAILED = {
         type: ELEMENT_TYPES.BARCODE,
         name: "Barkod",
         icon: QrCode,
-        description: "1D barkod (CODE128, EAN)",
+        description: "1D barkod (code128, EAN)",
       },
       {
         type: ELEMENT_TYPES.QR_CODE,

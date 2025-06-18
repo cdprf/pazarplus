@@ -37,9 +37,7 @@ const TemplateModal = ({
     if (isOpen) {
       const loadTemplates = async () => {
         try {
-          console.log("Loading templates from DB in TemplateModal");
           const templates = await fetchTemplates();
-          console.log("Fetched templates:", templates);
           setSavedTemplates(templates);
         } catch (error) {
           console.error("Error loading templates:", error);
@@ -195,7 +193,7 @@ const TemplateModal = ({
         <div className="inline-block align-bottom bg-white dark:bg-gray-900 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
           <div className="bg-white dark:bg-gray-900 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 dark:text-white">
+              <h3 className="text-lg leading-6 font-medium text-gray-900  dark:text-white">
                 Kaydedilen Şablonlar
               </h3>
               <button

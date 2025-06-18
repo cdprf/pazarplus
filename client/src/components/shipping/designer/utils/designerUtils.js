@@ -5,6 +5,10 @@ export const generateId = () =>
   `element_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 export const getPaperDimensions = (config) => {
+  // MM to pixel conversion factor for screen display at 96 DPI
+  // 1 inch = 25.4 mm, 96 pixels = 1 inch, therefore 1 mm = 96/25.4 = 3.779527559 pixels
+  const MM_TO_PX = 3.779527559;
+
   let dimensions;
 
   if (config.paperSize === "CUSTOM" && config.customDimensions) {
@@ -16,9 +20,16 @@ export const getPaperDimensions = (config) => {
     dimensions = PAPER_SIZE_PRESETS[config.paperSize] || PAPER_SIZE_PRESETS.A4;
   }
 
-  return config.orientation === "landscape"
-    ? { width: dimensions.height, height: dimensions.width }
-    : { width: dimensions.width, height: dimensions.height };
+  // Convert mm to pixels to match PDF point scaling
+  const mmDimensions =
+    config.orientation === "landscape"
+      ? { width: dimensions.height, height: dimensions.width }
+      : { width: dimensions.width, height: dimensions.height };
+
+  return {
+    width: Math.round(mmDimensions.width * MM_TO_PX),
+    height: Math.round(mmDimensions.height * MM_TO_PX),
+  };
 };
 
 export const formatDate = (dateString) => {

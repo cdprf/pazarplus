@@ -26,7 +26,11 @@ import {
 import { ELEMENT_TYPES, ELEMENT_CATEGORIES } from "../constants/index.js";
 
 // ElementLibrary Component - Draggable element library
-const ElementLibrary = ({ onAddElement, selectedCategory = "all", onCategoryChange }) => {
+const ElementLibrary = ({
+  onAddElement,
+  selectedCategory = "all",
+  onCategoryChange,
+}) => {
   const elementConfig = {
     [ELEMENT_TYPES.TEXT]: {
       icon: Type,
@@ -208,12 +212,8 @@ const ElementLibrary = ({ onAddElement, selectedCategory = "all", onCategoryChan
 
   const handleAddElement = (elementType, e) => {
     e.stopPropagation();
-    console.log("ElementLibrary: Adding element", elementType);
     if (onAddElement) {
-      console.log("ElementLibrary: onAddElement callback exists, calling it");
       onAddElement(elementType);
-    } else {
-      console.error("ElementLibrary: onAddElement callback is missing!");
     }
   };
 
@@ -231,7 +231,9 @@ const ElementLibrary = ({ onAddElement, selectedCategory = "all", onCategoryChan
             return (
               <button
                 key={category.key}
-                onClick={() => onCategoryChange && onCategoryChange(category.key)}
+                onClick={() =>
+                  onCategoryChange && onCategoryChange(category.key)
+                }
                 className={`p-2 text-xs rounded-md border transition-colors ${
                   selectedCategory === category.key
                     ? "bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-900 dark:border-blue-600 dark:text-blue-300"
@@ -252,7 +254,9 @@ const ElementLibrary = ({ onAddElement, selectedCategory = "all", onCategoryChan
               return (
                 <button
                   key={category.key}
-                  onClick={() => onCategoryChange && onCategoryChange(category.key)}
+                  onClick={() =>
+                    onCategoryChange && onCategoryChange(category.key)
+                  }
                   className={`p-2 text-xs rounded-md border transition-colors ${
                     selectedCategory === category.key
                       ? "bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-900 dark:border-blue-600 dark:text-blue-300"

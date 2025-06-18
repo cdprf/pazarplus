@@ -115,6 +115,7 @@ class TemplateBasedPDFGenerator {
 
       // Register Unicode-compatible fonts for Turkish character support
       try {
+        // Register bundled fonts first
         const fontsPath = path.join(__dirname, "../fonts");
         const dejavuSansPath = path.join(fontsPath, "DejaVuSans.ttf");
         const dejavuSansBoldPath = path.join(fontsPath, "DejaVuSans-Bold.ttf");
@@ -203,25 +204,45 @@ class TemplateBasedPDFGenerator {
    * @returns {Object} - Width and height in points
    */
   getPaperDimensions(config) {
-    const paperSizes = {
-      A4: { width: 595, height: 842 },
-      A5: { width: 420, height: 595 },
-      A6: { width: 298, height: 420 },
-      Letter: { width: 612, height: 792 },
-      Legal: { width: 612, height: 1008 },
+    // Conversion factor: 1mm = 2.835 points (72 dpi)
+    // Using exact same conversion factor as frontend for consistency
+    const MM_TO_PT = 2.835;
+
+    // Paper sizes in millimeters - same values as frontend for consistency
+    const paperSizesMM = {
+      A4: { width: 210, height: 297 },
+      A5: { width: 148, height: 210 },
+      A6: { width: 105, height: 148 },
+      Letter: { width: 216, height: 279 },
+      Legal: { width: 216, height: 356 },
     };
 
-    let dimensions = paperSizes[config.paperSize] || paperSizes.A4;
+    // Get dimensions in millimeters first
+    let dimensionsMM;
+
+    if (config.paperSize === "CUSTOM" && config.customDimensions) {
+      dimensionsMM = {
+        width: config.customDimensions.width,
+        height: config.customDimensions.height,
+      };
+    } else {
+      // Use the same paper size definitions as frontend
+      dimensionsMM = paperSizesMM[config.paperSize] || paperSizesMM.A4;
+    }
 
     // Handle orientation
     if (config.orientation === "landscape") {
-      dimensions = {
-        width: dimensions.height,
-        height: dimensions.width,
+      dimensionsMM = {
+        width: dimensionsMM.height,
+        height: dimensionsMM.width,
       };
     }
 
-    return dimensions;
+    // Convert to points for PDF
+    return {
+      width: Math.round(dimensionsMM.width * MM_TO_PT),
+      height: Math.round(dimensionsMM.height * MM_TO_PT),
+    };
   }
 
   /**
@@ -250,6 +271,9 @@ class TemplateBasedPDFGenerator {
    * @param {Object} paperDimensions - Paper dimensions
    */
   async renderElement(doc, element, orderData, paperDimensions) {
+    // Now that both frontend and backend use the same scaling factor for dimensions,
+    // we don't need the additional scale factor. Elements should be properly sized.
+
     // Calculate absolute position and size
     const x = (element.position.x / 100) * paperDimensions.width;
     const y = (element.position.y / 100) * paperDimensions.height;
@@ -808,12 +832,12 @@ class TemplateBasedPDFGenerator {
     try {
       doc.font(font).fontSize(fontSize);
     } catch (fontError) {
-      logger.warn(`Font ${font} not available, falling back to Helvetica`, {
-        error: fontError.message,
-      });
-      const fallbackFont =
-        fontWeight === "bold" ? "Helvetica-Bold" : "Helvetica";
-      doc.font(fallbackFont).fontSize(fontSize);
+        logger.warn(`Font ${font} not available, falling back to Helvetica`, {
+          error: fontError.message,
+        });
+        const fallbackFont =
+          fontWeight === "bold" ? "Helvetica-Bold" : "Helvetica";
+        doc.font(fallbackFont).fontSize(fontSize);
     }
 
     // Set text color - ALWAYS set a default color
@@ -854,22 +878,22 @@ class TemplateBasedPDFGenerator {
           ? (lineHeight - 1) * fontSize // Convert line-height ratio to gap
           : Math.max(2, fontSize * 0.2); // Minimum 2pt or 20% of font size
 
-      doc.text(content, textX, textY, {
-        width: textWidth,
-        height: textHeight,
-        align: align,
-        lineGap: lineGap,
-      });
+        doc.text(content, textX, textY, {
+          width: textWidth,
+          height: textHeight,
+          align: align,
+          lineGap: lineGap,
+        });
 
       // Debug logging for text rendering
-      logger.debug("Text rendered successfully", {
-        content: content.substring(0, 50),
-        color: textColor,
-        fontSize,
-        fontFamily: font,
-        position: { x: textX, y: textY },
-        dimensions: { width: textWidth, height: textHeight },
-      });
+        logger.debug("Text rendered successfully", {
+          content: content.substring(0, 50),
+          color: textColor,
+          fontSize,
+          fontFamily: font,
+          position: { x: textX, y: textY },
+          dimensions: { width: textWidth, height: textHeight },
+        });
     } catch (error) {
       logger.error(`Error rendering text: ${error.message}`, {
         content: content.substring(0, 50),
@@ -895,20 +919,77 @@ class TemplateBasedPDFGenerator {
     try {
       const content = this.processContent(element.content, orderData);
 
+      // Calculate space for title
+      const titleHeight = 16; // Space for "Kargo Barkodu" title
+      const titleMargin = 4; // Margin between title and barcode
+      const availableBarcodeHeight = height - titleHeight - titleMargin;
+
+      // Render title "Kargo Barkodu" above the barcode
+      doc.font("Helvetica-Bold").fontSize(10).fillColor("#000000");
+
+      doc.text("Kargo Barkodu", x, y, {
+        width: width,
+        align: "center",
+      });
+
+      // Adjust barcode position to be below the title
+      const barcodeY = y + titleHeight + titleMargin;
+
+      // Get the barcode type from either barcodeType or options.format (for backward compatibility)
+      // Always use lowercase for bwip-js compatibility
+      const barcodeType = (
+        element.barcodeType ||
+        element.options?.format ||
+        "code128"
+      ).toLowerCase();
+
+      // Generate a better proportioned barcode with fixed height parameters
+      // This ensures consistent barcode bars regardless of the element's height
+      // CRITICAL FIX: Convert points to mm for bwip-js (1 point = 0.352778 mm)
+      const PT_TO_MM = 0.352778;
+      let widthMM = width * PT_TO_MM;
+      let heightMM = availableBarcodeHeight * PT_TO_MM;
+
+      // Enforce aspect ratio constraints for scanning reliability (same as client)
+      const MIN_ASPECT_RATIO = 2.0; // width:height
+      const MAX_ASPECT_RATIO = 6.0;
+      const aspectRatio = widthMM / heightMM;
+
+      let aspectRatioAdjusted = false;
+      if (aspectRatio < MIN_ASPECT_RATIO) {
+        heightMM = widthMM / MIN_ASPECT_RATIO;
+        aspectRatioAdjusted = true;
+        logger.warn(
+          `Barcode aspect ratio too narrow (${aspectRatio.toFixed(
+            2
+          )}), adjusted to ${MIN_ASPECT_RATIO}`
+        );
+      } else if (aspectRatio > MAX_ASPECT_RATIO) {
+        widthMM = heightMM * MAX_ASPECT_RATIO;
+        aspectRatioAdjusted = true;
+        logger.warn(
+          `Barcode aspect ratio too wide (${aspectRatio.toFixed(
+            2
+          )}), adjusted to ${MAX_ASPECT_RATIO}`
+        );
+      }
+
       const barcodeBuffer = await bwipjs.toBuffer({
-        bcid: element.barcodeType || "code128",
+        bcid: barcodeType,
         text: content,
         scale: 2,
-        height: Math.floor(height / 4),
+        width: widthMM, // Actual width in mm (converted from points, aspect-ratio adjusted)
+        height: heightMM, // Actual height in mm (converted from points, aspect-ratio adjusted)
         includetext: element.showText !== false,
         textxalign: "center",
       });
 
-      // Draw barcode image
-      doc.image(barcodeBuffer, x, y, {
+      // Draw barcode image - preserving aspect ratio, positioned below title
+      doc.image(barcodeBuffer, x, barcodeY, {
         width: width,
-        height: height,
-        fit: [width, height],
+        height: undefined, // Don't force height to preserve aspect ratio
+        align: "center",
+        valign: "center",
       });
     } catch (error) {
       logger.error(`Error generating barcode: ${error.message}`, {
@@ -937,13 +1018,21 @@ class TemplateBasedPDFGenerator {
     try {
       const content = this.processContent(element.content, orderData);
 
-      const qrBuffer = await bwipjs.toBuffer({
+      // Use errorCorrectionLevel if provided
+      const options = {
         bcid: "qrcode",
         text: content,
         scale: 2,
         width: Math.min(width, height) / 4,
         height: Math.min(width, height) / 4,
-      });
+      };
+
+      // Add error correction level if specified
+      if (element.errorCorrectionLevel) {
+        options.eclevel = element.errorCorrectionLevel;
+      }
+
+      const qrBuffer = await bwipjs.toBuffer(options);
 
       // Draw QR code image
       doc.image(qrBuffer, x, y, {
@@ -976,39 +1065,93 @@ class TemplateBasedPDFGenerator {
    */
   async renderImageElement(doc, element, orderData, x, y, width, height) {
     try {
-      if (element.src) {
-        // Handle both local files and URLs
-        let imagePath = element.src;
+      // Get image source from element - could be in src, content, or other properties
+      const imageSource = element.src || element.content || element.imageSrc;
 
-        // If it's a relative path, make it absolute
-        if (!element.src.startsWith("http") && !path.isAbsolute(element.src)) {
-          imagePath = path.join(__dirname, "../public", element.src);
-        }
-
-        doc.image(imagePath, x, y, {
-          width: width,
-          height: height,
-          fit: [width, height],
-        });
+      if (!imageSource) {
+        throw new Error("No image source provided");
       }
-    } catch (error) {
-      logger.error(`Error rendering image: ${error.message}`, {
-        element,
-        error,
+
+      let imagePath = imageSource;
+
+      // Handle different types of image sources
+      if (
+        imageSource.startsWith("http://") ||
+        imageSource.startsWith("https://")
+      ) {
+        // URL - use as is
+        imagePath = imageSource;
+      } else if (imageSource.startsWith("data:")) {
+        // Base64 data URL - PDFKit can handle this directly
+        imagePath = imageSource;
+      } else {
+        // Local file path
+        if (!path.isAbsolute(imageSource)) {
+          // Try different possible paths
+          const possiblePaths = [
+            path.join(__dirname, "../public", imageSource),
+            path.join(__dirname, "../public/images", imageSource),
+            path.join(__dirname, "../", imageSource),
+            path.join(process.cwd(), "server/public", imageSource),
+            path.join(process.cwd(), "server/public/images", imageSource),
+          ];
+
+          let foundPath = null;
+          for (const testPath of possiblePaths) {
+            if (require("fs").existsSync(testPath)) {
+              foundPath = testPath;
+              break;
+            }
+          }
+
+          if (foundPath) {
+            imagePath = foundPath;
+          } else {
+            throw new Error(
+              `Image file not found. Tried paths: ${possiblePaths.join(", ")}`
+            );
+          }
+        } else {
+          // Absolute path - check if it exists
+          if (!require("fs").existsSync(imageSource)) {
+            throw new Error(
+              `Image file not found at absolute path: ${imageSource}`
+            );
+          }
+          imagePath = imageSource;
+        }
+      }
+
+      // Add the image to the PDF
+      doc.image(imagePath, x, y, {
+        width: width,
+        height: height,
+        fit: [width, height],
       });
-      // Draw placeholder rectangle
-      doc.rect(x, y, width, height).stroke();
+    } catch (error) {
+      console.error(`Error rendering image element:`, {
+        src: element.src,
+        content: element.content,
+        imageSrc: element.imageSrc,
+        error: error.message,
+        position: { x, y, width, height },
+      });
 
-      // Fallback text with proper line spacing
-      const fontSize = 12;
-      const lineHeight = 1.4;
-      const lineGap = (lineHeight - 1) * fontSize;
+      // Draw placeholder rectangle with error info
+      doc.rect(x, y, width, height).stroke("#ff0000");
 
-      doc.font("Helvetica").fontSize(fontSize).fillColor("#666666");
-      doc.text("IMAGE", x + width / 2 - 15, y + height / 2 - 6, {
-        width: 30,
+      // Show error message in the placeholder
+      const fontSize = Math.min(10, Math.max(8, width / 20));
+      doc.font("Helvetica").fontSize(fontSize).fillColor("#ff0000");
+
+      const errorText = `IMAGE ERROR\n${
+        element.src || element.content || "No source"
+      }\n${error.message}`;
+      doc.text(errorText, x + 5, y + 5, {
+        width: width - 10,
+        height: height - 10,
         align: "center",
-        lineGap: lineGap,
+        valign: "center",
       });
     }
   }
@@ -1116,11 +1259,11 @@ class TemplateBasedPDFGenerator {
    * @returns {String} - Processed content
    */
   processContent(content, orderData) {
-    if (!content) return "";
+    if (!content) return { text: "", isValid: true };
 
     return content.replace(/\{\{([^}]+)\}\}/g, (match, placeholder) => {
-      const value = this.getFieldValue(orderData, placeholder.trim());
-      return value !== undefined ? String(value) : match;
+        const value = this.getFieldValue(orderData, placeholder.trim());
+        return value !== undefined ? String(value) : match;
     });
   }
 
@@ -1206,18 +1349,300 @@ class TemplateBasedPDFGenerator {
    * Render recipient element
    */
   async renderRecipientElement(doc, element, orderData, x, y, width, height) {
-    const recipient = orderData.recipient || orderData.customer || {};
-    const content = this.formatAddressBlock(
-      [
-        recipient.name || recipient.firstName + " " + recipient.lastName,
-        recipient.company,
-        recipient.address,
-        recipient.city + " " + recipient.postalCode,
-        recipient.country,
-      ].filter(Boolean)
-    );
+    try {
+      const recipient =
+        orderData.recipient ||
+        orderData.customer ||
+        orderData.shippingAddress ||
+        {};
+      const order = orderData.order || orderData;
 
-    await this.renderFormattedText(doc, element, content, x, y, width, height);
+      // Extract recipient information with multiple fallback paths
+      const recipientName =
+        recipient.name ||
+        recipient.recipientName ||
+        (recipient.firstName && recipient.lastName
+          ? `${recipient.firstName} ${recipient.lastName}`
+          : null) ||
+        orderData.customerName ||
+        "Alıcı bilgisi yok";
+
+      const recipientAddress =
+        recipient.address ||
+        recipient.street ||
+        orderData.address ||
+        "Adres bilgisi yok";
+
+      const orderNumber =
+        order.orderNumber ||
+        order.id ||
+        orderData.orderNumber ||
+        orderData.id ||
+        "Sipariş no yok";
+
+      // Create formatted content with proper encoding for each component
+      const encodedRecipientName = this.ensureProperEncoding(recipientName);
+      const encodedRecipientAddress =
+        this.ensureProperEncoding(recipientAddress);
+      const encodedOrderNumber = this.ensureProperEncoding(orderNumber);
+
+      // Get font options from element
+      const fontOptions = this.extractFontOptions(element);
+
+      // Prepare structured data for custom rendering with bold labels
+      const recipientData = [
+        { label: "Sipariş No", value: encodedOrderNumber },
+        { label: "Alıcı Ad / Soyad", value: encodedRecipientName },
+        { label: "Adres", value: encodedRecipientAddress },
+      ];
+
+      // Render with custom bold label formatting
+      await this.renderLabelValuePairs(
+        doc,
+        recipientData,
+        fontOptions,
+        x,
+        y,
+        width,
+        height
+      );
+    } catch (error) {
+      console.error("Error in renderRecipientElement:", error);
+
+      // Fallback rendering with proper encoding
+      const fallbackText = this.ensureProperEncoding(
+        "Alıcı bilgisi yüklenemedi"
+      );
+      doc.font("Helvetica").fontSize(12).fillColor("#ff0000");
+      doc.text(fallbackText, x, y, {
+        width: width,
+        align: "left",
+      });
+    }
+  }
+
+  /**
+   * Extract font options from element with defaults
+   */
+  extractFontOptions(element) {
+    const style = element.style || {};
+
+    // Map UI font names to PDFKit font names
+    const fontMapping = {
+      Helvetica: "Helvetica",
+      DejaVuSans: "DejaVuSans",
+      "Times-Roman": "Times-Roman",
+      Courier: "Courier",
+    };
+
+    // Get font size with various fallbacks
+    let fontSize = 12;
+    if (style.fontSize) {
+      if (typeof style.fontSize === "string") {
+        if (style.fontSize.includes("px")) {
+          fontSize = parseInt(style.fontSize) * 0.75; // Convert px to pt
+        } else if (style.fontSize.includes("pt")) {
+          fontSize = parseInt(style.fontSize); // Already in pt
+        } else {
+          fontSize = parseInt(style.fontSize) || 12; // Assume pt if no unit
+        }
+      } else if (typeof style.fontSize === "number") {
+        fontSize = style.fontSize; // Assume pt
+      }
+    }
+
+    const requestedFont = style.fontFamily || "Helvetica";
+    const mappedFont = fontMapping[requestedFont] || "Helvetica";
+
+    return {
+      fontSize: fontSize,
+      fontFamily: mappedFont,
+      color: style.color || "#000000",
+      lineHeight: parseFloat(style.lineHeight) || 1.4,
+      letterSpacing: parseFloat(style.letterSpacing) || 0,
+      textAlign: style.textAlign || "left",
+      fontWeight: style.fontWeight || "normal",
+      // Custom options for spacing
+      labelSpacing: element.labelSpacing || 5, // Space between label and value
+      lineSpacing: element.lineSpacing || 2, // Extra space between lines
+    };
+  }
+
+  /**
+   * Render label-value pairs with bold labels
+   */
+  async renderLabelValuePairs(doc, data, fontOptions, x, y, width, height) {
+    const {
+      fontSize,
+      fontFamily,
+      color,
+      lineHeight,
+      labelSpacing,
+      lineSpacing,
+      letterSpacing,
+      textAlign,
+    } = fontOptions;
+
+    let currentY = y;
+    const maxY = y + height; // Boundary check
+    const lineHeightPx = fontSize * lineHeight;
+
+    for (const item of data) {
+      if (!item.value) continue;
+
+      // Check if we have space for at least one line
+      if (currentY + lineHeightPx > maxY) {
+        break; // Stop if we've exceeded the element height
+      }
+
+      try {
+        // Set bold font for label
+        const boldFont = this.getBoldFont(fontFamily);
+
+        // Try to set the bold font, fall back to regular font if it fails
+        try {
+          doc.font(boldFont).fontSize(fontSize).fillColor(color);
+        } catch (fontError) {
+          console.warn(
+            `Bold font ${boldFont} not available, using regular font`
+          );
+          doc.font(fontFamily).fontSize(fontSize).fillColor(color);
+        }
+
+        // Apply letter spacing if specified
+        if (letterSpacing && letterSpacing !== 0) {
+          doc.characterSpacing(letterSpacing);
+        }
+
+        const labelText = `${item.label}:`;
+        const labelWidth = doc.widthOfString(labelText);
+
+        // Calculate available width for value
+        const availableValueWidth = Math.max(
+          width - labelWidth - labelSpacing,
+          width * 0.3
+        );
+
+        // For long addresses, we might need to wrap text
+        const shouldWrapText =
+          item.value.length > 30 || item.value.includes("\n");
+
+        if (shouldWrapText) {
+          // Render label on its own line for better layout
+          doc.text(labelText, x, currentY, {
+            width: width,
+            align: textAlign || "left",
+            ellipsis: false,
+          });
+
+          currentY += lineHeightPx;
+
+          // Check if we still have space for the value
+          if (currentY + lineHeightPx > maxY) {
+            break;
+          }
+
+          // Set normal font for value
+          try {
+            doc.font(fontFamily).fontSize(fontSize).fillColor(color);
+            // Reset character spacing for value text if it was set for label
+            if (letterSpacing && letterSpacing !== 0) {
+              doc.characterSpacing(0);
+            }
+          } catch (fontError) {
+            console.warn(`Font ${fontFamily} not available, using Helvetica`);
+            doc.font("Helvetica").fontSize(fontSize).fillColor(color);
+          }
+
+          // Render value with wrapping, indented slightly
+          const indentX = x + 10;
+          const remainingHeight = maxY - currentY;
+          doc.text(item.value, indentX, currentY, {
+            width: width - 10,
+            align: textAlign || "left",
+            ellipsis: true,
+            height: Math.min(lineHeightPx * 3, remainingHeight), // Limit to 3 lines or remaining height
+          });
+
+          // Calculate how many lines the text actually took
+          const textHeight = Math.min(
+            lineHeightPx * Math.ceil(item.value.length / 40),
+            lineHeightPx * 3
+          );
+          currentY += Math.min(textHeight, remainingHeight) + lineSpacing;
+        } else {
+          // Single line layout
+
+          // Render bold label
+          doc.text(labelText, x, currentY, {
+            width: labelWidth,
+            align: textAlign || "left",
+            continued: false,
+            ellipsis: false,
+          });
+
+          // Add label spacing
+          const valueStartX = x + labelWidth + labelSpacing;
+
+          // Set normal font for value
+          try {
+            doc.font(fontFamily).fontSize(fontSize).fillColor(color);
+            // Reset character spacing for value text if it was set for label
+            if (letterSpacing && letterSpacing !== 0) {
+              doc.characterSpacing(0);
+            }
+          } catch (fontError) {
+            console.warn(`Font ${fontFamily} not available, using Helvetica`);
+            doc.font("Helvetica").fontSize(fontSize).fillColor(color);
+          }
+
+          // Render normal value with spacing from label
+          doc.text(item.value, valueStartX, currentY, {
+            width: availableValueWidth,
+            align: textAlign || "left",
+            continued: false,
+            ellipsis: true,
+          });
+
+          // Move to next line with line spacing
+          currentY += lineHeightPx + lineSpacing;
+        }
+      } catch (error) {
+        console.error("Error rendering label-value pair:", error, item);
+
+        // Fallback to simple text
+        doc.font("Helvetica").fontSize(fontSize).fillColor(color);
+        const remainingHeight = maxY - currentY;
+        doc.text(`${item.label}: ${item.value}`, x, currentY, {
+          width: width,
+          align: textAlign || "left",
+          ellipsis: true,
+          height: Math.min(lineHeightPx * 2, remainingHeight),
+        });
+        currentY += Math.min(lineHeightPx + lineSpacing, remainingHeight);
+      }
+    }
+  }
+
+  /**
+   * Get bold font variant for a given font family
+   */
+  getBoldFont(fontFamily) {
+    const boldFontMap = {
+      DejaVuSans: "DejaVuSans-Bold",
+      Helvetica: "Helvetica-Bold",
+      "Times-Roman": "Times-Bold",
+      Courier: "Courier-Bold",
+    };
+
+    const boldFont = boldFontMap[fontFamily];
+
+    // If we don't have a bold variant, use the regular font and rely on fontWeight
+    if (!boldFont) {
+      return fontFamily || "Helvetica";
+    }
+
+    return boldFont;
   }
 
   /**
@@ -1641,11 +2066,11 @@ class TemplateBasedPDFGenerator {
    * Render carrier info element
    */
   async renderCarrierInfoElement(doc, element, orderData, x, y, width, height) {
-    const carrier = orderData.carrier || orderData.shipping?.carrier || {};
+    const carrier =
+      orderData.tracking.carrier || orderData.shipping?.carrier || {};
     const content = this.formatInfoBlock([
-      { label: "Carrier", value: carrier.name || orderData.carrierName },
-      { label: "Service", value: carrier.service || orderData.shippingService },
-      { label: "Tracking URL", value: carrier.trackingUrl },
+      { label: "Kargo Şirketi", value: carrier || orderData.carrierName },
+      { label: "Takip Numara", value: orderData.tracking.number },
     ]);
 
     await this.renderFormattedText(doc, element, content, x, y, width, height);
@@ -2117,29 +2542,74 @@ class TemplateBasedPDFGenerator {
     }
 
     const value = this.getFieldValue(orderData, dataMapping.field);
+    let result;
 
     if (dataMapping.format) {
       switch (dataMapping.format) {
         case "currency":
-          return this.formatCurrency(value, dataMapping.currency);
+          result = this.formatCurrency(value, dataMapping.currency);
+          return { text: result, isValid: true }; // Currency formatting is safe
+
         case "date":
-          return this.formatDate(value);
+          result = this.formatDate(value);
+          return { text: result, isValid: true }; // Date formatting is safe
+
         case "uppercase":
-          return String(value || "").toUpperCase();
+          result = String(value || "").toUpperCase();
+          break;
+
         case "lowercase":
-          return String(value || "").toLowerCase();
+          result = String(value || "").toLowerCase();
+          break;
+
         default:
-          return String(value || "");
+          result = String(value || "");
+          break;
       }
+    } else {
+      result = String(value || "");
     }
 
-    return String(value || "");
+    // Check encoding for string results
+    return this.ensureProperEncoding(result);
   }
 
   /**
    * Get font family mapping with enhanced Turkish character support
+   * Now with system font detection for better character rendering
    */
   getFontFamily(fontFamily) {
+    if (!fontFamily) return "DejaVuSans";
+
+    // If the requested font is registered, use it directly
+    if (this.availableFonts && this.availableFonts.includes(fontFamily)) {
+      return fontFamily;
+    }
+
+    // Check if it's a system font we've detected
+    if (this.systemFonts && this.systemFonts[fontFamily]) {
+      return fontFamily; // Return font name since we have the actual file
+    }
+
+    // Try alternative names of the font
+    const alternatives = [
+      fontFamily.replace(/\s/g, ""), // Remove spaces
+      fontFamily.replace(/\s/g, "-"), // Replace spaces with hyphens
+      fontFamily.replace(/(\w+)\s+(\w+)/, "$1$2"), // Concatenate words
+      fontFamily.toLowerCase(), // Lowercase version
+      fontFamily.toUpperCase(), // Uppercase version
+    ];
+
+    for (const alt of alternatives) {
+      if (this.systemFonts && this.systemFonts[alt]) {
+        logger.debug(
+          `Found alternative system font: ${alt} for requested ${fontFamily}`
+        );
+        return alt;
+      }
+    }
+
+    // Font mapping for fallback to Turkish-compatible fonts
     const fontMap = {
       Arial: "DejaVuSans",
       Times: "DejaVuSans",

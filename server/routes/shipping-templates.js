@@ -141,13 +141,6 @@ router.post(
   body("orderId").notEmpty().withMessage("Order ID is required"),
   body("templateId").optional().isString(),
   (req, res) => {
-    console.log("Received generate-pdf request:", {
-      url: req.originalUrl,
-      method: req.method,
-      body: req.body,
-      path: req.path,
-      baseUrl: req.baseUrl,
-    });
     return shippingTemplatesController.generatePDF(req, res);
   }
 );

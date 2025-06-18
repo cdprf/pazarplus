@@ -34,7 +34,6 @@ import {
   Type,
   Image as ImageIcon,
   Square,
-  BarcodeIcon as Barcode,
   QrCode as QRCode,
   X,
 } from "lucide-react";
@@ -45,6 +44,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../ui/Tabs";
 import { Input } from "../../../ui/Input";
 import { Select } from "../../../ui/Select";
 import { Switch } from "../../../ui/Switch";
+import BarcodeRenderer from "./BarcodeRenderer";
 
 // Constants
 const RULER_SIZE = 24;
@@ -117,10 +117,6 @@ const ANIMATION_PRESETS = {
 };
 
 // Component placeholder components for missing dependencies
-const BarcodeComponent = ({ value }) => (
-  <div className="bg-gray-200 p-2 text-xs font-mono">{value}</div>
-);
-
 const QRCodeComponent = ({ value }) => (
   <div className="bg-gray-200 p-2 text-xs">{value}</div>
 );
@@ -1257,95 +1253,110 @@ const PreviewModal = ({
   }, []);
 
   // Resize functionality
-  const handleResizeStart = useCallback((e, element, direction) => {
-    if (!enableEdit || element.locked) return;
+  const handleResizeStart = useCallback(
+    (e, element, direction) => {
+      if (!enableEdit || element.locked) return;
 
-    e.preventDefault();
-    e.stopPropagation();
+      e.preventDefault();
+      e.stopPropagation();
 
-    setResizeInfo({
-      element,
-      direction,
-      startX: e.clientX,
-      startY: e.clientY,
-      originalSize: { ...element.size },
-      originalPosition: { ...element.position },
-    });
+      setResizeInfo({
+        element,
+        direction,
+        startX: e.clientX,
+        startY: e.clientY,
+        originalSize: { ...element.size },
+        originalPosition: { ...element.position },
+      });
 
-    setSelectedElement(element);
-    setSelectedElements([element]);
-  }, [enableEdit]);
+      setSelectedElement(element);
+      setSelectedElements([element]);
+    },
+    [enableEdit]
+  );
 
-  const handleResizeMove = useCallback((e) => {
-    if (!resizeInfo) return;
+  const handleResizeMove = useCallback(
+    (e) => {
+      if (!resizeInfo) return;
 
-    const deltaX = (e.clientX - resizeInfo.startX) / zoom;
-    const deltaY = (e.clientY - resizeInfo.startY) / zoom;
+      const deltaX = (e.clientX - resizeInfo.startX) / zoom;
+      const deltaY = (e.clientY - resizeInfo.startY) / zoom;
 
-    let newSize = { ...resizeInfo.originalSize };
-    let newPosition = { ...resizeInfo.originalPosition };
+      let newSize = { ...resizeInfo.originalSize };
+      let newPosition = { ...resizeInfo.originalPosition };
 
-    // Calculate new size and position based on resize direction
-    switch (resizeInfo.direction) {
-      case "nw": // Northwest
-        newSize.width = Math.max(5, resizeInfo.originalSize.width - deltaX);
-        newSize.height = Math.max(5, resizeInfo.originalSize.height - deltaY);
-        newPosition.x = resizeInfo.originalPosition.x + deltaX;
-        newPosition.y = resizeInfo.originalPosition.y + deltaY;
-        break;
-      case "ne": // Northeast
-        newSize.width = Math.max(5, resizeInfo.originalSize.width + deltaX);
-        newSize.height = Math.max(5, resizeInfo.originalSize.height - deltaY);
-        newPosition.y = resizeInfo.originalPosition.y + deltaY;
-        break;
-      case "sw": // Southwest
-        newSize.width = Math.max(5, resizeInfo.originalSize.width - deltaX);
-        newSize.height = Math.max(5, resizeInfo.originalSize.height + deltaY);
-        newPosition.x = resizeInfo.originalPosition.x + deltaX;
-        break;
-      case "se": // Southeast
-        newSize.width = Math.max(5, resizeInfo.originalSize.width + deltaX);
-        newSize.height = Math.max(5, resizeInfo.originalSize.height + deltaY);
-        break;
-      case "n": // North
-        newSize.height = Math.max(5, resizeInfo.originalSize.height - deltaY);
-        newPosition.y = resizeInfo.originalPosition.y + deltaY;
-        break;
-      case "s": // South
-        newSize.height = Math.max(5, resizeInfo.originalSize.height + deltaY);
-        break;
-      case "w": // West
-        newSize.width = Math.max(5, resizeInfo.originalSize.width - deltaX);
-        newPosition.x = resizeInfo.originalPosition.x + deltaX;
-        break;
-      case "e": // East
-        newSize.width = Math.max(5, resizeInfo.originalSize.width + deltaX);
-        break;
+      // Calculate new size and position based on resize direction
+      switch (resizeInfo.direction) {
+        case "nw": // Northwest
+          newSize.width = Math.max(5, resizeInfo.originalSize.width - deltaX);
+          newSize.height = Math.max(5, resizeInfo.originalSize.height - deltaY);
+          newPosition.x = resizeInfo.originalPosition.x + deltaX;
+          newPosition.y = resizeInfo.originalPosition.y + deltaY;
+          break;
+        case "ne": // Northeast
+          newSize.width = Math.max(5, resizeInfo.originalSize.width + deltaX);
+          newSize.height = Math.max(5, resizeInfo.originalSize.height - deltaY);
+          newPosition.y = resizeInfo.originalPosition.y + deltaY;
+          break;
+        case "sw": // Southwest
+          newSize.width = Math.max(5, resizeInfo.originalSize.width - deltaX);
+          newSize.height = Math.max(5, resizeInfo.originalSize.height + deltaY);
+          newPosition.x = resizeInfo.originalPosition.x + deltaX;
+          break;
+        case "se": // Southeast
+          newSize.width = Math.max(5, resizeInfo.originalSize.width + deltaX);
+          newSize.height = Math.max(5, resizeInfo.originalSize.height + deltaY);
+          break;
+        case "n": // North
+          newSize.height = Math.max(5, resizeInfo.originalSize.height - deltaY);
+          newPosition.y = resizeInfo.originalPosition.y + deltaY;
+          break;
+        case "s": // South
+          newSize.height = Math.max(5, resizeInfo.originalSize.height + deltaY);
+          break;
+        case "w": // West
+          newSize.width = Math.max(5, resizeInfo.originalSize.width - deltaX);
+          newPosition.x = resizeInfo.originalPosition.x + deltaX;
+          break;
+        case "e": // East
+          newSize.width = Math.max(5, resizeInfo.originalSize.width + deltaX);
+          break;
         default:
           break;
-    }
+      }
 
-    // Apply grid snapping if enabled
-    newSize.width = snapToGridValue(newSize.width);
-    newSize.height = snapToGridValue(newSize.height);
-    newPosition.x = snapToGridValue(newPosition.x);
-    newPosition.y = snapToGridValue(newPosition.y);
+      // Apply grid snapping if enabled
+      newSize.width = snapToGridValue(newSize.width);
+      newSize.height = snapToGridValue(newSize.height);
+      newPosition.x = snapToGridValue(newPosition.x);
+      newPosition.y = snapToGridValue(newPosition.y);
 
-    // Constrain size
-    const constrainedSize = constrainSize(newSize.width, newSize.height, newPosition);
-    newSize = constrainedSize;
+      // Constrain size
+      const constrainedSize = constrainSize(
+        newSize.width,
+        newSize.height,
+        newPosition
+      );
+      newSize = constrainedSize;
 
-    // Constrain position
-    newPosition = constrainPosition(newPosition.x, newPosition.y, newSize.width, newSize.height);
+      // Constrain position
+      newPosition = constrainPosition(
+        newPosition.x,
+        newPosition.y,
+        newSize.width,
+        newSize.height
+      );
 
-    setPreviewElements((prev) =>
-      prev.map((el) =>
-        el.id === resizeInfo.element.id
-          ? { ...el, size: newSize, position: newPosition }
-          : el
-      )
-    );
-  }, [resizeInfo, zoom, snapToGridValue, constrainSize, constrainPosition]);
+      setPreviewElements((prev) =>
+        prev.map((el) =>
+          el.id === resizeInfo.element.id
+            ? { ...el, size: newSize, position: newPosition }
+            : el
+        )
+      );
+    },
+    [resizeInfo, zoom, snapToGridValue, constrainSize, constrainPosition]
+  );
 
   const handleResizeEnd = useCallback(() => {
     if (!resizeInfo) return;
@@ -1373,21 +1384,33 @@ const PreviewModal = ({
     };
 
     if (resizeInfo || dragInfo) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
     }
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [resizeInfo, dragInfo, handleResizeMove, handleResizeEnd, handleDragMove, handleDragEnd]);
+  }, [
+    resizeInfo,
+    dragInfo,
+    handleResizeMove,
+    handleResizeEnd,
+    handleDragMove,
+    handleDragEnd,
+  ]);
 
   // Initialize preview elements from props
   useEffect(() => {
     setPreviewElements(elements);
     if (elements.length > 0 && history.length === 0) {
-      setHistory([{ elements: JSON.parse(JSON.stringify(elements)), timestamp: Date.now() }]);
+      setHistory([
+        {
+          elements: JSON.parse(JSON.stringify(elements)),
+          timestamp: Date.now(),
+        },
+      ]);
       setHistoryIndex(0);
     }
   }, [elements, history.length]);
@@ -1749,16 +1772,45 @@ const PreviewModal = ({
                             );
 
                           case ELEMENT_TYPES.BARCODE:
-                            return Barcode ? (
-                              <Barcode
-                                value={element.value || "123456789"}
-                                format={element.format || "CODE128"}
-                                width={element.barcodeWidth || 2}
-                                height={element.barcodeHeight || 100}
-                              />
-                            ) : (
-                              <BarcodeComponent
-                                value={element.value || "123456789"}
+                            return (
+                              <BarcodeRenderer
+                                content={element.value || "123456789"}
+                                type={
+                                  element.format ||
+                                  element.barcodeType ||
+                                  "code128"
+                                }
+                                showText={element.showText !== false}
+                                width={
+                                  (element.size?.width ||
+                                    element.barcodeWidth ||
+                                    200) * zoom
+                                }
+                                height={
+                                  (element.size?.height ||
+                                    element.barcodeHeight ||
+                                    60) * zoom
+                                }
+                                moduleWidth={element.moduleWidth}
+                                moduleHeight={element.moduleHeight}
+                                quietZone={element.quietZone}
+                                fontSize={
+                                  element.fontSize
+                                    ? element.fontSize * zoom
+                                    : undefined
+                                }
+                                textDistance={element.textDistance}
+                                backgroundColor={
+                                  element.backgroundColor || "transparent"
+                                }
+                                foregroundColor={
+                                  element.foregroundColor || "#000000"
+                                }
+                                centerText={element.centerText !== false}
+                                barcodeScale={element.barcodeScale || 2.5}
+                                // Pass element size and zoom for proper PDF-matching dimensions
+                                elementSize={element.size}
+                                zoom={zoom}
                               />
                             );
 
@@ -2590,7 +2642,9 @@ const PreviewModal = ({
 
             {exportProgress > 0 && (
               <div className="space-y-2">
-                <div className="text-sm text-gray-600 dark:text-gray-400">Dışa aktarılıyor...</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Dışa aktarılıyor...
+                </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
                     className="bg-blue-600 h-2 rounded-full transition-all"

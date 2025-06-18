@@ -1597,6 +1597,13 @@ const OrderManagement = React.memo(() => {
                           <ArrowUpDown className="h-4 w-4" />
                         </div>
                       </th>
+                      { /* product name */}
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" onClick={() => handleSort("productName")}>
+                        <div className="flex items-center space-x-1">
+                          <span>Ürün Adı</span>
+                          <ArrowUpDown className="h-4 w-4" />
+                        </div>
+                      </th>
                       <th
                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                         onClick={() => handleSort("customerName")}
@@ -1608,6 +1615,9 @@ const OrderManagement = React.memo(() => {
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Platform
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Kargo Şirketi
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Durum
@@ -1638,155 +1648,208 @@ const OrderManagement = React.memo(() => {
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {currentOrders.map((order) => {
                       const statusIcon = getStatusIcon(order.orderStatus);
-                      return (
-                        <tr
+                        return (
+                          <tr
                           key={order.id}
                           className="hover:bg-gray-50 transition-colors"
-                        >
+                          >
                           <td className="px-6 py-4">
                             <input
-                              type="checkbox"
-                              checked={selectedOrders.includes(order.id)}
-                              onChange={(e) =>
-                                handleSelectOrder(order.id, e.target.checked)
-                              }
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            type="checkbox"
+                            checked={selectedOrders.includes(order.id)}
+                            onChange={(e) =>
+                              handleSelectOrder(order.id, e.target.checked)
+                            }
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4 break-words whitespace-normal">
                             <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                              {order.orderNumber}
+                            {order.orderNumber}
                             </div>
+                            {/* Display SKU under the name */}
+                            {order.items && order.items.length > 0 && order.items[0].sku && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              SKU: {order.items[0].sku}
+                            </div>
+                            )}
                             {order.tags && order.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {order.tags.slice(0, 2).map((tag, index) => (
-                                  <span
-                                    key={index}
-                                    className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded"
-                                  >
-                                    {tag}
-                                  </span>
-                                ))}
-                                {order.tags.length > 2 && (
-                                  <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
-                                    +{order.tags.length - 2}
-                                  </span>
-                                )}
-                              </div>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {order.tags.slice(0, 2).map((tag, index) => (
+                              <span
+                                key={index}
+                                className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded"
+                              >
+                                {tag}
+                              </span>
+                              ))}
+                              {order.tags.length > 2 && (
+                              <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
+                                +{order.tags.length - 2}
+                              </span>
+                              )}
+                            </div>
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          {/* product name(s) with qty */}
+                          <td className="px-6 py-4 break-words whitespace-normal">
+                            <div className="text-sm text-gray-900 dark:text-gray-100">
+                            {order.items && order.items.length > 0 ? (
+                              order.items.length === 1 ? (
+                              <>
+                                {(order.items[0].title || order.items[0].productName || "Bilinmiyor") +
+                                " x " +
+                                (order.items[0].quantity || 1)}
+                              </>
+                              ) : (
+                              <>
+                                {order.items.slice(0, 2).map((item, idx) => (
+                                <div key={idx}>
+                                  {(item.title || item.productName || "Bilinmiyor") +
+                                  " <b>x</b> " +
+                                  (item.quantity || 1)}
+                                </div>
+                                ))}
+                                {order.items.length > 2 && (
+                                <div className="text-xs text-gray-500">
+                                  +{order.items.length - 2} ürün daha
+                                </div>
+                                )}
+                              </>
+                              )
+                            ) : (
+                              "Bilinmiyor"
+                            )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 break-words whitespace-normal">
                             <div className="mt-1 flex items-center">
-                              <User className="h-4 w-4 text-gray-400 mr-2" />
-                              <p className="text-sm text-gray-900 dark:text-gray-100">
-                                {order.customerName}
-                              </p>
+                            <User className="h-4 w-4 text-gray-400 mr-2" />
+                            <p className="text-sm text-gray-900 dark:text-gray-100">
+                              {order.customerName}
+                            </p>
                             </div>
                             {order.customerEmail && (
-                              <div className="text-sm text-gray-500 flex items-center">
-                                <Mail className="h-3 w-3 mr-1" />
-                                {order.customerEmail}
-                              </div>
+                            <div className="text-sm text-gray-500 flex items-center">
+                              <Mail className="h-3 w-3 mr-1" />
+                              {order.customerEmail}
+                            </div>
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4 break-words whitespace-normal">
                             <Badge
-                              variant={getPlatformVariant(order.platform)}
-                              className="capitalize bg-white"
+                            variant={getPlatformVariant(order.platform)}
+                            className="capitalize bg-white"
                             >
-                              {getPlatformIcon(order.platform)}
+                            {getPlatformIcon(order.platform)}
                             </Badge>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4 break-words whitespace-normal">
                             <div className="flex items-center">
-                              <span className="mr-2 text-sm">{statusIcon}</span>
-                              <Badge
-                                variant={getStatusVariant(order.orderStatus)}
-                              >
-                                {getStatusText(order.orderStatus)}
-                              </Badge>
+                            {order.cargoCompany ? (
+                              <>
+                              <Truck className="h-4 w-4 mr-1 text-gray-500" />
+                              <span className="text-sm text-gray-900 dark:text-gray-100">
+                                {order.cargoCompany}
+                              </span>
+                              </>
+                            ) : (
+                              <span className="text-sm text-gray-500">
+                              Kargo bilgisi yok
+                              </span>
+                            )}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                          <td className="px-6 py-4 break-words whitespace-normal">
+                            <div className="flex items-center">
+                            <span className="mr-2 text-sm">{statusIcon}</span>
+                            <Badge
+                              variant={getStatusVariant(order.orderStatus)}
+                            >
+                              {getStatusText(order.orderStatus)}
+                            </Badge>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 break-words whitespace-normal text-sm text-gray-900 dark:text-gray-100">
                             {formatCurrency(order.totalAmount, order.currency)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          <td className="px-6 py-4 break-words whitespace-normal text-sm text-gray-500 dark:text-gray-400">
                             <div className="flex items-center">
-                              <CalendarDays className="h-4 w-4 mr-1" />
-                              {formatDate(order)}
+                            <CalendarDays className="h-4 w-4 mr-1" />
+                            {formatDate(order)}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          <td className="px-6 py-4 break-words whitespace-normal text-sm text-gray-500 dark:text-gray-400">
                             <div className="flex items-center space-x-2">
-                              <Button
-                                onClick={() => handleViewOrder(order)}
-                                size="sm"
-                                variant="ghost"
-                                className="p-1"
-                                title="Görüntüle"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                onClick={() => handleEditOrder(order)}
-                                size="sm"
-                                variant="ghost"
-                                className="p-1"
-                                title="Düzenle"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                onClick={() => handleViewOrderDetail(order.id)}
-                                size="sm"
-                                variant="ghost"
-                                className="p-1"
-                                title="Detaylar"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                onClick={() =>
-                                  handlePrintShippingSlip(order.id)
-                                }
-                                size="sm"
-                                variant="ghost"
-                                className="p-1"
-                                title="Gönderi Belgesi Yazdır"
-                              >
-                                <Printer className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                onClick={() => handlePrintInvoice(order.id)}
-                                size="sm"
-                                variant="ghost"
-                                className="p-1"
-                                title="Fatura Yazdır"
-                              >
-                                <FileText className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                onClick={() => handleCancelOrder(order.id)}
-                                size="sm"
-                                variant="ghost"
-                                className="p-1 text-red-600"
-                                title="Siparişi İptal Et"
-                              >
-                                <Ban className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                onClick={() => handleDeleteOrder(order.id)}
-                                size="sm"
-                                variant="ghost"
-                                className="p-1 text-red-600"
-                                title="Siparişi Sil"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                            <Button
+                              onClick={() => handleViewOrder(order)}
+                              size="sm"
+                              variant="ghost"
+                              className="p-1"
+                              title="Görüntüle"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() => handleEditOrder(order)}
+                              size="sm"
+                              variant="ghost"
+                              className="p-1"
+                              title="Düzenle"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() => handleViewOrderDetail(order.id)}
+                              size="sm"
+                              variant="ghost"
+                              className="p-1"
+                              title="Detaylar"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() =>
+                              handlePrintShippingSlip(order.id)
+                              }
+                              size="sm"
+                              variant="ghost"
+                              className="p-1"
+                              title="Gönderi Belgesi Yazdır"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() => handlePrintInvoice(order.id)}
+                              size="sm"
+                              variant="ghost"
+                              className="p-1"
+                              title="Fatura Yazdır"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() => handleCancelOrder(order.id)}
+                              size="sm"
+                              variant="ghost"
+                              className="p-1 text-red-600"
+                              title="Siparişi İptal Et"
+                            >
+                              <Ban className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              onClick={() => handleDeleteOrder(order.id)}
+                              size="sm"
+                              variant="ghost"
+                              className="p-1 text-red-600"
+                              title="Siparişi Sil"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                             </div>
                           </td>
-                        </tr>
-                      );
+                          </tr>
+                        );
                     })}
                   </tbody>
                 </table>

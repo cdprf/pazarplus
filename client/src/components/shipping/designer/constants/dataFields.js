@@ -169,7 +169,7 @@ export const getAllFieldOptions = () => {
 };
 
 // Common barcode data fields (most commonly used for barcodes)
-export const COMMON_BARCODE_FIELDS = [
+export const BARCODE_FORMATS = [
   DATA_FIELDS.CARGO_TRACKING_NUMBER,
   DATA_FIELDS.ORDER_NUMBER,
   DATA_FIELDS.PRODUCT_BARCODE,

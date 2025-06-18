@@ -39,6 +39,7 @@ import Analytics from "./pages/Analytics"; // Analytics dashboard
 import Settings from "./components/settings/Settings";
 import PrintSettings from "./components/settings/PrintSettings";
 import DatabaseBusyModal from "./components/DatabaseBusyModal"; // Database transaction management modal
+import BarcodeDebugger from "./BarcodeDebugger"; // Debug component for barcode rendering
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -105,6 +106,12 @@ function App() {
                             <ResetPassword />
                           </PublicRoute>
                         }
+                      />
+
+                      {/* Debug route - accessible without authentication */}
+                      <Route
+                        path="/debug-barcode"
+                        element={<BarcodeDebugger />}
                       />
 
                       {/* Private routes - consolidated and organized */}

@@ -101,11 +101,9 @@ router.use("/subscription", subscriptionRoutes);
 router.use("/admin", rateLimitRoutes);
 
 // Shipping templates routes
-console.log("Mounting shipping templates routes at /shipping/templates");
 router.use("/shipping/templates", shippingTemplatesRoutes);
 
 // Main shipping routes - direct mounting to match client API calls
-console.log("Mounting shipping routes at /shipping");
 router.use("/shipping", shippingRoutes);
 
 // Main shipping routes (DEPRECATED - using new modular shipping API in order-management)

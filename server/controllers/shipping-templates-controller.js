@@ -365,10 +365,6 @@ class ShippingTemplatesController {
       const userId = req.user.id;
       const { orderId, templateId } = req.body;
 
-      console.log(
-        `GeneratePDF request: orderId=${orderId}, templateId=${templateId}, userId=${userId}`
-      );
-
       if (!orderId) {
         return res.status(400).json({
           success: false,
@@ -380,20 +376,8 @@ class ShippingTemplatesController {
       const settings = user.settings ? JSON.parse(user.settings) : {};
       const templates = settings.shippingTemplates || [];
 
-      console.log(
-        `GeneratePDF: User has ${templates.length} templates available`
-      );
-      console.log(
-        `GeneratePDF: User default template ID: ${
-          settings.defaultShippingTemplateId || "none"
-        }`
-      );
-
       // Use provided templateId or fall back to default
       let useTemplateId = templateId || settings.defaultShippingTemplateId;
-      console.log(
-        `GeneratePDF: Initial template selection: ${useTemplateId || "none"}`
-      );
 
       // Handle null/undefined templateId values more explicitly
       if (
@@ -403,9 +387,6 @@ class ShippingTemplatesController {
         templates.length > 0
       ) {
         useTemplateId = templates[0].id;
-        console.log(
-          `GeneratePDF: No valid template ID provided, using first available template: ${useTemplateId}`
-        );
       }
 
       if (
@@ -414,7 +395,6 @@ class ShippingTemplatesController {
           useTemplateId === "undefined") &&
         templates.length === 0
       ) {
-        console.log(`GeneratePDF: No templates found for this user`);
         return res.status(404).json({
           success: false,
           message:
@@ -427,21 +407,15 @@ class ShippingTemplatesController {
       // If specified template not found but we have other templates, fall back to first template
       if (!template && templates.length > 0) {
         template = templates[0];
-        console.log(
-          `GeneratePDF: Specified template not found, falling back to first available template: ${template.id}`
-        );
       }
 
       if (!template) {
-        console.log(`GeneratePDF: No valid template found after fallbacks`);
         return res.status(404).json({
           success: false,
           message:
             "Specified template not found and no fallback templates available",
         });
       }
-
-      console.log(`GeneratePDF: Selected template: ${template.id}`);
 
       // Get order data
       const { Order, OrderItem, ShippingDetail } = require("../models");
@@ -453,14 +427,11 @@ class ShippingTemplatesController {
       });
 
       if (!order) {
-        console.log(`GeneratePDF: Order not found: ${orderId}`);
         return res.status(404).json({
           success: false,
           message: "Order not found",
         });
       }
-
-      console.log(`GeneratePDF: Found order: ${order.id}, mapping data`);
 
       // Map order data to template format
       const orderData = this.mapOrderDataForTemplate(order);
@@ -469,7 +440,6 @@ class ShippingTemplatesController {
       const TemplateBasedPDFGenerator = require("../services/templateBasedPdfGenerator");
       const pdfGenerator = new TemplateBasedPDFGenerator();
 
-      console.log(`GeneratePDF: Generating PDF from template...`);
       const result = await pdfGenerator.generateFromTemplate(
         template,
         orderData
@@ -482,9 +452,6 @@ class ShippingTemplatesController {
           shippingTemplateId: template.id,
         });
 
-        console.log(
-          `GeneratePDF: PDF generated successfully: ${result.data.labelUrl}`
-        );
         res.json({
           success: true,
           data: {
@@ -499,11 +466,6 @@ class ShippingTemplatesController {
           message: "Shipping slip PDF generated successfully",
         });
       } else {
-        console.log(
-          `GeneratePDF: PDF generation failed: ${
-            result.message || "Unknown error"
-          }`
-        );
         res.status(500).json({
           success: false,
           message: result.message || "Failed to generate PDF",
@@ -611,33 +573,6 @@ class ShippingTemplatesController {
   mapOrderDataForTemplate(order) {
     const shippingDetail = order.shippingDetail || order.ShippingDetail;
     const items = order.items || order.OrderItems || [];
-
-    console.log(`MapOrderData: Order ID ${order.id}`);
-    console.log(
-      `MapOrderData: order.items length: ${
-        order.items ? order.items.length : "undefined"
-      }`
-    );
-    console.log(
-      `MapOrderData: order.OrderItems length: ${
-        order.OrderItems ? order.OrderItems.length : "undefined"
-      }`
-    );
-    console.log(`MapOrderData: Final items array length: ${items.length}`);
-
-    if (items.length === 0) {
-      console.warn(`MapOrderData: No items found for order ${order.id}`);
-      console.log(
-        `MapOrderData: Available order properties:`,
-        Object.keys(order)
-      );
-      if (order.dataValues) {
-        console.log(
-          `MapOrderData: Available dataValues properties:`,
-          Object.keys(order.dataValues)
-        );
-      }
-    }
 
     return {
       id: order.id, // Add id field for filename generation
