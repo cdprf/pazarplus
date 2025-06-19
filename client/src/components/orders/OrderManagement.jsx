@@ -232,7 +232,7 @@ const OrderManagement = React.memo(() => {
   const getStatusIcon = useCallback((status) => {
     const iconMap = {
       new: "🆕",
-      pending: "⏳", 
+      pending: "⏳",
       confirmed: "✅",
       processing: "⚙️",
       shipped: "🚚",
@@ -241,7 +241,7 @@ const OrderManagement = React.memo(() => {
       cancelled: "❌",
       returned: "↩️",
       claimCreated: "🆕",
-      claimApproved: "✅", 
+      claimApproved: "✅",
       claimRejected: "❌",
       refunded: "💰",
       failed: "⚠️",
@@ -257,7 +257,7 @@ const OrderManagement = React.memo(() => {
       confirmed: "info",
       processing: "primary",
       shipped: "info",
-      in_transit: "info", 
+      in_transit: "info",
       delivered: "success",
       cancelled: "danger",
       returned: "warning",
@@ -275,7 +275,7 @@ const OrderManagement = React.memo(() => {
     const textMap = {
       new: "Yeni",
       pending: "Beklemede",
-      confirmed: "Onaylandı", 
+      confirmed: "Onaylandı",
       processing: "Hazırlanıyor",
       shipped: "Kargoda",
       in_transit: "Yolda",
@@ -283,7 +283,7 @@ const OrderManagement = React.memo(() => {
       cancelled: "İptal Edildi",
       returned: "İade Edildi",
       claimCreated: "Talep Oluşturuldu",
-      claimApproved: "Talep Onaylandı", 
+      claimApproved: "Talep Onaylandı",
       claimRejected: "Talep Reddedildi",
       refunded: "İade Tamamlandı",
       failed: "Başarısız",
@@ -973,11 +973,12 @@ const OrderManagement = React.memo(() => {
 
         if (response.success && response.data?.labelUrl) {
           // Construct full URL for PDF access
-          const baseUrl = process.env.NODE_ENV === 'development' 
-            ? 'http://localhost:5001' 
-            : window.location.origin;
+          const baseUrl =
+            process.env.NODE_ENV === "development"
+              ? "http://localhost:5001"
+              : window.location.origin;
           const fullPdfUrl = `${baseUrl}${response.data.labelUrl}`;
-          
+
           console.log(`✅ Opening PDF URL: ${fullPdfUrl}`);
           const pdfWindow = window.open(fullPdfUrl, "_blank");
           if (pdfWindow) {
@@ -1062,7 +1063,10 @@ const OrderManagement = React.memo(() => {
         setSelectedOrders([]);
         fetchOrders();
       } else {
-        showAlert(result.message || "Siparişler silinirken hata oluştu", "error");
+        showAlert(
+          result.message || "Siparişler silinirken hata oluştu",
+          "error"
+        );
       }
     } catch (error) {
       console.error("Error deleting orders:", error);
@@ -1070,53 +1074,135 @@ const OrderManagement = React.memo(() => {
     }
   }, [selectedOrders, showAlert, fetchOrders]);
 
-  const handleCancelOrder = useCallback(async (orderId) => {
-    // Show confirmation dialog
-    const confirmed = window.confirm(
-      "Bu siparişi iptal etmek istediğinizden emin misiniz?"
-    );
+  const handleCancelOrder = useCallback(
+    async (orderId) => {
+      // Show confirmation dialog
+      const confirmed = window.confirm(
+        "Bu siparişi iptal etmek istediğinizden emin misiniz?"
+      );
 
-    if (!confirmed) {
-      return;
-    }
+      if (!confirmed) {
+        return;
+      }
 
+      try {
+        const result = await api.orders.updateOrderStatus(orderId, "cancelled");
+        if (result.success) {
+          showAlert("Sipariş başarıyla iptal edildi", "success");
+          fetchOrders();
+        } else {
+          showAlert(
+            result.message || "Sipariş iptal edilirken hata oluştu",
+            "error"
+          );
+        }
+      } catch (error) {
+        console.error("Error cancelling order:", error);
+        showAlert("Sipariş iptal edilirken hata oluştu", "error");
+      }
+    },
+    [showAlert, fetchOrders]
+  );
+
+  const handleDeleteOrder = useCallback(
+    async (orderId) => {
+      // Show confirmation dialog
+      const confirmed = window.confirm(
+        "Bu siparişi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        const result = await api.orders.deleteOrder(orderId);
+        if (result.success) {
+          showAlert("Sipariş başarıyla silindi", "success");
+          fetchOrders();
+        } else {
+          showAlert(
+            result.message || "Sipariş silinirken hata oluştu",
+            "error"
+          );
+        }
+      } catch (error) {
+        console.error("Error deleting order:", error);
+        showAlert("Sipariş silinirken hata oluştu", "error");
+      }
+    },
+    [showAlert, fetchOrders]
+  );
+
+  // Accept order
+  const handleAcceptOrder = useCallback(
+    async (orderId) => {
+      try {
+        const result = await api.orders.acceptOrder(orderId);
+
+        if (result.success) {
+          showAlert("Sipariş başarıyla onaylandı", "success");
+          fetchOrders(); // Refresh the orders list
+        } else {
+          showAlert(
+            result.message || "Sipariş onaylanırken bir hata oluştu",
+            "error"
+          );
+        }
+      } catch (error) {
+        console.error("Error accepting order:", error);
+        showAlert("Sipariş onaylanırken bir hata oluştu", "error");
+      }
+    },
+    [showAlert, fetchOrders]
+  );
+
+  // Bulk accept
+  const handleBulkAccept = useCallback(async () => {
     try {
-      const result = await api.orders.updateOrderStatus(orderId, "cancelled");
-      if (result.success) {
-        showAlert("Sipariş başarıyla iptal edildi", "success");
-        fetchOrders();
+      const acceptableOrders = selectedOrders.filter((orderId) => {
+        const order = orders.find((o) => o.id === orderId);
+        return (
+          order &&
+          (order.orderStatus === "new" || order.orderStatus === "pending")
+        );
+      });
+
+      if (acceptableOrders.length === 0) {
+        showAlert(
+          "Seçilen siparişler arasında onaylanabilir sipariş bulunmuyor",
+          "warning"
+        );
+        return;
+      }
+
+      const results = await Promise.allSettled(
+        acceptableOrders.map((orderId) => api.orders.acceptOrder(orderId))
+      );
+
+      const successful = results.filter(
+        (result) => result.status === "fulfilled" && result.value.success
+      ).length;
+
+      const failed = results.length - successful;
+
+      if (successful > 0) {
+        showAlert(
+          `${successful} sipariş başarıyla onaylandı${
+            failed > 0 ? `, ${failed} sipariş onaylanamadı` : ""
+          }`,
+          failed > 0 ? "warning" : "success"
+        );
+        fetchOrders(); // Refresh the orders list
+        setSelectedOrders([]); // Clear selection
       } else {
-        showAlert(result.message || "Sipariş iptal edilirken hata oluştu", "error");
+        showAlert("Hiçbir sipariş onaylanamadı", "error");
       }
     } catch (error) {
-      console.error("Error cancelling order:", error);
-      showAlert("Sipariş iptal edilirken hata oluştu", "error");
+      console.error("Error in bulk accept:", error);
+      showAlert("Toplu onaylama işlemi sırasında hata oluştu", "error");
     }
-  }, [showAlert, fetchOrders]);
-
-  const handleDeleteOrder = useCallback(async (orderId) => {
-    // Show confirmation dialog
-    const confirmed = window.confirm(
-      "Bu siparişi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      const result = await api.orders.deleteOrder(orderId);
-      if (result.success) {
-        showAlert("Sipariş başarıyla silindi", "success");
-        fetchOrders();
-      } else {
-        showAlert(result.message || "Sipariş silinirken hata oluştu", "error");
-      }
-    } catch (error) {
-      console.error("Error deleting order:", error);
-      showAlert("Sipariş silinirken hata oluştu", "error");
-    }
-  }, [showAlert, fetchOrders]);
+  }, [selectedOrders, orders, showAlert, fetchOrders]);
 
   // Loading and error states
   if (loading) {
@@ -1515,6 +1601,15 @@ const OrderManagement = React.memo(() => {
                 </span>
                 <div className="flex space-x-2">
                   <Button
+                    onClick={() => handleBulkAccept()}
+                    size="sm"
+                    variant="outline"
+                    className="text-green-600 hover:text-green-700 hover:border-green-300"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Seçilenleri Onayla
+                  </Button>
+                  <Button
                     onClick={() => handleBulkStatusUpdate("processing")}
                     size="sm"
                     variant="outline"
@@ -1597,8 +1692,11 @@ const OrderManagement = React.memo(() => {
                           <ArrowUpDown className="h-4 w-4" />
                         </div>
                       </th>
-                      { /* product name */}
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" onClick={() => handleSort("productName")}>
+                      {/* product name */}
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        onClick={() => handleSort("productName")}
+                      >
                         <div className="flex items-center space-x-1">
                           <span>Ürün Adı</span>
                           <ArrowUpDown className="h-4 w-4" />
@@ -1631,15 +1729,6 @@ const OrderManagement = React.memo(() => {
                           <ArrowUpDown className="h-4 w-4" />
                         </div>
                       </th>
-                      <th
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                        onClick={() => handleSort("displayDate")}
-                      >
-                        <div className="flex items-center space-x-1">
-                          <span>Tarih</span>
-                          <ArrowUpDown className="h-4 w-4" />
-                        </div>
-                      </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         İşlemler
                       </th>
@@ -1648,208 +1737,218 @@ const OrderManagement = React.memo(() => {
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {currentOrders.map((order) => {
                       const statusIcon = getStatusIcon(order.orderStatus);
-                        return (
-                          <tr
+                      return (
+                        <tr
                           key={order.id}
                           className="hover:bg-gray-50 transition-colors"
-                          >
+                        >
+                          {/* checkbox */}
                           <td className="px-6 py-4">
                             <input
-                            type="checkbox"
-                            checked={selectedOrders.includes(order.id)}
-                            onChange={(e) =>
-                              handleSelectOrder(order.id, e.target.checked)
-                            }
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              type="checkbox"
+                              checked={selectedOrders.includes(order.id)}
+                              onChange={(e) =>
+                                handleSelectOrder(order.id, e.target.checked)
+                              }
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                           </td>
-                          <td className="px-6 py-4 break-words whitespace-normal">
+
+                          {/* order number */}
+                          <td className="px-6 py-4 whitespace-normal">
                             <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {order.orderNumber}
+                              {order.orderNumber}
+                            </div>
+                            <div className="flex text-xs items-center">
+                              {formatDate(order)}
                             </div>
                             {/* Display SKU under the name */}
-                            {order.items && order.items.length > 0 && order.items[0].sku && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              SKU: {order.items[0].sku}
-                            </div>
-                            )}
-                            {order.tags && order.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {order.tags.slice(0, 2).map((tag, index) => (
-                              <span
-                                key={index}
-                                className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded"
-                              >
-                                {tag}
-                              </span>
-                              ))}
-                              {order.tags.length > 2 && (
-                              <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
-                                +{order.tags.length - 2}
-                              </span>
+                            {order.items &&
+                              order.items.length > 0 &&
+                              order.items[0].sku && (
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  SKU: {order.items[0].sku}
+                                </div>
                               )}
-                            </div>
-                            )}
                           </td>
                           {/* product name(s) with qty */}
                           <td className="px-6 py-4 break-words whitespace-normal">
                             <div className="text-sm text-gray-900 dark:text-gray-100">
-                            {order.items && order.items.length > 0 ? (
-                              order.items.length === 1 ? (
-                              <>
-                                {(order.items[0].title || order.items[0].productName || "Bilinmiyor") +
-                                " x " +
-                                (order.items[0].quantity || 1)}
-                              </>
+                              {order.items && order.items.length > 0 ? (
+                                order.items.length === 1 ? (
+                                  <>
+                                    {(order.items[0].title ||
+                                      order.items[0].productName ||
+                                      "Bilinmiyor") +
+                                      " x " +
+                                      (order.items[0].quantity || 1)}
+                                  </>
+                                ) : (
+                                  <>
+                                    {order.items
+                                      .slice(0, 2)
+                                      .map((item, idx) => (
+                                        <div key={idx}>
+                                          {(item.title ||
+                                            item.productName ||
+                                            "Bilinmiyor") +
+                                            " <b>x</b> " +
+                                            (item.quantity || 1)}
+                                        </div>
+                                      ))}
+                                    {order.items.length > 2 && (
+                                      <div className="text-xs text-gray-500">
+                                        +{order.items.length - 2} ürün daha
+                                      </div>
+                                    )}
+                                  </>
+                                )
                               ) : (
-                              <>
-                                {order.items.slice(0, 2).map((item, idx) => (
-                                <div key={idx}>
-                                  {(item.title || item.productName || "Bilinmiyor") +
-                                  " <b>x</b> " +
-                                  (item.quantity || 1)}
-                                </div>
-                                ))}
-                                {order.items.length > 2 && (
-                                <div className="text-xs text-gray-500">
-                                  +{order.items.length - 2} ürün daha
-                                </div>
-                                )}
-                              </>
-                              )
-                            ) : (
-                              "Bilinmiyor"
-                            )}
+                                "Bilinmiyor"
+                              )}
                             </div>
                           </td>
+                          {/* customer name and email */}
                           <td className="px-6 py-4 break-words whitespace-normal">
                             <div className="mt-1 flex items-center">
-                            <User className="h-4 w-4 text-gray-400 mr-2" />
-                            <p className="text-sm text-gray-900 dark:text-gray-100">
-                              {order.customerName}
-                            </p>
+                              <User className="h-4 w-4 text-gray-400 mr-2" />
+                              <p className="text-sm text-gray-900 dark:text-gray-100">
+                                {order.customerName}
+                              </p>
                             </div>
                             {order.customerEmail && (
-                            <div className="text-sm text-gray-500 flex items-center">
-                              <Mail className="h-3 w-3 mr-1" />
-                              {order.customerEmail}
-                            </div>
+                              <div className="text-sm text-gray-500 flex items-center">
+                                <Mail className="h-3 w-3 mr-1" />
+                                {order.customerEmail}
+                              </div>
                             )}
                           </td>
+                          {/* platform */}
                           <td className="px-6 py-4 break-words whitespace-normal">
                             <Badge
-                            variant={getPlatformVariant(order.platform)}
-                            className="capitalize bg-white"
+                              variant={getPlatformVariant(order.platform)}
+                              className="capitalize bg-white"
                             >
-                            {getPlatformIcon(order.platform)}
+                              {getPlatformIcon(order.platform)}
                             </Badge>
                           </td>
+                          {/* cargo company */}
                           <td className="px-6 py-4 break-words whitespace-normal">
                             <div className="flex items-center">
-                            {order.cargoCompany ? (
-                              <>
-                              <Truck className="h-4 w-4 mr-1 text-gray-500" />
-                              <span className="text-sm text-gray-900 dark:text-gray-100">
-                                {order.cargoCompany}
-                              </span>
-                              </>
-                            ) : (
-                              <span className="text-sm text-gray-500">
-                              Kargo bilgisi yok
-                              </span>
-                            )}
+                              {order.cargoCompany ? (
+                                <>
+                                  <Truck className="h-4 w-4 mr-1 text-gray-500" />
+                                  <span className="text-sm text-gray-900 dark:text-gray-100">
+                                    {order.cargoCompany}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-sm text-gray-500">
+                                  Kargo bilgisi yok
+                                </span>
+                              )}
                             </div>
                           </td>
+                          {/* status */}
                           <td className="px-6 py-4 break-words whitespace-normal">
                             <div className="flex items-center">
-                            <span className="mr-2 text-sm">{statusIcon}</span>
-                            <Badge
-                              variant={getStatusVariant(order.orderStatus)}
-                            >
-                              {getStatusText(order.orderStatus)}
-                            </Badge>
+                              <span className="mr-2 text-sm">{statusIcon}</span>
+                              <Badge
+                                variant={getStatusVariant(order.orderStatus)}
+                              >
+                                {getStatusText(order.orderStatus)}
+                              </Badge>
                             </div>
                           </td>
+                          {/* total amount */}
                           <td className="px-6 py-4 break-words whitespace-normal text-sm text-gray-900 dark:text-gray-100">
                             {formatCurrency(order.totalAmount, order.currency)}
                           </td>
-                          <td className="px-6 py-4 break-words whitespace-normal text-sm text-gray-500 dark:text-gray-400">
-                            <div className="flex items-center">
-                            <CalendarDays className="h-4 w-4 mr-1" />
-                            {formatDate(order)}
-                            </div>
-                          </td>
+                          {/* actions */}
                           <td className="px-6 py-4 break-words whitespace-normal text-sm text-gray-500 dark:text-gray-400">
                             <div className="flex items-center space-x-2">
-                            <Button
-                              onClick={() => handleViewOrder(order)}
-                              size="sm"
-                              variant="ghost"
-                              className="p-1"
-                              title="Görüntüle"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              onClick={() => handleEditOrder(order)}
-                              size="sm"
-                              variant="ghost"
-                              className="p-1"
-                              title="Düzenle"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              onClick={() => handleViewOrderDetail(order.id)}
-                              size="sm"
-                              variant="ghost"
-                              className="p-1"
-                              title="Detaylar"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              onClick={() =>
-                              handlePrintShippingSlip(order.id)
-                              }
-                              size="sm"
-                              variant="ghost"
-                              className="p-1"
-                              title="Gönderi Belgesi Yazdır"
-                            >
-                              <Printer className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              onClick={() => handlePrintInvoice(order.id)}
-                              size="sm"
-                              variant="ghost"
-                              className="p-1"
-                              title="Fatura Yazdır"
-                            >
-                              <FileText className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              onClick={() => handleCancelOrder(order.id)}
-                              size="sm"
-                              variant="ghost"
-                              className="p-1 text-red-600"
-                              title="Siparişi İptal Et"
-                            >
-                              <Ban className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              onClick={() => handleDeleteOrder(order.id)}
-                              size="sm"
-                              variant="ghost"
-                              className="p-1 text-red-600"
-                              title="Siparişi Sil"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                              {/* Accept Order Button - only show for new/pending orders */}
+                              {(order.orderStatus === "new" ||
+                                order.orderStatus === "pending") && (
+                                <Button
+                                  onClick={() => handleAcceptOrder(order.id)}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="p-1 text-green-600 hover:text-green-700"
+                                  title="Siparişi Onayla"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                onClick={() => handleViewOrder(order)}
+                                size="sm"
+                                variant="ghost"
+                                className="p-1"
+                                title="Görüntüle"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => handleEditOrder(order)}
+                                size="sm"
+                                variant="ghost"
+                                className="p-1"
+                                title="Düzenle"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => handleViewOrderDetail(order.id)}
+                                size="sm"
+                                variant="ghost"
+                                className="p-1"
+                                title="Detaylar"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() =>
+                                  handlePrintShippingSlip(order.id)
+                                }
+                                size="sm"
+                                variant="ghost"
+                                className="p-1"
+                                title="Gönderi Belgesi Yazdır"
+                              >
+                                <Printer className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => handlePrintInvoice(order.id)}
+                                size="sm"
+                                variant="ghost"
+                                className="p-1"
+                                title="Fatura Yazdır"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => handleCancelOrder(order.id)}
+                                size="sm"
+                                variant="ghost"
+                                className="p-1 text-red-600"
+                                title="Siparişi İptal Et"
+                              >
+                                <Ban className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => handleDeleteOrder(order.id)}
+                                size="sm"
+                                variant="ghost"
+                                className="p-1 text-red-600"
+                                title="Siparişi Sil"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </td>
-                          </tr>
-                        );
+                        </tr>
+                      );
                     })}
                   </tbody>
                 </table>

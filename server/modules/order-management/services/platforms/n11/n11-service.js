@@ -24,6 +24,7 @@ const N11_API = {
     ORDERS: "/rest/delivery/v1/shipmentPackages",
     ORDER_DETAIL: "/rest/delivery/v1/shipmentPackages/{id}",
     UPDATE_ORDER: "/rest/delivery/v1/shipmentPackages/{id}",
+    UPDATE_ORDER_STATUS: "/rest/order/v1/update", // Official N11 order status update endpoint
     ACCEPT_ORDER: "/rest/delivery/v1/shipmentPackages/{id}/accept",
     REJECT_ORDER: "/rest/delivery/v1/shipmentPackages/{id}/reject",
     SHIP_ORDER: "/rest/delivery/v1/shipmentPackages/{id}/ship",
@@ -928,7 +929,7 @@ class N11Service extends BasePlatformService {
             // Update existing order
             try {
               await existingOrder.update({
-                status: this.mapOrderStatus(order.shipmentPackageStatus),
+                orderStatus: this.mapOrderStatus(order.shipmentPackageStatus),
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date(),
               });
@@ -1304,7 +1305,7 @@ class N11Service extends BasePlatformService {
    */
   mapOrderStatus(apiStatus) {
     const statusMap = {
-      // N11 statuses mapped to Turkish status names for consistency
+      // N11 statuses mapped to internal status names
       Approved: "pending",
       New: "new",
       Picking: "processing",
@@ -1315,6 +1316,17 @@ class N11Service extends BasePlatformService {
       Created: "new",
       UnPacked: "failed",
       UnSupplied: "failed",
+      // Additional N11 statuses that might be encountered
+      Confirmed: "pending",
+      InProgress: "processing",
+      ReadyToShip: "processing",
+      InTransit: "shipped",
+      PartiallyShipped: "shipped",
+      Completed: "delivered",
+      Rejected: "cancelled",
+      Refunded: "returned",
+      Failed: "failed",
+      Expired: "cancelled",
       // Turkish versions for consistency
       Onaylandı: "pending",
       Yeni: "new",
@@ -1326,40 +1338,699 @@ class N11Service extends BasePlatformService {
       Oluşturuldu: "new",
       Paketlenmedi: "failed",
       "Tedarik Edilmedi": "failed",
+      Onaylandı: "pending",
+      "Devam Ediyor": "processing",
+      "Gönderilmeye Hazır": "processing",
+      Yolda: "shipped",
+      "Kısmi Gönderildi": "shipped",
+      Tamamlandı: "delivered",
+      Reddedildi: "cancelled",
+      "İade Edildi": "returned",
+      Başarısız: "failed",
+      "Süresi Doldu": "cancelled",
     };
+
+    // Log unknown statuses for debugging
+    if (!statusMap[apiStatus]) {
+      this.logger.warn(`Unknown N11 order status received: ${apiStatus}`, {
+        platform: "n11",
+        status: apiStatus,
+        mappedTo: "new",
+      });
+    }
 
     return statusMap[apiStatus] || "new";
   }
 
   /**
-   * Map payment type to N11Order model enum
-   * @param {string} paymentType - Payment type from N11 API
-   * @returns {string} N11Order model payment type
+   * Map internal status to N11 status
+   * @param {string} internalStatus - Internal status
+   * @returns {string} N11 status
    */
-  mapPaymentType(paymentType) {
-    const paymentMap = {
-      CreditCard: "Kredi_Karti",
-      BankTransfer: "Havale_EFT",
-      CashOnDelivery: "Kapida_Odeme",
-      N11Wallet: "N11_Cuzdan",
+  mapToPlatformStatus(internalStatus) {
+    const reverseStatusMap = {
+      new: "New",
+      pending: "Approved",
+      processing: "Picking",
+      shipped: "Shipped",
+      delivered: "Delivered",
+      cancelled: "Cancelled",
+      returned: "Returned",
+      failed: "UnSupplied",
     };
 
-    return paymentMap[paymentType] || "Kredi_Karti";
+    return reverseStatusMap[internalStatus];
   }
 
   /**
-   * Map payment status to N11Order model enum
-   * @param {string} paymentStatus - Payment status from N11 API
-   * @returns {string} N11Order model payment status
+   * Update order status on N11 platform
+   * @param {string} orderId - Internal order ID
+   * @param {string} newStatus - New status to set
+   * @returns {Object} - Result of the status update operation
    */
-  mapPaymentStatus(paymentStatus) {
-    const statusMap = {
-      Pending: "Bekliyor",
-      Confirmed: "Onaylandi",
-      Cancelled: "Iptal_Edildi",
-    };
+  async updateOrderStatus(orderId, newStatus) {
+    try {
+      await this.initialize();
 
-    return statusMap[paymentStatus] || "Bekliyor";
+      const order = await Order.findByPk(orderId);
+
+      if (!order) {
+        throw new Error(`Order with ID ${orderId} not found`);
+      }
+
+      const n11Status = this.mapToPlatformStatus(newStatus);
+
+      if (!n11Status) {
+        throw new Error(`Cannot map status '${newStatus}' to N11 status`);
+      }
+
+      const packageId = order.externalOrderId || order.platformOrderId;
+
+      if (!packageId) {
+        throw new Error("External order ID not found for N11 order");
+      }
+
+      // Update order status using N11 API
+      const response = await this.axiosInstance.put(
+        N11_API.ENDPOINTS.UPDATE_ORDER.replace("{id}", packageId),
+        {
+          status: n11Status,
+        }
+      );
+
+      // Update local order status
+      await order.update({
+        orderStatus: newStatus,
+        lastSyncedAt: new Date(),
+      });
+
+      return {
+        success: true,
+        message: `Order status updated to ${newStatus}`,
+        data: order,
+        platformResponse: response.data,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to update order status on N11: ${error.message}`,
+        { error, orderId, connectionId: this.connectionId }
+      );
+
+      return {
+        success: false,
+        message: `Failed to update order status: ${error.message}`,
+        error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  /**
+   * Accept an order on N11 platform using the dedicated accept endpoint
+   * @param {string} externalOrderId - External order ID (package ID)
+   * @returns {Object} - Result of the acceptance operation
+   */
+  async acceptOrder(externalOrderId) {
+    try {
+      await this.initialize();
+
+      if (!externalOrderId) {
+        throw new Error(
+          "External order ID is required for N11 order acceptance"
+        );
+      }
+
+      this.logger.info(`N11 order acceptance requested`, {
+        externalOrderId,
+        connectionId: this.connectionId,
+      });
+
+      // Get order details from local database (avoid API call that causes socket hang up)
+      const localOrder = await Order.findOne({
+        where: {
+          externalOrderId: externalOrderId.toString(),
+          platform: "n11"
+        }
+      });
+
+      if (!localOrder) {
+        throw new Error("Order not found in local database");
+      }
+
+      // Parse the stored raw data to get line items
+      let orderDetails;
+      try {
+        orderDetails = JSON.parse(localOrder.rawData || '{}');
+      } catch (parseError) {
+        throw new Error("Could not parse order data from database");
+      }
+
+      if (
+        !orderDetails ||
+        !orderDetails.lines ||
+        orderDetails.lines.length === 0
+      ) {
+        throw new Error("Order not found or has no line items");
+      }
+
+      // Extract line IDs from the order details
+      const lineIds = orderDetails.lines
+        .filter((line) => line.orderLineId) // Only include lines with valid IDs
+        .map((line) => ({ lineId: line.orderLineId }));
+
+      if (lineIds.length === 0) {
+        throw new Error("No valid line items found for order acceptance");
+      }
+
+      // Use the official N11 order update endpoint
+      const requestData = {
+        lines: lineIds,
+        status: "Picking", // Official N11 status for order acceptance
+      };
+
+      this.logger.debug(`N11 order acceptance request data`, {
+        externalOrderId,
+        requestData,
+        lineCount: lineIds.length,
+      });
+
+      // Make the API call using the absolute endpoint path
+      let response;
+      try {
+        response = await this.axiosInstance.put(
+          N11_API.ENDPOINTS.UPDATE_ORDER_STATUS, 
+          requestData,
+          {
+            timeout: 15000, // Increase timeout to 15 seconds
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+      } catch (apiError) {
+        this.logger.error(`N11 API call failed`, {
+          externalOrderId,
+          error: apiError.message,
+          code: apiError.code,
+          status: apiError.response?.status,
+          endpoint: N11_API.ENDPOINTS.UPDATE_ORDER_STATUS
+        });
+        
+        // If it's a socket hang up or connection error, return a partial success
+        if (apiError.code === 'ECONNRESET' || apiError.message.includes('socket hang up')) {
+          return {
+            success: false,
+            message: `N11 API connection failed: ${apiError.message}. Order may need to be accepted manually on N11 platform.`,
+            error: 'CONNECTION_ERROR',
+            externalOrderId,
+            requestData
+          };
+        }
+        
+        throw apiError;
+      }
+
+      // Check if all line items were successfully updated
+      const successCount =
+        response.data.content?.filter((item) => item.status === "SUCCESS")
+          .length || 0;
+      const failedItems =
+        response.data.content?.filter((item) => item.status !== "SUCCESS") ||
+        [];
+
+      if (failedItems.length > 0) {
+        this.logger.warn(`Some line items failed to update`, {
+          externalOrderId,
+          failedItems,
+          successCount,
+        });
+      }
+
+      this.logger.info(`N11 order acceptance completed`, {
+        externalOrderId,
+        successCount,
+        failedCount: failedItems.length,
+        totalLines: lineIds.length,
+      });
+
+      return {
+        success: successCount > 0,
+        message: `Order acceptance completed. ${successCount}/${lineIds.length} line items updated successfully`,
+        data: response.data,
+        externalOrderId,
+        successCount,
+        failedCount: failedItems.length,
+        failedItems,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to accept order on N11: ${error.message}`, {
+        error,
+        externalOrderId,
+        connectionId: this.connectionId,
+      });
+
+      return {
+        success: false,
+        message: `Failed to accept order: ${error.message}`,
+        error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  /**
+   * Get detailed information about a specific order from N11
+   * @param {string} externalOrderId - External order ID (package ID)
+   * @returns {Object} - Order details including line items
+   */
+  async getOrderDetails(externalOrderId) {
+    try {
+      await this.initialize();
+
+      if (!externalOrderId) {
+        throw new Error("External order ID is required");
+      }
+
+      this.logger.debug(`Fetching N11 order details`, {
+        externalOrderId,
+        connectionId: this.connectionId,
+      });
+
+      // Use the order detail endpoint
+      const response = await this.axiosInstance.get(
+        N11_API.ENDPOINTS.ORDER_DETAIL.replace("{id}", externalOrderId)
+      );
+
+      if (!response.data) {
+        throw new Error("No order data received from N11");
+      }
+
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to get N11 order details: ${error.message}`, {
+        error,
+        externalOrderId,
+        connectionId: this.connectionId,
+        response: error.response?.data,
+      });
+
+      // Try to get order details from local database as fallback
+      try {
+        const localOrder = await Order.findOne({
+          where: {
+            externalOrderId: externalOrderId.toString(),
+            platform: "n11",
+          },
+          include: [
+            {
+              model: require("../../../../../models").OrderItem,
+              as: "items",
+            },
+          ],
+        });
+
+        if (localOrder && localOrder.rawData) {
+          const rawData = JSON.parse(localOrder.rawData);
+          this.logger.info(
+            `Using cached order data for N11 order ${externalOrderId}`
+          );
+          return rawData;
+        }
+      } catch (dbError) {
+        this.logger.warn(
+          `Could not retrieve cached order data: ${dbError.message}`
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Reject an order on N11 platform using the dedicated reject endpoint
+   * @param {string} externalOrderId - External order ID (package ID)
+   * @param {string} reason - Rejection reason
+   * @returns {Object} - Result of the rejection operation
+   */
+  async rejectOrder(externalOrderId, reason = "Merchant rejection") {
+    try {
+      await this.initialize();
+
+      if (!externalOrderId) {
+        throw new Error(
+          "External order ID is required for N11 order rejection"
+        );
+      }
+
+      this.logger.info(`N11 order rejection requested`, {
+        externalOrderId,
+        reason,
+        connectionId: this.connectionId,
+      });
+
+      // Use N11's dedicated reject endpoint
+      const response = await this.axiosInstance.post(
+        N11_API.ENDPOINTS.REJECT_ORDER.replace("{id}", externalOrderId),
+        {
+          reason: reason,
+        }
+      );
+
+      return {
+        success: true,
+        message: "Order rejected successfully on N11",
+        data: response.data,
+        externalOrderId,
+        reason,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to reject order on N11: ${error.message}`, {
+        error,
+        externalOrderId,
+        connectionId: this.connectionId,
+      });
+
+      return {
+        success: false,
+        message: `Failed to reject order: ${error.message}`,
+        error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  /**
+   * Fetch a list of categories from N11
+   * @param {Object} params - Query parameters
+   * @returns {Promise<Object>} Result containing category data
+   */
+  async fetchCategories(params = {}) {
+    try {
+      await this.initialize();
+
+      const defaultParams = {
+        // Default parameters for category fetching
+        size: params.size || 100,
+        page: params.page || 0,
+      };
+
+      const queryParams = { ...defaultParams, ...params };
+
+      this.logger.debug(
+        `Fetching N11 categories with params: ${JSON.stringify(queryParams)}`
+      );
+
+      const response = await this.retryRequest(() =>
+        this.axiosInstance.get(N11_API.ENDPOINTS.CATEGORIES, {
+          params: queryParams,
+        })
+      );
+
+      if (!response.data || response.data.totalElements === 0) {
+        return {
+          success: false,
+          message: "No category data returned from N11",
+          data: [],
+        };
+      }
+
+      const categories = response.data.content || [];
+
+      this.logger.info(
+        `Successfully fetched ${categories.length} categories from N11`
+      );
+
+      return {
+        success: true,
+        message: `Successfully fetched ${categories.length} categories from N11`,
+        data: categories,
+        pagination: response.data.pageable
+          ? {
+              page: response.data.pageable.pageNumber || queryParams.page,
+              size: response.data.pageable.pageSize || queryParams.size,
+              totalPages: Math.ceil(
+                (response.data.totalElements || 0) /
+                  (response.data.pageable.pageSize || 50)
+              ),
+              totalElements: response.data.totalElements || categories.length,
+              isFirst:
+                (response.data.pageable.pageNumber || queryParams.page) === 0,
+              isLast:
+                (response.data.pageable.pageNumber || queryParams.page) >=
+                Math.ceil(
+                  (response.data.totalElements || 0) /
+                    (response.data.pageable.pageSize || 50)
+                ) -
+                  1,
+              hasNext:
+                (response.data.pageable.pageNumber || queryParams.page) <
+                Math.ceil(
+                  (response.data.totalElements || 0) /
+                    (response.data.pageable.pageSize || 50)
+                ) -
+                  1,
+              hasPrevious:
+                (response.data.pageable.pageNumber || queryParams.page) > 0,
+            }
+          : undefined,
+      };
+    } catch (error) {
+      const statusCode = error.response?.status;
+      const apiError = error.response?.data;
+
+      this.logger.error(
+        `Failed to fetch categories from N11: ${error.message}`,
+        {
+          error,
+          statusCode,
+          apiError,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to fetch categories: ${error.message}`,
+        error: apiError || error.message,
+        data: [],
+      };
+    }
+  }
+
+  /**
+   * Fetch category attributes from N11
+   * @param {string} categoryId - Category ID
+   * @returns {Promise<Object>} Result containing category attributes
+   */
+  async fetchCategoryAttributes(categoryId) {
+    try {
+      await this.initialize();
+
+      if (!categoryId) {
+        throw new Error("Category ID is required to fetch attributes");
+      }
+
+      this.logger.debug(
+        `Fetching N11 category attributes for ID: ${categoryId}`
+      );
+
+      const response = await this.retryRequest(() =>
+        this.axiosInstance.get(
+          N11_API.ENDPOINTS.CATEGORY_ATTRIBUTES.replace(
+            "{categoryId}",
+            categoryId
+          )
+        )
+      );
+
+      if (!response.data || response.data.length === 0) {
+        return {
+          success: false,
+          message: "No category attribute data returned from N11",
+          data: [],
+        };
+      }
+
+      const attributes = response.data || [];
+
+      this.logger.info(
+        `Successfully fetched ${attributes.length} attributes for category ${categoryId} from N11`
+      );
+
+      return {
+        success: true,
+        message: `Successfully fetched ${attributes.length} attributes for category ${categoryId} from N11`,
+        data: attributes,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch category attributes from N11: ${error.message}`,
+        {
+          error,
+          categoryId,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to fetch category attributes: ${error.message}`,
+        error: error.response?.data || error.message,
+        data: [],
+      };
+    }
+  }
+
+  /**
+   * Upload a product catalog to N11
+   * @param {Object} catalogData - Catalog data to upload
+   * @returns {Promise<Object>} Result of the upload operation
+   */
+  async uploadCatalog(catalogData) {
+    try {
+      await this.initialize();
+
+      this.logger.info(`Uploading product catalog to N11...`);
+
+      const response = await this.retryRequest(() =>
+        this.axiosInstance.post(N11_API.ENDPOINTS.CATALOG_UPLOAD, catalogData)
+      );
+
+      this.logger.info(`Catalog uploaded successfully to N11`);
+
+      return {
+        success: true,
+        message: "Catalog uploaded successfully to N11",
+        data: response.data,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to upload catalog to N11: ${error.message}`, {
+        error,
+        connectionId: this.connectionId,
+      });
+
+      return {
+        success: false,
+        message: `Failed to upload catalog: ${error.message}`,
+        error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  /**
+   * Search for products in the catalog
+   * @param {Object} searchParams - Search parameters
+   * @returns {Promise<Object>} Search results
+   */
+  async searchCatalog(searchParams) {
+    try {
+      await this.initialize();
+
+      const defaultParams = {
+        // Default search parameters
+        size: searchParams.size || 100,
+        page: searchParams.page || 0,
+      };
+
+      const queryParams = { ...defaultParams, ...searchParams };
+
+      this.logger.debug(
+        `Searching N11 catalog with params: ${JSON.stringify(queryParams)}`
+      );
+
+      const response = await this.retryRequest(() =>
+        this.axiosInstance.get(N11_API.ENDPOINTS.CATALOG_SEARCH, {
+          params: queryParams,
+        })
+      );
+
+      if (!response.data || response.data.totalElements === 0) {
+        return {
+          success: false,
+          message: "No product data found in catalog",
+          data: [],
+        };
+      }
+
+      const products = response.data.content || [];
+
+      this.logger.info(
+        `Successfully found ${products.length} products in N11 catalog`
+      );
+
+      return {
+        success: true,
+        message: `Successfully found ${products.length} products in N11 catalog`,
+        data: products,
+        pagination: response.data.pageable
+          ? {
+              page: response.data.pageable.pageNumber || queryParams.page,
+              size: response.data.pageable.pageSize || queryParams.size,
+              totalPages: Math.ceil(
+                (response.data.totalElements || 0) /
+                  (response.data.pageable.pageSize || 50)
+              ),
+              totalElements: response.data.totalElements || products.length,
+              isFirst:
+                (response.data.pageable.pageNumber || queryParams.page) === 0,
+              isLast:
+                (response.data.pageable.pageNumber || queryParams.page) >=
+                Math.ceil(
+                  (response.data.totalElements || 0) /
+                    (response.data.pageable.pageSize || 50)
+                ) -
+                  1,
+              hasNext:
+                (response.data.pageable.pageNumber || queryParams.page) <
+                Math.ceil(
+                  (response.data.totalElements || 0) /
+                    (response.data.pageable.pageSize || 50)
+                ) -
+                  1,
+              hasPrevious:
+                (response.data.pageable.pageNumber || queryParams.page) > 0,
+            }
+          : undefined,
+      };
+    } catch (error) {
+      const statusCode = error.response?.status;
+      const apiError = error.response?.data;
+
+      this.logger.error(`Failed to search catalog on N11: ${error.message}`, {
+        error,
+        statusCode,
+        apiError,
+        connectionId: this.connectionId,
+      });
+
+      return {
+        success: false,
+        message: `Failed to search catalog: ${error.message}`,
+        error: apiError || error.message,
+        data: [],
+      };
+    }
+  }
+
+  /**
+   * Retry a request with exponential backoff
+   * @param {Function} requestFunction - The request function to retry
+   * @param {number} [retries=3] - Number of retries
+   * @param {number} [delay=1000] - Initial delay in ms
+   * @returns {Promise<Object>} Result of the request
+   */
+  async retryRequest(requestFunction, retries = 3, delay = 1000) {
+    try {
+      return await requestFunction();
+    } catch (error) {
+      if (retries === 0) throw error;
+
+      this.logger.warn(
+        `Request failed, retrying in ${delay}ms... (${retries} retries left)`,
+        { error: error.message, connectionId: this.connectionId }
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
+
+      return this.retryRequest(requestFunction, retries - 1, delay * 2);
+    }
   }
 
   /**

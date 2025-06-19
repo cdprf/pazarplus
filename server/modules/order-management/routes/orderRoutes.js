@@ -348,6 +348,35 @@ router.get("/:id", orderController.getOrderById);
  */
 router.put("/:id/status", orderController.updateOrderStatus);
 
+/**
+ * @swagger
+ * /api/order-management/orders/{id}/accept:
+ *   put:
+ *     summary: Accept an order
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order ID
+ *     responses:
+ *       200:
+ *         description: Order accepted successfully
+ *       400:
+ *         description: Invalid order status for acceptance
+ *       404:
+ *         description: Order not found
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.put("/:id/accept", orderController.acceptOrder);
+
 // Add the missing endpoints that the frontend expects
 router.delete("/bulk-delete", orderController.bulkDeleteOrders);
 router.post("/bulk-einvoice", orderController.bulkEInvoice);

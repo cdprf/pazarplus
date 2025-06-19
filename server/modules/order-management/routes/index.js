@@ -3,7 +3,6 @@ const express = require("express");
 // Import route modules (only the ones that actually exist)
 const orderRoutes = require("./orderRoutes");
 const adminRoutes = require("./adminRoutes");
-const shippingRoutes = require("./shippingRoutes");
 const exportRoutes = require("./exportRoutes");
 const csvRoutes = require("./csvRoutes");
 const connections = require("./connections");
@@ -20,7 +19,6 @@ const router = express.Router();
 // Mount all routes
 router.use("/orders", orderRoutes);
 router.use("/admin", adminRoutes);
-router.use("/shipping", shippingRoutes);
 router.use("/export", exportRoutes);
 router.use("/csv", csvRoutes);
 router.use("/connections", connections);

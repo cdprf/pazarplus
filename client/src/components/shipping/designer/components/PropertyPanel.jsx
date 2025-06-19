@@ -1,4 +1,11 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
+import PropTypes from "prop-types";
 import {
   Image,
   Move,
@@ -19,6 +26,50 @@ import {
 } from "../constants/dataFields.js";
 import { elementDefaults } from "../constants/elementDefaults.js";
 import { BarcodePropertiesPanel } from "./BarcodePropertySections.jsx";
+import FontSelector from "./FontSelector.jsx";
+import TextValidationIndicator from "./TextValidationIndicator.jsx";
+
+// Utility functions for consistent value handling
+const parseNumericValue = (value, defaultValue = 0, isFloat = false) => {
+  if (value === null || value === undefined || value === "") {
+    return defaultValue;
+  }
+
+  const numericValue = isFloat ? parseFloat(value) : parseInt(value, 10);
+  return isNaN(numericValue) ? defaultValue : numericValue;
+};
+
+const parseFontSize = (fontSize, defaultSize = 14) => {
+  if (!fontSize) return defaultSize;
+
+  if (typeof fontSize === "string") {
+    if (fontSize.includes("px")) {
+      return parseNumericValue(fontSize.replace("px", ""), defaultSize);
+    }
+    return parseNumericValue(fontSize, defaultSize);
+  }
+
+  return parseNumericValue(fontSize, defaultSize);
+};
+
+const validateNumericInput = (value, min = 0, max = 1000) => {
+  const numValue = parseFloat(value);
+  if (isNaN(numValue))
+    return { isValid: false, error: "Geçersiz sayı formatı" };
+  if (numValue < min) return { isValid: false, error: `Minimum değer: ${min}` };
+  if (numValue > max)
+    return { isValid: false, error: `Maksimum değer: ${max}` };
+  return { isValid: true, error: null };
+};
+
+const formatFontSizeForDisplay = (fontSize) => {
+  return parseFontSize(fontSize);
+};
+
+const formatFontSizeForStyle = (fontSize) => {
+  const numValue = parseFontSize(fontSize);
+  return `${numValue}px`;
+};
 
 // Enhanced Section Component
 const PropertySection = ({
@@ -36,6 +87,8 @@ const PropertySection = ({
       <button
         onClick={onToggle}
         className="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-t-lg"
+        aria-expanded={isExpanded}
+        aria-controls={`section-${title.toLowerCase().replace(/\s+/g, "-")}`}
       >
         <div className="flex items-center space-x-2">
           {Icon && (
@@ -52,12 +105,37 @@ const PropertySection = ({
         )}
       </button>
       {isExpanded && (
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        <div
+          className="p-4 border-t border-gray-200 dark:border-gray-700"
+          id={`section-${title.toLowerCase().replace(/\s+/g, "-")}`}
+        >
           {children}
         </div>
       )}
     </div>
   );
+};
+
+PropertySection.propTypes = {
+  title: PropTypes.string.isRequired,
+  icon: PropTypes.elementType,
+  isExpanded: PropTypes.bool.isRequired,
+  onToggle: PropTypes.func.isRequired,
+  children: PropTypes.node.isRequired,
+  className: PropTypes.string,
+};
+
+// Error display component
+const ErrorMessage = ({ error, id }) =>
+  error ? (
+    <div id={id} className="text-red-500 text-xs mt-1" role="alert">
+      {error}
+    </div>
+  ) : null;
+
+ErrorMessage.propTypes = {
+  error: PropTypes.string,
+  id: PropTypes.string.isRequired,
 };
 
 // PropertyPanel Component for editing element properties
@@ -80,29 +158,251 @@ const PropertyPanel = ({
     barcodeBorder: false,
     barcodeAdvanced: false,
   });
+
+  const [inputErrors, setInputErrors] = useState({});
   const fileInputRef = useRef(null);
 
-  const toggleSection = (section) => {
+  const toggleSection = useCallback((section) => {
     setExpandedSections((prev) => ({
       ...prev,
       [section]: !prev[section],
     }));
-  };
+  }, []);
 
-  const handlePropertyChange = (property, value) => {
-    if (!selectedElement) return;
+  const clearInputError = useCallback((field) => {
+    setInputErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
 
-    const updatedElement = {
-      ...selectedElement,
-      [property]: value,
-    };
+  const setInputError = useCallback((field, error) => {
+    setInputErrors((prev) => ({
+      ...prev,
+      [field]: error,
+    }));
+  }, []);
 
-    onUpdateElement(updatedElement);
-  };
+  const handlePropertyChange = useCallback(
+    (property, value) => {
+      if (!selectedElement) return;
+
+      const updatedElement = {
+        ...selectedElement,
+        [property]: value,
+      };
+
+      onUpdateElement(updatedElement);
+    },
+    [selectedElement, onUpdateElement]
+  );
+
+  const handleStyleChange = useCallback(
+    (styleProperty, value) => {
+      if (!selectedElement) return;
+
+      const updatedElement = {
+        ...selectedElement,
+        style: {
+          ...selectedElement.style,
+          [styleProperty]: value,
+        },
+      };
+
+      onUpdateElement(updatedElement);
+    },
+    [selectedElement, onUpdateElement]
+  );
+
+  const handlePositionChange = useCallback(
+    (positionProperty, value) => {
+      if (!selectedElement) return;
+
+      const validation = validateNumericInput(value, -1000, 1000);
+      const fieldKey = `position_${positionProperty}`;
+
+      if (!validation.isValid) {
+        setInputError(fieldKey, validation.error);
+        return;
+      }
+
+      clearInputError(fieldKey);
+
+      const updatedElement = {
+        ...selectedElement,
+        position: {
+          ...selectedElement.position,
+          [positionProperty]: parseFloat(value) || 0,
+        },
+      };
+
+      onUpdateElement(updatedElement);
+    },
+    [selectedElement, onUpdateElement, setInputError, clearInputError]
+  );
+
+  const handleSizeChange = useCallback(
+    (sizeProperty, value) => {
+      if (!selectedElement) return;
+
+      const validation = validateNumericInput(value, 1, 2000);
+      const fieldKey = `size_${sizeProperty}`;
+
+      if (!validation.isValid) {
+        setInputError(fieldKey, validation.error);
+        return;
+      }
+
+      clearInputError(fieldKey);
+
+      const updatedElement = {
+        ...selectedElement,
+        size: {
+          ...selectedElement.size,
+          [sizeProperty]: parseFloat(value) || 0,
+        },
+      };
+
+      onUpdateElement(updatedElement);
+    },
+    [selectedElement, onUpdateElement, setInputError, clearInputError]
+  );
+
+  const handleFontSizeChange = useCallback(
+    (value) => {
+      if (!selectedElement) return;
+
+      const validation = validateNumericInput(value, 6, 100);
+      const fieldKey = "fontSize";
+
+      if (!validation.isValid) {
+        setInputError(fieldKey, validation.error);
+        return;
+      }
+
+      clearInputError(fieldKey);
+      handleStyleChange("fontSize", formatFontSizeForStyle(value));
+    },
+    [selectedElement, handleStyleChange, setInputError, clearInputError]
+  );
+
+  const handleImageUpload = useCallback(
+    (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          handlePropertyChange("content", e.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    },
+    [handlePropertyChange]
+  );
+
+  const handleDuplicate = useCallback(() => {
+    if (!selectedElement || !onDuplicate) return;
+    onDuplicate(selectedElement);
+  }, [selectedElement, onDuplicate]);
+
+  const handleQuickSizeChange = useCallback(
+    (width, height) => {
+      if (!selectedElement) return;
+
+      const updatedElement = {
+        ...selectedElement,
+        size: {
+          ...selectedElement.size,
+          width: parseFloat(width) || 0,
+          height: parseFloat(height) || 0,
+        },
+      };
+
+      onUpdateElement(updatedElement);
+    },
+    [selectedElement, onUpdateElement]
+  );
+
+  // Optimized event handlers for better performance
+  const handleColorChange = useCallback(
+    (colorProperty, value) => {
+      handleStyleChange(colorProperty, value);
+    },
+    [handleStyleChange]
+  );
+
+  const handleFontWeightChange = useCallback(
+    (value) => {
+      handleStyleChange("fontWeight", value);
+    },
+    [handleStyleChange]
+  );
+
+  const handleContentChange = useCallback(
+    (value) => {
+      handlePropertyChange("content", value);
+    },
+    [handlePropertyChange]
+  );
+
+  const handleDataFieldChange = useCallback(
+    (value) => {
+      handlePropertyChange("dataField", value);
+    },
+    [handlePropertyChange]
+  );
+
+  const handleFontFamilyChange = useCallback(
+    (fontFamily) => {
+      handleStyleChange("fontFamily", fontFamily);
+    },
+    [handleStyleChange]
+  );
+
+  // Memoized computed values for performance optimization
+  const elementType = useMemo(() => {
+    return selectedElement?.type?.toUpperCase() || "UNKNOWN";
+  }, [selectedElement?.type]);
+
+  const isTextElement = useMemo(() => {
+    return selectedElement?.type === "text";
+  }, [selectedElement?.type]);
+
+  const isBarcodeElement = useMemo(() => {
+    return selectedElement?.type === "barcode";
+  }, [selectedElement?.type]);
+
+  const isImageElement = useMemo(() => {
+    return selectedElement?.type === "image";
+  }, [selectedElement?.type]);
+
+  const isQRElement = useMemo(() => {
+    return selectedElement?.type === "qr_code";
+  }, [selectedElement?.type]);
+
+  const currentFontSize = useMemo(() => {
+    return formatFontSizeForDisplay(selectedElement?.style?.fontSize) || 14;
+  }, [selectedElement?.style?.fontSize]);
+
+  const availableDataFields = useMemo(() => {
+    if (isBarcodeElement) {
+      return COMMON_BARCODE_FIELDS;
+    } else if (isQRElement) {
+      return COMMON_QR_FIELDS;
+    }
+
+    return Object.values(DATA_FIELD_CATEGORIES)
+      .flat()
+      .map((field) => ({
+        value: field,
+        label: DATA_FIELDS[field] || field,
+      }));
+  }, [isBarcodeElement, isQRElement]);
 
   // Initialize missing barcode properties for existing elements
   useEffect(() => {
-    if (selectedElement && selectedElement.type === "barcode") {
+    if (selectedElement && isBarcodeElement) {
       const barcodeDefaults = elementDefaults.barcode || {};
       const missingProperties = [];
 
@@ -150,82 +450,7 @@ const PropertyPanel = ({
         onUpdateElement(updatedElement);
       }
     }
-  }, [selectedElement, onUpdateElement]);
-
-  const handleStyleChange = (styleProperty, value) => {
-    if (!selectedElement) return;
-
-    const updatedElement = {
-      ...selectedElement,
-      style: {
-        ...selectedElement.style,
-        [styleProperty]: value,
-      },
-    };
-
-    onUpdateElement(updatedElement);
-  };
-
-  const handlePositionChange = (positionProperty, value) => {
-    if (!selectedElement) return;
-
-    const updatedElement = {
-      ...selectedElement,
-      position: {
-        ...selectedElement.position,
-        [positionProperty]: parseFloat(value) || 0,
-      },
-    };
-
-    onUpdateElement(updatedElement);
-  };
-
-  const handleSizeChange = (sizeProperty, value) => {
-    if (!selectedElement) return;
-
-    const updatedElement = {
-      ...selectedElement,
-      size: {
-        ...selectedElement.size,
-        [sizeProperty]: parseFloat(value) || 0,
-      },
-    };
-
-    onUpdateElement(updatedElement);
-  };
-
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        handlePropertyChange("content", e.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleDuplicate = () => {
-    if (!selectedElement || !onDuplicate) return;
-
-    onDuplicate(selectedElement);
-  };
-
-  // Handle quick size changes with proper state updates
-  const handleQuickSizeChange = (width, height) => {
-    if (!selectedElement) return;
-
-    const updatedElement = {
-      ...selectedElement,
-      size: {
-        ...selectedElement.size,
-        width: parseFloat(width) || 0,
-        height: parseFloat(height) || 0,
-      },
-    };
-
-    onUpdateElement(updatedElement);
-  };
+  }, [selectedElement, onUpdateElement, isBarcodeElement]);
 
   // Handle quick alignment changes
   const handleQuickAlignment = (x, y) => {
@@ -242,6 +467,15 @@ const PropertyPanel = ({
 
     onUpdateElement(updatedElement);
   };
+
+  // Universal alignment controls component
+  const renderAlignmentControls = () => (
+    <ModernAlignmentControls
+      selectedElement={selectedElement}
+      onStyleChange={handleStyleChange}
+      className="mt-3"
+    />
+  );
 
   if (!selectedElement) {
     return (
@@ -266,19 +500,25 @@ const PropertyPanel = ({
       case "text":
         return (
           <div className="space-y-4">
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Metin İçeriği
               </label>
               <textarea
                 value={selectedElement.content || ""}
-                onChange={(e) =>
-                  handlePropertyChange("content", e.target.value)
-                }
+                onChange={(e) => handleContentChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
                 rows={3}
                 placeholder="Metin girin..."
               />
+              {selectedElement.content && (
+                <TextValidationIndicator
+                  text={selectedElement.content}
+                  fontFamily={selectedElement.style?.fontFamily}
+                  className="mt-1"
+                  inline={true}
+                />
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -289,19 +529,26 @@ const PropertyPanel = ({
                 <div className="flex items-center space-x-2">
                   <input
                     type="number"
-                    value={parseInt(selectedElement.style?.fontSize) || 14}
-                    onChange={(e) =>
-                      handleStyleChange("fontSize", `${e.target.value}px`)
-                    }
+                    value={currentFontSize}
+                    onChange={(e) => handleFontSizeChange(e.target.value)}
                     className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
                     min="6"
                     max="144"
-                  />
-                  <select
-                    value={parseInt(selectedElement.style?.fontSize) || 14}
-                    onChange={(e) =>
-                      handleStyleChange("fontSize", `${e.target.value}px`)
+                    aria-describedby={
+                      inputErrors.fontSize ? "fontSize-error" : undefined
                     }
+                  />
+                  {inputErrors.fontSize && (
+                    <div
+                      id="fontSize-error"
+                      className="text-red-500 text-xs mt-1"
+                    >
+                      {inputErrors.fontSize}
+                    </div>
+                  )}
+                  <select
+                    value={currentFontSize}
+                    onChange={(e) => handleFontSizeChange(e.target.value)}
                     className="px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white text-sm"
                   >
                     <option value="8">8</option>
@@ -323,57 +570,16 @@ const PropertyPanel = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Hizalama
+                  Font Ailesi
                 </label>
-                <select
-                  value={selectedElement.style?.textAlign || "left"}
-                  onChange={(e) =>
-                    handleStyleChange("textAlign", e.target.value)
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-                >
-                  <option value="left">Sol</option>
-                  <option value="center">Orta</option>
-                  <option value="right">Sağ</option>
-                  <option value="justify">İki Yana Yaslı</option>
-                </select>
+                <FontSelector
+                  value={selectedElement.style?.fontFamily || "Arial"}
+                  onChange={handleFontFamilyChange}
+                  textContent={selectedElement.content}
+                  className="w-full"
+                  showValidation={true}
+                />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Font Ailesi
-              </label>
-              <select
-                value={selectedElement.style?.fontFamily || "Arial"}
-                onChange={(e) =>
-                  handleStyleChange("fontFamily", e.target.value)
-                }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-              >
-                <optgroup label="Sans Serif">
-                  <option value="Arial">Arial</option>
-                  <option value="Helvetica">Helvetica</option>
-                  <option value="Verdana">Verdana</option>
-                  <option value="Calibri">Calibri</option>
-                  <option value="Tahoma">Tahoma</option>
-                  <option value="'Segoe UI'">Segoe UI</option>
-                  <option value="'Open Sans'">Open Sans</option>
-                  <option value="'Roboto'">Roboto</option>
-                </optgroup>
-                <optgroup label="Serif">
-                  <option value="'Times New Roman'">Times New Roman</option>
-                  <option value="Georgia">Georgia</option>
-                  <option value="'Book Antiqua'">Book Antiqua</option>
-                  <option value="Garamond">Garamond</option>
-                  <option value="'Palatino Linotype'">Palatino</option>
-                </optgroup>
-                <optgroup label="Monospace">
-                  <option value="'Courier New'">Courier New</option>
-                  <option value="Monaco">Monaco</option>
-                  <option value="'Lucida Console'">Lucida Console</option>
-                </optgroup>
-              </select>
             </div>
 
             {/* Font Style Controls */}
@@ -387,8 +593,7 @@ const PropertyPanel = ({
                     type="checkbox"
                     checked={selectedElement.style?.fontWeight === "bold"}
                     onChange={(e) =>
-                      handleStyleChange(
-                        "fontWeight",
+                      handleFontWeightChange(
                         e.target.checked ? "bold" : "normal"
                       )
                     }
@@ -520,6 +725,9 @@ const PropertyPanel = ({
                 />
               </div>
             )}
+
+            {/* Universal Alignment Controls for Images */}
+            {renderAlignmentControls()}
           </div>
         );
 
@@ -537,18 +745,15 @@ const PropertyPanel = ({
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Font Ailesi
                 </label>
-                <select
+                <FontSelector
                   value={selectedElement.style?.fontFamily || "Helvetica"}
-                  onChange={(e) =>
-                    handleStyleChange("fontFamily", e.target.value)
+                  onChange={(fontFamily) =>
+                    handleStyleChange("fontFamily", fontFamily)
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                >
-                  <option value="Helvetica">Helvetica</option>
-                  <option value="DejaVuSans">DejaVu Sans</option>
-                  <option value="Times-Roman">Times</option>
-                  <option value="Courier">Courier</option>
-                </select>
+                  textContent={selectedElement.content}
+                  className="w-full"
+                  showValidation={true}
+                />
               </div>
 
               {/* Font Size */}
@@ -560,11 +765,13 @@ const PropertyPanel = ({
                   type="range"
                   min="8"
                   max="24"
-                  value={parseInt(selectedElement.style?.fontSize) || 12}
-                  onChange={(e) =>
-                    handleStyleChange("fontSize", e.target.value)
+                  value={
+                    formatFontSizeForDisplay(selectedElement.style?.fontSize) ||
+                    12
                   }
+                  onChange={(e) => handleFontSizeChange(e.target.value)}
                   className="w-full"
+                  aria-label="Font boyutu ayarlayıcı"
                 />
               </div>
 
@@ -594,9 +801,7 @@ const PropertyPanel = ({
                 </label>
                 <select
                   value={selectedElement.style?.fontWeight || "normal"}
-                  onChange={(e) =>
-                    handleStyleChange("fontWeight", e.target.value)
-                  }
+                  onChange={(e) => handleFontWeightChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 >
                   <option value="normal">Normal</option>
@@ -620,25 +825,6 @@ const PropertyPanel = ({
                   }
                   className="w-full"
                 />
-              </div>
-
-              {/* Text Alignment */}
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Metin Hizalama
-                </label>
-                <select
-                  value={selectedElement.style?.textAlign || "left"}
-                  onChange={(e) =>
-                    handleStyleChange("textAlign", e.target.value)
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                >
-                  <option value="left">Sol</option>
-                  <option value="center">Orta</option>
-                  <option value="right">Sağ</option>
-                  <option value="justify">İki Yana Yasla</option>
-                </select>
               </div>
             </div>
 
@@ -697,10 +883,14 @@ const PropertyPanel = ({
               <input
                 type="color"
                 value={selectedElement.style?.color || "#000000"}
-                onChange={(e) => handleStyleChange("color", e.target.value)}
+                onChange={(e) => handleColorChange("color", e.target.value)}
                 className="w-full h-10 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+                aria-label="Metin rengi seçici"
               />
             </div>
+
+            {/* Universal Alignment Controls */}
+            {renderAlignmentControls()}
           </div>
         );
 
@@ -718,25 +908,34 @@ const PropertyPanel = ({
                 onChange={(e) => {
                   const field = e.target.value;
                   if (field === "custom") {
-                    handlePropertyChange("dataField", "custom");
-                    handlePropertyChange("content", "");
+                    handleDataFieldChange("custom");
+                    handleContentChange("");
                   } else {
-                    handlePropertyChange("dataField", field);
-                    handlePropertyChange("content", field);
+                    handleDataFieldChange(field);
+                    handleContentChange(field);
                   }
                 }}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
               >
                 <option value="custom">Özel Veri</option>
                 <optgroup label="Yaygın Kullanılan">
-                  {(selectedElement.type === "barcode"
-                    ? COMMON_BARCODE_FIELDS
-                    : COMMON_QR_FIELDS
-                  ).map((field) => (
-                    <option key={field.key} value={field.key}>
-                      {field.label}
-                    </option>
-                  ))}
+                  {availableDataFields
+                    .slice(
+                      0,
+                      isBarcodeElement
+                        ? COMMON_BARCODE_FIELDS.length
+                        : isQRElement
+                        ? COMMON_QR_FIELDS.length
+                        : 0
+                    )
+                    .map((field) => (
+                      <option
+                        key={field.key || field.value}
+                        value={field.key || field.value}
+                      >
+                        {field.label}
+                      </option>
+                    ))}
                 </optgroup>
                 {Object.entries(DATA_FIELD_CATEGORIES).map(
                   ([category, categoryLabel]) => (
@@ -768,8 +967,7 @@ const PropertyPanel = ({
               selectedElement.dataField === "custom") && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {selectedElement.type === "barcode" ? "Barkod" : "QR Kod"}{" "}
-                  Verisi
+                  {isBarcodeElement ? "Barkod" : "QR Kod"} Verisi
                 </label>
                 <input
                   type="text"
@@ -779,7 +977,7 @@ const PropertyPanel = ({
                   }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
                   placeholder={`${
-                    selectedElement.type === "barcode" ? "Barkod" : "QR kod"
+                    isBarcodeElement ? "Barkod" : "QR kod"
                   } verisi girin...`}
                 />
                 <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -813,7 +1011,7 @@ const PropertyPanel = ({
                 </div>
               )}
 
-            {selectedElement.type === "qr_code" && (
+            {isQRElement && (
               <>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -862,6 +1060,172 @@ const PropertyPanel = ({
                 </div>
               </>
             )}
+
+            {/* Universal Alignment Controls for Barcodes/QR Codes */}
+            {renderAlignmentControls()}
+          </div>
+        );
+
+      case "tracking_number":
+      case "date":
+        return (
+          <div className="space-y-4">
+            {/* Content/Data Field Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {selectedElement.type === "tracking_number"
+                  ? "Takip Numarası"
+                  : "Tarih"}{" "}
+                İçeriği
+              </label>
+              <textarea
+                value={selectedElement.content || ""}
+                onChange={(e) =>
+                  handlePropertyChange("content", e.target.value)
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                rows={2}
+                placeholder={`${
+                  selectedElement.type === "tracking_number"
+                    ? "Takip numarası"
+                    : "Tarih"
+                } girin...`}
+              />
+              {selectedElement.content && (
+                <TextValidationIndicator
+                  text={selectedElement.content}
+                  fontFamily={selectedElement.style?.fontFamily}
+                  className="mt-1"
+                  inline={true}
+                />
+              )}
+            </div>
+
+            {/* Font Options */}
+            <div className="border-b border-gray-200 dark:border-gray-700 pb-3">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+                Font Ayarları
+              </h4>
+
+              {/* Font Family */}
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Font Ailesi
+                </label>
+                <FontSelector
+                  value={selectedElement.style?.fontFamily || "Arial"}
+                  onChange={(fontFamily) =>
+                    handleStyleChange("fontFamily", fontFamily)
+                  }
+                  textContent={selectedElement.content}
+                  className="w-full"
+                  showValidation={true}
+                />
+              </div>
+
+              {/* Font Size */}
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Font Boyutu
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="number"
+                      value={
+                        formatFontSizeForDisplay(
+                          selectedElement.style?.fontSize
+                        ) || 12
+                      }
+                      onChange={(e) => handleFontSizeChange(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                      min="6"
+                      max="144"
+                      aria-describedby={
+                        inputErrors.fontSize ? "fontSize-error-2" : undefined
+                      }
+                    />
+                    {inputErrors.fontSize && (
+                      <div
+                        id="fontSize-error-2"
+                        className="text-red-500 text-xs mt-1"
+                      >
+                        {inputErrors.fontSize}
+                      </div>
+                    )}
+                    <select
+                      value={
+                        formatFontSizeForDisplay(
+                          selectedElement.style?.fontSize
+                        ) || 12
+                      }
+                      onChange={(e) => handleFontSizeChange(e.target.value)}
+                      className="px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white text-sm"
+                    >
+                      <option value="8">8</option>
+                      <option value="10">10</option>
+                      <option value="12">12</option>
+                      <option value="14">14</option>
+                      <option value="16">16</option>
+                      <option value="18">18</option>
+                      <option value="20">20</option>
+                      <option value="24">24</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Font Style Controls */}
+                <div className="flex items-center space-x-4">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedElement.style?.fontWeight === "bold"}
+                      onChange={(e) =>
+                        handleFontWeightChange(
+                          e.target.checked ? "bold" : "normal"
+                        )
+                      }
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      Kalın
+                    </span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedElement.style?.fontStyle === "italic"}
+                      onChange={(e) =>
+                        handleStyleChange(
+                          "fontStyle",
+                          e.target.checked ? "italic" : "normal"
+                        )
+                      }
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      İtalik
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Color Options */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Metin Rengi
+                </label>
+                <input
+                  type="color"
+                  value={selectedElement.style?.color || "#000000"}
+                  onChange={(e) => handleStyleChange("color", e.target.value)}
+                  className="w-full h-10 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Universal Alignment Controls */}
+              {renderAlignmentControls()}
+            </div>
           </div>
         );
 
@@ -880,36 +1244,58 @@ const PropertyPanel = ({
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
           Öğe Özellikleri
         </h3>
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          {selectedElement.type.toUpperCase()} • ID:{" "}
-          {selectedElement.id.slice(-6)}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {elementType}
+            </div>
+            {isTextElement && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                Metin
+              </span>
+            )}
+            {isImageElement && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                Resim
+              </span>
+            )}
+            {isBarcodeElement && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                Barkod
+              </span>
+            )}
+            {isQRElement && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                QR Kod
+              </span>
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            {onDuplicate && (
+              <button
+                onClick={handleDuplicate}
+                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
+                title="Öğeyi Kopyala"
+                aria-label="Öğeyi kopyala"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+            )}
+            {onDeleteElement && (
+              <button
+                onClick={() => onDeleteElement(selectedElement.id)}
+                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                title="Öğeyi Sil"
+                aria-label="Öğeyi sil"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        {/* Element Actions */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex gap-2">
-            <button
-              onClick={handleDuplicate}
-              className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
-              title="Kopyala"
-            >
-              <Copy className="h-3 w-3 mr-1" />
-              Kopyala
-            </button>
-
-            <button
-              onClick={() => onDeleteElement(selectedElement.id)}
-              className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-              title="Sil"
-            >
-              <Trash2 className="h-3 w-3 mr-1" />
-              Sil
-            </button>
-          </div>
-        </div>
-
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Position & Size Section */}
         <PropertySection
           title="Konum & Boyut"
@@ -917,7 +1303,7 @@ const PropertyPanel = ({
           isExpanded={expandedSections.position}
           onToggle={() => toggleSection("position")}
         >
-          <div className="px-4 pb-4 space-y-4">
+          <div className="space-y-4">
             {/* Position Controls */}
             <div>
               <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -925,31 +1311,53 @@ const PropertyPanel = ({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  <label
+                    htmlFor="position-x"
+                    className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                  >
                     X Konumu
                   </label>
                   <input
+                    id="position-x"
                     type="number"
                     value={selectedElement.position.x}
                     onChange={(e) => handlePositionChange("x", e.target.value)}
                     className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
                     step="0.1"
-                    min="0"
-                    max="100"
+                    min="-1000"
+                    max="1000"
+                    aria-describedby={
+                      inputErrors.position_x ? "position-x-error" : undefined
+                    }
+                  />
+                  <ErrorMessage
+                    error={inputErrors.position_x}
+                    id="position-x-error"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  <label
+                    htmlFor="position-y"
+                    className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                  >
                     Y Konumu
                   </label>
                   <input
+                    id="position-y"
                     type="number"
                     value={selectedElement.position.y}
                     onChange={(e) => handlePositionChange("y", e.target.value)}
                     className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
                     step="0.1"
-                    min="0"
-                    max="100"
+                    min="-1000"
+                    max="1000"
+                    aria-describedby={
+                      inputErrors.position_y ? "position-y-error" : undefined
+                    }
+                  />
+                  <ErrorMessage
+                    error={inputErrors.position_y}
+                    id="position-y-error"
                   />
                 </div>
               </div>
@@ -962,31 +1370,53 @@ const PropertyPanel = ({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  <label
+                    htmlFor="size-width"
+                    className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                  >
                     Genişlik
                   </label>
                   <input
+                    id="size-width"
                     type="number"
                     value={selectedElement.size.width}
                     onChange={(e) => handleSizeChange("width", e.target.value)}
                     className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
                     step="0.1"
                     min="1"
-                    max="100"
+                    max="2000"
+                    aria-describedby={
+                      inputErrors.size_width ? "size-width-error" : undefined
+                    }
+                  />
+                  <ErrorMessage
+                    error={inputErrors.size_width}
+                    id="size-width-error"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  <label
+                    htmlFor="size-height"
+                    className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                  >
                     Yükseklik
                   </label>
                   <input
+                    id="size-height"
                     type="number"
                     value={selectedElement.size.height}
                     onChange={(e) => handleSizeChange("height", e.target.value)}
                     className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
                     step="0.1"
                     min="1"
-                    max="100"
+                    max="2000"
+                    aria-describedby={
+                      inputErrors.size_height ? "size-height-error" : undefined
+                    }
+                  />
+                  <ErrorMessage
+                    error={inputErrors.size_height}
+                    id="size-height-error"
                   />
                 </div>
               </div>
@@ -995,178 +1425,67 @@ const PropertyPanel = ({
             {/* Quick Size Presets */}
             <div>
               <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Hızlı Boyutlar
+                Hızlı Boyut Ayarları
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
-                  type="button"
                   onClick={() => handleQuickSizeChange(25, 10)}
-                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  title="Küçük boyut (25x10%)"
                 >
                   Küçük
                 </button>
                 <button
-                  type="button"
-                  onClick={() => handleQuickSizeChange(40, 15)}
-                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  onClick={() => handleQuickSizeChange(50, 20)}
+                  className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  title="Orta boyut (50x20%)"
                 >
                   Orta
                 </button>
                 <button
-                  type="button"
-                  onClick={() => handleQuickSizeChange(60, 20)}
-                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  onClick={() => handleQuickSizeChange(75, 30)}
+                  className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  title="Büyük boyut (75x30%)"
                 >
                   Büyük
+                </button>
+                <button
+                  onClick={() => handleQuickSizeChange(100, 40)}
+                  className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  title="Tam boyut (100x40%)"
+                >
+                  Tam
                 </button>
               </div>
             </div>
 
-            {/* Alignment Helper */}
+            {/* Quick Alignment Tools */}
             <div>
               <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Hızlı Hizalama
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <button
-                  type="button"
-                  onClick={() => handleQuickAlignment(5, 5)}
-                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                  title="Sol Üst"
-                >
-                  ↖
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(50 - selectedElement.size.width / 2, 5)
-                  }
-                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                  title="Orta Üst"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(95 - selectedElement.size.width, 5)
-                  }
-                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                  title="Sağ Üst"
-                >
-                  ↗
-                </button>
-
-                {/* Middle Row */}
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(
-                      5,
-                      50 - selectedElement.size.height / 2
-                    )
-                  }
-                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                  title="Sol Orta"
-                >
-                  ←
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(
-                      50 - selectedElement.size.width / 2,
-                      50 - selectedElement.size.height / 2
-                    )
-                  }
-                  className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                  title="Tam Orta"
-                >
-                  ●
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(
-                      95 - selectedElement.size.width,
-                      50 - selectedElement.size.height / 2
-                    )
-                  }
-                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                  title="Sağ Orta"
-                >
-                  →
-                </button>
-
-                {/* Bottom Row */}
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(5, 95 - selectedElement.size.height)
-                  }
-                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                  title="Sol Alt"
-                >
-                  ↙
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(
-                      50 - selectedElement.size.width / 2,
-                      95 - selectedElement.size.height
-                    )
-                  }
-                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                  title="Orta Alt"
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(
-                      95 - selectedElement.size.width,
-                      95 - selectedElement.size.height
-                    )
-                  }
-                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                  title="Sağ Alt"
-                >
-                  ↘
-                </button>
-              </div>
-            </div>
-
-            {/* Distribution Controls */}
-            <div>
-              <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Sayfada Konumlandırma
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleQuickAlignment(0, selectedElement.position.y)
-                  }
+                  onClick={() => handleQuickAlignment(0)}
                   className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 >
                   Sol Kenar
                 </button>
                 <button
-                  type="button"
+                  onClick={() => handleQuickAlignment(50)}
+                  className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Orta
+                </button>
+                <button
                   onClick={() =>
-                    handleQuickAlignment(
-                      100 - selectedElement.size.width,
-                      selectedElement.position.y
-                    )
+                    handleQuickAlignment(100 - selectedElement.size.width)
                   }
                   className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 >
                   Sağ Kenar
                 </button>
                 <button
-                  type="button"
                   onClick={() =>
                     handleQuickAlignment(selectedElement.position.x, 0)
                   }
@@ -1175,7 +1494,14 @@ const PropertyPanel = ({
                   Üst Kenar
                 </button>
                 <button
-                  type="button"
+                  onClick={() =>
+                    handleQuickAlignment(selectedElement.position.x, 50)
+                  }
+                  className="px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Dikey Orta
+                </button>
+                <button
                   onClick={() =>
                     handleQuickAlignment(
                       selectedElement.position.x,
@@ -1198,7 +1524,7 @@ const PropertyPanel = ({
           isExpanded={expandedSections.style}
           onToggle={() => toggleSection("style")}
         >
-          <div className="px-4 pb-4 space-y-4">
+          <div className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Renk
@@ -1285,251 +1611,8 @@ const PropertyPanel = ({
                     <span>30px</span>
                   </div>
                 </div>
-
-                {/* Advanced padding - individual sides */}
-                <details className="group">
-                  <summary className="cursor-pointer text-xs text-blue-600 dark:text-blue-400 select-none">
-                    Gelişmiş Ayarlar
-                  </summary>
-                  <div className="mt-2 space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                          Üst
-                        </label>
-                        <input
-                          type="number"
-                          value={
-                            parseInt(selectedElement.style?.paddingTop) || 1
-                          }
-                          onChange={(e) =>
-                            handleStyleChange(
-                              "paddingTop",
-                              `${e.target.value}px`
-                            )
-                          }
-                          className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-                          min="0"
-                          max="50"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                          Alt
-                        </label>
-                        <input
-                          type="number"
-                          value={
-                            parseInt(selectedElement.style?.paddingBottom) || 1
-                          }
-                          onChange={(e) =>
-                            handleStyleChange(
-                              "paddingBottom",
-                              `${e.target.value}px`
-                            )
-                          }
-                          className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-                          min="0"
-                          max="50"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                          Sol
-                        </label>
-                        <input
-                          type="number"
-                          value={
-                            parseInt(selectedElement.style?.paddingLeft) || 1
-                          }
-                          onChange={(e) =>
-                            handleStyleChange(
-                              "paddingLeft",
-                              `${e.target.value}px`
-                            )
-                          }
-                          className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-                          min="0"
-                          max="50"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                          Sağ
-                        </label>
-                        <input
-                          type="number"
-                          value={
-                            parseInt(selectedElement.style?.paddingRight) || 1
-                          }
-                          onChange={(e) =>
-                            handleStyleChange(
-                              "paddingRight",
-                              `${e.target.value}px`
-                            )
-                          }
-                          className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-                          min="0"
-                          max="50"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </details>
               </div>
             </div>
-
-            {/* Advanced Settings */}
-            <details className="border border-gray-200 dark:border-gray-600 rounded-lg">
-              <summary className="px-3 py-2 bg-gray-50 dark:bg-gray-800 cursor-pointer flex items-center space-x-2 rounded-t-lg">
-                <Settings className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Gelişmiş Ayarlar
-                </span>
-              </summary>
-              <div className="p-3 space-y-3 bg-white dark:bg-gray-900">
-                {/* Z-Index Control */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Katman Sırası (Z-Index)
-                  </label>
-                  <input
-                    type="number"
-                    value={selectedElement.zIndex || 1}
-                    onChange={(e) =>
-                      handlePropertyChange(
-                        "zIndex",
-                        parseInt(e.target.value) || 1
-                      )
-                    }
-                    className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-                    min="1"
-                    max="100"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Yüksek değerler öğeyi öne getirir
-                  </p>
-                </div>
-
-                {/* Opacity Control */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Şeffaflık
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={parseFloat(selectedElement.style?.opacity) || 1}
-                    onChange={(e) =>
-                      handleStyleChange("opacity", e.target.value)
-                    }
-                    className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    <span>Şeffaf</span>
-                    <span>
-                      {Math.round(
-                        (parseFloat(selectedElement.style?.opacity) || 1) * 100
-                      )}
-                      %
-                    </span>
-                    <span>Opak</span>
-                  </div>
-                </div>
-
-                {/* Rotation Control */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Döndürme
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="360"
-                    step="5"
-                    value={parseInt(selectedElement.style?.rotate) || 0}
-                    onChange={(e) =>
-                      handleStyleChange("rotate", `${e.target.value}deg`)
-                    }
-                    className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    <span>0°</span>
-                    <span>{parseInt(selectedElement.style?.rotate) || 0}°</span>
-                    <span>360°</span>
-                  </div>
-                </div>
-
-                {/* Border Controls */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Kenarlık
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        Kalınlık
-                      </label>
-                      <input
-                        type="number"
-                        value={
-                          parseInt(selectedElement.style?.borderWidth) || 0
-                        }
-                        onChange={(e) =>
-                          handleStyleChange(
-                            "borderWidth",
-                            `${e.target.value}px`
-                          )
-                        }
-                        className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
-                        min="0"
-                        max="10"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        Renk
-                      </label>
-                      <input
-                        type="color"
-                        value={selectedElement.style?.borderColor || "#000000"}
-                        onChange={(e) =>
-                          handleStyleChange("borderColor", e.target.value)
-                        }
-                        className="w-full h-7 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Border Radius */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Köşe Yuvarlaklığı
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="20"
-                    step="1"
-                    value={parseInt(selectedElement.style?.borderRadius) || 0}
-                    onChange={(e) =>
-                      handleStyleChange("borderRadius", `${e.target.value}px`)
-                    }
-                    className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    <span>Keskin</span>
-                    <span>
-                      {parseInt(selectedElement.style?.borderRadius) || 0}px
-                    </span>
-                    <span>Yuvarlak</span>
-                  </div>
-                </div>
-              </div>
-            </details>
           </div>
         </PropertySection>
 
@@ -1540,11 +1623,11 @@ const PropertyPanel = ({
           isExpanded={expandedSections.content}
           onToggle={() => toggleSection("content")}
         >
-          <div className="px-4 pb-4">{renderContentEditor()}</div>
+          {renderContentEditor()}
         </PropertySection>
 
         {/* Barcode Specific Sections */}
-        {selectedElement.type === "barcode" && (
+        {isBarcodeElement && (
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <div className="px-4 mb-3">
               <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center">
@@ -1563,6 +1646,207 @@ const PropertyPanel = ({
             />
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+PropertyPanel.propTypes = {
+  element: PropTypes.object,
+  onUpdate: PropTypes.func.isRequired,
+  onRemove: PropTypes.func.isRequired,
+  onDuplicate: PropTypes.func,
+};
+
+// Element-specific alignment properties
+// Convert between old verticalAlign and modern CSS properties
+const convertToModernAlignment = (style) => {
+  const modernStyle = { ...style };
+
+  // Ensure display flex for proper alignment
+  modernStyle.display = "flex";
+  modernStyle.flexDirection = "column";
+
+  // Convert old verticalAlign to alignItems
+  if (style.verticalAlign) {
+    switch (style.verticalAlign) {
+      case "top":
+        modernStyle.alignItems = "flex-start";
+        break;
+      case "middle":
+        modernStyle.alignItems = "center";
+        break;
+      case "bottom":
+        modernStyle.alignItems = "flex-end";
+        break;
+      default:
+        modernStyle.alignItems = "flex-start";
+    }
+    // Keep old property for backward compatibility in PDF generation
+  }
+
+  // Convert old textAlign to justifyContent for flex containers
+  if (style.textAlign && !modernStyle.justifyContent) {
+    switch (style.textAlign) {
+      case "left":
+        modernStyle.justifyContent = "flex-start";
+        break;
+      case "center":
+        modernStyle.justifyContent = "center";
+        break;
+      case "right":
+        modernStyle.justifyContent = "flex-end";
+        break;
+      case "justify":
+        modernStyle.justifyContent = "space-between";
+        break;
+      default:
+        modernStyle.justifyContent = "flex-start";
+    }
+  }
+
+  return modernStyle;
+};
+
+// Modern Alignment Controls Component
+const ModernAlignmentControls = ({
+  selectedElement,
+  onStyleChange,
+  className = "",
+}) => {
+  const elementType = selectedElement?.type;
+  const style = selectedElement?.style || {};
+
+  // Convert to modern alignment if needed
+  const modernStyle = convertToModernAlignment(style);
+
+  const handleAlignmentChange = useCallback(
+    (property, value) => {
+      const updatedStyle = { ...modernStyle, [property]: value };
+
+      // Ensure flex display for alignment to work
+      if (property === "alignItems" || property === "justifyContent") {
+        updatedStyle.display = "flex";
+        updatedStyle.flexDirection = "column";
+      }
+
+      onStyleChange(property, value);
+    },
+    [modernStyle, onStyleChange]
+  );
+
+  return (
+    <div className={`space-y-4 ${className}`}>
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+        <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+          Modern Hizalama (Flexbox)
+        </h4>
+
+        <div className="grid grid-cols-2 gap-3">
+          {/* Horizontal Alignment */}
+          <div>
+            <label
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              htmlFor="justify-content"
+            >
+              Yatay Hizalama
+            </label>
+            <select
+              id="justify-content"
+              value={modernStyle.justifyContent || "flex-start"}
+              onChange={(e) =>
+                handleAlignmentChange("justifyContent", e.target.value)
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              aria-label="Yatay hizalama seçimi"
+            >
+              <option value="flex-start">Sol</option>
+              <option value="center">Orta</option>
+              <option value="flex-end">Sağ</option>
+              <option value="space-between">Aralarında Boşluk</option>
+              <option value="space-around">Çevresinde Boşluk</option>
+              <option value="space-evenly">Eşit Boşluk</option>
+            </select>
+          </div>
+
+          {/* Vertical Alignment */}
+          <div>
+            <label
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              htmlFor="align-items"
+            >
+              Dikey Hizalama
+            </label>
+            <select
+              id="align-items"
+              value={modernStyle.alignItems || "flex-start"}
+              onChange={(e) =>
+                handleAlignmentChange("alignItems", e.target.value)
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              aria-label="Dikey hizalama seçimi"
+            >
+              <option value="flex-start">Üst</option>
+              <option value="center">Orta</option>
+              <option value="flex-end">Alt</option>
+              <option value="stretch">Uzat</option>
+              <option value="baseline">Taban Çizgisi</option>
+            </select>
+          </div>
+        </div>
+
+        {elementType === "image" && (
+          <div className="mt-3">
+            <label
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              htmlFor="object-position"
+            >
+              Resim Konumu
+            </label>
+            <select
+              id="object-position"
+              value={style.objectPosition || "center"}
+              onChange={(e) =>
+                handleAlignmentChange("objectPosition", e.target.value)
+              }
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+            >
+              <option value="center">Merkez</option>
+              <option value="top">Üst</option>
+              <option value="bottom">Alt</option>
+              <option value="left">Sol</option>
+              <option value="right">Sağ</option>
+              <option value="top left">Üst Sol</option>
+              <option value="top right">Üst Sağ</option>
+              <option value="bottom left">Alt Sol</option>
+              <option value="bottom right">Alt Sağ</option>
+            </select>
+          </div>
+        )}
+
+        {/* Display current alignment state for debugging */}
+        <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs">
+          <div className="text-gray-600 dark:text-gray-400 mb-1">
+            Element:{" "}
+            <span className="font-mono text-blue-600">{elementType}</span>
+          </div>
+          <div className="text-gray-600 dark:text-gray-400">
+            CSS:{" "}
+            <span className="font-mono">
+              display: {modernStyle.display || "block"}
+            </span>
+          </div>
+          <div className="text-gray-600 dark:text-gray-400">
+            <span className="font-mono">
+              justify-content: {modernStyle.justifyContent || "flex-start"}
+            </span>
+          </div>
+          <div className="text-gray-600 dark:text-gray-400">
+            <span className="font-mono">
+              align-items: {modernStyle.alignItems || "flex-start"}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

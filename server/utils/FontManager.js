@@ -275,6 +275,493 @@ class FontManager {
 
     return { font: bestFont, text: normalizedText };
   }
+
+  /**
+   * Get list of available fonts for UI selection
+   */
+  async getAvailableFonts() {
+    const fonts = [];
+
+    // Add system fonts that are commonly available
+    const systemFonts = [
+      {
+        name: "DejaVu Sans",
+        family: "DejaVuSans",
+        category: "sans-serif",
+        unicodeSupport: true,
+      },
+      {
+        name: "Liberation Sans",
+        family: "LiberationSans",
+        category: "sans-serif",
+        unicodeSupport: true,
+      },
+      {
+        name: "Noto Sans",
+        family: "NotoSans",
+        category: "sans-serif",
+        unicodeSupport: true,
+      },
+      {
+        name: "Helvetica",
+        family: "Helvetica",
+        category: "sans-serif",
+        unicodeSupport: false,
+      },
+      {
+        name: "Arial",
+        family: "Arial",
+        category: "sans-serif",
+        unicodeSupport: false,
+      },
+      {
+        name: "Times New Roman",
+        family: "Times-Roman",
+        category: "serif",
+        unicodeSupport: false,
+      },
+      {
+        name: "Courier New",
+        family: "Courier",
+        category: "monospace",
+        unicodeSupport: false,
+      },
+    ];
+
+    // Add detected system fonts
+    const detectedFonts = await this.detectSystemFonts();
+
+    // Combine and prioritize fonts
+    const allFonts = [...systemFonts];
+
+    // Add detected fonts that aren't already in the list
+    detectedFonts.forEach((font) => {
+      if (!allFonts.find((f) => f.family === font.family)) {
+        allFonts.push(font);
+      }
+    });
+
+    // Sort by Unicode support (Unicode fonts first) and then alphabetically
+    return allFonts.sort((a, b) => {
+      if (a.unicodeSupport && !b.unicodeSupport) return -1;
+      if (!a.unicodeSupport && b.unicodeSupport) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  /**
+   * Detect system fonts available on the current platform
+   */
+  detectSystemFonts() {
+    const fonts = [];
+    const platform = os.platform();
+
+    try {
+      // Check for common system fonts
+      const commonFonts = this.getCommonSystemFonts(platform);
+
+      commonFonts.forEach((fontInfo) => {
+        const fontPath = this.findFontFile(fontInfo.filename);
+        if (fontPath) {
+          fonts.push({
+            name: fontInfo.name,
+            family: fontInfo.family,
+            category: fontInfo.category,
+            unicodeSupport: fontInfo.unicodeSupport,
+            path: fontPath,
+            available: true,
+          });
+        }
+      });
+
+      logger.info(`Detected ${fonts.length} system fonts on ${platform}`);
+      return fonts;
+    } catch (error) {
+      logger.warn("Failed to detect system fonts", { error: error.message });
+      return [];
+    }
+  }
+
+  /**
+   * Get common system fonts for different platforms
+   */
+  getCommonSystemFonts(platform) {
+    const commonFonts = {
+      darwin: [
+        // macOS
+        {
+          name: "SF Pro",
+          family: "SF-Pro",
+          filename: "SF-Pro.ttf",
+          category: "sans-serif",
+          unicodeSupport: true,
+        },
+        {
+          name: "Helvetica Neue",
+          family: "HelveticaNeue",
+          filename: "HelveticaNeue.ttc",
+          category: "sans-serif",
+          unicodeSupport: false,
+        },
+        {
+          name: "Arial",
+          family: "Arial",
+          filename: "Arial.ttf",
+          category: "sans-serif",
+          unicodeSupport: false,
+        },
+        {
+          name: "Times New Roman",
+          family: "TimesNewRoman",
+          filename: "Times New Roman.ttf",
+          category: "serif",
+          unicodeSupport: false,
+        },
+        {
+          name: "Courier New",
+          family: "CourierNew",
+          filename: "Courier New.ttf",
+          category: "monospace",
+          unicodeSupport: false,
+        },
+      ],
+      win32: [
+        // Windows
+        {
+          name: "Segoe UI",
+          family: "SegoeUI",
+          filename: "segoeui.ttf",
+          category: "sans-serif",
+          unicodeSupport: true,
+        },
+        {
+          name: "Arial",
+          family: "Arial",
+          filename: "arial.ttf",
+          category: "sans-serif",
+          unicodeSupport: false,
+        },
+        {
+          name: "Times New Roman",
+          family: "TimesNewRoman",
+          filename: "times.ttf",
+          category: "serif",
+          unicodeSupport: false,
+        },
+        {
+          name: "Courier New",
+          family: "CourierNew",
+          filename: "cour.ttf",
+          category: "monospace",
+          unicodeSupport: false,
+        },
+        {
+          name: "Calibri",
+          family: "Calibri",
+          filename: "calibri.ttf",
+          category: "sans-serif",
+          unicodeSupport: true,
+        },
+      ],
+      linux: [
+        // Linux
+        {
+          name: "Ubuntu",
+          family: "Ubuntu",
+          filename: "Ubuntu-R.ttf",
+          category: "sans-serif",
+          unicodeSupport: true,
+        },
+        {
+          name: "DejaVu Sans",
+          family: "DejaVuSans",
+          filename: "DejaVuSans.ttf",
+          category: "sans-serif",
+          unicodeSupport: true,
+        },
+        {
+          name: "Liberation Sans",
+          family: "LiberationSans",
+          filename: "LiberationSans-Regular.ttf",
+          category: "sans-serif",
+          unicodeSupport: true,
+        },
+        {
+          name: "Noto Sans",
+          family: "NotoSans",
+          filename: "NotoSans-Regular.ttf",
+          category: "sans-serif",
+          unicodeSupport: true,
+        },
+      ],
+    };
+
+    return commonFonts[platform] || commonFonts.linux;
+  }
+
+  /**
+   * Detect all available system fonts
+   */
+  async detectSystemFonts() {
+    const fonts = [];
+    const fontMap = new Map();
+
+    // Get all search paths
+    const searchPaths = [
+      this.fontPaths.app,
+      ...this.fontPaths.system,
+      ...this.fontPaths.container,
+    ];
+
+    for (const searchPath of searchPaths) {
+      if (!fs.existsSync(searchPath)) continue;
+
+      try {
+        const files = fs.readdirSync(searchPath);
+
+        for (const file of files) {
+          const filePath = path.join(searchPath, file);
+
+          // Check if it's a font file
+          if (this.isFontFile(file)) {
+            const fontName = this.extractFontName(file);
+
+            if (!fontMap.has(fontName)) {
+              const fontInfo = {
+                name: fontName,
+                family: fontName,
+                path: filePath,
+                type: this.getFontType(file),
+                unicodeSupport: this.checkUnicodeSupport(file),
+                weight: "normal",
+                style: "normal",
+              };
+
+              fontMap.set(fontName, fontInfo);
+              fonts.push(fontInfo);
+            }
+          }
+        }
+      } catch (error) {
+        logger.debug(`Failed to read font directory: ${searchPath}`, {
+          error: error.message,
+        });
+      }
+    }
+
+    logger.info(`Detected ${fonts.length} system fonts on ${os.platform()}`);
+    return fonts;
+  }
+
+  /**
+   * Check if file is a font file
+   */
+  isFontFile(filename) {
+    const fontExtensions = [
+      ".ttf",
+      ".otf",
+      ".woff",
+      ".woff2",
+      ".ttc",
+      ".dfont",
+    ];
+    const ext = path.extname(filename).toLowerCase();
+    return fontExtensions.includes(ext);
+  }
+
+  /**
+   * Extract font name from filename
+   */
+  extractFontName(filename) {
+    // Remove extension
+    let name = path.basename(filename, path.extname(filename));
+
+    // Clean up common patterns
+    name = name.replace(/[-_]/g, " ");
+    name = name.replace(/\b\w/g, (l) => l.toUpperCase());
+
+    return name;
+  }
+
+  /**
+   * Get font type from extension
+   */
+  getFontType(filename) {
+    const ext = path.extname(filename).toLowerCase();
+    const typeMap = {
+      ".ttf": "TrueType",
+      ".otf": "OpenType",
+      ".woff": "WOFF",
+      ".woff2": "WOFF2",
+      ".ttc": "TrueType Collection",
+      ".dfont": "Datafork",
+    };
+    return typeMap[ext] || "Unknown";
+  }
+
+  /**
+   * Check if font supports Unicode (simplified check)
+   */
+  checkUnicodeSupport(filename) {
+    // Simplified check based on font name and type
+    const name = filename.toLowerCase();
+    const unicodeFonts = [
+      "dejavu",
+      "liberation",
+      "noto",
+      "arial",
+      "helvetica",
+      "times",
+      "courier",
+    ];
+    return unicodeFonts.some((font) => name.includes(font));
+  }
+
+  /**
+   * Test if a font can properly render given text
+   */
+  async testFontRendering(fontFamily, text) {
+    try {
+      // This is a simplified test - in a real implementation,
+      // you might want to use a more sophisticated method
+      const hasUnicodeChars = /[^\x00-\x7F]/.test(text);
+      const fontInfo = (await this.getAvailableFonts()).find(
+        (f) => f.family === fontFamily
+      );
+
+      if (!fontInfo) {
+        return { canRender: false, reason: "Font not found" };
+      }
+
+      if (hasUnicodeChars && !fontInfo.unicodeSupport) {
+        return {
+          canRender: false,
+          reason: "Font does not support Unicode characters",
+          suggestion: "Use DejaVu Sans or another Unicode-capable font",
+        };
+      }
+
+      return { canRender: true };
+    } catch (error) {
+      return { canRender: false, reason: error.message };
+    }
+  }
+
+  /**
+   * Validate text encoding and detect issues
+   */
+  validateTextEncoding(text) {
+    if (!text || typeof text !== "string") {
+      return { hasIssues: false, issues: [] };
+    }
+
+    const issues = [];
+
+    // Check for replacement characters
+    if (text.includes("�")) {
+      issues.push({
+        type: "replacement-char",
+        message: "Contains replacement characters (�)",
+        severity: "error",
+      });
+    }
+
+    // Check for control characters
+    if (/[\u0000-\u001F\u007F-\u009F]/.test(text)) {
+      issues.push({
+        type: "control-chars",
+        message: "Contains control characters",
+        severity: "warning",
+      });
+    }
+
+    // Check for bidirectional text marks
+    if (/[\u200E\u200F\u202A-\u202E]/.test(text)) {
+      issues.push({
+        type: "bidi-marks",
+        message: "Contains bidirectional text marks",
+        severity: "info",
+      });
+    }
+
+    return {
+      hasIssues: issues.length > 0,
+      issues,
+      text,
+      hasUnicode: /[^\x00-\x7F]/.test(text),
+    };
+  }
+
+  /**
+   * Validate font availability and support
+   */
+  async validateFont(fontFamily) {
+    if (!fontFamily || typeof fontFamily !== "string") {
+      return {
+        isValid: false,
+        reason: "Font family not specified",
+        suggestion: "Please specify a valid font family name",
+      };
+    }
+
+    const availableFonts = await this.getAvailableFonts();
+    const font = availableFonts.find(
+      (f) => f.family.toLowerCase() === fontFamily.toLowerCase()
+    );
+
+    if (!font) {
+      return {
+        isValid: false,
+        reason: "Font not found in system",
+        suggestion: "Use one of the available fonts",
+        availableFonts: availableFonts.slice(0, 5).map((f) => f.family),
+      };
+    }
+
+    return {
+      isValid: true,
+      font: font,
+      unicodeSupport: font.unicodeSupport || false,
+    };
+  }
+
+  /**
+   * Validate text compatibility with specific font
+   */
+  async validateTextWithFont(text, fontFamily) {
+    const textValidation = this.validateTextEncoding(text);
+    const fontValidation = await this.validateFont(fontFamily);
+
+    if (!fontValidation.isValid) {
+      return {
+        compatible: false,
+        reason: fontValidation.reason,
+        suggestion: fontValidation.suggestion,
+        textIssues: textValidation.issues,
+        fontIssues: [fontValidation.reason],
+      };
+    }
+
+    const hasUnicode = textValidation.hasUnicode;
+    const fontSupportsUnicode = fontValidation.font.unicodeSupport;
+
+    if (hasUnicode && !fontSupportsUnicode) {
+      return {
+        compatible: false,
+        reason: "Font does not support Unicode characters in the text",
+        suggestion: "Use a Unicode-capable font like DejaVu Sans",
+        textIssues: textValidation.issues,
+        fontIssues: ["No Unicode support"],
+      };
+    }
+
+    return {
+      compatible: true,
+      textIssues: textValidation.issues,
+      fontIssues: [],
+      font: fontValidation.font,
+    };
+  }
 }
 
 module.exports = FontManager;

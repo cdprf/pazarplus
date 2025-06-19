@@ -11,6 +11,94 @@ import {
   formatTextForDisplay,
   getOptimalFontStack,
 } from "../utils/textEncoding";
+import TextValidationIndicator from "./TextValidationIndicator";
+
+// Utility functions for modern alignment support
+const getModernAlignmentStyles = (style = {}) => {
+  const alignmentStyles = {};
+
+  // Handle modern alignment properties (preferred)
+  if (style.display === "flex" || style.alignItems || style.justifyContent) {
+    alignmentStyles.display = "flex";
+    alignmentStyles.alignItems = style.alignItems || "flex-start";
+    alignmentStyles.justifyContent = style.justifyContent || "flex-start";
+  }
+  // Fallback to legacy alignment properties for backward compatibility
+  else if (style.textAlign || style.verticalAlign) {
+    alignmentStyles.display = "flex";
+
+    // Convert legacy textAlign to justifyContent
+    switch (style.textAlign) {
+      case "left":
+        alignmentStyles.justifyContent = "flex-start";
+        break;
+      case "center":
+        alignmentStyles.justifyContent = "center";
+        break;
+      case "right":
+        alignmentStyles.justifyContent = "flex-end";
+        break;
+      case "justify":
+        alignmentStyles.justifyContent = "space-between";
+        break;
+      default:
+        alignmentStyles.justifyContent = "flex-start";
+    }
+
+    // Convert legacy verticalAlign to alignItems
+    switch (style.verticalAlign) {
+      case "top":
+        alignmentStyles.alignItems = "flex-start";
+        break;
+      case "middle":
+        alignmentStyles.alignItems = "center";
+        break;
+      case "bottom":
+        alignmentStyles.alignItems = "flex-end";
+        break;
+      default:
+        alignmentStyles.alignItems = "flex-start";
+    }
+  }
+  // Default flex layout for consistency
+  else {
+    alignmentStyles.display = "flex";
+    alignmentStyles.alignItems = "flex-start";
+    alignmentStyles.justifyContent = "flex-start";
+  }
+
+  return alignmentStyles;
+};
+
+// Get text-specific alignment styles (for text content within flex containers)
+const getTextAlignmentStyles = (style = {}) => {
+  const textStyles = {};
+
+  // For text elements, we might still need textAlign for multi-line text within flex containers
+  if (style.textAlign) {
+    textStyles.textAlign = style.textAlign;
+  } else if (style.justifyContent) {
+    // Convert justifyContent back to textAlign for text content
+    switch (style.justifyContent) {
+      case "flex-start":
+        textStyles.textAlign = "left";
+        break;
+      case "center":
+        textStyles.textAlign = "center";
+        break;
+      case "flex-end":
+        textStyles.textAlign = "right";
+        break;
+      case "space-between":
+        textStyles.textAlign = "justify";
+        break;
+      default:
+        break;
+    }
+  }
+
+  return textStyles;
+};
 
 // Element renderer component for displaying different element types
 const ElementRenderer = ({
@@ -116,23 +204,35 @@ const ElementRenderer = ({
       case ELEMENT_TYPES.TEXT:
       case "text":
         return (
-          <div
-            className="w-full h-full flex items-start"
-            style={{
-              fontSize: style.fontSize,
-              fontFamily:
-                style.fontFamily ||
-                getOptimalFontStack(processedContent, style.fontFamily),
-              color: style.color,
-              textAlign: style.textAlign,
-              fontWeight: style.fontWeight,
-              lineHeight: style.lineHeight || "1.4",
-              whiteSpace: "pre-wrap",
-              overflow: "hidden",
-              padding: getPadding(style),
-            }}
-          >
-            {ensureProperEncoding(processedContent)}
+          <div className="w-full h-full relative">
+            <div
+              className="w-full h-full"
+              style={{
+                fontSize: style.fontSize,
+                fontFamily: getOptimalFontStack(
+                  processedContent,
+                  style.fontFamily
+                ),
+                color: style.color,
+                fontWeight: style.fontWeight,
+                lineHeight: style.lineHeight || "1.4",
+                whiteSpace: "pre-wrap",
+                overflow: "hidden",
+                padding: getPadding(style),
+                ...getTextAlignmentStyles(style),
+              }}
+            >
+              {ensureProperEncoding(processedContent)}
+            </div>
+            {/* Show validation indicator only for actual content, not sample text */}
+            {content && content !== "Sample Text" && !isPreview && (
+              <TextValidationIndicator
+                text={content}
+                fontFamily={style.fontFamily}
+                inline={false}
+                showDetailsButton={true}
+              />
+            )}
           </div>
         );
 
@@ -248,12 +348,13 @@ const ElementRenderer = ({
             className="w-full h-full flex items-center"
             style={{
               fontSize: style.fontSize,
-              fontFamily:
-                style.fontFamily ||
-                getOptimalFontStack(processedContent, style.fontFamily),
+              fontFamily: getOptimalFontStack(
+                processedContent,
+                style.fontFamily
+              ),
               color: style.color,
-              textAlign: style.textAlign,
               padding: getPadding(style),
+              ...getTextAlignmentStyles(style),
             }}
           >
             {content && content !== "Sample Text" && content !== ""
@@ -269,16 +370,17 @@ const ElementRenderer = ({
             className="w-full h-full flex items-center justify-center"
             style={{
               fontSize: style.fontSize,
-              fontFamily:
-                style.fontFamily ||
-                getOptimalFontStack(processedContent, style.fontFamily),
+              fontFamily: getOptimalFontStack(
+                processedContent,
+                style.fontFamily
+              ),
               color: style.color,
-              textAlign: style.textAlign,
               backgroundColor: style.backgroundColor,
               border: style.border,
               borderRadius: style.borderRadius,
               fontWeight: style.fontWeight,
               padding: getPadding(style),
+              ...getTextAlignmentStyles(style),
             }}
           >
             {ensureProperEncoding(processedContent)}
@@ -292,20 +394,21 @@ const ElementRenderer = ({
             className="w-full h-full flex flex-col justify-start"
             style={{
               fontSize: `${parseInt(style?.fontSize) || 12}px`,
-              fontFamily:
-                style?.fontFamily ||
-                getOptimalFontStack(processedContent, style?.fontFamily) ||
-                "Arial, sans-serif",
+              fontFamily: getOptimalFontStack(
+                processedContent,
+                style?.fontFamily
+              ),
               color: style?.color || "#000",
               lineHeight: style?.lineHeight || "1.4",
               letterSpacing: style?.letterSpacing
                 ? `${style.letterSpacing}px`
                 : "normal",
-              textAlign: style?.textAlign || "left",
+              // textAlign: style?.textAlign || "left",
               padding: getPadding(style),
               wordWrap: "break-word",
               wordBreak: "break-word",
               overflow: "hidden",
+              ...getModernAlignmentStyles(style),
             }}
           >
             <div
@@ -405,15 +508,17 @@ const ElementRenderer = ({
             className="w-full h-full flex items-start text-xs border border-gray-200 bg-white overflow-hidden"
             style={{
               fontSize: style?.fontSize || "12px",
-              fontFamily:
-                style?.fontFamily ||
-                getOptimalFontStack(processedContent, style?.fontFamily),
+              fontFamily: getOptimalFontStack(
+                processedContent,
+                style?.fontFamily
+              ),
               color: style?.color || "#333",
-              textAlign: style?.textAlign || "left",
+              // textAlign: style?.textAlign || "left",
               fontWeight: style?.fontWeight || "normal",
               lineHeight: style?.lineHeight || "1.4",
               whiteSpace: "pre-wrap",
               padding: getPadding(style),
+              ...getModernAlignmentStyles(style),
             }}
           >
             {ensureProperEncoding(processedContent)}
@@ -437,7 +542,20 @@ const ElementRenderer = ({
         border: style.border,
         borderRadius: style.borderRadius,
         pointerEvents: isPreview ? "none" : "auto",
-        ...style,
+        ...getModernAlignmentStyles(style),
+        // Apply other styles but not conflicting alignment properties
+        ...Object.fromEntries(
+          Object.entries(style).filter(
+            ([key]) =>
+              ![
+                "alignItems",
+                "justifyContent",
+                "display",
+                "textAlign",
+                "verticalAlign",
+              ].includes(key)
+          )
+        ),
       }}
       onClick={handleClick}
       onPointerDown={handlePointerDown}

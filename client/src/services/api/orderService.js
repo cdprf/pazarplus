@@ -493,6 +493,34 @@ const orderService = {
       };
     }
   },
+
+  // Accept order with validation
+  acceptOrder: async (id) => {
+    try {
+      if (!id) {
+        throw new Error("Order ID is required");
+      }
+
+      console.log(`Accepting order with ID: ${id}`);
+
+      const response = await api.put(`/${id}/accept`);
+
+      console.log("Accept order response:", response.data);
+
+      return {
+        success: response.data?.success ?? true,
+        message: response.data?.message || "Order accepted successfully",
+        data: response.data?.data || null,
+      };
+    } catch (error) {
+      console.error("Error accepting order:", error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message,
+        data: null,
+      };
+    }
+  },
 };
 
 export default orderService;

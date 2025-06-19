@@ -6,6 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const bwipjs = require("bwip-js");
 const logger = require("../utils/logger");
+const FontManager = require("../utils/FontManager");
 
 // Element types constants
 const ELEMENT_TYPES = {
@@ -68,6 +69,22 @@ class TemplateBasedPDFGenerator {
     if (!fs.existsSync(this.outputDir)) {
       fs.mkdirSync(this.outputDir, { recursive: true });
     }
+
+    // Initialize FontManager for better font handling
+    this.fontManager = new FontManager();
+
+    // Font registry for available fonts
+    this.availableFonts = [
+      "DejaVuSans",
+      "DejaVuSans-Bold",
+      "Helvetica",
+      "Helvetica-Bold",
+      "Times-Roman",
+      "Times-Bold",
+      "Courier",
+      "Courier-Bold",
+      // Add more registered fonts here if needed
+    ];
   }
 
   /**
@@ -113,26 +130,63 @@ class TemplateBasedPDFGenerator {
         pdfVersion: "1.4",
       });
 
-      // Register Unicode-compatible fonts for Turkish character support
+      // Register Unicode-compatible fonts using FontManager
       try {
-        // Register bundled fonts first
+        const fontRegistrationResult = await this.fontManager.registerFonts(
+          doc
+        );
+
+        if (fontRegistrationResult.success.length > 0) {
+          logger.info(
+            `Successfully registered ${fontRegistrationResult.success.length} fonts`,
+            {
+              fonts: fontRegistrationResult.success.map((f) => f.name),
+            }
+          );
+
+          // Update available fonts list with registered fonts
+          this.availableFonts = [
+            ...fontRegistrationResult.success.map((f) => f.name),
+            ...this.availableFonts,
+          ];
+        }
+
+        if (fontRegistrationResult.failed.length > 0) {
+          logger.warn(
+            `Failed to register ${fontRegistrationResult.failed.length} fonts`,
+            {
+              fonts: fontRegistrationResult.failed.map((f) => f.name),
+            }
+          );
+        }
+
+        if (fontRegistrationResult.fallback) {
+          logger.info(
+            `Using fallback font: ${fontRegistrationResult.fallback}`
+          );
+        }
+      } catch (fontError) {
+        logger.warn(
+          "FontManager registration failed, using manual registration",
+          {
+            error: fontError.message,
+          }
+        );
+
+        // Fallback to manual font registration
         const fontsPath = path.join(__dirname, "../fonts");
         const dejavuSansPath = path.join(fontsPath, "DejaVuSans.ttf");
         const dejavuSansBoldPath = path.join(fontsPath, "DejaVuSans-Bold.ttf");
 
         if (fs.existsSync(dejavuSansPath)) {
           doc.registerFont("DejaVuSans", dejavuSansPath);
-          logger.debug("DejaVuSans font registered successfully");
+          logger.debug("DejaVuSans font registered successfully (manual)");
         }
 
         if (fs.existsSync(dejavuSansBoldPath)) {
           doc.registerFont("DejaVuSans-Bold", dejavuSansBoldPath);
-          logger.debug("DejaVuSans-Bold font registered successfully");
+          logger.debug("DejaVuSans-Bold font registered successfully (manual)");
         }
-      } catch (fontError) {
-        logger.warn("Failed to register custom fonts, using built-in fonts", {
-          error: fontError.message,
-        });
       }
 
       // Write to file
@@ -807,37 +861,79 @@ class TemplateBasedPDFGenerator {
       content = this.processContent(content, orderData);
     }
 
-    // Ensure proper UTF-8 encoding for Turkish characters
-    content = content.toString().normalize("NFC");
-
-    // Clean up any problematic characters and ensure proper encoding
-    content = Buffer.from(content, "utf8").toString("utf8");
-
     // Apply styling from element.style and resolve CSS variables
     const rawStyle = element.style || {};
     const style = this.resolveStyleVariables(rawStyle);
-    const fontSize = style.fontSize || 12;
-    const fontFamily = this.getFontFamily(style.fontFamily) || "Helvetica";
-    const fontWeight = style.fontWeight || "normal";
 
-    // Set font
-    let font = fontFamily;
-    if (fontWeight === "bold" && fontFamily === "DejaVuSans") {
-      font = "DejaVuSans-Bold";
-    } else if (fontWeight === "bold") {
-      font = `${fontFamily}-Bold`;
+    // Convert font size from CSS units to PDF points
+    let fontSize = 12; // default
+
+    if (style.fontSize) {
+      if (typeof style.fontSize === "string" && style.fontSize.includes("px")) {
+        // Convert px to pt (1px = 0.75pt) - standard conversion
+        fontSize = parseInt(style.fontSize) * 0.75;
+      } else if (typeof style.fontSize === "number") {
+        fontSize = style.fontSize;
+      } else {
+        fontSize = parseInt(style.fontSize) || 12;
+      }
     }
 
-    // Fallback to built-in fonts if custom fonts are not available
+    const requestedFont = style.fontFamily || "Helvetica";
+    const fontWeight = style.fontWeight || "normal";
+
+    // Use FontManager to validate text and get best font
+    let font, validatedContent;
+    try {
+      const fontValidation = this.fontManager.validateAndGetFont(
+        content,
+        this.getFontFamily(requestedFont),
+        fontWeight
+      );
+
+      font = fontValidation.font;
+      validatedContent = fontValidation.text;
+
+      // Log font recommendation if changed
+      if (font !== this.getFontFamily(requestedFont)) {
+        logger.info(`Font changed for better Unicode support`, {
+          requested: requestedFont,
+          recommended: font,
+          text: content.substring(0, 50),
+        });
+      }
+    } catch (fontError) {
+      logger.warn("FontManager validation failed, using fallback", {
+        error: fontError.message,
+      });
+
+      // Fallback to manual processing
+      validatedContent = content.toString().normalize("NFC");
+      validatedContent = Buffer.from(validatedContent, "utf8").toString("utf8");
+      font = this.getFontFamily(requestedFont) || "Helvetica";
+    }
+
+    // Apply bold font variant if needed
+    if (fontWeight === "bold") {
+      if (font === "DejaVuSans") {
+        font = "DejaVuSans-Bold";
+      } else if (font.endsWith("-Bold")) {
+        // Already bold variant
+      } else {
+        font = `${font}-Bold`;
+      }
+    }
+
+    // Set font with proper fallback handling
     try {
       doc.font(font).fontSize(fontSize);
     } catch (fontError) {
-        logger.warn(`Font ${font} not available, falling back to Helvetica`, {
-          error: fontError.message,
-        });
-        const fallbackFont =
-          fontWeight === "bold" ? "Helvetica-Bold" : "Helvetica";
-        doc.font(fallbackFont).fontSize(fontSize);
+      logger.warn(`Font ${font} not available, falling back to Helvetica`, {
+        error: fontError.message,
+      });
+      const fallbackFont =
+        fontWeight === "bold" ? "Helvetica-Bold" : "Helvetica";
+      doc.font(fallbackFont).fontSize(fontSize);
     }
 
     // Set text color - ALWAYS set a default color
@@ -859,15 +955,50 @@ class TemplateBasedPDFGenerator {
       this.applyBorder(doc, style, x, y, width, height);
     }
 
-    // Calculate text positioning with padding
+    // Calculate text positioning with padding and vertical alignment
     const padding = this.parsePadding(style.padding);
     const textX = x + padding.left;
-    const textY = y + padding.top;
     const textWidth = width - padding.left - padding.right;
     const textHeight = height - padding.top - padding.bottom;
 
-    // Set text alignment
-    const align = style.textAlign || "left";
+    // Modern CSS Flexbox alignment calculation
+    const elementStyle = element.style || {};
+    const verticalAlign = elementStyle.verticalAlign || "top"; // Keep for backward compatibility
+    const alignItems = elementStyle.alignItems || "flex-start"; // Modern CSS
+    const justifyContent = elementStyle.justifyContent || "flex-start"; // Modern CSS
+
+    let textY = y + padding.top;
+
+    // Use modern CSS properties if available, fall back to legacy
+    const effectiveVerticalAlign = this.convertAlignItemsToVerticalAlign(
+      alignItems,
+      verticalAlign
+    );
+
+    if (
+      effectiveVerticalAlign === "middle" ||
+      effectiveVerticalAlign === "center"
+    ) {
+      // For middle alignment, estimate text height and center it within available space
+      const estimatedTextHeight = fontSize * (elementStyle.lineHeight || 1.4);
+      const availableHeight = height - padding.top - padding.bottom;
+      textY = y + padding.top + (availableHeight - estimatedTextHeight) / 2;
+    } else if (
+      effectiveVerticalAlign === "bottom" ||
+      effectiveVerticalAlign === "flex-end"
+    ) {
+      // For bottom alignment, position text at bottom of available space
+      const estimatedTextHeight = fontSize * (elementStyle.lineHeight || 1.4);
+      textY = y + height - padding.bottom - estimatedTextHeight;
+    }
+    // "top" or "flex-start" alignment uses original calculation: y + padding.top
+
+    // Handle modern horizontal alignment
+    const effectiveTextAlign = this.convertJustifyContentToTextAlign(
+      justifyContent,
+      elementStyle.textAlign
+    );
+    const align = effectiveTextAlign || "left";
 
     // Draw text within the bounds
     try {
@@ -878,25 +1009,16 @@ class TemplateBasedPDFGenerator {
           ? (lineHeight - 1) * fontSize // Convert line-height ratio to gap
           : Math.max(2, fontSize * 0.2); // Minimum 2pt or 20% of font size
 
-        doc.text(content, textX, textY, {
-          width: textWidth,
-          height: textHeight,
-          align: align,
-          lineGap: lineGap,
-        });
-
-      // Debug logging for text rendering
-        logger.debug("Text rendered successfully", {
-          content: content.substring(0, 50),
-          color: textColor,
-          fontSize,
-          fontFamily: font,
-          position: { x: textX, y: textY },
-          dimensions: { width: textWidth, height: textHeight },
-        });
+      doc.text(validatedContent, textX, textY, {
+        width: textWidth,
+        height: textHeight,
+        align: align,
+        lineGap: lineGap,
+      });
     } catch (error) {
       logger.error(`Error rendering text: ${error.message}`, {
-        content: content.substring(0, 50),
+        content: validatedContent.substring(0, 50),
+        originalContent: content.substring(0, 50),
         color: textColor,
         fontSize,
         fontFamily: font,
@@ -905,7 +1027,7 @@ class TemplateBasedPDFGenerator {
 
       // Fallback: try with basic settings
       doc.font("Helvetica").fontSize(12).fillColor("#000000");
-      doc.text(content || "Text Error", textX, textY, {
+      doc.text(validatedContent || "Text Error", textX, textY, {
         width: textWidth,
         align: "left",
       });
@@ -984,8 +1106,65 @@ class TemplateBasedPDFGenerator {
         textxalign: "center",
       });
 
-      // Draw barcode image - preserving aspect ratio, positioned below title
-      doc.image(barcodeBuffer, x, barcodeY, {
+      // Get alignment settings from element style with modern CSS support
+      const elementStyle = element.style || {};
+      const modernStyle = this.modernizeAlignment(elementStyle);
+
+      const horizontalAlign = this.convertJustifyContentToTextAlign(
+        modernStyle.justifyContent,
+        elementStyle.textAlign || "center"
+      );
+      const verticalAlign = this.convertAlignItemsToVerticalAlign(
+        modernStyle.alignItems,
+        elementStyle.verticalAlign || "top"
+      );
+
+      // Calculate positioning based on alignment
+      let barcodeX = x;
+      let finalBarcodeY = barcodeY;
+
+      // Horizontal alignment for barcode
+      if (horizontalAlign === "center") {
+        barcodeX = x; // Use original x as barcode is drawn within the container
+      } else if (horizontalAlign === "right") {
+        barcodeX = x; // Use original x as barcode is drawn within the container
+      } else {
+        // "left" alignment uses original x position
+        barcodeX = x;
+      }
+
+      // Vertical alignment for barcode
+      if (verticalAlign === "middle") {
+        const totalBarcodeHeight =
+          titleHeight + titleMargin + availableBarcodeHeight;
+        finalBarcodeY =
+          y + (height - totalBarcodeHeight) / 2 + titleHeight + titleMargin;
+        // Adjust title position too
+        const titleY = y + (height - totalBarcodeHeight) / 2;
+        doc.text("Kargo Barkodu", x, titleY, {
+          width: width,
+          align: "center",
+        });
+      } else if (verticalAlign === "bottom") {
+        const totalBarcodeHeight =
+          titleHeight + titleMargin + availableBarcodeHeight;
+        finalBarcodeY = y + height - availableBarcodeHeight;
+        // Adjust title position too
+        const titleY = y + height - totalBarcodeHeight;
+        doc.text("Kargo Barkodu", x, titleY, {
+          width: width,
+          align: "center",
+        });
+      } else {
+        // "top" alignment - render title normally
+        doc.text("Kargo Barkodu", x, y, {
+          width: width,
+          align: "center",
+        });
+      }
+
+      // Draw barcode image - preserving aspect ratio, positioned with alignment
+      doc.image(barcodeBuffer, barcodeX, finalBarcodeY, {
         width: width,
         height: undefined, // Don't force height to preserve aspect ratio
         align: "center",
@@ -1034,11 +1213,47 @@ class TemplateBasedPDFGenerator {
 
       const qrBuffer = await bwipjs.toBuffer(options);
 
-      // Draw QR code image
-      doc.image(qrBuffer, x, y, {
-        width: Math.min(width, height),
-        height: Math.min(width, height),
-        fit: [Math.min(width, height), Math.min(width, height)],
+      // Get alignment settings from element style with modern CSS support
+      const elementStyle = element.style || {};
+      const modernStyle = this.modernizeAlignment(elementStyle);
+
+      const horizontalAlign = this.convertJustifyContentToTextAlign(
+        modernStyle.justifyContent,
+        elementStyle.textAlign || "center"
+      );
+      const verticalAlign = this.convertAlignItemsToVerticalAlign(
+        modernStyle.alignItems,
+        elementStyle.verticalAlign || "top"
+      );
+
+      // Calculate QR code dimensions
+      const qrSize = Math.min(width, height);
+
+      // Calculate positioning based on alignment
+      let qrX = x;
+      let qrY = y;
+
+      // Horizontal alignment
+      if (horizontalAlign === "center") {
+        qrX = x + (width - qrSize) / 2;
+      } else if (horizontalAlign === "right") {
+        qrX = x + width - qrSize;
+      }
+      // "left" alignment uses original x position
+
+      // Vertical alignment
+      if (verticalAlign === "middle") {
+        qrY = y + (height - qrSize) / 2;
+      } else if (verticalAlign === "bottom") {
+        qrY = y + height - qrSize;
+      }
+      // "top" alignment uses original y position
+
+      // Draw QR code image with alignment
+      doc.image(qrBuffer, qrX, qrY, {
+        width: qrSize,
+        height: qrSize,
+        fit: [qrSize, qrSize],
       });
     } catch (error) {
       logger.error(`Error generating QR code: ${error.message}`, {
@@ -1122,11 +1337,75 @@ class TemplateBasedPDFGenerator {
         }
       }
 
+      // Get alignment settings from element style with modern CSS support
+      const elementStyle = element.style || {};
+      const modernStyle = this.modernizeAlignment(elementStyle);
+      
+      const horizontalAlign = this.convertJustifyContentToTextAlign(
+        modernStyle.justifyContent, 
+        elementStyle.textAlign || "left"
+      );
+      const verticalAlign = this.convertAlignItemsToVerticalAlign(
+        modernStyle.alignItems, 
+        elementStyle.verticalAlign || "top"
+      );
+
+      // Handle object-position for images
+      const objectPosition = elementStyle.objectPosition || "center";
+
+      // Calculate positioning based on alignment
+      let imageX = x;
+      let imageY = y;
+      let imageWidth = width;
+      let imageHeight = height;
+
+      // For proper alignment, we need to consider the fit property
+      // Since images can have different aspect ratios, we'll maintain aspect ratio
+
+      // Calculate actual image dimensions maintaining aspect ratio
+      try {
+        const imageInfo = await sharp(imagePath).metadata();
+        if (imageInfo && imageInfo.width && imageInfo.height) {
+          const aspectRatio = imageInfo.width / imageInfo.height;
+          const containerAspectRatio = width / height;
+
+          if (aspectRatio > containerAspectRatio) {
+            // Image is wider - fit to width
+            imageWidth = width;
+            imageHeight = width / aspectRatio;
+          } else {
+            // Image is taller - fit to height
+            imageHeight = height;
+            imageWidth = height * aspectRatio;
+          }
+        }
+      } catch (err) {
+        // If we can't get image info, use container dimensions
+        imageWidth = width;
+        imageHeight = height;
+      }
+
+      // Horizontal alignment
+      if (horizontalAlign === "center") {
+        imageX = x + (width - imageWidth) / 2;
+      } else if (horizontalAlign === "right") {
+        imageX = x + width - imageWidth;
+      }
+      // "left" alignment uses original x position
+
+      // Vertical alignment
+      if (verticalAlign === "middle") {
+        imageY = y + (height - imageHeight) / 2;
+      } else if (verticalAlign === "bottom") {
+        imageY = y + height - imageHeight;
+      }
+      // "top" alignment uses original y position
+
       // Add the image to the PDF
-      doc.image(imagePath, x, y, {
-        width: width,
-        height: height,
-        fit: [width, height],
+      doc.image(imagePath, imageX, imageY, {
+        width: imageWidth,
+        height: imageHeight,
+        fit: [imageWidth, imageHeight],
       });
     } catch (error) {
       console.error(`Error rendering image element:`, {
@@ -1258,13 +1537,39 @@ class TemplateBasedPDFGenerator {
    * @param {Object} orderData - Order data
    * @returns {String} - Processed content
    */
-  processContent(content, orderData) {
-    if (!content) return { text: "", isValid: true };
+  /**
+   * Ensure proper text encoding for Turkish characters
+   * @param {string} text - Input text
+   * @returns {string} - Properly encoded text
+   */
+  ensureProperEncoding(text) {
+    if (!text || typeof text !== "string") return text;
 
-    return content.replace(/\{\{([^}]+)\}\}/g, (match, placeholder) => {
+    // Use Unicode normalization - NFC is the most common form
+    // This ensures Turkish characters are properly represented
+    return text.normalize("NFC");
+  }
+
+  /**
+   * Process content with encoding and placeholder replacement
+   * @param {string} content - Content to process
+   * @param {Object} orderData - Order data for placeholders
+   * @returns {string} - Processed content
+   */
+  processContent(content, orderData) {
+    if (!content) return "";
+
+    // First process placeholders
+    const processed = content.replace(
+      /\{\{([^}]+)\}\}/g,
+      (match, placeholder) => {
         const value = this.getFieldValue(orderData, placeholder.trim());
         return value !== undefined ? String(value) : match;
-    });
+      }
+    );
+
+    // Then ensure proper encoding
+    return this.ensureProperEncoding(processed);
   }
 
   /**
@@ -1350,11 +1655,8 @@ class TemplateBasedPDFGenerator {
    */
   async renderRecipientElement(doc, element, orderData, x, y, width, height) {
     try {
-      const recipient =
-        orderData.recipient ||
-        orderData.customer ||
-        orderData.shippingAddress ||
-        {};
+      // Fix: Handle both object and string formats for shipping address
+      const recipient = orderData.recipient || orderData.customer || {};
       const order = orderData.order || orderData;
 
       // Extract recipient information with multiple fallback paths
@@ -1367,11 +1669,31 @@ class TemplateBasedPDFGenerator {
         orderData.customerName ||
         "Alıcı bilgisi yok";
 
-      const recipientAddress =
-        recipient.address ||
-        recipient.street ||
-        orderData.address ||
-        "Adres bilgisi yok";
+      // Fix: Properly handle shippingAddress as both object and string
+      let recipientAddress = "Adres bilgisi yok";
+
+      if (
+        typeof orderData.shippingAddress === "string" &&
+        orderData.shippingAddress.trim()
+      ) {
+        // If shippingAddress is a string (which it usually is), use it directly
+        recipientAddress = orderData.shippingAddress;
+      } else if (
+        typeof orderData.shippingAddress === "object" &&
+        orderData.shippingAddress
+      ) {
+        // If it's an object, try to extract address properties
+        recipientAddress =
+          `${orderData.shippingAddress.street} - ${orderData.shippingAddress.city}/${orderData.shippingAddress.country}` ||
+          `${orderData.recipient.address} - ${orderData.recipient.city}/${orderData.recipient.country}` ||
+          "Adres bilgisi yok";
+      } else if (recipient.address) {
+        // Fallback to recipient object address
+        recipientAddress = recipient.address;
+      } else if (orderData.address) {
+        // Fallback to orderData.address
+        recipientAddress = orderData.address;
+      }
 
       const orderNumber =
         order.orderNumber ||
@@ -1391,9 +1713,9 @@ class TemplateBasedPDFGenerator {
 
       // Prepare structured data for custom rendering with bold labels
       const recipientData = [
-        { label: "Sipariş No", value: encodedOrderNumber },
-        { label: "Alıcı Ad / Soyad", value: encodedRecipientName },
-        { label: "Adres", value: encodedRecipientAddress },
+        { label: "Sipariş No", value: orderNumber },
+        { label: "Alıcı Ad / Soyad", value: recipientName },
+        { label: "Adres", value: recipientAddress },
       ];
 
       // Render with custom bold label formatting
@@ -1410,10 +1732,8 @@ class TemplateBasedPDFGenerator {
       console.error("Error in renderRecipientElement:", error);
 
       // Fallback rendering with proper encoding
-      const fallbackText = this.ensureProperEncoding(
-        "Alıcı bilgisi yüklenemedi"
-      );
-      doc.font("Helvetica").fontSize(12).fillColor("#ff0000");
+      const fallbackText = "Alıcı bilgisi yüklenemedi";
+      doc.fontSize(12).fillColor("#ff0000");
       doc.text(fallbackText, x, y, {
         width: width,
         align: "left",
@@ -1427,40 +1747,30 @@ class TemplateBasedPDFGenerator {
   extractFontOptions(element) {
     const style = element.style || {};
 
-    // Map UI font names to PDFKit font names
-    const fontMapping = {
-      Helvetica: "Helvetica",
-      DejaVuSans: "DejaVuSans",
-      "Times-Roman": "Times-Roman",
-      Courier: "Courier",
-    };
+    // Use the SAME font mapping as renderTextElement for consistency
+    const requestedFont = style.fontFamily || "Helvetica";
+    const mappedFont = this.getFontFamily(requestedFont) || "DejaVuSans";
 
-    // Get font size with various fallbacks
+    // Get font size with various fallbacks (same logic as renderTextElement)
     let fontSize = 12;
     if (style.fontSize) {
-      if (typeof style.fontSize === "string") {
-        if (style.fontSize.includes("px")) {
-          fontSize = parseInt(style.fontSize) * 0.75; // Convert px to pt
-        } else if (style.fontSize.includes("pt")) {
-          fontSize = parseInt(style.fontSize); // Already in pt
-        } else {
-          fontSize = parseInt(style.fontSize) || 12; // Assume pt if no unit
-        }
+      if (typeof style.fontSize === "string" && style.fontSize.includes("px")) {
+        fontSize = parseInt(style.fontSize) * 0.75; // Convert px to pt
       } else if (typeof style.fontSize === "number") {
-        fontSize = style.fontSize; // Assume pt
+        fontSize = style.fontSize;
+      } else {
+        fontSize = parseInt(style.fontSize) || 12;
       }
     }
 
-    const requestedFont = style.fontFamily || "Helvetica";
-    const mappedFont = fontMapping[requestedFont] || "Helvetica";
-
     return {
       fontSize: fontSize,
-      fontFamily: mappedFont,
+      fontFamily: mappedFont, // Use consistent font mapping
       color: style.color || "#000000",
       lineHeight: parseFloat(style.lineHeight) || 1.4,
       letterSpacing: parseFloat(style.letterSpacing) || 0,
       textAlign: style.textAlign || "left",
+      verticalAlign: style.verticalAlign || "top", // top, middle, bottom
       fontWeight: style.fontWeight || "normal",
       // Custom options for spacing
       labelSpacing: element.labelSpacing || 5, // Space between label and value
@@ -1481,11 +1791,23 @@ class TemplateBasedPDFGenerator {
       lineSpacing,
       letterSpacing,
       textAlign,
+      verticalAlign,
     } = fontOptions;
 
-    let currentY = y;
-    const maxY = y + height; // Boundary check
+    // Calculate vertical alignment offset
+    let startY = y;
     const lineHeightPx = fontSize * lineHeight;
+    const totalContentHeight = data.length * (lineHeightPx + lineSpacing);
+
+    if (verticalAlign === "middle") {
+      startY = y + (height - totalContentHeight) / 2;
+    } else if (verticalAlign === "bottom") {
+      startY = y + height - totalContentHeight;
+    }
+    // "top" alignment uses original y position
+
+    let currentY = Math.max(startY, y); // Ensure we don't go above the element bounds
+    const maxY = y + height; // Boundary check
 
     for (const item of data) {
       if (!item.value) continue;
@@ -1496,23 +1818,46 @@ class TemplateBasedPDFGenerator {
       }
 
       try {
-        // Set bold font for label
+        // Set bold font for label with better error handling
         const boldFont = this.getBoldFont(fontFamily);
+
+        logger.debug("Setting bold font for recipient label", {
+          requestedFont: fontFamily,
+          boldFont: boldFont,
+          fontSize: fontSize,
+          item: item.label,
+        });
 
         // Try to set the bold font, fall back to regular font if it fails
         try {
           doc.font(boldFont).fontSize(fontSize).fillColor(color);
         } catch (fontError) {
-          console.warn(
-            `Bold font ${boldFont} not available, using regular font`
+          logger.warn(
+            `Bold font ${boldFont} not available, using regular font`,
+            {
+              error: fontError.message,
+              fallbackFont: fontFamily,
+            }
           );
-          doc.font(fontFamily).fontSize(fontSize).fillColor(color);
+          try {
+            doc.font(fontFamily).fontSize(fontSize).fillColor(color);
+          } catch (fallbackError) {
+            logger.warn(
+              `Regular font ${fontFamily} not available, using Helvetica`,
+              {
+                error: fallbackError.message,
+              }
+            );
+            doc.font("Helvetica").fontSize(fontSize).fillColor(color);
+          }
         }
 
-        // Apply letter spacing if specified
-        if (letterSpacing && letterSpacing !== 0) {
-          doc.characterSpacing(letterSpacing);
-        }
+        // PDFKit doesn't support letter spacing directly
+        // For now, we'll render text normally without letter spacing
+        const textOptions = {
+          width: width,
+          align: "left",
+        };
 
         const labelText = `${item.label}:`;
         const labelWidth = doc.widthOfString(labelText);
@@ -1524,8 +1869,9 @@ class TemplateBasedPDFGenerator {
         );
 
         // For long addresses, we might need to wrap text
+        const valueString = String(item.value);
         const shouldWrapText =
-          item.value.length > 30 || item.value.includes("\n");
+          valueString.length > 30 || valueString.includes("\n");
 
         if (shouldWrapText) {
           // Render label on its own line for better layout
@@ -1545,19 +1891,30 @@ class TemplateBasedPDFGenerator {
           // Set normal font for value
           try {
             doc.font(fontFamily).fontSize(fontSize).fillColor(color);
-            // Reset character spacing for value text if it was set for label
-            if (letterSpacing && letterSpacing !== 0) {
-              doc.characterSpacing(0);
-            }
           } catch (fontError) {
-            console.warn(`Font ${fontFamily} not available, using Helvetica`);
-            doc.font("Helvetica").fontSize(fontSize).fillColor(color);
+            logger.warn(
+              `Font ${fontFamily} not available for value, using DejaVuSans`,
+              {
+                error: fontError.message,
+              }
+            );
+            try {
+              doc.font("DejaVuSans").fontSize(fontSize).fillColor(color);
+            } catch (fallbackError) {
+              logger.warn(
+                `DejaVuSans not available for value, using Helvetica`,
+                {
+                  error: fallbackError.message,
+                }
+              );
+              doc.font("Helvetica").fontSize(fontSize).fillColor(color);
+            }
           }
 
           // Render value with wrapping, indented slightly
           const indentX = x + 10;
           const remainingHeight = maxY - currentY;
-          doc.text(item.value, indentX, currentY, {
+          doc.text(valueString, indentX, currentY, {
             width: width - 10,
             align: textAlign || "left",
             ellipsis: true,
@@ -1566,7 +1923,7 @@ class TemplateBasedPDFGenerator {
 
           // Calculate how many lines the text actually took
           const textHeight = Math.min(
-            lineHeightPx * Math.ceil(item.value.length / 40),
+            lineHeightPx * Math.ceil(valueString.length / 40),
             lineHeightPx * 3
           );
           currentY += Math.min(textHeight, remainingHeight) + lineSpacing;
@@ -1587,17 +1944,28 @@ class TemplateBasedPDFGenerator {
           // Set normal font for value
           try {
             doc.font(fontFamily).fontSize(fontSize).fillColor(color);
-            // Reset character spacing for value text if it was set for label
-            if (letterSpacing && letterSpacing !== 0) {
-              doc.characterSpacing(0);
-            }
           } catch (fontError) {
-            console.warn(`Font ${fontFamily} not available, using Helvetica`);
-            doc.font("Helvetica").fontSize(fontSize).fillColor(color);
+            logger.warn(
+              `Font ${fontFamily} not available for single-line value, using DejaVuSans`,
+              {
+                error: fontError.message,
+              }
+            );
+            try {
+              doc.font("DejaVuSans").fontSize(fontSize).fillColor(color);
+            } catch (fallbackError) {
+              logger.warn(
+                `DejaVuSans not available for single-line value, using Helvetica`,
+                {
+                  error: fallbackError.message,
+                }
+              );
+              doc.font("Helvetica").fontSize(fontSize).fillColor(color);
+            }
           }
 
           // Render normal value with spacing from label
-          doc.text(item.value, valueStartX, currentY, {
+          doc.text(valueString, valueStartX, currentY, {
             width: availableValueWidth,
             align: textAlign || "left",
             continued: false,
@@ -1608,18 +1976,31 @@ class TemplateBasedPDFGenerator {
           currentY += lineHeightPx + lineSpacing;
         }
       } catch (error) {
-        console.error("Error rendering label-value pair:", error, item);
-
-        // Fallback to simple text
-        doc.font("Helvetica").fontSize(fontSize).fillColor(color);
-        const remainingHeight = maxY - currentY;
-        doc.text(`${item.label}: ${item.value}`, x, currentY, {
-          width: width,
-          align: textAlign || "left",
-          ellipsis: true,
-          height: Math.min(lineHeightPx * 2, remainingHeight),
+        logger.error("Error rendering label-value pair in recipient element", {
+          error: error.message,
+          stack: error.stack,
+          item: item,
+          fontOptions: fontOptions,
         });
-        currentY += Math.min(lineHeightPx + lineSpacing, remainingHeight);
+
+        // Fallback to simple text rendering (same as renderTextElement)
+        try {
+          doc.font("DejaVuSans").fontSize(fontSize).fillColor(color);
+          const remainingHeight = maxY - currentY;
+          const fallbackValueString = String(item.value);
+          doc.text(`${item.label}: ${fallbackValueString}`, x, currentY, {
+            width: width,
+            align: textAlign || "left",
+            ellipsis: true,
+            height: Math.min(lineHeightPx * 2, remainingHeight),
+          });
+          currentY += Math.min(lineHeightPx + lineSpacing, remainingHeight);
+        } catch (fallbackError) {
+          logger.error("Even fallback rendering failed in recipient element", {
+            error: fallbackError.message,
+            item: item,
+          });
+        }
       }
     }
   }
@@ -1649,19 +2030,93 @@ class TemplateBasedPDFGenerator {
    * Render sender element
    */
   async renderSenderElement(doc, element, orderData, x, y, width, height) {
-    const sender = orderData.sender || orderData.company || {};
-    const content = this.formatAddressBlock(
-      [
-        sender.name || sender.companyName,
-        sender.address,
-        sender.city + " " + sender.postalCode,
-        sender.country,
-        sender.phone,
-        sender.email,
-      ].filter(Boolean)
-    );
+    logger.debug("Rendering sender element", {
+      element: element.id,
+      orderData: Object.keys(orderData),
+    });
 
-    await this.renderFormattedText(doc, element, content, x, y, width, height);
+    try {
+      // Extract font options with robust fallbacks
+      const fontOptions = this.extractFontOptions(element);
+
+      // Handle both object and string formats for sender data
+      let senderData = [];
+
+      if (typeof orderData.sender === "string" && orderData.sender.trim()) {
+        // If sender is a string, use it directly
+        senderData = [{ label: "Gönderen", value: orderData.sender }];
+      } else if (typeof orderData.sender === "object" && orderData.sender) {
+        // If it's an object, extract relevant fields
+        const sender = orderData.sender;
+        senderData = [
+          { label: "Gönderen", value: sender.name || sender.companyName },
+          { label: "Adres", value: sender.address },
+          {
+            label: "Şehir",
+            value:
+              sender.city + (sender.postalCode ? " " + sender.postalCode : ""),
+          },
+          { label: "Ülke", value: sender.country },
+          { label: "Telefon", value: sender.phone },
+          { label: "E-posta", value: sender.email },
+        ].filter((item) => item.value);
+      } else if (typeof orderData.company === "object" && orderData.company) {
+        // Fallback to company data
+        const company = orderData.company;
+        senderData = [
+          { label: "Şirket", value: company.name || company.companyName },
+          { label: "Adres", value: company.address },
+          {
+            label: "Şehir",
+            value:
+              company.city +
+              (company.postalCode ? " " + company.postalCode : ""),
+          },
+          { label: "Ülke", value: company.country },
+          { label: "Telefon", value: company.phone },
+          { label: "E-posta", value: company.email },
+        ].filter((item) => item.value);
+      } else {
+        // If no sender data available, show placeholder
+        senderData = [
+          { label: "Gönderen", value: "Gönderen bilgisi mevcut değil" },
+        ];
+      }
+
+      // Render using the robust label-value pairs method
+      await this.renderLabelValuePairs(
+        doc,
+        senderData,
+        fontOptions,
+        x,
+        y,
+        width,
+        height
+      );
+    } catch (error) {
+      logger.error("Error rendering sender element", {
+        error: error.message,
+        element: element.id,
+        orderData: Object.keys(orderData),
+      });
+
+      // Fallback to simple text rendering
+      try {
+        await this.renderFormattedText(
+          doc,
+          element,
+          "Gönderen bilgisi yüklenemedi",
+          x,
+          y,
+          width,
+          height
+        );
+      } catch (fallbackError) {
+        logger.error("Fallback rendering failed for sender element", {
+          error: fallbackError.message,
+        });
+      }
+    }
   }
 
   /**
@@ -1676,18 +2131,92 @@ class TemplateBasedPDFGenerator {
     width,
     height
   ) {
-    const customer = orderData.customer || {};
-    const content = this.formatInfoBlock([
-      {
-        label: "Customer",
-        value: customer.name || customer.firstName + " " + customer.lastName,
-      },
-      { label: "Email", value: customer.email },
-      { label: "Phone", value: customer.phone },
-      { label: "Customer ID", value: customer.id },
-    ]);
+    logger.debug("Rendering customer info element", {
+      element: element.id,
+      orderData: Object.keys(orderData),
+    });
 
-    await this.renderFormattedText(doc, element, content, x, y, width, height);
+    try {
+      // Extract font options with robust fallbacks
+      const fontOptions = this.extractFontOptions(element);
+
+      // Handle both object and string formats for customer data
+      let customerData = [];
+
+      if (typeof orderData.customer === "string" && orderData.customer.trim()) {
+        // If customer is a string, use it directly
+        customerData = [{ label: "Müşteri", value: orderData.customer }];
+      } else if (typeof orderData.customer === "object" && orderData.customer) {
+        // If it's an object, extract relevant fields
+        const customer = orderData.customer;
+        const fullName =
+          customer.name ||
+          (customer.firstName && customer.lastName
+            ? `${customer.firstName} ${customer.lastName}`
+            : customer.firstName || customer.lastName || "");
+
+        customerData = [
+          { label: "Müşteri", value: fullName },
+          { label: "E-posta", value: customer.email },
+          { label: "Telefon", value: customer.phone },
+          { label: "Müşteri ID", value: customer.id || customer.customerId },
+        ].filter((item) => item.value);
+      } else if (orderData.customerName) {
+        // Fallback to direct customer name field
+        customerData = [{ label: "Müşteri", value: orderData.customerName }];
+      } else if (orderData.buyer) {
+        // Another fallback for buyer info
+        const buyer = orderData.buyer;
+        if (typeof buyer === "string") {
+          customerData = [{ label: "Alıcı", value: buyer }];
+        } else if (typeof buyer === "object") {
+          customerData = [
+            { label: "Alıcı", value: buyer.name || buyer.fullName },
+            { label: "E-posta", value: buyer.email },
+            { label: "Telefon", value: buyer.phone },
+          ].filter((item) => item.value);
+        }
+      } else {
+        // If no customer data available, show placeholder
+        customerData = [
+          { label: "Müşteri", value: "Müşteri bilgisi mevcut değil" },
+        ];
+      }
+
+      // Render using the robust label-value pairs method
+      await this.renderLabelValuePairs(
+        doc,
+        customerData,
+        fontOptions,
+        x,
+        y,
+        width,
+        height
+      );
+    } catch (error) {
+      logger.error("Error rendering customer info element", {
+        error: error.message,
+        element: element.id,
+        orderData: Object.keys(orderData),
+      });
+
+      // Fallback to simple text rendering
+      try {
+        await this.renderFormattedText(
+          doc,
+          element,
+          "Müşteri bilgisi yüklenemedi",
+          x,
+          y,
+          width,
+          height
+        );
+      } catch (fallbackError) {
+        logger.error("Fallback rendering failed for customer info element", {
+          error: fallbackError.message,
+        });
+      }
+    }
   }
 
   /**
@@ -1702,16 +2231,47 @@ class TemplateBasedPDFGenerator {
     width,
     height
   ) {
-    const address = orderData.shippingAddress || orderData.address || {};
-    const content = this.formatAddressBlock(
-      [
-        address.fullName || address.name,
-        address.addressLine1,
-        address.addressLine2,
-        address.city + " " + address.state + " " + address.postalCode,
-        address.country,
-      ].filter(Boolean)
-    );
+    // Fix: Handle both object and string formats for shipping address
+    let content = "Teslimat adresi yok";
+
+    if (
+      typeof orderData.shippingAddress === "string" &&
+      orderData.shippingAddress.trim()
+    ) {
+      // If shippingAddress is a string (which it usually is), use it directly
+      content = orderData.shippingAddress;
+    } else if (
+      typeof orderData.shippingAddress === "object" &&
+      orderData.shippingAddress
+    ) {
+      // If it's an object, format it properly
+      const address = orderData.shippingAddress;
+      content = this.formatAddressBlock(
+        [
+          address.fullName || address.name,
+          address.addressLine1,
+          address.addressLine2,
+          address.city + " " + address.state + " " + address.postalCode,
+          address.country,
+        ].filter(Boolean)
+      );
+    } else if (orderData.address) {
+      // Fallback to orderData.address
+      if (typeof orderData.address === "string") {
+        content = orderData.address;
+      } else {
+        const address = orderData.address;
+        content = this.formatAddressBlock(
+          [
+            address.fullName || address.name,
+            address.addressLine1,
+            address.addressLine2,
+            address.city + " " + address.state + " " + address.postalCode,
+            address.country,
+          ].filter(Boolean)
+        );
+      }
+    }
 
     await this.renderFormattedText(doc, element, content, x, y, width, height);
   }
@@ -1728,18 +2288,100 @@ class TemplateBasedPDFGenerator {
     width,
     height
   ) {
-    const address = orderData.billingAddress || orderData.address || {};
-    const content = this.formatAddressBlock(
-      [
-        address.fullName || address.name,
-        address.addressLine1,
-        address.addressLine2,
-        address.city + " " + address.state + " " + address.postalCode,
-        address.country,
-      ].filter(Boolean)
-    );
+    logger.debug("Rendering billing address element", {
+      element: element.id,
+      orderData: Object.keys(orderData),
+    });
 
-    await this.renderFormattedText(doc, element, content, x, y, width, height);
+    try {
+      // Extract font options with robust fallbacks
+      const fontOptions = this.extractFontOptions(element);
+
+      // Handle both object and string formats for billing address
+      let billingData = [];
+
+      if (
+        typeof orderData.billingAddress === "string" &&
+        orderData.billingAddress.trim()
+      ) {
+        // If billingAddress is a string, use it directly
+        billingData = [
+          { label: "Fatura Adresi", value: orderData.billingAddress },
+        ];
+      } else if (
+        typeof orderData.billingAddress === "object" &&
+        orderData.billingAddress
+      ) {
+        // If it's an object, extract relevant fields
+        const address = orderData.billingAddress;
+        billingData = [
+          { label: "İsim", value: address.fullName || address.name },
+          { label: "Adres 1", value: address.addressLine1 },
+          { label: "Adres 2", value: address.addressLine2 },
+          { label: "Şehir", value: address.city },
+          { label: "İl/Eyalet", value: address.state },
+          { label: "Posta Kodu", value: address.postalCode },
+          { label: "Ülke", value: address.country },
+        ].filter((item) => item.value);
+      } else if (
+        typeof orderData.address === "string" &&
+        orderData.address.trim()
+      ) {
+        // Fallback to general address field as string
+        billingData = [{ label: "Fatura Adresi", value: orderData.address }];
+      } else if (typeof orderData.address === "object" && orderData.address) {
+        // Fallback to general address field as object
+        const address = orderData.address;
+        billingData = [
+          { label: "İsim", value: address.fullName || address.name },
+          { label: "Adres 1", value: address.addressLine1 },
+          { label: "Adres 2", value: address.addressLine2 },
+          { label: "Şehir", value: address.city },
+          { label: "İl/Eyalet", value: address.state },
+          { label: "Posta Kodu", value: address.postalCode },
+          { label: "Ülke", value: address.country },
+        ].filter((item) => item.value);
+      } else {
+        // If no billing address data available, show placeholder
+        billingData = [
+          { label: "Fatura Adresi", value: "Fatura adresi mevcut değil" },
+        ];
+      }
+
+      // Render using the robust label-value pairs method
+      await this.renderLabelValuePairs(
+        doc,
+        billingData,
+        fontOptions,
+        x,
+        y,
+        width,
+        height
+      );
+    } catch (error) {
+      logger.error("Error rendering billing address element", {
+        error: error.message,
+        element: element.id,
+        orderData: Object.keys(orderData),
+      });
+
+      // Fallback to simple text rendering
+      try {
+        await this.renderFormattedText(
+          doc,
+          element,
+          "Fatura adresi yüklenemedi",
+          x,
+          y,
+          width,
+          height
+        );
+      } catch (fallbackError) {
+        logger.error("Fallback rendering failed for billing address element", {
+          error: fallbackError.message,
+        });
+      }
+    }
   }
 
   // === ORDER INFORMATION ELEMENTS ===
@@ -1756,21 +2398,86 @@ class TemplateBasedPDFGenerator {
     width,
     height
   ) {
-    const content = this.formatInfoBlock([
-      { label: "Order #", value: orderData.orderNumber || orderData.id },
-      {
-        label: "Date",
-        value: this.formatDate(orderData.createdAt || orderData.orderDate),
-      },
-      { label: "Status", value: orderData.status },
-      {
-        label: "Total",
-        value: this.formatCurrency(orderData.total || orderData.totalAmount),
-      },
-      { label: "Items", value: orderData.items?.length || 0 },
-    ]);
+    logger.debug("Rendering order summary element", {
+      element: element.id,
+      orderData: Object.keys(orderData),
+    });
 
-    await this.renderFormattedText(doc, element, content, x, y, width, height);
+    try {
+      // Extract font options with robust fallbacks
+      const fontOptions = this.extractFontOptions(element);
+
+      // Build order summary data with fallbacks
+      const orderSummaryData = [
+        {
+          label: "Sipariş No",
+          value: orderData.orderNumber || orderData.id || orderData.orderId,
+        },
+        {
+          label: "Tarih",
+          value: this.formatDate(
+            orderData.createdAt || orderData.orderDate || orderData.date
+          ),
+        },
+        { label: "Durum", value: orderData.status || orderData.orderStatus },
+        {
+          label: "Toplam",
+          value: this.formatCurrency(
+            orderData.total || orderData.totalAmount || orderData.totalPrice
+          ),
+        },
+        {
+          label: "Ürün Sayısı",
+          value: orderData.items?.length || orderData.itemCount || 0,
+        },
+        { label: "Platform", value: orderData.platform || orderData.source },
+      ].filter(
+        (item) =>
+          item.value !== undefined && item.value !== null && item.value !== ""
+      );
+
+      // If no data available, show minimal info
+      if (orderSummaryData.length === 0) {
+        orderSummaryData.push({
+          label: "Sipariş",
+          value: "Sipariş bilgisi mevcut değil",
+        });
+      }
+
+      // Render using the robust label-value pairs method
+      await this.renderLabelValuePairs(
+        doc,
+        orderSummaryData,
+        fontOptions,
+        x,
+        y,
+        width,
+        height
+      );
+    } catch (error) {
+      logger.error("Error rendering order summary element", {
+        error: error.message,
+        element: element.id,
+        orderData: Object.keys(orderData),
+      });
+
+      // Fallback to simple text rendering
+      try {
+        await this.renderFormattedText(
+          doc,
+          element,
+          "Sipariş özeti yüklenemedi",
+          x,
+          y,
+          width,
+          height
+        );
+      } catch (fallbackError) {
+        logger.error("Fallback rendering failed for order summary element", {
+          error: fallbackError.message,
+        });
+      }
+    }
   }
 
   /**
@@ -1785,69 +2492,273 @@ class TemplateBasedPDFGenerator {
     width,
     height
   ) {
-    const content = this.formatInfoBlock(
-      [
-        { label: "Order ID", value: orderData.id },
-        { label: "Platform Order ID", value: orderData.platformOrderId },
-        { label: "Payment Method", value: orderData.paymentMethod },
-        { label: "Shipping Method", value: orderData.shippingMethod },
-        { label: "Notes", value: orderData.notes },
-      ].filter((item) => item.value)
-    );
+    logger.debug("Rendering order details element", {
+      element: element.id,
+      orderData: Object.keys(orderData),
+    });
 
-    await this.renderFormattedText(doc, element, content, x, y, width, height);
+    try {
+      // Extract font options with robust fallbacks
+      const fontOptions = this.extractFontOptions(element);
+
+      // Build order details data with fallbacks
+      const orderDetailsData = [
+        { label: "Sipariş ID", value: orderData.id || orderData.orderId },
+        {
+          label: "Platform Sipariş ID",
+          value: orderData.platformOrderId || orderData.externalOrderId,
+        },
+        {
+          label: "Ödeme Yöntemi",
+          value: orderData.paymentMethod || orderData.payment?.method,
+        },
+        {
+          label: "Kargo Yöntemi",
+          value: orderData.shippingMethod || orderData.shipping?.method,
+        },
+        { label: "Notlar", value: orderData.notes || orderData.customerNotes },
+        { label: "Sipariş Türü", value: orderData.orderType },
+        { label: "Öncelik", value: orderData.priority },
+      ].filter(
+        (item) =>
+          item.value !== undefined && item.value !== null && item.value !== ""
+      );
+
+      // If no data available, show minimal info
+      if (orderDetailsData.length === 0) {
+        orderDetailsData.push({
+          label: "Detaylar",
+          value: "Sipariş detayları mevcut değil",
+        });
+      }
+
+      // Render using the robust label-value pairs method
+      await this.renderLabelValuePairs(
+        doc,
+        orderDetailsData,
+        fontOptions,
+        x,
+        y,
+        width,
+        height
+      );
+    } catch (error) {
+      logger.error("Error rendering order details element", {
+        error: error.message,
+        element: element.id,
+        orderData: Object.keys(orderData),
+      });
+
+      // Fallback to simple text rendering
+      try {
+        await this.renderFormattedText(
+          doc,
+          element,
+          "Sipariş detayları yüklenemedi",
+          x,
+          y,
+          width,
+          height
+        );
+      } catch (fallbackError) {
+        logger.error("Fallback rendering failed for order details element", {
+          error: fallbackError.message,
+        });
+      }
+    }
   }
 
   /**
    * Render order items element
    */
   async renderOrderItemsElement(doc, element, orderData, x, y, width, height) {
-    if (!orderData.items || !Array.isArray(orderData.items)) {
-      await this.renderFormattedText(
+    logger.debug("Rendering order items element", {
+      element: element.id,
+      orderData: Object.keys(orderData),
+    });
+
+    try {
+      // Extract font options with robust fallbacks
+      const fontOptions = this.extractFontOptions(element);
+
+      // Check if we have items data
+      if (
+        !orderData.items ||
+        !Array.isArray(orderData.items) ||
+        orderData.items.length === 0
+      ) {
+        // Show placeholder
+        const noItemsData = [
+          { label: "Ürünler", value: "Ürün bilgisi mevcut değil" },
+        ];
+        await this.renderLabelValuePairs(
+          doc,
+          noItemsData,
+          fontOptions,
+          x,
+          y,
+          width,
+          height
+        );
+        return;
+      }
+
+      // Build items data with Turkish labels
+      const itemsData = [];
+
+      orderData.items.forEach((item, index) => {
+        const itemName =
+          item.product.name || `Ürün ${index + 1}`;
+        const quantity = item.quantity || item.qty || 1;
+        const sku = item.product.sku || item.sku || "Bilinmiyor";
+
+        itemsData.push({
+          label: `${index + 1}. Ürün`,
+          value: `${sku} - ${quantity} x ${itemName}`,
+        });
+      });
+
+      // Add total items count
+      itemsData.push({
+        label: "Toplam Ürün",
+        value: `${orderData.items.length} çeşit`,
+      });
+
+      // Render using the robust label-value pairs method
+      await this.renderLabelValuePairs(
         doc,
-        element,
-        "No items",
+        itemsData,
+        fontOptions,
         x,
         y,
         width,
         height
       );
-      return;
+    } catch (error) {
+      logger.error("Error rendering order items element", {
+        error: error.message,
+        element: element.id,
+        orderData: Object.keys(orderData),
+      });
+
+      // Fallback to simple text rendering
+      try {
+        await this.renderFormattedText(
+          doc,
+          element,
+          "Ürün listesi yüklenemedi",
+          x,
+          y,
+          width,
+          height
+        );
+      } catch (fallbackError) {
+        logger.error("Fallback rendering failed for order items element", {
+          error: fallbackError.message,
+        });
+      }
     }
-
-    const items = orderData.items
-      .map(
-        (item) =>
-          `${item.quantity}x ${item.name || item.title} - ${this.formatCurrency(
-            item.price
-          )}`
-      )
-      .join("\n");
-
-    await this.renderFormattedText(doc, element, items, x, y, width, height);
   }
 
   /**
    * Render order totals element
    */
   async renderOrderTotalsElement(doc, element, orderData, x, y, width, height) {
-    const content = this.formatInfoBlock(
-      [
-        { label: "Subtotal", value: this.formatCurrency(orderData.subtotal) },
-        { label: "Tax", value: this.formatCurrency(orderData.tax) },
-        {
-          label: "Shipping",
-          value: this.formatCurrency(orderData.shippingCost),
-        },
-        { label: "Discount", value: this.formatCurrency(orderData.discount) },
-        {
-          label: "Total",
-          value: this.formatCurrency(orderData.total || orderData.totalAmount),
-        },
-      ].filter((item) => item.value !== undefined)
-    );
+    logger.debug("Rendering order totals element", {
+      element: element.id,
+      orderData: Object.keys(orderData),
+    });
 
-    await this.renderFormattedText(doc, element, content, x, y, width, height);
+    try {
+      // Extract font options with robust fallbacks
+      const fontOptions = this.extractFontOptions(element);
+
+      // Build totals data with Turkish labels and fallbacks
+      const totalsData = [
+        {
+          label: "Ara Toplam",
+          value: this.formatCurrency(orderData.subtotal || orderData.subTotal),
+        },
+        {
+          label: "KDV",
+          value: this.formatCurrency(orderData.tax || orderData.vatAmount),
+        },
+        {
+          label: "Kargo",
+          value: this.formatCurrency(
+            orderData.shippingCost || orderData.shippingFee
+          ),
+        },
+        {
+          label: "İndirim",
+          value: this.formatCurrency(
+            orderData.discount || orderData.discountAmount
+          ),
+        },
+        {
+          label: "TOPLAM",
+          value: this.formatCurrency(
+            orderData.total || orderData.totalAmount || orderData.grandTotal
+          ),
+        },
+      ].filter(
+        (item) =>
+          item.value !== undefined &&
+          item.value !== null &&
+          item.value !== "₺0.00"
+      );
+
+      // If no totals data available, show basic total
+      if (totalsData.length === 0) {
+        const basicTotal =
+          orderData.total || orderData.totalAmount || orderData.price;
+        if (basicTotal) {
+          totalsData.push({
+            label: "TOPLAM",
+            value: this.formatCurrency(basicTotal),
+          });
+        } else {
+          totalsData.push({
+            label: "Toplam",
+            value: "Tutar bilgisi mevcut değil",
+          });
+        }
+      }
+
+      // Render using the robust label-value pairs method
+      await this.renderLabelValuePairs(
+        doc,
+        totalsData,
+        fontOptions,
+        x,
+        y,
+        width,
+        height
+      );
+    } catch (error) {
+      logger.error("Error rendering order totals element", {
+        error: error.message,
+        element: element.id,
+        orderData: Object.keys(orderData),
+      });
+
+      // Fallback to simple text rendering
+      try {
+        await this.renderFormattedText(
+          doc,
+          element,
+          "Toplam bilgisi yüklenemedi",
+          x,
+          y,
+          width,
+          height
+        );
+      } catch (fallbackError) {
+        logger.error("Fallback rendering failed for order totals element", {
+          error: fallbackError.message,
+        });
+      }
+    }
   }
 
   /**
@@ -2045,21 +2956,107 @@ class TemplateBasedPDFGenerator {
     width,
     height
   ) {
-    const tracking = orderData.tracking || {};
-    const content = this.formatInfoBlock([
-      {
-        label: "Tracking Number",
-        value: tracking.number || orderData.trackingNumber,
-      },
-      { label: "Carrier", value: tracking.carrier || orderData.carrier },
-      { label: "Status", value: tracking.status || "Processing" },
-      {
-        label: "Estimated Delivery",
-        value: this.formatDate(tracking.estimatedDelivery),
-      },
-    ]);
+    logger.debug("Rendering tracking info element", {
+      element: element.id,
+      orderData: Object.keys(orderData),
+    });
 
-    await this.renderFormattedText(doc, element, content, x, y, width, height);
+    try {
+      // Extract font options with robust fallbacks
+      const fontOptions = this.extractFontOptions(element);
+
+      // Build tracking info data with fallbacks
+      const trackingData = [];
+
+      if (typeof orderData.tracking === "object" && orderData.tracking) {
+        // If tracking is an object
+        const tracking = orderData.tracking;
+        trackingData.push(
+          {
+            label: "Takip Numarası",
+            value: tracking.number || tracking.trackingNumber,
+          },
+          {
+            label: "Kargo Şirketi",
+            value: tracking.carrier || tracking.carrierName,
+          },
+          { label: "Durum", value: tracking.status || tracking.trackingStatus },
+          {
+            label: "Tahmini Teslimat",
+            value: this.formatDate(
+              tracking.estimatedDelivery || tracking.deliveryDate
+            ),
+          }
+        );
+      } else {
+        // Fallback to direct fields
+        trackingData.push(
+          {
+            label: "Takip Numarası",
+            value: orderData.trackingNumber || orderData.trackingId,
+          },
+          {
+            label: "Kargo Şirketi",
+            value: orderData.carrier || orderData.carrierName,
+          },
+          { label: "Durum", value: orderData.trackingStatus || "İşleniyor" },
+          {
+            label: "Tahmini Teslimat",
+            value: this.formatDate(
+              orderData.estimatedDelivery || orderData.deliveryDate
+            ),
+          }
+        );
+      }
+
+      // Filter out empty values
+      const filteredData = trackingData.filter(
+        (item) =>
+          item.value !== undefined && item.value !== null && item.value !== ""
+      );
+
+      // If no tracking data available, show placeholder
+      if (filteredData.length === 0) {
+        filteredData.push({
+          label: "Takip",
+          value: "Takip bilgisi mevcut değil",
+        });
+      }
+
+      // Render using the robust label-value pairs method
+      await this.renderLabelValuePairs(
+        doc,
+        filteredData,
+        fontOptions,
+        x,
+        y,
+        width,
+        height
+      );
+    } catch (error) {
+      logger.error("Error rendering tracking info element", {
+        error: error.message,
+        element: element.id,
+        orderData: Object.keys(orderData),
+      });
+
+      // Fallback to simple text rendering
+      try {
+        await this.renderFormattedText(
+          doc,
+          element,
+          "Takip bilgisi yüklenemedi",
+          x,
+          y,
+          width,
+          height
+        );
+      } catch (fallbackError) {
+        logger.error("Fallback rendering failed for tracking info element", {
+          error: fallbackError.message,
+        });
+      }
+    }
   }
 
   /**
@@ -2140,14 +3137,82 @@ class TemplateBasedPDFGenerator {
     width,
     height
   ) {
-    const content = this.formatInfoBlock([
-      { label: "Platform", value: orderData.platform || orderData.source },
-      { label: "Platform Order ID", value: orderData.platformOrderId },
-      { label: "Store", value: orderData.store || orderData.storeName },
-      { label: "Channel", value: orderData.channel },
-    ]);
+    logger.debug("Rendering platform info element", {
+      element: element.id,
+      orderData: Object.keys(orderData),
+    });
 
-    await this.renderFormattedText(doc, element, content, x, y, width, height);
+    try {
+      // Extract font options with robust fallbacks
+      const fontOptions = this.extractFontOptions(element);
+
+      // Build platform info data with fallbacks
+      const platformData = [
+        {
+          label: "Platform",
+          value: orderData.platform || orderData.source || orderData.siteName,
+        },
+        {
+          label: "Platform Sipariş ID",
+          value: orderData.platformOrderId || orderData.externalOrderId,
+        },
+        {
+          label: "Mağaza",
+          value:
+            orderData.store || orderData.storeName || orderData.merchantName,
+        },
+        { label: "Kanal", value: orderData.channel || orderData.salesChannel },
+        {
+          label: "Referans",
+          value: orderData.reference || orderData.referenceNumber,
+        },
+      ].filter(
+        (item) =>
+          item.value !== undefined && item.value !== null && item.value !== ""
+      );
+
+      // If no platform data available, show placeholder
+      if (platformData.length === 0) {
+        platformData.push({
+          label: "Platform",
+          value: "Platform bilgisi mevcut değil",
+        });
+      }
+
+      // Render using the robust label-value pairs method
+      await this.renderLabelValuePairs(
+        doc,
+        platformData,
+        fontOptions,
+        x,
+        y,
+        width,
+        height
+      );
+    } catch (error) {
+      logger.error("Error rendering platform info element", {
+        error: error.message,
+        element: element.id,
+        orderData: Object.keys(orderData),
+      });
+
+      // Fallback to simple text rendering
+      try {
+        await this.renderFormattedText(
+          doc,
+          element,
+          "Platform bilgisi yüklenemedi",
+          x,
+          y,
+          width,
+          height
+        );
+      } catch (fallbackError) {
+        logger.error("Fallback rendering failed for platform info element", {
+          error: fallbackError.message,
+        });
+      }
+    }
   }
 
   /**
@@ -2542,74 +3607,34 @@ class TemplateBasedPDFGenerator {
     }
 
     const value = this.getFieldValue(orderData, dataMapping.field);
-    let result;
 
     if (dataMapping.format) {
       switch (dataMapping.format) {
         case "currency":
-          result = this.formatCurrency(value, dataMapping.currency);
-          return { text: result, isValid: true }; // Currency formatting is safe
-
+          return this.formatCurrency(value, dataMapping.currency);
         case "date":
-          result = this.formatDate(value);
-          return { text: result, isValid: true }; // Date formatting is safe
-
+          return this.formatDate(value);
         case "uppercase":
-          result = String(value || "").toUpperCase();
-          break;
-
+          return String(value || "").toUpperCase();
         case "lowercase":
-          result = String(value || "").toLowerCase();
-          break;
-
+          return String(value || "").toLowerCase();
         default:
-          result = String(value || "");
-          break;
+          return String(value || "");
       }
-    } else {
-      result = String(value || "");
     }
 
-    // Check encoding for string results
-    return this.ensureProperEncoding(result);
+    return String(value || "");
   }
 
   /**
    * Get font family mapping with enhanced Turkish character support
-   * Now with system font detection for better character rendering
    */
   getFontFamily(fontFamily) {
-    if (!fontFamily) return "DejaVuSans";
-
     // If the requested font is registered, use it directly
     if (this.availableFonts && this.availableFonts.includes(fontFamily)) {
       return fontFamily;
     }
-
-    // Check if it's a system font we've detected
-    if (this.systemFonts && this.systemFonts[fontFamily]) {
-      return fontFamily; // Return font name since we have the actual file
-    }
-
-    // Try alternative names of the font
-    const alternatives = [
-      fontFamily.replace(/\s/g, ""), // Remove spaces
-      fontFamily.replace(/\s/g, "-"), // Replace spaces with hyphens
-      fontFamily.replace(/(\w+)\s+(\w+)/, "$1$2"), // Concatenate words
-      fontFamily.toLowerCase(), // Lowercase version
-      fontFamily.toUpperCase(), // Uppercase version
-    ];
-
-    for (const alt of alternatives) {
-      if (this.systemFonts && this.systemFonts[alt]) {
-        logger.debug(
-          `Found alternative system font: ${alt} for requested ${fontFamily}`
-        );
-        return alt;
-      }
-    }
-
-    // Font mapping for fallback to Turkish-compatible fonts
+    // Otherwise, fallback to DejaVuSans for Turkish support
     const fontMap = {
       Arial: "DejaVuSans",
       Times: "DejaVuSans",
@@ -2754,6 +3779,88 @@ class TemplateBasedPDFGenerator {
     });
 
     return resolvedStyle;
+  }
+
+  /**
+   * Convert modern CSS alignItems to legacy verticalAlign
+   */
+  convertAlignItemsToVerticalAlign(alignItems, fallbackVerticalAlign) {
+    switch (alignItems) {
+      case "flex-start":
+        return "top";
+      case "center":
+        return "middle";
+      case "flex-end":
+        return "bottom";
+      case "stretch":
+        return "top"; // Fallback to top for stretch
+      case "baseline":
+        return "top"; // Fallback to top for baseline
+      default:
+        return fallbackVerticalAlign || "top";
+    }
+  }
+
+  /**
+   * Convert modern CSS justifyContent to legacy textAlign
+   */
+  convertJustifyContentToTextAlign(justifyContent, fallbackTextAlign) {
+    switch (justifyContent) {
+      case "flex-start":
+        return "left";
+      case "center":
+        return "center";
+      case "flex-end":
+        return "right";
+      case "space-between":
+      case "space-around":
+      case "space-evenly":
+        return "justify"; // Approximate with justify
+      default:
+        return fallbackTextAlign || "left";
+    }
+  }
+
+  /**
+   * Convert legacy alignment to modern CSS for consistent handling
+   */
+  modernizeAlignment(elementStyle) {
+    const modernStyle = { ...elementStyle };
+
+    // Convert verticalAlign to alignItems if not already set
+    if (elementStyle.verticalAlign && !elementStyle.alignItems) {
+      switch (elementStyle.verticalAlign) {
+        case "top":
+          modernStyle.alignItems = "flex-start";
+          break;
+        case "middle":
+          modernStyle.alignItems = "center";
+          break;
+        case "bottom":
+          modernStyle.alignItems = "flex-end";
+          break;
+      }
+    }
+
+    // Convert textAlign to justifyContent if not already set
+    if (elementStyle.textAlign && !elementStyle.justifyContent) {
+      switch (elementStyle.textAlign) {
+        case "left":
+          modernStyle.justifyContent = "flex-start";
+          break;
+        case "center":
+          modernStyle.justifyContent = "center";
+          break;
+        case "right":
+          modernStyle.justifyContent = "flex-end";
+          break;
+        case "justify":
+          modernStyle.justifyContent = "space-between";
+          break;
+      }
+    }
+
+    return modernStyle;
   }
 }
 

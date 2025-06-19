@@ -1,6 +1,84 @@
 // Text encoding utilities using proper internationalization
 
 /**
+ * Detect encoding issues in text
+ * @param {string} text - Input text to analyze
+ * @returns {Object} - Analysis results
+ */
+export const detectEncodingIssues = (text) => {
+  if (!text || typeof text !== "string") {
+    return { hasIssues: false, issues: [] };
+  }
+
+  const issues = [];
+
+  // Check for replacement characters
+  if (text.includes("�")) {
+    issues.push({
+      type: "replacement-char",
+      message: "Contains replacement characters (�)",
+      severity: "error",
+    });
+  }
+
+  // Check for invisible/control characters
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001F\u007F-\u009F]/.test(text)) {
+    issues.push({
+      type: "control-chars",
+      message: "Contains control characters",
+      severity: "warning",
+    });
+  }
+
+  // Check for bidirectional text marks
+  if (/[\u200E\u200F\u202A-\u202E]/.test(text)) {
+    issues.push({
+      type: "bidi-chars",
+      message: "Contains bidirectional text markers",
+      severity: "info",
+    });
+  }
+
+  // Check for mixed scripts (might be problematic for some fonts)
+  const hasLatin = /[A-Za-z]/.test(text);
+  const hasArabic = /[\u0600-\u06FF]/.test(text);
+  const hasCyrillic = /[\u0400-\u04FF]/.test(text);
+  const hasGreek = /[\u0370-\u03FF]/.test(text);
+  const hasTurkish = /[çğıöşüÇĞİÖŞÜ]/.test(text);
+
+  const scriptCount = [hasLatin, hasArabic, hasCyrillic, hasGreek].filter(
+    Boolean
+  ).length;
+  if (scriptCount > 1) {
+    issues.push({
+      type: "mixed-scripts",
+      message: "Contains mixed scripts - may need Unicode font",
+      severity: "info",
+    });
+  }
+
+  // Turkish-specific checks
+  if (hasTurkish) {
+    issues.push({
+      type: "turkish-chars",
+      message: "Contains Turkish characters - Unicode font recommended",
+      severity: "success",
+    });
+  }
+
+  return {
+    hasIssues: issues.some((i) => i.severity === "error"),
+    hasWarnings: issues.some((i) => i.severity === "warning"),
+    hasInfo: issues.some(
+      (i) => i.severity === "info" || i.severity === "success"
+    ),
+    issues,
+    scriptInfo: { hasLatin, hasArabic, hasCyrillic, hasGreek, hasTurkish },
+  };
+};
+
+/**
  * Ensures proper text encoding using Unicode normalization
  * @param {string} text - Input text
  * @returns {string} - Properly normalized text
@@ -115,30 +193,52 @@ export const formatTextForDisplay = (
  * @returns {string} - CSS font stack
  */
 export const getOptimalFontStack = (text, preferredFont = null) => {
-  // Build font stack with DejaVu Sans prioritized to match PDF output
-  const unicodeFonts = [
-    '"DejaVu Sans"',
-    '"Segoe UI"',
-    '"Noto Sans"',
-    '"Liberation Sans"',
-    '"Helvetica Neue"',
-    "Arial",
-    "sans-serif",
-  ];
+  // Define fallback fonts for different categories
+  const fallbackFonts = {
+    "sans-serif": [
+      '"DejaVu Sans"',
+      '"Segoe UI"',
+      '"Noto Sans"',
+      '"Liberation Sans"',
+      '"Helvetica Neue"',
+      "Arial",
+      "sans-serif",
+    ],
+    serif: ['"DejaVu Serif"', '"Times New Roman"', "Georgia", "serif"],
+    monospace: ['"DejaVu Sans Mono"', '"Courier New"', "Monaco", "monospace"],
+  };
 
-  // If no preferred font specified, use DejaVu Sans first for PDF consistency
+  // If no preferred font specified, use DejaVu Sans as default
   if (!preferredFont) {
-    return unicodeFonts.join(", ");
+    return fallbackFonts["sans-serif"].join(", ");
   }
 
-  // If user prefers Arial, Helvetica, or similar, still prioritize DejaVu Sans for consistency
-  const systemFonts = ["Arial", "Helvetica", "Times New Roman", "Courier New"];
-  if (systemFonts.includes(preferredFont)) {
-    return unicodeFonts.join(", ");
+  // Clean up font name (remove quotes if present)
+  const cleanFont = preferredFont.replace(/['"]/g, "");
+
+  // Determine font category based on font name
+  let category = "sans-serif";
+  if (
+    cleanFont.toLowerCase().includes("times") ||
+    cleanFont.toLowerCase().includes("serif") ||
+    cleanFont.toLowerCase().includes("georgia")
+  ) {
+    category = "serif";
+  } else if (
+    cleanFont.toLowerCase().includes("courier") ||
+    cleanFont.toLowerCase().includes("mono") ||
+    cleanFont.toLowerCase().includes("consolas")
+  ) {
+    category = "monospace";
   }
 
-  // For other custom fonts, include user preference but still use DejaVu Sans as fallback
-  return `"${preferredFont}", ${unicodeFonts.join(", ")}`;
+  // Build font stack with user's preferred font first, then fallbacks
+  const fontStack = [`"${cleanFont}"`, ...fallbackFonts[category]];
+
+  // Remove duplicates while preserving order
+  const uniqueFonts = [...new Set(fontStack)];
+
+  return uniqueFonts.join(", ");
 };
 
 /**

@@ -37,6 +37,9 @@ const shippingRoutes = require("./shipping");
 // Import enhanced SKU system routes
 const skuRoutes = require("./sku-enhanced");
 
+// Import font management routes
+const fontRoutes = require("./fonts");
+
 // Health check endpoint - should be accessible at /api/health
 router.get("/health", (req, res) => {
   logger.info("Health check accessed");
@@ -115,6 +118,9 @@ router.use("/database", databaseRoutes);
 // Enhanced SKU system routes
 router.use("/enhanced-sku", skuRoutes);
 
+// Font management routes
+router.use("/fonts", fontRoutes);
+
 // Unified Product Intelligence routes
 const unifiedIntelligenceRoutes = require("./unified-product-intelligence");
 router.use("/product-intelligence", unifiedIntelligenceRoutes);
@@ -141,6 +147,7 @@ router.use("/*", (req, res) => {
       "/api/analytics", // Month 5 Phase 1
       "/api/subscription", // Month 5 Phase 2 - NEW
       "/api/database", // Database transaction management
+      "/api/fonts", // Font management and validation
     ],
   });
 });

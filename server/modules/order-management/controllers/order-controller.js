@@ -1176,6 +1176,127 @@ async function getOrderWithPlatformDetails(req, res) {
   }
 }
 
+async function acceptOrder(req, res) {
+  try {
+    const { id } = req.params;
+
+    // Validate authentication
+    if (!req.user || !req.user.id) {
+      logger.error("Accept order failed: No authenticated user", {
+        hasUser: !!req.user,
+        userId: req.user?.id,
+        orderId: id,
+      });
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const { id: userId } = req.user;
+
+    logger.info("Order acceptance requested", {
+      orderId: id,
+      userId: userId,
+    });
+
+    // Find the order with platform connection
+    const order = await Order.findOne({
+      where: { id, userId },
+      include: [
+        {
+          model: PlatformConnection,
+          as: "platformConnection",
+          attributes: ["id", "platformType", "credentials", "isActive"],
+        },
+      ],
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: `Order with ID ${id} not found`,
+      });
+    }
+
+    // Check if order is in acceptable state
+    const acceptableStatuses = ["new", "pending"];
+    if (!acceptableStatuses.includes(order.orderStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot accept order with status: ${order.orderStatus}. Order must be in 'new' or 'pending' status.`,
+      });
+    }
+
+    // Update local order status first
+    await order.update({
+      orderStatus: "processing",
+      acceptedAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Get platform service and update status on platform
+    let platformUpdateResult = { success: true };
+
+    if (order.platformConnection && order.platformConnection.isActive) {
+      try {
+        const PlatformServiceFactory = require("../services/platforms/platformServiceFactory");
+        const platformService = PlatformServiceFactory.createService(
+          order.platformConnection.platformType,
+          order.platformConnection.id
+        );
+
+        await platformService.initialize();
+
+        // Use platform-specific acceptance if available, otherwise use status update
+        if (typeof platformService.acceptOrder === "function") {
+          platformUpdateResult = await platformService.acceptOrder(
+            order.externalOrderId || order.platformOrderId
+          );
+        } else if (typeof platformService.updateOrderStatus === "function") {
+          platformUpdateResult = await platformService.updateOrderStatus(
+            id,
+            "processing"
+          );
+        }
+      } catch (platformError) {
+        logger.warn(
+          `Failed to update order status on platform: ${platformError.message}`,
+          {
+            orderId: id,
+            platform: order.platformConnection.platformType,
+            error: platformError.message,
+          }
+        );
+        // Don't fail the entire operation if platform update fails
+        platformUpdateResult = {
+          success: false,
+          message: `Order accepted locally, but platform update failed: ${platformError.message}`,
+        };
+      }
+    }
+
+    // Safely serialize the order
+    const serializedOrder = safeSerialize(order);
+
+    return res.status(200).json({
+      success: true,
+      message: "Order accepted successfully",
+      data: {
+        order: serializedOrder,
+        platformUpdate: platformUpdateResult,
+      },
+    });
+  } catch (error) {
+    logger.error(`Error accepting order ${req.params.id}:`, error);
+    return res.status(500).json({
+      success: false,
+      message: "Error accepting order",
+      error: error.message,
+    });
+  }
+}
+
 module.exports = {
   getAllOrders,
   getOrders: getAllOrders, // Alias for route compatibility
@@ -1190,6 +1311,7 @@ module.exports = {
   importHepsiburadaOrder,
   getOrderTrends,
   getOrderWithPlatformDetails,
+  acceptOrder,
   // Add missing functions that routes expect
   exportOrders: async (req, res) => {
     try {

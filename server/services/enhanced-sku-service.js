@@ -521,7 +521,9 @@ class EnhancedSKUService {
     try {
       // Get all brands
       const ownBrands = Array.from(this.dataManager.ownBrands.values());
-      const externalBrands = Array.from(this.dataManager.externalBrands.values());
+      const externalBrands = Array.from(
+        this.dataManager.externalBrands.values()
+      );
 
       // Get all product types
       const productTypes = Array.from(this.dataManager.productTypes.values());
@@ -688,8 +690,8 @@ class EnhancedSKUService {
     try {
       const { code, classification, isCorrect, comment } = feedbackData;
 
-      if (!code || !classification || typeof isCorrect !== 'boolean') {
-        throw new Error('Code, classification, and isCorrect are required');
+      if (!code || !classification || typeof isCorrect !== "boolean") {
+        throw new Error("Code, classification, and isCorrect are required");
       }
 
       // Process the feedback with the classifier
@@ -697,7 +699,7 @@ class EnhancedSKUService {
         code,
         expectedType: classification,
         wasCorrect: isCorrect,
-        comment
+        comment,
       });
 
       // Log the feedback for analytics
@@ -710,13 +712,13 @@ class EnhancedSKUService {
       return {
         success: true,
         feedback: result,
-        message: 'Feedback processed successfully',
-        timestamp: new Date()
+        message: "Feedback processed successfully",
+        timestamp: new Date(),
       };
     } catch (error) {
       return {
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }

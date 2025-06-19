@@ -334,6 +334,34 @@ const orderService = {
       throw error;
     }
   },
+
+  // Accept order with validation
+  acceptOrder: async (id) => {
+    try {
+      if (!id) {
+        throw new Error("Order ID is required");
+      }
+
+      console.log(`Accepting order with ID: ${id}`);
+
+      const response = await api.put(`/order-management/orders/${id}/accept`);
+
+      console.log("Accept order response:", response.data);
+
+      return {
+        success: response.data?.success ?? true,
+        message: response.data?.message || "Order accepted successfully",
+        data: response.data?.data || null,
+      };
+    } catch (error) {
+      console.error("Error accepting order:", error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message,
+        data: null,
+      };
+    }
+  },
 };
 
 // Platform-specific API methods
@@ -708,40 +736,46 @@ const shippingAPI = {
         payload
       );
       console.log("✅ API: PDF generation response:", response.data);
-      
+
       // Validate the response contains a valid labelUrl
       if (response.data.success && response.data.data?.labelUrl) {
         const labelUrl = response.data.data.labelUrl;
-        
+
         // Check if the URL is accessible from this device
         console.log(`🔍 API: Generated PDF URL: ${labelUrl}`);
-        
-        // If the URL starts with /shipping/ and we're not on localhost, 
+
+        // If the URL starts with /shipping/ and we're not on localhost,
         // we might need to construct the full URL
-        if (labelUrl.startsWith('/shipping/') && 
-            !window.location.hostname.includes('localhost') && 
-            !window.location.hostname.includes('127.0.0.1')) {
-          
+        if (
+          labelUrl.startsWith("/shipping/") &&
+          !window.location.hostname.includes("localhost") &&
+          !window.location.hostname.includes("127.0.0.1")
+        ) {
           // Try to construct a network-accessible URL
           const currentHost = window.location.hostname;
           const serverPort = 5001; // Default server port
           const fullUrl = `http://${currentHost}:${serverPort}${labelUrl}`;
-          
-          console.log(`🌐 API: Network access detected, trying full URL: ${fullUrl}`);
-          
+
+          console.log(
+            `🌐 API: Network access detected, trying full URL: ${fullUrl}`
+          );
+
           // Test if the full URL is accessible
           try {
-            const testResponse = await fetch(fullUrl, { method: 'HEAD' });
+            const testResponse = await fetch(fullUrl, { method: "HEAD" });
             if (testResponse.ok) {
               console.log(`✅ API: Full URL is accessible, updating response`);
               response.data.data.labelUrl = fullUrl;
             }
           } catch (testError) {
-            console.warn(`⚠️ API: Full URL test failed, keeping original URL:`, testError.message);
+            console.warn(
+              `⚠️ API: Full URL test failed, keeping original URL:`,
+              testError.message
+            );
           }
         }
       }
-      
+
       return response.data;
     } catch (error) {
       console.error("❌ API: Error generating PDF:", {
@@ -1158,6 +1192,43 @@ const productAPI = {
   },
 };
 
+// Font Management API
+const fontAPI = {
+  // Get available fonts
+  getAvailableFonts: async () => {
+    try {
+      const response = await api.get("/fonts/available");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Validate text with font
+  validateText: async (text, fontFamily, weight = "normal") => {
+    try {
+      const response = await api.post("/fonts/validate-text", {
+        text,
+        fontFamily,
+        weight,
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Detect system fonts (admin only)
+  detectSystemFonts: async () => {
+    try {
+      const response = await api.get("/fonts/detect-system");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
 // Extend the default export with all API methods
 api.platforms = platformAPI;
 api.orders = orderService;
@@ -1168,6 +1239,7 @@ api.dashboard = dashboardAPI;
 api.settings = settingsAPI;
 api.reports = reportsAPI;
 api.products = productAPI;
+api.fonts = fontAPI;
 
 // Add legacy direct methods for backward compatibility with existing hooks
 api.getOrders = orderService.getOrders;
@@ -1177,6 +1249,7 @@ api.getOrder = orderService.getOrder;
 api.createOrder = orderService.createOrder;
 api.updateOrder = orderService.updateOrder;
 api.updateOrderStatus = orderService.updateOrderStatus;
+api.acceptOrder = orderService.acceptOrder;
 api.syncOrders = orderService.syncOrders;
 
 // Add new methods for reports
