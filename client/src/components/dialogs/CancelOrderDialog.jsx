@@ -1,17 +1,15 @@
 import React, { useState } from "react";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "../ui/alert-dialog";
-import { Label } from "../ui/label";
-import { Textarea } from "../ui/textarea";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/Dialog";
+import { Button } from "../ui/Button";
+import { Label } from "../ui/Label";
+import { Textarea } from "../ui/Textarea";
 import { X } from "lucide-react";
 
 const CancelOrderDialog = ({
@@ -36,52 +34,63 @@ const CancelOrderDialog = ({
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
-      <AlertDialogContent className="sm:max-w-[425px]">
-        <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
-            <X className="w-5 h-5 text-red-500" />
-            Siparişi İptal Et
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            <span className="font-medium">{orderNumber}</span> numaralı siparişi
-            iptal etmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
+    <>
+      {/* Trigger element */}
+      <div onClick={() => setOpen(true)}>
+        {children}
+      </div>
+      
+      {/* Dialog */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <X className="w-5 h-5 text-red-500" />
+              Siparişi İptal Et
+            </DialogTitle>
+            <DialogDescription>
+              <span className="font-medium">{orderNumber}</span> numaralı siparişi
+              iptal etmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div>
-            <Label htmlFor="cancel-reason">İptal Sebebi (İsteğe bağlı)</Label>
-            <Textarea
-              id="cancel-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="İptal sebebini yazın..."
-              className="mt-2"
-              rows={3}
-            />
-            <p className="text-sm text-gray-500 mt-1">
-              Bu sebep müşteriye bildirilecek ve sipariş geçmişinde
-              saklanacaktır.
-            </p>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="cancel-reason">İptal Sebebi (İsteğe bağlı)</Label>
+              <Textarea
+                id="cancel-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="İptal sebebini yazın..."
+                className="mt-2"
+                rows={3}
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Bu sebep müşteriye bildirilecek ve sipariş geçmişinde
+                saklanacaktır.
+              </p>
+            </div>
           </div>
-        </div>
 
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleCancel} disabled={loading}>
-            Vazgeç
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleConfirm}
-            disabled={loading}
-            className="bg-red-600 hover:bg-red-700"
-          >
-            {loading ? "İptal Ediliyor..." : "Siparişi İptal Et"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={loading}
+            >
+              Vazgeç
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirm}
+              disabled={loading}
+            >
+              {loading ? "İptal Ediliyor..." : "Siparişi İptal Et"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

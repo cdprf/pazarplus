@@ -377,6 +377,43 @@ router.put("/:id/status", orderController.updateOrderStatus);
  */
 router.put("/:id/accept", orderController.acceptOrder);
 
+/**
+ * @swagger
+ * /api/order-management/orders/{id}/cancel:
+ *   post:
+ *     summary: Cancel an order
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order ID
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 description: Cancellation reason
+ *     responses:
+ *       200:
+ *         description: Order cancelled successfully
+ *       404:
+ *         description: Order not found
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.post("/:id/cancel", orderController.cancelOrder);
+
 // Add the missing endpoints that the frontend expects
 router.delete("/bulk-delete", orderController.bulkDeleteOrders);
 router.post("/bulk-einvoice", orderController.bulkEInvoice);

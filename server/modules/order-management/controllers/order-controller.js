@@ -389,7 +389,38 @@ async function cancelOrder(req, res) {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const order = await Order.findByPk(id);
+    // Validate authentication
+    if (!req.user || !req.user.id) {
+      logger.error("Cancel order failed: No authenticated user", {
+        hasUser: !!req.user,
+        userId: req.user?.id,
+        orderId: id,
+      });
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const { id: userId } = req.user;
+
+    logger.info("Order cancellation requested", {
+      orderId: id,
+      userId: userId,
+      reason: reason || "No reason provided",
+    });
+
+    // Find the order with platform connection
+    const order = await Order.findOne({
+      where: { id, userId },
+      include: [
+        {
+          model: PlatformConnection,
+          as: "platformConnection",
+          attributes: ["id", "platformType", "credentials", "isActive"],
+        },
+      ],
+    });
 
     if (!order) {
       return res.status(404).json({
@@ -398,11 +429,62 @@ async function cancelOrder(req, res) {
       });
     }
 
+    // Update local order status first
     await order.update({
-      orderStatus: "cancelled", // Fixed: use orderStatus instead of status
+      orderStatus: "cancelled",
       cancellationReason: reason,
       cancelledAt: new Date(),
     });
+
+    // Get platform service and cancel on platform if possible
+    let platformCancelResult = { success: true };
+
+    if (order.platformConnection && order.platformConnection.isActive) {
+      try {
+        const PlatformServiceFactory = require("../services/platforms/platformServiceFactory");
+        const platformService = PlatformServiceFactory.createService(
+          order.platformConnection.platformType,
+          order.platformConnection.id
+        );
+
+        if (platformService) {
+          await platformService.initialize();
+
+          // Use platform-specific cancellation if available
+          if (typeof platformService.cancelOrder === "function") {
+            platformCancelResult = await platformService.cancelOrder(
+              order.externalOrderId || order.platformOrderId,
+              reason || "Merchant cancellation"
+            );
+          } else {
+            logger.warn(
+              `Platform ${order.platformConnection.platformType} does not support order cancellation`,
+              {
+                orderId: id,
+                platform: order.platformConnection.platformType,
+              }
+            );
+            platformCancelResult = {
+              success: false,
+              message: `Platform ${order.platformConnection.platformType} does not support order cancellation`,
+            };
+          }
+        }
+      } catch (platformError) {
+        logger.warn(
+          `Failed to cancel order on platform: ${platformError.message}`,
+          {
+            orderId: id,
+            platform: order.platformConnection.platformType,
+            error: platformError.message,
+          }
+        );
+        platformCancelResult = {
+          success: false,
+          message: `Order cancelled locally, but platform cancellation failed: ${platformError.message}`,
+        };
+      }
+    }
 
     // Safely serialize the order
     const serializedOrder = safeSerialize(order);
@@ -415,6 +497,10 @@ async function cancelOrder(req, res) {
     return res.status(200).json({
       success: true,
       data: serializedOrder,
+      platformResult: platformCancelResult,
+      message: platformCancelResult.success
+        ? "Order cancelled successfully on both local system and platform"
+        : `Order cancelled locally. Platform cancellation: ${platformCancelResult.message}`,
     });
   } catch (error) {
     logger.error("Error cancelling order:", error);

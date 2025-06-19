@@ -1366,7 +1366,10 @@ class TrendyolService extends BasePlatformService {
 
       // Use the new API base URL for the package update with proper authentication
       const response = await this.retryRequest(() =>
-      this.axiosInstance.put(`${TRENDYOL_API.NEW_BASE_URL}${endpoint}`, requestData)
+        this.axiosInstance.put(
+          `${TRENDYOL_API.NEW_BASE_URL}${endpoint}`,
+          requestData
+        )
       );
 
       return {
@@ -2697,6 +2700,96 @@ class TrendyolService extends BasePlatformService {
         }
       );
       throw error;
+    }
+  }
+
+  /**
+   * Cancel an order on Trendyol platform
+   * @param {string} externalOrderId - External order ID (package ID)
+   * @param {string} reason - Cancellation reason
+   * @returns {Object} - Result of the cancellation operation
+   */
+  async cancelOrder(externalOrderId, reason = "Merchant cancellation") {
+    try {
+      await this.initialize();
+      const { sellerId } = this.decryptCredentials(this.connection.credentials);
+
+      if (!externalOrderId) {
+        throw new Error(
+          "External order ID is required for Trendyol order cancellation"
+        );
+      }
+
+      this.logger.info(`Trendyol order cancellation requested`, {
+        externalOrderId,
+        reason,
+        sellerId,
+        connectionId: this.connectionId,
+      });
+
+      // For Trendyol, cancellation is typically done by updating the order status to "Cancelled"
+      // However, there's no direct cancellation API endpoint in Trendyol's current API
+      // So we'll update the status to "Cancelled" using the existing status update method
+
+      // First, try to find the order locally to get the internal ID
+      const localOrder = await Order.findOne({
+        where: {
+          externalOrderId: externalOrderId.toString(),
+          platform: "trendyol",
+          connectionId: this.connectionId,
+        },
+      });
+
+      if (localOrder) {
+        // Update the local order status to cancelled
+        await localOrder.update({
+          orderStatus: "cancelled",
+          cancellationReason: reason,
+          cancelledAt: new Date(),
+        });
+      }
+
+      // Note: Trendyol doesn't have a direct cancellation API endpoint
+      // Orders are typically cancelled through the seller portal or by updating status
+      // We'll log this as a limitation and return success for local cancellation
+
+      this.logger.warn(
+        "Trendyol platform does not support direct order cancellation via API. Order cancelled locally only.",
+        {
+          externalOrderId,
+          reason,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: true,
+        message:
+          "Order cancelled locally. Note: Trendyol does not support direct API cancellation - please cancel manually in Trendyol seller portal if needed.",
+        data: {
+          externalOrderId,
+          reason,
+          cancelledLocally: true,
+          platformCancellation: false,
+          note: "Trendyol requires manual cancellation in seller portal",
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to cancel order on Trendyol: ${error.message}`,
+        {
+          error,
+          externalOrderId,
+          connectionId: this.connectionId,
+          response: error.response?.data,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to cancel order: ${error.message}`,
+        error: error.response?.data || error.message,
+      };
     }
   }
 }

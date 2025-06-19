@@ -38,6 +38,7 @@ import { Button } from "../ui/Button";
 import { Card, CardContent } from "../ui/Card";
 import { Badge } from "../ui/Badge";
 import { Modal } from "../ui/Modal";
+import CancelOrderDialog from "../dialogs/CancelOrderDialog";
 
 const OrderManagement = React.memo(() => {
   const navigate = useNavigate();
@@ -1075,18 +1076,10 @@ const OrderManagement = React.memo(() => {
   }, [selectedOrders, showAlert, fetchOrders]);
 
   const handleCancelOrder = useCallback(
-    async (orderId) => {
-      // Show confirmation dialog
-      const confirmed = window.confirm(
-        "Bu siparişi iptal etmek istediğinizden emin misiniz?"
-      );
-
-      if (!confirmed) {
-        return;
-      }
-
+    async (orderId, reason = "") => {
       try {
-        const result = await api.orders.updateOrderStatus(orderId, "cancelled");
+        // Use the dedicated cancelOrder API endpoint instead of generic status update
+        const result = await api.orders.cancelOrder(orderId, reason);
         if (result.success) {
           showAlert("Sipariş başarıyla iptal edildi", "success");
           fetchOrders();
@@ -1927,15 +1920,20 @@ const OrderManagement = React.memo(() => {
                               >
                                 <FileText className="h-4 w-4" />
                               </Button>
-                              <Button
-                                onClick={() => handleCancelOrder(order.id)}
-                                size="sm"
-                                variant="ghost"
-                                className="p-1 text-red-600"
-                                title="Siparişi İptal Et"
+                              <CancelOrderDialog
+                                orderId={order.id}
+                                orderNumber={order.orderNumber}
+                                onConfirm={handleCancelOrder}
                               >
-                                <Ban className="h-4 w-4" />
-                              </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="p-1 text-red-600"
+                                  title="Siparişi İptal Et"
+                                >
+                                  <Ban className="h-4 w-4" />
+                                </Button>
+                              </CancelOrderDialog>
                               <Button
                                 onClick={() => handleDeleteOrder(order.id)}
                                 size="sm"
@@ -2226,7 +2224,7 @@ const OrderForm = ({
   }, []);
 
   if (mode === "view") {
-    return (
+       return (
       <div className="space-y-6">
         {/* Order Summary */}
         <div className="grid grid-cols-2 gap-4">
