@@ -1,5 +1,4 @@
 import React from "react";
-import "../../styles/design-system.css";
 
 // Utility functions for pagination logic
 const getPageNumbers = (currentPage, totalPages) => {

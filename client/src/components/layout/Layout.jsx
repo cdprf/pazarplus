@@ -34,7 +34,7 @@ const Layout = () => {
         {showConnectionAlert && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 px-4 py-3">
             <div className="flex items-center justify-center space-x-3 text-yellow-800 dark:text-yellow-200">
-              <WifiOff className="w-4 h-4" />
+              <WifiOff className="w-4 h-4 icon-contrast-warning" />
               <span className="text-sm font-medium">
                 Connection to server lost.
               </span>

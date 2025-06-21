@@ -1202,7 +1202,7 @@ const OrderManagement = React.memo(() => {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin icon-contrast-primary" />
           <span className="ml-2 text-gray-600">Siparişler yükleniyor...</span>
         </div>
       </div>
@@ -1214,13 +1214,13 @@ const OrderManagement = React.memo(() => {
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <AlertTriangle className="h-12 w-12 icon-contrast-danger mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
               Bir hata oluştu
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
             <Button onClick={fetchOrders} variant="primary">
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4 mr-2 icon-contrast-primary" />
               Tekrar Dene
             </Button>
           </div>
@@ -1236,7 +1236,7 @@ const OrderManagement = React.memo(() => {
           <div className="py-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <ShoppingCart className="h-8 w-8 text-blue-600" />
+                <ShoppingCart className="h-8 w-8 icon-contrast-primary" />
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     Sipariş Yönetimi
@@ -1267,7 +1267,7 @@ const OrderManagement = React.memo(() => {
                   variant="outline"
                   className="flex items-center space-x-2"
                 >
-                  <Download className="h-4 w-4" />
+                  <Download className="h-4 w-4 icon-contrast-secondary" />
                   <span>Dışa Aktar</span>
                 </Button>
 
@@ -1276,7 +1276,7 @@ const OrderManagement = React.memo(() => {
                   variant="primary"
                   className="flex items-center space-x-2"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4 icon-contrast-primary" />
                   <span>Yeni Sipariş</span>
                 </Button>
               </div>
@@ -1291,7 +1291,7 @@ const OrderManagement = React.memo(() => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center">
-                <BarChart3 className="h-8 w-8 text-blue-600" />
+                <BarChart3 className="h-8 w-8 icon-contrast-primary" />
                 <div className="ml-3">
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Toplam Sipariş
@@ -1307,7 +1307,7 @@ const OrderManagement = React.memo(() => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center">
-                <Clock className="h-8 w-8 text-yellow-600" />
+                <Clock className="h-8 w-8 icon-contrast-warning" />
                 <div className="ml-3">
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Bekleyen
@@ -1323,7 +1323,7 @@ const OrderManagement = React.memo(() => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center">
-                <Package className="h-8 w-8 text-blue-600" />
+                <Package className="h-8 w-8 icon-contrast-info" />
                 <div className="ml-3">
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Hazırlanıyor
@@ -1339,7 +1339,7 @@ const OrderManagement = React.memo(() => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center">
-                <Truck className="h-8 w-8 text-purple-600" />
+                <Truck className="h-8 w-8 icon-contrast-purple" />
                 <div className="ml-3">
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Kargoda
@@ -1355,7 +1355,7 @@ const OrderManagement = React.memo(() => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center">
-                <CheckCircle className="h-8 w-8 text-green-600" />
+                <CheckCircle className="h-8 w-8 icon-contrast-success" />
                 <div className="ml-3">
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Teslim Edildi
@@ -1371,7 +1371,7 @@ const OrderManagement = React.memo(() => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center">
-                <DollarSign className="h-8 w-8 text-green-600" />
+                <DollarSign className="h-8 w-8 icon-contrast-success" />
                 <div className="ml-3">
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Toplam Gelir
@@ -1392,7 +1392,7 @@ const OrderManagement = React.memo(() => {
               {/* Search */}
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 icon-contrast-secondary h-4 w-4" />
                   <input
                     ref={searchInputRef}
                     type="text"
@@ -1454,7 +1454,7 @@ const OrderManagement = React.memo(() => {
                   variant="outline"
                   className="flex items-center space-x-2"
                 >
-                  <Filter className="h-4 w-4" />
+                  <Filter className="h-4 w-4 icon-contrast-info" />
                   <span>Gelişmiş Filtreler</span>
                 </Button>
 
@@ -1463,7 +1463,7 @@ const OrderManagement = React.memo(() => {
                   variant="outline"
                   className="flex items-center space-x-2"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4 icon-contrast-danger" />
                   <span>Temizle</span>
                 </Button>
               </div>
@@ -1563,7 +1563,7 @@ const OrderManagement = React.memo(() => {
                 {Object.keys(filterErrors).length > 0 && (
                   <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                     <div className="flex">
-                      <AlertCircle className="h-5 w-5 text-red-400" />
+                      <AlertCircle className="h-5 w-5 icon-contrast-danger" />
                       <div className="ml-3">
                         <h3 className="text-sm font-medium text-red-800">
                           Filtre Hataları
@@ -1599,7 +1599,7 @@ const OrderManagement = React.memo(() => {
                     variant="outline"
                     className="text-green-600 hover:text-green-700 hover:border-green-300"
                   >
-                    <CheckCircle className="h-4 w-4 mr-1" />
+                    <CheckCircle className="h-4 w-4 mr-1 action-icon-success" />
                     Seçilenleri Onayla
                   </Button>
                   <Button
@@ -1804,14 +1804,14 @@ const OrderManagement = React.memo(() => {
                           {/* customer name and email */}
                           <td className="px-6 py-4 break-words whitespace-normal">
                             <div className="mt-1 flex items-center">
-                              <User className="h-4 w-4 text-gray-400 mr-2" />
+                              <User className="h-4 w-4 icon-contrast-secondary mr-2" />
                               <p className="text-sm text-gray-900 dark:text-gray-100">
                                 {order.customerName}
                               </p>
                             </div>
                             {order.customerEmail && (
                               <div className="text-sm text-gray-500 flex items-center">
-                                <Mail className="h-3 w-3 mr-1" />
+                                <Mail className="h-3 w-3 mr-1 icon-contrast-secondary" />
                                 {order.customerEmail}
                               </div>
                             )}
@@ -2224,7 +2224,7 @@ const OrderForm = ({
   }, []);
 
   if (mode === "view") {
-       return (
+    return (
       <div className="space-y-6">
         {/* Order Summary */}
         <div className="grid grid-cols-2 gap-4">

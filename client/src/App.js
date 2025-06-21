@@ -27,6 +27,7 @@ import Orders from "./pages/Orders"; // Consolidated order management
 import OrderDetail from "./components/orders/OrderDetail";
 import ProductManagement from "./components/ProductManagement/index.modern.js"; // Modernized product management
 import CustomerManagement from "./components/customers/CustomerManagement";
+import CustomerProfile from "./components/customers/CustomerProfile";
 import ShippingManagement from "./components/shipping/ShippingManagement";
 import EnhancedShippingSlipDesigner from "./components/shipping/EnhancedShippingSlipDesigner";
 import ImportExport from "./components/common/ImportExport";
@@ -39,7 +40,6 @@ import Analytics from "./pages/Analytics"; // Analytics dashboard
 import Settings from "./components/settings/Settings";
 import PrintSettings from "./components/settings/PrintSettings";
 import DatabaseBusyModal from "./components/DatabaseBusyModal"; // Database transaction management modal
-import BarcodeDebugger from "./BarcodeDebugger"; // Debug component for barcode rendering
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -108,12 +108,6 @@ function App() {
                         }
                       />
 
-                      {/* Debug route - accessible without authentication */}
-                      <Route
-                        path="/debug-barcode"
-                        element={<BarcodeDebugger />}
-                      />
-
                       {/* Private routes - consolidated and organized */}
                       <Route
                         path="/"
@@ -150,6 +144,10 @@ function App() {
                         <Route
                           path="customers"
                           element={<CustomerManagement />}
+                        />
+                        <Route
+                          path="customers/:email"
+                          element={<CustomerProfile />}
                         />
 
                         {/* Shipping Management - with sub-routes */}

@@ -81,8 +81,8 @@ router.use("/settings", settingsRoutes);
 router.use("/compliance", complianceRoutes);
 router.use("/payments", paymentRoutes);
 
-// Import/Export routes - mount directly at API root level
-router.use("/", importExportRoutes);
+// Import/Export routes - mount at specific path to avoid conflicts
+router.use("/import-export", importExportRoutes);
 
 // Compatibility route for legacy /api/orders endpoint
 // Forward requests to the order management module
@@ -148,6 +148,10 @@ router.use("/*", (req, res) => {
       "/api/subscription", // Month 5 Phase 2 - NEW
       "/api/database", // Database transaction management
       "/api/fonts", // Font management and validation
+      "/api/order-management/orders/:orderId/items-with-products", // Product linking
+      "/api/order-management/products/search", // Product search for linking
+      "/api/order-management/order-items/:itemId/link-product", // Link order item to product
+      "/api/order-management/order-items/:itemId/unlink-product", // Unlink order item from product
     ],
   });
 });

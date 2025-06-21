@@ -724,40 +724,244 @@ async function syncOrdersByPlatform(req, res) {
 
 async function getOrderStats(req, res) {
   try {
-    const [newOrders, processingOrders, shippedOrders, totalOrders] =
-      await Promise.all([
-        Order.count({ where: { orderStatus: "new" } }), // Fixed: use orderStatus
-        Order.count({ where: { orderStatus: "processing" } }), // Fixed: use orderStatus
-        Order.count({ where: { orderStatus: "shipped" } }), // Fixed: use orderStatus
-        Order.count(),
-      ]);
+    const { id: userId } = req.user;
+    const { period = "30d" } = req.query;
 
-    // Get platform connection stats
-    const platforms = await PlatformConnection.findAndCountAll({
-      attributes: ["isActive"], // Fixed: use isActive instead of status
+    // Calculate date range based on period
+    const now = new Date();
+    const dateRanges = {
+      "7d": new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+      "30d": new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+      "90d": new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
+      "1y": new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000),
+    };
+    const startDate = dateRanges[period] || dateRanges["30d"];
+
+    // Get comprehensive order statistics
+    const [
+      totalOrders,
+      periodOrders,
+      statusCounts,
+      platformCounts,
+      totalRevenue,
+      periodRevenue,
+      recentOrders,
+      platformConnections,
+    ] = await Promise.all([
+      // Total orders count
+      Order.count({ where: { userId } }),
+
+      // Orders in selected period
+      Order.count({
+        where: {
+          userId,
+          createdAt: { [Op.gte]: startDate },
+        },
+      }),
+
+      // Status breakdown for all orders
+      Order.findAll({
+        where: { userId },
+        attributes: [
+          "orderStatus",
+          [Order.sequelize.fn("COUNT", Order.sequelize.col("id")), "count"],
+        ],
+        group: ["orderStatus"],
+        raw: true,
+      }),
+
+      // Platform breakdown for all orders - using direct SQL for better reliability
+      Order.sequelize.query(
+        `
+        SELECT pc.platformType, COUNT(o.id) as count
+        FROM orders o 
+        JOIN platform_connections pc ON o.connectionId = pc.id 
+        WHERE o.userId = :userId
+        GROUP BY pc.platformType
+      `,
+        {
+          replacements: { userId },
+          type: Order.sequelize.QueryTypes.SELECT,
+        }
+      ),
+
+      // Total revenue
+      Order.sum("totalAmount", { where: { userId } }),
+
+      // Revenue in selected period
+      Order.sum("totalAmount", {
+        where: {
+          userId,
+          createdAt: { [Op.gte]: startDate },
+        },
+      }),
+
+      // Recent orders (last 10)
+      Order.findAll({
+        where: { userId },
+        include: [
+          {
+            model: PlatformConnection,
+            as: "platformConnection",
+            attributes: ["platformType", "name"],
+          },
+        ],
+        order: [["createdAt", "DESC"]],
+        limit: 10,
+        attributes: [
+          "id",
+          "platformOrderId",
+          "orderStatus",
+          "totalAmount",
+          "currency",
+          "customerName",
+          "customerEmail",
+          "createdAt",
+          "orderDate",
+        ],
+      }),
+
+      // Platform connection stats
+      PlatformConnection.findAndCountAll({
+        where: { userId },
+        attributes: ["id", "platformType", "name", "isActive"],
+      }),
+    ]);
+
+    // Transform status counts to object
+    const byStatus = {};
+    statusCounts.forEach((status) => {
+      byStatus[status.orderStatus || "unknown"] = parseInt(status.count) || 0;
     });
 
+    // Transform platform counts to object
+    const byPlatform = {};
+    platformCounts.forEach((platform) => {
+      const platformType = platform.platformType || "unknown";
+      byPlatform[platformType] = parseInt(platform.count) || 0;
+    });
+
+    // Transform recent orders
+    const transformedRecentOrders = recentOrders.map((order) => {
+      const orderData = safeSerialize(order);
+      return {
+        ...orderData,
+        platform: orderData.platformConnection?.platformType || "unknown",
+        platformName: orderData.platformConnection?.name || "Unknown Platform",
+      };
+    });
+
+    // Calculate platform connection stats
     const platformStats = {
-      active: platforms.rows.filter((p) => p.isActive === true).length,
-      inactive: platforms.rows.filter((p) => p.isActive === false).length,
-      total: platforms.count,
+      active: platformConnections.rows.filter((p) => p.isActive === true)
+        .length,
+      inactive: platformConnections.rows.filter((p) => p.isActive === false)
+        .length,
+      total: platformConnections.count,
+      connections: platformConnections.rows.map((pc) => ({
+        id: pc.id,
+        name: pc.name,
+        type: pc.platformType,
+        isActive: pc.isActive,
+      })),
     };
 
-    return res.status(200).json({
+    // Calculate growth metrics (simplified - comparing with previous period)
+    const previousPeriodStart = new Date(
+      startDate.getTime() - (now.getTime() - startDate.getTime())
+    );
+    const [previousPeriodOrders, previousPeriodRevenue] = await Promise.all([
+      Order.count({
+        where: {
+          userId,
+          createdAt: {
+            [Op.between]: [previousPeriodStart, startDate],
+          },
+        },
+      }),
+      Order.sum("totalAmount", {
+        where: {
+          userId,
+          createdAt: {
+            [Op.between]: [previousPeriodStart, startDate],
+          },
+        },
+      }) || 0,
+    ]);
+
+    const orderGrowth =
+      previousPeriodOrders > 0
+        ? ((periodOrders - previousPeriodOrders) / previousPeriodOrders) * 100
+        : 0;
+    const revenueGrowth =
+      previousPeriodRevenue > 0
+        ? (((periodRevenue || 0) - previousPeriodRevenue) /
+            previousPeriodRevenue) *
+          100
+        : 0;
+
+    // Comprehensive response
+    const response = {
       success: true,
       data: {
-        newOrders,
-        processingOrders,
-        shippedOrders,
+        // Basic counts (legacy compatibility)
+        newOrders: byStatus.new || 0,
+        processingOrders: byStatus.processing || 0,
+        shippedOrders: byStatus.shipped || 0,
+        deliveredOrders: byStatus.delivered || 0,
+        cancelledOrders: byStatus.cancelled || 0,
         totalOrders,
+
+        // Comprehensive stats
+        total: totalOrders,
+        totalRevenue: totalRevenue || 0,
+        periodRevenue: periodRevenue || 0,
+        byStatus,
+        byPlatform,
+        recentOrders: transformedRecentOrders,
         platforms: platformStats,
+
+        // Growth metrics
+        growth: {
+          orders: Math.round(orderGrowth * 100) / 100,
+          revenue: Math.round(revenueGrowth * 100) / 100,
+        },
+
+        // Period info
+        period: {
+          selected: period,
+          startDate: startDate.toISOString(),
+          endDate: now.toISOString(),
+          ordersInPeriod: periodOrders,
+          revenueInPeriod: periodRevenue || 0,
+        },
+
+        // Additional metrics
+        averageOrderValue:
+          totalOrders > 0
+            ? Math.round(((totalRevenue || 0) / totalOrders) * 100) / 100
+            : 0,
+        completionRate:
+          totalOrders > 0
+            ? Math.round(
+                ((byStatus.delivered || 0) / totalOrders) * 100 * 100
+              ) / 100
+            : 0,
+        cancellationRate:
+          totalOrders > 0
+            ? Math.round(
+                ((byStatus.cancelled || 0) / totalOrders) * 100 * 100
+              ) / 100
+            : 0,
       },
-    });
+    };
+
+    return res.status(200).json(response);
   } catch (error) {
-    logger.error("Error fetching order stats:", error);
+    logger.error("Error fetching comprehensive order stats:", error);
     return res.status(500).json({
       success: false,
-      message: "Error fetching order stats",
+      message: "Error fetching order statistics",
       error: error.message,
     });
   }

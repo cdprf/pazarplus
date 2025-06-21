@@ -5,7 +5,7 @@
  */
 
 import React from "react";
-import "../../styles/design-system.css";
+
 import {
   CheckCircle,
   Package,

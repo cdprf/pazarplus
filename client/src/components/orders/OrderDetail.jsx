@@ -4,10 +4,7 @@ import {
   ArrowLeft,
   Package,
   User,
-  MapPin,
-  CreditCard,
   Truck,
-  Clock,
   Edit,
   Save,
   X,
@@ -22,6 +19,10 @@ import {
 import api from "../../services/api";
 import { useAlert } from "../../contexts/AlertContext";
 import PrintDiagnostics from "./PrintDiagnostics";
+import OrderTimeline from "./OrderTimeline";
+import OrderProductLinks from "./OrderProductLinks";
+import PaymentDetails from "./PaymentDetails";
+import ShippingAddress from "./ShippingAddress";
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -243,116 +244,6 @@ const OrderDetail = () => {
   };
 
   // Print PDF using shipping API
-  const handlePrintPDF = async (e, templateId = null) => {
-    // Prevent any default browser behavior
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    console.log("🖨️ Print PDF clicked");
-
-    if (!order?.id) {
-      console.warn("No order ID available for PDF generation");
-      showNotification("No order selected", "error");
-      return;
-    }
-
-    setGeneratingSlip(true);
-    console.log(`🖨️ Starting PDF generation for order ${order.id}`);
-
-    try {
-      const response = await api.shipping.generatePDF(
-        order.id,
-        templateId || linkedTemplate?.id || defaultTemplate?.id
-      );
-      console.log("📄 PDF generation response:", response);
-
-      if (response.success && response.pdfUrl) {
-        const pdfUrl = response.pdfUrl;
-        console.log(`🖨️ Attempting to open PDF: ${pdfUrl}`);
-
-        // Try multiple approaches to open the PDF
-        let pdfWindow = null;
-
-        try {
-          // Method 1: Standard window.open
-          pdfWindow = window.open(pdfUrl, "_blank", "noopener,noreferrer");
-          console.log("🖨️ window.open result:", pdfWindow);
-        } catch (windowOpenError) {
-          console.error("🖨️ window.open failed:", windowOpenError);
-        }
-
-        if (!pdfWindow || pdfWindow.closed) {
-          console.warn(
-            "🖨️ Popup blocked or failed, trying alternative methods"
-          );
-
-          // Method 2: Try opening using a temporary link
-          try {
-            const link = document.createElement("a");
-            link.href = pdfUrl;
-            link.target = "_blank";
-            link.rel = "noopener noreferrer";
-            link.style.display = "none";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            console.log("🖨️ Alternative link click method used");
-            showNotification("PDF opened in new tab", "success");
-          } catch (linkError) {
-            console.error("🖨️ Link click method failed:", linkError);
-
-            // Method 3: Direct navigation as last resort
-            showNotification(
-              "Opening PDF in current tab due to popup restrictions",
-              "info"
-            );
-            window.location.href = pdfUrl;
-          }
-        } else {
-          console.log("✅ PDF window opened successfully");
-          showNotification("PDF generated successfully", "success");
-        }
-      } else if (response.pdfBlob) {
-        console.log("🖨️ Creating PDF blob URL");
-        const blob = new Blob([response.pdfBlob], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
-
-        // Try to open blob URL
-        let pdfWindow = null;
-        try {
-          pdfWindow = window.open(url, "_blank", "noopener,noreferrer");
-        } catch (windowOpenError) {
-          console.error("🖨️ window.open failed for blob:", windowOpenError);
-        }
-
-        if (!pdfWindow || pdfWindow.closed) {
-          // Alternative method for blob
-          const link = document.createElement("a");
-          link.href = url;
-          link.target = "_blank";
-          link.style.display = "none";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }
-
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        showNotification("PDF generated successfully", "success");
-      } else {
-        console.error("PDF generation failed - no valid response", response);
-        throw new Error("No PDF data received");
-      }
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      showNotification(`Failed to generate PDF: ${error.message}`, "error");
-    } finally {
-      setGeneratingSlip(false);
-      console.log("🖨️ PDF generation process completed");
-    }
-  };
-
   // Print shipping slip
   const handlePrintShippingSlip = async (e) => {
     // Prevent any default browser behavior
@@ -589,13 +480,6 @@ const OrderDetail = () => {
     }
   };
 
-  const formatCurrency = (amount, currency = "TRY") => {
-    return new Intl.NumberFormat("tr-TR", {
-      style: "currency",
-      currency: currency,
-    }).format(amount);
-  };
-
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("tr-TR", {
       year: "numeric",
@@ -706,100 +590,17 @@ const OrderDetail = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Order Info */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Order Items */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Order Items
-            </h2>
-            <div className="space-y-4">
-              {order.items?.map((item, index) => {
-                // Create a safe key that avoids NaN values
-                const safeKey =
-                  (item.id && !isNaN(item.id) && item.id) ||
-                  (item.sku && !isNaN(item.sku) && item.sku) ||
-                  (item.productId &&
-                    !isNaN(item.productId) &&
-                    item.productId) ||
-                  `order-item-${index}`;
-                return (
-                  <div
-                    key={safeKey}
-                    className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg"
-                  >
-                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <Package className="w-6 h-6 text-gray-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900 dark:text-gray-100">
-                        {item.productName}
-                      </h3>
-                      <p className="text-sm text-gray-500">SKU: {item.sku}</p>
-                      <p className="text-sm text-gray-500">
-                        Quantity: {item.quantity}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium text-gray-900 dark:text-gray-100">
-                        {formatCurrency(item.price)}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Total: {formatCurrency(item.price * item.quantity)}
-                      </p>
-                    </div>
-                  </div>
-                );
-              }) || (
-                <p className="text-gray-500 text-center py-4">No items found</p>
-              )}
-            </div>
-          </div>
+          {/* Enhanced Order Items with Product Links */}
+          <OrderProductLinks
+            order={order}
+            onProductClick={(product) => {
+              // Navigate to product detail page
+              window.open(`/products/${product.id}`, "_blank");
+            }}
+          />
 
-          {/* Order Timeline */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Order Timeline
-            </h2>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <Clock className="w-4 h-4 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-gray-100">
-                    Order Placed
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {formatDate(order.createdAt)}
-                  </p>
-                </div>
-              </div>
-
-              {order.orderStatusHistory?.map((status, index) => {
-                // Create a safe key that avoids NaN values
-                const safeKey =
-                  (status.id && !isNaN(status.id) && status.id) ||
-                  (status.timestamp &&
-                    !isNaN(status.timestamp) &&
-                    status.timestamp) ||
-                  `status-${index}`;
-                return (
-                  <div key={safeKey} className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Clock className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 capitalize">
-                        {status.status}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {formatDate(status.updatedAt)}
-                      </p>
-                    </div>
-                  </div>
-                );
-              }) || null}
-            </div>
-          </div>
+          {/* Enhanced Order Timeline */}
+          <OrderTimeline order={order} />
         </div>
 
         {/* Sidebar */}
@@ -939,28 +740,9 @@ const OrderDetail = () => {
                     </button>
                   )}
 
-                  {/* Print Buttons */}
-                  <div className="border-t pt-4">
-                    <button
-                      type="button"
-                      onClick={() => handlePrintPDF()}
-                      disabled={generatingSlip}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Printer className="w-4 h-4 mr-2" />
-                      {generatingSlip ? "Generating..." : "Print PDF"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handlePrintShippingSlip}
-                      disabled={generatingSlip}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Printer className="w-4 h-4 mr-2" />
-                      {generatingSlip ? "Generating..." : "Print Shipping Slip"}
-                    </button>
-
+                  {/* Print Actions - Reorganized */}
+                  <div className="border-t pt-4 space-y-3">
+                    {/* Print Invoice Button */}
                     <button
                       type="button"
                       onClick={handlePrintInvoice}
@@ -968,7 +750,7 @@ const OrderDetail = () => {
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Printer className="w-4 h-4 mr-2" />
-                      {generatingSlip ? "Generating..." : "Print Invoice"}
+                      {generatingSlip ? "Generating..." : "Generate Invoice"}
                     </button>
                   </div>
 
@@ -1064,10 +846,26 @@ const OrderDetail = () => {
             </h2>
             <div className="space-y-3">
               <div>
-                <p className="font-medium text-gray-900 dark:text-gray-100">
-                  {order.customerName}
-                </p>
-                <p className="text-sm text-gray-500">{order.customerEmail}</p>
+                {order.customerEmail ? (
+                  <button
+                    onClick={() =>
+                      navigate(
+                        `/customers/${encodeURIComponent(order.customerEmail)}`
+                      )
+                    }
+                    className="font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 hover:underline text-left"
+                  >
+                    {order.customerName || order.customerEmail}
+                  </button>
+                ) : (
+                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                    {order.customerName || "İsimsiz Müşteri"}
+                  </p>
+                )}
+
+                {order.customerEmail && (
+                  <p className="text-sm text-gray-500">{order.customerEmail}</p>
+                )}
                 {order.customerPhone && (
                   <p className="text-sm text-gray-500">{order.customerPhone}</p>
                 )}
@@ -1076,76 +874,10 @@ const OrderDetail = () => {
           </div>
 
           {/* Shipping Address */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <MapPin className="w-5 h-5 mr-2" />
-              Shipping Address
-            </h2>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              {editing ? (
-                <textarea
-                  value={editedOrder.shippingAddress || ""}
-                  onChange={(e) =>
-                    setEditedOrder((prev) => ({
-                      ...prev,
-                      shippingAddress: e.target.value,
-                    }))
-                  }
-                  className="w-full p-2 border border-gray-300 rounded-lg"
-                  rows={4}
-                />
-              ) : (
-                <p>{order.shippingAddress || "No shipping address provided"}</p>
-              )}
-            </div>
-          </div>
+          <ShippingAddress order={order} />
 
           {/* Payment Info */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <CreditCard className="w-5 h-5 mr-2" />
-              Payment
-            </h2>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">
-                  Subtotal:
-                </span>
-                <span className="font-medium">
-                  {formatCurrency(order.subtotal || 0)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">
-                  Shipping:
-                </span>
-                <span className="font-medium">
-                  {formatCurrency(order.shippingCost || 0)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">Tax:</span>
-                <span className="font-medium">
-                  {formatCurrency(order.taxAmount || 0)}
-                </span>
-              </div>
-              <div className="border-t pt-2">
-                <div className="flex justify-between">
-                  <span className="font-semibold text-gray-900 dark:text-gray-100">
-                    Total:
-                  </span>
-                  <span className="font-semibold text-gray-900 dark:text-gray-100">
-                    {formatCurrency(order.totalAmount)}
-                  </span>
-                </div>
-              </div>
-              <div className="mt-2">
-                <span className="text-sm text-gray-500">
-                  Payment Method: {order.paymentMethod || "N/A"}
-                </span>
-              </div>
-            </div>
-          </div>
+          <PaymentDetails order={order} />
 
           {/* Shipping Info */}
           {order.trackingNumber && (

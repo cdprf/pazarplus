@@ -105,82 +105,68 @@ export const useOrderStats = (options = {}) => {
     setError(null);
 
     try {
-      // Fetch both stats and recent orders
-      const [statsResponse, ordersResponse] = await Promise.all([
-        api.getOrderStats(),
-        api.getOrders({ limit: 10, sortBy: "createdAt", sortOrder: "desc" }),
-      ]);
+      // Fetch comprehensive stats from backend with period parameter
+      const statsResponse = await api.getOrderStats({ period });
 
       if (statsResponse.success && statsResponse.data) {
         const stats = statsResponse.data;
+        console.log("📊 Comprehensive stats from backend:", stats);
 
-        // Transform the data to match Dashboard expectations
+        // The backend now returns all the data we need
         const transformedData = {
-          total: stats.totalOrders || 0,
-          totalRevenue: 0, // Will be calculated from recent orders if available
+          // Main metrics
+          total: stats.total || stats.totalOrders || 0,
+          totalRevenue: stats.totalRevenue || 0,
+
+          // Status breakdown (already provided by backend)
           byStatus: {
-            new: stats.newOrders || 0,
-            pending: stats.newOrders || 0, // Map 'new' to 'pending' for consistency
-            processing: stats.processingOrders || 0,
-            shipped: stats.shippedOrders || 0,
-            delivered: 0, // Not provided by current endpoint
-            cancelled: 0, // Not provided by current endpoint
+            pending: stats.byStatus?.new || stats.newOrders || 0,
+            processing:
+              stats.byStatus?.processing || stats.processingOrders || 0,
+            shipped: stats.byStatus?.shipped || stats.shippedOrders || 0,
+            delivered: stats.byStatus?.delivered || stats.deliveredOrders || 0,
+            cancelled: stats.byStatus?.cancelled || stats.cancelledOrders || 0,
+            // Keep original status names too
+            ...stats.byStatus,
           },
-          byPlatform: {}, // Will be populated if recent orders are available
-          recentOrders: [],
+
+          // Platform breakdown (already provided by backend)
+          byPlatform: stats.byPlatform || {},
+
+          // Recent orders (already provided by backend)
+          recentOrders: stats.recentOrders || [],
+
+          // Growth metrics (already calculated by backend)
           growth: {
-            orders: 0, // Placeholder - would need historical data
-            revenue: 0, // Placeholder - would need historical data
+            orders: stats.growth?.orders || 0,
+            revenue: stats.growth?.revenue || 0,
           },
+
+          // Additional comprehensive data
+          averageOrderValue: stats.averageOrderValue || 0,
+          completionRate: stats.completionRate || 0,
+          cancellationRate: stats.cancellationRate || 0,
+
+          // Period information
+          period: stats.period || { selected: period },
+
+          // Platform info
+          platforms: stats.platforms || { active: 0, inactive: 0, total: 0 },
+
+          // Trends and summary for compatibility
           trends: [],
           summary: {
-            new: stats.newOrders || 0,
-            processing: stats.processingOrders || 0,
-            shipped: stats.shippedOrders || 0,
-            delivered: 0,
-            cancelled: 0,
-            returned: 0,
+            new: stats.byStatus?.new || stats.newOrders || 0,
+            processing:
+              stats.byStatus?.processing || stats.processingOrders || 0,
+            shipped: stats.byStatus?.shipped || stats.shippedOrders || 0,
+            delivered: stats.byStatus?.delivered || stats.deliveredOrders || 0,
+            cancelled: stats.byStatus?.cancelled || stats.cancelledOrders || 0,
+            returned: stats.byStatus?.returned || 0,
           },
         };
 
-        // If we have recent orders, calculate additional metrics
-        if (
-          ordersResponse.success &&
-          ordersResponse.data &&
-          Array.isArray(ordersResponse.data)
-        ) {
-          const orders = ordersResponse.data;
-          transformedData.recentOrders = orders;
-
-          // Calculate total revenue from all orders (approximate)
-          transformedData.totalRevenue = orders.reduce((sum, order) => {
-            const amount = parseFloat(order.totalAmount) || 0;
-            return sum + amount;
-          }, 0);
-
-          // Calculate platform distribution
-          const platformCounts = {};
-          orders.forEach((order) => {
-            const platform = order.platform || "unknown";
-            platformCounts[platform] = (platformCounts[platform] || 0) + 1;
-          });
-          transformedData.byPlatform = platformCounts;
-
-          // Update status counts from actual recent orders
-          const statusCounts = {};
-          orders.forEach((order) => {
-            const status = order.orderStatus || "unknown";
-            statusCounts[status] = (statusCounts[status] || 0) + 1;
-          });
-
-          // Merge with backend stats (backend stats are more accurate for total counts)
-          transformedData.byStatus = {
-            ...transformedData.byStatus,
-            ...statusCounts,
-          };
-        }
-
-        console.log("Transformed order stats:", transformedData);
+        console.log("📊 Transformed comprehensive stats:", transformedData);
         setData(transformedData);
       } else {
         throw new Error(
@@ -188,13 +174,13 @@ export const useOrderStats = (options = {}) => {
         );
       }
     } catch (err) {
-      console.error("Error fetching order stats:", err);
+      console.error("Error fetching comprehensive order stats:", err);
       setError(err.message);
       setData(null);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [period]);
 
   useEffect(() => {
     fetchStats();

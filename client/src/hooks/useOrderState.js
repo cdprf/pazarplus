@@ -49,6 +49,7 @@ const initialState = {
   loading: false,
   syncing: false,
   error: null,
+  refreshTrigger: 0, // Add refresh trigger
   filters: {
     status: "all",
     platform: "all",
@@ -271,6 +272,7 @@ const orderReducer = (state, action) => {
       return {
         ...state,
         loading: true,
+        refreshTrigger: Date.now(), // Add a trigger to force re-render
       };
 
     default:
@@ -360,6 +362,15 @@ export const useOrderState = (initialOrders = []) => {
     fetchOrders();
     fetchStats(); // Fetch accurate stats for all orders
   }, [fetchOrders, fetchStats]); // Include fetchStats to satisfy linter
+
+  // Effect for handling refresh trigger
+  useEffect(() => {
+    if (state.refreshTrigger > 0) {
+      console.log("Refresh triggered, fetching data...");
+      fetchOrders();
+      fetchStats();
+    }
+  }, [state.refreshTrigger, fetchOrders, fetchStats]);
 
   // Effect for handling search debouncing
   useEffect(() => {

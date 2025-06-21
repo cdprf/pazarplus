@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback } from "react";
-import "../../styles/design-system.css";
+
 import { FormField } from "../FormControls";
 import { ValidationMessage } from "../ValidationMessage";
 import { OrderRegistry } from "../../core/OrderRegistry";
@@ -138,7 +138,7 @@ const BasicFilters = ({
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-muted" />
+              <Search className="h-4 w-4 icon-contrast-secondary" />
             </div>
             <input
               id="order-search"
@@ -244,7 +244,7 @@ const AdvancedFilters = ({
       {/* Enhanced Date Filters */}
       <div className="pazar-form-group">
         <label className="pazar-form-label flex items-center">
-          <Calendar className="h-4 w-4 mr-2" />
+          <Calendar className="h-4 w-4 mr-2 icon-contrast-info" />
           Tarih Aralığı
         </label>
 
@@ -304,7 +304,7 @@ const AdvancedFilters = ({
       {/* Enhanced Price Range */}
       <div className="pazar-form-group">
         <label className="pazar-form-label flex items-center">
-          <DollarSign className="h-4 w-4 mr-2" />
+          <DollarSign className="h-4 w-4 mr-2 icon-contrast-success" />
           Fiyat Aralığı
         </label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -449,12 +449,12 @@ const OrderFilters = ({
               onClick={() => setShowAdvanced(!showAdvanced)}
               className="pazar-btn pazar-btn-outline"
             >
-              <Filter className="h-4 w-4 mr-2" />
+              <Filter className="h-4 w-4 mr-2 icon-contrast-info" />
               <span>Gelişmiş Filtreler</span>
               {showAdvanced ? (
-                <ChevronUp className="h-4 w-4 ml-2" />
+                <ChevronUp className="h-4 w-4 ml-2 icon-contrast-secondary" />
               ) : (
-                <ChevronDown className="h-4 w-4 ml-2" />
+                <ChevronDown className="h-4 w-4 ml-2 icon-contrast-secondary" />
               )}
             </button>
 
@@ -463,7 +463,7 @@ const OrderFilters = ({
                 onClick={handleClearFilters}
                 className="pazar-btn pazar-btn-danger"
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="h-4 w-4 mr-2 icon-contrast-danger" />
                 <span>Filtreleri Temizle</span>
                 {activeFilterCount > 0 && (
                   <span className="ml-2 inline-flex items-center justify-center px-2 py-1 pazar-text-xs font-medium bg-danger-100 text-danger-800 rounded-full min-w-[20px] h-5">

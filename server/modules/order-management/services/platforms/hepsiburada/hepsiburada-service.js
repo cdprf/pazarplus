@@ -371,17 +371,17 @@ class HepsiburadaService extends BasePlatformService {
       }
 
       this.logger.info(
-        `Successfully fetched ${response.data.items.length} packages from Hepsiburada`
+        `Successfully fetched ${response.data.length} packages from Hepsiburada`
       );
 
       return {
         success: true,
-        message: `Successfully fetched ${response.data.items.length} packages from Hepsiburada`,
-        data: response.data.items,
+        message: `Successfully fetched ${response.data.length} packages from Hepsiburada`,
+        data: response.data,
         pagination: {
           offset: queryParams.offset,
           limit: queryParams.limit,
-          totalCount: response.data.items.length,
+          totalCount: response.data.length,
         },
       };
     } catch (error) {

@@ -1,33 +1,21 @@
+/**
+ * Product Linking API Routes
+ * Handles product-order linking functionality
+ */
+
 const express = require("express");
-
-// Import route modules (only the ones that actually exist)
-const orderRoutes = require("./orderRoutes");
-const adminRoutes = require("./adminRoutes");
-const exportRoutes = require("./exportRoutes");
-const csvRoutes = require("./csvRoutes");
-const connections = require("./connections");
-const settingsRoutes = require("./settingsRoutes");
-const platformTemplatesRoutes = require("./platformTemplatesRoutes");
-const proxyRoutes = require("./proxyRoutes");
-// const devRoutes = require("./devRoutes"); // File doesn't exist, commented out
-const productLinkingRoutes = require("./productLinkingRoutes");
-// const debugLinkingRoutes = require("./debugLinkingRoutes"); // File has missing controller, temporarily commented out
-const productLinkingJobRoutes = require("./productLinkingJobRoutes");
-
-// Import ProductLinkingService for direct endpoints
-const ProductLinkingService = require("../../../services/ProductLinkingService");
-const { auth: authenticateToken } = require("../../../middleware/auth");
-
 const router = express.Router();
+const ProductLinkingService = require("../services/ProductLinkingService");
+const { authenticateToken } = require("../middleware/auth");
 
-// Enhanced Product Linking API - Direct endpoints for client compatibility
-// Get order items with linked products (for OrderProductLinks component)
+// Get order items with linked products
 router.get(
   "/orders/:orderId/items-with-products",
   authenticateToken,
   async (req, res) => {
     try {
       const { orderId } = req.params;
+
       const itemsWithProducts =
         await ProductLinkingService.getOrderItemsWithProducts(orderId);
 
@@ -77,7 +65,7 @@ router.get("/products/search", authenticateToken, async (req, res) => {
   }
 });
 
-// Link order item with product
+// Manually link order item with product
 router.post(
   "/order-items/:itemId/link-product",
   authenticateToken,
@@ -93,14 +81,11 @@ router.post(
         });
       }
 
-      const result = await ProductLinkingService.linkOrderItemWithProduct(
-        itemId,
-        productId
-      );
+      await ProductLinkingService.linkOrderItemWithProduct(itemId, productId);
 
       res.json({
         success: true,
-        data: result,
+        message: "Order item linked with product successfully",
       });
     } catch (error) {
       console.error("Error linking order item with product:", error);
@@ -113,7 +98,7 @@ router.post(
   }
 );
 
-// Unlink order item from product
+// Remove link between order item and product
 router.delete(
   "/order-items/:itemId/unlink-product",
   authenticateToken,
@@ -121,13 +106,11 @@ router.delete(
     try {
       const { itemId } = req.params;
 
-      const result = await ProductLinkingService.unlinkOrderItemFromProduct(
-        itemId
-      );
+      await ProductLinkingService.linkOrderItemWithProduct(itemId, null);
 
       res.json({
         success: true,
-        data: result,
+        message: "Order item unlinked from product successfully",
       });
     } catch (error) {
       console.error("Error unlinking order item from product:", error);
@@ -139,19 +122,5 @@ router.delete(
     }
   }
 );
-
-// Mount all routes
-router.use("/orders", orderRoutes);
-router.use("/admin", adminRoutes);
-router.use("/export", exportRoutes);
-router.use("/csv", csvRoutes);
-router.use("/connections", connections);
-router.use("/settings", settingsRoutes);
-router.use("/templates", platformTemplatesRoutes);
-router.use("/proxy", proxyRoutes);
-// router.use("/dev", devRoutes); // devRoutes doesn't exist, commented out
-router.use("/product-linking", productLinkingRoutes);
-router.use("/product-linking-jobs", productLinkingJobRoutes);
-// router.use("/debug-linking", debugLinkingRoutes); // Commented out due to missing controller
 
 module.exports = router;

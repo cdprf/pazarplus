@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useCallback } from "react";
-import "../../styles/design-system.css";
+
 import { FormField } from "../FormControls";
 import { ValidationMessage } from "../ValidationMessage";
 import OrderService from "../../services/OrderService";

@@ -4,7 +4,6 @@
  */
 
 import React from "react";
-import "../../styles/design-system.css";
 import { formatCurrency } from "../../utils/platformHelpers";
 import { createSafeKeyFromFields } from "../../utils/reactHelpers";
 

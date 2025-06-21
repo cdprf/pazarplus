@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback } from "react";
-import "../../styles/design-system.css";
+
 import {
   CheckCircle,
   Edit,
@@ -316,35 +316,38 @@ const OrderActions = ({
             title="Siparişi Onayla"
             aria-label="Siparişi Onayla"
           >
-            <CheckCircle className="h-4 w-4" />
+            <CheckCircle className="h-4 w-4 icon-contrast-success" />
           </button>
         )}
 
         <button
-          onClick={() => onView(order)}
+          onClick={() => onView && onView(order)}
           className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1"
           title="Görüntüle"
           aria-label="Siparişi Görüntüle"
+          disabled={!onView}
         >
-          <Eye className="h-4 w-4" />
+          <Eye className="h-4 w-4 icon-contrast-primary" />
         </button>
 
         <button
-          onClick={() => onEdit(order)}
+          onClick={() => onEdit && onEdit(order)}
           className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1"
           title="Düzenle"
           aria-label="Siparişi Düzenle"
+          disabled={!onEdit}
         >
-          <Edit className="h-4 w-4" />
+          <Edit className="h-4 w-4 icon-contrast-secondary" />
         </button>
 
         <button
-          onClick={() => onViewDetail(order.id)}
+          onClick={() => onViewDetail && onViewDetail(order.id)}
           className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1"
           title="Detaylar"
           aria-label="Sipariş Detayları"
+          disabled={!onViewDetail}
         >
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreHorizontal className="h-4 w-4 icon-contrast-secondary" />
         </button>
 
         <button

@@ -72,4 +72,47 @@ export const Badge = ({
   );
 };
 
+    // Check if icon is already a JSX element
+    if (React.isValidElement(icon)) {
+      return React.cloneElement(icon, {
+        className: cn("h-3 w-3 mr-1", icon.props?.className),
+      });
+    }
+
+    // Check if icon is an object with $$typeof (React component pattern)
+    if (typeof icon === "object" && icon !== null && icon.$$typeof) {
+      // This handles cases where the icon might be a React component object
+      return React.createElement(icon, { className: "h-3 w-3 mr-1" });
+    }
+
+    // For development mode, warn about invalid icon types
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        "Badge: Invalid icon type provided. Expected React component, JSX element, or function.",
+        typeof icon,
+        icon
+      );
+    }
+
+    return null;
+  };
+
+  const iconElement = renderIcon();
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center font-medium rounded-full transition-colors",
+        variants[variant],
+        sizes[size],
+        className
+      )}
+      {...props}
+    >
+      {iconElement}
+      {children}
+    </span>
+  );
+};
+
 export default Badge;

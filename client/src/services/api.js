@@ -296,9 +296,14 @@ const orderService = {
   },
 
   // Get order statistics
-  getOrderStats: async () => {
+  getOrderStats: async (params = {}) => {
     try {
-      const response = await api.get("/order-management/orders/stats");
+      const queryParams = new URLSearchParams(params).toString();
+      const url = queryParams 
+        ? `/order-management/orders/stats?${queryParams}`
+        : "/order-management/orders/stats";
+      
+      const response = await api.get(url);
       return response.data;
     } catch (error) {
       throw error;

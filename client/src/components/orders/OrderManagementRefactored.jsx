@@ -17,12 +17,9 @@ import {
   RefreshCw,
   Download,
   Plus,
-  Loader2,
   AlertTriangle,
   Inbox,
   ArrowUpDown,
-  Search,
-  Filter,
 } from "lucide-react";
 
 // Core components (keeping only used ones)
@@ -33,12 +30,14 @@ import BulkActions from "./BulkActions";
 import OrderActions from "./OrderActions";
 import OrderItems from "./OrderItems";
 import ShippingAddress from "./ShippingAddress";
+import PaymentDetails from "./PaymentDetails";
 import OrderForm from "./OrderForm";
+import OrderTimeline from "./OrderTimeline";
+import OrderProductLinks from "./OrderProductLinks";
 import EnhancedPagination from "../ui/EnhancedPagination";
 
 // Hooks and utilities
 import { useOrderState } from "../../hooks/useOrderState";
-import { useValidation } from "../../hooks/useValidation";
 
 // Services and utilities
 import OrderService from "../../services/OrderService";
@@ -55,7 +54,6 @@ import {
 import { useAlert } from "../../contexts/AlertContext";
 
 // Design system styles
-import "../../styles/design-system.css";
 
 // Enhanced table header component with design system patterns
 const TableHeader = React.memo(({ onSort, onSelectAll }) => (
@@ -150,9 +148,8 @@ const OrderManagementRefactored = () => {
     pagination,
     validationErrors,
     filters,
+    sortConfig,
   } = useOrderState();
-
-  const { clearErrors } = useValidation();
 
   // Force initial data loading
   useEffect(() => {
@@ -258,15 +255,7 @@ const OrderManagementRefactored = () => {
     [dispatch, showAlert]
   );
 
-  // Sorting handler
-  const handleSort = useCallback(
-    (field) => {
-      dispatch({ type: "SORT_ORDERS", payload: field });
-    },
-    [dispatch]
-  );
-
-  // Modal handlers
+  // Add missing view and edit handlers
   const handleViewOrder = useCallback((order) => {
     setSelectedOrder(order);
     setModalMode("view");
@@ -279,34 +268,49 @@ const OrderManagementRefactored = () => {
     setShowModal(true);
   }, []);
 
+  const handleViewOrderDetail = useCallback(
+    (orderId) => {
+      navigate(`/orders/${orderId}`);
+    },
+    [navigate]
+  );
+
+  // Close modal handler
+  const handleCloseModal = useCallback(() => {
+    setShowModal(false);
+    setSelectedOrder(null);
+    setModalMode("view");
+  }, []);
+
+  // Create order handler
   const handleCreateOrder = useCallback(() => {
     setSelectedOrder({
       orderNumber: "",
       customerName: "",
       customerEmail: "",
       platform: "",
-      status: "pending",
+      orderStatus: "pending",
       totalAmount: 0,
       currency: "TRY",
       items: [],
-      shippingAddress: {},
     });
     setModalMode("create");
     setShowModal(true);
   }, []);
 
-  const handleCloseModal = useCallback(() => {
-    setShowModal(false);
-    setSelectedOrder(null);
-    clearErrors();
-
-    // Focus management for accessibility - return focus to search input
-    setTimeout(() => {
-      if (searchInputRef.current) {
-        searchInputRef.current.focus();
-      }
-    }, 100);
-  }, [clearErrors]);
+  // Sort handler
+  const handleSort = useCallback(
+    (field) => {
+      dispatch({
+        type: "SORT_ORDERS",
+        payload: {
+          field,
+          direction: sortConfig.direction === "asc" ? "desc" : "asc",
+        },
+      });
+    },
+    [dispatch, sortConfig]
+  );
 
   // Save order handler
   const handleSaveOrder = useCallback(
@@ -346,13 +350,6 @@ const OrderManagementRefactored = () => {
       }
     },
     [showAlert, dispatch]
-  );
-
-  const handleViewOrderDetail = useCallback(
-    (orderId) => {
-      navigate(`/orders/${orderId}`);
-    },
-    [navigate]
   );
 
   // Bulk operations
@@ -468,13 +465,14 @@ const OrderManagementRefactored = () => {
   console.log("Component rendering main view, orders:", orders?.length || 0);
 
   return (
-    <div className="page-container">
+    <div className="page-container-full">
       {/* Enhanced Header with Design System */}
       <div className="page-header">
-        <div className="page-header-content">
+        <div className="page-header-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {" "}
           <div className="flex items-center">
             <div className="page-header-icon">
-              <ShoppingCart className="h-6 w-6" />
+              <ShoppingCart className="h-6 w-6 icon-contrast-primary" />
             </div>
             <div>
               <h1 className="page-title">Sipariş Yönetimi</h1>
@@ -483,7 +481,6 @@ const OrderManagementRefactored = () => {
               </p>
             </div>
           </div>
-
           <div className="page-actions">
             <button
               onClick={handleSyncOrders}
@@ -518,185 +515,212 @@ const OrderManagementRefactored = () => {
       </div>
 
       {/* Main Content with Enhanced Layout */}
-      <div className="page-content-full">
+      <div className="page-content-full px-4 sm:px-6 lg:px-8 max-w-none">
         {/* Stats Cards Section */}
-        <section className="section w-full">
-          <OrderStatsCards stats={stats} className="w-full animate-fade-in" />
+        <section className="section-bg w-full max-w-7xl mx-auto">
+          <div className="section-container">
+            <OrderStatsCards stats={stats} className="w-full animate-fade-in" />
+          </div>
         </section>
 
         {/* Filters Section */}
-        <section className="section">
-          <div className="section-header">
-            <h2 className="section-title">Filtreler ve Arama</h2>
-            <p className="section-subtitle">
-              Siparişlerinizi filtreleyerek aradığınızı kolayca bulun
-            </p>
+        <section className="section-bg max-w-7xl mx-auto">
+          <div className="section-container">
+            <div className="section-header">
+              <h2 className="section-title">Filtreler ve Arama</h2>
+              <p className="section-subtitle">
+                Siparişlerinizi filtreleyerek aradığınızı kolayca bulun
+              </p>
+            </div>
+            <OrderFilters
+              filters={filters}
+              searchInputRef={searchInputRef}
+              onFiltersChange={(filters) =>
+                dispatch({ type: "SET_FILTERS", payload: filters })
+              }
+              recordCount={pagination.recordCount}
+              onRecordCountChange={(count) =>
+                dispatch({ type: "SET_RECORD_COUNT", payload: count })
+              }
+              errors={validationErrors}
+              onClearFilters={() => dispatch({ type: "CLEAR_FILTERS" })}
+              className="animate-slide-in-left"
+            />
           </div>
-          <OrderFilters
-            filters={filters}
-            searchInputRef={searchInputRef}
-            onFiltersChange={(filters) =>
-              dispatch({ type: "SET_FILTERS", payload: filters })
-            }
-            recordCount={pagination.recordCount}
-            onRecordCountChange={(count) =>
-              dispatch({ type: "SET_RECORD_COUNT", payload: count })
-            }
-            errors={validationErrors}
-            onClearFilters={() => dispatch({ type: "CLEAR_FILTERS" })}
-            className="animate-slide-in-left"
-          />
         </section>
 
         {/* Bulk Actions Section */}
         {selectedOrders.length > 0 && (
-          <section className="section">
-            <BulkActions
-              selectedCount={selectedOrders.length}
-              onBulkAction={handleBulkAction}
-              onClearSelection={() => dispatch({ type: "CLEAR_SELECTION" })}
-              className="animate-slide-up"
-            />
+          <section className="section-bg max-w-7xl mx-auto">
+            <div className="section-container">
+              <BulkActions
+                selectedCount={selectedOrders.length}
+                onBulkAction={handleBulkAction}
+                onClearSelection={() => dispatch({ type: "CLEAR_SELECTION" })}
+                className="animate-slide-up"
+              />
+            </div>
           </section>
         )}
 
         {/* Orders Table Section */}
-        <section className="section">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            {orders.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">
-                  <Inbox className="h-16 w-16 text-gray-400" />
+        <section className="section-bg-table w-full">
+          <div className="section-container-full px-4 sm:px-6 lg:px-8">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden w-full">
+              {orders.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">
+                    <Inbox className="h-16 w-16 text-gray-400" />
+                  </div>
+                  <h3 className="empty-state-title">Sipariş bulunamadı</h3>
+                  <p className="empty-state-description">
+                    Henüz hiç sipariş yok veya arama kriterlerinize uygun
+                    sipariş bulunamadı.
+                  </p>
+                  <div className="empty-state-actions">
+                    <button
+                      onClick={handleCreateOrder}
+                      className="btn btn-primary"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      İlk Siparişi Oluştur
+                    </button>
+                  </div>
                 </div>
-                <h3 className="empty-state-title">Sipariş bulunamadı</h3>
-                <p className="empty-state-description">
-                  Henüz hiç sipariş yok veya arama kriterlerinize uygun sipariş
-                  bulunamadı.
-                </p>
-                <div className="empty-state-actions">
-                  <button
-                    onClick={handleCreateOrder}
-                    className="btn btn-primary"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    İlk Siparişi Oluştur
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="table-container">
-                <table className="table">
-                  <TableHeader
-                    onSort={handleSort}
-                    onSelectAll={handleSelectAll}
-                  />
-                  <tbody className="table-body">
-                    {currentPageOrders.map((order) => (
-                      <tr key={order.id} className="table-row">
-                        <td className="table-td">
-                          <input
-                            type="checkbox"
-                            checked={selectedOrdersSet.has(order.id)}
-                            onChange={(e) =>
-                              handleToggleOrderSelection(
-                                order.id,
-                                e.target.checked
-                              )
-                            }
-                            className="form-checkbox"
-                          />
-                        </td>
-                        <td className="table-td">
-                          <div className="space-y-1">
-                            <div className="font-semibold text-gray-900">
-                              {order.orderNumber}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {formatDate(order)}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="table-td">
-                          <OrderItems order={order} />
-                        </td>
-                        <td className="table-td">
-                          <div className="space-y-1">
-                            <div className="font-medium text-gray-900">
-                              {order.customerName}
-                            </div>
-                            {order.customerEmail && (
-                              <div className="text-sm text-gray-500">
-                                {order.customerEmail}
+              ) : (
+                <div className="table-container w-full">
+                  <table className="table w-full">
+                    <TableHeader
+                      onSort={handleSort}
+                      onSelectAll={handleSelectAll}
+                    />
+                    <tbody className="table-body">
+                      {currentPageOrders.map((order) => (
+                        <tr key={order.id} className="table-row">
+                          <td className="table-td">
+                            <input
+                              type="checkbox"
+                              checked={selectedOrdersSet.has(order.id)}
+                              onChange={(e) =>
+                                handleToggleOrderSelection(
+                                  order.id,
+                                  e.target.checked
+                                )
+                              }
+                              className="form-checkbox"
+                            />
+                          </td>
+                          <td className="table-td">
+                            <div className="space-y-1">
+                              <div className="font-semibold text-gray-900">
+                                {order.orderNumber}
                               </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="table-td">
-                          <span
-                            className={`badge ${
-                              getPlatformVariant(order.platform) === "trendyol"
-                                ? "badge-trendyol"
-                                : getPlatformVariant(order.platform) ===
-                                  "hepsiburada"
-                                ? "badge-hepsiburada"
-                                : getPlatformVariant(order.platform) === "n11"
-                                ? "badge-n11"
-                                : "badge-info"
-                            }`}
-                          >
-                            {order.platform}
-                          </span>
-                        </td>
-                        <td className="table-td">
-                          <span
-                            className={`badge ${
-                              getStatusVariant(order.status) === "success"
-                                ? "badge-delivered"
-                                : getStatusVariant(order.status) === "warning"
-                                ? "badge-processing"
-                                : getStatusVariant(order.status) === "error"
-                                ? "badge-cancelled"
-                                : "badge-pending"
-                            }`}
-                          >
-                            {getStatusText(order.status)}
-                          </span>
-                        </td>
-                        <td className="table-td">
-                          <div className="font-semibold text-gray-900">
-                            {formatCurrency(order.totalAmount, order.currency)}
-                          </div>
-                        </td>
-                        <td className="table-td">
-                          <OrderActions
-                            order={order}
-                            onView={handleViewOrder}
-                            onEdit={handleEditOrder}
-                            onViewDetail={handleViewOrderDetail}
-                            onAccept={handleAcceptOrder}
-                            onCancel={handleCancelOrder}
-                            onDelete={handleDeleteOrder}
-                            showAlert={showAlert}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                              <div className="text-xs text-gray-500">
+                                {formatDate(order)}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="table-td">
+                            <OrderItems order={order} />
+                          </td>
+                          <td className="table-td">
+                            <div className="space-y-1">
+                              {order.customerEmail ? (
+                                <button
+                                  onClick={() =>
+                                    navigate(
+                                      `/customers/${encodeURIComponent(
+                                        order.customerEmail
+                                      )}`
+                                    )
+                                  }
+                                  className="font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 hover:underline text-left"
+                                >
+                                  {order.customerName || order.customerEmail}
+                                </button>
+                              ) : (
+                                <div className="font-medium text-gray-900">
+                                  {order.customerName || "İsimsiz Müşteri"}
+                                </div>
+                              )}
+                              {order.customerEmail && (
+                                <div className="text-sm text-gray-500">
+                                  {order.customerEmail}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="table-td">
+                            <span
+                              className={`badge ${
+                                getPlatformVariant(order.platform) ===
+                                "trendyol"
+                                  ? "badge-trendyol"
+                                  : getPlatformVariant(order.platform) ===
+                                    "hepsiburada"
+                                  ? "badge-hepsiburada"
+                                  : getPlatformVariant(order.platform) === "n11"
+                                  ? "badge-n11"
+                                  : "badge-info"
+                              }`}
+                            >
+                              {order.platform}
+                            </span>
+                          </td>
+                          <td className="table-td">
+                            <span
+                              className={`badge ${
+                                getStatusVariant(order.status) === "success"
+                                  ? "badge-delivered"
+                                  : getStatusVariant(order.status) === "warning"
+                                  ? "badge-processing"
+                                  : getStatusVariant(order.status) === "error"
+                                  ? "badge-cancelled"
+                                  : "badge-pending"
+                              }`}
+                            >
+                              {getStatusText(order.status)}
+                            </span>
+                          </td>
+                          <td className="table-td">
+                            <div className="font-semibold text-gray-900">
+                              {formatCurrency(
+                                order.totalAmount,
+                                order.currency
+                              )}
+                            </div>
+                          </td>
+                          <td className="table-td">
+                            <OrderActions
+                              order={order}
+                              onView={handleViewOrder}
+                              onEdit={handleEditOrder}
+                              onViewDetail={handleViewOrderDetail}
+                              onAccept={handleAcceptOrder}
+                              onCancel={handleCancelOrder}
+                              onDelete={handleDeleteOrder}
+                              showAlert={showAlert}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
-            {/* Enhanced Pagination */}
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <EnhancedPagination
-                currentPage={currentPage}
-                totalPages={pagination.totalPages}
-                totalRecords={pagination.totalRecords}
-                recordCount={pagination.recordCount}
-                onPageChange={(page) =>
-                  dispatch({ type: "SET_PAGE", payload: page })
-                }
-              />
+              {/* Enhanced Pagination */}
+              <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                <EnhancedPagination
+                  currentPage={currentPage}
+                  totalPages={pagination.totalPages}
+                  totalRecords={pagination.totalRecords}
+                  recordCount={pagination.recordCount}
+                  onPageChange={(page) =>
+                    dispatch({ type: "SET_PAGE", payload: page })
+                  }
+                />
+              </div>
             </div>
           </div>
         </section>
@@ -752,7 +776,7 @@ const OrderManagementRefactored = () => {
               <div className="modal-body">
                 {modalMode === "view" ? (
                   <div className="space-y-8">
-                    {/* Order Summary with Enhanced Layout */}
+                    {/* Enhanced Order Summary */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-4">
                         <div>
@@ -789,9 +813,27 @@ const OrderManagementRefactored = () => {
                             Müşteri
                           </label>
                           <div className="space-y-1">
-                            <p className="text-base font-medium text-gray-900">
-                              {selectedOrder.customerName}
-                            </p>
+                            {selectedOrder.customerEmail ? (
+                              <button
+                                onClick={() => {
+                                  handleCloseModal();
+                                  navigate(
+                                    `/customers/${encodeURIComponent(
+                                      selectedOrder.customerEmail
+                                    )}`
+                                  );
+                                }}
+                                className="text-base font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 hover:underline text-left"
+                              >
+                                {selectedOrder.customerName ||
+                                  selectedOrder.customerEmail}
+                              </button>
+                            ) : (
+                              <p className="text-base font-medium text-gray-900">
+                                {selectedOrder.customerName ||
+                                  "İsimsiz Müşteri"}
+                              </p>
+                            )}
                             {selectedOrder.customerEmail && (
                               <p className="text-sm text-gray-600">
                                 {selectedOrder.customerEmail}
@@ -845,90 +887,24 @@ const OrderManagementRefactored = () => {
                       </div>
                     </div>
 
-                    {/* Order Items with Enhanced Design */}
-                    {selectedOrder.items && selectedOrder.items.length > 0 && (
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-900 mb-4">
-                          Sipariş Ürünleri
-                        </h4>
-                        <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                          {selectedOrder.items.map((item, index) => {
-                            const safeKey =
-                              (item.id && !isNaN(item.id) && item.id) ||
-                              (item.sku && !isNaN(item.sku) && item.sku) ||
-                              `item-${index}`;
-                            return (
-                              <div
-                                key={safeKey}
-                                className="flex justify-between items-start p-3 bg-white rounded-lg border border-gray-200"
-                              >
-                                <div className="flex-1">
-                                  <h5 className="font-medium text-gray-900 mb-1">
-                                    {item.productName || item.title}
-                                  </h5>
-                                  <div className="text-sm text-gray-600 space-y-1">
-                                    <p>
-                                      Adet:{" "}
-                                      <span className="font-medium">
-                                        {item.quantity}
-                                      </span>
-                                    </p>
-                                    {item.sku && (
-                                      <p>
-                                        SKU:{" "}
-                                        <span className="font-medium">
-                                          {item.sku}
-                                        </span>
-                                      </p>
-                                    )}
-                                    {item.productColor && (
-                                      <p>
-                                        Renk:{" "}
-                                        <span className="font-medium">
-                                          {item.productColor}
-                                        </span>
-                                      </p>
-                                    )}
-                                    {item.productSize && (
-                                      <p>
-                                        Beden:{" "}
-                                        <span className="font-medium">
-                                          {item.productSize}
-                                        </span>
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <p className="font-semibold text-gray-900">
-                                    {formatCurrency(
-                                      item.amount || item.totalPrice || 0,
-                                      selectedOrder.currency
-                                    )}
-                                  </p>
-                                  {item.unitPrice && (
-                                    <p className="text-sm text-gray-600">
-                                      Birim:{" "}
-                                      {formatCurrency(
-                                        item.unitPrice,
-                                        selectedOrder.currency
-                                      )}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+                    {/* Enhanced Product Links */}
+                    <OrderProductLinks
+                      order={selectedOrder}
+                      onProductClick={(product) => {
+                        // Close modal and navigate to product
+                        handleCloseModal();
+                        window.open(`/products/${product.id}`, "_blank");
+                      }}
+                    />
+
+                    {/* Enhanced Timeline */}
+                    <OrderTimeline order={selectedOrder} />
 
                     {/* Shipping Address with Enhanced Design */}
-                    {selectedOrder.shippingAddress && (
-                      <ShippingAddress
-                        address={selectedOrder.shippingAddress}
-                      />
-                    )}
+                    <ShippingAddress order={selectedOrder} />
+
+                    {/* Payment Details */}
+                    <PaymentDetails order={selectedOrder} />
                   </div>
                 ) : (
                   // Order form for create/edit modes
