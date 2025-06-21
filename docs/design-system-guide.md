@@ -366,6 +366,410 @@ You are working on the Pazar+ e-commerce order management platform. Ensure ALL c
     <XMarkIcon className="h-4 w-4" />
   </button>
 </div>
+
+<div className="toast toast-error">
+  <div className="toast-icon">
+    <ExclamationCircleIcon className="h-5 w-5" />
+  </div>
+  <div className="toast-content">
+    <div className="toast-title">Error!</div>
+    <div className="toast-message">Something went wrong.</div>
+  </div>
+  <button className="toast-close">
+    <XMarkIcon className="h-4 w-4" />
+  </button>
+</div>
+```
+
+## 🛒 **E-commerce Specific Components**
+
+### **Order Status Pipeline**
+
+```jsx
+// Order Status Flow
+<div className="order-pipeline">
+  <div className="pipeline-step pipeline-step-completed">
+    <div className="pipeline-icon">
+      <CheckIcon className="h-4 w-4" />
+    </div>
+    <span className="pipeline-label">New</span>
+  </div>
+  <div className="pipeline-connector pipeline-connector-completed"></div>
+  <div className="pipeline-step pipeline-step-active">
+    <div className="pipeline-icon">
+      <ClockIcon className="h-4 w-4" />
+    </div>
+    <span className="pipeline-label">Processing</span>
+  </div>
+  <div className="pipeline-connector"></div>
+  <div className="pipeline-step">
+    <div className="pipeline-icon">
+      <TruckIcon className="h-4 w-4" />
+    </div>
+    <span className="pipeline-label">Shipped</span>
+  </div>
+</div>
+```
+
+### **Platform Badges**
+
+```jsx
+// Platform-specific badges with icons
+<span className="platform-badge platform-trendyol">
+  <TrendyolIcon className="platform-icon" />
+  Trendyol
+</span>
+
+<span className="platform-badge platform-hepsiburada">
+  <HepsiburadaIcon className="platform-icon" />
+  Hepsiburada
+</span>
+
+<span className="platform-badge platform-n11">
+  <N11Icon className="platform-icon" />
+  N11
+</span>
+```
+
+### **Currency Display**
+
+```jsx
+// Consistent currency formatting
+<div className="currency-display">
+  <span className="currency-amount">1,234.56</span>
+  <span className="currency-code">TRY</span>
+</div>
+
+// Large currency display
+<div className="currency-display currency-display-lg">
+  <span className="currency-amount">1,234.56</span>
+  <span className="currency-code">TRY</span>
+</div>
+```
+
+### **Shipping Address Card**
+
+```jsx
+<div className="shipping-address-card">
+  <div className="address-header">
+    <MapPinIcon className="address-icon" />
+    <span className="address-title">Shipping Address</span>
+  </div>
+  <div className="address-content">
+    <div className="address-name">John Doe</div>
+    <div className="address-street">123 Main Street</div>
+    <div className="address-city">Istanbul, Turkey 34000</div>
+    <div className="address-phone">
+      <PhoneIcon className="h-4 w-4 mr-1" />
+      +90 555 123 4567
+    </div>
+  </div>
+</div>
+```
+
+## 📊 **Advanced Data Display**
+
+### **Enhanced Table System**
+
+```jsx
+// Advanced table with all features
+<div className="data-table">
+  <div className="table-toolbar">
+    <div className="table-search">
+      <SearchIcon className="search-icon" />
+      <input className="search-input" placeholder="Search orders..." />
+    </div>
+    <div className="table-filters">
+      <select className="filter-select">
+        <option>All Status</option>
+        <option>Pending</option>
+        <option>Processing</option>
+      </select>
+    </div>
+    <div className="table-actions">
+      <div className="bulk-actions">
+        <span className="bulk-count">5 selected</span>
+        <button className="btn btn-sm btn-primary">Accept</button>
+        <button className="btn btn-sm btn-danger">Delete</button>
+      </div>
+    </div>
+  </div>
+  
+  <div className="table-container">
+    <table className="table table-sortable table-selectable">
+      <thead className="table-header">
+        <tr>
+          <th className="table-th table-th-checkbox">
+            <input type="checkbox" className="table-checkbox" />
+          </th>
+          <th className="table-th table-th-sortable" data-sort="orderNumber">
+            Order #
+            <ArrowUpDownIcon className="sort-icon" />
+          </th>
+          <th className="table-th">Customer</th>
+          <th className="table-th table-th-sortable" data-sort="amount">
+            Amount
+            <ArrowUpDownIcon className="sort-icon" />
+          </th>
+          <th className="table-th">Actions</th>
+        </tr>
+      </thead>
+      <tbody className="table-body">
+        <tr className="table-row table-row-selected">
+          <td className="table-td">
+            <input type="checkbox" className="table-checkbox" checked />
+          </td>
+          <td className="table-td">
+            <div className="order-number">#12345</div>
+            <div className="order-date">2024-01-15</div>
+          </td>
+          <td className="table-td">
+            <div className="customer-info">
+              <div className="customer-name">John Doe</div>
+              <div className="customer-email">john@example.com</div>
+            </div>
+          </td>
+          <td className="table-td">
+            <div className="currency-display">1,234.56 TRY</div>
+          </td>
+          <td className="table-td">
+            <div className="table-actions">
+              <button className="btn btn-sm btn-ghost">
+                <EyeIcon className="h-4 w-4" />
+              </button>
+              <button className="btn btn-sm btn-ghost">
+                <EditIcon className="h-4 w-4" />
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  
+  <div className="table-pagination">
+    <div className="pagination-info">
+      Showing 1-20 of 150 results
+    </div>
+    <div className="pagination-controls">
+      <button className="btn btn-sm btn-ghost" disabled>
+        <ChevronLeftIcon className="h-4 w-4" />
+      </button>
+      <button className="btn btn-sm btn-primary">1</button>
+      <button className="btn btn-sm btn-ghost">2</button>
+      <button className="btn btn-sm btn-ghost">3</button>
+      <button className="btn btn-sm btn-ghost">
+        <ChevronRightIcon className="h-4 w-4" />
+      </button>
+    </div>
+  </div>
+</div>
+```
+
+### **Virtual Scrolling Container**
+
+```jsx
+// For large datasets
+<div className="virtual-scroll-container" data-item-height="60">
+  <div className="virtual-scroll-viewport">
+    {/* Virtualized content */}
+  </div>
+</div>
+```
+
+### **Empty States**
+
+```jsx
+// Standard empty state
+<div className="empty-state">
+  <div className="empty-state-icon">
+    <InboxIcon className="h-16 w-16" />
+  </div>
+  <h3 className="empty-state-title">No orders found</h3>
+  <p className="empty-state-description">
+    Get started by creating your first order
+  </p>
+  <div className="empty-state-actions">
+    <button className="btn btn-primary">
+      <PlusIcon className="h-4 w-4 mr-2" />
+      Create Order
+    </button>
+  </div>
+</div>
+
+// Search empty state
+<div className="empty-state empty-state-search">
+  <div className="empty-state-icon">
+    <SearchIcon className="h-16 w-16" />
+  </div>
+  <h3 className="empty-state-title">No results found</h3>
+  <p className="empty-state-description">
+    Try adjusting your search or filter criteria
+  </p>
+  <div className="empty-state-actions">
+    <button className="btn btn-ghost">Clear filters</button>
+  </div>
+</div>
+```
+
+## ⚡ **Performance & Loading States**
+
+### **Progressive Loading**
+
+```jsx
+// Progressive content loading
+<div className="progressive-loader">
+  <div className="loader-skeleton">
+    <div className="skeleton skeleton-title"></div>
+    <div className="skeleton skeleton-text"></div>
+    <div className="skeleton skeleton-text"></div>
+  </div>
+  <div className="loader-content" data-loaded="false">
+    {/* Actual content */}
+  </div>
+</div>
+```
+
+### **Enhanced Skeleton Loading**
+
+```jsx
+// Table skeleton
+<div className="skeleton-table">
+  <div className="skeleton-table-header">
+    <div className="skeleton skeleton-text"></div>
+    <div className="skeleton skeleton-text"></div>
+    <div className="skeleton skeleton-text"></div>
+  </div>
+  <div className="skeleton-table-body">
+    {Array.from({ length: 5 }).map((_, i) => (
+      <div key={i} className="skeleton-table-row">
+        <div className="skeleton skeleton-text"></div>
+        <div className="skeleton skeleton-text"></div>
+        <div className="skeleton skeleton-text"></div>
+      </div>
+    ))}
+  </div>
+</div>
+
+// Card skeleton
+<div className="skeleton-card">
+  <div className="skeleton skeleton-avatar"></div>
+  <div className="skeleton skeleton-title"></div>
+  <div className="skeleton skeleton-text"></div>
+  <div className="skeleton skeleton-text"></div>
+</div>
+```
+
+### **Loading Overlays**
+
+```jsx
+// Inline loading
+<div className="loading-overlay loading-overlay-inline">
+  <div className="loading-spinner loading-spinner-sm"></div>
+  <span className="loading-text">Updating...</span>
+</div>
+
+// Full page loading
+<div className="loading-overlay loading-overlay-fullscreen">
+  <div className="loading-content">
+    <div className="loading-spinner loading-spinner-lg"></div>
+    <div className="loading-title">Loading orders...</div>
+    <div className="loading-subtitle">Please wait</div>
+  </div>
+</div>
+
+// Background sync indicator
+<div className="sync-indicator">
+  <div className="sync-icon">
+    <RefreshIcon className="h-4 w-4 animate-spin" />
+  </div>
+  <span className="sync-text">Syncing...</span>
+</div>
+```
+
+## 🚨 **Enhanced Error Handling**
+
+### **Error States**
+
+```jsx
+// Inline error
+<div className="error-state error-state-inline">
+  <div className="error-icon">
+    <ExclamationTriangleIcon className="h-4 w-4" />
+  </div>
+  <span className="error-text">Failed to load</span>
+  <button className="btn btn-sm btn-ghost error-retry">Retry</button>
+</div>
+
+// Page error
+<div className="error-state error-state-page">
+  <div className="error-content">
+    <div className="error-icon">
+      <ExclamationTriangleIcon className="h-16 w-16" />
+    </div>
+    <h1 className="error-title">Something went wrong</h1>
+    <p className="error-description">We encountered an unexpected error.</p>
+    <div className="error-actions">
+      <button className="btn btn-primary">Try Again</button>
+      <button className="btn btn-ghost">Go Home</button>
+    </div>
+  </div>
+</div>
+
+// Network error
+<div className="error-state error-state-network">
+  <div className="error-icon">
+    <WifiIcon className="h-16 w-16" />
+  </div>
+  <h3 className="error-title">Connection lost</h3>
+  <p className="error-description">Check your internet connection</p>
+  <button className="btn btn-primary">Retry</button>
+</div>
+```
+
+### **Form Validation**
+
+```jsx
+// Enhanced form validation
+<div className="form-group form-group-error">
+  <label className="form-label">Email Address</label>
+  <div className="form-input-wrapper">
+    <input className="form-input form-input-error" />
+    <div className="form-input-icon">
+      <ExclamationCircleIcon className="h-4 w-4" />
+    </div>
+  </div>
+  <div className="form-error">
+    <ExclamationCircleIcon className="h-3 w-3 mr-1" />
+    Please enter a valid email address
+  </div>
+</div>
+
+// Success validation
+<div className="form-group form-group-success">
+  <label className="form-label">Username</label>
+  <div className="form-input-wrapper">
+    <input className="form-input form-input-success" />
+    <div className="form-input-icon">
+      <CheckCircleIcon className="h-4 w-4" />
+    </div>
+  </div>
+  <div className="form-success">
+    <CheckCircleIcon className="h-3 w-3 mr-1" />
+    Username is available
+  </div>
+</div>
+```e="toast-icon">
+    <CheckCircleIcon className="h-5 w-5" />
+  </div>
+  <div className="toast-content">
+    <div className="toast-title">Success!</div>
+    <div className="toast-message">Your changes have been saved.</div>
+  </div>
+  <button className="toast-close">
+    <XMarkIcon className="h-4 w-4" />
+  </button>
+</div>
 ```
 
 ## ♿ **Enhanced Accessibility Standards**
@@ -588,6 +992,173 @@ When creating or updating any component:
 - [ ] Storybook stories for component documentation
 - [ ] Unit tests for component logic
 - [ ] Integration tests for user interactions
+
+---
+
+**Remember**: Every pixel matters. Consistency creates trust, and trust drives conversions. The Pazar+ platform should feel cohesive, professional, and delightful to use across every interaction.
+
+## ♿ **Enhanced Accessibility Standards**
+
+### **Focus Management**
+
+```jsx
+// Focus trap for modals
+const focusTrapRef = useFocusTrap(isOpen);
+
+// Skip links
+<a href="#main-content" className="skip-link">Skip to main content</a>
+
+// Proper focus indicators
+.focus-visible:focus {
+  @apply outline-none ring-2 ring-primary-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900;
+}
+```
+
+### **ARIA Implementation**
+
+```jsx
+// Proper labeling
+<button 
+  aria-label="Close modal"
+  aria-describedby="modal-description"
+>
+
+// Status announcements
+<div aria-live="polite" aria-atomic="true">
+  {statusMessage}
+</div>
+
+// Expandable content
+<button
+  aria-expanded={isOpen}
+  aria-controls="expandable-content"
+>
+
+// Table accessibility
+<table role="table" aria-label="Orders table">
+  <thead>
+    <tr role="row">
+      <th role="columnheader" aria-sort="ascending">
+        Order Number
+      </th>
+    </tr>
+  </thead>
+</table>
+```
+
+## 🎨 **TypeScript Integration**
+
+### **Component Interfaces**
+
+```typescript
+// Button component props
+interface ButtonProps {
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
+  loading?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+  onClick?: () => void;
+  className?: string;
+}
+
+// Order interface
+interface Order {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail?: string;
+  platform: 'trendyol' | 'hepsiburada' | 'n11';
+  status: OrderStatus;
+  totalAmount: number;
+  currency: 'TRY' | 'USD' | 'EUR';
+  orderDate: Date;
+  items: OrderItem[];
+  shippingAddress?: Address;
+}
+
+// Status types
+type OrderStatus = 
+  | 'new'
+  | 'pending'
+  | 'processing'
+  | 'shipped'
+  | 'delivered'
+  | 'cancelled'
+  | 'returned';
+```
+
+## 🧪 **Testing Guidelines**
+
+### **Component Testing**
+
+```jsx
+// Button component test
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Button } from './Button';
+
+describe('Button', () => {
+  it('renders with correct variant class', () => {
+    render(<Button variant="primary">Click me</Button>);
+    expect(screen.getByRole('button')).toHaveClass('btn-primary');
+  });
+
+  it('handles click events', () => {
+    const handleClick = jest.fn();
+    render(<Button onClick={handleClick}>Click me</Button>);
+    fireEvent.click(screen.getByRole('button'));
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+});
+```
+
+## 📋 **Implementation Checklist**
+
+When creating or updating any component:
+
+- [ ] **Colors**: Uses CSS custom properties for theming
+- [ ] **Dark Mode**: Implements both light/dark variants
+- [ ] **Typography**: Follows font hierarchy and scales
+- [ ] **Spacing**: Uses consistent spacing scale
+- [ ] **Responsive**: Works on all screen sizes
+- [ ] **Accessibility**: Proper focus states, ARIA labels, keyboard navigation
+- [ ] **Animations**: Smooth transitions and hover effects
+- [ ] **Loading States**: Skeleton loaders or spinners
+- [ ] **Error States**: Proper error messaging and recovery
+- [ ] **Empty States**: User-friendly empty state designs
+- [ ] **Interactive**: Proper hover and active states
+- [ ] **Form Validation**: Clear validation messages
+- [ ] **Navigation**: Consistent active states
+- [ ] **Performance**: Optimized rendering and animations
+- [ ] **Testing**: Cross-browser and device testing
+- [ ] **TypeScript**: Proper type definitions
+- [ ] **Documentation**: Component usage examples
+
+## 🚀 **Migration Guide**
+
+### **From Legacy Components**
+
+```jsx
+// Before (legacy)
+<button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+  Save
+</button>
+
+// After (design system)
+<button className="btn btn-primary">
+  Save
+</button>
+
+// Before (legacy badge)
+<span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">
+  Pending
+</span>
+
+// After (design system)
+<span className="badge badge-pending">
+  Pending
+</span>
+```
 
 ---
 

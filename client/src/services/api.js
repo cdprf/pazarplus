@@ -106,24 +106,70 @@ const orderService = {
       const response = await api.get("/order-management/orders", {
         params,
       });
+
+      // Handle the backend response structure properly
+      const backendData = response.data;
+
+      // Extract orders from the nested structure
+      const orders =
+        backendData.data?.orders ||
+        backendData.orders ||
+        backendData.data ||
+        [];
+
+      // Extract pagination info from backend response
+      const backendPagination = backendData.data?.pagination || {};
+      const backendStats = backendData.stats || {};
+
       return {
         success: true,
-        data: response.data.data || response.data.orders || [],
-        total: response.data.total || response.data.count || 0,
-        page: response.data.page || 1,
-        totalPages: response.data.totalPages || 1,
+        data: {
+          orders: orders,
+          pagination: {
+            total: backendPagination.total || backendStats.total || 0,
+            totalPages: backendPagination.totalPages || backendStats.pages || 1,
+            currentPage:
+              backendPagination.currentPage || backendStats.page || 1,
+            limit: backendPagination.limit || 20,
+            hasNext: backendPagination.hasNext || false,
+            hasPrev: backendPagination.hasPrev || false,
+            showing: backendPagination.showing || orders.length,
+            from: backendPagination.from || 1,
+            to: backendPagination.to || orders.length,
+          },
+          stats: backendStats,
+        },
+        // Preserve legacy fields for backward compatibility
+        total: backendPagination.total || backendStats.total || 0,
+        page: backendPagination.currentPage || backendStats.page || 1,
+        totalPages: backendPagination.totalPages || backendStats.pages || 1,
       };
     } catch (error) {
       return {
         success: false,
         message: error.response?.data?.message || error.message,
-        data: [],
-        pagination: {
-          total: 0,
-          totalPages: 1,
-          currentPage: 1,
-          limit: 20,
+        data: {
+          orders: [],
+          pagination: {
+            total: 0,
+            totalPages: 1,
+            currentPage: 1,
+            limit: 20,
+            hasNext: false,
+            hasPrev: false,
+            showing: 0,
+            from: 0,
+            to: 0,
+          },
+          stats: {
+            total: 0,
+            page: 1,
+            pages: 1,
+          },
         },
+        total: 0,
+        page: 1,
+        totalPages: 1,
       };
     }
   },
@@ -223,7 +269,7 @@ const orderService = {
   // Bulk update order status - Added for OrderManagement component
   bulkUpdateStatus: async (orderIds, status) => {
     try {
-      const response = await api.put("/order-management/orders/bulk/status", {
+      const response = await api.put("/order-management/orders/bulk-update", {
         orderIds,
         status,
       });
@@ -260,10 +306,10 @@ const orderService = {
   },
 
   // Get order trends
-  getOrderTrends: async (timeRange = "30d") => {
+  getOrderTrends: async (period = "month") => {
     try {
       const response = await api.get(
-        `/order-management/orders/trends?timeRange=${timeRange}`
+        `/order-management/orders/trends?period=${period}`
       );
       return response.data;
     } catch (error) {
@@ -360,6 +406,34 @@ const orderService = {
         message: error.response?.data?.message || error.message,
         data: null,
       };
+    }
+  },
+
+  // Bulk delete orders
+  bulkDeleteOrders: async (orderIds) => {
+    try {
+      const response = await api.delete(
+        "/order-management/orders/bulk-delete",
+        {
+          data: { orderIds },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Bulk accept orders
+  bulkAcceptOrders: async (orderIds) => {
+    try {
+      const response = await api.put("/order-management/orders/bulk-update", {
+        orderIds,
+        status: "accepted",
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
     }
   },
 };

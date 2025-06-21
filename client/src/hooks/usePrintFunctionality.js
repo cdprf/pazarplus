@@ -13,8 +13,17 @@ export const usePrintFunctionality = () => {
       const response = await api.shipping.generatePDF(orderId, templateId);
 
       if (response.success && response.pdfUrl) {
-        window.open(response.pdfUrl, "_blank");
-        return { success: true, url: response.pdfUrl };
+        // Construct full URL for PDF access (like legacy code)
+        const baseUrl =
+          process.env.NODE_ENV === "development"
+            ? "http://localhost:5001"
+            : window.location.origin;
+        const fullUrl = response.pdfUrl.startsWith("http")
+          ? response.pdfUrl
+          : `${baseUrl}${response.pdfUrl}`;
+
+        window.open(fullUrl, "_blank");
+        return { success: true, url: fullUrl };
       } else if (response.pdfBlob) {
         const blob = new Blob([response.pdfBlob], { type: "application/pdf" });
         const url = URL.createObjectURL(blob);
@@ -40,8 +49,17 @@ export const usePrintFunctionality = () => {
       const response = await api.shipping.generatePDF(orderId);
 
       if (response.success && response.data?.labelUrl) {
-        window.open(response.data.labelUrl, "_blank");
-        return { success: true, url: response.data.labelUrl };
+        // Construct full URL for PDF access (like legacy code)
+        const baseUrl =
+          process.env.NODE_ENV === "development"
+            ? "http://localhost:5001"
+            : window.location.origin;
+        const fullUrl = response.data.labelUrl.startsWith("http")
+          ? response.data.labelUrl
+          : `${baseUrl}${response.data.labelUrl}`;
+
+        window.open(fullUrl, "_blank");
+        return { success: true, url: fullUrl };
       } else {
         throw new Error("Failed to generate shipping slip");
       }

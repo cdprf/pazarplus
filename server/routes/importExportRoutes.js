@@ -27,6 +27,25 @@ Mehmet Demir,mehmet@example.com,+90 534 555 7890,Izmir,Turkey,inactive,3`;
       return res.send(csvData);
     }
 
+    // Mock data for orders
+    if (type === "orders") {
+      const csvData = `Order Number,Customer Name,Platform,Status,Total Amount,Currency,Date,Items
+ORD-001,Ahmet Yılmaz,Trendyol,completed,150.00,TRY,2025-06-20,Tişört x 2
+ORD-002,Fatma Kaya,Hepsiburada,pending,89.99,TRY,2025-06-20,Pantolon x 1
+ORD-003,Mehmet Demir,N11,shipped,234.50,TRY,2025-06-19,Ayakkabı x 1 + Çorap x 3
+ORD-004,Zeynep Özkan,Trendyol,cancelled,45.00,TRY,2025-06-19,Şapka x 1
+ORD-005,Ali Koç,Hepsiburada,completed,312.75,TRY,2025-06-18,Ceket x 1 + Atkı x 1`;
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${type}-${
+          new Date().toISOString().split("T")[0]
+        }.csv"`
+      );
+      return res.send(csvData);
+    }
+
     // Mock data for other types
     const mockData = `Type,Data,Export Date
 ${type},Sample Data,${new Date().toISOString()}`;

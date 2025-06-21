@@ -81,7 +81,16 @@ async function getAllOrders(req, res) {
 
     // Apply filters if provided
     if (status && status !== "all") where.orderStatus = status;
-    if (platform && platform !== "all") where.connectionId = platform;
+    if (platform && platform !== "all") {
+      // Check if platform is a number (connection ID) or string (platform type)
+      if (!isNaN(platform)) {
+        // If it's a number, treat as connection ID
+        where.connectionId = parseInt(platform);
+      } else {
+        // If it's a string, filter by platform type
+        where.platform = platform;
+      }
+    }
     if (customerId) where.customerId = customerId;
 
     // Apply search filter

@@ -180,7 +180,16 @@ const OrderDetail = () => {
 
         // Open the generated PDF in a new window for printing
         if (response.data.labelUrl) {
-          const pdfWindow = window.open(response.data.labelUrl, "_blank");
+          // Construct full URL for PDF access (like legacy code)
+          const baseUrl =
+            process.env.NODE_ENV === "development"
+              ? "http://localhost:5001"
+              : window.location.origin;
+          const fullUrl = response.data.labelUrl.startsWith("http")
+            ? response.data.labelUrl
+            : `${baseUrl}${response.data.labelUrl}`;
+
+          const pdfWindow = window.open(fullUrl, "_blank");
           if (pdfWindow) {
             pdfWindow.onload = () => {
               pdfWindow.print();
@@ -242,7 +251,7 @@ const OrderDetail = () => {
     }
 
     console.log("🖨️ Print PDF clicked");
-    
+
     if (!order?.id) {
       console.warn("No order ID available for PDF generation");
       showNotification("No order selected", "error");
@@ -251,7 +260,7 @@ const OrderDetail = () => {
 
     setGeneratingSlip(true);
     console.log(`🖨️ Starting PDF generation for order ${order.id}`);
-    
+
     try {
       const response = await api.shipping.generatePDF(
         order.id,
@@ -262,10 +271,10 @@ const OrderDetail = () => {
       if (response.success && response.pdfUrl) {
         const pdfUrl = response.pdfUrl;
         console.log(`🖨️ Attempting to open PDF: ${pdfUrl}`);
-        
+
         // Try multiple approaches to open the PDF
         let pdfWindow = null;
-        
+
         try {
           // Method 1: Standard window.open
           pdfWindow = window.open(pdfUrl, "_blank", "noopener,noreferrer");
@@ -273,17 +282,19 @@ const OrderDetail = () => {
         } catch (windowOpenError) {
           console.error("🖨️ window.open failed:", windowOpenError);
         }
-        
+
         if (!pdfWindow || pdfWindow.closed) {
-          console.warn("🖨️ Popup blocked or failed, trying alternative methods");
-          
+          console.warn(
+            "🖨️ Popup blocked or failed, trying alternative methods"
+          );
+
           // Method 2: Try opening using a temporary link
           try {
-            const link = document.createElement('a');
+            const link = document.createElement("a");
             link.href = pdfUrl;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.style.display = 'none';
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.style.display = "none";
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -291,9 +302,12 @@ const OrderDetail = () => {
             showNotification("PDF opened in new tab", "success");
           } catch (linkError) {
             console.error("🖨️ Link click method failed:", linkError);
-            
+
             // Method 3: Direct navigation as last resort
-            showNotification("Opening PDF in current tab due to popup restrictions", "info");
+            showNotification(
+              "Opening PDF in current tab due to popup restrictions",
+              "info"
+            );
             window.location.href = pdfUrl;
           }
         } else {
@@ -304,7 +318,7 @@ const OrderDetail = () => {
         console.log("🖨️ Creating PDF blob URL");
         const blob = new Blob([response.pdfBlob], { type: "application/pdf" });
         const url = URL.createObjectURL(blob);
-        
+
         // Try to open blob URL
         let pdfWindow = null;
         try {
@@ -312,18 +326,18 @@ const OrderDetail = () => {
         } catch (windowOpenError) {
           console.error("🖨️ window.open failed for blob:", windowOpenError);
         }
-        
+
         if (!pdfWindow || pdfWindow.closed) {
           // Alternative method for blob
-          const link = document.createElement('a');
+          const link = document.createElement("a");
           link.href = url;
-          link.target = '_blank';
-          link.style.display = 'none';
+          link.target = "_blank";
+          link.style.display = "none";
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
         }
-        
+
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         showNotification("PDF generated successfully", "success");
       } else {
@@ -348,7 +362,7 @@ const OrderDetail = () => {
     }
 
     console.log("🖨️ Print shipping slip clicked");
-    
+
     if (!order?.id) {
       console.warn("No order ID available");
       showNotification("No order selected", "error");
@@ -357,18 +371,25 @@ const OrderDetail = () => {
 
     setGeneratingSlip(true);
     console.log(`🖨️ Starting PDF generation for order ${order.id}`);
-    
+
     try {
       const response = await api.shipping.generatePDF(order.id);
       console.log("📄 PDF generation response:", response);
 
       if (response.success && response.data?.labelUrl) {
-        const labelUrl = response.data.labelUrl;
+        // Construct full URL for PDF access (like legacy code)
+        const baseUrl =
+          process.env.NODE_ENV === "development"
+            ? "http://localhost:5001"
+            : window.location.origin;
+        const labelUrl = response.data.labelUrl.startsWith("http")
+          ? response.data.labelUrl
+          : `${baseUrl}${response.data.labelUrl}`;
         console.log(`🖨️ Attempting to open PDF: ${labelUrl}`);
-        
+
         // Try multiple approaches to open the PDF
         let pdfWindow = null;
-        
+
         try {
           // Method 1: Standard window.open
           pdfWindow = window.open(labelUrl, "_blank", "noopener,noreferrer");
@@ -376,18 +397,20 @@ const OrderDetail = () => {
         } catch (windowOpenError) {
           console.error("🖨️ window.open failed:", windowOpenError);
         }
-        
+
         if (!pdfWindow || pdfWindow.closed) {
-          console.warn("🖨️ Popup blocked or failed, trying alternative methods");
-          
+          console.warn(
+            "🖨️ Popup blocked or failed, trying alternative methods"
+          );
+
           // Method 2: Try opening in same window if popup blocked
           try {
             // Create a temporary link and click it
-            const link = document.createElement('a');
+            const link = document.createElement("a");
             link.href = labelUrl;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.style.display = 'none';
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.style.display = "none";
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -395,32 +418,45 @@ const OrderDetail = () => {
             showNotification("PDF opened in new tab", "success");
           } catch (linkError) {
             console.error("🖨️ Link click method failed:", linkError);
-            
+
             // Method 3: Direct navigation as last resort
-            showNotification("Opening PDF in current tab due to popup restrictions", "info");
+            showNotification(
+              "Opening PDF in current tab due to popup restrictions",
+              "info"
+            );
             window.location.href = labelUrl;
           }
         } else {
           console.log("✅ PDF window opened successfully");
-          
+
           // Check if the window loaded successfully after a short delay
           setTimeout(() => {
             try {
-              if (pdfWindow.location.href === 'about:blank') {
-                console.warn("⚠️ PDF window seems to be blank, possible network issue");
-                showNotification("PDF may not have loaded correctly. Please check your network connection.", "warning");
+              if (pdfWindow.location.href === "about:blank") {
+                console.warn(
+                  "⚠️ PDF window seems to be blank, possible network issue"
+                );
+                showNotification(
+                  "PDF may not have loaded correctly. Please check your network connection.",
+                  "warning"
+                );
                 pdfWindow.close();
               }
             } catch (e) {
               // Cross-origin error is expected for successful loads
-              console.log("✅ PDF window loaded successfully (cross-origin expected)");
+              console.log(
+                "✅ PDF window loaded successfully (cross-origin expected)"
+              );
             }
           }, 2000);
-          
+
           showNotification("Shipping slip generated successfully", "success");
         }
       } else {
-        console.error("PDF generation failed - no success or labelUrl", response);
+        console.error(
+          "PDF generation failed - no success or labelUrl",
+          response
+        );
         throw new Error("Failed to generate shipping slip - no valid response");
       }
     } catch (error) {
@@ -676,33 +712,43 @@ const OrderDetail = () => {
               Order Items
             </h2>
             <div className="space-y-4">
-              {order.items?.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg"
-                >
-                  <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                    <Package className="w-6 h-6 text-gray-400" />
+              {order.items?.map((item, index) => {
+                // Create a safe key that avoids NaN values
+                const safeKey =
+                  (item.id && !isNaN(item.id) && item.id) ||
+                  (item.sku && !isNaN(item.sku) && item.sku) ||
+                  (item.productId &&
+                    !isNaN(item.productId) &&
+                    item.productId) ||
+                  `order-item-${index}`;
+                return (
+                  <div
+                    key={safeKey}
+                    className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg"
+                  >
+                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <Package className="w-6 h-6 text-gray-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                        {item.productName}
+                      </h3>
+                      <p className="text-sm text-gray-500">SKU: {item.sku}</p>
+                      <p className="text-sm text-gray-500">
+                        Quantity: {item.quantity}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {formatCurrency(item.price)}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Total: {formatCurrency(item.price * item.quantity)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900 dark:text-gray-100">
-                      {item.productName}
-                    </h3>
-                    <p className="text-sm text-gray-500">SKU: {item.sku}</p>
-                    <p className="text-sm text-gray-500">
-                      Quantity: {item.quantity}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium text-gray-900 dark:text-gray-100">
-                      {formatCurrency(item.price)}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Total: {formatCurrency(item.price * item.quantity)}
-                    </p>
-                  </div>
-                </div>
-              )) || (
+                );
+              }) || (
                 <p className="text-gray-500 text-center py-4">No items found</p>
               )}
             </div>
@@ -728,21 +774,30 @@ const OrderDetail = () => {
                 </div>
               </div>
 
-              {order.orderStatusHistory?.map((status, index) => (
-                <div key={index} className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Clock className="w-4 h-4 text-blue-600" />
+              {order.orderStatusHistory?.map((status, index) => {
+                // Create a safe key that avoids NaN values
+                const safeKey =
+                  (status.id && !isNaN(status.id) && status.id) ||
+                  (status.timestamp &&
+                    !isNaN(status.timestamp) &&
+                    status.timestamp) ||
+                  `status-${index}`;
+                return (
+                  <div key={safeKey} className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Clock className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 capitalize">
+                        {status.status}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {formatDate(status.updatedAt)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900 capitalize">
-                      {status.status}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {formatDate(status.updatedAt)}
-                    </p>
-                  </div>
-                </div>
-              )) || null}
+                );
+              }) || null}
             </div>
           </div>
         </div>

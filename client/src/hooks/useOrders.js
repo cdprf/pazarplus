@@ -94,58 +94,105 @@ export const useOrders = (initialFilters = {}) => {
   };
 };
 
-export const useOrderStats = () => {
-  const [stats, setStats] = useState({
-    totalOrders: 0,
-    totalRevenue: 0,
-    byStatus: {},
-    summary: {
-      new: 0,
-      processing: 0,
-      shipped: 0,
-      delivered: 0,
-      claimCreated: 0,
-      claimApproved: 0,
-      claimRejected: 0,
-      cancelled: 0,
-      returned: 0,
-    },
-  });
-  const [loading, setLoading] = useState(false);
+export const useOrderStats = (options = {}) => {
+  const { period = "30d" } = options;
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const fetchStats = useCallback(async () => {
-    setLoading(true);
+    setIsLoading(true);
     setError(null);
 
     try {
-      const response = await api.getOrderStats();
+      // Fetch both stats and recent orders
+      const [statsResponse, ordersResponse] = await Promise.all([
+        api.getOrderStats(),
+        api.getOrders({ limit: 10, sortBy: "createdAt", sortOrder: "desc" }),
+      ]);
 
-      if (response.success) {
-        setStats(
-          response.data || {
-            totalOrders: 0,
-            totalRevenue: 0,
-            byStatus: {},
-            summary: {
-              new: 0,
-              processing: 0,
-              shipped: 0,
-              delivered: 0,
-              cancelled: 0,
-              returned: 0,
-            },
-          }
-        );
+      if (statsResponse.success && statsResponse.data) {
+        const stats = statsResponse.data;
+
+        // Transform the data to match Dashboard expectations
+        const transformedData = {
+          total: stats.totalOrders || 0,
+          totalRevenue: 0, // Will be calculated from recent orders if available
+          byStatus: {
+            new: stats.newOrders || 0,
+            pending: stats.newOrders || 0, // Map 'new' to 'pending' for consistency
+            processing: stats.processingOrders || 0,
+            shipped: stats.shippedOrders || 0,
+            delivered: 0, // Not provided by current endpoint
+            cancelled: 0, // Not provided by current endpoint
+          },
+          byPlatform: {}, // Will be populated if recent orders are available
+          recentOrders: [],
+          growth: {
+            orders: 0, // Placeholder - would need historical data
+            revenue: 0, // Placeholder - would need historical data
+          },
+          trends: [],
+          summary: {
+            new: stats.newOrders || 0,
+            processing: stats.processingOrders || 0,
+            shipped: stats.shippedOrders || 0,
+            delivered: 0,
+            cancelled: 0,
+            returned: 0,
+          },
+        };
+
+        // If we have recent orders, calculate additional metrics
+        if (
+          ordersResponse.success &&
+          ordersResponse.data &&
+          Array.isArray(ordersResponse.data)
+        ) {
+          const orders = ordersResponse.data;
+          transformedData.recentOrders = orders;
+
+          // Calculate total revenue from all orders (approximate)
+          transformedData.totalRevenue = orders.reduce((sum, order) => {
+            const amount = parseFloat(order.totalAmount) || 0;
+            return sum + amount;
+          }, 0);
+
+          // Calculate platform distribution
+          const platformCounts = {};
+          orders.forEach((order) => {
+            const platform = order.platform || "unknown";
+            platformCounts[platform] = (platformCounts[platform] || 0) + 1;
+          });
+          transformedData.byPlatform = platformCounts;
+
+          // Update status counts from actual recent orders
+          const statusCounts = {};
+          orders.forEach((order) => {
+            const status = order.orderStatus || "unknown";
+            statusCounts[status] = (statusCounts[status] || 0) + 1;
+          });
+
+          // Merge with backend stats (backend stats are more accurate for total counts)
+          transformedData.byStatus = {
+            ...transformedData.byStatus,
+            ...statusCounts,
+          };
+        }
+
+        console.log("Transformed order stats:", transformedData);
+        setData(transformedData);
       } else {
-        throw new Error(response.message || "Failed to fetch order statistics");
+        throw new Error(
+          statsResponse.message || "Failed to fetch order statistics"
+        );
       }
     } catch (err) {
       console.error("Error fetching order stats:", err);
       setError(err.message);
-      // Keep default stats on error
+      setData(null);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
@@ -154,8 +201,8 @@ export const useOrderStats = () => {
   }, [fetchStats]);
 
   return {
-    stats,
-    loading,
+    data,
+    isLoading,
     error,
     refetch: fetchStats,
   };
@@ -163,8 +210,7 @@ export const useOrderStats = () => {
 
 export const useOrderTrends = (timeRange = "30d") => {
   const [trends, setTrends] = useState({
-    labels: [],
-    datasets: [],
+    data: [],
     loading: true,
     error: null,
   });
@@ -176,20 +222,48 @@ export const useOrderTrends = (timeRange = "30d") => {
       try {
         setTrends((prev) => ({ ...prev, loading: true, error: null }));
 
-        const response = await api.getOrderTrends(timeRange);
+        // Map frontend timeRange to backend period format
+        const periodMap = {
+          "7d": "week",
+          "30d": "month",
+          "90d": "month",
+          "1y": "year",
+        };
+        const period = periodMap[timeRange] || "month";
+
+        const response = await api.getOrderTrends(period);
 
         if (isMounted && response.success && response.data) {
+          // Transform backend data format to what charts expect
+          const transformedData = Array.isArray(response.data)
+            ? response.data.map((item) => ({
+                date: item.date,
+                newOrders: item.newOrders || 0,
+                processingOrders: 0, // Backend doesn't track this in trends
+                shippedOrders: item.shippedOrders || 0,
+                deliveredOrders: 0, // Backend doesn't track this in trends
+                totalOrders: item.totalOrders || 0,
+                revenue: parseFloat(item.revenue) || 0,
+                // Add previous period data if available
+                previousNewOrders: item.previousNewOrders || 0,
+                previousShippedOrders: item.previousShippedOrders || 0,
+                previousTotalOrders: item.previousTotalOrders || 0,
+                previousRevenue: parseFloat(item.previousRevenue) || 0,
+              }))
+            : [];
+
+          console.log("Transformed trends data:", transformedData);
+
           setTrends({
-            labels: response.data.labels || [],
-            datasets: response.data.datasets || [],
+            data: transformedData,
             loading: false,
             error: null,
           });
         } else if (isMounted) {
           // Handle case where API returns success but no data
+          console.warn("No trends data returned from API");
           setTrends({
-            labels: [],
-            datasets: [],
+            data: [],
             loading: false,
             error: response.message || "No trend data available",
           });
@@ -218,19 +292,41 @@ export const useOrderTrends = (timeRange = "30d") => {
       try {
         setTrends((prev) => ({ ...prev, loading: true, error: null }));
 
-        const response = await api.getOrderTrends(timeRange);
+        const periodMap = {
+          "7d": "week",
+          "30d": "month",
+          "90d": "month",
+          "1y": "year",
+        };
+        const period = periodMap[timeRange] || "month";
+
+        const response = await api.getOrderTrends(period);
 
         if (response.success && response.data) {
+          const transformedData = Array.isArray(response.data)
+            ? response.data.map((item) => ({
+                date: item.date,
+                newOrders: item.newOrders || 0,
+                processingOrders: 0,
+                shippedOrders: item.shippedOrders || 0,
+                deliveredOrders: 0,
+                totalOrders: item.totalOrders || 0,
+                revenue: parseFloat(item.revenue) || 0,
+                previousNewOrders: item.previousNewOrders || 0,
+                previousShippedOrders: item.previousShippedOrders || 0,
+                previousTotalOrders: item.previousTotalOrders || 0,
+                previousRevenue: parseFloat(item.previousRevenue) || 0,
+              }))
+            : [];
+
           setTrends({
-            labels: response.data.labels || [],
-            datasets: response.data.datasets || [],
+            data: transformedData,
             loading: false,
             error: null,
           });
         } else {
           setTrends({
-            labels: [],
-            datasets: [],
+            data: [],
             loading: false,
             error: response.message || "No trend data available",
           });
@@ -249,7 +345,9 @@ export const useOrderTrends = (timeRange = "30d") => {
   }, [timeRange]);
 
   return {
-    ...trends,
+    data: trends.data,
+    loading: trends.loading,
+    error: trends.error,
     refreshTrends,
   };
 };

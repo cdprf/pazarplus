@@ -76,7 +76,7 @@ class HepsiburadaService extends BasePlatformService {
       baseURL: this.ordersApiUrl,
       headers: {
         Authorization: `Basic ${this.authString}`,
-        "User-Agent": "sentosyazilim_dev",
+        "User-Agent": "ticimax_dev",
         "Content-Type": "application/json",
         Accept: "application/json",
       },
@@ -178,12 +178,15 @@ class HepsiburadaService extends BasePlatformService {
       // Use the correct API endpoint for getting orders
       const url = `/packages/merchantid/${this.merchantId}/delivered`;
 
+      // Build API parameters - MINIMAL approach based on official documentation
+      const apiParams = {
+        limit: queryParams.limit,
+        offset: queryParams.offset,
+      };
+
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
-          params: {
-            limit: queryParams.limit,
-            offset: queryParams.offset,
-          },
+          params: apiParams,
         })
       );
 
@@ -256,14 +259,19 @@ class HepsiburadaService extends BasePlatformService {
       }
 
       // Use the correct API endpoint pattern
-      const url = `/orders/merchantid/${this.merchantId}/paymentawaiting`;
+      const url = `/packages/merchantid/${this.merchantId}/paymentawaiting`;
+
+      // Build API parameters - MINIMAL approach (this endpoint may not support date filtering)
+      const apiParams = {
+        limit: queryParams.limit,
+        offset: queryParams.offset,
+      };
+
+      // Skip date filtering for this endpoint as it's not clearly documented as supported
 
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
-          params: {
-            limit: queryParams.limit,
-            offset: queryParams.offset,
-          },
+          params: apiParams,
         })
       );
 
@@ -328,7 +336,7 @@ class HepsiburadaService extends BasePlatformService {
       const defaultParams = {
         offset: 0,
         limit: 50,
-      };
+            };
 
       const queryParams = { ...defaultParams, ...params };
 
@@ -337,14 +345,17 @@ class HepsiburadaService extends BasePlatformService {
       }
 
       // Support both date range and offset/limit pagination
-      let url = `/orders/merchantid/${this.merchantId}`;
+      let url = `/packages/merchantid/${this.merchantId}`;
+
+      // Build query parameters - MINIMAL approach based on official documentation
+      const apiParams = {
+        limit: queryParams.limit,
+        offset: queryParams.offset,
+      };
 
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
-          params: {
-            limit: queryParams.limit,
-            offset: queryParams.offset,
-          },
+          params: apiParams,
         })
       );
 
@@ -353,11 +364,15 @@ class HepsiburadaService extends BasePlatformService {
         response.data.items.length === 0
       ) {
         return {
-          success: false,
-          message: "No package data returned from Hepsiburada",
+          success: true, // Changed to true - no orders in date range is valid
+          message: `No package data found for Hepsiburada merchant ID ${this.merchantId}`,
           data: [],
         };
       }
+
+      this.logger.info(
+        `Successfully fetched ${response.data.items.length} packages from Hepsiburada`
+      );
 
       return {
         success: true,
@@ -388,7 +403,7 @@ class HepsiburadaService extends BasePlatformService {
   }
 
   /**
-   * Fetch delivered orders (Teslim Edilen Siparişler)
+   * Fetch shipped orders (Teslim Edilen Siparişler)
    * Only last 1 month of data is available
    */
   async fetchShippedOrders(params = {}) {
@@ -409,12 +424,15 @@ class HepsiburadaService extends BasePlatformService {
       // Use the correct API endpoint pattern
       const url = `/packages/merchantid/${this.merchantId}/shipped`;
 
+      // Build API parameters - MINIMAL approach based on official documentation
+      const apiParams = {
+        limit: queryParams.limit,
+        offset: queryParams.offset,
+      };
+
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
-          params: {
-            limit: queryParams.limit,
-            offset: queryParams.offset,
-          },
+          params: apiParams,
         })
       );
 
@@ -490,12 +508,15 @@ class HepsiburadaService extends BasePlatformService {
       // Use the correct API endpoint pattern
       const url = `/packages/merchantid/${this.merchantId}/status/unpacked`;
 
+      // Build API parameters - MINIMAL approach based on official documentation
+      const apiParams = {
+        limit: queryParams.limit,
+        offset: queryParams.offset,
+      };
+
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
-          params: {
-            limit: queryParams.limit,
-            offset: queryParams.offset,
-          },
+          params: apiParams,
         })
       );
 
@@ -570,12 +591,15 @@ class HepsiburadaService extends BasePlatformService {
       // Use the correct API endpoint pattern
       const url = `/packages/merchantid/${this.merchantId}/undelivered`;
 
+      // Build API parameters - MINIMAL approach based on official documentation
+      const apiParams = {
+        limit: queryParams.limit,
+        offset: queryParams.offset,
+      };
+
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
-          params: {
-            limit: queryParams.limit,
-            offset: queryParams.offset,
-          },
+          params: apiParams,
         })
       );
 
@@ -637,6 +661,7 @@ class HepsiburadaService extends BasePlatformService {
     try {
       await this.initialize();
 
+
       const defaultParams = {
         offset: 0,
         limit: 50, // Updated to match API documentation
@@ -649,14 +674,17 @@ class HepsiburadaService extends BasePlatformService {
       }
 
       // Use the correct API endpoint pattern
-      const url = `/orders/merchantid/${this.merchantId}/cancelled`;
+      const url = `/packages/merchantid/${this.merchantId}/cancelled`;
+
+      // Build API parameters - MINIMAL approach based on official documentation
+      const apiParams = {
+        limit: queryParams.limit,
+        offset: queryParams.offset,
+      };
 
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
-          params: {
-            limit: queryParams.limit,
-            offset: queryParams.offset,
-          },
+          params: apiParams,
         })
       );
 
@@ -710,42 +738,60 @@ class HepsiburadaService extends BasePlatformService {
   }
 
   /**
-   * Main method to fetch orders - now uses the appropriate endpoint based on status
+   * Main method to fetch orders from all Hepsiburada API endpoints
    * Implementation of abstract method from BasePlatformService
    */
   async fetchOrders(params = {}) {
     try {
       await this.initialize();
 
+      const defaultParams = {
+        offset: 0,
+        limit: 50,
+      };
+
+      const queryParams = { ...defaultParams, ...params };
+
+      if (queryParams.limit > 50) {
+        queryParams.limit = 50;
+      }
+
+      this.logger.info(
+        `Fetching Hepsiburada orders from all endpoints`,
+        {
+          connectionId: this.connectionId,
+        }
+      );
+
       // Fetch from all relevant endpoints and combine results
-      const fetchFuncs = [
-        this.fetchDeliveredOrders(params),
-        this.fetchPendingPaymentOrders(params),
-        this.fetchPackages(params),
-        this.fetchShippedOrders(params),
-        this.fetchUnpackedOrders(params),
-        this.fetchUndeliveredOrders(params),
-        this.fetchCancelledOrders(params),
+      const fetchFunctions = [
+        this.fetchDeliveredOrders(queryParams),
+        this.fetchPendingPaymentOrders(queryParams),
+        this.fetchPackages(queryParams),
+        this.fetchShippedOrders(queryParams),
+        this.fetchUnpackedOrders(queryParams),
+        this.fetchUndeliveredOrders(queryParams),
+        this.fetchCancelledOrders(queryParams),
       ];
 
-      // Run all fetches in parallel
-      const results = await Promise.all(fetchFuncs);
+      // Run all fetches in parallel for better performance
+      const results = await Promise.all(fetchFunctions);
 
       // Combine all data arrays, filter out failed fetches
       const allOrders = results
         .filter((r) => r && r.success && Array.isArray(r.data))
         .flatMap((r) => r.data);
 
-      // Remove duplicates by orderNumber
+      // Remove duplicates by orderNumber or id
       const seen = new Set();
       const uniqueOrders = allOrders.filter((order) => {
-        const key = order.orderNumber || order.OrderNumber;
+        const key = order.orderNumber || order.OrderNumber || order.id;
         if (!key || seen.has(key)) return false;
         seen.add(key);
         return true;
       });
 
-      // Optionally fetch detailed information for each order
+            // Optionally fetch detailed information for each order
       let enrichedOrders = uniqueOrders;
       if (uniqueOrders.length > 0) {
         logger.info(
@@ -822,29 +868,39 @@ class HepsiburadaService extends BasePlatformService {
         }
       }
 
+
+      this.logger.info(
+        `Successfully fetched ${allOrders.length} total orders (${uniqueOrders.length} unique) from all Hepsiburada endpoints`,
+        {
+          connectionId: this.connectionId,
+          totalOrders: allOrders.length,
+          uniqueOrders: uniqueOrders.length,
+          duplicatesRemoved: allOrders.length - uniqueOrders.length,
+        }
+      );
+
       // Normalize orders into our database format
       const normalizedResults = await this.normalizeOrders(enrichedOrders);
 
       return {
         success: true,
-        message: `Fetched ${
-          enrichedOrders.length
-        } unique orders from Hepsiburada (combined from all endpoints)${
-          params.includeDetails ? " with detailed information" : ""
-        }`,
-        data: normalizedResults,
+        message: `Successfully fetched ${uniqueOrders.length} orders from all Hepsiburada endpoints`,
+        data: normalizedResults.data,
         stats: {
+          ...normalizedResults.stats,
           totalFetched: allOrders.length,
-          unique: uniqueOrders.length,
-          enriched: params.includeDetails
-            ? enrichedOrders.filter((o) => o.detailsFetched).length
-            : 0,
-          endpoints: results.length,
+          uniqueOrders: uniqueOrders.length,
+          duplicatesRemoved: allOrders.length - uniqueOrders.length,
+          endpointsUsed: results.filter((r) => r && r.success).length,
         },
-        endpointResults: results,
+        pagination: {
+          offset: queryParams.offset,
+          limit: queryParams.limit,
+          totalCount: uniqueOrders.length,
+        },
       };
     } catch (error) {
-      logger.error(
+      this.logger.error(
         `Failed to fetch orders from Hepsiburada: ${error.message}`,
         {
           error,
