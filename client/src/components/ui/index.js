@@ -1,34 +1,47 @@
 // Re-export all UI components for easy importing
 import Button from "./Button.jsx";
-import Card, {
+import {
+  Card,
   CardHeader,
   CardContent,
   CardFooter,
   CardTitle,
   CardSubtitle,
+  CardBody,
+  CardActions,
+  CardDescription,
 } from "./Card.jsx";
 import Badge from "./Badge.jsx";
-import Tooltip from "./Tooltip.jsx";
-import Input, {
+import { Tooltip } from "./Tooltip.jsx";
+import {
+  Input,
   Label,
   FormGroup,
   HelpText,
   ErrorText,
   SuccessText,
 } from "./Input.jsx";
-import LoadingSpinner from "./LoadingSpinner.jsx";
-import Skeleton from "./Skeleton.jsx";
-import EmptyState from "./EmptyState.jsx";
-import Alert from "./Alert.jsx";
-import DropdownMenu, {
+import { LoadingSpinner } from "./LoadingSpinner.jsx";
+import { Skeleton } from "./Skeleton.jsx";
+import { EmptyState } from "./EmptyState.jsx";
+import { Alert } from "./Alert.jsx";
+import {
+  DropdownMenu,
   DropdownItem,
   DropdownDivider,
 } from "./DropdownMenu.jsx";
-import Tabs, { TabsList, TabsTrigger, TabsContent } from "./Tabs.jsx";
-import Modal, { ModalHeader, ModalContent, ModalFooter } from "./Modal.jsx";
-import Select from "./Select.jsx";
-import Switch from "./Switch.jsx";
-import Slider from "./Slider.jsx";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "./Tabs.jsx";
+import { Modal, ModalHeader, ModalContent, ModalFooter } from "./Modal.jsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  LegacySelect,
+} from "./Select.jsx";
+import { Switch } from "./Switch.jsx";
+import { Slider } from "./Slider.jsx";
 
 export {
   Button,
@@ -38,6 +51,9 @@ export {
   CardFooter,
   CardTitle,
   CardSubtitle,
+  CardBody,
+  CardActions,
+  CardDescription,
   Badge,
   Tooltip,
   Input,
@@ -46,9 +62,6 @@ export {
   HelpText,
   ErrorText,
   SuccessText,
-};
-
-export {
   LoadingSpinner,
   Skeleton,
   EmptyState,
@@ -65,9 +78,15 @@ export {
   ModalContent,
   ModalFooter,
   Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  LegacySelect,
   Switch,
   Slider,
 };
+
 export { Textarea } from "./Textarea";
 export { ScrollArea } from "./ScrollArea";
 export {

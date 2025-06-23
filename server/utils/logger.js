@@ -100,31 +100,24 @@ const logger = winston.createLogger({
       ? [createFileTransport("debug", "debug")]
       : []),
 
-    // Console output
+    // Console output with error handling
     ...(process.env.NODE_ENV !== "production"
       ? [
           new winston.transports.Console({
             format: consoleFormat,
             level: process.env.NODE_ENV === "development" ? "debug" : "info",
+            handleExceptions: false, // Prevent exception loops
+            handleRejections: false, // Prevent rejection loops
           }),
         ]
       : []),
   ],
 
   // Handle uncaught exceptions and unhandled rejections
-  exceptionHandlers: [
-    createFileTransport("exceptions"),
-    ...(process.env.NODE_ENV !== "production"
-      ? [new winston.transports.Console({ format: consoleFormat })]
-      : []),
-  ],
+  // NOTE: Removed console transport from exception handlers to prevent EPIPE loops
+  exceptionHandlers: [createFileTransport("exceptions")],
 
-  rejectionHandlers: [
-    createFileTransport("rejections"),
-    ...(process.env.NODE_ENV !== "production"
-      ? [new winston.transports.Console({ format: consoleFormat })]
-      : []),
-  ],
+  rejectionHandlers: [createFileTransport("rejections")],
 
   exitOnError: false,
 });
@@ -159,6 +152,31 @@ logger.logError = (error, context = {}) => {
     context,
   });
 };
+
+// Add error handling for transports to prevent EPIPE loops
+logger.on("error", (error) => {
+  if (error.code === "EPIPE") {
+    // Silently ignore EPIPE errors to prevent infinite loops
+    return;
+  }
+  // For other errors, try to log to a file only
+  try {
+    console.error("[LOGGER ERROR]:", error.message);
+  } catch (e) {
+    // If console fails, just ignore
+  }
+});
+
+// Handle console transport errors specifically
+const consoleTransport = logger.transports.find((t) => t.name === "console");
+if (consoleTransport) {
+  consoleTransport.on("error", (error) => {
+    if (error.code === "EPIPE") {
+      // Silently ignore EPIPE errors
+      return;
+    }
+  });
+}
 
 logger.logBusinessEvent = (event, data = {}) => {
   logger.info(`Business Event: ${event}`, {

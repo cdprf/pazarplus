@@ -161,13 +161,43 @@ async function startServer() {
   }
 }
 
+// Handle EPIPE errors to prevent logging loops
+process.stdout.on("error", (err) => {
+  if (err.code === "EPIPE") {
+    // Silently ignore EPIPE errors
+    return;
+  }
+  console.error("STDOUT Error:", err.message);
+});
+
+process.stderr.on("error", (err) => {
+  if (err.code === "EPIPE") {
+    // Silently ignore EPIPE errors
+    return;
+  }
+  console.error("STDERR Error:", err.message);
+});
+
 // Handle unhandled promise rejections
 process.on("unhandledRejection", (err) => {
-  logger.error("Unhandled Promise Rejection:", err);
+  // Don't log EPIPE errors to prevent loops
+  if (err.code !== "EPIPE") {
+    logger.error("Unhandled Promise Rejection:", err);
+  }
   // Don't crash the server in production
   if (process.env.NODE_ENV === "development") {
     process.exit(1);
   }
+});
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (err) => {
+  // Don't log EPIPE errors to prevent loops
+  if (err.code === "EPIPE") {
+    return;
+  }
+  logger.error("Uncaught Exception:", err);
+  process.exit(1);
 });
 
 // Start the server

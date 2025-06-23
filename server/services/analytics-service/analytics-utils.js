@@ -225,77 +225,206 @@ async function getRevenueAnalytics(userId, dateRange) {
     },
   };
 
-  // Daily revenue breakdown
-  const dailyRevenue = await Order.findAll({
-    where: whereClause,
-    attributes: [
-      [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt")), "date"],
-      [
-        Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")),
-        "revenue",
+  console.log("Revenue Analytics - Starting daily revenue calculation");
+  
+  try {
+    // Daily revenue breakdown using OrderItems for accurate revenue calculation
+    const dailyRevenue = await OrderItem.findAll({
+      include: [
+        {
+          model: Order,
+          as: "order",
+          where: whereClause,
+          attributes: [],
+        },
       ],
-      [Order.sequelize.fn("COUNT", Order.sequelize.col("id")), "orders"],
-    ],
-    group: [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt"))],
-    order: [
-      [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt")), "ASC"],
-    ],
-  });
-
-  // Revenue by platform
-  const platformRevenue = await Order.findAll({
-    where: whereClause,
-    attributes: [
-      "platform",
-      [
-        Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")),
-        "revenue",
+      attributes: [
+        [
+          OrderItem.sequelize.fn(
+            "DATE",
+            OrderItem.sequelize.col("order.createdAt")
+          ),
+          "date",
+        ],
+        [
+          OrderItem.sequelize.fn(
+            "SUM",
+            OrderItem.sequelize.literal(
+              'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
+            )
+          ),
+          "revenue",
+        ],
+        [
+          OrderItem.sequelize.fn(
+            "COUNT",
+            OrderItem.sequelize.fn(
+              "DISTINCT",
+              OrderItem.sequelize.col("order.id")
+            )
+          ),
+          "orders",
+        ],
       ],
-      [Order.sequelize.fn("COUNT", Order.sequelize.col("id")), "orders"],
-    ],
-    group: ["platform"],
-  });
+      group: [
+        OrderItem.sequelize.fn(
+          "DATE",
+          OrderItem.sequelize.col("order.createdAt")
+        ),
+      ],
+      order: [
+        [
+          OrderItem.sequelize.fn(
+            "DATE",
+            OrderItem.sequelize.col("order.createdAt")
+          ),
+          "ASC",
+        ],
+      ],
+    });
+    
+    console.log("Revenue Analytics - Daily revenue calculation complete");
+    console.log("Revenue Analytics - Starting platform revenue calculation");
+    
+    // Revenue by platform using OrderItems
+    const platformRevenue = await OrderItem.findAll({
+      include: [
+        {
+          model: Order,
+          as: "order",
+          where: whereClause,
+          attributes: [],
+        },
+      ],
+      attributes: [
+        [OrderItem.sequelize.col("order.platform"), "platform"],
+        [
+          OrderItem.sequelize.fn(
+            "SUM",
+            OrderItem.sequelize.literal(
+              'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
+            )
+          ),
+          "revenue",
+        ],
+        [
+          OrderItem.sequelize.fn(
+            "COUNT",
+            OrderItem.sequelize.fn(
+              "DISTINCT",
+              OrderItem.sequelize.col("order.id")
+            )
+          ),
+          "orders",
+        ],
+      ],
+      group: [OrderItem.sequelize.col("order.platform")],
+    });
+    
+    console.log("Revenue Analytics - Platform revenue calculation complete");
+    console.log("Revenue Analytics - Starting previous period calculation");
 
-  // Growth calculation
-  const previousPeriod = getPreviousPeriod(dateRange);
-  const previousRevenue = await Order.sum("totalAmount", {
-    where: {
-      userId,
-      createdAt: {
-        [Op.between]: [previousPeriod.start, previousPeriod.end],
+    // Growth calculation using OrderItems
+    const previousPeriod = getPreviousPeriod(dateRange);
+    
+    console.log("Revenue Analytics - Calculating previous revenue");
+    
+    // Fix: Replace OrderItem.sum with a more standard approach using findAll and SUM
+    const previousRevenueResult = await OrderItem.findAll({
+      attributes: [
+        [
+          OrderItem.sequelize.fn(
+            'SUM',
+            OrderItem.sequelize.literal('CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)')
+          ),
+          'totalRevenue'
+        ]
+      ],
+      include: [
+        {
+          model: Order,
+          as: "order",
+          where: {
+            userId,
+            createdAt: {
+              [Op.between]: [previousPeriod.start, previousPeriod.end],
+            },
+          },
+          attributes: [],
+        },
+      ],
+      raw: true
+    });
+    
+    const previousRevenue = previousRevenueResult[0]?.totalRevenue || 0;
+    
+    console.log("Revenue Analytics - Calculating current revenue");
+    
+    // Fix: Replace OrderItem.sum with a more standard approach using findAll and SUM
+    const currentRevenueResult = await OrderItem.findAll({
+      attributes: [
+        [
+          OrderItem.sequelize.fn(
+            'SUM',
+            OrderItem.sequelize.literal('CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)')
+          ),
+          'totalRevenue'
+        ]
+      ],
+      include: [
+        {
+          model: Order,
+          as: "order",
+          where: whereClause,
+          attributes: [],
+        },
+      ],
+      raw: true
+    });
+    
+    const currentRevenue = currentRevenueResult[0]?.totalRevenue || 0;
+
+    console.log("Revenue Analytics - Calculating growth rate");
+    const growthRate = previousRevenue
+      ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
+      : 0;
+
+    console.log("Revenue Analytics - Preparing return data");
+    const result = {
+      daily: dailyRevenue.map((item) => ({
+        date: item.get("date"),
+        revenue: parseFloat(item.get("revenue") || 0),
+        orders: parseInt(item.get("orders")),
+      })),
+      platforms: platformRevenue.map((item) => ({
+        platform: item.get("platform"),
+        revenue: parseFloat(item.get("revenue") || 0),
+        orders: parseInt(item.get("orders")),
+      })),
+      growth: {
+        current: currentRevenue || 0,
+        previous: previousRevenue || 0,
+        rate: growthRate,
       },
-    },
-  });
-
-  const currentRevenue = await Order.sum("totalAmount", {
-    where: whereClause,
-  });
-  const growthRate = previousRevenue
-    ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
-    : 0;
-
-  return {
-    daily: dailyRevenue.map((item) => ({
-      date: item.get("date"),
-      revenue: parseFloat(item.get("revenue") || 0),
-      orders: parseInt(item.get("orders")),
-    })),
-    platforms: platformRevenue.map((item) => ({
-      platform: item.platform,
-      revenue: parseFloat(item.get("revenue") || 0),
-      orders: parseInt(item.get("orders")),
-    })),
-    growth: {
-      current: currentRevenue || 0,
-      previous: previousRevenue || 0,
-      rate: growthRate,
-    },
-  };
+      total: currentRevenue || 0,
+      trends: dailyRevenue.map((item) => ({
+        date: item.get("date"),
+        value: parseFloat(item.get("revenue") || 0),
+      })),
+    };
+    console.log("Revenue Analytics - Complete");
+    return result;
+  } catch (error) {
+    console.error("Revenue Analytics Error:", error.message);
+    console.error("Error location:", error.stack);
+    throw error;
+  }
 }
 
 module.exports = {
   getAccurateAnalytics,
   getDashboardAnalytics,
   getRevenueAnalytics,
+  getDateRange, // Export this function so it can be used in index.js
   // Other analytics functions...
 };

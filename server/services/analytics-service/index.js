@@ -92,6 +92,7 @@ const {
   identifyPricingOpportunities,
   detectAnomalies,
   detectSeasonality,
+  determineStockStatusFromMetrics,
 } = require("./detection-utils");
 
 class AnalyticsService {
@@ -242,7 +243,7 @@ class AnalyticsService {
               name: product.name,
               currentStock: stockStatus.quantity,
               predictedDemand: demandForecast.nextMonth,
-              daysUntilStockout: calculateStockoutDays(
+              daysUntilStockout: calculateDaysUntilOutOfStock(
                 stockStatus.quantity,
                 dailyDemand
               ),
@@ -545,12 +546,13 @@ class AnalyticsService {
       // Get products with critical stock levels
       const lowStockProducts = await Product.findAll({
         where: {
+          userId,
           [Op.or]: [
             { stockQuantity: 0 }, // Out of stock
-            OrderItem.sequelize.where(
-              OrderItem.sequelize.col("stockQuantity"),
+            Product.sequelize.where(
+              Product.sequelize.col("stockQuantity"),
               "<=",
-              OrderItem.sequelize.col("minStockLevel")
+              Product.sequelize.col("minStockLevel")
             ), // Below minimum stock level
           ],
         },
@@ -828,9 +830,9 @@ class AnalyticsService {
             .map(([category, data]) => ({ category, sales: data.totalSales })),
         },
         recommendations: [
-          "Consider premium pricing for high-demand products",
-          "Expand into underserved market segments",
-          "Implement dynamic pricing strategies",
+          {title: "Consider premium pricing for high-demand products", priority: "high",  description: "Analyze competitor pricing and adjust accordingly", category: "pricing"},
+          {title: "Expand into underserved market segments", priority: "medium", description: "Identify and target niche markets with tailored offerings", category: "market"},
+          {title: "Implement dynamic pricing strategies", priority: "low", description: "Utilize AI-driven pricing tools for real-time adjustments", category: "pricing"},
         ],
         insights,
       };
@@ -1545,7 +1547,7 @@ class AnalyticsService {
             OrderItem.sequelize.fn(
               "SUM",
               OrderItem.sequelize.literal(
-                "OrderItem.price * OrderItem.quantity"
+                '"OrderItem"."price" * "OrderItem"."quantity"'
               )
             ),
             "revenue",
@@ -1558,7 +1560,7 @@ class AnalyticsService {
             "avgPrice",
           ],
         ],
-        group: ["productId"],
+        group: ["productId", "product.id"],
         order: [[OrderItem.sequelize.literal("revenue"), "DESC"]],
         limit,
       });
@@ -1663,8 +1665,27 @@ class AnalyticsService {
   /**
    * Get revenue analytics data
    */
-  async getRevenueAnalytics(userId, dateRange) {
+  async getRevenueAnalytics(userId, timeframeOrDateRange) {
     try {
+      // Check if timeframeOrDateRange is a string timeframe like "30d"
+      let dateRange;
+      if (typeof timeframeOrDateRange === 'string') {
+        // Import getDateRange function if it's in a separate file
+        const { getDateRange } = require('./analytics-utils');
+        dateRange = getDateRange(timeframeOrDateRange);
+      } else {
+        dateRange = timeframeOrDateRange;
+      }
+
+      // Ensure dateRange is properly defined
+      if (!dateRange || !dateRange.start || !dateRange.end) {
+        // Fallback to default 30 days if dates are invalid
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - 30);
+        dateRange = { start, end };
+      }
+
       const cacheKey = `${this.cachePrefix}revenue:${userId}:${dateRange.start}:${dateRange.end}`;
       const cached = await cacheService.get(cacheKey);
       if (cached) return cached;
@@ -1745,354 +1766,165 @@ class AnalyticsService {
   }
 
   /**
-   * Get comprehensive dashboard analytics
+   * Get platform performance - Wrapper for getPlatformComparison
    */
-  async getDashboardAnalytics(userId, timeframe = "30d") {
+  async getPlatformPerformance(userId, dateRange) {
+    return await this.getPlatformComparison(userId, dateRange);
+  }
+
+  /**
+   * Get business intelligence data
+   */
+  async getBusinessIntelligence(userId, dateRange) {
     try {
-      const dateRange = this.getDateRange(timeframe);
-
-      const cacheKey = `${this.cachePrefix}dashboard:${userId}:${timeframe}`;
-      const cached = await cacheService.get(cacheKey);
-      if (cached) return cached;
-
-      // Get all analytics data in parallel
       const [
-        orderSummary,
-        revenue,
-        platformStats,
+        predictiveInsights,
+        marketIntelligence,
+        financialKPIs,
+        platformComparison,
         topProducts,
-        categories,
-        customerMetrics,
       ] = await Promise.all([
-        this.getOrderSummary(userId, dateRange),
-        this.getRevenueAnalytics(userId, dateRange),
+        this.getPredictiveInsights(userId, dateRange),
+        this.getMarketIntelligence(userId, dateRange),
+        this.getFinancialKPIs(userId, dateRange),
         this.getPlatformComparison(userId, dateRange),
-        this.getTopProducts(userId, dateRange),
-        this.getCategoryAnalytics(userId, dateRange),
-        this.getCustomerMetrics(userId, dateRange),
+        this.getTopProducts(userId, dateRange, 5),
       ]);
 
-      const dashboard = {
-        orderSummary,
-        revenue,
-        platforms: platformStats,
+      return {
+        insights: {
+          predictiveInsights,
+          marketIntelligence,
+          financialKPIs,
+        },
+        predictions: predictiveInsights,
+        marketIntelligence,
+        financialKPIs,
+        recommendations: [
+          ...(predictiveInsights?.recommendations || []),
+          ...(marketIntelligence?.recommendations || []),
+          ...(financialKPIs?.recommendations || []),
+        ],
+        platforms: platformComparison,
         topProducts,
-        categories,
-        customerMetrics,
-        timeframe,
         generatedAt: new Date(),
       };
-
-      await cacheService.set(cacheKey, dashboard, this.defaultCacheTTL);
-      return dashboard;
     } catch (error) {
-      logger.error("Dashboard analytics error:", error);
+      logger.error("Business intelligence error:", error);
       return {
-        orderSummary: { total: 0, completed: 0, pending: 0, cancelled: 0 },
-        revenue: { total: 0, previous: 0, growth: 0 },
+        insights: {},
+        predictions: {},
+        marketIntelligence: {},
+        financialKPIs: {},
+        recommendations: [],
         platforms: [],
         topProducts: [],
-        categories: [],
-        customerMetrics: {},
-        timeframe,
         generatedAt: new Date(),
       };
     }
   }
 
   /**
-   * Get order summary analytics
+   * Get market analysis
    */
-  async getOrderSummary(userId, dateRange) {
+  async getMarketAnalysis(userId, dateRange) {
+    return await this.getMarketIntelligence(userId, dateRange);
+  }
+
+  /**
+   * Get inventory insights
+   */
+  async getInventoryInsights(userId, dateRange) {
+    return await this.getInventoryPredictions(userId, dateRange);
+  }
+
+  /**
+   * Export analytics data
+   */
+  async exportAnalyticsData(userId, type, format, timeframe) {
     try {
-      const orders = await Order.findAll({
-        where: {
-          userId,
-          createdAt: {
-            [Op.between]: [dateRange.start, dateRange.end],
-          },
-        },
-        attributes: ["orderStatus", "totalAmount"],
-      });
+      const dateRange = this.getDateRange(timeframe);
+      let data;
 
-      const summary = {
-        total: orders.length,
-        completed: 0,
-        pending: 0,
-        cancelled: 0,
-        delivered: 0,
-        shipped: 0,
-        new: 0,
-      };
+      switch (type) {
+        case "dashboard":
+          data = await this.getDashboardAnalytics(userId, timeframe);
+          break;
+        case "revenue":
+          data = await this.getRevenueAnalytics(userId, dateRange);
+          break;
+        case "products":
+          data = await this.getProductAnalytics(userId, null, dateRange);
+          break;
+        case "platforms":
+          data = await this.getPlatformComparison(userId, dateRange);
+          break;
+        default:
+          data = await this.getDashboardAnalytics(userId, timeframe);
+      }
 
-      orders.forEach((order) => {
-        const status = order.orderStatus;
-        if (status === "delivered") {
-          summary.completed++;
-          summary.delivered++;
-        } else if (status === "shipped") {
-          summary.shipped++;
-        } else if (status === "new") {
-          summary.new++;
-        } else if (status === "cancelled") {
-          summary.cancelled++;
-        } else {
-          summary.pending++;
-        }
-      });
+      if (format === "csv") {
+        return this.convertToCSV(data, type);
+      }
 
-      return summary;
+      return data;
     } catch (error) {
-      logger.error("Order summary error:", error);
-      return { total: 0, completed: 0, pending: 0, cancelled: 0 };
+      logger.error("Export analytics error:", error);
+      throw error;
     }
   }
 
   /**
-   * Get revenue analytics
+   * Convert data to CSV format
    */
-  async getRevenueAnalytics(userId, dateRange) {
+  convertToCSV(data, type) {
     try {
-      const validStatuses = ["delivered", "shipped"];
+      let csv = "";
 
-      const currentRevenue = await Order.sum("totalAmount", {
-        where: {
-          userId,
-          createdAt: {
-            [Op.between]: [dateRange.start, dateRange.end],
-          },
-          orderStatus: { [Op.in]: validStatuses },
-        },
-      });
+      switch (type) {
+        case "revenue":
+          if (data.trends && data.trends.length > 0) {
+            csv = "Date,Revenue,Orders\n";
+            data.trends.forEach((trend) => {
+              csv += `${trend.date},${trend.revenue},${trend.orders}\n`;
+            });
+          }
+          break;
+        case "products":
+          if (data.topProducts && data.topProducts.length > 0) {
+            csv = "Product Name,Category,Units Sold,Revenue,Avg Price\n";
+            data.topProducts.forEach((product) => {
+              csv += `${product.name},${product.category},${
+                product.unitsSold || product.totalSold
+              },${product.revenue},${product.avgPrice}\n`;
+            });
+          }
+          break;
+        case "platforms":
+          if (Array.isArray(data) && data.length > 0) {
+            csv = "Platform,Orders,Revenue,Avg Order Value,Completion Rate\n";
+            data.forEach((platform) => {
+              csv += `${platform.name || platform.platform},${
+                platform.orders || platform.totalOrders
+              },${platform.revenue || platform.totalRevenue},${
+                platform.avgOrderValue
+              },${platform.completionRate || platform.conversionRate}\n`;
+            });
+          }
+          break;
+        default:
+          csv =
+            "Type,Value\nTotal Orders," +
+            (data.orderSummary?.totalOrders || 0) +
+            "\nTotal Revenue," +
+            (data.revenue?.total || 0);
+      }
 
-      // Get previous period for comparison
-      const previousStart = new Date(dateRange.start);
-      const previousEnd = new Date(dateRange.end);
-      const diffMs = dateRange.end.getTime() - dateRange.start.getTime();
-      previousStart.setTime(previousStart.getTime() - diffMs);
-      previousEnd.setTime(previousEnd.getTime() - diffMs);
-
-      const previousRevenue = await Order.sum("totalAmount", {
-        where: {
-          userId,
-          createdAt: {
-            [Op.between]: [previousStart, previousEnd],
-          },
-          orderStatus: { [Op.in]: validStatuses },
-        },
-      });
-
-      const total = parseFloat(currentRevenue) || 0;
-      const previous = parseFloat(previousRevenue) || 0;
-      const growth = previous > 0 ? ((total - previous) / previous) * 100 : 0;
-
-      return {
-        total,
-        previous,
-        growth,
-        trend: growth > 0 ? "up" : growth < 0 ? "down" : "stable",
-      };
+      return csv || "No data available";
     } catch (error) {
-      logger.error("Revenue analytics error:", error);
-      return { total: 0, previous: 0, growth: 0, trend: "stable" };
+      logger.error("CSV conversion error:", error);
+      return "Error generating CSV";
     }
-  }
-
-  /**
-   * Get top products analytics
-   */
-  async getTopProducts(userId, dateRange, limit = 10) {
-    try {
-      const topProducts = await Order.findAll({
-        where: {
-          userId,
-          createdAt: {
-            [Op.between]: [dateRange.start, dateRange.end],
-          },
-          orderStatus: { [Op.notIn]: ["cancelled"] },
-        },
-        include: [
-          {
-            model: OrderItem,
-            as: "items",
-            include: [
-              {
-                model: Product,
-                as: "product",
-                attributes: ["id", "name", "category"],
-              },
-            ],
-          },
-        ],
-        order: [["totalAmount", "DESC"]],
-        limit: limit * 3, // Get more to process
-      });
-
-      const productMap = new Map();
-
-      topProducts.forEach((order) => {
-        if (order.items && order.items.length > 0) {
-          order.items.forEach((item) => {
-            if (item.product) {
-              const productId = item.product.id;
-              const existing = productMap.get(productId) || {
-                id: productId,
-                name: item.product.name || `Product ${productId}`,
-                category: item.product.category || "Unknown",
-                totalRevenue: 0,
-                totalQuantity: 0,
-                orderCount: 0,
-              };
-
-              existing.totalRevenue +=
-                parseFloat(item.price) * parseInt(item.quantity) || 0;
-              existing.totalQuantity += parseInt(item.quantity) || 0;
-              existing.orderCount += 1;
-
-              productMap.set(productId, existing);
-            }
-          });
-        }
-      });
-
-      return Array.from(productMap.values())
-        .sort((a, b) => b.totalRevenue - a.totalRevenue)
-        .slice(0, limit);
-    } catch (error) {
-      logger.error("Top products error:", error);
-      return [];
-    }
-  }
-
-  /**
-   * Get category analytics
-   */
-  async getCategoryAnalytics(userId, dateRange) {
-    try {
-      const categoryData = await Order.findAll({
-        where: {
-          userId,
-          createdAt: {
-            [Op.between]: [dateRange.start, dateRange.end],
-          },
-          orderStatus: { [Op.notIn]: ["cancelled"] },
-        },
-        include: [
-          {
-            model: OrderItem,
-            as: "items",
-            include: [
-              {
-                model: Product,
-                as: "product",
-                attributes: ["category"],
-              },
-            ],
-          },
-        ],
-      });
-
-      const categoryMap = new Map();
-
-      categoryData.forEach((order) => {
-        if (order.items && order.items.length > 0) {
-          order.items.forEach((item) => {
-            if (item.product && item.product.category) {
-              const category = item.product.category;
-              const existing = categoryMap.get(category) || {
-                name: category,
-                revenue: 0,
-                count: 0,
-              };
-
-              existing.revenue +=
-                parseFloat(item.price) * parseInt(item.quantity) || 0;
-              existing.count += 1;
-
-              categoryMap.set(category, existing);
-            }
-          });
-        }
-      });
-
-      return Array.from(categoryMap.values()).sort(
-        (a, b) => b.revenue - a.revenue
-      );
-    } catch (error) {
-      logger.error("Category analytics error:", error);
-      return [];
-    }
-  }
-
-  /**
-   * Get customer metrics
-   */
-  async getCustomerMetrics(userId, dateRange) {
-    try {
-      // Count unique customers by email (since there's no customerId)
-      const uniqueCustomers = await Order.findAll({
-        where: {
-          userId,
-          createdAt: {
-            [Op.between]: [dateRange.start, dateRange.end],
-          },
-          customerEmail: { [Op.ne]: null },
-        },
-        attributes: ["customerEmail"],
-        group: ["customerEmail"],
-      });
-
-      const avgOrderValue = await Order.findOne({
-        where: {
-          userId,
-          createdAt: {
-            [Op.between]: [dateRange.start, dateRange.end],
-          },
-          orderStatus: { [Op.notIn]: ["cancelled"] },
-        },
-        attributes: [
-          [
-            Order.sequelize.fn("AVG", Order.sequelize.col("totalAmount")),
-            "avgValue",
-          ],
-        ],
-      });
-
-      return {
-        totalCustomers: uniqueCustomers.length || 0,
-        avgOrderValue: parseFloat(avgOrderValue?.dataValues?.avgValue) || 0,
-      };
-    } catch (error) {
-      logger.error("Customer metrics error:", error);
-      return { totalCustomers: 0, avgOrderValue: 0 };
-    }
-  }
-
-  /**
-   * Get date range helper
-   */
-  getDateRange(timeframe) {
-    const end = new Date();
-    const start = new Date();
-
-    switch (timeframe) {
-      case "7d":
-        start.setDate(start.getDate() - 7);
-        break;
-      case "30d":
-        start.setDate(start.getDate() - 30);
-        break;
-      case "90d":
-        start.setDate(start.getDate() - 90);
-        break;
-      case "365d":
-        start.setDate(start.getDate() - 365);
-        break;
-      default:
-        start.setDate(start.getDate() - 30);
-    }
-
-    return { start, end };
   }
 
   // ...existing code...

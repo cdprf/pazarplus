@@ -47,10 +47,40 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
       try {
         setLoading(true);
         setError(null);
+
+        console.log("🔍 Fetching platform analytics for timeframe:", timeframe);
+
         const platformData = await analyticsService.getPlatformAnalytics(
           timeframe
         );
-        setData(platformData);
+
+        console.log("✅ Platform analytics data received:", {
+          success: platformData?.success,
+          hasData: !!platformData?.data,
+          dataKeys: platformData?.data ? Object.keys(platformData.data) : [],
+        });
+
+        // Process the data to handle different API response formats
+        if (platformData && (platformData.success || platformData.data)) {
+          const processedData = platformData.data || platformData;
+
+          // Ensure consistent data structure
+          const normalizedData = {
+            ...processedData,
+            platforms: processedData.platforms || { comparison: [] },
+            performance: processedData.performance || {},
+            summary: processedData.summary || processedData.orderSummary || {},
+          };
+
+          setData(normalizedData);
+        } else {
+          console.warn("⚠️ No platform data received, setting empty data");
+          setData({
+            platforms: { comparison: [] },
+            performance: {},
+            summary: {},
+          });
+        }
       } catch (err) {
         console.error("Error fetching platform analytics:", err);
         setError(err.message || "Failed to load platform analytics");

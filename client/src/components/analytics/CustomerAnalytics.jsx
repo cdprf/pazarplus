@@ -42,21 +42,66 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
     const fetchCustomerData = async () => {
       try {
         setLoading(true);
+        setError(null);
+
+        console.log("🔍 Fetching customer analytics for timeframe:", timeframe);
 
         // Fetch all customer analytics data
         const [customerData, cohorts, segmentation] = await Promise.all([
           analyticsService.getCustomerAnalytics(timeframe),
-          analyticsService.getCohortAnalysis(
-            timeframe === "30d" ? "90d" : timeframe
-          ),
+          analyticsService
+            .getCohortAnalysis(timeframe === "30d" ? "90d" : timeframe)
+            .catch((err) => {
+              console.warn("Cohort analysis failed:", err);
+              return null;
+            }),
           analyticsService.getCustomerSegmentation
-            ? analyticsService.getCustomerSegmentation(timeframe)
+            ? analyticsService
+                .getCustomerSegmentation(timeframe)
+                .catch((err) => {
+                  console.warn("Customer segmentation failed:", err);
+                  return null;
+                })
             : Promise.resolve(null),
         ]);
 
-        setData(customerData);
-        setCohortData(cohorts);
-        setSegmentationData(segmentation);
+        console.log("✅ Customer analytics data received:", {
+          customerSuccess: customerData?.success,
+          hasCustomerData: !!customerData?.data,
+          hasCohortData: !!cohorts,
+          hasSegmentationData: !!segmentation,
+        });
+
+        // Process customer data
+        if (customerData && (customerData.success || customerData.data)) {
+          const processedData = customerData.data || customerData;
+          const normalizedData = {
+            ...processedData,
+            summary: processedData.summary || processedData.orderSummary || {},
+            customers: processedData.customers || {
+              total: 0,
+              new: 0,
+              returning: 0,
+              retention: 0,
+            },
+          };
+          setData(normalizedData);
+        } else {
+          console.warn("⚠️ No customer data received, setting empty data");
+          setData({
+            summary: {},
+            customers: {
+              total: 0,
+              new: 0,
+              returning: 0,
+              retention: 0,
+            },
+          });
+        }
+
+        // Set cohort and segmentation data with fallbacks
+        setCohortData(cohorts || { cohorts: [], retention: [] });
+        setSegmentationData(segmentation || { segments: [], demographics: [] });
       } catch (err) {
         console.error("Customer analytics error:", err);
         setError(err.message);

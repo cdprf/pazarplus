@@ -534,6 +534,7 @@ class EnhancedProductManagementService {
    */
   async getProductWithVariants(mainProductId, userId) {
     try {
+      const { EnhancedProductMedia } = require("../models");
       const mainProduct = await MainProduct.findOne({
         where: { id: mainProductId, userId },
         include: [
@@ -546,7 +547,17 @@ class EnhancedProductManagementService {
                 as: "template",
                 required: false,
               },
+              {
+                model: EnhancedProductMedia,
+                as: "mediaAssets",
+                required: false,
+              },
             ],
+          },
+          {
+            model: EnhancedProductMedia,
+            as: "mediaAssets",
+            required: false,
           },
         ],
       });

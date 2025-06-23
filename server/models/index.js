@@ -41,10 +41,13 @@ const Invoice = require("./Invoice");
 // === BACKGROUND TASK MODELS ===
 const BackgroundTask = require("./BackgroundTask")(sequelize);
 
-// === ENHANCED PRODUCT MANAGEMENT MODELS ===
+// ========================================
+// === NEW ENHANCED PRODUCT MANAGEMENT MODELS ===
+// ========================================
 const MainProduct = require("./MainProduct");
 const PlatformVariant = require("./PlatformVariant");
 const PlatformTemplate = require("./PlatformTemplate");
+const EnhancedProductMedia = require("./EnhancedProductMedia")(sequelize);
 
 // Initialize models with sequelize
 const models = {
@@ -90,10 +93,13 @@ const models = {
   // === BACKGROUND TASK MODELS ===
   BackgroundTask: BackgroundTask,
 
-  // === ENHANCED PRODUCT MANAGEMENT MODELS ===
+  // ========================================
+  // === NEW ENHANCED PRODUCT MANAGEMENT MODELS ===
+  // ========================================
   MainProduct: MainProduct,
   PlatformVariant: PlatformVariant,
   PlatformTemplate: PlatformTemplate,
+  EnhancedProductMedia: EnhancedProductMedia,
 
   // === ADDITIONAL MODELS ===
   PlatformConflict: PlatformConflict,
@@ -578,7 +584,13 @@ models.StockReservation.belongsTo(models.Order, {
   as: "order",
 });
 
-// === PRODUCT MANAGEMENT ASSOCIATIONS ===
+// ========================================
+// === LEGACY PRODUCT MANAGEMENT SYSTEM ===
+// ========================================
+// This section handles the OLD/LEGACY product management system
+// with Product, ProductVariant, ProductMedia, etc.
+// This will be gradually phased out in favor of the NEW enhanced system.
+// ========================================
 
 // Product <-> ProductTemplate (Many-to-One)
 models.Product.belongsTo(models.ProductTemplate, {
@@ -692,6 +704,10 @@ models.BackgroundTask.belongsTo(models.PlatformConnection, {
   as: "platformConnection",
 });
 
+// ========================================
+// === END LEGACY PRODUCT MANAGEMENT SYSTEM ===
+// ========================================
+
 // PlatformVariant <-> Product (One-to-One optional)
 models.PlatformVariant.belongsTo(models.Product, {
   foreignKey: "productId",
@@ -704,7 +720,14 @@ models.Product.hasOne(models.PlatformVariant, {
   onDelete: "SET NULL",
 });
 
-// === ENHANCED PRODUCT MANAGEMENT ASSOCIATIONS ===
+// ========================================
+// === NEW ENHANCED PRODUCT MANAGEMENT ===
+// ========================================
+// This section handles the NEW enhanced product management system
+// with MainProduct, PlatformVariant, and EnhancedProductMedia models.
+// This is SEPARATE from the legacy Product/ProductVariant system above.
+// ========================================
+
 if (models.MainProduct.associate) {
   models.MainProduct.associate(models);
 }
@@ -714,6 +737,13 @@ if (models.PlatformVariant.associate) {
 if (models.PlatformTemplate.associate) {
   models.PlatformTemplate.associate(models);
 }
+if (models.EnhancedProductMedia.associate) {
+  models.EnhancedProductMedia.associate(models);
+}
+
+// ========================================
+// === END NEW ENHANCED PRODUCT MANAGEMENT ===
+// ========================================
 
 module.exports = {
   sequelize,

@@ -132,7 +132,13 @@ router.use("/fonts", fontRoutes);
 const unifiedIntelligenceRoutes = require("./unified-product-intelligence");
 router.use("/product-intelligence", unifiedIntelligenceRoutes);
 
-// Enhanced Product Management routes
+// ========================================
+// === NEW ENHANCED PRODUCT MANAGEMENT ROUTES ===
+// ========================================
+// This is the NEW enhanced product management system API
+// Accessible at /api/enhanced-products/*
+// Features: MainProduct, PlatformVariant, Media Upload, Bulk Operations
+// ========================================
 const enhancedProductRoutes = require("./enhanced-products");
 router.use("/enhanced-products", enhancedProductRoutes);
 

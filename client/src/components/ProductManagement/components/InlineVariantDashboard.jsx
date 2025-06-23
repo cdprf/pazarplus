@@ -17,6 +17,7 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { Button, Badge, Tooltip } from "../../ui";
+import MediaUploadComponent from "./MediaUploadComponent.jsx";
 
 /**
  * Inline Variant Dashboard
@@ -609,7 +610,84 @@ const InlineVariantDashboard = ({
         <div className="p-6">
           {activeTab === "variants" && renderVariantsTab()}
           {activeTab === "stock" && renderStockTab()}
-          {activeTab === "media" && <div>Media Management (Coming Soon)</div>}
+          {activeTab === "media" && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Main Product Media
+                </h3>
+                <MediaUploadComponent
+                  mainProductId={mainProduct.id}
+                  existingMedia={mainProduct.mediaAssets || []}
+                  onMediaUploaded={(newMedia) => {
+                    // Update the main product with new media
+                    onUpdate({
+                      ...mainProduct,
+                      mediaAssets: [
+                        ...(mainProduct.mediaAssets || []),
+                        ...newMedia,
+                      ],
+                    });
+                  }}
+                />
+              </div>
+
+              {/* Platform-specific media sections */}
+              {mainProduct.platformVariants?.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Platform-Specific Media
+                  </h3>
+                  {mainProduct.platformVariants.map((variant) => (
+                    <div key={variant.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-medium text-gray-900">
+                          {variant.platform.charAt(0).toUpperCase() +
+                            variant.platform.slice(1)}{" "}
+                          - {variant.platformSku}
+                        </h4>
+                        <Badge
+                          variant={
+                            variant.status === "published"
+                              ? "success"
+                              : variant.status === "draft"
+                              ? "warning"
+                              : "secondary"
+                          }
+                        >
+                          {variant.status}
+                        </Badge>
+                      </div>
+                      <MediaUploadComponent
+                        mainProductId={mainProduct.id}
+                        variantId={variant.id}
+                        existingMedia={variant.mediaAssets || []}
+                        onMediaUploaded={(newMedia) => {
+                          // Update the variant with new media
+                          const updatedVariants =
+                            mainProduct.platformVariants.map((v) =>
+                              v.id === variant.id
+                                ? {
+                                    ...v,
+                                    mediaAssets: [
+                                      ...(v.mediaAssets || []),
+                                      ...newMedia,
+                                    ],
+                                  }
+                                : v
+                            );
+                          onUpdate({
+                            ...mainProduct,
+                            platformVariants: updatedVariants,
+                          });
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {activeTab === "pricing" && <div>Pricing Strategy (Coming Soon)</div>}
           {activeTab === "templates" && <div>Templates (Coming Soon)</div>}
         </div>

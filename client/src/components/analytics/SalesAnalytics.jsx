@@ -50,8 +50,71 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
         setLoading(true);
         setError(null);
 
+        console.log(
+          "🔍 Fetching sales analytics data for timeframe:",
+          timeframe
+        );
+
         const salesData = await analyticsService.getSalesAnalytics(timeframe);
-        setData(salesData);
+
+        console.log("✅ Sales analytics data received:", {
+          success: salesData?.success,
+          hasData: !!salesData?.data,
+          dataKeys: salesData?.data ? Object.keys(salesData.data) : [],
+          orderSummaryTotal:
+            salesData?.data?.summary?.totalOrders ||
+            salesData?.data?.orderSummary?.totalOrders ||
+            0,
+          revenueTotal:
+            salesData?.data?.revenue?.total ||
+            salesData?.data?.summary?.totalRevenue ||
+            0,
+          revenueTrendsCount: salesData?.data?.revenue?.trends?.length || 0,
+          topProductsCount: salesData?.data?.topProducts?.length || 0,
+        });
+
+        // Process the data to handle different API response formats
+        if (salesData && (salesData.success || salesData.data)) {
+          const processedData = salesData.data || salesData;
+
+          // Ensure consistent data structure
+          const normalizedData = {
+            ...processedData,
+            orderSummary: processedData.summary ||
+              processedData.orderSummary || {
+                totalOrders: 0,
+                totalRevenue: 0,
+                averageOrderValue: 0,
+                growth: 0,
+              },
+            revenue: processedData.revenue || {
+              trends: [],
+              total: processedData.summary?.totalRevenue || 0,
+              growth: 0,
+            },
+            topProducts: processedData.topProducts || [],
+            platforms: processedData.platforms || { comparison: [] },
+          };
+
+          setData(normalizedData);
+        } else {
+          console.warn("⚠️ No sales data received, setting empty data");
+          setData({
+            orderSummary: {
+              totalOrders: 0,
+              totalRevenue: 0,
+              averageOrderValue: 0,
+              growth: 0,
+            },
+            revenue: {
+              trends: [],
+              total: 0,
+              growth: 0,
+            },
+            topProducts: [],
+            platforms: { comparison: [] },
+          });
+        }
       } catch (err) {
         console.error("Error fetching sales analytics:", err);
         setError(err.message || "Failed to load sales data");
@@ -94,11 +157,11 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
   }
 
   // Extract sales data from response
-  const salesData = data?.data || {};
-  const dashboardData = salesData.dashboard || {};
-  const orderSummary = dashboardData.orderSummary || {};
-  const revenueData = dashboardData.revenue || {};
-  const topProducts = dashboardData.topProducts || [];
+  const salesData = data || {};
+  const orderSummary = salesData.orderSummary || salesData.summary || {};
+  const revenueData = salesData.revenue || {};
+  const topProducts = salesData.topProducts || [];
+  const platforms = salesData.platforms || { comparison: [] };
 
   // Sales KPIs
   const salesKPIs = [
@@ -151,6 +214,16 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
 
   // Prepare chart data
   const chartData = revenueData.trends || [];
+  console.log("📊 Chart data preparation:", {
+    hasRevenueData: !!revenueData,
+    revenueDataKeys: revenueData ? Object.keys(revenueData) : [],
+    hasTrends: !!revenueData?.trends,
+    trendsLength: revenueData?.trends?.length || 0,
+    chartDataLength: chartData.length,
+    sampleChartData: chartData.slice(0, 2),
+    topProductsLength: topProducts.length,
+  });
+
   const topProductsData = topProducts.slice(0, 10).map((product) => ({
     name:
       product.name?.substring(0, 20) +

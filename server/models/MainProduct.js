@@ -104,14 +104,8 @@ MainProduct.init(
       },
     },
 
-    // Media Management
-    media: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      defaultValue: [],
-      comment:
-        "Array of media objects: {type, url, alt, isPrimary, platforms[]}",
-    },
+    // Media Management - Now handled by EnhancedProductMedia association
+    // media attribute removed to avoid naming collision with mediaAssets association
 
     // Platform Management
     publishedPlatforms: {

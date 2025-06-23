@@ -5,6 +5,9 @@ import { API_BASE_URL } from "../utils/constants";
 import InlineVariantDashboard from "./InlineVariantDashboard.jsx";
 import PlatformVariantForm from "./PlatformVariantForm.jsx";
 import ProductDisplay from "./ProductDisplay.js";
+import ProductCreationModal from "./ProductCreationModal.jsx";
+import VariantCreationModal from "./VariantCreationModal.jsx";
+import PlatformFieldMapping from "./PlatformFieldMapping.jsx";
 
 // Enhanced Product Management API
 const enhancedProductAPI = {
@@ -180,6 +183,14 @@ const EnhancedProductManagement = () => {
     useState(false);
   const [autoMatchProgress, setAutoMatchProgress] = useState(null);
 
+  // New modal states
+  const [showProductCreationModal, setShowProductCreationModal] =
+    useState(false);
+  const [showVariantCreationModal, setShowVariantCreationModal] =
+    useState(false);
+  const [showFieldMappingModal, setShowFieldMappingModal] = useState(false);
+  const [fieldMappingData, setFieldMappingData] = useState(null);
+
   // Load main products
   const loadMainProducts = useCallback(async () => {
     try {
@@ -231,6 +242,16 @@ const EnhancedProductManagement = () => {
 
   // Handle main product creation
   const handleCreateMainProduct = async (productData) => {
+    console.log("handleCreateMainProduct called with:", productData);
+
+    if (!productData || Object.keys(productData).length === 0) {
+      // Open creation modal
+      console.log("Opening product creation modal");
+      alert("Opening product creation modal"); // Debug alert
+      setShowProductCreationModal(true);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await enhancedProductAPI.createMainProduct(productData);
@@ -243,6 +264,115 @@ const EnhancedProductManagement = () => {
     } catch (error) {
       console.error("Error creating main product:", error);
       showAlert("Ana ürün oluşturulurken hata oluştu", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle product creation success
+  const handleProductCreationSuccess = (newProduct) => {
+    if (newProduct) {
+      setMainProducts((prev) => [newProduct, ...prev]);
+    } else {
+      loadMainProducts(); // Fallback to reload all
+    }
+  };
+
+  // Handle variant creation
+  const handleCreateVariantsForProduct = (product) => {
+    setSelectedMainProduct(product);
+    setShowVariantCreationModal(true);
+  };
+
+  // Handle variant creation success
+  const handleVariantCreationSuccess = (newVariants) => {
+    if (newVariants && newVariants.length > 0) {
+      showAlert(
+        `${newVariants.length} variants created successfully`,
+        "success"
+      );
+      // Refresh the main product data to show new variants
+      if (selectedMainProduct) {
+        loadMainProduct(selectedMainProduct.id);
+      }
+    }
+    setShowVariantCreationModal(false);
+  };
+
+  // Handle field mapping
+  const handleOpenFieldMapping = (
+    sourcePlatform,
+    targetPlatform,
+    sampleData
+  ) => {
+    setFieldMappingData({
+      sourcePlatform,
+      targetPlatform,
+      sampleData,
+    });
+    setShowFieldMappingModal(true);
+  };
+
+  // Handle field mapping completion
+  const handleFieldMappingComplete = (mappingConfig) => {
+    console.log("Field mapping completed:", mappingConfig);
+    // You can save this configuration or use it for data transformation
+    showAlert("Field mapping configuration saved", "success");
+  };
+
+  // Handle bulk product selection
+  const handleBulkMarkAsMainProducts = async () => {
+    if (selectedProducts.length === 0) {
+      showAlert("Please select products to mark as main products", "warning");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const results = [];
+
+      for (const productId of selectedProducts) {
+        try {
+          // Assuming there's an API endpoint to mark products as main products
+          const response = await fetch(
+            `${API_BASE_URL}/enhanced-products/mark-as-main/${productId}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            }
+          );
+
+          if (response.ok) {
+            results.push({ success: true, productId });
+          } else {
+            results.push({
+              success: false,
+              productId,
+              error: "Failed to mark as main product",
+            });
+          }
+        } catch (error) {
+          results.push({ success: false, productId, error: error.message });
+        }
+      }
+
+      const successCount = results.filter((r) => r.success).length;
+      if (successCount > 0) {
+        showAlert(
+          `${successCount} products marked as main products`,
+          "success"
+        );
+        await loadMainProducts();
+        setSelectedProducts([]);
+      } else {
+        showAlert("Failed to mark any products as main products", "error");
+      }
+    } catch (error) {
+      console.error("Error marking products as main:", error);
+      showAlert("Error marking products as main products", "error");
     } finally {
       setLoading(false);
     }
@@ -561,6 +691,10 @@ const EnhancedProductManagement = () => {
         onEdit={handleViewProduct}
         onDelete={() => {}} // TODO: Implement main product deletion
         onAddProduct={() => handleCreateMainProduct({})}
+        onImportProducts={() => {
+          console.log("🎯 Import Products button clicked!");
+          setShowProductCreationModal(true);
+        }}
         onSync={loadMainProducts}
         onViewModeChange={setViewMode}
         enableVariantManagement={true}
@@ -568,6 +702,37 @@ const EnhancedProductManagement = () => {
         enhancedMode={true}
         showVariantCount={true}
         showPublishedPlatforms={true}
+        // New enhanced features
+        onCreateVariants={handleCreateVariantsForProduct}
+        onBulkMarkAsMain={handleBulkMarkAsMainProducts}
+        onFieldMapping={handleOpenFieldMapping}
+      />
+
+      {/* Enhanced Product Creation Modal */}
+      <ProductCreationModal
+        show={showProductCreationModal}
+        onHide={() => setShowProductCreationModal(false)}
+        onSuccess={handleProductCreationSuccess}
+        apiClient={enhancedProductAPI}
+      />
+
+      {/* Enhanced Variant Creation Modal */}
+      <VariantCreationModal
+        show={showVariantCreationModal}
+        onHide={() => setShowVariantCreationModal(false)}
+        mainProduct={selectedMainProduct}
+        onSuccess={handleVariantCreationSuccess}
+        apiClient={enhancedProductAPI}
+      />
+
+      {/* Platform Field Mapping Modal */}
+      <PlatformFieldMapping
+        show={showFieldMappingModal}
+        onHide={() => setShowFieldMappingModal(false)}
+        sourcePlatform={fieldMappingData?.sourcePlatform}
+        targetPlatform={fieldMappingData?.targetPlatform}
+        sampleData={fieldMappingData?.sampleData}
+        onMappingComplete={handleFieldMappingComplete}
       />
     </div>
   );

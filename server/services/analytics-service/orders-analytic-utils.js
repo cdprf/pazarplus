@@ -64,37 +64,85 @@ async function getOrderSummary(userId, dateRange) {
       },
     }),
 
-    // Revenue only from valid orders (excludes returns/cancellations)
-    Order.sum("totalAmount", {
-      where: {
-        ...whereClause,
-        orderStatus: { [Op.in]: validRevenueStatuses },
-      },
-    }),
+    // Revenue only from valid orders using OrderItems (excludes returns/cancellations)
+    OrderItem.sum(
+      Order.sequelize.literal(
+        'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
+      ),
+      {
+        include: [
+          {
+            model: Order,
+            as: "order",
+            where: {
+              ...whereClause,
+              orderStatus: { [Op.in]: validRevenueStatuses },
+            },
+            attributes: [],
+          },
+        ],
+      }
+    ).catch(() => 0),
 
-    // Average order value from valid orders only
-    Order.findOne({
-      where: {
-        ...whereClause,
-        orderStatus: { [Op.in]: validRevenueStatuses },
-      },
+    // Average order value from valid orders using OrderItems
+    OrderItem.findOne({
+      include: [
+        {
+          model: Order,
+          as: "order",
+          where: {
+            ...whereClause,
+            orderStatus: { [Op.in]: validRevenueStatuses },
+          },
+          attributes: [],
+        },
+      ],
       attributes: [
-        [Order.sequelize.fn("AVG", Order.sequelize.col("totalAmount")), "avg"],
+        [
+          Order.sequelize.fn(
+            "AVG",
+            Order.sequelize.literal(
+              'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
+            )
+          ),
+          "avg",
+        ],
       ],
     }),
 
-    // Orders breakdown by status
-    Order.findAll({
-      where: whereClause,
+    // Orders breakdown by status using OrderItem-based revenue
+    OrderItem.findAll({
+      include: [
+        {
+          model: Order,
+          as: "order",
+          where: whereClause,
+          attributes: ["orderStatus"],
+        },
+      ],
       attributes: [
-        "orderStatus",
-        [Order.sequelize.fn("COUNT", Order.sequelize.col("id")), "count"],
+        [OrderItem.sequelize.col("order.orderStatus"), "orderStatus"],
         [
-          Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")),
+          OrderItem.sequelize.fn(
+            "COUNT",
+            OrderItem.sequelize.fn(
+              "DISTINCT",
+              OrderItem.sequelize.col("order.id")
+            )
+          ),
+          "count",
+        ],
+        [
+          OrderItem.sequelize.fn(
+            "SUM",
+            OrderItem.sequelize.literal(
+              'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
+            )
+          ),
           "totalAmount",
         ],
       ],
-      group: ["orderStatus"],
+      group: [OrderItem.sequelize.col("order.orderStatus")],
     }),
 
     // Customer count from valid orders only
@@ -117,7 +165,7 @@ async function getOrderSummary(userId, dateRange) {
     avgOrderValue: parseFloat(avgOrderValue?.get("avg") || 0),
     totalCustomers: totalCustomers || 0,
     ordersByStatus: ordersByStatus.map((item) => ({
-      status: item.orderStatus,
+      status: item.get("orderStatus"),
       count: parseInt(item.get("count")),
       totalAmount: parseFloat(item.get("totalAmount") || 0),
     })),
@@ -129,27 +177,65 @@ async function getOrderSummary(userId, dateRange) {
 }
 
 /**
- * Get order trends and forecasting
+ * Get order trends and forecasting using OrderItem-based calculations
  */
 async function getOrderTrends(userId, dateRange) {
-  const dailyOrders = await Order.findAll({
-    where: {
-      userId,
-      createdAt: {
-        [Op.between]: [dateRange.start, dateRange.end],
+  const dailyOrders = await OrderItem.findAll({
+    include: [
+      {
+        model: Order,
+        as: "order",
+        where: {
+          userId,
+          createdAt: {
+            [Op.between]: [dateRange.start, dateRange.end],
+          },
+        },
+        attributes: [],
       },
-    },
+    ],
     attributes: [
-      [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt")), "date"],
-      [Order.sequelize.fn("COUNT", Order.sequelize.col("id")), "orders"],
       [
-        Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")),
+        OrderItem.sequelize.fn(
+          "DATE",
+          OrderItem.sequelize.col("order.createdAt")
+        ),
+        "date",
+      ],
+      [
+        OrderItem.sequelize.fn(
+          "COUNT",
+          OrderItem.sequelize.fn(
+            "DISTINCT",
+            OrderItem.sequelize.col("order.id")
+          )
+        ),
+        "orders",
+      ],
+      [
+        OrderItem.sequelize.fn(
+          "SUM",
+          OrderItem.sequelize.literal(
+            'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
+          )
+        ),
         "revenue",
       ],
     ],
-    group: [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt"))],
+    group: [
+      OrderItem.sequelize.fn(
+        "DATE",
+        OrderItem.sequelize.col("order.createdAt")
+      ),
+    ],
     order: [
-      [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt")), "ASC"],
+      [
+        OrderItem.sequelize.fn(
+          "DATE",
+          OrderItem.sequelize.col("order.createdAt")
+        ),
+        "ASC",
+      ],
     ],
   });
 

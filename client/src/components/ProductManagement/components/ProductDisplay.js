@@ -1,20 +1,12 @@
 import React, { useState, useCallback } from "react";
-import { List, Grid3X3, Filter, Settings, Package } from "lucide-react";
+import { List, Grid3X3, Package } from "lucide-react";
 
 // Import modular components
-import {
-  ProductStatusTabs,
-  AdvancedFilterPanel,
-  BulkOperations,
-  EmptyState,
-  LoadingState,
-  EnhancedPagination,
-} from "./";
 import SimpleProductGrid from "./SimpleProductGrid";
 import SimpleProductTable from "./SimpleProductTable";
 
 // Import design system components
-import { Button, Card, CardContent, CardHeader } from "../../ui";
+import { Button } from "../../ui";
 import TableSettingsModal from "./TableSettingsModal";
 
 // Main Product Display Component
@@ -31,6 +23,7 @@ const ProductDisplay = ({
   onImageClick,
   onProductNameClick,
   onAddProduct,
+  onImportProducts,
   onSync,
   // Sorting
   sortField,
@@ -65,10 +58,15 @@ const ProductDisplay = ({
   onDeleteVariantGroup,
   onAcceptVariantSuggestion,
   onRejectVariantSuggestion,
+  // Enhanced product management props
+  enhancedMode = false,
+  showVariantCount = false,
+  showPublishedPlatforms = false,
+  onCreateVariants,
+  onBulkMarkAsMain,
+  onFieldMapping,
   className = "",
 }) => {
-  const [showMoreMenu, setShowMoreMenu] = useState(null);
-  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [showTableSettings, setShowTableSettings] = useState(false);
   const [tableSettings, setTableSettings] = useState({
     columns: [
@@ -124,10 +122,6 @@ const ProductDisplay = ({
     defaultSort: { field: "name", order: "asc" },
   });
 
-  const handleToggleMoreMenu = useCallback((productId) => {
-    setShowMoreMenu((prev) => (prev === productId ? null : productId));
-  }, []);
-
   const handleSaveTableSettings = useCallback((newSettings) => {
     setTableSettings(newSettings);
     // You can save to localStorage or send to backend here
@@ -145,13 +139,6 @@ const ProductDisplay = ({
         console.error("Error loading table settings:", error);
       }
     }
-  }, []);
-
-  // Close menu when clicking outside
-  React.useEffect(() => {
-    const handleClickOutside = () => setShowMoreMenu(null);
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
   if (loading) {
@@ -183,6 +170,50 @@ const ProductDisplay = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <h2 className="section-title">Ürünler</h2>
+
+              {/* Enhanced Mode Actions */}
+              {enhancedMode && (
+                <div className="flex items-center space-x-2">
+                  <Button onClick={onAddProduct} variant="primary" size="sm">
+                    Add Product
+                  </Button>
+                  <Button
+                    onClick={onImportProducts}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Import Products
+                  </Button>
+                  {selectedProducts.length > 0 && (
+                    <>
+                      <Button
+                        onClick={onCreateVariants}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Create Variants
+                      </Button>
+                      <Button
+                        onClick={onBulkMarkAsMain}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Mark as Main
+                      </Button>
+                      <Button
+                        onClick={() =>
+                          onFieldMapping("generic", "trendyol", {})
+                        }
+                        variant="outline"
+                        size="sm"
+                      >
+                        Field Mapping
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+
               {selectedProducts.length > 0 && (
                 <div className="table-actions">
                   <div className="bulk-actions">
@@ -215,13 +246,6 @@ const ProductDisplay = ({
                   <Grid3X3 className="h-4 w-4" />
                 </button>
               </div>
-              <Button
-                variant={isFilterExpanded ? "primary" : "ghost"}
-                size="sm"
-                onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-              >
-                <Filter className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         </div>
@@ -241,22 +265,6 @@ const ProductDisplay = ({
           </div>
         </div>
 
-        {/* Filter Panel */}
-        {isFilterExpanded && (
-          <div className="table-filters border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-            <AdvancedFilterPanel
-              filters={filters}
-              onFilterChange={onFilterChange}
-              onClearFilters={onClearFilters}
-              isExpanded={isFilterExpanded}
-              onToggleExpanded={setIsFilterExpanded}
-              categories={categories}
-              brands={brands}
-              compact={true}
-            />
-          </div>
-        )}
-
         {/* Products Display */}
         {products.length === 0 && Object.keys(filters).length === 0 ? (
           <div className="empty-state">
@@ -269,8 +277,13 @@ const ProductDisplay = ({
             </p>
             <div className="empty-state-actions">
               <Button onClick={onAddProduct} variant="primary">
-                Add Product
+                {enhancedMode ? "Add New Product" : "Add Product"}
               </Button>
+              {enhancedMode && (
+                <Button onClick={onImportProducts} variant="outline">
+                  Import Products
+                </Button>
+              )}
             </div>
           </div>
         ) : products.length === 0 && Object.keys(filters).length > 0 ? (
@@ -304,6 +317,16 @@ const ProductDisplay = ({
                   sortField={sortField}
                   sortOrder={sortOrder}
                   onSort={onSort}
+                  onDuplicate={(product) =>
+                    console.log("Duplicate product:", product)
+                  }
+                  onExportProduct={(product) =>
+                    console.log("Export product:", product)
+                  }
+                  onViewAnalytics={(product) =>
+                    console.log("View analytics:", product)
+                  }
+                  onCopyLink={(product) => console.log("Copy link:", product)}
                 />
               ) : (
                 <div className="p-6">
@@ -320,44 +343,142 @@ const ProductDisplay = ({
               )}
             </div>
 
-            {/* Pagination */}
+            {/* Enhanced Pagination - Orders Page Style */}
             {products.length > 0 && (
-              <div className="table-pagination">
-                <div className="pagination-info">
-                  Showing {(currentPage - 1) * itemsPerPage + 1}-
-                  {Math.min(currentPage * itemsPerPage, totalItems)} of{" "}
-                  {totalItems} results
-                </div>
-                <div className="pagination-controls">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={currentPage === 1}
-                    onClick={() => onPageChange(currentPage - 1)}
-                  >
-                    Previous
-                  </Button>
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    const page = i + 1;
-                    return (
+              <div className="px-6 py-4 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center text-sm text-gray-700">
+                    <span>
+                      Sayfa {currentPage} / {totalPages}
+                    </span>
+                    <span className="ml-4 text-gray-500 dark:text-gray-400">
+                      Toplam {totalItems} kayıt
+                    </span>
+                    <span className="ml-4 text-gray-400">
+                      (Sayfa başına {itemsPerPage} kayıt)
+                    </span>
+                  </div>
+                  {products.length > 0 && (
+                    <div className="flex items-center space-x-1">
+                      {/* First page button */}
                       <Button
-                        key={page}
-                        variant={currentPage === page ? "primary" : "ghost"}
+                        onClick={() => onPageChange(1)}
+                        disabled={currentPage === 1}
                         size="sm"
-                        onClick={() => onPageChange(page)}
+                        variant="outline"
+                        className="hidden sm:inline-flex"
                       >
-                        {page}
+                        İlk
                       </Button>
-                    );
-                  })}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={currentPage === totalPages}
-                    onClick={() => onPageChange(currentPage + 1)}
+
+                      {/* Previous page button */}
+                      <Button
+                        onClick={() =>
+                          onPageChange(Math.max(currentPage - 1, 1))
+                        }
+                        disabled={currentPage === 1}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Önceki
+                      </Button>
+
+                      {/* Page numbers - always show at least current page */}
+                      <div className="hidden sm:flex items-center space-x-1">
+                        {Array.from(
+                          { length: Math.max(1, Math.min(5, totalPages)) },
+                          (_, i) => {
+                            let pageNumber;
+                            if (totalPages <= 5) {
+                              pageNumber = i + 1;
+                            } else if (currentPage <= 3) {
+                              pageNumber = i + 1;
+                            } else if (currentPage >= totalPages - 2) {
+                              pageNumber = totalPages - 4 + i;
+                            } else {
+                              pageNumber = currentPage - 2 + i;
+                            }
+
+                            return (
+                              <Button
+                                key={pageNumber}
+                                onClick={() => onPageChange(pageNumber)}
+                                size="sm"
+                                variant={
+                                  currentPage === pageNumber
+                                    ? "primary"
+                                    : "outline"
+                                }
+                                className="min-w-[40px]"
+                              >
+                                {pageNumber}
+                              </Button>
+                            );
+                          }
+                        )}
+
+                        {/* Show ellipsis and last page if needed */}
+                        {totalPages > 5 && currentPage < totalPages - 2 && (
+                          <>
+                            {currentPage < totalPages - 3 && (
+                              <span className="px-2 text-gray-500 dark:text-gray-400">
+                                ...
+                              </span>
+                            )}
+                            <Button
+                              onClick={() => onPageChange(totalPages)}
+                              size="sm"
+                              variant="outline"
+                              className="min-w-[40px]"
+                            >
+                              {totalPages}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Next page button */}
+                      <Button
+                        onClick={() =>
+                          onPageChange(Math.min(currentPage + 1, totalPages))
+                        }
+                        disabled={currentPage === totalPages}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Sonraki
+                      </Button>
+
+                      {/* Last page button */}
+                      <Button
+                        onClick={() => onPageChange(totalPages)}
+                        disabled={currentPage === totalPages}
+                        size="sm"
+                        variant="outline"
+                        className="hidden sm:inline-flex"
+                      >
+                        Son
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Mobile pagination controls */}
+                <div className="sm:hidden mt-3 flex justify-between items-center">
+                  <select
+                    value={currentPage}
+                    onChange={(e) => onPageChange(parseInt(e.target.value))}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm"
                   >
-                    Next
-                  </Button>
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        Sayfa {i + 1}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {totalPages} sayfadan {currentPage}
+                  </span>
                 </div>
               </div>
             )}

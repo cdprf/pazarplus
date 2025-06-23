@@ -1,180 +1,239 @@
-import React, { useState } from "react";
-import { Search, X, History, Clock, Tag, ChevronDown } from "lucide-react";
-import { Card, CardContent } from "../../ui/Card";
-import { Button } from "../../ui/Button";
+import React, { useState, useEffect } from "react";
+import { Search, X } from "lucide-react";
 
 /**
  * Advanced Search Panel Component
- * Provides enhanced search capabilities with history, suggestions, and advanced filters
+ * Provides comprehensive search and filter capabilities
  */
 const AdvancedSearchPanel = ({
-  value = "",
-  onChange,
+  searchValue: propSearchValue = "",
+  filters = {},
+  onFilterChange,
+  onClearFilters,
+  categories = [],
   onSearch,
-  onClear,
-  recentSearches = [],
-  searchSuggestions = [],
-  isOpen = false,
-  onToggle,
   className = "",
 }) => {
-  const [localValue, setLocalValue] = useState(value);
-  const [showHistory, setShowHistory] = useState(false);
+  const [searchValue, setSearchValue] = useState(propSearchValue);
 
-  // Handle input change with local state
-  const handleChange = (e) => {
-    const newValue = e.target.value;
-    setLocalValue(newValue);
-    onChange?.(newValue);
+  // Update local state when prop changes
+  useEffect(() => {
+    setSearchValue(propSearchValue);
+  }, [propSearchValue]);
+
+  // Handle search input change
+  const handleSearchChange = (value) => {
+    setSearchValue(value);
   };
 
   // Handle search submission
-  const handleSubmit = (e) => {
+  const handleSearchSubmit = (e) => {
     e.preventDefault();
-    onSearch?.(localValue);
+    onSearch?.(searchValue);
   };
 
-  // Handle selecting a recent search
-  const handleSelectRecent = (searchTerm) => {
-    setLocalValue(searchTerm);
-    onChange?.(searchTerm);
-    onSearch?.(searchTerm);
-    setShowHistory(false);
+  // Handle filter changes
+  const handleFilterChange = (key, value) => {
+    onFilterChange?.({
+      ...filters,
+      [key]: value,
+    });
   };
 
-  // Handle clearing the search
-  const handleClear = () => {
-    setLocalValue("");
-    onClear?.();
+  // Handle clear all filters and search
+  const handleClearAll = () => {
+    setSearchValue("");
+    onSearch?.(""); // Clear search
+    onClearFilters?.();
   };
+
+  // Status options for dropdown
+  const statusOptions = [
+    { value: "", label: "Tüm Durumlar" },
+    { value: "active", label: "Aktif" },
+    { value: "inactive", label: "Pasif" },
+    { value: "draft", label: "Taslak" },
+    { value: "pending", label: "Beklemede" },
+  ];
+
+  // Platform options for dropdown
+  const platformOptions = [
+    { value: "all", label: "Tüm Platformlar" },
+    { value: "trendyol", label: "Trendyol" },
+    { value: "hepsiburada", label: "Hepsiburada" },
+    { value: "n11", label: "N11" },
+  ];
 
   return (
-    <div className={`relative ${className}`}>
-      {/* Search Input */}
-      <form onSubmit={handleSubmit} className="relative">
-        <div className="relative flex items-center">
-          <Search className="absolute left-3 h-4 w-4 text-gray-400" />
+    <div className={`space-y-4 ${className}`}>
+      {/* Search Input Row */}
+      <div className="flex items-center space-x-4">
+        <form onSubmit={handleSearchSubmit} className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <input
             type="text"
-            value={localValue}
-            onChange={handleChange}
-            placeholder="Ürün adı, SKU, barkod veya açıklama ile ara..."
-            className="w-full pl-10 pr-20 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            onFocus={() => setShowHistory(true)}
+            value={searchValue}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Ürün adı, SKU, barkod ile ara..."
+            className="w-full pl-10 pr-20 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
           />
-          <div className="absolute right-2 flex items-center space-x-1">
-            {localValue && (
+          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
+            {searchValue && (
               <button
                 type="button"
-                onClick={handleClear}
-                className="p-1 text-gray-400 hover:text-gray-600"
+                onClick={() => handleSearchChange("")}
+                className="p-1 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400"
               >
                 <X className="h-4 w-4" />
               </button>
             )}
             <button
-              type="button"
-              onClick={() => setShowHistory(!showHistory)}
-              className="p-1 text-gray-400 hover:text-gray-600"
-            >
-              <History className="h-4 w-4" />
-            </button>
-            <Button
               type="submit"
-              size="sm"
-              variant="primary"
-              className="ml-1 px-3 py-1"
+              className="px-3 py-1 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg transition-colors"
             >
               Ara
-            </Button>
+            </button>
+          </div>
+        </form>
+
+        <button
+          onClick={handleClearAll}
+          className="px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+        >
+          Temizle
+        </button>
+      </div>
+
+      {/* Filters Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Category Filter */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Kategori
+          </label>
+          <select
+            value={filters.category || ""}
+            onChange={(e) => handleFilterChange("category", e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          >
+            <option value="">Tüm Kategoriler</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Status Filter */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Durum
+          </label>
+          <select
+            value={filters.status || ""}
+            onChange={(e) => handleFilterChange("status", e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          >
+            {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Platform Filter */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Platform
+          </label>
+          <select
+            value={filters.platform || "all"}
+            onChange={(e) => handleFilterChange("platform", e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          >
+            {platformOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Price Range Filter */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Fiyat Aralığı
+          </label>
+          <div className="flex space-x-2">
+            <input
+              type="number"
+              placeholder="Min"
+              value={filters.minPrice || ""}
+              onChange={(e) => handleFilterChange("minPrice", e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+            />
+            <input
+              type="number"
+              placeholder="Max"
+              value={filters.maxPrice || ""}
+              onChange={(e) => handleFilterChange("maxPrice", e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+            />
           </div>
         </div>
-      </form>
+      </div>
 
-      {/* Search History and Suggestions Dropdown */}
-      {showHistory && (isOpen || localValue) && (
-        <Card className="absolute top-full left-0 right-0 mt-1 z-30">
-          <CardContent className="p-0">
-            {/* Recent Searches */}
-            {recentSearches.length > 0 && (
-              <div className="p-2 border-b border-gray-100">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-xs font-medium text-gray-500">
-                    Son Aramalar
-                  </h3>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-gray-500 hover:text-gray-700"
-                  >
-                    Temizle
-                  </Button>
-                </div>
-                <div className="space-y-1">
-                  {recentSearches.map((search, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-1.5 hover:bg-gray-50 rounded-md cursor-pointer"
-                      onClick={() => handleSelectRecent(search.term)}
-                    >
-                      <div className="flex items-center">
-                        <Clock className="h-3.5 w-3.5 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-700">
-                          {search.term}
-                        </span>
-                      </div>
-                      <span className="text-xs text-gray-400">
-                        {search.timestamp}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+      {/* Additional Filters Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Stock Range Filter */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Stok Aralığı
+          </label>
+          <div className="flex space-x-2">
+            <input
+              type="number"
+              placeholder="Min Stok"
+              value={filters.minStock || ""}
+              onChange={(e) => handleFilterChange("minStock", e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+            />
+            <input
+              type="number"
+              placeholder="Max Stok"
+              value={filters.maxStock || ""}
+              onChange={(e) => handleFilterChange("maxStock", e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+            />
+          </div>
+        </div>
 
-            {/* Search Suggestions */}
-            {searchSuggestions.length > 0 && (
-              <div className="p-2">
-                <h3 className="text-xs font-medium text-gray-500 mb-1">
-                  Öneriler
-                </h3>
-                <div className="space-y-1">
-                  {searchSuggestions.map((suggestion, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center p-1.5 hover:bg-gray-50 rounded-md cursor-pointer"
-                      onClick={() => handleSelectRecent(suggestion)}
-                    >
-                      <Search className="h-3.5 w-3.5 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-700">{suggestion}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+        {/* Stock Status Filter */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Stok Durumu
+          </label>
+          <select
+            value={filters.stockStatus || ""}
+            onChange={(e) => handleFilterChange("stockStatus", e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          >
+            <option value="">Tüm Stok Durumları</option>
+            <option value="in_stock">Stokta Var</option>
+            <option value="out_of_stock">Stokta Yok</option>
+            <option value="low_stock">Düşük Stok</option>
+          </select>
+        </div>
 
-            {/* Advanced Search Options */}
-            <div className="p-2 border-t border-gray-100">
-              <div
-                className="flex items-center justify-between p-1.5 hover:bg-gray-50 rounded-md cursor-pointer"
-                onClick={onToggle}
-              >
-                <div className="flex items-center">
-                  <Tag className="h-3.5 w-3.5 text-blue-500 mr-2" />
-                  <span className="text-sm font-medium text-blue-600">
-                    Gelişmiş Arama
-                  </span>
-                </div>
-                <ChevronDown
-                  className={`h-4 w-4 text-blue-500 transition-transform ${
-                    isOpen ? "transform rotate-180" : ""
-                  }`}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        {/* Quick Actions - Removed redundant search button */}
+        <div className="flex items-end">
+          <div className="w-full text-sm text-gray-500 dark:text-gray-400 text-center py-2">
+            Filtreleri değiştirdikten sonra arama otomatik olarak güncellenir
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -10,6 +10,10 @@ import ErrorBoundary from "./components/ErrorBoundary";
 // Import CSS
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
+// import "./debug-modal.css"; // Temporary debug CSS - removed
+
+// Import network initialization for PDF printing
+import { initializeNetworkForPDF } from "./services/networkInitialization";
 
 // Import components
 import Layout from "./components/layout/Layout.jsx";
@@ -55,6 +59,11 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Initialize network configuration for PDF printing on app start
+  useEffect(() => {
+    initializeNetworkForPDF();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
@@ -125,10 +134,24 @@ function App() {
                         <Route path="orders" element={<Orders />} />
                         <Route path="orders/:id" element={<OrderDetail />} />
                         <Route path="analytics" element={<Analytics />} />
+
+                        {/* ============================================ */}
+                        {/* === LEGACY PRODUCT MANAGEMENT (OLD) === */}
+                        {/* ============================================ */}
                         <Route
                           path="products"
                           element={<ProductManagement />}
                         />
+                        {/* Base products route using legacy system */}
+                        <Route
+                          path="products/base"
+                          element={<ProductManagement />}
+                        />
+
+                        {/* ============================================ */}
+                        {/* === NEW ENHANCED PRODUCT MANAGEMENT === */}
+                        {/* ============================================ */}
+                        {/* Access the NEW enhanced system at /products/enhanced */}
                         <Route
                           path="products/enhanced"
                           element={<EnhancedProductManagement />}
@@ -137,6 +160,8 @@ function App() {
                           path="products/enhanced/:id"
                           element={<EnhancedProductManagement />}
                         />
+                        {/* ============================================ */}
+
                         <Route
                           path="products/:id/edit"
                           element={<ProductManagement />}

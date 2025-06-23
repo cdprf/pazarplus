@@ -86,23 +86,74 @@ const BusinessIntelligenceDashboard = () => {
       setLoading(true);
       setError(null);
 
+      console.log("🔍 Fetching dashboard analytics for timeframe:", timeframe);
+
       // Use the analytics service to get comprehensive data
       const analyticsData = await analyticsService.getDashboardAnalytics(
         timeframe
       );
 
-      if (analyticsData && analyticsData.data) {
-        setAnalytics(analyticsData.data);
+      console.log("📊 Analytics data received:", {
+        success: analyticsData?.success,
+        hasData: !!analyticsData?.data,
+        dataKeys: analyticsData?.data ? Object.keys(analyticsData.data) : [],
+      });
+
+      if (analyticsData && (analyticsData.success || analyticsData.data)) {
+        const data = analyticsData.data || analyticsData;
+
+        // Handle both API response formats
+        const processedData = {
+          orderSummary: data.summary ||
+            data.orderSummary || {
+              totalOrders: 0,
+              totalRevenue: 0,
+              validOrders: 0,
+              averageOrderValue: 0,
+              cancelledOrders: 0,
+              returnedOrders: 0,
+            },
+          revenue: data.revenue || {
+            trends: [],
+            total: 0,
+            growth: 0,
+            previousPeriod: 0,
+          },
+          orders: {
+            trends: data.orderTrends?.orders || data.orders?.trends || [],
+          },
+          platforms: data.platformComparison || { comparison: [] },
+          topProducts: data.topProducts || [],
+          performance: data.performanceMetrics || { metrics: {} },
+        };
+
+        setAnalytics(processedData);
+
+        // Set business intelligence data
         setBusinessIntelligence({
-          insights: analyticsData.data.insights || [],
-          recommendations: analyticsData.data.recommendations || [],
-          predictions: analyticsData.data.predictions || {},
+          insights: data.insights || data.predictions?.insights || [],
+          recommendations:
+            data.recommendations || data.predictions?.recommendations || [],
+          predictions: data.predictiveInsights || {},
         });
       } else {
+        console.warn("⚠️ No analytics data received, using fallback data");
         // Fallback to basic structure if no data
         setAnalytics({
-          orderSummary: { totalOrders: 0, totalRevenue: 0 },
-          revenue: { trends: [], total: 0 },
+          orderSummary: {
+            totalOrders: 0,
+            totalRevenue: 0,
+            validOrders: 0,
+            averageOrderValue: 0,
+            cancelledOrders: 0,
+            returnedOrders: 0,
+          },
+          revenue: {
+            trends: [],
+            total: 0,
+            growth: 0,
+            previousPeriod: 0,
+          },
           orders: { trends: [] },
           platforms: { comparison: [] },
           topProducts: [],
@@ -117,13 +168,25 @@ const BusinessIntelligenceDashboard = () => {
 
       setLastUpdated(new Date());
     } catch (err) {
-      console.error("Error fetching analytics:", err);
+      console.error("❌ Error fetching analytics:", err);
       setError(err.message || "Failed to load analytics data");
 
       // Set empty state on error
       setAnalytics({
-        orderSummary: { totalOrders: 0, totalRevenue: 0 },
-        revenue: { trends: [], total: 0 },
+        orderSummary: {
+          totalOrders: 0,
+          totalRevenue: 0,
+          validOrders: 0,
+          averageOrderValue: 0,
+          cancelledOrders: 0,
+          returnedOrders: 0,
+        },
+        revenue: {
+          trends: [],
+          total: 0,
+          growth: 0,
+          previousPeriod: 0,
+        },
         orders: { trends: [] },
         platforms: { comparison: [] },
         topProducts: [],
@@ -310,20 +373,35 @@ const BusinessIntelligenceDashboard = () => {
           <Card className="border-0 shadow-sm h-100">
             <Card.Body className="text-center">
               <div className="display-6 text-primary fw-bold">
-                {formatCurrency(analytics?.summary?.totalRevenue || 0)}
+                {formatCurrency(
+                  analytics?.summary?.totalRevenue ||
+                    analytics?.orderSummary?.totalRevenue ||
+                    analytics?.revenue?.total ||
+                    0
+                )}
               </div>
               <div className="text-muted">Total Revenue</div>
-              {analytics?.revenue?.growth && (
+              {(analytics?.revenue?.growth || analytics?.summary?.growth) && (
                 <div className="d-flex align-items-center justify-content-center mt-2">
-                  {getTrendIcon(analytics.revenue.growth.rate)}
+                  {getTrendIcon(
+                    analytics.revenue.growth.rate ||
+                      analytics.revenue.growth.current ||
+                      0
+                  )}
                   <span
                     className={`ms-1 ${
-                      analytics.revenue.growth.rate > 0
+                      (analytics.revenue?.growth?.rate ||
+                        analytics.revenue.growth.current ||
+                        0) > 0
                         ? "text-success"
                         : "text-danger"
                     }`}
                   >
-                    {formatPercentage(analytics.revenue.growth.rate)}
+                    {formatPercentage(
+                      analytics.revenue?.growth?.rate ||
+                        analytics.summary?.growth ||
+                        0
+                    )}
                   </span>
                 </div>
               )}
@@ -335,12 +413,18 @@ const BusinessIntelligenceDashboard = () => {
           <Card className="border-0 shadow-sm h-100">
             <Card.Body className="text-center">
               <div className="display-6 text-info fw-bold">
-                {analytics?.summary?.totalOrders || 0}
+                {analytics?.orderSummary?.totalOrders || 0}
               </div>
               <div className="text-muted">Total Orders</div>
               <div className="text-success mt-2">
                 <small>
-                  Avg: {formatCurrency(analytics?.summary?.avgOrderValue || 0)}
+                  Avg:{" "}
+                  {formatCurrency(
+                    analytics?.orderSummary?.avgOrderValue ||
+                      analytics?.orderSummary?.averageOrderValue ||
+                      analytics?.summary?.averageOrderValue ||
+                      0
+                  )}
                 </small>
               </div>
             </Card.Body>
@@ -351,7 +435,9 @@ const BusinessIntelligenceDashboard = () => {
           <Card className="border-0 shadow-sm h-100">
             <Card.Body className="text-center">
               <div className="display-6 text-success fw-bold">
-                {analytics?.platforms?.length || 0}
+                {analytics.platforms[1].completionRate ||
+                  analytics?.platforms?.length ||
+                  0}
               </div>
               <div className="text-muted">Active Platforms</div>
               <div className="text-info mt-2">
@@ -454,7 +540,7 @@ const BusinessIntelligenceDashboard = () => {
                   <AreaChart data={analytics.revenue.daily}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
-                    <YAxis />
+                    <YAxis dataKey="revenue" />
                     <Tooltip
                       formatter={(value) => [formatCurrency(value), "Revenue"]}
                     />

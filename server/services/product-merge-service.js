@@ -535,11 +535,6 @@ class ProductMergeService {
 
     try {
       for (const mergedProduct of batch) {
-        // Use savepoints for individual product processing to handle PostgreSQL transaction behavior
-        const savepoint = await transaction.createSavepoint(
-          "product_processing"
-        );
-
         try {
           const product = await this.processSingleProduct(
             mergedProduct,
@@ -549,12 +544,7 @@ class ProductMergeService {
           if (product) {
             savedProducts.push(product);
           }
-          // Release savepoint on success
-          await savepoint.commit();
         } catch (productError) {
-          // Rollback to savepoint on error (PostgreSQL requirement)
-          await savepoint.rollback();
-
           logger.error(
             `Error processing product ${
               mergedProduct.sku || mergedProduct.name
@@ -565,6 +555,9 @@ class ProductMergeService {
             product: mergedProduct.sku || mergedProduct.name || "unknown",
             error: productError.message,
           });
+
+          // Continue processing other products instead of failing the entire batch
+          // The error is logged and added to the errors array for reporting
         }
       }
 

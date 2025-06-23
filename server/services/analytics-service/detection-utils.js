@@ -415,4 +415,5 @@ module.exports = {
   identifyPricingOpportunities,
   detectAnomalies,
   detectSeasonality,
+  determineStockStatusFromMetrics,
 };

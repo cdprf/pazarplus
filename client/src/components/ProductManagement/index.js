@@ -1,15 +1,28 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Search, Plus, RefreshCw, Loader, X } from "lucide-react";
+import {
+  Plus,
+  RefreshCw,
+  Loader,
+  X,
+  Package,
+  CheckCircle,
+  AlertTriangle,
+  TrendingDown,
+  Download,
+  Upload,
+  Edit,
+} from "lucide-react";
 import { API_BASE_URL } from "./utils/constants";
 import { useAlert } from "../../contexts/AlertContext";
 import ProductDisplay from "./components/ProductDisplay";
 import { ImagePreviewModal } from "./components/ProductModals";
 import EnhancedProductAnalytics from "./components/ProductAnalyticsFixed";
 import BulkEditModal from "./components/BulkEditModal";
-import MobileFilterDrawer from "./components/MobileFilterDrawer";
+
 import AdvancedSearchPanel from "./components/AdvancedSearchPanel";
 import { productUtils } from "./utils/productUtils";
+import "./ProductManagement.css";
 
 // API integration
 const api = {
@@ -75,19 +88,21 @@ const Button = ({
   className = "",
   ...props
 }) => {
-  const variantClass = {
-    primary: "btn-primary",
-    secondary: "btn-secondary",
-    ghost: "btn-ghost",
-    danger: "btn-danger",
-    outline: "btn-secondary"
-  }[variant] || "btn-secondary";
-  
-  const sizeClass = {
-    sm: "btn-sm",
-    md: "",
-    lg: "btn-lg"
-  }[size] || "";
+  const variantClass =
+    {
+      primary: "btn-primary",
+      secondary: "btn-secondary",
+      ghost: "btn-ghost",
+      danger: "btn-danger",
+      outline: "btn-secondary",
+    }[variant] || "btn-secondary";
+
+  const sizeClass =
+    {
+      sm: "btn-sm",
+      md: "",
+      lg: "btn-lg",
+    }[size] || "";
 
   return (
     <button
@@ -130,9 +145,7 @@ const Modal = ({
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="modal-body">
-          {children}
-        </div>
+        <div className="modal-body">{children}</div>
       </div>
     </div>
   );
@@ -371,7 +384,6 @@ const ProductManagement = () => {
       currentIndex: 0,
     },
     activeTab: "all",
-    showMobileFilters: false,
     showBulkEditModal: false,
     recentSearches: [],
     analyticsTimeRange: "week",
@@ -569,15 +581,25 @@ const ProductManagement = () => {
 
   const handleDeleteProduct = useCallback(
     async (productId) => {
+      console.log("🚀 handleDeleteProduct called with productId:", productId);
+
       if (window.confirm("Bu ürünü silmek istediğinizden emin misiniz?")) {
         try {
-          await api.delete(`${API_BASE_URL}/products/${productId}`);
+          console.log("✅ User confirmed deletion, making API call...");
+          const response = await api.delete(
+            `${API_BASE_URL}/products/${productId}`
+          );
+          console.log("📡 API response:", response);
+
           showAlert("Ürün başarıyla silindi", "success");
           fetchProducts();
           fetchAllProductsStats(); // Refresh stats
         } catch (error) {
+          console.error("❌ Delete error:", error);
           showAlert("Ürün silinirken hata oluştu: " + error.message, "error");
         }
+      } else {
+        console.log("❌ User cancelled deletion");
       }
     },
     [showAlert, fetchProducts, fetchAllProductsStats]
@@ -668,28 +690,6 @@ const ProductManagement = () => {
       }
     }
   }, [productId, state.products, navigate, showAlert, handleEditProduct]);
-
-  // Search handling with debouncing
-  const [searchTimeout, setSearchTimeout] = useState(null);
-
-  const handleSearchChange = useCallback(
-    (value) => {
-      updateState({ searchValue: value, currentPage: 1 });
-
-      // Clear previous timeout
-      if (searchTimeout) {
-        clearTimeout(searchTimeout);
-      }
-
-      // Set new timeout for API call
-      const newTimeout = setTimeout(() => {
-        fetchProducts();
-      }, 300); // 300ms debounce
-
-      setSearchTimeout(newTimeout);
-    },
-    [updateState, searchTimeout, fetchProducts]
-  );
 
   // Filter handling
   const handleFilterChange = useCallback(
@@ -965,7 +965,6 @@ const ProductManagement = () => {
       const response = await api.post(`${API_BASE_URL}/products/export`, {
         format: "csv",
         filters: state.filters,
-        searchValue: state.searchValue,
       });
 
       if (response.success && response.data?.downloadUrl) {
@@ -985,21 +984,12 @@ const ProductManagement = () => {
     } finally {
       updateState({ exporting: false });
     }
-  }, [state.filters, state.searchValue, showAlert, updateState]);
+  }, [state.filters, showAlert, updateState]);
 
   // Refetch when dependencies change
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
-
-  // Cleanup search timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimeout) {
-        clearTimeout(searchTimeout);
-      }
-    };
-  }, [searchTimeout]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1302,207 +1292,286 @@ const ProductManagement = () => {
     [updateState, state.filters, fetchProducts]
   );
 
+  // Search handling
+  const handleSearch = useCallback(
+    (searchValue) => {
+      updateState({ searchValue, currentPage: 1 });
+      // fetchProducts will be called via useEffect dependency
+    },
+    [updateState]
+  );
+
   return (
-    <div className="page-container">
-      <div className="max-w-7xl mx-auto p-4">
-        {/* Page Header */}
-        <div className="page-header">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center space-x-4 mb-3 lg:mb-0">
-              <h1 className="page-title">
-                Ürün Yönetimi
-              </h1>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {state.totalItems} ürün
-              </span>
-            </div>
-
-            {/* Page Actions */}
-            <div className="page-actions">
-              {/* Search */}
-              <div className="table-search">
-                <Search className="search-icon" />
-                <input
-                  type="text"
-                  value={state.searchValue}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="search-input w-64"
-                  placeholder="Ürün ara..."
-                />
-                {state.searchValue && (
-                  <button
-                    onClick={() => handleSearchChange("")}
-                    className="absolute inset-y-0 right-0 pr-2 flex items-center"
-                  >
-                    <X className="h-4 w-4 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400" />
-                  </button>
-                )}
-              </div>
-
-              {/* Quick Actions */}
-              <Button
-                onClick={handleSync}
-                variant="outline"
-                size="sm"
-                icon={RefreshCw}
-                disabled={state.syncing}
-              >
-                {state.syncing && <Loader className="w-4 h-4 animate-spin" />}
-              </Button>
-
-              <Button
-                onClick={handleExportAll}
-                variant="outline"
-                size="sm"
-                disabled={state.exporting}
-              >
-                {state.exporting ? (
-                  <Loader className="w-4 h-4 animate-spin" />
-                ) : (
-                  "Dışa Aktar"
-                )}
-              </Button>
-
-              <div className="relative">
-                <input
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  onChange={handleFileImport}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  disabled={state.importing}
-                />
-                <Button variant="outline" size="sm" disabled={state.importing}>
-                  {state.importing ? (
-                    <Loader className="w-4 h-4 animate-spin" />
-                  ) : (
-                    "İçe Aktar"
-                  )}
-                </Button>
-              </div>
-
-              <Button
-                onClick={handleAddProduct}
-                variant="primary"
-                icon={Plus}
-                size="sm"
-              >
-                Yeni Ürün
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Results Summary */}
-        {(state.searchValue ||
-          Object.values(state.filters).some((f) => f && f !== "all")) && (
-          <div className="card mb-6">
-            <div className="card-body py-3">
+    <>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Header Section - Enhanced like Orders */}
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="py-6">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-blue-900 dark:text-blue-200">
-                  {state.products.length} sonuç
-                  {state.searchValue && ` - "${state.searchValue}"`}
-                </span>
-                <Button
-                  onClick={() => {
-                    handleSearchChange("");
-                    handleClearFilters();
-                  }}
-                  variant="ghost"
-                  size="sm"
-                >
-                  Temizle
-                </Button>
+                <div className="flex items-center space-x-3">
+                  <Package className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      Ürün Yönetimi
+                    </h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Tüm platform ürünlerinizi tek yerden yönetin
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <Button
+                    onClick={handleSync}
+                    variant="outline"
+                    disabled={state.syncing}
+                    className="flex items-center space-x-2"
+                  >
+                    <RefreshCw
+                      className={`h-4 w-4 ${
+                        state.syncing ? "animate-spin" : ""
+                      }`}
+                    />
+                    <span>
+                      {state.syncing
+                        ? "Senkronize Ediliyor..."
+                        : "Senkronize Et"}
+                    </span>
+                  </Button>
+
+                  <Button
+                    onClick={handleExportAll}
+                    variant="outline"
+                    className="flex items-center space-x-2"
+                    disabled={state.exporting}
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>
+                      {state.exporting ? "Dışa Aktarılıyor..." : "Dışa Aktar"}
+                    </span>
+                  </Button>
+
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={handleFileImport}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      disabled={state.importing}
+                    />
+                    <Button
+                      variant="outline"
+                      disabled={state.importing}
+                      className="flex items-center space-x-2"
+                    >
+                      <Upload className="h-4 w-4" />
+                      <span>
+                        {state.importing ? "İçe Aktarılıyor..." : "İçe Aktar"}
+                      </span>
+                    </Button>
+                  </div>
+
+                  <Button
+                    onClick={handleAddProduct}
+                    variant="primary"
+                    className="flex items-center space-x-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Yeni Ürün</span>
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
-        )}
-
-        {/* Product Display */}
-        <div className="page-content">
-          <ProductDisplay
-          products={state.products}
-          loading={state.loading}
-          viewMode={state.viewMode}
-          selectedProducts={state.selectedProducts}
-          onSelectProduct={(productId) => {
-            const selected = state.selectedProducts.includes(productId)
-              ? state.selectedProducts.filter((id) => id !== productId)
-              : [...state.selectedProducts, productId];
-            updateState({ selectedProducts: selected });
-          }}
-          onSelectAll={() => {
-            const allSelected =
-              state.selectedProducts.length === state.products.length;
-            updateState({
-              selectedProducts: allSelected
-                ? []
-                : state.products.map((p) => p.id),
-            });
-          }}
-          onView={handleViewProduct}
-          onEdit={handleEditProduct}
-          onDelete={handleDeleteProduct}
-          onImageClick={handleImageClick}
-          onProductNameClick={handleProductNameClick}
-          onAddProduct={handleAddProduct}
-          onSync={handleSync}
-          sortField={state.sortField}
-          sortOrder={state.sortOrder}
-          onSort={handleSort}
-          productQuota={{
-            current: state.products.length,
-            max: 75000,
-            level: 2,
-          }}
-          statusCounts={statusCounts}
-          filters={state.filters}
-          onFilterChange={handleFilterChange}
-          onClearFilters={handleClearFilters}
-          activeTab={state.activeTab}
-          onTabChange={handleTabChange}
-          categories={CATEGORIES}
-          brands={[]}
-          onViewModeChange={(mode) => updateState({ viewMode: mode })}
-          // Pagination props
-          currentPage={state.currentPage}
-          totalPages={state.totalPages}
-          totalItems={state.totalItems}
-          itemsPerPage={state.itemsPerPage}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-          // Bulk operations
-          onBulkDelete={handleBulkDelete}
-          onBulkStatusChange={handleBulkStatusChange}
-          onBulkExport={handleBulkExport}
-          onBulkEdit={() => updateState({ showBulkEditModal: true })}
-          // Import/Export
-          onImport={handleImport}
-          onExportAll={handleExportAll}
-          // Search
-          searchValue={state.searchValue}
-          onSearchChange={handleSearchChange}
-          // Loading states
-          importing={state.importing}
-          exporting={state.exporting}
-          // Variant management props
-          enableVariantManagement={true}
-          onCreateVariantGroup={handleCreateVariantGroup}
-          onUpdateVariantGroup={handleUpdateVariantGroup}
-          onDeleteVariantGroup={handleDeleteVariantGroup}
-          onAcceptVariantSuggestion={handleAcceptVariantSuggestion}
-          onRejectVariantSuggestion={handleRejectVariantSuggestion}
-          onInlineEdit={handleInlineEdit}
-          // Mobile responsiveness
-          onToggleMobileFilters={() =>
-            updateState({ showMobileFilters: !state.showMobileFilters })
-          }
-          // Analytics
-          onToggleAnalytics={() =>
-            updateState({ showAnalytics: !state.showAnalytics })
-          }
-          />
         </div>
 
+        {/* Stats Cards Section - Enhanced like Orders */}
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="p-4">
+                <div className="flex items-center">
+                  <Package className="h-8 w-8 text-blue-600" />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Toplam Ürün
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {allProductsStats.total}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="p-4">
+                <div className="flex items-center">
+                  <CheckCircle className="h-8 w-8 text-green-600" />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Aktif Ürün
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {allProductsStats.active}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="p-4">
+                <div className="flex items-center">
+                  <AlertTriangle className="h-8 w-8 text-red-600" />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Stokta Yok
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {allProductsStats.outOfStock}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="p-4">
+                <div className="flex items-center">
+                  <TrendingDown className="h-8 w-8 text-yellow-600" />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Düşük Stok
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {allProductsStats.lowStock}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Search and Filters Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
+            <div className="p-4">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                <div className="flex-1 mr-4">
+                  <AdvancedSearchPanel
+                    searchValue={state.searchValue}
+                    filters={state.filters}
+                    onFilterChange={handleFilterChange}
+                    onClearFilters={handleClearFilters}
+                    categories={CATEGORIES}
+                    onSearch={handleSearch}
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {state.products.length} / {state.totalItems} ürün
+                  </span>
+                  {state.selectedProducts.length > 0 && (
+                    <Button
+                      onClick={() => updateState({ showBulkEditModal: true })}
+                      variant="primary"
+                      size="sm"
+                      className="flex items-center space-x-2"
+                    >
+                      <Edit className="h-4 w-4" />
+                      <span>
+                        Toplu Düzenle ({state.selectedProducts.length})
+                      </span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content Card */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <ProductDisplay
+              products={state.products}
+              loading={state.loading}
+              viewMode={state.viewMode}
+              selectedProducts={state.selectedProducts}
+              onSelectProduct={(productId) => {
+                const selected = state.selectedProducts.includes(productId)
+                  ? state.selectedProducts.filter((id) => id !== productId)
+                  : [...state.selectedProducts, productId];
+                updateState({ selectedProducts: selected });
+              }}
+              onSelectAll={() => {
+                const allSelected =
+                  state.selectedProducts.length === state.products.length;
+                updateState({
+                  selectedProducts: allSelected
+                    ? []
+                    : state.products.map((p) => p.id),
+                });
+              }}
+              onView={handleViewProduct}
+              onEdit={handleEditProduct}
+              onDelete={handleDeleteProduct}
+              onImageClick={handleImageClick}
+              onProductNameClick={handleProductNameClick}
+              onAddProduct={handleAddProduct}
+              onSync={handleSync}
+              sortField={state.sortField}
+              sortOrder={state.sortOrder}
+              onSort={handleSort}
+              productQuota={{
+                current: state.products.length,
+                max: 75000,
+                level: 2,
+              }}
+              statusCounts={statusCounts}
+              filters={state.filters}
+              onFilterChange={handleFilterChange}
+              onClearFilters={handleClearFilters}
+              activeTab={state.activeTab}
+              onTabChange={handleTabChange}
+              categories={CATEGORIES}
+              brands={[]}
+              onViewModeChange={(mode) => updateState({ viewMode: mode })}
+              // Pagination props
+              currentPage={state.currentPage}
+              totalPages={state.totalPages}
+              totalItems={state.totalItems}
+              itemsPerPage={state.itemsPerPage}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+              // Bulk operations
+              onBulkDelete={handleBulkDelete}
+              onBulkStatusChange={handleBulkStatusChange}
+              onBulkExport={handleBulkExport}
+              onBulkEdit={() => updateState({ showBulkEditModal: true })}
+              // Import/Export
+              onImport={handleImport}
+              onExportAll={handleExportAll}
+              // Loading states
+              importing={state.importing}
+              exporting={state.exporting}
+              // Variant management props
+              enableVariantManagement={true}
+              onCreateVariantGroup={handleCreateVariantGroup}
+              onUpdateVariantGroup={handleUpdateVariantGroup}
+              onDeleteVariantGroup={handleDeleteVariantGroup}
+              onAcceptVariantSuggestion={handleAcceptVariantSuggestion}
+              onRejectVariantSuggestion={handleRejectVariantSuggestion}
+              onInlineEdit={handleInlineEdit}
+              // Analytics
+              onToggleAnalytics={() =>
+                updateState({ showAnalytics: !state.showAnalytics })
+              }
+            />
+          </div>
+        </div>
+
+        {/* Modals */}
         {/* Product Form Modal */}
         <Modal
           isOpen={state.productModal.open}
@@ -1544,7 +1613,9 @@ const ProductManagement = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">SKU:</span>
-                      <span className="font-mono text-sm">{state.detailsModal.product.sku}</span>
+                      <span className="font-mono text-sm">
+                        {state.detailsModal.product.sku}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Kategori:</span>
@@ -1553,7 +1624,9 @@ const ProductManagement = () => {
                     <div className="flex justify-between">
                       <span className="font-medium">Fiyat:</span>
                       <div className="currency-display">
-                        <span className="currency-amount">{state.detailsModal.product.price}</span>
+                        <span className="currency-amount">
+                          {state.detailsModal.product.price}
+                        </span>
                         <span className="currency-code">TRY</span>
                       </div>
                     </div>
@@ -1570,8 +1643,20 @@ const ProductManagement = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Durum:</span>
-                      <span className={`badge badge-${state.detailsModal.product.status === 'active' ? 'success' : state.detailsModal.product.status === 'inactive' ? 'danger' : 'warning'}`}>
-                        {state.detailsModal.product.status === 'active' ? 'Aktif' : state.detailsModal.product.status === 'inactive' ? 'Pasif' : 'Taslak'}
+                      <span
+                        className={`badge badge-${
+                          state.detailsModal.product.status === "active"
+                            ? "success"
+                            : state.detailsModal.product.status === "inactive"
+                            ? "danger"
+                            : "warning"
+                        }`}
+                      >
+                        {state.detailsModal.product.status === "active"
+                          ? "Aktif"
+                          : state.detailsModal.product.status === "inactive"
+                          ? "Pasif"
+                          : "Taslak"}
                       </span>
                     </div>
                   </div>
@@ -1704,22 +1789,6 @@ const ProductManagement = () => {
           }}
         />
 
-        {/* Mobile Filter Drawer */}
-        <MobileFilterDrawer
-          isOpen={state.showMobileFilters}
-          onClose={() => updateState({ showMobileFilters: false })}
-          filters={state.filters}
-          onFiltersChange={handleFilterChange}
-          onClearFilters={handleClearFilters}
-          platformFilter={state.filters.platform}
-          onPlatformFilterChange={(platform) => {
-            handleFilterChange({
-              ...state.filters,
-              platform,
-            });
-          }}
-        />
-
         {/* Enhanced Product Analytics */}
         <EnhancedProductAnalytics
           isOpen={state.showAnalytics}
@@ -1728,10 +1797,10 @@ const ProductManagement = () => {
           onTimeRangeChange={(range) =>
             updateState({ analyticsTimeRange: range })
           }
-          productId={state.detailsModal.product?.id} // Show specific product analytics if in details modal
+          productId={state.detailsModal.product?.id}
         />
       </div>
-    </div>
+    </>
   );
 };
 

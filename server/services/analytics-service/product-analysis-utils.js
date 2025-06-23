@@ -305,7 +305,7 @@ async function getProductDailyTrends(userId, productId, dateRange) {
       [
         OrderItem.sequelize.fn(
           "SUM",
-          OrderItem.sequelize.literal("quantity * OrderItem.price")
+          OrderItem.sequelize.literal('"quantity" * "OrderItem"."price"')
         ),
         "revenue",
       ],
@@ -513,7 +513,7 @@ async function getProductPeriodData(userId, productId, dateRange) {
       [
         OrderItem.sequelize.fn(
           "SUM",
-          OrderItem.sequelize.literal("quantity * OrderItem.price")
+          OrderItem.sequelize.literal('"quantity" * "OrderItem"."price"')
         ),
         "totalRevenue",
       ],
@@ -640,7 +640,7 @@ async function getHourlyProductBreakdown(userId, productId, dateRange) {
         [
           OrderItem.sequelize.fn(
             "SUM",
-            OrderItem.sequelize.literal("quantity * OrderItem.price")
+            OrderItem.sequelize.literal('"quantity" * "OrderItem"."price"')
           ),
           "revenue",
         ],
@@ -783,19 +783,25 @@ async function getTopProducts(userId, dateRange, limit = 10) {
         OrderItem.sequelize.fn(
           "SUM",
           OrderItem.sequelize.literal(
-            "CASE WHEN OrderItem.price > 0 THEN OrderItem.quantity * OrderItem.price ELSE 0 END"
+            'CASE WHEN "OrderItem"."price" > 0 THEN "OrderItem"."quantity" * "OrderItem"."price" ELSE 0 END'
           )
         ),
         "totalRevenue",
       ],
     ],
-    group: ["productId", "product.id", "order.platform"], // Group by platform too
+    group: [
+      "productId",
+      "product.id",
+      "order.id",
+      "order.platform",
+      "order.orderStatus",
+    ], // Group by all selected columns
     order: [
       [
         OrderItem.sequelize.fn(
           "SUM",
           OrderItem.sequelize.literal(
-            "CASE WHEN OrderItem.price > 0 THEN OrderItem.quantity * OrderItem.price ELSE 0 END"
+            'CASE WHEN "OrderItem"."price" > 0 THEN "OrderItem"."quantity" * "OrderItem"."price" ELSE 0 END'
           )
         ),
         "DESC",

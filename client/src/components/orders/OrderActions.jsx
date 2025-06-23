@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import CancelOrderDialog from "../dialogs/CancelOrderDialog";
 import api from "../../services/api";
+import enhancedPDFService from "../../services/enhancedPDFService";
 
 const OrderActions = ({
   order,
@@ -32,216 +33,75 @@ const OrderActions = ({
   const [isPrintingShippingSlip, setIsPrintingShippingSlip] = useState(false);
   const [isPrintingInvoice, setIsPrintingInvoice] = useState(false);
 
-  // Print shipping slip
+  // Enhanced print shipping slip using new service
   const handlePrintShippingSlip = useCallback(
     async (orderId) => {
-      console.log("🚀 handlePrintShippingSlip called with orderId:", orderId);
+      console.log(
+        "🚀 Enhanced handlePrintShippingSlip called with orderId:",
+        orderId
+      );
 
       if (isPrintingShippingSlip) {
         console.log("⚠️ Already printing, ignoring request");
         return;
       }
 
+      if (!orderId) {
+        console.log("❌ No orderId provided");
+        showAlert("Sipariş kimliği eksik", "error");
+        return;
+      }
+
       setIsPrintingShippingSlip(true);
 
       try {
-        console.log(`Starting shipping slip printing for order ID: ${orderId}`);
-
-        if (!orderId) {
-          console.log("❌ No orderId provided");
-          showAlert("Sipariş kimliği eksik", "error");
-          return;
-        }
-
-        console.log("📋 Checking for default template...");
+        // Get default template ID
         let defaultTemplateId = null;
-
         try {
-          console.log("🔍 Calling api.shipping.getDefaultTemplate()");
           const defaultTemplateResponse =
             await api.shipping.getDefaultTemplate();
-          console.log("📄 Default template response:", defaultTemplateResponse);
-
           if (defaultTemplateResponse.success && defaultTemplateResponse.data) {
             defaultTemplateId = defaultTemplateResponse.data.defaultTemplateId;
-            console.log("✅ Default template found:", defaultTemplateId);
 
-            // If no default template is set but templates exist, use the first one
+            // If no default template but templates exist, use first one
             if (
               !defaultTemplateId &&
-              defaultTemplateResponse.data.availableTemplates &&
-              defaultTemplateResponse.data.availableTemplates.length > 0
+              defaultTemplateResponse.data.availableTemplates?.length > 0
             ) {
               defaultTemplateId =
                 defaultTemplateResponse.data.availableTemplates[0].id;
-              console.log(
-                "✅ Using first available template:",
-                defaultTemplateId
-              );
-            }
-          }
-
-          // If still no template found, check all available templates
-          if (!defaultTemplateId) {
-            console.log("🔍 Checking for any available templates...");
-            try {
-              const templatesResponse = await api.shipping.getTemplates();
-              console.log(
-                "📋 Available templates response:",
-                templatesResponse
-              );
-
-              if (
-                templatesResponse.success &&
-                templatesResponse.data &&
-                templatesResponse.data.length > 0
-              ) {
-                defaultTemplateId = templatesResponse.data[0].id;
-                console.log(
-                  "✅ Using first available template:",
-                  defaultTemplateId
-                );
-              } else {
-                console.log("❌ No templates found");
-                showAlert(
-                  "Kargo şablonu bulunamadı. Lütfen önce bir şablon oluşturun.",
-                  "warning"
-                );
-                return;
-              }
-            } catch (templatesError) {
-              console.error("❌ Error fetching templates:", templatesError);
-              showAlert(
-                "Şablon kontrol edilirken hata oluştu. Şablon olmadan devam ediliyor.",
-                "warning"
-              );
             }
           }
         } catch (templateError) {
-          console.error("❌ Error getting default template:", templateError);
-          // Don't return here - try to proceed without template
-          console.log("⚠️ Template error, proceeding without template ID");
+          console.warn(
+            "Template detection failed, proceeding without template:",
+            templateError
+          );
         }
 
-        console.log("🖨️ Generating shipping slip...");
-        const response = await api.shipping.generatePDF(
+        // Use enhanced PDF service
+        const result = await enhancedPDFService.generateAndOpenShippingSlip(
           orderId,
           defaultTemplateId
         );
-        console.log("📄 Shipping slip response:", response);
 
-        if (response.success) {
-          console.log("✅ Shipping slip generated successfully");
-
-          // Priority handling for different PDF URL formats
-          let pdfUrl = null;
-
-          // Check for different URL properties in response
-          if (response.data && response.data.labelUrl) {
-            pdfUrl = response.data.labelUrl;
-            console.log("🌐 Using labelUrl:", pdfUrl);
-          } else if (response.data && response.data.pdfUrl) {
-            pdfUrl = response.data.pdfUrl;
-            console.log("🌐 Using pdfUrl:", pdfUrl);
-          } else if (response.labelUrl) {
-            pdfUrl = response.labelUrl;
-            console.log("🌐 Using response.labelUrl:", pdfUrl);
-          } else if (response.pdfUrl) {
-            pdfUrl = response.pdfUrl;
-            console.log("🌐 Using response.pdfUrl:", pdfUrl);
-          }
-
-          if (pdfUrl) {
-            // Construct full URL for PDF access (like legacy code)
-            const baseUrl =
-              process.env.NODE_ENV === "development"
-                ? "http://localhost:5001"
-                : window.location.origin;
-            const fullPdfUrl = pdfUrl.startsWith("http")
-              ? pdfUrl
-              : `${baseUrl}${pdfUrl}`;
-
-            console.log(`✅ Opening PDF URL: ${fullPdfUrl}`);
-            const pdfWindow = window.open(fullPdfUrl, "_blank");
-            if (pdfWindow) {
-              // Use onload event like legacy code for better timing
-              pdfWindow.onload = () => {
-                try {
-                  console.log("🖨️ Triggering print...");
-                  pdfWindow.print();
-                } catch (printError) {
-                  console.warn("Print trigger failed:", printError);
-                }
-              };
-            } else {
-              showAlert(
-                "Gönderi belgesi açılamadı. Lütfen popup engelleyicisini devre dışı bırakın.",
-                "warning"
-              );
-            }
-            showAlert("Gönderi belgesi hazırlandı", "success");
-          } else if (response.data && response.data.pdf) {
-            // Handle base64 PDF
-            console.log("📄 Handling base64 PDF");
-            const byteCharacters = atob(response.data.pdf);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-              byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: "application/pdf" });
-            const url = URL.createObjectURL(blob);
-
-            const pdfWindow = window.open(url, "_blank");
-            if (pdfWindow) {
-              // Add timeout for base64 PDF print trigger
-              setTimeout(() => {
-                try {
-                  console.log("🖨️ Triggering print for base64 PDF...");
-                  pdfWindow.print();
-                  // Clean up the blob URL after a delay
-                  setTimeout(() => URL.revokeObjectURL(url), 5000);
-                } catch (printError) {
-                  console.warn(
-                    "Print trigger failed for base64 PDF:",
-                    printError
-                  );
-                }
-              }, 1500);
-            } else {
-              // Clean up if popup was blocked
-              URL.revokeObjectURL(url);
-              showAlert(
-                "Popup engellenmiş olabilir. PDF'yi manuel olarak açın.",
-                "warning"
-              );
-            }
-            showAlert("Gönderi belgesi hazırlandı ve yazdırılıyor", "success");
-          } else {
-            console.log("⚠️ No PDF data in response");
-            showAlert("Gönderi belgesi verisi bulunamadı", "warning");
+        if (result.success) {
+          showAlert("Gönderi belgesi hazırlandı ve açıldı", "success");
+          if (!result.accessible) {
+            showAlert(
+              "Gönderi belgesi oluşturuldu ancak ağ erişimi sınırlı olabilir. PDF dosyası indirilen dosyalarınızda.",
+              "warning"
+            );
           }
         } else {
-          console.log("❌ Shipping slip generation failed:", response.message);
-          showAlert(
-            response.message || "Gönderi belgesi oluşturulamadı",
-            "error"
-          );
+          throw new Error(result.message || result.error);
         }
       } catch (error) {
         console.error("❌ Error printing shipping slip:", error);
-
-        // Provide more specific error messages based on the error type
-        const errorMessage =
-          error.response?.data?.message ||
-          error.message ||
-          "Gönderi belgesi yazdırılırken bir hata oluştu";
-        showAlert(errorMessage, "error");
-        console.error("Error details:", {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-        });
+        showAlert(
+          `Gönderi belgesi yazdırılırken hata oluştu: ${error.message}`,
+          "error"
+        );
       } finally {
         setIsPrintingShippingSlip(false);
       }
@@ -249,7 +109,7 @@ const OrderActions = ({
     [showAlert, isPrintingShippingSlip]
   );
 
-  // Print invoice
+  // Enhanced print invoice using new service
   const handlePrintInvoice = useCallback(
     async (orderId) => {
       if (isPrintingInvoice) {
@@ -257,36 +117,33 @@ const OrderActions = ({
         return;
       }
 
-      setIsPrintingInvoice(true);
-      try {
-        const response = await api.orders.printInvoice(orderId);
-        if (response.success) {
-          // Handle both full URLs and relative paths
-          let invoiceUrl = response.data.pdfUrl;
-          if (invoiceUrl && !invoiceUrl.startsWith("http")) {
-            const baseUrl =
-              process.env.NODE_ENV === "development"
-                ? "http://localhost:5001"
-                : window.location.origin;
-            invoiceUrl = `${baseUrl}${invoiceUrl}`;
-          }
+      if (!orderId) {
+        showAlert("Sipariş kimliği eksik", "error");
+        return;
+      }
 
-          const pdfWindow = window.open(invoiceUrl, "_blank");
-          if (pdfWindow) {
-            pdfWindow.onload = () => {
-              pdfWindow.print();
-            };
-          } else {
+      setIsPrintingInvoice(true);
+
+      try {
+        const result = await enhancedPDFService.generateAndOpenInvoice(orderId);
+
+        if (result.success) {
+          showAlert("Fatura hazırlandı ve açıldı", "success");
+          if (!result.accessible) {
             showAlert(
-              "Fatura açılamadı. Lütfen popup engelleyicisini devre dışı bırakın.",
+              "Fatura oluşturuldu ancak ağ erişimi sınırlı olabilir. PDF dosyası indirilen dosyalarınızda.",
               "warning"
             );
           }
-          showAlert("Fatura hazırlandı", "success");
+        } else {
+          throw new Error(result.message || result.error);
         }
       } catch (error) {
         console.error("Error printing invoice:", error);
-        showAlert("Fatura yazdırma işlemi başarısız", "error");
+        showAlert(
+          `Fatura yazdırılırken hata oluştu: ${error.message}`,
+          "error"
+        );
       } finally {
         setIsPrintingInvoice(false);
       }

@@ -8,13 +8,14 @@ const { body, param, query } = require("express-validator");
 const router = express.Router();
 const { auth } = require("../middleware/auth");
 const EnhancedProductController = require("../controllers/enhanced-product-controller");
+const MediaUploadService = require("../services/media-upload-service");
 
 // Apply auth middleware to all routes
 router.use(auth);
 
 // Main Product Routes
 router.get(
-  "/",
+  "/main-products",
   [
     query("page").optional().isInt({ min: 1 }),
     query("limit").optional().isInt({ min: 1, max: 100 }),
@@ -41,13 +42,13 @@ router.get(
 );
 
 router.get(
-  "/:id",
+  "/main-products/:id",
   [param("id").isUUID().withMessage("Invalid product ID")],
   EnhancedProductController.getMainProduct
 );
 
 router.post(
-  "/",
+  "/main-products",
   [
     body("name")
       .notEmpty()
@@ -75,7 +76,7 @@ router.post(
 );
 
 router.put(
-  "/:id",
+  "/main-products/:id",
   [
     param("id").isUUID().withMessage("Invalid product ID"),
     body("name").optional().isLength({ min: 1, max: 255 }),
@@ -97,14 +98,14 @@ router.put(
 );
 
 router.delete(
-  "/:id",
+  "/main-products/:id",
   [param("id").isUUID().withMessage("Invalid product ID")],
   EnhancedProductController.deleteMainProduct
 );
 
 // Platform Variant Routes
 router.post(
-  "/:mainProductId/variants",
+  "/main-products/:mainProductId/variants",
   [
     param("mainProductId").isUUID().withMessage("Invalid main product ID"),
     body("platform")
@@ -169,13 +170,13 @@ router.delete(
 
 // Stock Management Routes
 router.get(
-  "/:id/stock",
+  "/main-products/:id/stock",
   [param("id").isUUID().withMessage("Invalid product ID")],
   EnhancedProductController.getStockStatus
 );
 
 router.put(
-  "/:id/stock",
+  "/main-products/:id/stock",
   [
     param("id").isUUID().withMessage("Invalid product ID"),
     body("quantity")
@@ -187,7 +188,7 @@ router.put(
 );
 
 router.post(
-  "/:id/stock/reserve",
+  "/main-products/:id/stock/reserve",
   [
     param("id").isUUID().withMessage("Invalid product ID"),
     body("quantity")
@@ -209,7 +210,7 @@ router.delete(
 );
 
 router.get(
-  "/:id/stock/history",
+  "/main-products/:id/stock/history",
   [
     param("id").isUUID().withMessage("Invalid product ID"),
     query("page").optional().isInt({ min: 1 }),
@@ -220,7 +221,7 @@ router.get(
 
 // Platform Publishing Routes
 router.post(
-  "/:id/publish",
+  "/main-products/:id/publish",
   [
     param("id").isUUID().withMessage("Invalid product ID"),
     body("platforms")
@@ -241,6 +242,44 @@ router.post(
   EnhancedProductController.publishToPlatforms
 );
 
+// Media Upload Routes
+router.post(
+  "/main-products/:mainProductId/media",
+  [param("mainProductId").isUUID().withMessage("Invalid main product ID")],
+  MediaUploadService.getUploadMiddleware(),
+  EnhancedProductController.uploadMainProductMedia
+);
+
+router.post(
+  "/main-products/:mainProductId/variants/:variantId/media",
+  [
+    param("mainProductId").isUUID().withMessage("Invalid main product ID"),
+    param("variantId").isUUID().withMessage("Invalid variant ID"),
+  ],
+  MediaUploadService.getUploadMiddleware(),
+  EnhancedProductController.uploadVariantMedia
+);
+
+router.delete(
+  "/media/:mediaId",
+  [param("mediaId").isString().withMessage("Invalid media ID")],
+  EnhancedProductController.deleteMedia
+);
+
+router.put(
+  "/media/:mediaId",
+  [
+    param("mediaId").isString().withMessage("Invalid media ID"),
+    body("altText").optional().isString(),
+    body("isPrimary").optional().isBoolean(),
+    body("sortOrder").optional().isInt({ min: 0 }),
+  ],
+  EnhancedProductController.updateMediaMetadata
+);
+
+// Auto-match Products Route
+router.post("/auto-match", EnhancedProductController.autoMatchProducts);
+
 // Bulk Operations Routes
 router.post(
   "/bulk",
@@ -257,107 +296,139 @@ router.post(
   EnhancedProductController.bulkOperation
 );
 
-// Sync and Matching Routes
 router.post(
-  "/match-sync",
+  "/bulk/publish",
   [
-    body("syncedProduct")
-      .isObject()
-      .withMessage("Synced product data is required"),
-    body("syncedProduct.sku")
+    body("mainProductIds")
+      .isArray()
+      .withMessage("Product IDs array is required"),
+    body("platforms").isArray().withMessage("Platforms array is required"),
+    body("publishingSettings").optional().isObject(),
+  ],
+  EnhancedProductController.bulkPublishVariants
+);
+
+router.post(
+  "/bulk/update-prices",
+  [
+    body("updates").isArray().withMessage("Updates array is required"),
+    body("updates.*.variantId").isUUID().withMessage("Invalid variant ID"),
+    body("updates.*.price").isFloat({ min: 0 }).withMessage("Invalid price"),
+  ],
+  EnhancedProductController.bulkUpdatePrices
+);
+
+router.post(
+  "/bulk/update-stock",
+  [
+    body("updates").isArray().withMessage("Updates array is required"),
+    body("updates.*.mainProductId")
+      .isUUID()
+      .withMessage("Invalid main product ID"),
+    body("updates.*.quantity")
+      .isInt({ min: 0 })
+      .withMessage("Invalid quantity"),
+  ],
+  EnhancedProductController.bulkUpdateStock
+);
+
+router.post(
+  "/bulk/mark-as-main",
+  [
+    body("productIds")
+      .isArray({ min: 1 })
+      .withMessage("At least one product ID is required"),
+    body("productIds.*").isUUID().withMessage("Invalid product ID format"),
+  ],
+  EnhancedProductController.bulkMarkAsMainProducts
+);
+
+router.post(
+  "/bulk/create-variants",
+  [
+    body("mainProductId").isUUID().withMessage("Invalid main product ID"),
+    body("variants")
+      .isArray({ min: 1 })
+      .withMessage("At least one variant is required"),
+    body("variants.*.name").notEmpty().withMessage("Variant name is required"),
+    body("variants.*.price")
+      .isFloat({ min: 0 })
+      .withMessage("Valid price is required"),
+  ],
+  EnhancedProductController.bulkCreateVariants
+);
+
+// Platform Integration Routes
+router.post(
+  "/scrape-platform",
+  [
+    body("url").isURL().withMessage("Valid URL is required"),
+    body("platform").optional().isString(),
+  ],
+  EnhancedProductController.scrapePlatformData
+);
+
+router.post(
+  "/import-from-platform",
+  [
+    body("platformData").isObject().withMessage("Platform data is required"),
+    body("fieldMapping").isObject().withMessage("Field mapping is required"),
+    body("targetPlatform")
       .notEmpty()
-      .withMessage("SKU is required in synced product"),
+      .withMessage("Target platform is required"),
   ],
-  EnhancedProductController.matchSyncedProduct
+  EnhancedProductController.importFromPlatform
 );
 
-router.post(
-  "/create-from-sync",
-  [
-    body("syncedProduct")
-      .isObject()
-      .withMessage("Synced product data is required"),
-    body("syncedProduct.sku").notEmpty().withMessage("SKU is required"),
-    body("syncedProduct.name").notEmpty().withMessage("Name is required"),
-    body("platformInfo").isObject().withMessage("Platform info is required"),
-    body("platformInfo.platform")
-      .isIn(["trendyol", "hepsiburada", "n11", "amazon", "gittigidiyor"])
-      .withMessage("Invalid platform"),
-  ],
-  EnhancedProductController.createFromSync
-);
-
-// Template Management Routes
+// Field Mapping Routes
 router.get(
-  "/templates",
+  "/field-mappings",
   [
-    query("platform")
-      .optional()
-      .isIn([
-        "trendyol",
-        "hepsiburada",
-        "n11",
-        "amazon",
-        "gittigidiyor",
-        "custom",
-      ]),
-    query("category").optional().isString(),
+    query("sourcePlatform").optional().isString(),
+    query("targetPlatform").optional().isString(),
   ],
-  EnhancedProductController.getPlatformTemplates
+  EnhancedProductController.getFieldMappings
 );
 
 router.post(
-  "/templates",
+  "/field-mappings",
   [
-    body("name")
+    body("name").notEmpty().withMessage("Mapping name is required"),
+    body("sourcePlatform")
       .notEmpty()
-      .isLength({ min: 1, max: 255 })
-      .withMessage("Template name is required"),
-    body("platform")
-      .isIn([
-        "trendyol",
-        "hepsiburada",
-        "n11",
-        "amazon",
-        "gittigidiyor",
-        "custom",
-      ])
-      .withMessage("Invalid platform"),
-    body("category").optional().isString(),
-    body("requiredFields").optional().isArray(),
-    body("optionalFields").optional().isArray(),
-    body("fieldValidations").optional().isObject(),
-    body("defaultValues").optional().isObject(),
-    body("fieldMappings").optional().isObject(),
-    body("mediaRequirements").optional().isObject(),
+      .withMessage("Source platform is required"),
+    body("targetPlatform")
+      .notEmpty()
+      .withMessage("Target platform is required"),
+    body("fieldMapping").isObject().withMessage("Field mapping is required"),
   ],
-  EnhancedProductController.savePlatformTemplate
+  EnhancedProductController.saveFieldMapping
 );
 
-router.put(
-  "/templates/:id",
+// Bulk Import Routes
+router.post(
+  "/import/csv",
   [
-    param("id").isUUID().withMessage("Invalid template ID"),
-    body("name").optional().isLength({ min: 1, max: 255 }),
-    body("platform")
-      .optional()
-      .isIn([
-        "trendyol",
-        "hepsiburada",
-        "n11",
-        "amazon",
-        "gittigidiyor",
-        "custom",
-      ]),
-    body("category").optional().isString(),
-    body("requiredFields").optional().isArray(),
-    body("optionalFields").optional().isArray(),
-    body("fieldValidations").optional().isObject(),
-    body("defaultValues").optional().isObject(),
-    body("fieldMappings").optional().isObject(),
-    body("mediaRequirements").optional().isObject(),
+    body("csvData").isArray().withMessage("CSV data must be an array"),
+    body("fieldMapping").isObject().withMessage("Field mapping is required"),
   ],
-  EnhancedProductController.savePlatformTemplate
+  EnhancedProductController.importFromCSV
+);
+
+router.post(
+  "/import/json",
+  [
+    body("jsonData").isArray().withMessage("JSON data must be an array"),
+    body("fieldMapping").isObject().withMessage("Field mapping is required"),
+  ],
+  EnhancedProductController.importFromJSON
+);
+
+// Mark product as main product
+router.post(
+  "/mark-as-main/:id",
+  [param("id").isUUID().withMessage("Invalid product ID")],
+  EnhancedProductController.markAsMainProduct
 );
 
 module.exports = router;

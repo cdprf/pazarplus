@@ -27,7 +27,7 @@ async function getProductPlatformBreakdown(userId, productId, dateRange) {
       [
         OrderItem.sequelize.fn(
           "SUM",
-          OrderItem.sequelize.literal("quantity * OrderItem.price")
+          OrderItem.sequelize.literal('"quantity" * "OrderItem"."price"')
         ),
         "totalRevenue",
       ],
@@ -41,7 +41,7 @@ async function getProductPlatformBreakdown(userId, productId, dateRange) {
       [
         OrderItem.sequelize.fn(
           "SUM",
-          OrderItem.sequelize.literal("quantity * OrderItem.price")
+          OrderItem.sequelize.literal('"quantity" * "OrderItem"."price"')
         ),
         "DESC",
       ],
@@ -153,7 +153,7 @@ async function getCategoryPerformance(userId, dateRange) {
       },
     ],
     attributes: [
-      [Product.sequelize.col("product.category"), "category"],
+      [OrderItem.sequelize.col("product.category"), "category"],
       [
         OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
         "totalSold",
@@ -161,19 +161,21 @@ async function getCategoryPerformance(userId, dateRange) {
       [
         OrderItem.sequelize.fn(
           "SUM",
-          OrderItem.sequelize.literal("quantity * OrderItem.price")
+          OrderItem.sequelize.literal(
+            '"OrderItem"."quantity" * "OrderItem"."price"'
+          )
         ),
         "revenue",
       ],
       [
         OrderItem.sequelize.fn(
           "COUNT",
-          OrderItem.sequelize.literal("DISTINCT OrderItem.productId")
+          OrderItem.sequelize.literal('DISTINCT "OrderItem"."productId"')
         ),
         "productCount",
       ],
     ],
-    group: ["product.category"],
+    group: ["product.category", "product.id"],
     order: [[OrderItem.sequelize.literal("revenue"), "DESC"]],
   });
 

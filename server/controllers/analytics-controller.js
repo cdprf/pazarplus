@@ -104,10 +104,26 @@ class AnalyticsController {
       const { timeframe = "30d" } = req.query;
       const userId = req.user.id;
 
+      logger.info("Dashboard analytics request", { userId, timeframe });
+
       const analytics = await analyticsService.getDashboardAnalytics(
         userId,
         timeframe
       );
+
+      // Debug logging
+      logger.info("Dashboard analytics response", {
+        userId,
+        timeframe,
+        orderSummaryTotal: analytics?.orderSummary?.total || 0,
+        revenueTotal: analytics?.revenue?.total || 0,
+        revenueTrendsCount: analytics?.revenue?.trends?.length || 0,
+        topProductsCount: analytics?.topProducts?.length || 0,
+        hasRevenueData: !!analytics?.revenue,
+        hasTrendsData: !!(
+          analytics?.revenue?.trends && analytics.revenue.trends.length > 0
+        ),
+      });
 
       res.json({
         success: true,

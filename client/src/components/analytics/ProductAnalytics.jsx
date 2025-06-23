@@ -45,10 +45,56 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
       try {
         setLoading(true);
         setError(null);
+
+        console.log("🔍 Fetching product analytics for timeframe:", timeframe);
+
         const productData = await analyticsService.getProductAnalytics(
           timeframe
         );
-        setData(productData);
+
+        console.log("✅ Product analytics data received:", {
+          success: productData?.success,
+          hasData: !!productData?.data,
+          dataKeys: productData?.data ? Object.keys(productData.data) : [],
+        });
+
+        // Process the data to handle different API response formats
+        if (productData && (productData.success || productData.data)) {
+          const processedData = productData.data || productData;
+
+          // Ensure consistent data structure
+          const normalizedData = {
+            ...processedData,
+            topProducts: processedData.topProducts || [],
+            performance: processedData.performance || {
+              categories: [],
+              sales: [],
+              stockStatus: [],
+            },
+            inventory: processedData.inventory || {
+              lowStock: [],
+              outOfStock: [],
+              overStock: [],
+            },
+          };
+
+          setData(normalizedData);
+        } else {
+          console.warn("⚠️ No product data received, setting empty data");
+          setData({
+            topProducts: [],
+            performance: {
+              categories: [],
+              sales: [],
+              stockStatus: [],
+            },
+            inventory: {
+              lowStock: [],
+              outOfStock: [],
+              overStock: [],
+            },
+          });
+        }
       } catch (err) {
         console.error("Error fetching product analytics:", err);
         setError(err.message || "Failed to load product analytics");

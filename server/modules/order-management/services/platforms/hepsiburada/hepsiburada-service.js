@@ -6,6 +6,7 @@ const {
   PlatformConnection,
   ShippingDetail,
   HepsiburadaOrder,
+  HepsiburadaProduct,
 } = require("../../../../../models");
 const { Op } = require("sequelize");
 const sequelize = require("../../../../../config/database");
@@ -76,7 +77,7 @@ class HepsiburadaService extends BasePlatformService {
       baseURL: this.ordersApiUrl,
       headers: {
         Authorization: `Basic ${this.authString}`,
-        "User-Agent": "ticimax_dev",
+        "User-Agent": username,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
@@ -259,7 +260,7 @@ class HepsiburadaService extends BasePlatformService {
       }
 
       // Use the correct API endpoint pattern
-      const url = `/packages/merchantid/${this.merchantId}/paymentawaiting`;
+      const url = `/orders/merchantid/${this.merchantId}/paymentawaiting`;
 
       // Build API parameters - MINIMAL approach (this endpoint may not support date filtering)
       const apiParams = {
@@ -680,7 +681,7 @@ class HepsiburadaService extends BasePlatformService {
       }
 
       // Use the correct API endpoint pattern
-      const url = `/packages/merchantid/${this.merchantId}/cancelled`;
+      const url = `/orders/merchantid/${this.merchantId}/cancelled`;
 
       // Build API parameters - MINIMAL approach based on official documentation
       const apiParams = {
@@ -780,10 +781,30 @@ class HepsiburadaService extends BasePlatformService {
       // Run all fetches in parallel for better performance
       const results = await Promise.all(fetchFunctions);
 
-      // Combine all data arrays, filter out failed fetches
-      const allOrders = results
-        .filter((r) => r && r.success && Array.isArray(r.data))
-        .flatMap((r) => r.data);
+      // Check if any endpoint failed and log the failures
+      const failedResults = results.filter((r) => !r || !r.success);
+      if (failedResults.length > 0) {
+        this.logger.error(
+          `${failedResults.length} out of ${results.length} order endpoints failed`,
+          {
+            connectionId: this.connectionId,
+            failedCount: failedResults.length,
+            totalCount: results.length,
+            failures: failedResults.map((r) => ({
+              message: r?.message || "Unknown error",
+              error: r?.error || "No error details",
+            })),
+          }
+        );
+
+        // If any endpoints failed, throw error instead of continuing
+        throw new Error(
+          `Order fetching failed: ${failedResults.length}/${results.length} endpoints failed`
+        );
+      }
+
+      // Combine all data arrays from successful fetches
+      const allOrders = results.flatMap((r) => r.data);
 
       // Remove duplicates by orderNumber or id
       const seen = new Set();
@@ -852,21 +873,22 @@ class HepsiburadaService extends BasePlatformService {
               logger.warn(
                 `Bulk details fetch failed: ${bulkDetailsResult.message}`
               );
-              // Add detailsFetched: false to all orders
-              enrichedOrders = uniqueOrders.map((order) => ({
-                ...order,
-                detailsFetched: false,
-              }));
+              // Log failure but do not continue processing
+              throw new Error(
+                `Order details enrichment failed: ${bulkDetailsResult.message}`
+              );
             }
           } catch (error) {
             logger.error(
-              `Error enriching orders with details: ${error.message}`
+              `Error enriching orders with details: ${error.message}`,
+              {
+                error,
+                connectionId: this.connectionId,
+                orderCount: orderNumbers.length,
+              }
             );
-            // Fall back to original orders with detailsFetched: false
-            enrichedOrders = uniqueOrders.map((order) => ({
-              ...order,
-              detailsFetched: false,
-            }));
+            // Log failure and re-throw error instead of fallback
+            throw error;
           }
         }
       }
@@ -893,7 +915,7 @@ class HepsiburadaService extends BasePlatformService {
           totalFetched: allOrders.length,
           uniqueOrders: uniqueOrders.length,
           duplicatesRemoved: allOrders.length - uniqueOrders.length,
-          endpointsUsed: results.filter((r) => r && r.success).length,
+          endpointsUsed: results.length, // All endpoints were successful if we reach here
         },
         pagination: {
           offset: queryParams.offset,
@@ -1090,20 +1112,20 @@ class HepsiburadaService extends BasePlatformService {
           const batchResults = await Promise.all(batchPromises);
           results.push(...batchResults);
         } catch (error) {
+          logger.error(`Batch ${batchIndex + 1} failed: ${error.message}`, {
+            error,
+            connectionId: this.connectionId,
+            batchIndex: batchIndex + 1,
+            batchSize: batch.length,
+          });
+
           if (continueOnError) {
-            logger.warn(
-              `Batch ${batchIndex + 1} failed, continuing with next batch: ${
+            // Log failure but do not add fallback results - re-throw error
+            throw new Error(
+              `Batch processing failed at batch ${batchIndex + 1}: ${
                 error.message
               }`
             );
-            // Add failed results for this batch
-            const failedResults = batch.map((orderNumber) => ({
-              success: false,
-              message: `Batch processing failed: ${error.message}`,
-              data: null,
-              orderNumber,
-            }));
-            results.push(...failedResults);
           } else {
             throw error;
           }
@@ -1457,8 +1479,8 @@ class HepsiburadaService extends BasePlatformService {
                   connectionId: this.connectionId,
                 }
               );
-              skippedCount++;
-              continue;
+              // Re-throw error instead of continuing with fallback
+              throw updateError;
             }
           }
 
@@ -1467,8 +1489,56 @@ class HepsiburadaService extends BasePlatformService {
             this.logger.info(`Creating new order for ${orderNumber}`);
 
             const result = await sequelize.transaction(async (t) => {
+              // Extract data from rawData structure (details.customer, details.items, etc.)
+              const customerName =
+                order.details?.customer?.name ||
+                order.details?.items?.[0]?.customerName ||
+                order.customerName ||
+                order.recipientName ||
+                "";
+
+              const customerEmail =
+                order.details?.invoice?.address?.email ||
+                order.details?.deliveryAddress?.email ||
+                order.details?.items?.[0]?.shippingAddress?.email ||
+                order.email ||
+                "";
+
               // Extract phone number from order data
               const phoneNumber = this.extractPhoneNumber(order);
+
+              // Calculate total amount from items in details
+              let totalAmount = 0;
+              if (order.details?.items) {
+                totalAmount = order.details.items.reduce((sum, item) => {
+                  return sum + (item.totalPrice?.amount || 0);
+                }, 0);
+              }
+              // Fallback to order level total
+              if (totalAmount === 0) {
+                totalAmount = order.totalPrice?.amount || 0;
+              }
+
+              // Extract order status from items
+              const orderStatus =
+                order.details?.items?.[0]?.status || order.status || "new";
+
+              // Extract cargo tracking info
+              const cargoTrackingNumber =
+                order.details?.items?.[0]?.packageNumber ||
+                order.details?.items?.[0]?.barcode ||
+                order.PackageNumber ||
+                order.Barcode ||
+                null;
+
+              // Extract order date
+              const orderDate = order.details?.orderDate
+                ? new Date(order.details.orderDate)
+                : order.details?.createdDate
+                ? new Date(order.details.createdDate)
+                : order.orderDate
+                ? new Date(order.orderDate)
+                : new Date();
 
               // Create the main order record with findOrCreate for atomicity
               const [normalizedOrder, created] = await Order.findOrCreate({
@@ -1479,35 +1549,40 @@ class HepsiburadaService extends BasePlatformService {
                 defaults: {
                   externalOrderId: orderNumber,
                   orderNumber: orderNumber,
-                  platformOrderId: order.id,
+                  platformOrderId: order.Id || order.id,
                   platformId: "hepsiburada",
                   connectionId: this.connectionId,
                   userId: this.connection.userId,
-                  customerName: order.customerName || order.recipientName || "",
-                  customerEmail: order.email || "",
+                  customerName: customerName,
+                  customerEmail: customerEmail,
                   customerPhone: phoneNumber || "",
+                  cargoTrackingNumber: cargoTrackingNumber,
 
                   // Required JSON fields for database
                   customerInfo: this.safeJsonStringify({
-                    firstName: order.customerFirstName || "",
-                    lastName: order.customerLastName || "",
-                    email: order.email || "",
+                    firstName: customerName.split(" ")[0] || "",
+                    lastName: customerName.split(" ").slice(1).join(" ") || "",
+                    email: customerEmail,
                     phone: phoneNumber || "",
-                    fullName: order.customerName || order.recipientName || "",
+                    fullName: customerName,
                   }),
                   shippingAddress: this.safeJsonStringify(
-                    order.shippingAddressDetail || {}
+                    order.details?.deliveryAddress ||
+                      order.details?.items?.[0]?.shippingAddress ||
+                      order.shippingAddressDetail ||
+                      {}
                   ),
 
-                  orderDate: order.orderDate
-                    ? new Date(order.orderDate)
-                    : new Date(),
-                  orderStatus: this.mapOrderStatus(order.status),
-                  totalAmount: order.totalPrice?.amount || 0,
-                  currency: order.totalPrice?.currency || "TRY",
+                  orderDate: orderDate,
+                  orderStatus: this.mapOrderStatus(orderStatus),
+                  totalAmount: totalAmount.toString(),
+                  currency:
+                    order.details?.items?.[0]?.totalPrice?.currency || "TRY",
                   notes: "",
-                  paymentStatus: "pending", // Default since payment status not in this response
-                  platformStatus: order.status || "new",
+                  paymentStatus: order.details?.paymentStatus
+                    ? this.mapPaymentStatus(order.details.paymentStatus)
+                    : "pending",
+                  platformStatus: orderStatus,
                   platform: "hepsiburada",
                   rawData: JSON.stringify(order),
                   lastSyncedAt: new Date(),
@@ -1523,24 +1598,44 @@ class HepsiburadaService extends BasePlatformService {
                 );
               }
 
-              // Create shipping detail with orderId
+              // Create shipping detail with orderId - extract from rawData
+              const shippingAddress =
+                order.details?.deliveryAddress ||
+                order.details?.items?.[0]?.shippingAddress ||
+                {};
+
               const shippingDetail = await ShippingDetail.create(
                 {
                   orderId: normalizedOrder.id,
-                  recipientName:
-                    order.recipientName || order.customerName || "",
+                  recipientName: customerName,
                   address:
-                    order.shippingAddressDetail || order.billingAddress || "",
-                  city: order.shippingCity || order.billingCity || "",
-                  state: order.shippingDistrict || order.billingDistrict || "",
+                    shippingAddress.fullAddress ||
+                    shippingAddress.address ||
+                    order.shippingAddressDetail ||
+                    order.billingAddress ||
+                    "",
+                  city:
+                    shippingAddress.city ||
+                    order.shippingCity ||
+                    order.billingCity ||
+                    "",
+                  state:
+                    shippingAddress.district ||
+                    order.shippingDistrict ||
+                    order.billingDistrict ||
+                    "",
                   postalCode:
-                    order.shippingPostalCode || order.billingPostalCode || "",
+                    shippingAddress.postalCode ||
+                    order.shippingPostalCode ||
+                    order.billingPostalCode ||
+                    "",
                   country:
+                    shippingAddress.countryCode ||
                     order.shippingCountryCode ||
                     order.billingCountryCode ||
                     "TR",
                   phone: phoneNumber || "",
-                  email: order.email || "",
+                  email: customerEmail,
                 },
                 { transaction: t }
               );
@@ -1558,10 +1653,55 @@ class HepsiburadaService extends BasePlatformService {
                 t
               );
 
-              // Create order items if available
-              if (order.items && Array.isArray(order.items)) {
-                // Prepare order items data for batch processing with product linking
-                const orderItemsData = order.items.map((item) => {
+              // Create order items if available - use details.items structure
+              let orderItemsData = [];
+
+              if (order.details?.items && Array.isArray(order.details.items)) {
+                // Prepare order items data from details.items (primary structure)
+                orderItemsData = order.details.items.map((item) => {
+                  const unitPrice =
+                    item.unitPrice?.amount || item.totalPrice?.amount || 0;
+                  const quantity = item.quantity || 1;
+                  const totalItemPrice =
+                    item.totalPrice?.amount || unitPrice * quantity;
+
+                  return {
+                    orderId: normalizedOrder.id,
+                    platformProductId:
+                      item.productBarcode || item.sku || item.merchantSKU || "",
+                    productId: null, // Will be set by product linking
+                    title:
+                      item.name ||
+                      item.productName ||
+                      item.title ||
+                      "Unknown Product",
+                    sku: item.merchantSKU || item.sku || "",
+                    quantity: quantity,
+                    price: unitPrice,
+                    totalPrice: totalItemPrice, // Required NOT NULL field
+                    discount:
+                      item.merchantDiscount?.amount ||
+                      item.hbDiscount?.amount ||
+                      0,
+                    platformDiscount: item.hbDiscount?.amount || 0,
+                    merchantDiscount: item.merchantDiscount?.amount || 0,
+                    invoiceTotal: totalItemPrice,
+                    currency:
+                      item.totalPrice?.currency ||
+                      item.unitPrice?.currency ||
+                      "TRY",
+                    barcode: item.productBarcode || item.barcode || "",
+                    lineItemStatus: item.status || "new",
+                    vatBaseAmount: item.vat || 0,
+                    variantInfo: item.properties
+                      ? JSON.stringify(item.properties)
+                      : null,
+                    rawData: JSON.stringify(item),
+                  };
+                });
+              } else if (order.items && Array.isArray(order.items)) {
+                // Fallback to order.items structure
+                orderItemsData = order.items.map((item) => {
                   const unitPrice = item.price?.amount || 0;
                   const quantity = item.quantity || 1;
                   const totalPrice = unitPrice * quantity;
@@ -1589,15 +1729,19 @@ class HepsiburadaService extends BasePlatformService {
                     rawData: JSON.stringify(item),
                   };
                 });
+              }
 
+              // Process order items if we have any
+              if (orderItemsData.length > 0) {
                 try {
                   // Initialize product linking service
                   const linkingService = new ProductOrderLinkingService();
 
-                  // Create order items with product linking
+                  // Create order items with product linking - pass userId from connection
                   const linkingResult =
                     await linkingService.linkProductsToOrderItems(
                       orderItemsData,
+                      this.connection.userId, // Pass the userId from the platform connection
                       { transaction: t }
                     );
 
@@ -1611,8 +1755,8 @@ class HepsiburadaService extends BasePlatformService {
                       }
                     );
                   } else {
-                    this.logger.warn(
-                      `Product linking failed for order ${orderNumber}, creating items without linking: ${linkingResult.message}`,
+                    this.logger.error(
+                      `Product linking failed for order ${orderNumber}: ${linkingResult.message}`,
                       {
                         orderNumber,
                         connectionId: this.connectionId,
@@ -1620,14 +1764,14 @@ class HepsiburadaService extends BasePlatformService {
                       }
                     );
 
-                    // Fallback: create order items without linking
-                    for (const itemData of orderItemsData) {
-                      await OrderItem.create(itemData, { transaction: t });
-                    }
+                    // Re-throw error instead of fallback
+                    throw new Error(
+                      `Product linking failed: ${linkingResult.message}`
+                    );
                   }
                 } catch (linkingError) {
                   this.logger.error(
-                    `Product linking service failed for order ${orderNumber}, falling back to direct creation: ${linkingError.message}`,
+                    `Product linking service failed for order ${orderNumber}: ${linkingError.message}`,
                     {
                       error: linkingError,
                       orderNumber,
@@ -1635,10 +1779,8 @@ class HepsiburadaService extends BasePlatformService {
                     }
                   );
 
-                  // Fallback: create order items without linking
-                  for (const itemData of orderItemsData) {
-                    await OrderItem.create(itemData, { transaction: t });
-                  }
+                  // Re-throw error instead of fallback
+                  throw linkingError;
                 }
               }
 
@@ -1655,103 +1797,49 @@ class HepsiburadaService extends BasePlatformService {
               }`
             );
           } catch (error) {
-            if (error.name === "SequelizeUniqueConstraintError") {
-              this.logger.warn(
-                `Unique constraint violation for ${
-                  order.orderNumber || order.OrderNumber || "unknown"
-                }, skipping`,
-                {
-                  orderNumber:
-                    order.orderNumber || order.OrderNumber || "unknown",
-                  connectionId: this.connectionId,
-                }
-              );
-              skippedCount++;
-            } else {
-              throw error;
-            }
+            this.logger.error(
+              `Failed to create new order for ${
+                order.orderNumber || order.OrderNumber || "unknown"
+              }: ${error.message}`,
+              {
+                error,
+                orderNumber:
+                  order.orderNumber || order.OrderNumber || "unknown",
+                connectionId: this.connectionId,
+              }
+            );
+            // Re-throw error instead of continuing
+            throw error;
           }
         } catch (error) {
-          // Handle unique constraint violations gracefully (race condition during concurrent syncs)
-          if (
-            error.name === "SequelizeUniqueConstraintError" &&
-            (error.original?.code === "SQLITE_CONSTRAINT" ||
-              error.original?.errno === 19 ||
-              (error.sql &&
-                error.sql.includes("unique_external_order_per_connection")))
-          ) {
-            this.logger.warn(
-              `Unique constraint error for order ${order.orderNumber}, attempting recovery`,
+          // Log unique constraint violations and other errors, then re-throw
+          if (error.name === "SequelizeUniqueConstraintError") {
+            this.logger.error(
+              `Unique constraint violation for order ${order.orderNumber}, cannot continue`,
               {
-                orderNumber: order.orderNumber,
+                orderNumber: order.orderNumber || "unknown",
                 connectionId: this.connectionId,
                 errorName: error.name,
                 constraintCode: error.original?.code,
                 errno: error.original?.errno,
               }
             );
-
-            try {
-              // Add small delay to handle transaction timing issues
-              await new Promise((resolve) => setTimeout(resolve, 100));
-
-              // Find the existing order that was created by another process
-              const existingOrder = await Order.findOne({
-                where: {
-                  connectionId: this.connectionId,
-                  externalOrderId: order.orderNumber.toString(),
-                },
-              });
-
-              if (existingOrder) {
-                // Update the existing order with latest data
-                await existingOrder.update({
-                  orderStatus: this.mapOrderStatus(order.status),
-                  rawData: JSON.stringify(order),
-                  lastSyncedAt: new Date(),
-                });
-
-                normalizedOrders.push(existingOrder);
-                updatedCount++;
-
-                this.logger.info(
-                  `Successfully recovered from race condition by updating existing order ${order.orderNumber}`,
-                  {
-                    orderNumber: order.orderNumber,
-                    connectionId: this.connectionId,
-                  }
-                );
-                continue;
-              } else {
-                this.logger.error(
-                  `Unique constraint error but order not found: ${order.orderNumber}`,
-                  {
-                    orderNumber: order.orderNumber,
-                    connectionId: this.connectionId,
-                  }
-                );
+          } else {
+            this.logger.error(
+              `Failed to process order ${
+                order.orderNumber || order.OrderNumber || "unknown"
+              }: ${error.message}`,
+              {
+                error,
+                orderNumber:
+                  order.orderNumber || order.OrderNumber || "unknown",
+                connectionId: this.connectionId,
               }
-            } catch (recoveryError) {
-              this.logger.error(
-                `Failed to recover from unique constraint error for order ${order.orderNumber}: ${recoveryError.message}`,
-                {
-                  error: recoveryError,
-                  orderNumber: order.orderNumber,
-                  connectionId: this.connectionId,
-                }
-              );
-            }
+            );
           }
 
-          this.logger.error(
-            `Failed to process order ${order.orderNumber}: ${error.message}`,
-            {
-              error,
-              orderNumber: orderNumber,
-              connectionId: this.connectionId,
-            }
-          );
-          skippedCount++;
+          // Re-throw error instead of continuing with fallback
+          throw error;
         }
       }
 
@@ -1843,6 +1931,46 @@ class HepsiburadaService extends BasePlatformService {
           orderDate: hepsiburadaOrderData.orderDate
             ? new Date(hepsiburadaOrderData.orderDate)
             : null,
+
+          // New fields from HepsiBurada API responses
+          hepsiburadaOrderId: hepsiburadaOrderData.id,
+          status: hepsiburadaOrderData.status,
+          dueDate: hepsiburadaOrderData.dueDate
+            ? new Date(hepsiburadaOrderData.dueDate)
+            : null,
+          barcode: hepsiburadaOrderData.barcode,
+          shippingAddressDetail: hepsiburadaOrderData.shippingAddressDetail,
+          recipientName: hepsiburadaOrderData.recipientName,
+          shippingCountryCode: hepsiburadaOrderData.shippingCountryCode,
+          shippingDistrict: hepsiburadaOrderData.shippingDistrict,
+          shippingTown: hepsiburadaOrderData.shippingTown,
+          shippingCity: hepsiburadaOrderData.shippingCity,
+          email: hepsiburadaOrderData.email,
+          phoneNumber: hepsiburadaOrderData.phoneNumber,
+          companyName: hepsiburadaOrderData.companyName,
+          billingAddress: hepsiburadaOrderData.billingAddress,
+          billingCity: hepsiburadaOrderData.billingCity,
+          billingTown: hepsiburadaOrderData.billingTown,
+          billingDistrict: hepsiburadaOrderData.billingDistrict,
+          billingPostalCode: hepsiburadaOrderData.billingPostalCode,
+          billingCountryCode: hepsiburadaOrderData.billingCountryCode,
+          taxOffice: hepsiburadaOrderData.taxOffice,
+          taxNumber: hepsiburadaOrderData.taxNumber,
+          identityNo: hepsiburadaOrderData.identityNo,
+          shippingTotalPrice: hepsiburadaOrderData.shippingTotalPrice,
+          customsTotalPrice: hepsiburadaOrderData.customsTotalPrice,
+          totalPrice: hepsiburadaOrderData.totalPrice,
+          items: hepsiburadaOrderData.items,
+          isCargoChangable: hepsiburadaOrderData.isCargoChangable,
+          customerName: hepsiburadaOrderData.customerName,
+          estimatedArrivalDate: hepsiburadaOrderData.estimatedArrivalDate
+            ? new Date(hepsiburadaOrderData.estimatedArrivalDate)
+            : null,
+          customer: hepsiburadaOrderData.customer,
+          invoice: hepsiburadaOrderData.invoice,
+          deliveryAddress: hepsiburadaOrderData.deliveryAddress,
+          orderNote: hepsiburadaOrderData.orderNote,
+          rawData: hepsiburadaOrderData,
         },
         { transaction }
       );
@@ -2538,11 +2666,14 @@ class HepsiburadaService extends BasePlatformService {
       );
     }
 
+    const credentials = this.decryptCredentials(this.connection.credentials);
+    const { username } = credentials;
+
     return axios.create({
       baseURL: this.productsApiUrl,
       headers: {
         Authorization: `Basic ${this.authString}`,
-        "User-Agent": "sentosyazilim_dev",
+        "User-Agent": username,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
@@ -2792,6 +2923,470 @@ class HepsiburadaService extends BasePlatformService {
         `JSON stringify failed, using fallback: ${error.message}`
       );
       return JSON.stringify(fallback);
+    }
+  }
+
+  /**
+   * Sync products from HepsiBurada to our database
+   * @param {Object} params - Query parameters for product fetching
+   * @returns {Promise<Object>} Result of the sync operation
+   */
+  async syncProducts(params = {}) {
+    try {
+      const { Product } = require("../../../../../models");
+      const defaultUserId = process.env.DEFAULT_USER_ID || "1";
+
+      // Fetch products from HepsiBurada
+      const result = await this.fetchProducts(params);
+
+      if (!result.success) {
+        return {
+          success: false,
+          message: `Failed to fetch products from HepsiBurada: ${result.message}`,
+          error: result.error,
+        };
+      }
+
+      const products = result.data;
+
+      // Statistics for reporting
+      const stats = {
+        total: products.length,
+        new: 0,
+        updated: 0,
+        skipped: 0,
+        failed: 0,
+      };
+
+      // Process each product
+      for (const hepsiburadaProduct of products) {
+        try {
+          // Check if product exists (by merchantSku)
+          const existingHepsiburadaProduct = await HepsiburadaProduct.findOne({
+            where: {
+              merchantSku: hepsiburadaProduct.merchantSku,
+            },
+            include: [
+              {
+                model: Product,
+                as: "Product",
+              },
+            ],
+          });
+
+          if (existingHepsiburadaProduct) {
+            // Update existing product
+            await this.updateExistingProduct(
+              existingHepsiburadaProduct,
+              hepsiburadaProduct
+            );
+            stats.updated++;
+          } else {
+            // Create new product
+            await this.createNewProduct(hepsiburadaProduct, defaultUserId);
+            stats.new++;
+          }
+        } catch (productError) {
+          this.logger.error(
+            `Failed to process product ${hepsiburadaProduct.merchantSku}: ${productError.message}`,
+            {
+              error: productError,
+              product: {
+                merchantSku: hepsiburadaProduct.merchantSku,
+                productName: hepsiburadaProduct.productName,
+              },
+            }
+          );
+          stats.failed++;
+        }
+      }
+
+      return {
+        success: true,
+        message: `Synced ${stats.total} products from HepsiBurada: ${stats.new} new, ${stats.updated} updated, ${stats.failed} failed`,
+        data: stats,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to sync products from HepsiBurada: ${error.message}`,
+        {
+          error,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to sync products: ${error.message}`,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Update an existing product with data from HepsiBurada
+   * @param {Object} existingHepsiburadaProduct - Existing HepsiburadaProduct record
+   * @param {Object} hepsiburadaProductData - Product data from HepsiBurada API
+   * @returns {Promise<Object>} Updated product
+   */
+  async updateExistingProduct(
+    existingHepsiburadaProduct,
+    hepsiburadaProductData
+  ) {
+    try {
+      const { Product } = require("../../../../../models");
+      const mainProduct = existingHepsiburadaProduct.Product;
+
+      // Extract stock quantity from baseAttributes
+      const stockAttribute = hepsiburadaProductData.baseAttributes?.find(
+        (attr) => attr.name === "stock"
+      );
+      const stockQuantity = stockAttribute?.value
+        ? parseInt(stockAttribute.value, 10)
+        : 0;
+
+      // Extract guarantee period from baseAttributes
+      const guaranteeAttribute = hepsiburadaProductData.baseAttributes?.find(
+        (attr) => attr.name === "GarantiSuresi"
+      );
+      const guaranteeMonths = guaranteeAttribute?.value
+        ? parseInt(guaranteeAttribute.value, 10)
+        : null;
+
+      // Extract weight from baseAttributes
+      const weightAttribute = hepsiburadaProductData.baseAttributes?.find(
+        (attr) => attr.name === "kg"
+      );
+      const weight = weightAttribute?.value
+        ? parseFloat(weightAttribute.value)
+        : null;
+
+      // Transaction to ensure both records are updated together
+      await sequelize.transaction(async (t) => {
+        // Update main product record with latest data
+        if (mainProduct) {
+          await mainProduct.update(
+            {
+              name: hepsiburadaProductData.productName,
+              description: hepsiburadaProductData.description,
+              price: hepsiburadaProductData.price
+                ? parseFloat(hepsiburadaProductData.price)
+                : 0,
+              currency: "TRY",
+              barcode: hepsiburadaProductData.barcode,
+              mainImageUrl:
+                hepsiburadaProductData.images &&
+                hepsiburadaProductData.images.length > 0
+                  ? hepsiburadaProductData.images[0]
+                  : null,
+              additionalImages:
+                hepsiburadaProductData.images &&
+                hepsiburadaProductData.images.length > 1
+                  ? hepsiburadaProductData.images.slice(1)
+                  : null,
+              attributes: hepsiburadaProductData.productAttributes,
+              hasVariants: false, // HepsiBurada doesn't seem to have variants in this API
+              metadata: {
+                source: "hepsiburada",
+                hbSku: hepsiburadaProductData.hbSku,
+                categoryId: hepsiburadaProductData.categoryId,
+                categoryName: hepsiburadaProductData.categoryName,
+                qualityScore: hepsiburadaProductData.qualityScore,
+                qualityStatus: hepsiburadaProductData.qualityStatus,
+              },
+            },
+            { transaction: t }
+          );
+        }
+
+        // Update HepsiBurada-specific product data
+        await existingHepsiburadaProduct.update(
+          {
+            barcode: hepsiburadaProductData.barcode,
+            title: hepsiburadaProductData.productName,
+            brand: hepsiburadaProductData.brand,
+            categoryId: hepsiburadaProductData.categoryId?.toString(),
+            description: hepsiburadaProductData.description,
+            attributes: hepsiburadaProductData.productAttributes || [],
+            images: hepsiburadaProductData.images || [],
+            price: hepsiburadaProductData.price
+              ? parseFloat(hepsiburadaProductData.price)
+              : 0,
+            stock: stockQuantity,
+            vatRate: hepsiburadaProductData.tax
+              ? parseInt(hepsiburadaProductData.tax, 10)
+              : 18,
+            status: hepsiburadaProductData.status || "pending",
+            lastSyncedAt: new Date(),
+            // New fields from API response
+            hbSku: hepsiburadaProductData.hbSku,
+            variantGroupId: hepsiburadaProductData.variantGroupId,
+            productName: hepsiburadaProductData.productName,
+            categoryName: hepsiburadaProductData.categoryName,
+            tax: hepsiburadaProductData.tax,
+            baseAttributes: hepsiburadaProductData.baseAttributes || [],
+            variantTypeAttributes:
+              hepsiburadaProductData.variantTypeAttributes || [],
+            productAttributes: hepsiburadaProductData.productAttributes || [],
+            validationResults: hepsiburadaProductData.validationResults || [],
+            rejectReasons: hepsiburadaProductData.rejectReasons || [],
+            qualityScore: hepsiburadaProductData.qualityScore,
+            qualityStatus: hepsiburadaProductData.qualityStatus,
+            ccValidationResults: hepsiburadaProductData.ccValidationResults,
+            platformStatus: hepsiburadaProductData.status,
+            weight: weight,
+            guaranteeMonths: guaranteeMonths,
+            rawData: hepsiburadaProductData,
+          },
+          { transaction: t }
+        );
+      });
+
+      this.logger.debug(
+        `Updated product ${existingHepsiburadaProduct.merchantSku} in database`
+      );
+      return existingHepsiburadaProduct;
+    } catch (error) {
+      this.logger.error(`Failed to update product: ${error.message}`, {
+        error,
+        merchantSku: existingHepsiburadaProduct.merchantSku,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new product from HepsiBurada data
+   * @param {Object} hepsiburadaProductData - Product data from HepsiBurada API
+   * @param {string} userId - User ID to associate with the product
+   * @returns {Promise<Object>} Created product
+   */
+  async createNewProduct(hepsiburadaProductData, userId) {
+    try {
+      const { Product } = require("../../../../../models");
+
+      // Extract stock quantity from baseAttributes
+      const stockAttribute = hepsiburadaProductData.baseAttributes?.find(
+        (attr) => attr.name === "stock"
+      );
+      const stockQuantity = stockAttribute?.value
+        ? parseInt(stockAttribute.value, 10)
+        : 0;
+
+      // Extract guarantee period from baseAttributes
+      const guaranteeAttribute = hepsiburadaProductData.baseAttributes?.find(
+        (attr) => attr.name === "GarantiSuresi"
+      );
+      const guaranteeMonths = guaranteeAttribute?.value
+        ? parseInt(guaranteeAttribute.value, 10)
+        : null;
+
+      // Extract weight from baseAttributes
+      const weightAttribute = hepsiburadaProductData.baseAttributes?.find(
+        (attr) => attr.name === "kg"
+      );
+      const weight = weightAttribute?.value
+        ? parseFloat(weightAttribute.value)
+        : null;
+
+      // Transaction to ensure both records are created together
+      const result = await sequelize.transaction(async (t) => {
+        // Create main product record
+        const mainProduct = await Product.create(
+          {
+            userId: userId,
+            sku: hepsiburadaProductData.merchantSku,
+            name: hepsiburadaProductData.productName,
+            description: hepsiburadaProductData.description,
+            price: hepsiburadaProductData.price
+              ? parseFloat(hepsiburadaProductData.price)
+              : 0,
+            currency: "TRY",
+            barcode: hepsiburadaProductData.barcode,
+            mainImageUrl:
+              hepsiburadaProductData.images &&
+              hepsiburadaProductData.images.length > 0
+                ? hepsiburadaProductData.images[0]
+                : null,
+            additionalImages:
+              hepsiburadaProductData.images &&
+              hepsiburadaProductData.images.length > 1
+                ? hepsiburadaProductData.images.slice(1)
+                : null,
+            attributes: hepsiburadaProductData.productAttributes,
+            hasVariants: false, // HepsiBurada doesn't seem to have variants in this API
+            metadata: {
+              source: "hepsiburada",
+              hbSku: hepsiburadaProductData.hbSku,
+              categoryId: hepsiburadaProductData.categoryId,
+              categoryName: hepsiburadaProductData.categoryName,
+              qualityScore: hepsiburadaProductData.qualityScore,
+              qualityStatus: hepsiburadaProductData.qualityStatus,
+            },
+          },
+          { transaction: t }
+        );
+
+        // Create HepsiBurada-specific product record
+        const hepsiburadaProduct = await HepsiburadaProduct.create(
+          {
+            productId: mainProduct.id,
+            merchantSku: hepsiburadaProductData.merchantSku,
+            barcode: hepsiburadaProductData.barcode,
+            title: hepsiburadaProductData.productName,
+            brand: hepsiburadaProductData.brand,
+            categoryId: hepsiburadaProductData.categoryId?.toString(),
+            description: hepsiburadaProductData.description,
+            attributes: hepsiburadaProductData.productAttributes || [],
+            images: hepsiburadaProductData.images || [],
+            price: hepsiburadaProductData.price
+              ? parseFloat(hepsiburadaProductData.price)
+              : 0,
+            stock: stockQuantity,
+            vatRate: hepsiburadaProductData.tax
+              ? parseInt(hepsiburadaProductData.tax, 10)
+              : 18,
+            status: hepsiburadaProductData.status || "pending",
+            lastSyncedAt: new Date(),
+            // New fields from API response
+            hbSku: hepsiburadaProductData.hbSku,
+            variantGroupId: hepsiburadaProductData.variantGroupId,
+            productName: hepsiburadaProductData.productName,
+            categoryName: hepsiburadaProductData.categoryName,
+            tax: hepsiburadaProductData.tax,
+            baseAttributes: hepsiburadaProductData.baseAttributes || [],
+            variantTypeAttributes:
+              hepsiburadaProductData.variantTypeAttributes || [],
+            productAttributes: hepsiburadaProductData.productAttributes || [],
+            validationResults: hepsiburadaProductData.validationResults || [],
+            rejectReasons: hepsiburadaProductData.rejectReasons || [],
+            qualityScore: hepsiburadaProductData.qualityScore,
+            qualityStatus: hepsiburadaProductData.qualityStatus,
+            ccValidationResults: hepsiburadaProductData.ccValidationResults,
+            platformStatus: hepsiburadaProductData.status,
+            weight: weight,
+            guaranteeMonths: guaranteeMonths,
+            rawData: hepsiburadaProductData,
+          },
+          { transaction: t }
+        );
+
+        return { mainProduct, hepsiburadaProduct };
+      });
+
+      this.logger.debug(
+        `Created new product ${result.hepsiburadaProduct.merchantSku} in database`
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to create product: ${error.message}`, {
+        error,
+        productData: {
+          productName: hepsiburadaProductData.productName,
+          merchantSku: hepsiburadaProductData.merchantSku,
+          hbSku: hepsiburadaProductData.hbSku,
+        },
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Create a HepsiBurada-specific product record
+   * @param {string} productId - The main Product record ID
+   * @param {Object} hepsiburadaProductData - Raw product data from HepsiBurada API
+   * @param {Object} transaction - Sequelize transaction object (optional)
+   * @returns {Promise<Object>} Created HepsiburadaProduct record
+   */
+  async createHepsiburadaProductRecord(
+    productId,
+    hepsiburadaProductData,
+    transaction = null
+  ) {
+    try {
+      // Extract stock quantity from baseAttributes
+      const stockAttribute = hepsiburadaProductData.baseAttributes?.find(
+        (attr) => attr.name === "stock"
+      );
+      const stockQuantity = stockAttribute?.value
+        ? parseInt(stockAttribute.value, 10)
+        : 0;
+
+      // Extract guarantee period from baseAttributes
+      const guaranteeAttribute = hepsiburadaProductData.baseAttributes?.find(
+        (attr) => attr.name === "GarantiSuresi"
+      );
+      const guaranteeMonths = guaranteeAttribute?.value
+        ? parseInt(guaranteeAttribute.value, 10)
+        : null;
+
+      // Extract weight from baseAttributes
+      const weightAttribute = hepsiburadaProductData.baseAttributes?.find(
+        (attr) => attr.name === "kg"
+      );
+      const weight = weightAttribute?.value
+        ? parseFloat(weightAttribute.value)
+        : null;
+
+      // Extract HepsiBurada-specific fields from the product data
+      const hepsiburadaProductRecord = {
+        productId: productId,
+        merchantSku: hepsiburadaProductData.merchantSku,
+        barcode: hepsiburadaProductData.barcode,
+        title: hepsiburadaProductData.productName,
+        brand: hepsiburadaProductData.brand,
+        categoryId: hepsiburadaProductData.categoryId?.toString(),
+        description: hepsiburadaProductData.description,
+        attributes: hepsiburadaProductData.productAttributes || [],
+        images: hepsiburadaProductData.images || [],
+        price: hepsiburadaProductData.price
+          ? parseFloat(hepsiburadaProductData.price)
+          : 0,
+        stock: stockQuantity,
+        vatRate: hepsiburadaProductData.tax
+          ? parseInt(hepsiburadaProductData.tax, 10)
+          : 18,
+        status: hepsiburadaProductData.status || "pending",
+        lastSyncedAt: new Date(),
+        // New fields from API response
+        hbSku: hepsiburadaProductData.hbSku,
+        variantGroupId: hepsiburadaProductData.variantGroupId,
+        productName: hepsiburadaProductData.productName,
+        categoryName: hepsiburadaProductData.categoryName,
+        tax: hepsiburadaProductData.tax,
+        baseAttributes: hepsiburadaProductData.baseAttributes || [],
+        variantTypeAttributes:
+          hepsiburadaProductData.variantTypeAttributes || [],
+        productAttributes: hepsiburadaProductData.productAttributes || [],
+        validationResults: hepsiburadaProductData.validationResults || [],
+        rejectReasons: hepsiburadaProductData.rejectReasons || [],
+        qualityScore: hepsiburadaProductData.qualityScore,
+        qualityStatus: hepsiburadaProductData.qualityStatus,
+        ccValidationResults: hepsiburadaProductData.ccValidationResults,
+        platformStatus: hepsiburadaProductData.status,
+        weight: weight,
+        guaranteeMonths: guaranteeMonths,
+        rawData: hepsiburadaProductData,
+      };
+
+      // Create with or without transaction
+      if (transaction) {
+        return await HepsiburadaProduct.create(hepsiburadaProductRecord, {
+          transaction,
+        });
+      } else {
+        return await HepsiburadaProduct.create(hepsiburadaProductRecord);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to create HepsiburadaProduct record: ${error.message}`,
+        {
+          error,
+          productId,
+          merchantSku: hepsiburadaProductData.merchantSku,
+        }
+      );
+      throw error;
     }
   }
 }

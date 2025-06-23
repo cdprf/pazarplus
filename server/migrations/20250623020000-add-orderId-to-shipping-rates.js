@@ -7,10 +7,10 @@ module.exports = {
       type: Sequelize.UUID,
       allowNull: true,
       references: {
-        model: 'orders',
-        key: 'id'
+        model: "orders",
+        key: "id",
       },
-      onDelete: 'SET NULL'
+      onDelete: "SET NULL",
     });
   },
 

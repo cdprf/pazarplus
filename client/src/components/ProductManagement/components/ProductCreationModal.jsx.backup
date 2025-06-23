@@ -1,0 +1,1062 @@
+import React, { useState, useRef } from "react";
+import {
+  Modal,
+  Nav,
+  Tab,
+  Button,
+  Form,
+  Row,
+  Col,
+  Alert,
+  Spinner,
+  Card,
+  Badge,
+  Table,
+} from "react-bootstrap";
+import {
+  PlusIcon,
+  DocumentArrowUpIcon,
+  GlobeAltIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import { useAlert } from "../../../contexts/AlertContext";
+
+/**
+ * Enhanced Product Creation Modal
+ * Supports multiple creation methods: Manual Form, CSV/JSON Import, Platform Data Copy
+ */
+const ProductCreationModal = ({ show, onHide, onSuccess, apiClient }) => {
+  const { showAlert } = useAlert();
+  const [activeTab, setActiveTab] = useState("manual");
+  const [loading, setLoading] = useState(false);
+  const [importPreview, setImportPreview] = useState(null);
+  const [fieldMapping, setFieldMapping] = useState({});
+  const [platformData, setPlatformData] = useState(null);
+  const [platformUrl, setPlatformUrl] = useState("");
+  const fileInputRef = useRef(null);
+
+  // Log modal state for debugging
+  React.useEffect(() => {
+    console.log("ProductCreationModal show state:", show);
+  }, [show]);
+
+  // Manual form state
+  const [formData, setFormData] = useState({
+    name: "",
+    baseSku: "",
+    description: "",
+    category: "",
+    brand: "",
+    productType: "",
+    basePrice: "",
+    baseCostPrice: "",
+    stockQuantity: "",
+    minStockLevel: 5,
+    weight: "",
+    dimensions: {
+      length: "",
+      width: "",
+      height: "",
+    },
+    attributes: {},
+    tags: [],
+    status: "active",
+  });
+
+  // Form validation
+  const [errors, setErrors] = useState({});
+
+  // Reset modal state
+  const resetModal = () => {
+    setActiveTab("manual");
+    setFormData({
+      name: "",
+      baseSku: "",
+      description: "",
+      category: "",
+      brand: "",
+      productType: "",
+      basePrice: "",
+      baseCostPrice: "",
+      stockQuantity: "",
+      minStockLevel: 5,
+      weight: "",
+      dimensions: { length: "", width: "", height: "" },
+      attributes: {},
+      tags: [],
+      status: "active",
+    });
+    setErrors({});
+    setImportPreview(null);
+    setFieldMapping({});
+    setPlatformData(null);
+    setPlatformUrl("");
+  };
+
+  // Handle modal close
+  const handleClose = () => {
+    resetModal();
+    onHide();
+  };
+
+  // Validate form data
+  const validateForm = (data) => {
+    const newErrors = {};
+
+    if (!data.name?.trim()) {
+      newErrors.name = "Product name is required";
+    }
+    if (!data.category?.trim()) {
+      newErrors.category = "Category is required";
+    }
+    if (
+      !data.basePrice ||
+      isNaN(data.basePrice) ||
+      parseFloat(data.basePrice) < 0
+    ) {
+      newErrors.basePrice = "Valid base price is required";
+    }
+
+    return newErrors;
+  };
+
+  // Handle manual form submission
+  const handleManualSubmit = async () => {
+    try {
+      setLoading(true);
+      showAlert("Manual product creation will be implemented here", "info");
+      // Placeholder for actual implementation
+    } catch (error) {
+      console.error("Error creating product:", error);
+      showAlert("Error creating product", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle form input changes
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    // Clear error for this field
+    if (errors[field]) {
+      setErrors((prev) => ({
+        ...prev,
+        [field]: undefined,
+      }));
+    }
+  };
+
+  // Handle dimension changes
+  const handleDimensionChange = (dimension, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      dimensions: {
+        ...prev.dimensions,
+        [dimension]: value,
+      },
+    }));
+  };
+
+  // Handle file upload for CSV/JSON import
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        let data, headers;
+
+        if (file.name.endsWith(".csv")) {
+          // Simple CSV parsing
+          const lines = event.target.result.split("\n");
+          headers = lines[0].split(",").map((h) => h.trim());
+          data = lines
+            .slice(1)
+            .filter((line) => line.trim())
+            .map((line) => {
+              const values = line.split(",");
+              const row = {};
+              headers.forEach((header, idx) => {
+                row[header] = values[idx]?.trim() || "";
+              });
+              return row;
+            });
+        } else if (file.name.endsWith(".json")) {
+          const jsonData = JSON.parse(event.target.result);
+          data = Array.isArray(jsonData) ? jsonData : [jsonData];
+          headers = data.length > 0 ? Object.keys(data[0]) : [];
+        }
+
+        setImportPreview({ headers, data });
+        showAlert(
+          `File parsed successfully. Found ${data.length} products.`,
+          "success"
+        );
+      } catch (error) {
+        console.error("Error parsing file:", error);
+        showAlert("Error parsing file. Please check the format.", "error");
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
+  // Handle bulk import
+  const handleBulkImport = async () => {
+    try {
+      setLoading(true);
+      showAlert("Bulk import will be implemented here", "info");
+      // Placeholder for actual implementation
+    } catch (error) {
+      console.error("Error importing products:", error);
+      showAlert("Error importing products", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle platform URL fetch
+  const handlePlatformFetch = async () => {
+    if (!platformUrl.trim()) {
+      showAlert("Please enter a valid product URL", "error");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // This would call a backend service to scrape product data
+      const response = await fetch("/api/products/scrape-platform", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ url: platformUrl }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch platform data");
+      }
+
+      const data = await response.json();
+      setPlatformData(data);
+
+      // Initialize field mapping for platform data
+      const mapping = {};
+      Object.keys(data).forEach((key) => {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey.includes("name") || lowerKey.includes("title"))
+          mapping.name = key;
+        else if (lowerKey.includes("price")) mapping.basePrice = key;
+        else if (lowerKey.includes("category")) mapping.category = key;
+        else if (lowerKey.includes("brand")) mapping.brand = key;
+        else if (lowerKey.includes("description")) mapping.description = key;
+      });
+      setFieldMapping(mapping);
+    } catch (error) {
+      console.error("Error fetching platform data:", error);
+      showAlert(
+        "Error fetching platform data. Feature coming soon!",
+        "warning"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle platform scraping
+  const handlePlatformScrape = async () => {
+    if (!platformUrl.trim()) {
+      showAlert("Please enter a product URL", "error");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      showAlert("Platform scraping feature coming soon!", "info");
+      // Placeholder for actual implementation
+    } catch (error) {
+      console.error("Error scraping platform data:", error);
+      showAlert("Error fetching platform data", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal 
+      show={show} 
+      onHide={handleClose} 
+      size="lg" 
+      backdrop="static"
+      centered
+    >
+      <Modal.Header closeButton>
+        <Modal.Title>Create Product</Modal.Title>
+      </Modal.Header>
+
+      <Modal.Body>
+        <div className="text-center p-4">
+          <h4>🎉 Modal is Working!</h4>
+          <p>The import button successfully opened this modal.</p>
+          
+          {/* Simple tab buttons */}
+          <div className="btn-group mb-4" role="group">
+            <button
+              type="button"
+              className={`btn ${activeTab === 'manual' ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => setActiveTab('manual')}
+            >
+              Manual Entry
+            </button>
+            <button
+              type="button"
+              className={`btn ${activeTab === 'import' ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => setActiveTab('import')}
+            >
+              Import CSV/JSON
+            </button>
+            <button
+              type="button"
+              className={`btn ${activeTab === 'platform' ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => setActiveTab('platform')}
+            >
+              Copy from Platform
+            </button>
+          </div>
+          
+          {/* Tab content */}
+          <div className="tab-content">
+            {activeTab === 'manual' && (
+              <div className="p-3 border rounded">
+                <h5>Manual Product Entry</h5>
+                <p>Form for manually entering product details will go here.</p>
+                <div className="form-group">
+                  <label>Product Name:</label>
+                  <input type="text" className="form-control" placeholder="Enter product name" />
+                </div>
+              </div>
+            )}
+            
+            {activeTab === 'import' && (
+              <div className="p-3 border rounded">
+                <h5>Import from CSV/JSON</h5>
+                <p>File upload and import functionality will go here.</p>
+                <input type="file" className="form-control" accept=".csv,.json" />
+              </div>
+            )}
+            
+            {activeTab === 'platform' && (
+              <div className="p-3 border rounded">
+                <h5>Copy from Platform</h5>
+                <p>Platform data scraping functionality will go here.</p>
+                <input type="url" className="form-control" placeholder="Enter product URL" />
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal.Body>
+
+      <Modal.Footer>
+        <Button variant="secondary" onClick={handleClose}>
+          Cancel
+        </Button>
+        <Button variant="primary" onClick={() => {
+          console.log('Save clicked');
+          onSuccess && onSuccess();
+          handleClose();
+        }}>
+          Save Product
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  );
+        {/* Success indicator */}
+        <Alert variant="success" className="mb-3">
+          🎉 <strong>Success!</strong> The import button is working correctly!
+          Modal is now open and functional.
+        </Alert>
+
+        <Tab.Container activeKey={activeTab} onSelect={setActiveTab}>
+          <Nav variant="tabs" className="mb-4">
+            <Nav.Item>
+              <Nav.Link eventKey="manual">
+                <PlusIcon className="h-4 w-4 me-2 d-inline" />
+                Manual Entry
+              </Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link eventKey="import">
+                <DocumentArrowUpIcon className="h-4 w-4 me-2 d-inline" />
+                CSV/JSON Import
+              </Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link eventKey="platform">
+                <GlobeAltIcon className="h-4 w-4 me-2 d-inline" />
+                Copy from Platform
+              </Nav.Link>
+            </Nav.Item>
+          </Nav>
+
+          <Tab.Content>
+            {/* Manual Entry Tab */}
+            <Tab.Pane eventKey="manual">
+              {errors.general && (
+                <Alert variant="danger" className="mb-3">
+                  {errors.general}
+                </Alert>
+              )}
+
+              <div className="text-center py-4">
+                <h5>Manual Product Creation</h5>
+                <p className="text-muted">
+                  Create a new product manually with form fields
+                </p>
+                <Button
+                  variant="primary"
+                  onClick={() =>
+                    alert("Manual creation form will be implemented here")
+                  }
+                >
+                  Open Manual Form
+                </Button>
+              </div>
+            </Tab.Pane>
+
+            {/* CSV/JSON Import Tab */}
+            <Tab.Pane eventKey="import">
+              <div className="mb-4">
+                <h5>Import Products from File</h5>
+                <p className="text-muted">
+                  Upload a CSV or JSON file containing product data. We'll help
+                  you map the fields to our system.
+                </p>
+              </div>
+
+              <div className="mb-4">
+                <Form.Group>
+                  <Form.Label>Choose File</Form.Label>
+                  <div className="d-flex gap-3">
+                    <Form.Control
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      accept=".csv,.json"
+                      disabled={loading}
+                    />
+                    <Button
+                      variant="outline-primary"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={loading}
+                    >
+                      Browse
+                    </Button>
+                  </div>
+                  <Form.Text className="text-muted">
+                    Supported formats: CSV, JSON. Maximum file size: 10MB
+                  </Form.Text>
+                </Form.Group>
+              </div>
+
+              {importPreview && (
+                <Card className="mb-4">
+                  <Card.Header>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <span>Import Preview</span>
+                      <Badge bg="info">
+                        {importPreview.data.length} products found
+                      </Badge>
+                    </div>
+                  </Card.Header>
+                  <Card.Body>
+                    <p>Import preview functionality will be implemented here</p>
+                  </Card.Body>
+                </Card>
+              )}
+            </Tab.Pane>
+
+            {/* Platform Copy Tab */}
+            <Tab.Pane eventKey="platform">
+              <div className="mb-4">
+                <h5>Copy Product from Platform</h5>
+                <p className="text-muted">
+                  Enter a product URL from supported platforms to automatically
+                  import product data.
+                </p>
+              </div>
+
+              <Form.Group className="mb-4">
+                <Form.Label>Product URL</Form.Label>
+                <div className="d-flex gap-2">
+                  <Form.Control
+                    type="url"
+                    value={platformUrl}
+                    onChange={(e) => setPlatformUrl(e.target.value)}
+                    placeholder="https://www.trendyol.com/product/..."
+                    disabled={loading}
+                  />
+                  <Button
+                    variant="outline-primary"
+                    onClick={handlePlatformScrape}
+                    disabled={loading || !platformUrl.trim()}
+                  >
+                    {loading ? (
+                      <>
+                        <Spinner
+                          as="span"
+                          animation="border"
+                          size="sm"
+                          className="me-2"
+                        />
+                        Fetching...
+                      </>
+                    ) : (
+                      <>
+                        <MagnifyingGlassIcon className="h-4 w-4 me-2 d-inline" />
+                        Fetch Data
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <Form.Text className="text-muted">
+                  Supported platforms: Trendyol, Hepsiburada, N11, Amazon TR
+                </Form.Text>
+              </Form.Group>
+            </Tab.Pane>
+          </Tab.Content>
+        </Tab.Container>
+        {/* Tab navigation and content */}
+        <Tab.Container activeKey={activeTab} onSelect={setActiveTab}>
+          <Nav variant="tabs" className="mb-4">
+            <Nav.Item>
+              <Nav.Link eventKey="manual">
+                <PlusIcon className="h-4 w-4 me-2 d-inline" />
+                Manual Entry
+              </Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link eventKey="import">
+                <DocumentArrowUpIcon className="h-4 w-4 me-2 d-inline" />
+                CSV/JSON Import
+              </Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link eventKey="platform">
+                <GlobeAltIcon className="h-4 w-4 me-2 d-inline" />
+                Copy from Platform
+              </Nav.Link>
+            </Nav.Item>
+          </Nav>
+
+          <Tab.Content>
+            {/* Manual Entry Tab */}
+            <Tab.Pane eventKey="manual">
+              <Form onSubmit={handleManualSubmit}>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Product Name *</Form.Label>
+                      <Form.Control
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) =>
+                          handleInputChange("name", e.target.value)
+                        }
+                        isInvalid={!!errors.name}
+                        placeholder="Enter product name"
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.name}
+                      </Form.Control.Feedback>
+                    </Form.Group>
+                  </Col>
+
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>SKU</Form.Label>
+                      <Form.Control
+                        type="text"
+                        value={formData.baseSku}
+                        onChange={(e) =>
+                          handleInputChange("baseSku", e.target.value)
+                        }
+                        placeholder="Auto-generated if empty"
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Category *</Form.Label>
+                      <Form.Control
+                        type="text"
+                        value={formData.category}
+                        onChange={(e) =>
+                          handleInputChange("category", e.target.value)
+                        }
+                        isInvalid={!!errors.category}
+                        placeholder="Enter product category"
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.category}
+                      </Form.Control.Feedback>
+                    </Form.Group>
+                  </Col>
+
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Brand</Form.Label>
+                      <Form.Control
+                        type="text"
+                        value={formData.brand}
+                        onChange={(e) =>
+                          handleInputChange("brand", e.target.value)
+                        }
+                        placeholder="Enter brand name"
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Base Price *</Form.Label>
+                      <Form.Control
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.basePrice}
+                        onChange={(e) =>
+                          handleInputChange("basePrice", e.target.value)
+                        }
+                        isInvalid={!!errors.basePrice}
+                        placeholder="0.00"
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {errors.basePrice}
+                      </Form.Control.Feedback>
+                    </Form.Group>
+                  </Col>
+
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Cost Price</Form.Label>
+                      <Form.Control
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.baseCostPrice}
+                        onChange={(e) =>
+                          handleInputChange("baseCostPrice", e.target.value)
+                        }
+                        placeholder="0.00"
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Stock Quantity</Form.Label>
+                      <Form.Control
+                        type="number"
+                        min="0"
+                        value={formData.stockQuantity}
+                        onChange={(e) =>
+                          handleInputChange("stockQuantity", e.target.value)
+                        }
+                        placeholder="0"
+                      />
+                    </Form.Group>
+                  </Col>
+
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Min Stock Level</Form.Label>
+                      <Form.Control
+                        type="number"
+                        min="0"
+                        value={formData.minStockLevel}
+                        onChange={(e) =>
+                          handleInputChange("minStockLevel", e.target.value)
+                        }
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Description</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    value={formData.description}
+                    onChange={(e) =>
+                      handleInputChange("description", e.target.value)
+                    }
+                    placeholder="Enter product description"
+                  />
+                </Form.Group>
+
+                <Row>
+                  <Col md={4}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Weight (kg)</Form.Label>
+                      <Form.Control
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.weight}
+                        onChange={(e) =>
+                          handleInputChange("weight", e.target.value)
+                        }
+                        placeholder="0.00"
+                      />
+                    </Form.Group>
+                  </Col>
+
+                  <Col md={8}>
+                    <Form.Label>Dimensions (cm)</Form.Label>
+                    <Row>
+                      <Col>
+                        <Form.Control
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.dimensions.length}
+                          onChange={(e) =>
+                            handleDimensionChange("length", e.target.value)
+                          }
+                          placeholder="Length"
+                        />
+                      </Col>
+                      <Col>
+                        <Form.Control
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.dimensions.width}
+                          onChange={(e) =>
+                            handleDimensionChange("width", e.target.value)
+                          }
+                          placeholder="Width"
+                        />
+                      </Col>
+                      <Col>
+                        <Form.Control
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.dimensions.height}
+                          onChange={(e) =>
+                            handleDimensionChange("height", e.target.value)
+                          }
+                          placeholder="Height"
+                        />
+                      </Col>
+                    </Row>
+                  </Col>
+                </Row>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Status</Form.Label>
+                  <Form.Select
+                    value={formData.status}
+                    onChange={(e) =>
+                      handleInputChange("status", e.target.value)
+                    }
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="draft">Draft</option>
+                  </Form.Select>
+                </Form.Group>
+              </Form>
+            </Tab.Pane>
+
+            {/* CSV/JSON Import Tab */}
+            <Tab.Pane eventKey="import">
+              <Card className="mb-4">
+                <Card.Body>
+                  <div className="text-center">
+                    <DocumentArrowUpIcon className="h-12 w-12 text-muted mx-auto mb-3" />
+                    <h5>Import Products from File</h5>
+                    <p className="text-muted mb-3">
+                      Upload a CSV or JSON file containing your product data
+                    </p>
+
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      accept=".csv,.json"
+                      style={{ display: "none" }}
+                    />
+
+                    <Button
+                      variant="outline-primary"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <Spinner size="sm" className="me-2" />
+                          Processing...
+                        </>
+                      ) : (
+                        "Choose File"
+                      )}
+                    </Button>
+                  </div>
+                </Card.Body>
+              </Card>
+
+              {importPreview && (
+                <>
+                  <Card className="mb-4">
+                    <Card.Header>
+                      <div className="d-flex justify-content-between align-items-center">
+                        <div>
+                          <strong>Preview: {importPreview.fileName}</strong>
+                          <Badge bg="info" className="ms-2">
+                            {importPreview.data.length} products
+                          </Badge>
+                        </div>
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          onClick={() => setImportPreview(null)}
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </Card.Header>
+                    <Card.Body>
+                      <h6>Field Mapping</h6>
+                      <Row className="mb-3">
+                        {[
+                          "name",
+                          "baseSku",
+                          "category",
+                          "basePrice",
+                          "brand",
+                          "description",
+                          "stockQuantity",
+                        ].map((field) => (
+                          <Col md={6} key={field} className="mb-2">
+                            <Form.Group>
+                              <Form.Label className="small text-capitalize">
+                                {field.replace(/([A-Z])/g, " $1").trim()}
+                                {["name", "category", "basePrice"].includes(
+                                  field
+                                ) && " *"}
+                              </Form.Label>
+                              <Form.Select
+                                size="sm"
+                                value={fieldMapping[field] || ""}
+                                onChange={(e) =>
+                                  setFieldMapping((prev) => ({
+                                    ...prev,
+                                    [field]: e.target.value,
+                                  }))
+                                }
+                              >
+                                <option value="">-- Select Field --</option>
+                                {importPreview.headers.map((header) => (
+                                  <option key={header} value={header}>
+                                    {header}
+                                  </option>
+                                ))}
+                              </Form.Select>
+                            </Form.Group>
+                          </Col>
+                        ))}
+                      </Row>
+
+                      <h6>Data Preview</h6>
+                      <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+                        <Table striped bordered hover size="sm">
+                          <thead>
+                            <tr>
+                              {importPreview.headers
+                                .slice(0, 6)
+                                .map((header) => (
+                                  <th key={header}>{header}</th>
+                                ))}
+                              {importPreview.headers.length > 6 && <th>...</th>}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {importPreview.data
+                              .slice(0, 5)
+                              .map((row, index) => (
+                                <tr key={index}>
+                                  {importPreview.headers
+                                    .slice(0, 6)
+                                    .map((header) => (
+                                      <td key={header}>
+                                        {String(row[header] || "").substring(
+                                          0,
+                                          50
+                                        )}
+                                      </td>
+                                    ))}
+                                  {importPreview.headers.length > 6 && (
+                                    <td>...</td>
+                                  )}
+                                </tr>
+                              ))}
+                          </tbody>
+                        </Table>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </>
+              )}
+            </Tab.Pane>
+
+            {/* Platform Copy Tab */}
+            <Tab.Pane eventKey="platform">
+              <Card>
+                <Card.Body>
+                  <div className="text-center mb-4">
+                    <GlobeAltIcon className="h-12 w-12 text-muted mx-auto mb-3" />
+                    <h5>Copy Product from Platform</h5>
+                    <p className="text-muted">
+                      Enter a product URL from supported platforms to
+                      automatically import product data
+                    </p>
+                  </div>
+
+                  <Form.Group className="mb-3">
+                    <Form.Label>Product URL</Form.Label>
+                    <div className="d-flex gap-2">
+                      <Form.Control
+                        type="url"
+                        value={platformUrl}
+                        onChange={(e) => setPlatformUrl(e.target.value)}
+                        placeholder="https://example.com/product-page"
+                      />
+                      <Button
+                        variant="primary"
+                        onClick={handlePlatformFetch}
+                        disabled={loading || !platformUrl.trim()}
+                      >
+                        {loading ? (
+                          <Spinner size="sm" />
+                        ) : (
+                          <MagnifyingGlassIcon className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <Form.Text className="text-muted">
+                      Supported platforms: Trendyol, Hepsiburada, N11, Amazon
+                      (Coming Soon)
+                    </Form.Text>
+                  </Form.Group>
+
+                  {platformData && (
+                    <Card className="mt-3">
+                      <Card.Header>
+                        <strong>Fetched Product Data</strong>
+                      </Card.Header>
+                      <Card.Body>
+                        <pre
+                          className="small bg-light p-3 rounded"
+                          style={{ maxHeight: "200px", overflowY: "auto" }}
+                        >
+                          {JSON.stringify(platformData, null, 2)}
+                        </pre>
+                      </Card.Body>
+                    </Card>
+                  )}
+
+                  <Alert variant="info" className="mt-3">
+                    <strong>Note:</strong> Platform data scraping is in
+                    development. Currently supports basic product information
+                    extraction.
+                  </Alert>
+                </Card.Body>
+              </Card>
+            </Tab.Pane>
+          </Tab.Content>
+        </Tab.Container>
+      </Modal.Body>
+
+      <Modal.Footer>
+        <Button variant="secondary" onClick={handleClose} disabled={loading}>
+          Cancel
+        </Button>
+
+        {activeTab === "manual" && (
+          <Button
+            variant="primary"
+            onClick={handleManualSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Spinner size="sm" className="me-2" />
+                Creating...
+              </>
+            ) : (
+              "Create Product"
+            )}
+          </Button>
+        )}
+
+        {activeTab === "import" && importPreview && (
+          <Button
+            variant="success"
+            onClick={handleBulkImport}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Spinner size="sm" className="me-2" />
+                Importing...
+              </>
+            ) : (
+              `Import ${importPreview.data.length} Products`
+            )}
+          </Button>
+        )}
+
+        {activeTab === "platform" && platformData && (
+          <Button
+            variant="primary"
+            onClick={() => {
+              // Convert platform data to form format and switch to manual tab
+              const mappedData = {};
+              Object.entries(fieldMapping).forEach(
+                ([targetField, sourceField]) => {
+                  if (sourceField && platformData[sourceField] !== undefined) {
+                    mappedData[targetField] = platformData[sourceField];
+                  }
+                }
+              );
+              setFormData((prev) => ({ ...prev, ...mappedData }));
+              setActiveTab("manual");
+            }}
+            disabled={loading}
+          >
+            Use This Data
+          </Button>
+        )}
+      </Modal.Footer>
+    </Modal>
+  );
+};
+
+export default ProductCreationModal;
