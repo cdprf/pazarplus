@@ -1,0 +1,135 @@
+/* Modern Responsive Design for Product Management */
+
+/* Container and spacing improvements */
+.product-management-container {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .product-management-container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .product-management-container {
+    padding: 0 2rem;
+  }
+}
+
+.product-section-spacing {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Enhanced mobile experience */
+@media (max-width: 640px) {
+  .responsive-grid {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .mobile-full-width {
+    width: 100%;
+  }
+
+  .mobile-stack {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .mobile-hidden {
+    display: none;
+  }
+
+  .mobile-padding {
+    padding: 1rem;
+  }
+
+  .mobile-text-center {
+    text-align: center;
+  }
+}
+
+/* Responsive card layouts */
+.product-card-responsive {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .product-card-responsive {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .product-card-responsive {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .product-card-responsive {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Status tabs responsive design */
+.status-tabs-container {
+  background-color: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0 1rem;
+}
+
+.status-tabs-wrapper {
+  display: flex;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.status-tabs-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.status-tabs-list {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 100%;
+}
+
+@media (min-width: 640px) {
+  .status-tabs-list {
+    min-width: auto;
+  }
+}
+
+.status-tab {
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  min-width: 100px;
+  text-align: center;
+}
+
+/* Enhanced mobile drawer */
+.mobile-drawer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: white;
+  border-radius: 1rem 1rem 0 0;
+  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+  transform: translateY(100%);
+  transition: transform 0.3s ease-in-out;
+}

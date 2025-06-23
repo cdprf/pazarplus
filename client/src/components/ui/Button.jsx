@@ -13,6 +13,7 @@ const Button = React.forwardRef(
       icon,
       iconPosition = "left",
       fullWidth = false,
+      onClick,
       ...props
     },
     ref
@@ -20,6 +21,7 @@ const Button = React.forwardRef(
     // Use design system button classes
     const baseClasses = "btn";
 
+    // Use the design system's button variants
     const variants = {
       primary: "btn-primary",
       secondary: "btn-secondary",
@@ -28,8 +30,10 @@ const Button = React.forwardRef(
       danger: "btn-danger",
       success: "btn-success",
       warning: "btn-warning",
+      info: "btn-info",
     };
 
+    // Use the design system's button sizes
     const sizes = {
       xs: "btn-xs",
       sm: "btn-sm",
@@ -98,17 +102,24 @@ const Button = React.forwardRef(
       <button
         className={cn(
           baseClasses,
-          variants[variant] || variants.primary,
+          variants[variant] || variants.primary, // Fallback to primary if variant doesn't exist
           sizes[size] || sizes.md,
           {
             "opacity-50 cursor-not-allowed": disabled || loading,
             "w-full": fullWidth,
+            "transition-all duration-200 hover:shadow-md focus:ring-2 focus:ring-offset-2": !disabled && !loading,
+            "hover:scale-[1.02] active:scale-[0.98]": variant === "primary" && !disabled && !loading,
           },
           className
         )}
         disabled={disabled || loading}
         ref={ref}
         aria-disabled={disabled || loading}
+        onClick={(e) => {
+          if (onClick && !disabled && !loading) {
+            onClick(e);
+          }
+        }}
         {...props}
       >
         {iconElement && iconPosition === "left" && (

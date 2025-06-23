@@ -202,7 +202,7 @@ async function getPerformanceMetrics(userId, dateRange) {
   const fulfillmentTimes = await Order.findAll({
     where: {
       ...whereClause,
-      orderStatus: "completed",
+      orderStatus: "delivered",
     },
     attributes: [
       [

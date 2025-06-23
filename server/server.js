@@ -56,11 +56,11 @@ async function startServer() {
       service: "pazar-plus",
     });
 
-    // Sync database tables
-    await sequelize.sync({
-      force: false, // Changed back to false to preserve data
-      logging: false, // Disable SQL logging for cleaner output
-    });
+    // Sync database tables (skip sync since migrations handle schema)
+    // await sequelize.sync({
+    //   force: false, // Changed back to false to preserve data
+    //   logging: false, // Disable SQL logging for cleaner output
+    // });
     logger.info("Database synchronized successfully", {
       service: "pazar-plus",
     });
@@ -70,17 +70,17 @@ async function startServer() {
     });
 
     // Start server with error handling - bind to all interfaces for network access
-    const server = app.listen(PORT, '0.0.0.0', () => {
+    const server = app.listen(PORT, "0.0.0.0", () => {
       logger.info(`Server running on port ${PORT} (accessible from network)`, {
         service: "pazar-plus",
         port: PORT,
         environment: process.env.NODE_ENV || "development",
-        host: '0.0.0.0',
+        host: "0.0.0.0",
         networkIP: networkIP,
         accessUrls: {
           local: `http://localhost:${PORT}`,
-          network: `http://${networkIP}:${PORT}`
-        }
+          network: `http://${networkIP}:${PORT}`,
+        },
       });
 
       // Initialize WebSocket server for real-time notifications

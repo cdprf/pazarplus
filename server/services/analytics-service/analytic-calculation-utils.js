@@ -352,7 +352,6 @@ async function calculateCashFlow(userId, dateRange) {
       const amount = parseFloat(order.totalAmount) || 0;
 
       switch (order.orderStatus) {
-        case "completed":
         case "delivered":
           inflow += amount;
           break;
@@ -386,7 +385,7 @@ async function calculateCashFlow(userId, dateRange) {
       },
       breakdown: {
         completedOrders: orders.filter((o) =>
-          ["completed", "delivered"].includes(o.orderStatus)
+          ["delivered"].includes(o.orderStatus)
         ).length,
         cancelledOrders: orders.filter((o) =>
           ["cancelled", "returned", "refunded"].includes(o.orderStatus)
@@ -700,7 +699,7 @@ async function calculateSatisfactionMetrics(userId, dateRange) {
       Order.count({
         where: {
           ...whereClause,
-          orderStatus: "completed",
+          orderStatus: "delivered",
         },
       }),
       Order.count({

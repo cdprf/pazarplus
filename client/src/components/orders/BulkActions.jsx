@@ -4,7 +4,7 @@
  * Follows design system for buttons, cards, and confirmation patterns
  */
 
-import React from "react";
+import React, { useState } from "react";
 
 import {
   CheckCircle,
@@ -20,28 +20,28 @@ const BULK_ACTIONS = {
     label: "Onayla",
     icon: CheckCircle,
     variant: "outline",
-    color: "text-success-600 hover:text-success-700 hover:border-success-300",
+    color: "success",
     description: "Seçili siparişleri onayla ve işleme al",
   },
   process: {
     label: "Hazırlanıyor",
     icon: Package,
     variant: "outline",
-    color: "text-info-600 hover:text-info-700 hover:border-info-300",
+    color: "info",
     description: "Seçili siparişleri hazırlanıyor olarak işaretle",
   },
   ship: {
     label: "Kargola",
     icon: Truck,
     variant: "outline",
-    color: "text-primary-600 hover:text-primary-700 hover:border-primary-300",
+    color: "primary",
     description: "Seçili siparişleri kargoda olarak işaretle",
   },
   delete: {
     label: "Sil",
     icon: Trash2,
     variant: "outline",
-    color: "text-danger-600 hover:text-danger-700 hover:border-danger-300",
+    color: "danger",
     description: "Seçili siparişleri sil",
     confirmRequired: true,
   },
@@ -55,17 +55,31 @@ const BulkActions = ({
   loading = false,
   className = "",
 }) => {
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [actionToConfirm, setActionToConfirm] = useState(null);
+
   const handleBulkAction = (actionKey) => {
     const action = BULK_ACTIONS[actionKey];
 
     if (action.confirmRequired) {
-      const message = `${selectedCount} siparişi ${action.label.toLowerCase()} yapmak istediğinizden emin misiniz?`;
-      if (!window.confirm(message)) {
-        return;
-      }
+      setActionToConfirm(actionKey);
+      setShowConfirmation(true);
+    } else {
+      onBulkAction(actionKey);
     }
+  };
 
-    onBulkAction(actionKey);
+  const handleConfirmAction = () => {
+    if (actionToConfirm) {
+      onBulkAction(actionToConfirm);
+      setShowConfirmation(false);
+      setActionToConfirm(null);
+    }
+  };
+
+  const handleCancelConfirmation = () => {
+    setShowConfirmation(false);
+    setActionToConfirm(null);
   };
 
   if (selectedCount === 0) {
@@ -73,53 +87,67 @@ const BulkActions = ({
   }
 
   return (
-    <div className={`pazar-card ${className}`}>
-      <div className="pazar-card-content p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-warning-600" />
-              <span className="pazar-text-sm font-medium">
-                {selectedCount} sipariş seçildi
-              </span>
+    <>
+      <div className={`card ${className}`}>
+        <div className="card-content p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
+                <AlertTriangle className="h-5 w-5 text-warning-600" />
+                <span className="text-sm font-medium">
+                  {selectedCount} sipariş seçildi
+                </span>
+              </div>
+
+              <div className="flex space-x-2">
+                {availableActions.map((actionKey) => {
+                  const action = BULK_ACTIONS[actionKey];
+                  if (!action) return null;
+
+                  const Icon = action.icon;
+
+                  return (
+                    <button
+                      key={actionKey}
+                      onClick={() => handleBulkAction(actionKey)}
+                      disabled={loading}
+                      className={`btn btn-${action.variant} btn-sm flex items-center space-x-2 text-${action.color}-600 hover:text-${action.color}-700`}
+                      title={action.description}
+                      aria-label={`${action.label} - ${action.description}`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{action.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="flex space-x-2">
-              {availableActions.map((actionKey) => {
-                const action = BULK_ACTIONS[actionKey];
-                if (!action) return null;
-
-                const Icon = action.icon;
-
-                return (
-                  <button
-                    key={actionKey}
-                    onClick={() => handleBulkAction(actionKey)}
-                    disabled={loading}
-                    className={`pazar-btn pazar-btn-${action.variant} pazar-btn-sm flex items-center space-x-2 ${action.color}`}
-                    title={action.description}
-                    aria-label={`${action.label} - ${action.description}`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{action.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <button
+              onClick={onClearSelection}
+              disabled={loading}
+              className="btn btn-outline btn-sm flex items-center space-x-2"
+              aria-label="Seçimi Temizle"
+            >
+              <X className="h-4 w-4" />
+              <span>Seçimi Temizle</span>
+            </button>
           </div>
-
-          <button
-            onClick={onClearSelection}
-            disabled={loading}
-            className="pazar-btn pazar-btn-outline pazar-btn-sm flex items-center space-x-2"
-            aria-label="Seçimi Temizle"
-          >
-            <X className="h-4 w-4" />
-            <span>Seçimi Temizle</span>
-          </button>
         </div>
       </div>
-    </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmation && actionToConfirm && (
+        <BulkActionConfirmation
+          isOpen={showConfirmation}
+          onClose={handleCancelConfirmation}
+          onConfirm={handleConfirmAction}
+          action={actionToConfirm}
+          selectedCount={selectedCount}
+          loading={loading}
+        />
+      )}
+    </>
   );
 };
 
@@ -140,12 +168,13 @@ const BulkActionConfirmation = ({
   const Icon = actionConfig.icon;
 
   return (
-    <div className="pazar-modal-overlay" onClick={onClose}>
+    <div className="modal modal-open">
+      <div className="modal-backdrop" onClick={onClose}></div>
       <div
-        className="pazar-modal-content max-w-md"
+        className="modal-container max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="pazar-modal-header">
+        <div className="modal-header">
           <div className="flex items-center space-x-3">
             <div
               className={`p-2 rounded-full ${
@@ -159,23 +188,23 @@ const BulkActionConfirmation = ({
               />
             </div>
             <div>
-              <h3 className="pazar-modal-title">Toplu İşlem Onayı</h3>
-              <p className="pazar-text-sm text-muted">
+              <h3 className="modal-title">Toplu İşlem Onayı</h3>
+              <p className="text-sm text-muted">
                 {actionConfig.description}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="pazar-modal-body">
-          <p className="pazar-text-base">
+        <div className="modal-body">
+          <p className="text-base">
             {selectedCount} sipariş için <strong>{actionConfig.label}</strong>{" "}
             işlemini gerçekleştirmek istediğinizden emin misiniz?
           </p>
 
           {action === "delete" && (
             <div className="mt-3 p-3 bg-danger-50 border border-danger-200 rounded-lg">
-              <p className="pazar-text-sm text-danger-800">
+              <p className="text-sm text-danger-800">
                 <strong>Uyarı:</strong> Bu işlem geri alınamaz. Silinecek
                 siparişler kalıcı olarak kaldırılacaktır.
               </p>
@@ -183,19 +212,19 @@ const BulkActionConfirmation = ({
           )}
         </div>
 
-        <div className="pazar-modal-footer">
+        <div className="modal-footer">
           <button
             onClick={onClose}
             disabled={loading}
-            className="pazar-btn pazar-btn-outline flex-1"
+            className="btn btn-ghost flex-1"
           >
             İptal
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className={`pazar-btn ${
-              action === "delete" ? "pazar-btn-danger" : "pazar-btn-primary"
+            className={`btn ${
+              action === "delete" ? "btn-danger" : "btn-primary"
             } flex-1`}
           >
             {loading ? "İşleniyor..." : actionConfig.label}
@@ -224,22 +253,22 @@ const BulkActionProgress = ({
   const percentage = total > 0 ? Math.round((progress / total) * 100) : 0;
 
   return (
-    <div className="fixed bottom-4 right-4 pazar-card max-w-sm pazar-shadow-lg">
-      <div className="pazar-card-content p-4">
+    <div className="fixed bottom-4 right-4 card max-w-sm shadow-lg">
+      <div className="card-content p-4">
         <div className="flex items-center space-x-3 mb-3">
           <Icon className="h-5 w-5 text-primary-600 animate-pulse" />
           <div className="flex-1">
-            <h4 className="pazar-text-sm font-medium">
+            <h4 className="text-sm font-medium">
               {actionConfig.label} İşlemi
             </h4>
-            <p className="pazar-text-xs text-muted">
+            <p className="text-xs text-muted">
               {progress} / {total} tamamlandı
             </p>
           </div>
           {onCancel && (
             <button
               onClick={onCancel}
-              className="pazar-btn pazar-btn-outline pazar-btn-sm p-1"
+              className="btn btn-outline btn-sm p-1"
               aria-label="İşlemi İptal Et"
             >
               <X className="h-4 w-4" />
@@ -255,7 +284,7 @@ const BulkActionProgress = ({
             />
           </div>
 
-          <div className="flex justify-between pazar-text-xs text-muted">
+          <div className="flex justify-between text-xs text-muted">
             <span>{percentage}%</span>
             <span>{currentItem}</span>
           </div>
@@ -286,11 +315,11 @@ const StatusUpdateBulkAction = ({
   }
 
   return (
-    <div className={`pazar-card ${className}`}>
-      <div className="pazar-card-content p-4">
+    <div className={`card ${className}`}>
+      <div className="card-content p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <span className="pazar-text-sm font-medium">
+            <span className="text-sm font-medium">
               {selectedCount} sipariş seçildi - Durum güncelle:
             </span>
 
@@ -300,7 +329,7 @@ const StatusUpdateBulkAction = ({
                   key={status.value}
                   onClick={() => onStatusUpdate(status.value)}
                   disabled={loading}
-                  className={`pazar-btn pazar-btn-outline pazar-btn-sm text-${status.color}-600 hover:text-${status.color}-700 hover:border-${status.color}-300`}
+                  className={`btn btn-outline btn-sm text-${status.color}-600 hover:text-${status.color}-700 hover:border-${status.color}-300`}
                 >
                   {status.label}
                 </button>
@@ -311,7 +340,7 @@ const StatusUpdateBulkAction = ({
           <button
             onClick={onClearSelection}
             disabled={loading}
-            className="pazar-btn pazar-btn-outline pazar-btn-sm flex items-center space-x-2"
+            className="btn btn-outline btn-sm flex items-center space-x-2"
             aria-label="Seçimi İptal Et"
           >
             <X className="h-4 w-4" />

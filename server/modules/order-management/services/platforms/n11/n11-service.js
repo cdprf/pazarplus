@@ -953,56 +953,17 @@ class N11Service extends BasePlatformService {
 
           // Create new order
           const result = await sequelize.transaction(async (t) => {
-            // Create shipping detail first with comprehensive N11 address mapping
+            // Create the order record first with comprehensive N11 field mapping
             const { ShippingDetail } = require("../../../../../models");
             const shippingAddress = order.shippingAddress || {};
             const billingAddress = order.billingAddress || {};
 
-            const shippingDetail = await ShippingDetail.create(
-              {
-                recipientName:
-                  shippingAddress.fullName ||
-                  billingAddress.fullName ||
-                  order.customerfullName ||
-                  "",
-                address:
-                  shippingAddress.address || billingAddress.address || "",
-                address1:
-                  shippingAddress.address || billingAddress.address || "",
-                city: shippingAddress.city || billingAddress.city || "",
-                district:
-                  shippingAddress.district || billingAddress.district || "",
-                neighborhood:
-                  shippingAddress.neighborhood ||
-                  billingAddress.neighborhood ||
-                  "",
-                state:
-                  shippingAddress.district || billingAddress.district || "",
-                postalCode:
-                  shippingAddress.postalCode || billingAddress.postalCode || "",
-                country: "Turkey",
-                phone:
-                  phoneNumber ||
-                  shippingAddress.gsm ||
-                  billingAddress.gsm ||
-                  "",
-                email: order.customerEmail || "",
-                // Additional N11-specific fields
-                tcId:
-                  shippingAddress.tcId ||
-                  billingAddress.tcId ||
-                  order.tcIdentityNumber ||
-                  "",
-                taxId: billingAddress.taxId || order.taxId || "",
-                taxOffice: billingAddress.taxHouse || order.taxOffice || "",
-                invoiceType: billingAddress.invoiceType || 1,
+            const [normalizedOrder, created] = await Order.findOrCreate({
+              where: {
+                externalOrderId: order.id.toString(),
+                connectionId: this.connectionId,
               },
-              { transaction: t }
-            );
-
-            // Create the order record with comprehensive N11 field mapping
-            const normalizedOrder = await Order.create(
-              {
+              defaults: {
                 externalOrderId: order.id.toString(),
                 connectionId: this.connectionId,
                 userId: this.connection.userId,
@@ -1031,7 +992,6 @@ class N11Service extends BasePlatformService {
                 totalAmount: parseFloat(order.totalAmount || 0),
                 currency: "TRY",
                 shippingAddress: JSON.stringify(shippingAddress),
-                shippingDetailId: shippingDetail.id,
                 // Cargo and tracking information
                 cargoTrackingNumber: order.cargoTrackingNumber
                   ? this.preserveCargoTrackingNumber(order.cargoTrackingNumber)
@@ -1062,58 +1022,110 @@ class N11Service extends BasePlatformService {
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date(),
               },
+              transaction: t,
+            });
+
+            if (created) {
+              this.logger.debug(`Created new order for ${order.id}`);
+            } else {
+              this.logger.debug(
+                `Found existing order for ${order.id}, updating if needed`
+              );
+            }
+
+            // Create shipping detail with orderId
+            const shippingDetail = await ShippingDetail.create(
+              {
+                orderId: normalizedOrder.id,
+                recipientName:
+                  shippingAddress.fullName ||
+                  billingAddress.fullName ||
+                  order.customerfullName ||
+                  "",
+                address:
+                  shippingAddress.address || billingAddress.address || "",
+                city: shippingAddress.city || billingAddress.city || "",
+                state:
+                  shippingAddress.district || billingAddress.district || "",
+                postalCode:
+                  shippingAddress.postalCode || billingAddress.postalCode || "",
+                country: "Turkey",
+                phone:
+                  phoneNumber ||
+                  shippingAddress.gsm ||
+                  billingAddress.gsm ||
+                  "",
+                email: order.customerEmail || "",
+                // Additional N11-specific fields
+                carrierId: order.cargoProviderName || null,
+              },
+              { transaction: t }
+            );
+
+            // Update order with shipping detail ID
+            await normalizedOrder.update(
+              { shippingDetailId: shippingDetail.id },
               { transaction: t }
             );
 
             // Create order items with comprehensive N11 line item mapping
             if (order.lines && Array.isArray(order.lines)) {
               // Map order items data with all N11-specific fields
-              const orderItemsData = order.lines.map((item) => ({
-                orderId: normalizedOrder.id,
-                productId: null, // Will be set by linking service
-                platformProductId: item.productId?.toString(),
-                barcode: item.barcode || null,
-                title: item.productName || item.title || "",
-                sku: item.stockCode || item.sellerStockCode || "",
-                quantity: parseInt(item.quantity || 1, 10),
-                price: parseFloat(item.price || 0),
-                // Calculate total discount (seller + mall discounts)
-                discount: parseFloat(
-                  (item.sellerDiscount || 0) + (item.mallDiscount || 0)
-                ),
-                platformDiscount: parseFloat(item.mallDiscount || 0),
-                merchantDiscount: parseFloat(item.sellerDiscount || 0),
-                invoiceTotal: parseFloat(item.sellerInvoiceAmount || 0),
-                currency: "TRY",
-                // N11-specific fields
-                vatBaseAmount: parseFloat(item.vatBaseAmount || 0),
-                laborCost: parseFloat(item.totalLaborCostExcludingVAT || 0),
-                lineItemStatus: item.orderItemLineItemStatusName || "Created",
-                // Additional pricing fields
-                vatRate: parseFloat(item.vatRate || 20),
-                commissionRate: parseFloat(item.commissionRate || 0),
-                taxDeductionRate: parseFloat(item.taxDeductionRate || 0),
-                // Marketing and marketplace fees
-                netMarketingFeeRate: parseFloat(item.netMarketingFeeRate || 0),
-                netMarketplaceFeeRate: parseFloat(
-                  item.netMarketplaceFeeRate || 0
-                ),
-                // Installment information
-                installmentChargeWithVAT: parseFloat(
-                  item.installmentChargeWithVAT || 0
-                ),
-                // Coupon discounts
-                sellerCouponDiscount: parseFloat(
-                  item.sellerCouponDiscount || 0
-                ),
-                // Variant information
-                variantInfo:
-                  item.variantAttributes && item.variantAttributes.length > 0
-                    ? JSON.stringify(item.variantAttributes)
-                    : null,
-                // Store complete raw data for debugging
-                rawData: JSON.stringify(item),
-              }));
+              const orderItemsData = order.lines.map((item) => {
+                const unitPrice = parseFloat(item.price || 0);
+                const quantity = parseInt(item.quantity || 1, 10);
+                const totalPrice = unitPrice * quantity;
+
+                return {
+                  orderId: normalizedOrder.id,
+                  productId: null, // Will be set by linking service
+                  platformProductId: item.productId?.toString(),
+                  barcode: item.barcode || null,
+                  title: item.productName || item.title || "",
+                  sku: item.stockCode || item.sellerStockCode || "",
+                  quantity: quantity,
+                  price: unitPrice,
+                  totalPrice: totalPrice, // Required NOT NULL field
+                  // Calculate total discount (seller + mall discounts)
+                  discount: parseFloat(
+                    (item.sellerDiscount || 0) + (item.mallDiscount || 0)
+                  ),
+                  platformDiscount: parseFloat(item.mallDiscount || 0),
+                  merchantDiscount: parseFloat(item.sellerDiscount || 0),
+                  invoiceTotal: parseFloat(item.sellerInvoiceAmount || 0),
+                  currency: "TRY",
+                  // N11-specific fields
+                  vatBaseAmount: parseFloat(item.vatBaseAmount || 0),
+                  laborCost: parseFloat(item.totalLaborCostExcludingVAT || 0),
+                  lineItemStatus: item.orderItemLineItemStatusName || "Created",
+                  // Additional pricing fields
+                  vatRate: parseFloat(item.vatRate || 20),
+                  commissionRate: parseFloat(item.commissionRate || 0),
+                  taxDeductionRate: parseFloat(item.taxDeductionRate || 0),
+                  // Marketing and marketplace fees
+                  netMarketingFeeRate: parseFloat(
+                    item.netMarketingFeeRate || 0
+                  ),
+                  netMarketplaceFeeRate: parseFloat(
+                    item.netMarketplaceFeeRate || 0
+                  ),
+                  // Installment information
+                  installmentChargeWithVAT: parseFloat(
+                    item.installmentChargeWithVAT || 0
+                  ),
+                  // Coupon discounts
+                  sellerCouponDiscount: parseFloat(
+                    item.sellerCouponDiscount || 0
+                  ),
+                  // Variant information
+                  variantInfo:
+                    item.variantAttributes && item.variantAttributes.length > 0
+                      ? JSON.stringify(item.variantAttributes)
+                      : null,
+                  // Store complete raw data for debugging
+                  rawData: JSON.stringify(item),
+                };
+              });
 
               try {
                 // Create OrderItem records first
@@ -1190,6 +1202,77 @@ class N11Service extends BasePlatformService {
           normalizedOrders.push(result);
           successCount++;
         } catch (error) {
+          // Handle unique constraint violations gracefully (race condition during concurrent syncs)
+          if (
+            error.name === "SequelizeUniqueConstraintError" &&
+            (error.original?.code === "SQLITE_CONSTRAINT" ||
+              error.original?.errno === 19 ||
+              (error.sql &&
+                error.sql.includes("unique_external_order_per_connection")))
+          ) {
+            this.logger.warn(
+              `Unique constraint error for order ${order.id}, attempting recovery`,
+              {
+                orderNumber: order.id,
+                connectionId: this.connectionId,
+                errorName: error.name,
+                constraintCode: error.original?.code,
+                errno: error.original?.errno,
+              }
+            );
+
+            try {
+              // Add small delay to handle transaction timing issues
+              await new Promise((resolve) => setTimeout(resolve, 100));
+
+              // Find the existing order that was created by another process
+              const existingOrder = await Order.findOne({
+                where: {
+                  connectionId: this.connectionId,
+                  externalOrderId: order.id.toString(),
+                },
+              });
+
+              if (existingOrder) {
+                // Update the existing order with latest data
+                await existingOrder.update({
+                  orderStatus: this.mapOrderStatus(order.shipmentPackageStatus),
+                  rawData: JSON.stringify(order),
+                  lastSyncedAt: new Date(),
+                });
+
+                normalizedOrders.push(existingOrder);
+                updatedCount++;
+
+                this.logger.info(
+                  `Successfully recovered from race condition by updating existing order ${order.id}`,
+                  {
+                    orderNumber: order.id,
+                    connectionId: this.connectionId,
+                  }
+                );
+                continue;
+              } else {
+                this.logger.error(
+                  `Unique constraint error but order not found: ${order.id}`,
+                  {
+                    orderNumber: order.id,
+                    connectionId: this.connectionId,
+                  }
+                );
+              }
+            } catch (recoveryError) {
+              this.logger.error(
+                `Failed to recover from unique constraint error for order ${order.id}: ${recoveryError.message}`,
+                {
+                  error: recoveryError,
+                  orderId: order.id,
+                  connectionId: this.connectionId,
+                }
+              );
+            }
+          }
+
           this.logger.error(
             `Failed to process order ${order.id}: ${error.message}`,
             {
@@ -1253,12 +1336,14 @@ class N11Service extends BasePlatformService {
           shippingAddress: n11OrderData.shippingAddress,
           billingAddress: n11OrderData.billingAddress,
           customerInfo: {
-            fullName: n11OrderData.customerfullName,
-            email: n11OrderData.customerEmail,
+            fullName:
+              n11OrderData.customerfullName || n11OrderData.customerName || "",
+            email: n11OrderData.customerEmail || "",
             gsm:
               n11OrderData.billingAddress?.gsm ||
-              n11OrderData.shippingAddress?.gsm,
-            citizenshipId: n11OrderData.tcIdentityNumber,
+              n11OrderData.shippingAddress?.gsm ||
+              "",
+            citizenshipId: n11OrderData.tcIdentityNumber || "",
           },
           n11OrderDate: n11OrderData.lastModifiedDate
             ? new Date(n11OrderData.lastModifiedDate)
@@ -1468,8 +1553,8 @@ class N11Service extends BasePlatformService {
       const localOrder = await Order.findOne({
         where: {
           externalOrderId: externalOrderId.toString(),
-          platform: "n11"
-        }
+          platform: "n11",
+        },
       });
 
       if (!localOrder) {
@@ -1479,7 +1564,7 @@ class N11Service extends BasePlatformService {
       // Parse the stored raw data to get line items
       let orderDetails;
       try {
-        orderDetails = JSON.parse(localOrder.rawData || '{}');
+        orderDetails = JSON.parse(localOrder.rawData || "{}");
       } catch (parseError) {
         throw new Error("Could not parse order data from database");
       }
@@ -1517,13 +1602,13 @@ class N11Service extends BasePlatformService {
       let response;
       try {
         response = await this.axiosInstance.put(
-          N11_API.ENDPOINTS.UPDATE_ORDER_STATUS, 
+          N11_API.ENDPOINTS.UPDATE_ORDER_STATUS,
           requestData,
           {
             timeout: 15000, // Increase timeout to 15 seconds
             headers: {
-              'Content-Type': 'application/json'
-            }
+              "Content-Type": "application/json",
+            },
           }
         );
       } catch (apiError) {
@@ -1532,20 +1617,23 @@ class N11Service extends BasePlatformService {
           error: apiError.message,
           code: apiError.code,
           status: apiError.response?.status,
-          endpoint: N11_API.ENDPOINTS.UPDATE_ORDER_STATUS
+          endpoint: N11_API.ENDPOINTS.UPDATE_ORDER_STATUS,
         });
-        
+
         // If it's a socket hang up or connection error, return a partial success
-        if (apiError.code === 'ECONNRESET' || apiError.message.includes('socket hang up')) {
+        if (
+          apiError.code === "ECONNRESET" ||
+          apiError.message.includes("socket hang up")
+        ) {
           return {
             success: false,
             message: `N11 API connection failed: ${apiError.message}. Order may need to be accepted manually on N11 platform.`,
-            error: 'CONNECTION_ERROR',
+            error: "CONNECTION_ERROR",
             externalOrderId,
-            requestData
+            requestData,
           };
         }
-        
+
         throw apiError;
       }
 

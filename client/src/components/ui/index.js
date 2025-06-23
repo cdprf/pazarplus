@@ -1,33 +1,73 @@
 // Re-export all UI components for easy importing
-export { Button } from "./Button";
-export {
-  Card,
+import Button from "./Button.jsx";
+import Card, {
   CardHeader,
-  CardBody,
+  CardContent,
   CardFooter,
   CardTitle,
   CardSubtitle,
-} from "./Card";
-export { Badge } from "./Badge";
+} from "./Card.jsx";
+import Badge from "./Badge.jsx";
+import Tooltip from "./Tooltip.jsx";
+import Input, {
+  Label,
+  FormGroup,
+  HelpText,
+  ErrorText,
+  SuccessText,
+} from "./Input.jsx";
+import LoadingSpinner from "./LoadingSpinner.jsx";
+import Skeleton from "./Skeleton.jsx";
+import EmptyState from "./EmptyState.jsx";
+import Alert from "./Alert.jsx";
+import DropdownMenu, {
+  DropdownItem,
+  DropdownDivider,
+} from "./DropdownMenu.jsx";
+import Tabs, { TabsList, TabsTrigger, TabsContent } from "./Tabs.jsx";
+import Modal, { ModalHeader, ModalContent, ModalFooter } from "./Modal.jsx";
+import Select from "./Select.jsx";
+import Switch from "./Switch.jsx";
+import Slider from "./Slider.jsx";
+
 export {
+  Button,
+  Card,
+  CardHeader,
+  CardContent,
+  CardFooter,
+  CardTitle,
+  CardSubtitle,
+  Badge,
+  Tooltip,
   Input,
   Label,
   FormGroup,
   HelpText,
   ErrorText,
   SuccessText,
-} from "./Input";
-export { LoadingSpinner } from "./LoadingSpinner";
-export { Skeleton } from "./Skeleton";
-export { EmptyState } from "./EmptyState";
-export { Alert } from "./Alert";
-export { DropdownMenu, DropdownItem, DropdownDivider } from "./DropdownMenu";
-export { Tabs, TabsList, TabsTrigger, TabsContent } from "./Tabs";
-export { Modal, ModalHeader, ModalContent, ModalFooter } from "./Modal";
-export { Tooltip } from "./Tooltip";
-export { Select } from "./Select";
-export { Switch } from "./Switch";
-export { Slider } from "./Slider";
+};
+
+export {
+  LoadingSpinner,
+  Skeleton,
+  EmptyState,
+  Alert,
+  DropdownMenu,
+  DropdownItem,
+  DropdownDivider,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  Modal,
+  ModalHeader,
+  ModalContent,
+  ModalFooter,
+  Select,
+  Switch,
+  Slider,
+};
 export { Textarea } from "./Textarea";
 export { ScrollArea } from "./ScrollArea";
 export {

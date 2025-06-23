@@ -473,6 +473,7 @@ class TrendyolService extends BasePlatformService {
     let successCount = 0;
     let skippedCount = 0;
     let updatedCount = 0;
+    let failedCount = 0;
 
     try {
       // Get array of order numbers for efficient querying
@@ -562,16 +563,102 @@ class TrendyolService extends BasePlatformService {
           try {
             this.logger.debug(`Creating new order for ${order.orderNumber}`);
 
-            const result = await sequelize.transaction(async (t) => {
-              // Create shipping detail first
+            // Use findOrCreate for atomic upsert behavior
+            const [normalizedOrder, created] = await Order.findOrCreate({
+              where: {
+                externalOrderId: order.orderNumber,
+                connectionId: this.connectionId,
+              },
+              defaults: {
+                externalOrderId: order.orderNumber,
+                orderNumber: order.orderNumber,
+                connectionId: this.connectionId,
+                userId: this.connection.userId,
+                customerName:
+                  order.shipmentAddress?.fullName ||
+                  `${order.customerFirstName || ""} ${
+                    order.customerLastName || ""
+                  }`.trim() ||
+                  "Unknown Customer",
+                customerEmail: order.customerEmail || "",
+                customerPhone: phoneNumber || "",
+
+                // Required JSON fields for database
+                customerInfo: this.safeJsonStringify({
+                  firstName: order.customerFirstName || "",
+                  lastName: order.customerLastName || "",
+                  email: order.customerEmail || "",
+                  phone: phoneNumber || "",
+                  fullName:
+                    order.shipmentAddress?.fullName ||
+                    `${order.customerFirstName || ""} ${
+                      order.customerLastName || ""
+                    }`.trim() ||
+                    "Unknown Customer",
+                }),
+                shippingAddress: this.safeJsonStringify(
+                  order.shipmentAddress || {}
+                ),
+
+                platform: this.getPlatformType(),
+                platformType: this.getPlatformType(),
+                platformOrderId: order.id, // shipmentPackageId from API
+                platformId: this.connectionId,
+                invoiceStatus: this.mapInvoiceStatus(order.status || "pending"),
+                orderDate: new Date(order.orderDate), // GMT +3 timestamp
+                orderStatus: this.mapOrderStatus(
+                  order.status || order.shipmentPackageStatus
+                ), // Fixed: prioritize main order status
+                cargoTrackingNumber:
+                  this.preserveCargoTrackingNumber(order.cargoTrackingNumber) ||
+                  "",
+                cargoCompany: order.cargoProviderName || "",
+                cargoTrackingUrl: order.cargoTrackingLink || "",
+                invoiceTotal: parseFloat(order.totalPrice) || 0,
+                totalAmount: parseFloat(
+                  order.totalPrice || order.grossAmount || 0
+                ),
+                currency: order.currencyCode || "TRY",
+                notes: order.note || "",
+
+                // Additional fields from Trendyol API documentation
+                isCommercial: order.commercial || false, // Corporate order flag
+                isMicroExport: order.micro || false, // Micro export order flag
+                fastDeliveryType: order.fastDeliveryType || null, // Fast delivery type
+                deliveryType: order.deliveryType || "normal", // Delivery type
+                deliveryAddressType: order.deliveryAddressType || "Shipment", // Shipment or CollectionPoint
+                isGiftBoxRequested: order.giftBoxRequested || false, // Gift box request
+                etgbNo: order.etgbNo || null, // ETGB number for micro export
+                etgbDate: order.etgbDate ? new Date(order.etgbDate) : null, // ETGB date
+                is3pByTrendyol: order["3pByTrendyol"] || false, // 3P by Trendyol flag
+                containsDangerousProduct:
+                  order.containsDangerousProduct || false, // Dangerous product flag
+                identityNumber: order.identityNumber || null, // TCKN for high-value orders
+
+                rawData: JSON.stringify(order),
+                lastSyncedAt: new Date(),
+              },
+            });
+
+            if (created) {
+              this.logger.debug(`Created new order for ${order.orderNumber}`);
+            } else {
+              this.logger.debug(
+                `Found existing order for ${order.orderNumber}, skipping creation but updating order items`
+              );
+            }
+
+            // Create shipping detail and order items in a transaction
+            await sequelize.transaction(async (t) => {
+              // Create shipping detail with orderId
               const shippingDetail = await ShippingDetail.create(
                 {
+                  orderId: normalizedOrder.id,
                   recipientName:
                     order.shipmentAddress?.fullName ||
                     order.customerFirstName + " " + order.customerLastName ||
                     "",
-                  address1: order.shipmentAddress?.address1 || "",
-                  address2: order.shipmentAddress?.address2 || "",
+                  address: order.shipmentAddress?.address1 || "",
                   city: order.shipmentAddress?.city || "",
                   state: order.shipmentAddress?.district || "",
                   postalCode: order.shipmentAddress?.postalCode || "",
@@ -582,151 +669,120 @@ class TrendyolService extends BasePlatformService {
                 { transaction: t }
               );
 
-              // Create the order record with correct fields
-              const normalizedOrder = await Order.create(
-                {
-                  externalOrderId: order.orderNumber,
-                  orderNumber: order.orderNumber,
-                  connectionId: this.connectionId,
-                  userId: this.connection.userId,
-                  customerName:
-                    order.shipmentAddress?.fullName ||
-                    `${order.customerFirstName || ""} ${
-                      order.customerLastName || ""
-                    }`.trim() ||
-                    "Unknown Customer",
-                  customerEmail: order.customerEmail || "",
-                  customerPhone: phoneNumber || "",
-                  platform: this.getPlatformType(),
-                  platformType: this.getPlatformType(),
-                  platformOrderId: order.id, // shipmentPackageId from API
-                  platformId: this.connectionId,
-                  shippingAddress: order.shipmentAddress?.fullAddress || "",
-                  shippingDetailId: shippingDetail.id,
-                  invoiceStatus: order.status || "pending",
-                  orderDate: new Date(order.orderDate), // GMT +3 timestamp
-                  orderStatus: this.mapOrderStatus(
-                    order.status || order.shipmentPackageStatus
-                  ), // Fixed: prioritize main order status
-                  cargoTrackingNumber:
-                    this.preserveCargoTrackingNumber(
-                      order.cargoTrackingNumber
-                    ) || "",
-                  cargoCompany: order.cargoProviderName || "",
-                  cargoTrackingUrl: order.cargoTrackingLink || "",
-                  invoiceTotal: parseFloat(order.totalPrice) || 0,
-                  totalAmount: parseFloat(
-                    order.totalPrice || order.grossAmount || 0
-                  ),
-                  currency: order.currencyCode || "TRY",
-                  notes: order.note || "",
-
-                  // Additional fields from Trendyol API documentation
-                  isCommercial: order.commercial || false, // Corporate order flag
-                  isMicroExport: order.micro || false, // Micro export order flag
-                  fastDeliveryType: order.fastDeliveryType || null, // Fast delivery type
-                  deliveryType: order.deliveryType || "normal", // Delivery type
-                  deliveryAddressType: order.deliveryAddressType || "Shipment", // Shipment or CollectionPoint
-                  isGiftBoxRequested: order.giftBoxRequested || false, // Gift box request
-                  etgbNo: order.etgbNo || null, // ETGB number for micro export
-                  etgbDate: order.etgbDate ? new Date(order.etgbDate) : null, // ETGB date
-                  is3pByTrendyol: order["3pByTrendyol"] || false, // 3P by Trendyol flag
-                  containsDangerousProduct:
-                    order.containsDangerousProduct || false, // Dangerous product flag
-                  identityNumber: order.identityNumber || null, // TCKN for high-value orders
-
-                  rawData: JSON.stringify(order),
-                  lastSyncedAt: new Date(),
-                },
+              // Update the order with the shipping detail ID
+              await normalizedOrder.update(
+                { shippingDetailId: shippingDetail.id },
                 { transaction: t }
               );
 
               // Create order items with enhanced product information
+              // Handle order items - only create if this is a new order or if items don't exist
               if (order.lines && Array.isArray(order.lines)) {
-                // Prepare order items data with comprehensive field mapping
-                const orderItemsData = order.lines.map((item) => ({
-                  orderId: normalizedOrder.id,
-                  productId: null, // Will be set by linking service
-                  platformProductId: item.productCode || "",
-                  title: item.productName || "Unknown Product",
-                  sku: item.merchantSku || item.sku || item.productCode || "",
-                  quantity: parseInt(item.quantity) || 1,
-                  price: parseFloat(item.price) || 0,
-                  currency: item.currencyCode || order.currencyCode || "TRY",
-                  barcode: item.barcode || "",
+                // Check if order items already exist for this order
+                const existingItemsCount = await OrderItem.count({
+                  where: { orderId: normalizedOrder.id },
+                  transaction: t,
+                });
 
-                  // Enhanced discount calculation including Trendyol discounts
-                  discount:
-                    parseFloat(item.discount || 0) +
-                    parseFloat(item.tyDiscount || 0),
-                  platformDiscount: parseFloat(item.tyDiscount || 0), // Trendyol platform discount
-                  merchantDiscount: parseFloat(item.discount || 0), // Merchant discount
+                // Only create order items if they don't exist
+                if (existingItemsCount === 0) {
+                  // Prepare order items data with comprehensive field mapping
+                  const orderItemsData = order.lines.map((item) => {
+                    const unitPrice = parseFloat(item.price) || 0;
+                    const quantity = parseInt(item.quantity) || 1;
+                    const totalPrice = unitPrice * quantity;
 
-                  invoiceTotal:
-                    parseFloat(item.amount) || parseFloat(item.price) || 0,
+                    return {
+                      orderId: normalizedOrder.id,
+                      productId: null, // Will be set by linking service
+                      platformProductId: item.productCode || "",
+                      title: item.productName || "Unknown Product",
+                      sku:
+                        item.merchantSku || item.sku || item.productCode || "",
+                      quantity: quantity,
+                      price: unitPrice,
+                      totalPrice: totalPrice, // Required NOT NULL field
+                      currency:
+                        item.currencyCode || order.currencyCode || "TRY",
+                      barcode: item.barcode || "",
 
-                  // Product attributes from API
-                  productSize: item.productSize || null,
-                  productColor: item.productColor || null,
-                  productCategoryId: item.productCategoryId || null,
-                  productOrigin: item.productOrigin || null, // Important for micro export orders
-                  salesCampaignId: item.salesCampaignId || null,
+                      // Enhanced discount calculation including Trendyol discounts
+                      discount:
+                        parseFloat(item.discount || 0) +
+                        parseFloat(item.tyDiscount || 0),
+                      platformDiscount: parseFloat(item.tyDiscount || 0), // Trendyol platform discount
+                      merchantDiscount: parseFloat(item.discount || 0), // Merchant discount
 
-                  // Order line status
-                  lineItemStatus: item.orderLineItemStatusName || null,
+                      invoiceTotal: parseFloat(item.amount) || totalPrice,
 
-                  // VAT information
-                  vatBaseAmount: parseFloat(item.vatBaseAmount || 0),
-                  laborCost: parseFloat(item.laborCost || 0),
+                      // Product attributes from API
+                      productSize: item.productSize || null,
+                      productColor: item.productColor || null,
+                      productCategoryId: item.productCategoryId || null,
+                      productOrigin: item.productOrigin || null, // Important for micro export orders
+                      salesCampaignId: item.salesCampaignId || null,
 
-                  // Fast delivery options
-                  fastDeliveryOptions: item.fastDeliveryOptions
-                    ? JSON.stringify(item.fastDeliveryOptions)
-                    : null,
+                      // Order line status
+                      lineItemStatus: item.orderLineItemStatusName || null,
 
-                  // Discount details breakdown
-                  discountDetails: item.discountDetails
-                    ? JSON.stringify(item.discountDetails)
-                    : null,
+                      // VAT information
+                      vatBaseAmount: parseFloat(item.vatBaseAmount || 0),
+                      laborCost: parseFloat(item.laborCost || 0),
 
-                  variantInfo: item.variantFeatures
-                    ? JSON.stringify(item.variantFeatures)
-                    : null,
-                  rawData: JSON.stringify(item),
-                }));
+                      // Fast delivery options
+                      fastDeliveryOptions: item.fastDeliveryOptions
+                        ? JSON.stringify(item.fastDeliveryOptions)
+                        : null,
 
-                // Try to link products before creating order items
-                try {
-                  const ProductOrderLinkingService = require("../../../../../services/product-order-linking-service");
-                  const linkingService = new ProductOrderLinkingService();
-                  const linkedItemsData =
-                    await linkingService.linkIncomingOrderItems(
-                      orderItemsData,
-                      this.connection?.userId
+                      // Discount details breakdown
+                      discountDetails: item.discountDetails
+                        ? JSON.stringify(item.discountDetails)
+                        : null,
+
+                      variantInfo: item.variantFeatures
+                        ? JSON.stringify(item.variantFeatures)
+                        : null,
+                      rawData: JSON.stringify(item),
+                    };
+                  });
+
+                  // Try to link products before creating order items
+                  try {
+                    const ProductOrderLinkingService = require("../../../../../services/product-order-linking-service");
+                    const linkingService = new ProductOrderLinkingService();
+                    const linkedItemsData =
+                      await linkingService.linkIncomingOrderItems(
+                        orderItemsData,
+                        this.connection?.userId
+                      );
+
+                    // Create order items with potential product links
+                    for (const itemData of linkedItemsData) {
+                      await OrderItem.create(itemData, { transaction: t });
+                    }
+
+                    // Log linking results
+                    const linkedCount = linkedItemsData.filter(
+                      (item) => item.productId
+                    ).length;
+                    if (linkedCount > 0) {
+                      this.logger.info(
+                        `Linked ${linkedCount}/${linkedItemsData.length} order items to products for order ${order.orderNumber}`
+                      );
+                    }
+                  } catch (linkingError) {
+                    // If linking fails, create order items without product links
+                    this.logger.warn(
+                      `Product linking failed for order ${order.orderNumber}: ${linkingError.message}`
                     );
-
-                  // Create order items with potential product links
-                  for (const itemData of linkedItemsData) {
-                    await OrderItem.create(itemData, { transaction: t });
+                    for (const itemData of orderItemsData) {
+                      await OrderItem.create(itemData, { transaction: t });
+                    }
                   }
-
-                  // Log linking results
-                  const linkedCount = linkedItemsData.filter(
-                    (item) => item.productId
-                  ).length;
-                  if (linkedCount > 0) {
-                    this.logger.info(
-                      `Linked ${linkedCount}/${linkedItemsData.length} order items to products for order ${order.orderNumber}`
-                    );
-                  }
-                } catch (linkingError) {
-                  // If linking fails, create order items without product links
-                  this.logger.warn(
-                    `Product linking failed for order ${order.orderNumber}: ${linkingError.message}`
+                } else {
+                  this.logger.debug(
+                    `Order items already exist for order ${order.orderNumber}, skipping creation`
                   );
-                  for (const itemData of orderItemsData) {
-                    await OrderItem.create(itemData, { transaction: t });
-                  }
                 }
               }
 
@@ -744,65 +800,26 @@ class TrendyolService extends BasePlatformService {
                   { orderNumber: order.orderNumber }
                 );
               }
-
-              return normalizedOrder;
             });
 
-            // Add the result to our normalized orders
-            normalizedOrders.push(result);
+            // Add the normalized order to our results
+            normalizedOrders.push(normalizedOrder);
             successCount++;
 
             this.logger.debug(
               `Successfully created new order for ${order.orderNumber}`
             );
           } catch (error) {
-            if (error.name === "SequelizeUniqueConstraintError") {
-              this.logger.warn(
-                `Unique constraint violation for ${order.orderNumber}, attempting to find existing order`,
-                {
-                  orderNumber: order.orderNumber,
-                  connectionId: this.connectionId,
-                }
-              );
-
-              // Try to find the existing order and add it to results
-              const existingOrder = await Order.findOne({
-                where: {
-                  externalOrderId: order.orderNumber,
-                  connectionId: this.connectionId,
-                },
-              });
-
-              if (existingOrder) {
-                normalizedOrders.push(existingOrder);
-                skippedCount++;
-              } else {
-                this.logger.error(
-                  `Unique constraint error but order not found: ${order.orderNumber}`,
-                  { orderNumber: order.orderNumber }
-                );
-                skippedCount++;
-              }
-            } else {
-              this.logger.error(
-                `Failed to create order ${order.orderNumber}: ${error.message}`,
-                {
-                  error,
-                  orderNumber: order.orderNumber,
-                  connectionId: this.connectionId,
-                }
-              );
-              skippedCount++;
-            }
+            this.logger.error(
+              `Failed to process order ${order.orderNumber}: ${error.original.message}`,
+              { orderId: order.orderNumber, error: error }
+            );
+            failedCount++;
           }
         } catch (error) {
           this.logger.error(
-            `Failed to process order ${order.orderNumber}: ${error.message}`,
-            {
-              error,
-              orderNumber: order.orderNumber,
-              connectionId: this.connectionId,
-            }
+            `Failed to normalize order ${order.orderNumber}: ${error.original.message}`,
+            { orderId: order.orderNumber, error: error }
           );
           skippedCount++;
         }
@@ -890,20 +907,6 @@ class TrendyolService extends BasePlatformService {
         };
       }
 
-      // Shipping detail must be created before the order
-      const shippingDetail = await ShippingDetail.create({
-        recipientName: `${order.shipmentAddress.firstName} ${order.shipmentAddress.lastName}`,
-        address1: order.shipmentAddress.address1 || "",
-        address2: "",
-        city: order.shipmentAddress.city,
-        state: order.shipmentAddress.district,
-        postalCode: order.shipmentAddress.postalCode,
-        country: "Turkey",
-        phone: phoneNumber,
-        email: order.customerEmail || "",
-        shippingMethod: order.cargoProviderName,
-      });
-
       // Create the order with correct field names
       const newOrder = await Order.create({
         externalOrderId: order.orderNumber,
@@ -921,6 +924,17 @@ class TrendyolService extends BasePlatformService {
         customerName: `${order.customerFirstName} ${order.customerLastName}`,
         customerEmail: order.customerEmail,
         customerPhone: phoneNumber,
+
+        // Required JSON fields for database
+        customerInfo: this.safeJsonStringify({
+          firstName: order.customerFirstName || "",
+          lastName: order.customerLastName || "",
+          email: order.customerEmail || "",
+          phone: phoneNumber || "",
+          fullName: `${order.customerFirstName} ${order.customerLastName}`,
+        }),
+        shippingAddress: this.safeJsonStringify(order.shipmentAddress || {}),
+
         cargoCompany: order.cargoProviderName || "",
         cargoTrackingNumber: this.preserveCargoTrackingNumber(
           order.cargoTrackingNumber
@@ -930,11 +944,7 @@ class TrendyolService extends BasePlatformService {
         platformType: platformType,
         platformOrderId: order.id || order.orderNumber, // Use shipmentPackageId if available
         platformId: this.connectionId,
-        shippingAddress:
-          order.shipmentAddress?.fullAddress ||
-          JSON.stringify(order.shipmentAddress),
-        shippingDetailId: shippingDetail.id,
-        invoiceStatus: order.status || "pending",
+        invoiceStatus: this.mapInvoiceStatus(order.status || "pending"),
 
         // Enhanced fields from Trendyol API documentation
         isCommercial: order.commercial || false,
@@ -954,6 +964,20 @@ class TrendyolService extends BasePlatformService {
         lastSyncedAt: new Date(),
       });
 
+      // Create shipping detail with orderId
+      const shippingDetail = await ShippingDetail.create({
+        orderId: newOrder.id,
+        recipientName: `${order.shipmentAddress.firstName} ${order.shipmentAddress.lastName}`,
+        address: order.shipmentAddress.address1 || "",
+        city: order.shipmentAddress.city,
+        state: order.shipmentAddress.district,
+        postalCode: order.shipmentAddress.postalCode,
+        country: "Turkey",
+        phone: phoneNumber,
+        email: order.customerEmail || "",
+        shippingMethod: order.cargoProviderName,
+      });
+
       // Update order with shipping detail ID
       await newOrder.update({
         shippingDetailId: shippingDetail.id,
@@ -963,54 +987,61 @@ class TrendyolService extends BasePlatformService {
       await this.createTrendyolOrderRecord(newOrder.id, order);
 
       // Create order items with product linking and all enhanced fields
-      const orderItemsData = order.lines.map((item) => ({
-        orderId: newOrder.id,
-        productId: null, // Will be set by linking service
-        platformProductId: item.productCode || "",
-        title: item.productName || "Unknown Product",
-        sku: item.merchantSku || item.sku || item.productCode || "",
-        quantity: parseInt(item.quantity) || 1,
-        price: parseFloat(item.price) || 0,
-        currency: item.currencyCode || order.currencyCode || "TRY",
-        barcode: item.barcode || "",
+      const orderItemsData = order.lines.map((item) => {
+        const unitPrice = parseFloat(item.price) || 0;
+        const quantity = parseInt(item.quantity) || 1;
+        const totalPrice = unitPrice * quantity;
 
-        // Enhanced discount calculation including Trendyol discounts
-        discount:
-          parseFloat(item.discount || 0) + parseFloat(item.tyDiscount || 0),
-        platformDiscount: parseFloat(item.tyDiscount || 0), // Trendyol platform discount
-        merchantDiscount: parseFloat(item.discount || 0), // Merchant discount
+        return {
+          orderId: newOrder.id,
+          productId: null, // Will be set by linking service
+          platformProductId: item.productCode || "",
+          title: item.productName || "Unknown Product",
+          sku: item.merchantSku || item.sku || item.productCode || "",
+          quantity: quantity,
+          price: unitPrice,
+          totalPrice: totalPrice, // Required NOT NULL field
+          currency: item.currencyCode || order.currencyCode || "TRY",
+          barcode: item.barcode || "",
 
-        invoiceTotal: parseFloat(item.amount) || parseFloat(item.price) || 0,
+          // Enhanced discount calculation including Trendyol discounts
+          discount:
+            parseFloat(item.discount || 0) + parseFloat(item.tyDiscount || 0),
+          platformDiscount: parseFloat(item.tyDiscount || 0), // Trendyol platform discount
+          merchantDiscount: parseFloat(item.discount || 0), // Merchant discount
 
-        // Product attributes from API
-        productSize: item.productSize || null,
-        productColor: item.productColor || null,
-        productCategoryId: item.productCategoryId || null,
-        productOrigin: item.productOrigin || null, // Important for micro export orders
-        salesCampaignId: item.salesCampaignId || null,
+          invoiceTotal: parseFloat(item.amount) || totalPrice,
 
-        // Order line status
-        lineItemStatus: item.orderLineItemStatusName || null,
+          // Product attributes from API
+          productSize: item.productSize || null,
+          productColor: item.productColor || null,
+          productCategoryId: item.productCategoryId || null,
+          productOrigin: item.productOrigin || null, // Important for micro export orders
+          salesCampaignId: item.salesCampaignId || null,
 
-        // VAT information
-        vatBaseAmount: parseFloat(item.vatBaseAmount || 0),
-        laborCost: parseFloat(item.laborCost || 0),
+          // Order line status
+          lineItemStatus: item.orderLineItemStatusName || null,
 
-        // Fast delivery options
-        fastDeliveryOptions: item.fastDeliveryOptions
-          ? JSON.stringify(item.fastDeliveryOptions)
-          : null,
+          // VAT information
+          vatBaseAmount: parseFloat(item.vatBaseAmount || 0),
+          laborCost: parseFloat(item.laborCost || 0),
 
-        // Discount details breakdown
-        discountDetails: item.discountDetails
-          ? JSON.stringify(item.discountDetails)
-          : null,
+          // Fast delivery options
+          fastDeliveryOptions: item.fastDeliveryOptions
+            ? JSON.stringify(item.fastDeliveryOptions)
+            : null,
 
-        variantInfo: item.variantFeatures
-          ? JSON.stringify(item.variantFeatures)
-          : null,
-        rawData: JSON.stringify(item),
-      }));
+          // Discount details breakdown
+          discountDetails: item.discountDetails
+            ? JSON.stringify(item.discountDetails)
+            : null,
+
+          variantInfo: item.variantFeatures
+            ? JSON.stringify(item.variantFeatures)
+            : null,
+          rawData: JSON.stringify(item),
+        };
+      });
 
       // Try to link products before creating order items
       try {
@@ -2790,6 +2821,58 @@ class TrendyolService extends BasePlatformService {
         message: `Failed to cancel order: ${error.message}`,
         error: error.response?.data || error.message,
       };
+    }
+  }
+
+  /**
+   * Map Trendyol invoice status to our database enum values
+   * @param {string} trendyolInvoiceStatus - The invoice status from Trendyol API
+   * @returns {string} - Mapped invoice status for our database enum
+   */
+  mapInvoiceStatus(trendyolInvoiceStatus) {
+    const invoiceStatusMap = {
+      // Trendyol invoice statuses mapped to our enum values
+      Created: "issued",
+      Delivered: "issued",
+      Shipped: "issued",
+      Invoiced: "issued",
+      Pending: "pending",
+      Cancelled: "cancelled",
+      Canceled: "cancelled",
+      Draft: "pending",
+      Processing: "pending",
+      // Default fallback
+      Unknown: "pending",
+    };
+
+    const mapped = invoiceStatusMap[trendyolInvoiceStatus] || "pending";
+
+    if (process.env.NODE_ENV === "development") {
+      this.logger.info(
+        `Mapping Trendyol invoice status: "${trendyolInvoiceStatus}" -> "${mapped}"`
+      );
+    }
+
+    return mapped;
+  }
+
+  /**
+   * Safe JSON stringify that never returns null
+   * @param {any} data - Data to stringify
+   * @param {any} fallback - Fallback value if stringify fails
+   * @returns {string} - JSON string, never null
+   */
+  safeJsonStringify(data, fallback = {}) {
+    try {
+      const result = JSON.stringify(data || fallback);
+      return result === "null" || result === null
+        ? JSON.stringify(fallback)
+        : result;
+    } catch (error) {
+      this.logger.warn(
+        `JSON stringify failed, using fallback: ${error.message}`
+      );
+      return JSON.stringify(fallback);
     }
   }
 }

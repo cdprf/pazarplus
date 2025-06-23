@@ -52,11 +52,13 @@ const envSchema = Joi.object({
     otherwise: Joi.optional(),
   }),
 
-  DB_PASSWORD: Joi.string().when("DB_TYPE", {
-    is: "postgresql",
-    then: Joi.required(),
-    otherwise: Joi.optional(),
-  }),
+  DB_PASSWORD: Joi.string()
+    .allow("")
+    .when("DB_TYPE", {
+      is: "postgresql",
+      then: Joi.allow(""), // Allow empty password for local development
+      otherwise: Joi.optional(),
+    }),
 
   DB_SSL: Joi.boolean().default(false),
 
@@ -104,10 +106,11 @@ const getDatabaseConfig = (config) => {
       freezeTableName: false,
     },
     pool: {
-      max: 5,
+      max: 20, // Increased max connections for PostgreSQL
       min: 0,
-      acquire: 30000,
+      acquire: 60000,
       idle: 10000,
+      evict: 1000, // Connection eviction timeout
     },
   };
 

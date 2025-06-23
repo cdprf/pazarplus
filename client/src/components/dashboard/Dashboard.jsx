@@ -12,7 +12,6 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   PlusIcon,
-  CogIcon,
   BoltIcon,
   ChartBarIcon,
   FunnelIcon,
@@ -31,9 +30,6 @@ import {
   useAnalyticsAlerts,
 } from "../../hooks/useAnalytics";
 import { useAlert } from "../../contexts/AlertContext";
-import { Button } from "../ui/Button";
-import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
-import { Badge } from "../ui/Badge";
 import LoadingSkeleton from "../ui/LoadingSkeleton";
 import OrdersChart from "./OrdersChart";
 
@@ -128,7 +124,6 @@ const Dashboard = () => {
   );
   const averageOrderValue =
     stats.total > 0 ? (stats.totalRevenue / stats.total).toFixed(2) : 0;
-  const urgentOrders = pendingOrders + processingOrders;
 
   // Real-time indicators
   const isRealTimeActive = realTimeMetrics && !realTimeLoading;
@@ -148,23 +143,6 @@ const Dashboard = () => {
         return "danger";
       default:
         return "secondary";
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case "pending":
-        return ClockIcon;
-      case "processing":
-        return CubeIcon;
-      case "shipped":
-        return CubeIcon;
-      case "delivered":
-        return CheckCircleIcon;
-      case "cancelled":
-        return XCircleIcon;
-      default:
-        return ClockIcon;
     }
   };
 
@@ -205,7 +183,7 @@ const Dashboard = () => {
       <div className="page-container">
         <div className="page-header">
           <div>
-            <div className="skeleton skeleton-title h-8 w-64 mb-2"></div>
+            <div className="skeleton skeleton-text h-8 w-64 mb-2"></div>
             <div className="skeleton skeleton-text h-5 w-96"></div>
           </div>
           <div className="skeleton skeleton-text h-10 w-32"></div>
@@ -225,40 +203,49 @@ const Dashboard = () => {
   if (error) {
     return (
       <div className="page-container">
-        <Card className="max-w-md mx-auto mt-32">
-          <CardContent className="text-center p-8">
-            <div className="stat-icon stat-icon-danger mx-auto mb-4">
-              <ExclamationTriangleIcon className="h-8 w-8" />
+        <div className="error-state error-state-page">
+          <div className="error-content">
+            <div className="error-icon">
+              <ExclamationTriangleIcon className="h-16 w-16 text-red-500 dark:text-red-400" />
             </div>
-            <h3 className="text-xl font-bold text-red-800 dark:text-red-400 mb-2">
-              Dashboard Error
-            </h3>
-            <p className="text-red-700 dark:text-red-300 mb-6">{error}</p>
-            <Button
-              onClick={() => window.location.reload()}
-              variant="danger"
-              icon={ArrowPathIcon}
-            >
-              Retry Dashboard
-            </Button>
-          </CardContent>
-        </Card>
+            <h1 className="error-title">Dashboard Error</h1>
+            <p className="error-description">{error}</p>
+            <div className="error-actions">
+              <button
+                onClick={() => window.location.reload()}
+                className="btn btn-danger"
+              >
+                <ArrowPathIcon className="h-4 w-4 mr-2" />
+                Retry Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="page-container">
+    <div className="page-container" role="main" aria-label="Dashboard">
       {/* Enhanced Header with Real-time Status */}
       <div className="page-header">
         <div>
-          <h1 className="page-title flex items-center">
-            <div className="stat-icon stat-icon-primary mr-4">
-              <CubeIcon className="h-8 w-8" />
+          <h1 className="page-title flex items-center" id="dashboard-title">
+            <div
+              className="stat-icon stat-icon-primary mr-4"
+              aria-hidden="true"
+            >
+              <CubeIcon className="h-8 w-8 icon-contrast-primary" />
             </div>
             Dashboard Overview
             {isRealTimeActive && (
-              <span className="realtime-indicator ml-4 text-sm">Live</span>
+              <span
+                className="real-time-indicator ml-4"
+                role="status"
+                aria-live="polite"
+              >
+                Live
+              </span>
             )}
           </h1>
           <p className="page-subtitle">
@@ -266,16 +253,16 @@ const Dashboard = () => {
           </p>
           <div className="flex items-center space-x-4 mt-3">
             <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-              <ClockIcon className="w-4 h-4 mr-1" />
+              <ClockIcon className="w-4 h-4 mr-1 icon-contrast-secondary" />
               <span>Last updated: {new Date().toLocaleTimeString()}</span>
             </div>
             <div className="flex items-center text-sm text-green-600 dark:text-green-400">
-              <BoltIcon className="w-4 h-4 mr-1" />
+              <BoltIcon className="w-4 h-4 mr-1 icon-contrast-success" />
               <span>System Active</span>
             </div>
             {hasActiveAlerts && (
               <div className="flex items-center text-sm text-amber-600">
-                <BellIcon className="w-4 h-4 mr-1" />
+                <BellIcon className="w-4 h-4 mr-1 icon-contrast-warning" />
                 <span>
                   {alerts.length} Alert{alerts.length !== 1 ? "s" : ""}
                 </span>
@@ -285,34 +272,36 @@ const Dashboard = () => {
         </div>
 
         <div className="page-actions">
-          <select
-            value={selectedPeriod}
-            onChange={(e) => handlePeriodChange(e.target.value)}
-            className="form-input"
-          >
-            <option value="7d">Last 7 days</option>
-            <option value="30d">Last 30 days</option>
-            <option value="90d">Last 90 days</option>
-            <option value="1y">Last year</option>
-          </select>
+          <div className="form-group">
+            <select
+              value={selectedPeriod}
+              onChange={(e) => handlePeriodChange(e.target.value)}
+              className="form-input"
+              aria-label="Select time period for dashboard data"
+            >
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+              <option value="90d">Last 90 days</option>
+              <option value="1y">Last year</option>
+            </select>
+          </div>
 
-          <Button
-            onClick={handleSyncData}
-            variant="primary"
-            icon={ArrowPathIcon}
-          >
+          <button onClick={handleSyncData} className="btn btn-primary">
+            <ArrowPathIcon className="h-4 w-4 mr-2" />
             Refresh
-          </Button>
+          </button>
 
-          <Button variant="ghost" size="sm" icon={CalendarIcon} />
+          <button className="btn btn-ghost btn-sm">
+            <CalendarIcon className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
       {/* Alerts Banner */}
       {hasActiveAlerts && (
-        <div className="page-content-full">
+        <div className="page-content">
           <div className="alert-banner alert-banner-warning">
-            <BellIcon className="alert-banner-icon text-amber-600" />
+            <BellIcon className="alert-banner-icon text-amber-600 dark:text-amber-400" />
             <div className="alert-banner-content">
               <div className="alert-banner-title">System Alerts</div>
               <div className="alert-banner-message">
@@ -321,9 +310,7 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="alert-banner-actions">
-              <Button variant="ghost" size="sm">
-                View All
-              </Button>
+              <button className="btn btn-ghost btn-sm">View All</button>
             </div>
           </div>
         </div>
@@ -331,224 +318,324 @@ const Dashboard = () => {
 
       <div className="page-content">
         {/* Enhanced Key Metrics */}
-        <div className="dashboard-grid mb-8">
-          {/* Total Orders */}
-          <div className="dashboard-metric">
-            <div className="dashboard-metric-header">
-              <div className="dashboard-metric-icon stat-icon-primary">
-                <CubeIcon className="h-6 w-6" />
-              </div>
-            </div>
-            <div className="dashboard-metric-content">
-              <div className="dashboard-metric-value">{stats.total || 0}</div>
-              <div className="dashboard-metric-label">Total Orders</div>
-              <div className="dashboard-metric-trend">
-                {(() => {
-                  const TrendIcon = getTrendIcon(stats.growth?.orders);
-                  return (
-                    <>
-                      <TrendIcon
-                        className={`dashboard-metric-trend-icon ${
-                          stats.growth?.orders >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      />
-                      <span
-                        className={
-                          stats.growth?.orders >= 0
-                            ? "stat-change-positive"
-                            : "stat-change-negative"
-                        }
-                      >
-                        {Math.abs(stats.growth?.orders || 0)}%
-                      </span>
-                      <span className="dashboard-metric-trend-text ml-1">
-                        vs last period
-                      </span>
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
+        <section className="section" aria-labelledby="key-metrics-title">
+          <div className="section-header">
+            <h2 id="key-metrics-title" className="section-title">
+              Key Performance Metrics
+            </h2>
+            <p className="section-subtitle">
+              Overview of your order management performance
+            </p>
           </div>
+          <div className="section-content">
+            <div
+              className="dashboard-grid mb-8"
+              role="region"
+              aria-labelledby="key-metrics-title"
+            >
+              {/* Total Orders */}
+              <div
+                className="dashboard-stat"
+                role="article"
+                aria-label="Total Orders Statistic"
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="stat-icon stat-icon-primary">
+                      <CubeIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="stat-label text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Total Orders
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3 mb-3">
+                    <CubeIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <div className="stat-value text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {stats.total || 0}
+                    </div>
+                  </div>
+                  <div className="flex items-center mt-2">
+                    {(() => {
+                      const TrendIcon = getTrendIcon(stats.growth?.orders);
+                      return (
+                        <>
+                          <TrendIcon
+                            className={`h-4 w-4 mr-1 ${
+                              stats.growth?.orders >= 0
+                                ? "text-green-600"
+                                : "text-red-600"
+                            }`}
+                          />
+                          <span
+                            className={
+                              stats.growth?.orders >= 0
+                                ? "text-green-600 text-sm font-medium"
+                                : "text-red-600 text-sm font-medium"
+                            }
+                          >
+                            {Math.abs(stats.growth?.orders || 0)}%
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                            vs last period
+                          </span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
 
-          {/* Total Revenue */}
-          <div className="dashboard-metric">
-            <div className="dashboard-metric-header">
-              <div className="dashboard-metric-icon stat-icon-success">
-                <CurrencyDollarIcon className="h-6 w-6" />
+              {/* Total Revenue */}
+              <div
+                className="dashboard-stat"
+                role="article"
+                aria-label="Total Revenue Statistic"
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="stat-icon stat-icon-success">
+                      <CurrencyDollarIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="stat-label text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Total Revenue
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3 mb-3">
+                    <CurrencyDollarIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <div className="stat-value text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {formatCurrency(stats.totalRevenue || 0)}
+                    </div>
+                  </div>
+                  <div className="flex items-center mt-2">
+                    {(() => {
+                      const TrendIcon = getTrendIcon(stats.growth?.revenue);
+                      return (
+                        <>
+                          <TrendIcon
+                            className={`h-4 w-4 mr-1 ${
+                              stats.growth?.revenue >= 0
+                                ? "text-green-600"
+                                : "text-red-600"
+                            }`}
+                          />
+                          <span
+                            className={
+                              stats.growth?.revenue >= 0
+                                ? "text-green-600 text-sm font-medium"
+                                : "text-red-600 text-sm font-medium"
+                            }
+                          >
+                            {Math.abs(stats.growth?.revenue || 0)}%
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                            vs last period
+                          </span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="dashboard-metric-content">
-              <div className="dashboard-metric-value">
-                {formatCurrency(stats.totalRevenue || 0)}
-              </div>
-              <div className="dashboard-metric-label">Total Revenue</div>
-              <div className="dashboard-metric-trend">
-                {(() => {
-                  const TrendIcon = getTrendIcon(stats.growth?.revenue);
-                  return (
-                    <>
-                      <TrendIcon
-                        className={`dashboard-metric-trend-icon ${
-                          stats.growth?.revenue >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      />
-                      <span
-                        className={
-                          stats.growth?.revenue >= 0
-                            ? "stat-change-positive"
-                            : "stat-change-negative"
-                        }
-                      >
-                        {Math.abs(stats.growth?.revenue || 0)}%
-                      </span>
-                      <span className="dashboard-metric-trend-text ml-1">
-                        vs last period
-                      </span>
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
 
-          {/* Pending Orders */}
-          <div className="dashboard-metric">
-            <div className="dashboard-metric-header">
-              <div className="dashboard-metric-icon stat-icon-warning">
-                <BoltIcon className="h-6 w-6" />
+              {/* Pending Orders */}
+              <div
+                className="dashboard-stat"
+                role="article"
+                aria-label="Pending Orders Statistic"
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="stat-icon stat-icon-warning">
+                      <BoltIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="stat-label text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Pending Orders
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3 mb-3">
+                    <BoltIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                    <div className="stat-value text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {pendingOrders || 0}
+                    </div>
+                  </div>
+                  <div className="flex items-center mt-2">
+                    <span className="badge badge-warning mr-2">Urgent</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Need attention
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="dashboard-metric-content">
-              <div className="dashboard-metric-value">{pendingOrders || 0}</div>
-              <div className="dashboard-metric-label">Pending Orders</div>
-              <div className="dashboard-metric-trend">
-                <Badge variant="warning" size="sm">
-                  Urgent
-                </Badge>
-                <span className="dashboard-metric-trend-text ml-2">
-                  Need attention
-                </span>
-              </div>
-            </div>
-          </div>
 
-          {/* Completion Rate */}
-          <div className="dashboard-metric">
-            <div className="dashboard-metric-header">
-              <div className="dashboard-metric-icon stat-icon-primary">
-                <ChartBarIcon className="h-6 w-6" />
-              </div>
-            </div>
-            <div className="dashboard-metric-content">
-              <div className="dashboard-metric-value">{completionRate}%</div>
-              <div className="dashboard-metric-label">Completion Rate</div>
-              <div className="progress-bar progress-bar-success">
-                <div
-                  className="progress-bar-fill"
-                  style={{ width: `${completionRate}%` }}
-                ></div>
+              {/* Completion Rate */}
+              <div
+                className="dashboard-stat"
+                role="article"
+                aria-label="Completion Rate Statistic"
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="stat-icon stat-icon-primary">
+                      <ChartBarIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="stat-label text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Completion Rate
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3 mb-3">
+                    <ChartBarIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <div className="stat-value text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {completionRate}%
+                    </div>
+                  </div>
+                  <div className="progress-bar progress-bar-success mt-2">
+                    <div
+                      className="progress-bar-fill"
+                      style={{ width: `${completionRate}%` }}
+                    ></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Enhanced Secondary Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="stat-icon stat-icon-primary">
-                  <GlobeAltIcon className="h-5 w-5" />
+        <section className="section" aria-labelledby="secondary-metrics-title">
+          <div className="section-header">
+            <h2 id="secondary-metrics-title" className="section-title">
+              Secondary Metrics
+            </h2>
+            <p className="section-subtitle">
+              Additional performance indicators
+            </p>
+          </div>
+          <div className="section-content">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="card">
+                <div className="card-body">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="stat-icon stat-icon-primary">
+                      <GlobeAltIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Active Platforms
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-3 mb-2">
+                    <GlobeAltIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {activePlatforms.length}
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Connected & running
+                  </div>
                 </div>
-                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Active Platforms
-                </span>
               </div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-                {activePlatforms.length}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Connected & running
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="stat-icon stat-icon-success">
-                  <CurrencyDollarIcon className="h-5 w-5" />
+              <div className="card">
+                <div className="card-body">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="stat-icon stat-icon-success">
+                      <CurrencyDollarIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Avg Order Value
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-3 mb-2">
+                    <CurrencyDollarIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {formatCurrency(averageOrderValue)}
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Per order
+                  </div>
                 </div>
-                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Avg Order Value
-                </span>
               </div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-                {formatCurrency(averageOrderValue)}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Per order
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="stat-icon stat-icon-danger">
-                  <XCircleIcon className="h-5 w-5" />
+              <div className="card">
+                <div className="card-body">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="stat-icon stat-icon-danger">
+                      <XCircleIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Cancellation Rate
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-3 mb-2">
+                    <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {cancellationRate}%
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Of total orders
+                  </div>
                 </div>
-                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Cancellation Rate
-                </span>
-              </div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-                {cancellationRate}%
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Of total orders
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Enhanced Orders Chart Section */}
-        <Card className="mb-8">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="flex items-center">
-                <div className="stat-icon stat-icon-primary mr-3">
-                  <CubeIcon className="h-5 w-5" />
-                </div>
-                Orders & Revenue Trends
-              </CardTitle>
-              <div className="flex items-center space-x-2">
-                <Button variant="ghost" size="sm" icon={FunnelIcon} />
-                <Button variant="ghost" size="sm" icon={ArrowDownTrayIcon} />
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <OrdersChart />
-          </CardContent>
-        </Card>
+          </div>
+        </section>
+
+        {/* Enhanced Orders Chart Section */}
+        <section className="section" aria-labelledby="orders-chart-title">
+          <div className="card mb-8">
+            <div className="card-header">
+              <div className="flex justify-between items-center">
+                <h3
+                  id="orders-chart-title"
+                  className="card-title flex items-center"
+                >
+                  <div className="stat-icon stat-icon-primary mr-3">
+                    <CubeIcon className="h-5 w-5 text-white" />
+                  </div>
+                  Orders & Revenue Trends
+                </h3>
+                <div className="flex items-center space-x-2">
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    aria-label="Filter chart data"
+                  >
+                    <FunnelIcon className="h-4 w-4" />
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    aria-label="Export chart data"
+                  >
+                    <ArrowDownTrayIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="card-body">
+              <div
+                className="chart-container"
+                role="img"
+                aria-label="Orders and revenue trends chart"
+              >
+                <OrdersChart />
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Enhanced Status and Recent Orders */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Enhanced Order Status Breakdown */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <CheckCircleIcon className="w-5 h-5 mr-2 text-green-600" />
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title flex items-center">
+                <div className="stat-icon stat-icon-success mr-3">
+                  <CheckCircleIcon className="w-5 h-5 text-white" />
+                </div>
                 Order Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
+              </h3>
+            </div>
+            <div className="card-body space-y-6">
               {[
                 {
                   label: "Delivered",
@@ -592,14 +679,16 @@ const Dashboard = () => {
                 return (
                   <div key={status.label} className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Icon className="w-4 h-4" />
+                      <div className="flex items-center space-x-3">
+                        <Icon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {status.label}
                         </span>
-                      </div>
+                      </div>{" "}
                       <div className="flex items-center space-x-2">
-                        <Badge variant={status.variant}>{status.count}</Badge>
+                        <span className={`badge badge-${status.variant}`}>
+                          {status.count}
+                        </span>
                         <span className="text-xs text-gray-500 dark:text-gray-400">
                           ({percentage.toFixed(1)}%)
                         </span>
@@ -614,43 +703,43 @@ const Dashboard = () => {
                   </div>
                 );
               })}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Enhanced Recent Orders */}
           <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
+            <div className="card">
+              <div className="card-header">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="flex items-center">
-                    <BoltIcon className="w-5 h-5 mr-2 text-blue-600" />
+                  <h3 className="card-title flex items-center">
+                    <div className="stat-icon stat-icon-primary mr-3">
+                      <BoltIcon className="w-5 h-5 text-white" />
+                    </div>
                     Recent Orders
-                  </CardTitle>
-                  <Button
+                  </h3>
+                  <button
                     onClick={() => navigate("/orders")}
-                    variant="ghost"
-                    size="sm"
-                    icon={EyeIcon}
+                    className="btn btn-ghost btn-sm"
                   >
+                    <EyeIcon className="h-4 w-4 mr-2" />
                     View All
-                  </Button>
+                  </button>
                 </div>
-              </CardHeader>
-              <CardContent>
+              </div>
+              <div className="card-body">
                 <div className="space-y-4">
                   {stats.recentOrders?.length > 0 ? (
                     stats.recentOrders.slice(0, 5).map((order, index) => {
-                      const StatusIcon = getStatusIcon(order.orderStatus);
                       return (
                         <div
                           key={index}
-                          className="card-interactive p-4 cursor-pointer"
+                          className="card-interactive p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
                           onClick={() => navigate(`/orders/${order.id}`)}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-4">
                               <div className="stat-icon stat-icon-primary">
-                                <ShoppingCartIcon className="w-5 h-5" />
+                                <ShoppingCartIcon className="w-5 h-5 text-white" />
                               </div>
                               <div>
                                 <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
@@ -678,12 +767,13 @@ const Dashboard = () => {
                                   {formatDate(order.createdAt)}
                                 </span>
                               </div>
-                              <Badge
-                                variant={getStatusVariant(order.orderStatus)}
-                                icon={StatusIcon}
+                              <span
+                                className={`badge badge-${getStatusVariant(
+                                  order.orderStatus
+                                )}`}
                               >
                                 {order.orderStatus}
-                              </Badge>
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -699,218 +789,105 @@ const Dashboard = () => {
                         Connect a platform to start receiving orders
                       </p>
                       <div className="empty-state-actions">
-                        <Button
+                        <button
                           onClick={() => navigate("/platforms")}
-                          variant="primary"
-                          icon={PlusIcon}
+                          className="btn btn-primary"
                         >
+                          <PlusIcon className="h-4 w-4 mr-2" />
                           Add Platform
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Enhanced Platform Performance and Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <GlobeAltIcon className="w-5 h-5 mr-2 text-purple-600" />
-                Platform Performance
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {platforms.length > 0 ? (
-                  platforms.slice(0, 4).map((platform, index) => {
-                    const platformOrders =
-                      stats.byPlatform?.[platform.name] || 0;
-                    const platformPercentage =
-                      stats.total > 0
-                        ? (platformOrders / stats.total) * 100
-                        : 0;
-
-                    return (
-                      <div key={index} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <Badge
-                              variant={
-                                platform.status === "active"
-                                  ? "success"
-                                  : "secondary"
-                              }
-                              size="sm"
-                            />
-                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
-                              {platform.name}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                              {platformOrders}
-                            </span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              ({platformPercentage.toFixed(1)}%)
-                            </span>
-                          </div>
-                        </div>
-                        <div className="progress-bar">
-                          <div
-                            className="progress-bar-fill"
-                            style={{ width: `${platformPercentage}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="empty-state py-8">
-                    <div className="empty-state-icon">
-                      <GlobeAltIcon className="h-12 w-12 text-purple-600" />
-                    </div>
-                    <p className="empty-state-description">
-                      No platforms connected
-                    </p>
-                    <div className="empty-state-actions">
-                      <Button
-                        onClick={() => navigate("/platforms")}
-                        variant="primary"
-                        size="sm"
-                      >
-                        Connect Platform
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <BoltIcon className="w-5 h-5 mr-2 text-green-600" />
-                Quick Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  onClick={() => navigate("/orders/new")}
-                  variant="primary"
-                  size="lg"
-                  fullWidth
-                  className="flex-col h-20"
-                >
-                  <PlusIcon className="w-6 h-6 mb-1" />
-                  <span className="text-xs">New Order</span>
-                </Button>
-
-                <Button
-                  onClick={() => navigate("/platforms")}
-                  variant="success"
-                  size="lg"
-                  fullWidth
-                  className="flex-col h-20"
-                >
-                  <GlobeAltIcon className="w-6 h-6 mb-1" />
-                  <span className="text-xs">Platforms</span>
-                </Button>
-
-                <Button
-                  onClick={() => navigate("/shipping")}
-                  variant="secondary"
-                  size="lg"
-                  fullWidth
-                  className="flex-col h-20"
-                >
-                  <CubeIcon className="w-6 h-6 mb-1" />
-                  <span className="text-xs">Shipping</span>
-                </Button>
-
-                <Button
-                  onClick={() => navigate("/settings")}
-                  variant="ghost"
-                  size="lg"
-                  fullWidth
-                  className="flex-col h-20"
-                >
-                  <CogIcon className="w-6 h-6 mb-1" />
-                  <span className="text-xs">Settings</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Performance Insights */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <ArrowTrendingUpIcon className="w-5 h-5 mr-2 text-indigo-600" />
-              Performance Insights
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* Final Dashboard Metrics Summary */}
+        <section
+          className="section"
+          aria-labelledby="performance-insights-title"
+        >
+          <div className="section-header">
+            <h2 id="performance-insights-title" className="section-title">
+              Performance Summary
+            </h2>
+            <p className="section-subtitle">
+              Key performance indicators overview
+            </p>
+          </div>
+          <div className="section-content">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="dashboard-metric">
-                <div className="dashboard-metric-header">
-                  <div className="dashboard-metric-icon stat-icon-primary">
-                    <CheckCircleIcon className="w-6 h-6" />
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="dashboard-metric-icon stat-icon-primary">
+                      <CheckCircleIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Completion Rate
+                    </div>
                   </div>
-                </div>
-                <div className="dashboard-metric-content">
-                  <div className="dashboard-metric-value">
-                    {completionRate}%
+                  <div className="flex items-center space-x-3 mb-2">
+                    <CheckCircleIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <div className="dashboard-metric-value text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {completionRate}%
+                    </div>
                   </div>
-                  <div className="dashboard-metric-label">Completion Rate</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
                     {deliveredOrders} of {stats.total} orders delivered
                   </div>
                 </div>
               </div>
 
               <div className="dashboard-metric">
-                <div className="dashboard-metric-header">
-                  <div className="dashboard-metric-icon stat-icon-success">
-                    <CurrencyDollarIcon className="w-6 h-6" />
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="dashboard-metric-icon stat-icon-success">
+                      <CurrencyDollarIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Avg Order Value
+                    </div>
                   </div>
-                </div>
-                <div className="dashboard-metric-content">
-                  <div className="dashboard-metric-value">
-                    {formatCurrency(averageOrderValue)}
+                  <div className="flex items-center space-x-3 mb-2">
+                    <CurrencyDollarIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    <div className="dashboard-metric-value text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {formatCurrency(averageOrderValue)}
+                    </div>
                   </div>
-                  <div className="dashboard-metric-label">Avg Order Value</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
                     Total revenue: {formatCurrency(stats.totalRevenue)}
                   </div>
                 </div>
               </div>
 
               <div className="dashboard-metric">
-                <div className="dashboard-metric-header">
-                  <div className="dashboard-metric-icon stat-icon-warning">
-                    <ClockIcon className="w-6 h-6" />
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="dashboard-metric-icon stat-icon-warning">
+                      <ClockIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Active Orders
+                    </div>
                   </div>
-                </div>
-                <div className="dashboard-metric-content">
-                  <div className="dashboard-metric-value">{urgentOrders}</div>
-                  <div className="dashboard-metric-label">Urgent Orders</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <ClockIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                    <div className="dashboard-metric-value text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      {pendingOrders + processingOrders}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
                     Pending: {pendingOrders} • Processing: {processingOrders}
                   </div>
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </div>
     </div>
   );

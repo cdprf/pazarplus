@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
   Settings,
-  ExternalLink,
   CheckCircle,
   XCircle,
   Link,
@@ -111,6 +110,11 @@ const PlatformConnections = () => {
   };
 
   const handleConnect = (platform) => {
+    if (!platform) {
+      showAlert("Platform bilgisi bulunamadı", "error");
+      return;
+    }
+
     setSelectedPlatform(platform);
     setConnectionData({
       apiKey: "",
@@ -124,7 +128,12 @@ const PlatformConnections = () => {
       username: "",
       environment: "production",
     });
-    setShowModal(true);
+
+    // Force close the modal first, then open it
+    setShowModal(false);
+    setTimeout(() => {
+      setShowModal(true);
+    }, 10);
   };
 
   const handleSubmit = async (e) => {
@@ -498,7 +507,7 @@ const PlatformConnections = () => {
                     {platform.description}
                   </p>
                   <Button
-                    variant={platform.color}
+                    variant={platform.color || "primary"}
                     onClick={() => handleConnect(platform)}
                     icon={Plug}
                     className="w-full"
@@ -516,7 +525,7 @@ const PlatformConnections = () => {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={`${selectedPlatform?.name} Platformuna Bağlan`}
-        size="lg"
+        size="sm"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="mb-6">

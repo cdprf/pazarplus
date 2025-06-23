@@ -106,13 +106,7 @@ class AnalyticsService {
    */
   async getPlatformComparison(userId, dateRange) {
     // Valid statuses for revenue calculation (exclude returned/cancelled)
-    const validRevenueStatuses = [
-      "new",
-      "processing",
-      "shipped",
-      "delivered",
-      "completed",
-    ];
+    const validRevenueStatuses = ["new", "processing", "shipped", "delivered"];
 
     const whereClause = {
       userId,
@@ -139,7 +133,7 @@ class AnalyticsService {
           Order.sequelize.fn(
             "SUM",
             Order.sequelize.literal(
-              "CASE WHEN orderStatus = 'completed' THEN 1 ELSE 0 END"
+              'CASE WHEN "Order"."orderStatus" = \'delivered\' THEN 1 ELSE 0 END'
             )
           ),
           "completedOrders",
@@ -880,7 +874,7 @@ class AnalyticsService {
       const completedOrders = await Order.count({
         where: {
           userId,
-          status: "completed",
+          orderStatus: "delivered",
           createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
         },
       });
@@ -888,7 +882,7 @@ class AnalyticsService {
       const cancelledOrders = await Order.count({
         where: {
           userId,
-          status: "cancelled",
+          orderStatus: "cancelled",
           createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
         },
       });
@@ -1030,13 +1024,12 @@ class AnalyticsService {
         Product.count({
           where: {
             userId,
-            isActive: true,
           },
         }),
         Product.count({
           where: {
             userId,
-            currentStock: { [Op.lt]: 10 },
+            stockQuantity: { [Op.lt]: 10 },
           },
         }),
       ]);
@@ -1834,7 +1827,7 @@ class AnalyticsService {
 
       orders.forEach((order) => {
         const status = order.orderStatus;
-        if (status === "completed" || status === "delivered") {
+        if (status === "delivered") {
           summary.completed++;
           summary.delivered++;
         } else if (status === "shipped") {
@@ -1860,7 +1853,7 @@ class AnalyticsService {
    */
   async getRevenueAnalytics(userId, dateRange) {
     try {
-      const validStatuses = ["completed", "delivered", "shipped"];
+      const validStatuses = ["delivered", "shipped"];
 
       const currentRevenue = await Order.sum("totalAmount", {
         where: {

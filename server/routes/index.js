@@ -40,6 +40,9 @@ const skuRoutes = require("./sku-enhanced");
 // Import font management routes
 const fontRoutes = require("./fonts");
 
+// Import platform operations routes
+const platformOperationsRoutes = require("./platform-operations");
+
 // Health check endpoint - should be accessible at /api/health
 router.get("/health", (req, res) => {
   logger.info("Health check accessed");
@@ -61,6 +64,7 @@ router.get("/health", (req, res) => {
       subscription: "/api/subscription", // Month 5 Phase 2 - NEW
       rateLimits: "/api/admin", // Rate limiting management
       database: "/api/database", // Database transaction management
+      platformOperations: "/api/platform-operations", // Background tasks and platform operations
     },
   });
 });
@@ -115,6 +119,9 @@ router.use("/shipping", shippingRoutes);
 // Database transaction management routes
 router.use("/database", databaseRoutes);
 
+// Platform operations routes
+router.use("/platform-operations", platformOperationsRoutes);
+
 // Enhanced SKU system routes
 router.use("/enhanced-sku", skuRoutes);
 
@@ -124,6 +131,10 @@ router.use("/fonts", fontRoutes);
 // Unified Product Intelligence routes
 const unifiedIntelligenceRoutes = require("./unified-product-intelligence");
 router.use("/product-intelligence", unifiedIntelligenceRoutes);
+
+// Enhanced Product Management routes
+const enhancedProductRoutes = require("./enhanced-products");
+router.use("/enhanced-products", enhancedProductRoutes);
 
 // Catch-all for debugging
 router.use("/*", (req, res) => {
@@ -141,6 +152,7 @@ router.use("/*", (req, res) => {
       "/api/sku",
       "/api/enhanced-sku", // Enhanced SKU system
       "/api/product-intelligence", // Unified Product Intelligence System
+      "/api/enhanced-products", // Enhanced Product Management System
       "/api/settings",
       "/api/compliance",
       "/api/order-management",

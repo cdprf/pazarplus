@@ -750,7 +750,7 @@ async function getTopProducts(userId, dateRange, limit = 10) {
     "processing",
     "shipped",
     "delivered",
-    "completed",
+    "delivered",
   ];
 
   const topProducts = await OrderItem.findAll({

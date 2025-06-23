@@ -135,10 +135,28 @@ const createConnection = async (req, res) => {
       });
     }
 
+    // Check for existing connection with same name and platform type for this user
+    const existingConnection = await PlatformConnection.findOne({
+      where: {
+        userId: req.user.id,
+        platformType,
+        platformName: name,
+      },
+    });
+
+    if (existingConnection) {
+      return res.status(409).json({
+        success: false,
+        message: `A platform connection named "${name}" already exists for ${platformType}. Please use a different name.`,
+        error: "DUPLICATE_CONNECTION",
+      });
+    }
+
     const connection = await PlatformConnection.create({
       userId: req.user.id,
       platformType,
-      name,
+      platformName: name,
+      name: name, // Set both fields for compatibility
       credentials,
       status: "active",
       isActive,
@@ -151,9 +169,23 @@ const createConnection = async (req, res) => {
     });
   } catch (error) {
     logger.error(`Create connection error: ${error.message}`, { error });
+
+    // Handle unique constraint violations
+    if (
+      error.name === "SequelizeUniqueConstraintError" ||
+      (error.original && error.original.code === "SQLITE_CONSTRAINT")
+    ) {
+      return res.status(409).json({
+        success: false,
+        message: `A platform connection named "${req.body.name}" already exists for ${req.body.platformType}. Please use a different name.`,
+        error: "DUPLICATE_CONNECTION",
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "Failed to create platform connection",
+      error: error.message,
     });
   }
 };
@@ -441,7 +473,7 @@ const syncPlatform = async (req, res) => {
 
     // Update last sync time
     await connection.update({
-      lastSyncAt: new Date(),
+      lastSync: new Date(),
       syncStatus: "completed",
     });
 
@@ -461,7 +493,7 @@ const syncPlatform = async (req, res) => {
         syncedOrders,
         syncedProducts,
         timestamp: new Date().toISOString(),
-        lastSyncAt: connection.lastSyncAt,
+        lastSync: connection.lastSync,
       },
     });
   } catch (error) {

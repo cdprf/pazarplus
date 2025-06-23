@@ -377,7 +377,7 @@ class AnalyticsController {
   async getRealtimeUpdates(req, res) {
     try {
       const userId = req.user.id;
-      const updates = await analyticsService.getRealtimeUpdates(userId);
+      const updates = await analyticsService.getRealTimeMetrics(userId);
 
       res.json({
         success: true,
@@ -1137,7 +1137,7 @@ class AnalyticsController {
             userId
           );
           const daysUntilStockout = analyticsService.calculateStockoutDays(
-            product.currentStock,
+            product.stockQuantity,
             demandForecast.daily
           );
 
@@ -1152,7 +1152,7 @@ class AnalyticsController {
             });
           }
 
-          if (product.currentStock === 0) {
+          if (product.stockQuantity === 0) {
             alerts.push({
               type: "out_of_stock",
               severity: "high",
@@ -1168,7 +1168,7 @@ class AnalyticsController {
         const lowStockProducts = await Product.findAll({
           where: {
             userId,
-            currentStock: { [Op.lt]: 10 }, // Assuming 10 is low stock threshold
+            stockQuantity: { [Op.lt]: 10 }, // Assuming 10 is low stock threshold
           },
           limit: 10,
         });
@@ -1179,8 +1179,8 @@ class AnalyticsController {
             severity: "medium",
             productId: product.id,
             productName: product.name,
-            currentStock: product.currentStock,
-            message: `Düşük stok seviyesi: ${product.currentStock} adet`,
+            currentStock: product.stockQuantity,
+            message: `Düşük stok seviyesi: ${product.stockQuantity} adet`,
             recommendedAction: "Stok sipariş etmeyi değerlendirin",
           });
         });

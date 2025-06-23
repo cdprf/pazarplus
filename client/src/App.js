@@ -25,7 +25,8 @@ import EmailVerification from "./components/auth/EmailVerification";
 import Dashboard from "./components/dashboard/Dashboard";
 import Orders from "./pages/Orders"; // Consolidated order management
 import OrderDetail from "./components/orders/OrderDetail";
-import ProductManagement from "./components/ProductManagement/index.modern.js"; // Modernized product management
+import ProductManagement from "./components/ProductManagement/index.js"; // Modernized product management
+import EnhancedProductManagement from "./components/ProductManagement/components/EnhancedProductManagement"; // Enhanced product management system
 import CustomerManagement from "./components/customers/CustomerManagement";
 import CustomerProfile from "./components/customers/CustomerProfile";
 import ShippingManagement from "./components/shipping/ShippingManagement";
@@ -37,6 +38,7 @@ import PlatformAnalytics from "./components/platforms/PlatformAnalytics";
 import PlatformSyncHistory from "./components/platforms/PlatformSyncHistory";
 import ProductLinkingDashboard from "./pages/admin/ProductLinkingDashboard";
 import Analytics from "./pages/Analytics"; // Analytics dashboard
+import PlatformOperations from "./pages/PlatformOperations"; // Platform Operations
 import Settings from "./components/settings/Settings";
 import PrintSettings from "./components/settings/PrintSettings";
 import DatabaseBusyModal from "./components/DatabaseBusyModal"; // Database transaction management modal
@@ -128,6 +130,14 @@ function App() {
                           element={<ProductManagement />}
                         />
                         <Route
+                          path="products/enhanced"
+                          element={<EnhancedProductManagement />}
+                        />
+                        <Route
+                          path="products/enhanced/:id"
+                          element={<EnhancedProductManagement />}
+                        />
+                        <Route
                           path="products/:id/edit"
                           element={<ProductManagement />}
                         />
@@ -208,6 +218,12 @@ function App() {
                         <Route
                           path="platforms/:platformId/sync-history"
                           element={<PlatformSyncHistory />}
+                        />
+
+                        {/* Platform Operations */}
+                        <Route
+                          path="platform-operations"
+                          element={<PlatformOperations />}
                         />
 
                         {/* Orders - enhanced with sub-routes */}

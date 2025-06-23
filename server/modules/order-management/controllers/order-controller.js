@@ -76,7 +76,10 @@ async function getAllOrders(req, res) {
       attributes: ["id", "platformType", "name", "isActive"],
     });
 
-    const offset = (page - 1) * limit;
+    // Ensure page and limit are positive integers to prevent negative OFFSET
+    const validPage = Math.max(1, parseInt(page) || 1);
+    const validLimit = Math.max(1, Math.min(100, parseInt(limit) || 20)); // Cap at 100
+    const offset = Math.max(0, (validPage - 1) * validLimit);
     const where = { userId };
 
     // Apply filters if provided
@@ -124,8 +127,8 @@ async function getAllOrders(req, res) {
     // Get orders with pagination and include related models
     const orders = await Order.findAndCountAll({
       where,
-      limit: parseInt(limit),
-      offset: parseInt(offset),
+      limit: validLimit,
+      offset: offset,
       include: [
         {
           model: OrderItem,
@@ -143,6 +146,7 @@ async function getAllOrders(req, res) {
           model: PlatformConnection,
           as: "platformConnection",
           attributes: ["platformType", "name", "isActive"],
+          required: false, // Make this optional to handle orders without platform connections
         },
       ],
       order: [[sortField, sortDirection]],
@@ -167,8 +171,8 @@ async function getAllOrders(req, res) {
     });
 
     // Enhanced pagination info
-    const totalPages = Math.ceil(orders.count / limit);
-    const currentPage = parseInt(page);
+    const totalPages = Math.ceil(orders.count / validLimit);
+    const currentPage = validPage;
 
     const response = {
       success: true,
@@ -177,10 +181,10 @@ async function getAllOrders(req, res) {
         pagination: {
           total: orders.count,
           totalPages,
-          currentPage,
-          limit: parseInt(limit),
-          hasNext: currentPage < totalPages,
-          hasPrev: currentPage > 1,
+          currentPage: validPage,
+          limit: validLimit,
+          hasNext: validPage < totalPages,
+          hasPrev: validPage > 1,
           showing: transformedOrders.length,
           from: offset + 1,
           to: Math.min(offset + transformedOrders.length, orders.count),
@@ -188,7 +192,7 @@ async function getAllOrders(req, res) {
       },
       stats: {
         total: orders.count,
-        page: currentPage,
+        page: validPage,
         pages: totalPages,
       },
     };
@@ -290,7 +294,11 @@ async function getOrderById(req, res) {
           ],
         },
         { model: ShippingDetail, as: "shippingDetail" },
-        { model: PlatformConnection, as: "platformConnection" },
+        {
+          model: PlatformConnection,
+          as: "platformConnection",
+          required: false,
+        },
       ],
     });
 
@@ -427,6 +435,7 @@ async function cancelOrder(req, res) {
           model: PlatformConnection,
           as: "platformConnection",
           attributes: ["id", "platformType", "credentials", "isActive"],
+          required: false, // Make optional to handle orders without platform connections
         },
       ],
     });
@@ -770,20 +779,36 @@ async function getOrderStats(req, res) {
         raw: true,
       }),
 
-      // Platform breakdown for all orders - using direct SQL for better reliability
-      Order.sequelize.query(
-        `
-        SELECT pc.platformType, COUNT(o.id) as count
-        FROM orders o 
-        JOIN platform_connections pc ON o.connectionId = pc.id 
-        WHERE o.userId = :userId
-        GROUP BY pc.platformType
-      `,
-        {
-          replacements: { userId },
-          type: Order.sequelize.QueryTypes.SELECT,
+      // Platform breakdown for all orders - with graceful handling for missing connections
+      (async () => {
+        try {
+          // First check if user has any platform connections
+          const hasConnections = await PlatformConnection.count({
+            where: { userId },
+          });
+
+          if (hasConnections === 0) {
+            return []; // Return empty array if no connections exist
+          }
+
+          return await Order.sequelize.query(
+            `
+            SELECT pc."platformType", COUNT(o.id) as count
+            FROM orders o 
+            JOIN platform_connections pc ON o."connectionId" = pc.id 
+            WHERE o."userId" = :userId
+            GROUP BY pc."platformType"
+          `,
+            {
+              replacements: { userId },
+              type: Order.sequelize.QueryTypes.SELECT,
+            }
+          );
+        } catch (error) {
+          logger.warn(`Error fetching platform breakdown: ${error.message}`);
+          return []; // Return empty array on error
         }
-      ),
+      })(),
 
       // Total revenue
       Order.sum("totalAmount", { where: { userId } }),
@@ -804,6 +829,7 @@ async function getOrderStats(req, res) {
             model: PlatformConnection,
             as: "platformConnection",
             attributes: ["platformType", "name"],
+            required: false, // Make optional to handle orders without platform connections
           },
         ],
         order: [["createdAt", "DESC"]],
@@ -1421,7 +1447,11 @@ async function getOrderWithPlatformDetails(req, res) {
           ],
         },
         { model: ShippingDetail, as: "shippingDetail" },
-        { model: PlatformConnection, as: "platformConnection" },
+        {
+          model: PlatformConnection,
+          as: "platformConnection",
+          required: false,
+        },
         { model: TrendyolOrder, as: "trendyolOrder" },
         { model: HepsiburadaOrder, as: "hepsiburadaOrder" },
       ],
@@ -1507,6 +1537,7 @@ async function acceptOrder(req, res) {
           model: PlatformConnection,
           as: "platformConnection",
           attributes: ["id", "platformType", "credentials", "isActive"],
+          required: false, // Make optional to handle orders without platform connections
         },
       ],
     });

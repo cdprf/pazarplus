@@ -14,7 +14,7 @@ Order.init(
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: "Users",
+        model: "users",
         key: "id",
       },
     },
@@ -50,7 +50,7 @@ Order.init(
     // Platform connection reference
     connectionId: {
       type: DataTypes.INTEGER,
-      allowNull: false, // Changed: Made required for proper platform association
+      allowNull: true, // Changed: Made nullable to support orders without platform connections
       references: {
         model: "platform_connections",
         key: "id",
@@ -105,10 +105,17 @@ Order.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    // Customer information as JSON (required by database)
+    customerInfo: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: "Customer information in JSON format",
+    },
     // Shipping information
     shippingAddress: {
-      type: DataTypes.TEXT,
-      allowNull: true,
+      type: DataTypes.JSON,
+      allowNull: false,
+      comment: "Shipping address information in JSON format",
     },
     shippingDetailId: {
       type: DataTypes.INTEGER,
@@ -269,6 +276,18 @@ Order.init(
       allowNull: true,
       comment: "ID of the linked shipping template for this order",
     },
+    // Error handling fields
+    errorMessage: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: "Error message for failed orders or operations",
+    },
+    retryCount: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0,
+      comment: "Number of retry attempts for failed operations",
+    },
   },
   {
     sequelize,
@@ -321,6 +340,15 @@ Order.init(
         fields: ["platformOrderId", "platformId"],
         unique: false,
         name: "legacy_platform_order_index",
+      },
+      // Error handling indexes
+      {
+        fields: ["errorMessage"],
+        name: "orders_error_message_idx",
+      },
+      {
+        fields: ["retryCount"],
+        name: "orders_retry_count_idx",
       },
     ],
   }

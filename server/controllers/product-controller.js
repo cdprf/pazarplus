@@ -448,7 +448,7 @@ class ProductController {
             connectionId: connection.id,
             connectionName: connection.name,
             productCount,
-            lastSyncedAt: connection.lastSyncAt,
+            lastSyncedAt: connection.lastSync,
           };
         })
       );
@@ -915,8 +915,17 @@ class ProductController {
       });
 
       // Get approval status counts through platform data
-      const pendingProducts = await Product.count({
-        where: { userId, status: "pending" },
+      // Note: Products don't have "pending" status - this is platform-specific
+      // Check for products that have pending approval on platforms instead
+      const pendingProducts = await PlatformData.count({
+        where: {
+          entityType: "product",
+          [Op.or]: [
+            { "data.approvalStatus": "Pending" },
+            { "data.status": "pending" },
+            { platformStatus: "pending" },
+          ],
+        },
       });
 
       const rejectedProducts = await PlatformData.count({

@@ -274,7 +274,7 @@ class BasePlatformService {
       // Update the connection's last sync time
       try {
         await PlatformConnection.update(
-          { lastSyncAt: new Date() },
+          { lastSync: new Date() },
           { where: { id: this.connectionId } }
         );
       } catch (updateError) {

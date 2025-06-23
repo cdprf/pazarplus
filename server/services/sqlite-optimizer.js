@@ -20,6 +20,17 @@ class SQLiteOptimizer {
     }
 
     try {
+      // Check if we're using SQLite dialect
+      const dialect = sequelize.getDialect();
+
+      if (dialect !== "sqlite") {
+        logger.info(
+          `Database dialect is ${dialect}, skipping SQLite-specific optimizations`
+        );
+        this.isOptimized = true;
+        return;
+      }
+
       logger.info("Applying SQLite optimizations for better concurrency...");
 
       // Critical SQLite settings for better concurrency
@@ -95,6 +106,13 @@ class SQLiteOptimizer {
    * Execute a database operation with automatic retry logic for SQLite busy errors
    */
   async executeWithRetry(operationFn, operationId = null, maxRetries = 5) {
+    const dialect = sequelize.getDialect();
+
+    // For non-SQLite databases, just execute the operation without retry logic
+    if (dialect !== "sqlite") {
+      return await operationFn();
+    }
+
     const opId =
       operationId ||
       `op_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
@@ -240,6 +258,15 @@ class SQLiteOptimizer {
    */
   async checkSQLiteHealth() {
     try {
+      const dialect = sequelize.getDialect();
+
+      if (dialect !== "sqlite") {
+        logger.info(
+          `Database dialect is ${dialect}, skipping SQLite health check`
+        );
+        return { status: "N/A - Not using SQLite" };
+      }
+
       const checks = [
         { query: "PRAGMA journal_mode", expected: "wal", name: "WAL Mode" },
         { query: "PRAGMA busy_timeout", name: "Busy Timeout" },
@@ -284,6 +311,13 @@ class SQLiteOptimizer {
    */
   async emergencyCheckpoint() {
     try {
+      const dialect = sequelize.getDialect();
+
+      if (dialect !== "sqlite") {
+        logger.info(`Database dialect is ${dialect}, skipping WAL checkpoint`);
+        return true;
+      }
+
       logger.info("Performing emergency WAL checkpoint...");
 
       // Force WAL checkpoint

@@ -373,7 +373,9 @@ class ProductMergeService {
    * Save merged products to database with enhanced transaction management
    */
   async saveMergedProducts(mergedProducts, userId) {
-    const operationId = `product_merge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const operationId = `product_merge_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
     const savedProducts = [];
     const errors = [];
     const batchSize = 50;
@@ -396,7 +398,11 @@ class ProductMergeService {
       const result = await dbTransactionManager.executeWithTransactionControl(
         operationId,
         async () => {
-          return await this.processProductBatches(mergedProducts, userId, operationId);
+          return await this.processProductBatches(
+            mergedProducts,
+            userId,
+            operationId
+          );
         },
         {
           userControlled: true,
@@ -449,16 +455,17 @@ class ProductMergeService {
           batchSize: batch.length,
         });
 
-        const batchResults = await dbTransactionManager.executeWithTransactionControl(
-          batchOperationId,
-          async () => {
-            return await this.processBatch(batch, userId);
-          },
-          {
-            userControlled: false, // Don't prompt user for each batch
-            pausable: true,
-          }
-        );
+        const batchResults =
+          await dbTransactionManager.executeWithTransactionControl(
+            batchOperationId,
+            async () => {
+              return await this.processBatch(batch, userId);
+            },
+            {
+              userControlled: false, // Don't prompt user for each batch
+              pausable: true,
+            }
+          );
 
         savedProducts.push(...batchResults.savedProducts);
         errors.push(...batchResults.errors);
@@ -466,10 +473,13 @@ class ProductMergeService {
         logger.info(`Batch ${batchNumber} completed successfully`);
       } catch (error) {
         logger.error(`Batch ${batchNumber} failed:`, error);
-        
+
         // Try processing individually as fallback
         try {
-          const individualResults = await this.processIndividualProducts(batch, userId);
+          const individualResults = await this.processIndividualProducts(
+            batch,
+            userId
+          );
           savedProducts.push(...individualResults.savedProducts);
           errors.push(...individualResults.errors);
         } catch (fallbackError) {
@@ -511,7 +521,7 @@ class ProductMergeService {
     logger.info(
       `Successfully saved ${savedProducts.length} products out of ${mergedProducts.length} merged products`
     );
-    
+
     return { savedProducts, errors, operationId };
   }
 
@@ -525,6 +535,11 @@ class ProductMergeService {
 
     try {
       for (const mergedProduct of batch) {
+        // Use savepoints for individual product processing to handle PostgreSQL transaction behavior
+        const savepoint = await transaction.createSavepoint(
+          "product_processing"
+        );
+
         try {
           const product = await this.processSingleProduct(
             mergedProduct,
@@ -534,7 +549,12 @@ class ProductMergeService {
           if (product) {
             savedProducts.push(product);
           }
+          // Release savepoint on success
+          await savepoint.commit();
         } catch (productError) {
+          // Rollback to savepoint on error (PostgreSQL requirement)
+          await savepoint.rollback();
+
           logger.error(
             `Error processing product ${
               mergedProduct.sku || mergedProduct.name

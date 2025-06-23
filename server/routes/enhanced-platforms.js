@@ -378,7 +378,7 @@ router.get("/user/connections", async (req, res) => {
         userId: req.user.id,
         isActive: true,
       },
-      attributes: ["id", "platformType", "settings", "createdAt", "lastSyncAt"],
+      attributes: ["id", "platformType", "settings", "createdAt", "lastSync"],
       order: [["createdAt", "DESC"]],
     });
 

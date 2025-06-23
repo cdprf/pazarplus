@@ -286,6 +286,14 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
         ],
       },
       {
+        name: "Platform Operations",
+        href: "/platform-operations",
+        icon: BoltIcon,
+        description: "Background tasks and operations",
+        ariaLabel: "Platform background operations",
+        badge: "new",
+      },
+      {
         name: "Shipping",
         href: "/shipping",
         icon: TruckIcon,
