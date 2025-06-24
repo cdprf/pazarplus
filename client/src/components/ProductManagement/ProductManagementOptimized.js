@@ -19,7 +19,8 @@ import { useProductAPI } from "./hooks/useProductAPI";
 import { useProductPerformance } from "./hooks/useProductPerformance";
 
 // UI Components
-import { Button, Modal } from "../ui";
+import { Button } from "../ui";
+import { Modal } from "../ui";
 import ProductDisplay from "./components/ProductDisplay";
 import { ImagePreviewModal } from "./components/ProductModals";
 import EnhancedProductAnalytics from "./components/ProductAnalyticsFixed";
@@ -31,7 +32,7 @@ import ProductManagementErrorBoundary, {
 } from "./components/ErrorBoundary";
 
 // Utils and constants
-import { CATEGORIES } from "./utils/constants";
+import { CATEGORIES, API_BASE_URL } from "./utils/constants";
 import "./ProductManagement.css";
 
 /**
@@ -251,11 +252,20 @@ const ProductManagement = () => {
   } = useProductAPI(actions.updateMultiple, showAlert, handleError);
 
   // Performance optimizations
-  const { debouncedSearch, handleSelectProduct, handleSelectAll, batchUpdate } =
-    useProductPerformance(state, actions.updateMultiple, showAlert);
+  const {
+    optimizedUpdateState,
+    debouncedSearch,
+    handleSelectProduct,
+    handleSelectAll,
+    batchUpdate,
+  } = useProductPerformance(state, actions.updateMultiple, showAlert);
 
   // Memoized values
   const statusCounts = useMemo(() => selectors.getStatusCounts(), [selectors]);
+  const selectedProductsData = useMemo(
+    () => selectors.getSelectedProductsData(),
+    [selectors]
+  );
   const activeFiltersCount = useMemo(
     () => selectors.getActiveFiltersCount(),
     [selectors]
@@ -283,8 +293,7 @@ const ProductManagement = () => {
     };
 
     loadInitialData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount
+  }, []);
 
   // Effect for data refetch when dependencies change
   useEffect(() => {
@@ -298,9 +307,6 @@ const ProductManagement = () => {
         search: state.searchValue,
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  // Note: fetchProducts is intentionally excluded from dependencies to prevent infinite re-renders
-  // The function is stable due to useCallback in useProductAPI
   }, [
     state.currentPage,
     state.itemsPerPage,
@@ -312,8 +318,8 @@ const ProductManagement = () => {
 
   // Product URL parameter handling
   useEffect(() => {
-    if (productId && state?.products?.length > 0 && !state.loading) {
-      const product = state?.products?.find((p) => p.id === productId);
+    if (productId && state.products.length > 0 && !state.loading) {
+      const product = state.products.find((p) => p.id === productId);
       if (product) {
         actions.setModals({ productModal: { open: true, product } });
       } else {
@@ -774,7 +780,7 @@ const ProductManagement = () => {
                       Toplam Ürün
                     </p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {state?.allProductsStats?.total || 0}
+                      {state.allProductsStats.total}
                     </p>
                   </div>
                 </div>
@@ -790,7 +796,7 @@ const ProductManagement = () => {
                       Aktif Ürün
                     </p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {state?.allProductsStats?.active || 0}
+                      {state.allProductsStats.active}
                     </p>
                   </div>
                 </div>
@@ -810,7 +816,7 @@ const ProductManagement = () => {
                       Stokta Yok
                     </p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {state?.allProductsStats?.outOfStock || 0}
+                      {state.allProductsStats.outOfStock}
                     </p>
                   </div>
                 </div>
@@ -830,7 +836,7 @@ const ProductManagement = () => {
                       Düşük Stok
                     </p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                      {state?.allProductsStats?.lowStock || 0}
+                      {state.allProductsStats.lowStock}
                     </p>
                   </div>
                 </div>
@@ -855,7 +861,7 @@ const ProductManagement = () => {
 
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {state?.products?.length || 0} / {state.totalItems} ürün
+                    {state.products.length} / {state.totalItems} ürün
                   </span>
                   {activeFiltersCount > 0 && (
                     <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
@@ -1091,7 +1097,7 @@ const ProductManagement = () => {
                     if (updateData.price.operation === "set") {
                       data.price = updateData.price.value;
                     } else {
-                      const product = state?.products?.find((p) => p.id === id);
+                      const product = state.products.find((p) => p.id === id);
                       const currentPrice = product?.price || 0;
                       const percentage = updateData.price.value / 100;
 
@@ -1118,7 +1124,7 @@ const ProductManagement = () => {
                     if (updateData.stock.operation === "set") {
                       data.stockQuantity = updateData.stock.value;
                     } else {
-                      const product = state?.products?.find((p) => p.id === id);
+                      const product = state.products.find((p) => p.id === id);
                       const currentStock = product?.stockQuantity || 0;
 
                       if (updateData.stock.operation === "increase") {

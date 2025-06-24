@@ -24,6 +24,8 @@ const AdvancedSearchPanel = ({
   // Handle search input change
   const handleSearchChange = (value) => {
     setSearchValue(value);
+    // Trigger search on change for real-time search
+    onSearch?.(value);
   };
 
   // Handle search submission

@@ -146,6 +146,36 @@ MainProduct.init(
       allowNull: true,
       defaultValue: [],
     },
+    // Platform-specific extra fields for comprehensive product data
+    platformExtras: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: {},
+      comment:
+        "Platform-specific extra fields (e.g., Trendyol seller info, Hepsiburada merchant details, etc.)",
+    },
+    // Scraping metadata
+    scrapedFrom: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "URL from which product was scraped",
+    },
+    scrapedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: "When the product was scraped",
+    },
+    importedFrom: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Platform from which product was imported",
+    },
+    importedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: "When the product was imported",
+    },
+
     weight: {
       type: DataTypes.DECIMAL(8, 3),
       allowNull: true,

@@ -127,7 +127,7 @@ const OrderTimeline = ({ order }) => {
         id: "shipping",
         type: "shipping",
         title: "Teslimat Adresi",
-        description: `${order.shippingAddress.city}, ${order.shippingAddress.district}`,
+        description: `${order.shippingDetail.city}, ${order.shippingDetail.state}`,
         timestamp: order.createdAt,
         icon: MapPin,
         iconColor: "text-purple-600",

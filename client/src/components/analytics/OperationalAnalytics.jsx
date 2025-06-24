@@ -7,6 +7,7 @@ import {
   Alert,
   Spinner,
   Badge,
+  Button,
 } from "react-bootstrap";
 import {
   LineChart,
@@ -20,6 +21,7 @@ import {
   AreaChart,
   Area,
 } from "recharts";
+import { CogIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 import analyticsService from "../../services/analyticsService";
 import KPICard from "./KPICard";
 import ExportButton from "./ExportButton";
@@ -81,6 +83,46 @@ const OperationalAnalytics = ({ timeframe = "30d" }) => {
       <Alert variant="danger">
         Error loading operational analytics: {error}
       </Alert>
+    );
+  }
+
+  // Empty state handling
+  if (!realTimeData && !performanceData && !anomalies) {
+    return (
+      <Container fluid>
+        <div className="text-center py-5">
+          <div className="mb-4">
+            <CogIcon className="h-16 w-16 text-muted mx-auto mb-3" />
+            <h3 className="text-muted">No Operational Data Available</h3>
+            <p className="text-muted mb-4">
+              We couldn't find any operational metrics for the selected period.
+              This might be because:
+            </p>
+            <ul className="list-unstyled text-muted mb-4">
+              <li>• System monitoring is not yet configured</li>
+              <li>• Data collection is still in progress</li>
+              <li>• The selected timeframe has no activity</li>
+            </ul>
+          </div>
+          <div className="d-flex gap-2 justify-content-center">
+            <Button
+              variant="primary"
+              onClick={() => window.location.reload()}
+              aria-label="Refresh operational data"
+            >
+              <ArrowPathIcon className="h-4 w-4 me-2" />
+              Refresh Data
+            </Button>
+            <Button
+              variant="outline-secondary"
+              href="/analytics"
+              aria-label="Go to main analytics dashboard"
+            >
+              Back to Dashboard
+            </Button>
+          </div>
+        </div>
+      </Container>
     );
   }
 

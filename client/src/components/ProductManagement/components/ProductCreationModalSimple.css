@@ -1,0 +1,79 @@
+/* ProductCreationModalSimple CSS */
+
+/* Ensure all buttons are clickable and have proper styling */
+.modal-custom button {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  position: relative !important;
+  z-index: 10005 !important;
+}
+
+.modal-custom .btn {
+  display: inline-block !important;
+  font-weight: 400 !important;
+  line-height: 1.5 !important;
+  color: #212529 !important;
+  text-align: center !important;
+  text-decoration: none !important;
+  vertical-align: middle !important;
+  user-select: none !important;
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
+  padding: 0.375rem 0.75rem !important;
+  font-size: 1rem !important;
+  border-radius: 0.375rem !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+.modal-custom .btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+.modal-custom .btn-primary {
+  color: #fff !important;
+  background-color: #007bff !important;
+  border-color: #007bff !important;
+}
+
+.modal-custom .btn-primary:hover {
+  color: #fff !important;
+  background-color: #0056b3 !important;
+  border-color: #0056b3 !important;
+}
+
+.modal-custom .btn-success {
+  color: #fff !important;
+  background-color: #28a745 !important;
+  border-color: #28a745 !important;
+}
+
+.modal-custom .btn-success:hover {
+  color: #fff !important;
+  background-color: #1e7e34 !important;
+  border-color: #1e7e34 !important;
+}
+
+.modal-custom .btn-info {
+  color: #fff !important;
+  background-color: #17a2b8 !important;
+  border-color: #17a2b8 !important;
+}
+
+.modal-custom .btn-info:hover {
+  color: #fff !important;
+  background-color: #117a8b !important;
+  border-color: #117a8b !important;
+}
+
+.modal-custom .btn-secondary {
+  color: #fff !important;
+  background-color: #6c757d !important;
+  border-color: #6c757d !important;
+}
+
+.modal-custom .btn-secondary:hover {
+  color: #fff !important;
+  background-color: #545b62 !important;
+  border-color: #545b62 !important;
+}

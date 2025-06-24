@@ -25,6 +25,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import analyticsService from "../../services/analyticsService";
+import {
+  formatCurrency,
+  formatNumber,
+  formatPercentage,
+  safeInteger,
+  processProductData,
+  processInsightsData,
+} from "../../utils/analyticsFormatting";
 import KPICard from "./KPICard";
 import ExportButton from "./ExportButton";
 import {
@@ -32,6 +40,7 @@ import {
   ChartBarIcon,
   ArrowTrendingUpIcon,
   ExclamationTriangleIcon,
+  CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 
 const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
@@ -60,23 +69,31 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
 
         // Process the data to handle different API response formats
         if (productData && (productData.success || productData.data)) {
-          const processedData = productData.data || productData;
+          const rawData = productData.data || productData;
 
           // Ensure consistent data structure
           const normalizedData = {
-            ...processedData,
-            topProducts: processedData.topProducts || [],
-            performance: processedData.performance || {
+            ...rawData,
+            topProducts: processProductData(rawData.topProducts || []),
+            performance: rawData.performance || {
               categories: [],
               sales: [],
               stockStatus: [],
             },
-            inventory: processedData.inventory || {
+            inventory: rawData.inventory || {
               lowStock: [],
               outOfStock: [],
               overStock: [],
             },
+            insights: processInsightsData(rawData.insights || {}),
           };
+
+          console.log("📊 Processed product analytics:", {
+            topProductsLength: normalizedData.topProducts?.length || 0,
+            hasPerformance: !!normalizedData.performance,
+            hasInsights: !!normalizedData.insights,
+            normalizedData: normalizedData,
+          });
 
           setData(normalizedData);
         } else {
@@ -92,6 +109,11 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
               lowStock: [],
               outOfStock: [],
               overStock: [],
+            },
+            insights: {
+              recommendations: [],
+              opportunities: [],
+              warnings: [],
             },
           });
         }
@@ -135,10 +157,11 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
   }
 
   // Extract product data from response
-  const productData = data?.data || {};
-  const dashboardData = productData.dashboard || {};
-  const topProducts = dashboardData.topProducts || [];
-  const categoryData = dashboardData.categories || [];
+  const productAnalytics = data || {};
+  const topProducts = productAnalytics.topProducts || [];
+  const performance = productAnalytics.performance || {};
+  const categoryData = performance.categories || [];
+  const insights = productAnalytics.insights || {};
 
   // Colors for charts
   const CHART_COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
@@ -146,25 +169,25 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
   // Prepare data for charts
   const topProductsChart = topProducts.slice(0, 10).map((product) => ({
     name: product.name || `Product ${product.id}`,
-    quantity: parseInt(product.totalQuantity) || 0,
-    revenue: parseFloat(product.totalRevenue) || 0,
-    orders: parseInt(product.orderCount) || 0,
+    quantity: product.totalSold || 0,
+    revenue: product.totalRevenue || 0,
+    orders: product.orderCount || 0,
   }));
 
   const categoryChart = categoryData.map((category) => ({
     name: category.name || "Unknown",
-    value: parseFloat(category.revenue) || 0,
-    count: parseInt(category.count) || 0,
+    value: category.revenue || 0,
+    count: category.count || 0,
   }));
 
   // Calculate KPIs
   const totalProducts = topProducts.length;
   const totalRevenue = topProducts.reduce(
-    (sum, p) => sum + (parseFloat(p.totalRevenue) || 0),
+    (sum, p) => sum + (p.totalRevenue || 0),
     0
   );
   const totalQuantity = topProducts.reduce(
-    (sum, p) => sum + (parseInt(p.totalQuantity) || 0),
+    (sum, p) => sum + (p.totalSold || 0),
     0
   );
   const avgOrderValue = totalQuantity > 0 ? totalRevenue / totalQuantity : 0;
@@ -199,7 +222,7 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
         <Col md={3}>
           <KPICard
             title="Product Revenue"
-            value={`$${totalRevenue.toLocaleString()}`}
+            value={formatCurrency(totalRevenue)}
             icon={ChartBarIcon}
             color="success"
           />
@@ -207,7 +230,7 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
         <Col md={3}>
           <KPICard
             title="Units Sold"
-            value={totalQuantity.toLocaleString()}
+            value={formatNumber(totalQuantity)}
             icon={ArrowTrendingUpIcon}
             color="info"
           />
@@ -215,7 +238,7 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
         <Col md={3}>
           <KPICard
             title="Avg Order Value"
-            value={`$${avgOrderValue.toFixed(2)}`}
+            value={formatCurrency(avgOrderValue)}
             icon={ExclamationTriangleIcon}
             color="warning"
           />
@@ -349,11 +372,10 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
                   {topProducts[0]?.name || "No data"}
                 </p>
                 <small className="text-muted">
-                  $
-                  {parseFloat(
-                    topProducts[0]?.totalRevenue || 0
+                  {safeInteger(
+                    topProducts[0]?.orderCount || 0
                   ).toLocaleString()}{" "}
-                  revenue
+                  orders
                 </small>
               </div>
               <div className="mb-3">
@@ -456,6 +478,74 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
           </Card>
         </Col>
       </Row>
+
+      {/* Product Insights Section */}
+      {insights &&
+        (insights.recommendations?.length > 0 ||
+          insights.opportunities?.length > 0 ||
+          insights.warnings?.length > 0) && (
+          <Row className="mb-4">
+            <Col>
+              <Card>
+                <Card.Header>
+                  <Card.Title>Product Insights & Recommendations</Card.Title>
+                </Card.Header>
+                <Card.Body>
+                  {insights.recommendations?.length > 0 && (
+                    <div className="mb-3">
+                      <h6 className="text-success mb-2">
+                        <CheckCircleIcon
+                          className="me-2"
+                          style={{ width: "16px", height: "16px" }}
+                        />
+                        Recommendations
+                      </h6>
+                      {insights.recommendations.map((rec, index) => (
+                        <div key={index} className="alert alert-success py-2">
+                          <small>{rec.text}</small>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {insights.opportunities?.length > 0 && (
+                    <div className="mb-3">
+                      <h6 className="text-info mb-2">
+                        <ArrowTrendingUpIcon
+                          className="me-2"
+                          style={{ width: "16px", height: "16px" }}
+                        />
+                        Opportunities
+                      </h6>
+                      {insights.opportunities.map((opp, index) => (
+                        <div key={index} className="alert alert-info py-2">
+                          <small>{opp.text}</small>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {insights.warnings?.length > 0 && (
+                    <div className="mb-3">
+                      <h6 className="text-warning mb-2">
+                        <ExclamationTriangleIcon
+                          className="me-2"
+                          style={{ width: "16px", height: "16px" }}
+                        />
+                        Warnings
+                      </h6>
+                      {insights.warnings.map((warn, index) => (
+                        <div key={index} className="alert alert-warning py-2">
+                          <small>{warn.text}</small>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+        )}
     </div>
   );
 };

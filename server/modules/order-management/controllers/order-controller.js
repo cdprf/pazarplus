@@ -1819,6 +1819,12 @@ module.exports = {
       }
 
       // Placeholder for e-invoice generation
+      // Mark invoice as printed
+      await order.update({
+        invoicePrinted: true,
+        invoicePrintedAt: new Date(),
+      });
+
       return res.status(200).json({
         success: true,
         message: "E-invoice generated successfully",

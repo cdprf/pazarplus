@@ -2,6 +2,7 @@ require("dotenv").config();
 
 // Import network detection utility
 const { setNetworkEnvironment } = require("./utils/networkDetection");
+const ServerStabilityManager = require("./utils/serverStabilityManager");
 
 // Set network environment variables for proper URL generation
 const networkIP = setNetworkEnvironment();
@@ -12,8 +13,14 @@ const sequelize = require("./config/database");
 const config = require("./config/config");
 const ProductLinkingJobService = require("./services/product-linking-job-service");
 
+// Initialize stability manager
+const stabilityManager = new ServerStabilityManager();
+
 // Initialize background job service
 const productLinkingJobs = new ProductLinkingJobService();
+
+// Register background job with stability manager
+stabilityManager.registerBackgroundJob(productLinkingJobs);
 
 // Validate critical environment variables
 const validateEnvironment = () => {
@@ -70,135 +77,81 @@ async function startServer() {
     });
 
     // Start server with error handling - bind to all interfaces for network access
-    const server = app.listen(PORT, "0.0.0.0", () => {
-      logger.info(`Server running on port ${PORT} (accessible from network)`, {
-        service: "pazar-plus",
-        port: PORT,
-        environment: process.env.NODE_ENV || "development",
-        host: "0.0.0.0",
-        networkIP: networkIP,
-        accessUrls: {
-          local: `http://localhost:${PORT}`,
-          network: `http://${networkIP}:${PORT}`,
-        },
-      });
-
-      // Initialize WebSocket server for real-time notifications
-      initializeWebSocketServer(server);
-
-      logger.info("Enhanced platform integration services ready", {
-        service: "pazar-plus",
-        features: [
-          "Enhanced Platform Synchronization",
-          "Conflict Resolution System",
-          "Real-time Inventory Management",
-          "WebSocket Notifications",
-          "Stock Reservation System",
-          "Turkish Marketplace Compliance",
-          "Automated Product-Order Linking",
-        ],
-      });
-
-      // Start background jobs
-      productLinkingJobs.start();
-      logger.info("Background job services started", { service: "pazar-plus" });
-    });
-
-    // Handle server errors
-    server.on("error", (error) => {
-      if (error.code === "EADDRINUSE") {
-        logger.error(
-          `Port ${PORT} is already in use. Please stop the other process or use a different port.`,
+    const server = stabilityManager.wrapServer(
+      app.listen(PORT, "0.0.0.0", () => {
+        logger.info(
+          `Server running on port ${PORT} (accessible from network)`,
           {
             service: "pazar-plus",
             port: PORT,
-            error: error.code,
+            environment: process.env.NODE_ENV || "development",
+            host: "0.0.0.0",
+            networkIP: networkIP,
+            accessUrls: {
+              local: `http://localhost:${PORT}`,
+              network: `http://${networkIP}:${PORT}`,
+            },
           }
         );
-        process.exit(1);
-      } else {
-        logger.error("Server error:", error, { service: "pazar-plus" });
-        throw error;
+
+        // Initialize WebSocket server for real-time notifications
+        const wsServer = initializeWebSocketServer(server);
+
+        // Register WebSocket server cleanup
+        stabilityManager.registerCleanupHandler(async () => {
+          if (wsServer && typeof wsServer.close === "function") {
+            wsServer.close();
+          }
+        });
+
+        logger.info("Enhanced platform integration services ready", {
+          service: "pazar-plus",
+          features: [
+            "Enhanced Platform Synchronization",
+            "Conflict Resolution System",
+            "Real-time Inventory Management",
+            "WebSocket Notifications",
+            "Stock Reservation System",
+            "Turkish Marketplace Compliance",
+            "Automated Product-Order Linking",
+          ],
+        });
+
+        // Start background jobs
+        try {
+          productLinkingJobs.start();
+          logger.info("Background job services started", {
+            service: "pazar-plus",
+          });
+        } catch (error) {
+          logger.error("Failed to start background jobs", {
+            service: "pazar-plus",
+            error: error.message,
+          });
+        }
+      })
+    );
+
+    // Register database cleanup with stability manager
+    stabilityManager.registerCleanupHandler(async () => {
+      logger.info("Closing database connections...", { service: "pazar-plus" });
+      try {
+        await sequelize.close();
+        logger.info("Database connections closed successfully", {
+          service: "pazar-plus",
+        });
+      } catch (error) {
+        logger.error("Error closing database connections", {
+          service: "pazar-plus",
+          error: error.message,
+        });
       }
     });
-
-    // Graceful shutdown handling
-    const gracefulShutdown = async (signal) => {
-      logger.info(`Received ${signal}. Shutting down gracefully...`, {
-        service: "pazar-plus",
-      });
-
-      server.close(() => {
-        logger.info("HTTP server closed.", { service: "pazar-plus" });
-
-        // Stop background jobs
-        productLinkingJobs.stop();
-        logger.info("Background jobs stopped", { service: "pazar-plus" });
-
-        // Close database connections
-        sequelize
-          .close()
-          .then(() => {
-            logger.info("Database connections closed.", {
-              service: "pazar-plus",
-            });
-            process.exit(0);
-          })
-          .catch((err) => {
-            logger.error("Error closing database connections:", err, {
-              service: "pazar-plus",
-            });
-            process.exit(1);
-          });
-      });
-    };
-
-    process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
   } catch (error) {
     logger.error("Failed to start server:", error, { service: "pazar-plus" });
     process.exit(1);
   }
 }
-
-// Handle EPIPE errors to prevent logging loops
-process.stdout.on("error", (err) => {
-  if (err.code === "EPIPE") {
-    // Silently ignore EPIPE errors
-    return;
-  }
-  console.error("STDOUT Error:", err.message);
-});
-
-process.stderr.on("error", (err) => {
-  if (err.code === "EPIPE") {
-    // Silently ignore EPIPE errors
-    return;
-  }
-  console.error("STDERR Error:", err.message);
-});
-
-// Handle unhandled promise rejections
-process.on("unhandledRejection", (err) => {
-  // Don't log EPIPE errors to prevent loops
-  if (err.code !== "EPIPE") {
-    logger.error("Unhandled Promise Rejection:", err);
-  }
-  // Don't crash the server in production
-  if (process.env.NODE_ENV === "development") {
-    process.exit(1);
-  }
-});
-
-// Handle uncaught exceptions
-process.on("uncaughtException", (err) => {
-  // Don't log EPIPE errors to prevent loops
-  if (err.code === "EPIPE") {
-    return;
-  }
-  logger.error("Uncaught Exception:", err);
-  process.exit(1);
-});
 
 // Start the server
 startServer();

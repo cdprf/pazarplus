@@ -277,95 +277,101 @@ const OrdersChart = () => {
   }
 
   return (
-    <div className="chart-container">
-      <div className="chart-header">
-        <div>
-          <h3 className="chart-title">Orders Trend</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Order status distribution over time
-          </p>
-        </div>
-        <div className="chart-controls">
-          <div className="flex items-center space-x-2 mr-4">
-            <Button
-              variant={period === "week" ? "primary" : "ghost"}
-              size="sm"
-              onClick={() => setPeriod("week")}
-            >
-              Week
-            </Button>
-            <Button
-              variant={period === "month" ? "primary" : "ghost"}
-              size="sm"
-              onClick={() => setPeriod("month")}
-            >
-              Month
-            </Button>
-            <Button
-              variant={period === "year" ? "primary" : "ghost"}
-              size="sm"
-              onClick={() => setPeriod("year")}
-            >
-              Year
-            </Button>
+    <div className="h-full flex flex-col">
+      <div className="chart-header flex-shrink-0 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="chart-title text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Orders Trend
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Order status distribution over time
+            </p>
           </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant={chartType === "line" ? "primary" : "ghost"}
-              size="sm"
-              onClick={() => setChartType("line")}
-            >
-              Line
-            </Button>
-            <Button
-              variant={chartType === "bar" ? "primary" : "ghost"}
-              size="sm"
-              onClick={() => setChartType("bar")}
-            >
-              Bar
-            </Button>
-            <Button
-              variant={chartType === "area" ? "primary" : "ghost"}
-              size="sm"
-              onClick={() => setChartType("area")}
-            >
-              Area
-            </Button>
+          <div className="chart-controls flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Button
+                variant={period === "week" ? "primary" : "ghost"}
+                size="sm"
+                onClick={() => setPeriod("week")}
+              >
+                Week
+              </Button>
+              <Button
+                variant={period === "month" ? "primary" : "ghost"}
+                size="sm"
+                onClick={() => setPeriod("month")}
+              >
+                Month
+              </Button>
+              <Button
+                variant={period === "year" ? "primary" : "ghost"}
+                size="sm"
+                onClick={() => setPeriod("year")}
+              >
+                Year
+              </Button>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant={chartType === "line" ? "primary" : "ghost"}
+                size="sm"
+                onClick={() => setChartType("line")}
+              >
+                Line
+              </Button>
+              <Button
+                variant={chartType === "bar" ? "primary" : "ghost"}
+                size="sm"
+                onClick={() => setChartType("bar")}
+              >
+                Bar
+              </Button>
+              <Button
+                variant={chartType === "area" ? "primary" : "ghost"}
+                size="sm"
+                onClick={() => setChartType("area")}
+              >
+                Area
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      {chartData.length > 0 ? (
-        <ResponsiveContainer width="100%" height={400}>
-          {renderChart()}
-        </ResponsiveContainer>
-      ) : (
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="text-gray-400 mb-4">
-              <svg
-                className="w-16 h-16 mx-auto icon-contrast-secondary"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1}
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-              </svg>
+      <div className="flex-1 min-h-0 p-4">
+        {chartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            {renderChart()}
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex justify-center items-center h-full">
+            <div className="text-center">
+              <div className="text-gray-400 mb-4">
+                <svg
+                  className="w-16 h-16 mx-auto icon-contrast-secondary"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+              </div>
+              <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                No Chart Data
+              </h4>
+              <p className="text-gray-600 dark:text-gray-400">
+                No order data available for the selected period
+              </p>
             </div>
-            <h4 className="text-lg font-medium text-gray-900 mb-2">
-              No Chart Data
-            </h4>
-            <p className="text-gray-600">
-              No order data available for the selected period
-            </p>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

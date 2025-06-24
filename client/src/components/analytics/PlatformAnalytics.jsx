@@ -27,6 +27,12 @@ import {
   ComposedChart,
 } from "recharts";
 import analyticsService from "../../services/analyticsService";
+import {
+  formatCurrency,
+  formatNumber,
+  formatPercentage,
+  processAnalyticsData,
+} from "../../utils/analyticsFormatting";
 import KPICard from "./KPICard";
 import ExportButton from "./ExportButton";
 import {
@@ -62,21 +68,28 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
 
         // Process the data to handle different API response formats
         if (platformData && (platformData.success || platformData.data)) {
-          const processedData = platformData.data || platformData;
+          const rawData = platformData.data || platformData;
 
           // Ensure consistent data structure
           const normalizedData = {
-            ...processedData,
-            platforms: processedData.platforms || { comparison: [] },
-            performance: processedData.performance || {},
-            summary: processedData.summary || processedData.orderSummary || {},
+            ...rawData,
+            platforms: rawData.platforms || rawData.comparison || [],
+            performance: rawData.performance || {},
+            summary: rawData.summary || rawData.orderSummary || {},
           };
+
+          console.log("📊 Processed platform data:", {
+            platformsLength: normalizedData.platforms?.length || 0,
+            hasPerformance: !!normalizedData.performance,
+            hasSummary: !!normalizedData.summary,
+            normalizedData: normalizedData,
+          });
 
           setData(normalizedData);
         } else {
           console.warn("⚠️ No platform data received, setting empty data");
           setData({
-            platforms: { comparison: [] },
+            platforms: [],
             performance: {},
             summary: {},
           });
@@ -121,9 +134,10 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
   }
 
   // Extract platform data from response
-  const platformData = data?.data || {};
-  const dashboardData = platformData.dashboard || {};
-  const platforms = dashboardData.platforms || [];
+  const platformAnalytics = data || {};
+  const platforms = platformAnalytics.platforms || [];
+  const performance = platformAnalytics.performance || {};
+  const summary = platformAnalytics.summary || {};
 
   // Colors for charts
   const CHART_COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
@@ -131,36 +145,34 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
   // Prepare data for charts
   const platformChart = platforms.map((platform) => ({
     name: platform.name || platform.platform || "Unknown",
-    orders: parseInt(platform.orders || platform.totalOrders) || 0,
-    revenue: parseFloat(platform.revenue || platform.totalRevenue) || 0,
-    avgOrderValue: parseFloat(platform.avgOrderValue) || 0,
-    conversionRate:
-      parseFloat(platform.conversionRate || platform.completionRate) || 0,
-    completedOrders: parseInt(platform.completedOrders) || 0,
+    orders: platform.totalOrders || platform.orders || 0,
+    revenue: platform.totalRevenue || platform.revenue || 0,
+    avgOrderValue: platform.avgOrderValue || 0,
+    conversionRate: platform.conversionRate || platform.completionRate || 0,
+    completedOrders: platform.completedOrders || 0,
   }));
 
   const platformPieData = platforms.map((platform) => ({
     name: platform.name || platform.platform || "Unknown",
-    value: parseFloat(platform.revenue || platform.totalRevenue) || 0,
+    value: platform.totalRevenue || platform.revenue || 0,
   }));
 
   // Calculate KPIs
   const totalPlatforms = platforms.length;
   const totalRevenue = platforms.reduce(
-    (sum, p) => sum + (parseFloat(p.revenue || p.totalRevenue) || 0),
+    (sum, p) => sum + (p.totalRevenue || p.revenue || 0),
     0
   );
   const totalOrders = platforms.reduce(
-    (sum, p) => sum + (parseInt(p.orders || p.totalOrders) || 0),
+    (sum, p) => sum + (p.totalOrders || p.orders || 0),
     0
   );
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
   // Find best performing platform
   const bestPlatform = platforms.reduce((best, current) => {
-    const currentRevenue =
-      parseFloat(current.revenue || current.totalRevenue) || 0;
-    const bestRevenue = parseFloat(best.revenue || best.totalRevenue) || 0;
+    const currentRevenue = current.totalRevenue || current.revenue || 0;
+    const bestRevenue = best.totalRevenue || best.revenue || 0;
     return currentRevenue > bestRevenue ? current : best;
   }, platforms[0] || {});
 
@@ -194,7 +206,7 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
         <Col md={3}>
           <KPICard
             title="Total Revenue"
-            value={`$${totalRevenue.toLocaleString()}`}
+            value={formatCurrency(totalRevenue)}
             icon={ChartBarIcon}
             color="success"
           />
@@ -202,7 +214,7 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
         <Col md={3}>
           <KPICard
             title="Total Orders"
-            value={totalOrders.toLocaleString()}
+            value={formatNumber(totalOrders)}
             icon={ShoppingBagIcon}
             color="info"
           />
@@ -210,7 +222,7 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
         <Col md={3}>
           <KPICard
             title="Avg Order Value"
-            value={`$${avgOrderValue.toFixed(2)}`}
+            value={formatCurrency(avgOrderValue)}
             icon={ArrowTrendingUpIcon}
             color="warning"
           />
@@ -352,10 +364,9 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
                   {bestPlatform.name || bestPlatform.platform || "No data"}
                 </p>
                 <small className="text-muted">
-                  $
-                  {parseFloat(
-                    bestPlatform.revenue || bestPlatform.totalRevenue || 0
-                  ).toLocaleString()}{" "}
+                  {formatCurrency(
+                    bestPlatform.totalRevenue || bestPlatform.revenue || 0
+                  )}{" "}
                   revenue
                 </small>
               </div>
@@ -368,8 +379,7 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
               <div className="mb-3">
                 <h6>Order Distribution</h6>
                 {platforms.slice(0, 3).map((platform, index) => {
-                  const orders =
-                    parseInt(platform.orders || platform.totalOrders) || 0;
+                  const orders = platform.totalOrders || platform.orders || 0;
                   const percentage =
                     totalOrders > 0 ? (orders / totalOrders) * 100 : 0;
                   return (
@@ -378,7 +388,9 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
                         <span className="small">
                           {platform.name || platform.platform}
                         </span>
-                        <span className="small">{percentage.toFixed(1)}%</span>
+                        <span className="small">
+                          {formatPercentage(percentage, 1)}
+                        </span>
                       </div>
                       <ProgressBar now={percentage} style={{ height: "8px" }} />
                     </div>
@@ -411,18 +423,14 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
                 </thead>
                 <tbody>
                   {platforms.map((platform, index) => {
-                    const orders =
-                      parseInt(platform.orders || platform.totalOrders) || 0;
+                    const orders = platform.totalOrders || platform.orders || 0;
                     const revenue =
-                      parseFloat(platform.revenue || platform.totalRevenue) ||
-                      0;
+                      platform.totalRevenue || platform.revenue || 0;
                     const avgOrderValue =
-                      parseFloat(platform.avgOrderValue) ||
+                      platform.avgOrderValue ||
                       (orders > 0 ? revenue / orders : 0);
                     const conversionRate =
-                      parseFloat(
-                        platform.conversionRate || platform.completionRate
-                      ) || 0;
+                      platform.conversionRate || platform.completionRate || 0;
                     const performance = Math.min(
                       100,
                       (revenue / Math.max(totalRevenue, 1)) * 100
@@ -441,9 +449,9 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
                             </Badge>
                           </div>
                         </td>
-                        <td>{orders.toLocaleString()}</td>
-                        <td>${revenue.toLocaleString()}</td>
-                        <td>${avgOrderValue.toFixed(2)}</td>
+                        <td>{formatNumber(orders)}</td>
+                        <td>{formatCurrency(revenue)}</td>
+                        <td>{formatCurrency(avgOrderValue)}</td>
                         <td>
                           <Badge
                             bg={
@@ -454,7 +462,7 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
                                 : "danger"
                             }
                           >
-                            {conversionRate.toFixed(1)}%
+                            {formatPercentage(conversionRate, 1)}
                           </Badge>
                         </td>
                         <td>
@@ -469,7 +477,7 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
                             }
                             style={{ height: "20px" }}
                           />
-                          <small>{performance.toFixed(1)}%</small>
+                          <small>{formatPercentage(performance, 1)}</small>
                         </td>
                       </tr>
                     );

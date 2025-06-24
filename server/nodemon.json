@@ -1,0 +1,37 @@
+{
+  "watch": [
+    "server.js",
+    "app.js",
+    "routes/",
+    "controllers/",
+    "middleware/",
+    "services/",
+    "utils/"
+  ],
+  "ignore": [
+    "node_modules",
+    "*.log",
+    "*.sqlite",
+    "*.db",
+    "uploads/",
+    "temp/",
+    "*.tmp"
+  ],
+  "ext": "js,json",
+  "delay": 500,
+  "env": {
+    "NODE_ENV": "development",
+    "DEBUG": "pazar:*"
+  },
+  "exec": "node server.js",
+  "restartable": "rs",
+  "verbose": true,
+  "signal": "SIGTERM",
+  "events": {
+    "restart": "echo '🔄 Server restarted due to file changes'",
+    "crash": "echo '💥 Server crashed - will restart in 2 seconds'",
+    "start": "echo '🚀 Server started successfully'"
+  },
+  "stdout": true,
+  "legacyWatch": false
+}

@@ -91,3 +91,5 @@ UNIFIED_INTELLIGENCE_INTEGRATION_COMPLETE.md
 VARIANT_MANAGEMENT_API_INTEGRATION_COMPLETE.md
 NETWORK_ACCESS.md
 TRENDYOL_IMPROVEMENTS.md
+server/migrations/20250624-add-shipping-invoice-status.js
+server/migrations/20250623171147-add-platform-extras-to-main-products.js

@@ -883,11 +883,23 @@ class ProductController {
       });
 
       const activeProducts = await Product.count({
-        where: { userId, status: "active" },
+        where: { 
+          userId, 
+          status: "active",
+          stockQuantity: {
+        [Op.gt]: 1
+          }
+        },
       });
 
       const inactiveProducts = await Product.count({
-        where: { userId, status: "inactive" },
+        where: { 
+          userId, 
+          status: "inactive",
+          stockQuantity: {
+        [Op.gt]: 1
+          }
+        },
       });
 
       const draftProducts = await Product.count({
@@ -899,7 +911,7 @@ class ProductController {
         where: {
           userId,
           stockQuantity: {
-            [Op.lte]: Product.sequelize.col("minStockLevel"),
+        [Op.between]: [1, 15],
           },
         },
       });

@@ -17,7 +17,6 @@ import {
   Package,
   AlertCircle,
   BarChart3,
-  CalendarDays,
   ArrowUpDown,
   Loader2,
   AlertTriangle,
@@ -993,6 +992,9 @@ const OrderManagement = React.memo(() => {
             );
           }
           showAlert("Gönderi belgesi hazırlandı", "success");
+
+          // Refresh orders to show updated print status
+          fetchOrders();
         } else {
           console.error("❌ Invalid PDF response:", response);
           showAlert(response.message || "PDF URL alınamadı", "error");
@@ -1014,7 +1016,7 @@ const OrderManagement = React.memo(() => {
         showAlert("Gönderi belgesi yazdırılırken hata oluştu", "error");
       }
     },
-    [showAlert]
+    [showAlert, fetchOrders]
   );
 
   const handlePrintInvoice = useCallback(
@@ -1029,13 +1031,16 @@ const OrderManagement = React.memo(() => {
             };
           }
           showAlert("Fatura hazırlandı", "success");
+
+          // Refresh orders to show updated print status
+          fetchOrders();
         }
       } catch (error) {
         console.error("Error printing invoice:", error);
         showAlert("Fatura yazdırma işlemi başarısız", "error");
       }
     },
-    [showAlert]
+    [showAlert, fetchOrders]
   );
 
   // Delete operations
@@ -1844,13 +1849,115 @@ const OrderManagement = React.memo(() => {
                           </td>
                           {/* status */}
                           <td className="px-6 py-4 break-words whitespace-normal">
-                            <div className="flex items-center">
+                            {/* Order Status Badge */}
+                            <div className="flex items-center mb-3">
                               <span className="mr-2 text-sm">{statusIcon}</span>
                               <Badge
                                 variant={getStatusVariant(order.orderStatus)}
                               >
                                 {getStatusText(order.orderStatus)}
                               </Badge>
+                            </div>
+
+                            {/* Print Status Labels - Equal width/height, fit-content */}
+                            <div className="flex flex-col gap-2">
+                              {/* Shipping Label Status */}
+                              <div
+                                className={`inline-flex items-center w-fit px-3 py-2 rounded-md text-xs font-medium transition-all duration-300 ease-in-out shadow-sm hover:shadow-md transform hover:scale-[1.02] min-h-[36px] min-w-[110px] ${
+                                  order.shippingLabelPrinted
+                                    ? "bg-gradient-to-r from-emerald-50 via-green-50 to-emerald-50 text-emerald-700 border border-emerald-200 shadow-emerald-100 dark:from-emerald-900/30 dark:via-green-900/20 dark:to-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700/40 dark:shadow-emerald-900/20"
+                                    : "bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50 text-slate-600 border border-slate-200 shadow-slate-100 dark:from-slate-800/60 dark:via-gray-800/40 dark:to-slate-800/60 dark:text-slate-400 dark:border-slate-600/40 dark:shadow-slate-900/20"
+                                }`}
+                              >
+                                <Truck
+                                  className={`h-4 w-4 mr-2 transition-colors duration-200 flex-shrink-0 ${
+                                    order.shippingLabelPrinted
+                                      ? "text-emerald-600 dark:text-emerald-400"
+                                      : "text-slate-500 dark:text-slate-500"
+                                  }`}
+                                />
+                                <div className="flex flex-col">
+                                  <span className="font-semibold leading-tight whitespace-nowrap">
+                                    {order.shippingLabelPrinted ? (
+                                      <>
+                                        Kargo
+                                        <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-bold">
+                                          ✓
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        Kargo
+                                        <span className="ml-2 text-slate-500 dark:text-slate-500">
+                                          ⏳
+                                        </span>
+                                      </>
+                                    )}
+                                  </span>
+                                  {order.shippingLabelPrinted &&
+                                    order.shippingLabelPrintedAt && (
+                                      <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 mt-0.5 leading-tight whitespace-nowrap">
+                                        {new Date(
+                                          order.shippingLabelPrintedAt
+                                        ).toLocaleDateString("tr-TR", {
+                                          day: "2-digit",
+                                          month: "2-digit",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })}
+                                      </span>
+                                    )}
+                                </div>
+                              </div>
+
+                              {/* Invoice Status */}
+                              <div
+                                className={`inline-flex items-center w-fit px-3 py-2 rounded-md text-xs font-medium transition-all duration-300 ease-in-out shadow-sm hover:shadow-md transform hover:scale-[1.02] min-h-[36px] min-w-[110px] ${
+                                  order.invoicePrinted
+                                    ? "bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 text-blue-700 border border-blue-200 shadow-blue-100 dark:from-blue-900/30 dark:via-indigo-900/20 dark:to-blue-900/30 dark:text-blue-300 dark:border-blue-700/40 dark:shadow-blue-900/20"
+                                    : "bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50 text-slate-600 border border-slate-200 shadow-slate-100 dark:from-slate-800/60 dark:via-gray-800/40 dark:to-slate-800/60 dark:text-slate-400 dark:border-slate-600/40 dark:shadow-slate-900/20"
+                                }`}
+                              >
+                                <FileText
+                                  className={`h-4 w-4 mr-2 transition-colors duration-200 flex-shrink-0 ${
+                                    order.invoicePrinted
+                                      ? "text-blue-600 dark:text-blue-400"
+                                      : "text-slate-500 dark:text-slate-500"
+                                  }`}
+                                />
+                                <div className="flex flex-col">
+                                  <span className="font-semibold leading-tight whitespace-nowrap">
+                                    {order.invoicePrinted ? (
+                                      <>
+                                        Fatura
+                                        <span className="ml-2 text-blue-600 dark:text-blue-400 font-bold">
+                                          ✓
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        Fatura
+                                        <span className="ml-2 text-slate-500 dark:text-slate-500">
+                                          ⏳
+                                        </span>
+                                      </>
+                                    )}
+                                  </span>
+                                  {order.invoicePrinted &&
+                                    order.invoicePrintedAt && (
+                                      <span className="text-[10px] text-blue-600/70 dark:text-blue-400/70 mt-0.5 leading-tight whitespace-nowrap">
+                                        {new Date(
+                                          order.invoicePrintedAt
+                                        ).toLocaleDateString("tr-TR", {
+                                          day: "2-digit",
+                                          month: "2-digit",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })}
+                                      </span>
+                                    )}
+                                </div>
+                              </div>
                             </div>
                           </td>
                           {/* total amount */}

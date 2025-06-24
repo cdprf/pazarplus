@@ -371,13 +371,22 @@ router.post(
 router.post(
   "/import-from-platform",
   [
-    body("platformData").isObject().withMessage("Platform data is required"),
-    body("fieldMapping").isObject().withMessage("Field mapping is required"),
-    body("targetPlatform")
-      .notEmpty()
-      .withMessage("Target platform is required"),
+    body("platformData").optional().isObject(),
+    body("url").optional().isURL(),
+    body("fieldMapping").optional().isObject(),
+    body("targetPlatform").optional().isString(),
   ],
   EnhancedProductController.importFromPlatform
+);
+
+router.post(
+  "/scrape-and-import",
+  [
+    body("url").isURL().withMessage("Valid URL is required"),
+    body("platform").optional().isString(),
+    body("fieldMapping").optional().isObject(),
+  ],
+  EnhancedProductController.scrapeAndImportFromPlatform
 );
 
 // Field Mapping Routes

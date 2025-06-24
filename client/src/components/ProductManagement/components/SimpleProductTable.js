@@ -13,7 +13,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { Badge } from "../../ui/Badge";
-import { Button } from "../../ui/Button.jsx";
+import { Button } from "../../ui/Button";
 
 const SimpleProductTable = ({
   products = [],
@@ -192,11 +192,6 @@ const SimpleProductTable = ({
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
                         {product.name}
                       </div>
-                      {product.description && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {product.description}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </td>
@@ -268,20 +263,15 @@ const SimpleProductTable = ({
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <button
-                      onClick={() => {
-                        console.log(
-                          "🗑️ Delete button clicked for product:",
-                          product.id,
-                          product.name
-                        );
-                        onDelete?.(product.id);
-                      }}
-                      className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                    <Button
+                      onClick={() => onDelete?.(product.id)}
+                      size="sm"
+                      variant="ghost"
+                      className="p-1"
                       title="Sil"
                     >
                       <Trash2 className="h-4 w-4" />
-                    </button>
+                    </Button>
 
                     {/* More Actions Dropdown */}
                     <div className="relative">

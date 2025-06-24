@@ -29,6 +29,11 @@ import {
   Cell,
 } from "recharts";
 import analyticsService from "../../services/analyticsService";
+import {
+  formatCurrency,
+  formatNumber,
+  formatPercentage,
+} from "../../utils/analyticsFormatting";
 import KPICard from "./KPICard";
 import ExportButton from "./ExportButton";
 import {
@@ -95,21 +100,22 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
   }
 
   // Extract financial data from response
-  const financialData = data?.data || {};
-  const dashboardData = financialData.dashboard || {};
-  const revenueData = dashboardData.revenue || {};
-  const orderSummary = dashboardData.orderSummary || {};
-  const platforms = dashboardData.platforms || [];
+  const financialAnalytics = data?.data || data || {};
+  const revenueData = financialAnalytics.revenue || {};
+  const orderSummary =
+    financialAnalytics.orderSummary || financialAnalytics.summary || {};
+  const platforms = financialAnalytics.platforms || [];
 
   // Calculate financial metrics
-  const totalRevenue = parseFloat(revenueData.total) || 0;
-  const previousRevenue = parseFloat(revenueData.previous) || 0;
-  const totalOrders = parseInt(orderSummary.total) || 0;
+  const totalRevenue = revenueData.total || 0;
+  const previousRevenue = revenueData.previous || 0;
+  const totalOrders = orderSummary.totalOrders || 0;
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
   const revenueGrowth =
-    previousRevenue > 0
+    revenueData.growth ||
+    (previousRevenue > 0
       ? ((totalRevenue - previousRevenue) / previousRevenue) * 100
-      : 0;
+      : 0);
 
   // Calculate costs and profit (mock calculation - should come from backend)
   const estimatedCosts = totalRevenue * 0.7; // Assuming 70% cost ratio
@@ -129,9 +135,9 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
 
   const platformFinancials = platforms.map((platform) => ({
     name: platform.name || platform.platform || "Unknown",
-    revenue: parseFloat(platform.revenue || platform.totalRevenue) || 0,
-    orders: parseInt(platform.orders || platform.totalOrders) || 0,
-    profit: (parseFloat(platform.revenue || platform.totalRevenue) || 0) * 0.3, // Mock profit margin
+    revenue: platform.totalRevenue || platform.revenue || 0,
+    orders: platform.totalOrders || platform.orders || 0,
+    profit: (platform.totalRevenue || platform.revenue || 0) * 0.3, // Mock profit margin
   }));
 
   const expenseBreakdown = [
@@ -163,7 +169,7 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
         <Col md={3}>
           <KPICard
             title="Total Revenue"
-            value={`$${totalRevenue.toLocaleString()}`}
+            value={formatCurrency(totalRevenue)}
             change={revenueGrowth}
             icon={CurrencyDollarIcon}
             color="success"
@@ -172,7 +178,7 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
         <Col md={3}>
           <KPICard
             title="Gross Profit"
-            value={`$${grossProfit.toLocaleString()}`}
+            value={formatCurrency(grossProfit)}
             icon={BanknotesIcon}
             color="primary"
           />
@@ -180,7 +186,7 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
         <Col md={3}>
           <KPICard
             title="Profit Margin"
-            value={`${profitMargin.toFixed(1)}%`}
+            value={formatPercentage(profitMargin)}
             icon={ChartBarIcon}
             color="info"
           />
@@ -188,7 +194,7 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
         <Col md={3}>
           <KPICard
             title="Avg Order Value"
-            value={`$${avgOrderValue.toFixed(2)}`}
+            value={formatCurrency(avgOrderValue)}
             icon={ArrowTrendingUpIcon}
             color="warning"
           />
@@ -325,8 +331,8 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
                   Positive
                 </Badge>
                 <p className="small text-muted">
-                  Monthly cash flow: $
-                  {(totalRevenue - estimatedCosts).toLocaleString()}
+                  Monthly cash flow:{" "}
+                  {formatCurrency(totalRevenue - estimatedCosts)}
                 </p>
               </div>
               <div className="mb-3">
@@ -335,8 +341,7 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
                   {platformFinancials[0]?.name || "No data"}
                 </p>
                 <small className="text-muted">
-                  ${platformFinancials[0]?.revenue.toLocaleString() || "0"}{" "}
-                  revenue
+                  {formatCurrency(platformFinancials[0]?.revenue || 0)} revenue
                 </small>
               </div>
               <div className="mb-3">
@@ -392,12 +397,11 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
                     <td>
                       <strong>Total Revenue</strong>
                     </td>
-                    <td>${totalRevenue.toLocaleString()}</td>
-                    <td>${previousRevenue.toLocaleString()}</td>
+                    <td>{formatCurrency(totalRevenue)}</td>
+                    <td>{formatCurrency(previousRevenue)}</td>
                     <td>
                       <Badge bg={revenueGrowth > 0 ? "success" : "danger"}>
-                        {revenueGrowth > 0 ? "+" : ""}
-                        {revenueGrowth.toFixed(1)}%
+                        {formatPercentage(revenueGrowth)}
                       </Badge>
                     </td>
                     <td>
@@ -414,16 +418,15 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
                     <td>
                       <strong>Gross Profit</strong>
                     </td>
-                    <td>${grossProfit.toLocaleString()}</td>
-                    <td>${(previousRevenue * 0.3).toLocaleString()}</td>
+                    <td>{formatCurrency(grossProfit)}</td>
+                    <td>{formatCurrency(previousRevenue * 0.3)}</td>
                     <td>
                       <Badge bg="info">
-                        {(
+                        {formatPercentage(
                           ((grossProfit - previousRevenue * 0.3) /
                             Math.max(previousRevenue * 0.3, 1)) *
-                          100
-                        ).toFixed(1)}
-                        %
+                            100
+                        )}
                       </Badge>
                     </td>
                     <td>
@@ -434,8 +437,8 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
                     <td>
                       <strong>Total Orders</strong>
                     </td>
-                    <td>{totalOrders.toLocaleString()}</td>
-                    <td>{Math.floor(totalOrders * 0.8).toLocaleString()}</td>
+                    <td>{formatNumber(totalOrders)}</td>
+                    <td>{formatNumber(Math.floor(totalOrders * 0.8))}</td>
                     <td>
                       <Badge bg="success">+20%</Badge>
                     </td>

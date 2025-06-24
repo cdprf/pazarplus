@@ -9,12 +9,14 @@ const { Op } = require("sequelize");
 const EnhancedProductManagementService = require("../services/enhanced-product-management-service");
 const EnhancedStockService = require("../services/enhanced-stock-service");
 const MediaUploadService = require("../services/media-upload-service");
+const PlatformScrapingService = require("../services/platform-scraping-service");
 const SKUSystemManager = require("../../sku-system-manager");
 const { MainProduct, PlatformVariant, PlatformTemplate } = require("../models");
 
 class EnhancedProductController {
   constructor() {
     this.skuManager = new SKUSystemManager();
+    this.scrapingService = new PlatformScrapingService();
   }
 
   /**
@@ -1735,35 +1737,56 @@ class EnhancedProductController {
 
       const { url, platform } = req.body;
 
-      // This is a placeholder - in a real implementation, you would
-      // use web scraping libraries like Puppeteer or Cheerio
-      const mockScrapedData = {
-        name: "Sample Product from " + (platform || "Platform"),
-        description: "Scraped product description",
-        price: 99.99,
-        category: "Electronics",
-        brand: "Sample Brand",
-        images: ["https://example.com/image1.jpg"],
-        attributes: {
-          color: "Red",
-          size: "M",
-        },
-        scrapedFrom: url,
-        scrapedAt: new Date().toISOString(),
-        platform: platform || "unknown",
-      };
+      if (!url) {
+        return res.status(400).json({
+          success: false,
+          message: "URL is required",
+        });
+      }
+
+      // Auto-detect platform if not provided
+      const detectedPlatform =
+        platform || this.scrapingService.detectPlatform(url);
+
+      logger.info(`Starting platform scraping for ${detectedPlatform}: ${url}`);
+
+      // Use enhanced scraping service with retry logic
+      const scrapedData = await this.scrapingService.scrapeProductDataWithRetry(
+        url,
+        detectedPlatform
+      );
+
+      if (!scrapedData || !scrapedData.name) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Failed to extract product data from the URL. The page might not contain valid product information or the platform may be blocking requests.",
+        });
+      }
+
+      logger.info(
+        `Successfully scraped product data from ${detectedPlatform}:`,
+        {
+          name: scrapedData.name,
+          price: scrapedData.basePrice,
+          platform: detectedPlatform,
+          hasExtras: !!scrapedData.platformExtras,
+        }
+      );
 
       res.json({
         success: true,
-        message: "Platform data scraped successfully",
-        data: mockScrapedData,
+        message: `Platform data scraped successfully from ${detectedPlatform}`,
+        data: scrapedData,
+        platform: detectedPlatform,
       });
     } catch (error) {
       logger.error("Error in scrapePlatformData:", error);
       res.status(500).json({
         success: false,
-        message: "Failed to scrape platform data",
-        error: error.message,
+        message: error.message || "Failed to scrape platform data",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }
@@ -1783,21 +1806,64 @@ class EnhancedProductController {
       }
 
       const userId = req.user.id;
-      const { platformData, fieldMapping, targetPlatform } = req.body;
+      const { platformData, fieldMapping, targetPlatform, url } = req.body;
+
+      let productData = platformData;
+
+      // If URL is provided but no platformData, scrape it first
+      if (url && !platformData) {
+        const detectedPlatform = this.scrapingService.detectPlatform(url);
+        logger.info(
+          `No platform data provided, scraping from ${detectedPlatform}: ${url}`
+        );
+
+        productData = await this.scrapingService.scrapeProductDataWithRetry(
+          url,
+          detectedPlatform
+        );
+
+        if (!productData || !productData.name) {
+          return res.status(400).json({
+            success: false,
+            message: "Failed to scrape product data from the provided URL.",
+          });
+        }
+      }
+
+      if (!productData) {
+        return res.status(400).json({
+          success: false,
+          message: "Either platformData or url must be provided.",
+        });
+      }
 
       // Map platform data to target format
       const mappedData = {};
-      Object.entries(fieldMapping).forEach(([targetField, sourceField]) => {
-        if (sourceField && platformData[sourceField] !== undefined) {
-          mappedData[targetField] = platformData[sourceField];
-        }
-      });
+      if (fieldMapping) {
+        Object.entries(fieldMapping).forEach(([targetField, sourceField]) => {
+          if (sourceField && productData[sourceField] !== undefined) {
+            mappedData[targetField] = productData[sourceField];
+          }
+        });
+      } else {
+        // If no field mapping provided, use the data as-is
+        Object.assign(mappedData, productData);
+      }
+
+      // Generate SKU if not present
+      if (!mappedData.baseSku) {
+        mappedData.baseSku = await this.skuManager.generateSKU(
+          mappedData.name,
+          mappedData.category,
+          mappedData.brand
+        );
+      }
 
       // Create main product with mapped data
       const mainProduct = await MainProduct.create({
         ...mappedData,
         userId,
-        importedFrom: platformData.platform || "unknown",
+        importedFrom: productData.platform || "unknown",
         importedAt: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -1806,7 +1872,11 @@ class EnhancedProductController {
       res.json({
         success: true,
         message: "Product imported from platform successfully",
-        data: { product: mainProduct, mappedData },
+        data: {
+          product: mainProduct,
+          originalData: productData,
+          mappedData,
+        },
       });
     } catch (error) {
       logger.error("Error in importFromPlatform:", error);
@@ -1826,31 +1896,142 @@ class EnhancedProductController {
       const userId = req.user.id;
       const { sourcePlatform, targetPlatform } = req.query;
 
-      const where = { userId };
-      if (sourcePlatform) where.sourcePlatform = sourcePlatform;
-      if (targetPlatform) where.targetPlatform = targetPlatform;
+      // Provide comprehensive field mappings for different platforms
+      const platformMappings = {
+        trendyol: {
+          // Core fields
+          name: "name",
+          description: "description",
+          basePrice: "basePrice",
+          originalPrice: "originalPrice",
+          brand: "brand",
+          category: "category",
+          images: "images",
+          baseSku: "baseSku",
+          attributes: "attributes",
+          availability: "availability",
+          currency: "currency",
 
-      // This would be a separate model in a real implementation
-      const mockMappings = [
-        {
-          id: "1",
-          name: "Trendyol to Generic",
-          sourcePlatform: "trendyol",
+          // Trendyol-specific extras
+          "platformExtras.trendyol.sellerId":
+            "platformExtras.trendyol.sellerId",
+          "platformExtras.trendyol.sellerName":
+            "platformExtras.trendyol.sellerName",
+          "platformExtras.trendyol.deliveryDays":
+            "platformExtras.trendyol.deliveryDays",
+          "platformExtras.trendyol.freeShipping":
+            "platformExtras.trendyol.freeShipping",
+          "platformExtras.trendyol.discountRate":
+            "platformExtras.trendyol.discountRate",
+          "platformExtras.trendyol.reviewCount":
+            "platformExtras.trendyol.reviewCount",
+          "platformExtras.trendyol.averageRating":
+            "platformExtras.trendyol.averageRating",
+        },
+        hepsiburada: {
+          // Core fields
+          name: "name",
+          description: "description",
+          basePrice: "basePrice",
+          originalPrice: "originalPrice",
+          brand: "brand",
+          category: "category",
+          images: "images",
+          baseSku: "baseSku",
+          attributes: "attributes",
+          availability: "availability",
+          currency: "currency",
+
+          // Hepsiburada-specific extras
+          "platformExtras.hepsiburada.sellerId":
+            "platformExtras.hepsiburada.sellerId",
+          "platformExtras.hepsiburada.sellerName":
+            "platformExtras.hepsiburada.sellerName",
+          "platformExtras.hepsiburada.merchantId":
+            "platformExtras.hepsiburada.merchantId",
+          "platformExtras.hepsiburada.deliveryInfo":
+            "platformExtras.hepsiburada.deliveryInfo",
+          "platformExtras.hepsiburada.installmentOptions":
+            "platformExtras.hepsiburada.installmentOptions",
+          "platformExtras.hepsiburada.fastDelivery":
+            "platformExtras.hepsiburada.fastDelivery",
+          "platformExtras.hepsiburada.hbPlusEligible":
+            "platformExtras.hepsiburada.hbPlusEligible",
+        },
+        n11: {
+          // Core fields
+          name: "name",
+          description: "description",
+          basePrice: "basePrice",
+          originalPrice: "originalPrice",
+          brand: "brand",
+          category: "category",
+          images: "images",
+          baseSku: "baseSku",
+          attributes: "attributes",
+          availability: "availability",
+          currency: "currency",
+
+          // N11-specific extras
+          "platformExtras.n11.sellerId": "platformExtras.n11.sellerId",
+          "platformExtras.n11.sellerName": "platformExtras.n11.sellerName",
+          "platformExtras.n11.sellerRating": "platformExtras.n11.sellerRating",
+          "platformExtras.n11.deliveryTime": "platformExtras.n11.deliveryTime",
+          "platformExtras.n11.paymentOptions":
+            "platformExtras.n11.paymentOptions",
+          "platformExtras.n11.installments": "platformExtras.n11.installments",
+          "platformExtras.n11.productCode": "platformExtras.n11.productCode",
+          "platformExtras.n11.barcode": "platformExtras.n11.barcode",
+        },
+        generic: {
+          name: "name",
+          description: "description",
+          basePrice: "basePrice",
+          originalPrice: "originalPrice",
+          brand: "brand",
+          category: "category",
+          images: "images",
+          baseSku: "baseSku",
+          attributes: "attributes",
+          availability: "availability",
+          currency: "currency",
+        },
+      };
+
+      const mappings = [];
+
+      if (sourcePlatform && platformMappings[sourcePlatform]) {
+        mappings.push({
+          id: `${sourcePlatform}-to-generic`,
+          name: `${
+            sourcePlatform.charAt(0).toUpperCase() + sourcePlatform.slice(1)
+          } to Generic`,
+          sourcePlatform: sourcePlatform,
           targetPlatform: "generic",
-          fieldMapping: {
-            name: "title",
-            price: "price",
-            description: "description",
-            category: "category",
-          },
+          fieldMapping: platformMappings[sourcePlatform],
           createdAt: new Date(),
           updatedAt: new Date(),
-        },
-      ];
+        });
+      } else {
+        // Return all available mappings
+        Object.keys(platformMappings).forEach((platform) => {
+          mappings.push({
+            id: `${platform}-to-generic`,
+            name: `${
+              platform.charAt(0).toUpperCase() + platform.slice(1)
+            } to Generic`,
+            sourcePlatform: platform,
+            targetPlatform: "generic",
+            fieldMapping: platformMappings[platform],
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        });
+      }
 
       res.json({
         success: true,
-        data: { mappings: mockMappings },
+        data: { mappings },
       });
     } catch (error) {
       logger.error("Error in getFieldMappings:", error);
@@ -2038,7 +2219,110 @@ class EnhancedProductController {
     }
   }
 
-  // ...existing code...
+  /**
+   * Scrape and import from platform URL directly
+   */
+  async scrapeAndImportFromPlatform(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation errors",
+          errors: errors.array(),
+        });
+      }
+
+      const userId = req.user.id;
+      const { url, platform, fieldMapping } = req.body;
+
+      if (!url) {
+        return res.status(400).json({
+          success: false,
+          message: "URL is required",
+        });
+      }
+
+      // Auto-detect platform if not provided
+      const detectedPlatform =
+        platform || this.scrapingService.detectPlatform(url);
+
+      logger.info(`Starting scrape and import for ${detectedPlatform}: ${url}`);
+
+      // Scrape the product data
+      const scrapedData = await this.scrapingService.scrapeProductDataWithRetry(
+        url,
+        detectedPlatform
+      );
+
+      if (!scrapedData || !scrapedData.name) {
+        return res.status(400).json({
+          success: false,
+          message: "Failed to extract product data from the URL.",
+        });
+      }
+
+      // Apply field mapping if provided
+      let mappedData = { ...scrapedData };
+      if (fieldMapping) {
+        mappedData = {};
+        Object.entries(fieldMapping).forEach(([targetField, sourceField]) => {
+          if (sourceField && scrapedData[sourceField] !== undefined) {
+            mappedData[targetField] = scrapedData[sourceField];
+          }
+        });
+
+        // Preserve essential fields that weren't mapped
+        mappedData.platform = scrapedData.platform;
+        mappedData.scrapedFrom = scrapedData.scrapedFrom;
+        mappedData.scrapedAt = scrapedData.scrapedAt;
+        mappedData.platformExtras = scrapedData.platformExtras;
+      }
+
+      // Generate SKU if not present
+      if (!mappedData.baseSku) {
+        mappedData.baseSku = await this.skuManager.generateSKU(
+          mappedData.name,
+          mappedData.category,
+          mappedData.brand
+        );
+      }
+
+      // Create main product with all the scraped and mapped data
+      const mainProduct = await MainProduct.create({
+        ...mappedData,
+        userId,
+        importedFrom: detectedPlatform,
+        importedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      logger.info(`Successfully imported product from ${detectedPlatform}:`, {
+        id: mainProduct.id,
+        name: mainProduct.name,
+        sku: mainProduct.baseSku,
+      });
+
+      res.json({
+        success: true,
+        message: `Product scraped and imported successfully from ${detectedPlatform}`,
+        data: {
+          product: mainProduct,
+          scrapedData,
+          mappedData,
+          platform: detectedPlatform,
+        },
+      });
+    } catch (error) {
+      logger.error("Error in scrapeAndImportFromPlatform:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to scrape and import from platform",
+        error: error.message,
+      });
+    }
+  }
 }
 
 module.exports = new EnhancedProductController();

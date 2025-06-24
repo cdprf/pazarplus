@@ -24,7 +24,13 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { UserGroupIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 import analyticsService from "../../services/analyticsService";
+import {
+  formatCurrency,
+  formatNumber,
+  formatPercentage,
+} from "../../utils/analyticsFormatting";
 import KPICard from "./KPICard";
 import ExportButton from "./ExportButton";
 
@@ -130,39 +136,75 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
     );
   }
 
+  // Empty state handling
+  if (!data || Object.keys(data).length === 0) {
+    return (
+      <Container>
+        <div className="text-center py-5">
+          <div className="mb-4">
+            <UserGroupIcon className="h-16 w-16 text-muted mx-auto mb-3" />
+            <h3 className="text-muted">No Customer Data Available</h3>
+            <p className="text-muted mb-4">
+              We couldn't find any customer analytics data for the selected
+              period. This might be because:
+            </p>
+            <ul className="list-unstyled text-muted mb-4">
+              <li>• No customer orders exist for this timeframe</li>
+              <li>• Customer data is still being processed</li>
+              <li>• The selected period is too recent</li>
+            </ul>
+          </div>
+          <div className="d-flex gap-2 justify-content-center">
+            <Button
+              variant="primary"
+              onClick={() => window.location.reload()}
+              aria-label="Refresh customer data"
+            >
+              <ArrowPathIcon className="h-4 w-4 me-2" />
+              Refresh Data
+            </Button>
+            <Button
+              variant="outline-secondary"
+              href="/analytics"
+              aria-label="Go to main analytics dashboard"
+            >
+              Back to Dashboard
+            </Button>
+          </div>
+        </div>
+      </Container>
+    );
+  }
+
   const renderOverview = () => (
     <>
       <Row className="mb-4">
         <Col md={3}>
           <KPICard
             title="Total Customers"
-            value={data?.totalCustomers || 0}
+            value={formatNumber(data?.totalCustomers || 0)}
             change={data?.customerGrowth || 0}
-            format="number"
           />
         </Col>
         <Col md={3}>
           <KPICard
             title="New Customers"
-            value={data?.newCustomers || 0}
+            value={formatNumber(data?.newCustomers || 0)}
             change={data?.newCustomerGrowth || 0}
-            format="number"
           />
         </Col>
         <Col md={3}>
           <KPICard
             title="Customer LTV"
-            value={data?.averageLifetimeValue || 0}
+            value={formatCurrency(data?.averageLifetimeValue || 0)}
             change={data?.ltvGrowth || 0}
-            format="currency"
           />
         </Col>
         <Col md={3}>
           <KPICard
             title="Retention Rate"
-            value={data?.retentionRate || 0}
+            value={formatPercentage(data?.retentionRate || 0)}
             change={data?.retentionChange || 0}
-            format="percentage"
           />
         </Col>
       </Row>

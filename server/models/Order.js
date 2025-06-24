@@ -276,6 +276,29 @@ Order.init(
       allowNull: true,
       comment: "ID of the linked shipping template for this order",
     },
+    // Shipping and Invoice Print Status Tracking
+    shippingLabelPrinted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: "Indicates if shipping label has been printed for this order",
+    },
+    shippingLabelPrintedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: "Date and time when shipping label was printed",
+    },
+    invoicePrinted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: "Indicates if invoice has been printed for this order",
+    },
+    invoicePrintedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: "Date and time when invoice was printed",
+    },
     // Error handling fields
     errorMessage: {
       type: DataTypes.TEXT,

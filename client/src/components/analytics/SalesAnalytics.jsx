@@ -27,6 +27,13 @@ import {
   LabelList,
 } from "recharts";
 import analyticsService from "../../services/analyticsService";
+import {
+  formatCurrency,
+  formatNumber,
+  formatPercentage,
+  processAnalyticsData,
+  safeNumeric,
+} from "../../utils/analyticsFormatting";
 import KPICard from "./KPICard";
 import ExportButton from "./ExportButton";
 import {
@@ -55,7 +62,15 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
           timeframe
         );
 
-        const salesData = await analyticsService.getSalesAnalytics(timeframe);
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Request timeout")), 10000)
+        );
+
+        const salesData = await Promise.race([
+          analyticsService.getSalesAnalytics(timeframe),
+          timeoutPromise,
+        ]);
 
         console.log("✅ Sales analytics data received:", {
           success: salesData?.success,
@@ -75,49 +90,49 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
 
         // Process the data to handle different API response formats
         if (salesData && (salesData.success || salesData.data)) {
-          const processedData = salesData.data || salesData;
+          const rawData = salesData.data || salesData;
+          const processedData = processAnalyticsData(rawData);
 
-          // Ensure consistent data structure
-          const normalizedData = {
-            ...processedData,
-            orderSummary: processedData.summary ||
-              processedData.orderSummary || {
-                totalOrders: 0,
-                totalRevenue: 0,
-                averageOrderValue: 0,
-                growth: 0,
-              },
-            revenue: processedData.revenue || {
-              trends: [],
-              total: processedData.summary?.totalRevenue || 0,
-              growth: 0,
-            },
-            topProducts: processedData.topProducts || [],
-            platforms: processedData.platforms || { comparison: [] },
-          };
+          console.log("📊 Processed sales data:", {
+            hasOrderSummary: !!processedData?.orderSummary,
+            hasRevenue: !!processedData?.revenue,
+            revenueTrendsLength: processedData?.revenue?.trends?.length || 0,
+            topProductsLength: processedData?.topProducts?.length || 0,
+            processedData: processedData,
+          });
 
-          setData(normalizedData);
+          setData(processedData);
         } else {
           console.warn("⚠️ No sales data received, setting empty data");
-          setData({
-            orderSummary: {
-              totalOrders: 0,
-              totalRevenue: 0,
-              averageOrderValue: 0,
-              growth: 0,
-            },
-            revenue: {
-              trends: [],
-              total: 0,
-              growth: 0,
-            },
-            topProducts: [],
-            platforms: { comparison: [] },
-          });
+          setData(getEmptyData());
         }
       } catch (err) {
         console.error("Error fetching sales analytics:", err);
-        setError(err.message || "Failed to load sales data");
+
+        // Check if this is an authentication error
+        const isAuthError =
+          err.response?.status === 401 ||
+          err.response?.data?.message?.includes("Access denied") ||
+          err.response?.data?.message?.includes("No token provided");
+
+        const isTimeoutError = err.message === "Request timeout";
+
+        let errorMessage = err.message || "Failed to load sales data";
+
+        if (isAuthError) {
+          errorMessage =
+            "Authentication required. Please log in to view sales analytics.";
+          console.warn("🔐 Authentication required for sales analytics");
+        } else if (isTimeoutError) {
+          errorMessage =
+            "Sales analytics service is taking too long to respond. Please try again.";
+          console.warn("⏰ Analytics service timed out");
+        } else {
+          console.warn("🔄 Analytics service error, using empty data");
+        }
+
+        setError(errorMessage);
+        setData(getEmptyData());
       } finally {
         setLoading(false);
       }
@@ -125,6 +140,26 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
 
     fetchSalesData();
   }, [timeframe]);
+
+  // Generate empty data structure
+  const getEmptyData = () => {
+    const emptyData = {
+      orderSummary: {
+        totalOrders: 0,
+        totalRevenue: 0,
+        averageOrderValue: 0,
+        growth: 0,
+      },
+      revenue: {
+        trends: [],
+        total: 0,
+        growth: 0,
+      },
+      topProducts: [],
+      platforms: { comparison: [] },
+    };
+    return processAnalyticsData(emptyData);
+  };
 
   // Loading state
   if (loading) {
@@ -143,15 +178,38 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
   // Error state
   if (error) {
     return (
-      <Alert variant="danger">
-        <Alert.Heading>Error Loading Sales Analytics</Alert.Heading>
-        <p>{error}</p>
-        <Button
-          variant="outline-danger"
-          onClick={() => window.location.reload()}
-        >
-          Retry
-        </Button>
+      <Alert variant="danger" className="m-4">
+        <Alert.Heading>Unable to load sales analytics</Alert.Heading>
+        <div>
+          <p className="mb-2">{error}</p>
+          {error.includes("Authentication required") ||
+          error.includes("log in") ? (
+            <p className="mb-2">
+              <small className="text-muted">
+                Please ensure you are logged in to view sales analytics data.
+              </small>
+            </p>
+          ) : error.includes("timeout") ? (
+            <p className="mb-2">
+              <small className="text-muted">
+                The sales analytics service is taking too long to respond.
+                Please try again.
+              </small>
+            </p>
+          ) : (
+            <p className="mb-2">
+              <small className="text-muted">
+                There was an issue connecting to the sales analytics service.
+              </small>
+            </p>
+          )}
+          <Button
+            variant="outline-danger"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </Button>
+        </div>
       </Alert>
     );
   }
@@ -161,49 +219,34 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
   const orderSummary = salesData.orderSummary || salesData.summary || {};
   const revenueData = salesData.revenue || {};
   const topProducts = salesData.topProducts || [];
-  const platforms = salesData.platforms || { comparison: [] };
 
   // Sales KPIs
   const salesKPIs = [
     {
       title: "Total Revenue",
-      value: analyticsService.formatCurrency(orderSummary.totalRevenue || 0),
-      change: analyticsService.calculateGrowthRate(
-        orderSummary.totalRevenue || 0,
-        orderSummary.previousRevenue || 0
-      ),
+      value: formatCurrency(orderSummary.totalRevenue || 0),
+      change: orderSummary.growth || 0,
       icon: CurrencyDollarIcon,
       color: "primary",
     },
     {
       title: "Total Orders",
-      value: analyticsService.formatNumber(orderSummary.totalOrders || 0),
-      change: analyticsService.calculateGrowthRate(
-        orderSummary.totalOrders || 0,
-        orderSummary.previousOrders || 0
-      ),
+      value: formatNumber(orderSummary.totalOrders || 0),
+      change: orderSummary.orderGrowth || 0,
       icon: ShoppingBagIcon,
       color: "success",
     },
     {
       title: "Average Order Value",
-      value: analyticsService.formatCurrency(orderSummary.avgOrderValue || 0),
-      change: analyticsService.calculateGrowthRate(
-        orderSummary.avgOrderValue || 0,
-        orderSummary.previousAvgOrderValue || 0
-      ),
+      value: formatCurrency(orderSummary.averageOrderValue || 0),
+      change: orderSummary.aovGrowth || 0,
       icon: ChartBarIcon,
       color: "info",
     },
     {
       title: "Conversion Rate",
-      value: analyticsService.formatPercentage(
-        orderSummary.conversionRate || 0
-      ),
-      change: analyticsService.calculateGrowthRate(
-        orderSummary.conversionRate || 0,
-        orderSummary.previousConversionRate || 0
-      ),
+      value: formatPercentage(orderSummary.conversionRate || 0),
+      change: orderSummary.conversionGrowth || 0,
       icon: ArrowTrendingUpIcon,
       color: "warning",
     },
@@ -229,10 +272,10 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
       product.name?.substring(0, 20) +
         (product.name?.length > 20 ? "..." : "") || "Unknown Product",
     fullName: product.name || "Unknown Product",
-    revenue: parseFloat(product.revenue) || 0,
-    totalSold: parseInt(product.totalSold) || 0,
-    unitsSold: parseInt(product.unitsSold) || parseInt(product.totalSold) || 0,
-    avgPrice: parseFloat(product.avgPrice) || 0,
+    revenue: product.totalRevenue || product.revenue || 0,
+    totalSold: product.totalSold || product.quantity || product.sales || 0,
+    unitsSold: product.totalSold || product.quantity || product.sales || 0,
+    avgPrice: product.avgPrice || 0,
   }));
 
   return (
@@ -296,7 +339,7 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
                       <YAxis />
                       <Tooltip
                         formatter={(value) => [
-                          analyticsService.formatCurrency(value),
+                          formatCurrency(value),
                           "Revenue",
                         ]}
                         labelFormatter={(label) => `Date: ${label}`}
@@ -318,7 +361,7 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
                       <YAxis />
                       <Tooltip
                         formatter={(value) => [
-                          analyticsService.formatCurrency(value),
+                          formatCurrency(value),
                           "Revenue",
                         ]}
                         labelFormatter={(label) => `Date: ${label}`}
@@ -340,7 +383,7 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
                       <YAxis />
                       <Tooltip
                         formatter={(value) => [
-                          analyticsService.formatCurrency(value),
+                          formatCurrency(value),
                           "Revenue",
                         ]}
                         labelFormatter={(label) => `Date: ${label}`}
@@ -375,7 +418,7 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
                         if (name === "revenue") {
                           const data = topProductsData[props.payload?.index];
                           return [
-                            analyticsService.formatCurrency(value),
+                            formatCurrency(value),
                             `Revenue (${data?.unitsSold || 0} units sold)`,
                           ];
                         }
@@ -403,21 +446,17 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
                               !topProductsData ||
                               !topProductsData[props.index]
                             ) {
-                              return analyticsService.formatCurrency(
-                                Number(value)
-                              );
+                              return formatCurrency(Number(value));
                             }
 
                             const data = topProductsData[props.index];
                             const units = data.unitsSold || data.totalSold || 0;
-                            return `${analyticsService.formatCurrency(
+                            return `${formatCurrency(
                               Number(value)
                             )} (${units} units)`;
                           } catch (error) {
                             console.warn("LabelList formatter error:", error);
-                            return value
-                              ? analyticsService.formatCurrency(Number(value))
-                              : "";
+                            return value ? formatCurrency(Number(value)) : "";
                           }
                         }}
                         style={{ fontSize: "10px", fill: "#666" }}
@@ -456,15 +495,9 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
                         <td>
                           <strong>{product.fullName}</strong>
                         </td>
-                        <td>
-                          {analyticsService.formatCurrency(product.revenue)}
-                        </td>
-                        <td>
-                          {analyticsService.formatNumber(product.unitsSold)}
-                        </td>
-                        <td>
-                          {analyticsService.formatCurrency(product.avgPrice)}
-                        </td>
+                        <td>{formatCurrency(product.revenue)}</td>
+                        <td>{formatNumber(product.unitsSold)}</td>
+                        <td>{formatCurrency(product.avgPrice)}</td>
                         <td>
                           <div className="d-flex align-items-center">
                             <div

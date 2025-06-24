@@ -249,6 +249,319 @@ class AnalyticsService {
   }
 
   /**
+   * Get inventory insights analytics
+   */
+  async getInventoryInsights(timeframe = "30d") {
+    try {
+      const response = await api.get(
+        `/analytics/inventory-insights?timeframe=${timeframe}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching inventory insights:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get market analysis data
+   */
+  async getMarketAnalysis(timeframe = "30d") {
+    try {
+      const response = await api.get(
+        `/analytics/market-analysis?timeframe=${timeframe}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching market analysis:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get real-time analytics data
+   */
+  async getRealTimeAnalytics(timeframe = "30d") {
+    try {
+      const response = await api.get(
+        `/analytics/realtime?timeframe=${timeframe}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching real-time analytics:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get product performance analytics
+   */
+  async getProductPerformance(timeframe = "30d") {
+    try {
+      const response = await api.get(
+        `/analytics/products/performance?timeframe=${timeframe}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching product performance:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get product insights analytics
+   */
+  async getProductInsights(timeframe = "30d") {
+    try {
+      const response = await api.get(
+        `/analytics/products/insights?timeframe=${timeframe}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching product insights:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get real-time product analytics
+   */
+  async getProductRealTime(timeframe = "30d") {
+    try {
+      const response = await api.get(
+        `/analytics/products/realtime?timeframe=${timeframe}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching real-time product analytics:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get trends analytics
+   */
+  async getTrends(timeframe = "30d") {
+    try {
+      const response = await api.get(
+        `/analytics/trends?timeframe=${timeframe}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching trends:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get accurate analytics data
+   */
+  async getAccurateAnalytics(timeframe = "30d") {
+    try {
+      const response = await api.get(
+        `/analytics/accurate?timeframe=${timeframe}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching accurate analytics:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get competitive analysis data
+   */
+  async getCompetitiveAnalysis(timeframe = "30d") {
+    try {
+      const response = await api.get(
+        `/analytics/competitive-analysis?timeframe=${timeframe}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching competitive analysis:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get funnel analysis data
+   */
+  async getFunnelAnalysis(timeframe = "30d") {
+    try {
+      const response = await api.get(
+        `/analytics/funnel-analysis?timeframe=${timeframe}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching funnel analysis:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get alternative real-time analytics
+   */
+  async getRealTimeMetrics(timeframe = "30d") {
+    try {
+      const response = await api.get(
+        `/analytics/real-time?timeframe=${timeframe}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching real-time metrics:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get attribution analysis data
+   */
+  async getAttributionAnalysis(timeframe = "30d") {
+    try {
+      const response = await api.get(
+        `/analytics/attribution-analysis?timeframe=${timeframe}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching attribution analysis:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get anomaly detection data
+   */
+  async getAnomalyDetection(timeframe = "30d") {
+    try {
+      const response = await api.get(
+        `/analytics/anomaly-detection?timeframe=${timeframe}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching anomaly detection:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get comprehensive analytics combining multiple endpoints
+   */
+  async getAdvancedAnalytics(timeframe = "30d") {
+    try {
+      const [
+        inventory,
+        market,
+        trends,
+        competitive,
+        funnel,
+        attribution,
+        anomalies,
+      ] = await Promise.allSettled([
+        this.getInventoryInsights(timeframe),
+        this.getMarketAnalysis(timeframe),
+        this.getTrends(timeframe),
+        this.getCompetitiveAnalysis(timeframe),
+        this.getFunnelAnalysis(timeframe),
+        this.getAttributionAnalysis(timeframe),
+        this.getAnomalyDetection(timeframe),
+      ]);
+
+      return {
+        inventory: inventory.status === "fulfilled" ? inventory.value : null,
+        market: market.status === "fulfilled" ? market.value : null,
+        trends: trends.status === "fulfilled" ? trends.value : null,
+        competitive:
+          competitive.status === "fulfilled" ? competitive.value : null,
+        funnel: funnel.status === "fulfilled" ? funnel.value : null,
+        attribution:
+          attribution.status === "fulfilled" ? attribution.value : null,
+        anomalies: anomalies.status === "fulfilled" ? anomalies.value : null,
+        timeframe,
+        generatedAt: new Date(),
+        errors: [
+          ...(inventory.status === "rejected" ? [inventory.reason] : []),
+          ...(market.status === "rejected" ? [market.reason] : []),
+          ...(trends.status === "rejected" ? [trends.reason] : []),
+          ...(competitive.status === "rejected" ? [competitive.reason] : []),
+          ...(funnel.status === "rejected" ? [funnel.reason] : []),
+          ...(attribution.status === "rejected" ? [attribution.reason] : []),
+          ...(anomalies.status === "rejected" ? [anomalies.reason] : []),
+        ],
+      };
+    } catch (error) {
+      console.error("Error fetching advanced analytics:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get enhanced product analytics combining multiple product endpoints
+   */
+  async getEnhancedProductAnalytics(timeframe = "30d") {
+    try {
+      const [products, performance, insights, realtime] =
+        await Promise.allSettled([
+          this.getProductAnalytics(timeframe),
+          this.getProductPerformance(timeframe),
+          this.getProductInsights(timeframe),
+          this.getProductRealTime(timeframe),
+        ]);
+
+      return {
+        overview: products.status === "fulfilled" ? products.value : null,
+        performance:
+          performance.status === "fulfilled" ? performance.value : null,
+        insights: insights.status === "fulfilled" ? insights.value : null,
+        realtime: realtime.status === "fulfilled" ? realtime.value : null,
+        timeframe,
+        generatedAt: new Date(),
+        errors: [
+          ...(products.status === "rejected" ? [products.reason] : []),
+          ...(performance.status === "rejected" ? [performance.reason] : []),
+          ...(insights.status === "rejected" ? [insights.reason] : []),
+          ...(realtime.status === "rejected" ? [realtime.reason] : []),
+        ],
+      };
+    } catch (error) {
+      console.error("Error fetching enhanced product analytics:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all available analytics data (comprehensive dashboard)
+   */
+  async getAllAnalytics(timeframe = "30d") {
+    try {
+      const [basic, advanced, products] = await Promise.allSettled([
+        this.getOverviewAnalytics(timeframe),
+        this.getAdvancedAnalytics(timeframe),
+        this.getEnhancedProductAnalytics(timeframe),
+      ]);
+
+      return {
+        basic: basic.status === "fulfilled" ? basic.value : null,
+        advanced: advanced.status === "fulfilled" ? advanced.value : null,
+        products: products.status === "fulfilled" ? products.value : null,
+        timeframe,
+        generatedAt: new Date(),
+        hasErrors:
+          basic.status === "rejected" ||
+          advanced.status === "rejected" ||
+          products.status === "rejected",
+        errors: [
+          ...(basic.status === "rejected" ? [basic.reason] : []),
+          ...(advanced.status === "rejected" ? [advanced.reason] : []),
+          ...(products.status === "rejected" ? [products.reason] : []),
+        ],
+      };
+    } catch (error) {
+      console.error("Error fetching all analytics:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Format currency for display
    */
   formatCurrency(amount, currency = "TRY") {

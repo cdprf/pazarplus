@@ -113,6 +113,12 @@ app.use(
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
 
+      // For development, allow all origins first
+      if (process.env.NODE_ENV === "development") {
+        logger.debug(`CORS: Allowing origin in development: ${origin}`);
+        return callback(null, true);
+      }
+
       // Allow any localhost/127.0.0.1 variations
       if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
         return callback(null, true);
@@ -120,8 +126,9 @@ app.use(
 
       // Allow any local network IP (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
       const localNetworkRegex =
-        /^https?:\/\/(192\.168\.|10\.|172\.(?:1[6-9]|2[0-9]|3[01])\.)[\d.]+:\d+$/;
+        /^https?:\/\/(192\.168\.|10\.|172\.(?:1[6-9]|2[0-9]|3[01])\.)[\d.]+(?::\d+)?$/;
       if (localNetworkRegex.test(origin)) {
+        logger.debug(`CORS: Allowing local network origin: ${origin}`);
         return callback(null, true);
       }
 
@@ -130,11 +137,7 @@ app.use(
         return callback(null, true);
       }
 
-      // For development, allow all origins
-      if (process.env.NODE_ENV === "development") {
-        return callback(null, true);
-      }
-
+      logger.warn(`CORS: Blocking origin: ${origin}`);
       callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
@@ -161,6 +164,55 @@ app.use(
     maxAge: 86400, // Cache preflight for 24 hours
   })
 );
+
+// Additional CORS debugging and preflight handling
+app.use((req, res, next) => {
+  // Log CORS-related information
+  if (req.method === "OPTIONS") {
+    logger.debug(
+      `CORS Preflight: ${req.method} ${req.url} from ${req.headers.origin}`
+    );
+  }
+
+  // Ensure CORS headers are set for all responses
+  const origin = req.headers.origin;
+  if (origin) {
+    // Allow development origins
+    if (process.env.NODE_ENV === "development") {
+      res.header("Access-Control-Allow-Origin", origin);
+    }
+    // Allow local network IPs
+    else if (
+      origin.match(
+        /^https?:\/\/(192\.168\.|10\.|172\.(?:1[6-9]|2[0-9]|3[01])\.)[\d.]+(?::\d+)?$/
+      )
+    ) {
+      res.header("Access-Control-Allow-Origin", origin);
+    }
+    // Allow localhost variations
+    else if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+      res.header("Access-Control-Allow-Origin", origin);
+    }
+  }
+
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+  );
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type,Authorization,Accept,Origin,X-Requested-With,X-API-Version,API-Version,X-Cache-Control"
+  );
+
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+
+  next();
+});
 
 // Enhanced rate limiting with environment configuration
 const limiter = rateLimit({

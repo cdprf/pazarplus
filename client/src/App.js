@@ -13,7 +13,8 @@ import "./App.css";
 // import "./debug-modal.css"; // Temporary debug CSS - removed
 
 // Import network initialization for PDF printing
-import { initializeNetworkForPDF } from "./services/networkInitialization";
+// Network initialization (temporarily disabled)
+// import { initializeNetworkForPDF } from "./services/networkInitialization";
 
 // Import components
 import Layout from "./components/layout/Layout.jsx";
@@ -61,7 +62,9 @@ const queryClient = new QueryClient({
 function App() {
   // Initialize network configuration for PDF printing on app start
   useEffect(() => {
-    initializeNetworkForPDF();
+    // Temporarily disabled to prevent network scanning interference
+    // initializeNetworkForPDF();
+    console.log("🔧 Network discovery disabled - using proxy configuration");
   }, []);
 
   return (

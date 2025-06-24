@@ -114,7 +114,7 @@ const PrintOrderActions = ({ order }) => {
 
     setLoading(true);
     try {
-      const response = await api.shipping.generateShippingSlip(order.id);
+      const response = await api.shipping.generatePDF(order.id);
 
       if (response.success && response.pdfUrl) {
         window.open(response.pdfUrl, "_blank");

@@ -274,90 +274,6 @@ class ShippingTemplatesController {
   }
 
   /**
-   * Generate shipping slip for an order using default or specified template
-   */
-  async generateShippingSlip(req, res) {
-    try {
-      const userId = req.user.id;
-      const { orderId, templateId } = req.body;
-
-      if (!orderId) {
-        return res.status(400).json({
-          success: false,
-          message: "Order ID is required",
-        });
-      }
-
-      const user = await User.findByPk(userId);
-      const settings = user.settings ? JSON.parse(user.settings) : {};
-      const templates = settings.shippingTemplates || [];
-
-      // Use provided templateId or fall back to default
-      let useTemplateId = templateId || settings.defaultShippingTemplateId;
-
-      if (!useTemplateId && templates.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "No shipping templates found. Please create a template first.",
-        });
-      }
-
-      // If no template specified and no default, use the first available template
-      if (!useTemplateId && templates.length > 0) {
-        useTemplateId = templates[0].id;
-      }
-
-      const template = templates.find((t) => t.id === useTemplateId);
-      if (!template) {
-        return res.status(404).json({
-          success: false,
-          message: "Specified template not found",
-        });
-      }
-
-      // Get order data
-      const { Order, OrderItem, ShippingDetail } = require("../models");
-      const order = await Order.findByPk(orderId, {
-        include: [
-          { model: OrderItem, as: "items" },
-          { model: ShippingDetail, as: "shippingDetail" },
-        ],
-      });
-
-      if (!order) {
-        return res.status(404).json({
-          success: false,
-          message: "Order not found",
-        });
-      }
-
-      // Map order data to template format
-      const orderData = this.mapOrderDataForTemplate(order);
-
-      res.json({
-        success: true,
-        data: {
-          template,
-          orderData,
-          generatedAt: new Date().toISOString(),
-        },
-        message: "Shipping slip data generated successfully",
-      });
-    } catch (error) {
-      logger.error(`Failed to generate shipping slip: ${error.message}`, {
-        error,
-        userId: req.user?.id,
-      });
-      res.status(500).json({
-        success: false,
-        message: "Failed to generate shipping slip",
-        error: error.message,
-      });
-    }
-  }
-
-  /**
    * Generate PDF using template and order data
    */
   async generatePDF(req, res) {
@@ -446,10 +362,12 @@ class ShippingTemplatesController {
       );
 
       if (result.success) {
-        // Update order with the generated label URL
+        // Update order with the generated label URL and mark as printed
         await order.update({
           labelUrl: result.data.labelUrl,
           shippingTemplateId: template.id,
+          shippingLabelPrinted: true,
+          shippingLabelPrintedAt: new Date(),
         });
 
         res.json({

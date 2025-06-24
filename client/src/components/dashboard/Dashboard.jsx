@@ -21,6 +21,7 @@ import {
   ShoppingCartIcon,
   BellIcon,
   ArrowTrendingDownIcon,
+  PresentationChartBarIcon,
 } from "@heroicons/react/24/outline";
 import { useOrderStats } from "../../hooks/useOrders";
 import { usePlatforms } from "../../hooks/usePlatforms";
@@ -229,71 +230,99 @@ const Dashboard = () => {
     <div className="page-container" role="main" aria-label="Dashboard">
       {/* Enhanced Header with Real-time Status */}
       <div className="page-header">
-        <div>
-          <h1 className="page-title flex items-center" id="dashboard-title">
-            <div
-              className="stat-icon stat-icon-primary mr-4"
-              aria-hidden="true"
-            >
-              <CubeIcon className="h-8 w-8 icon-contrast-primary" />
+        <div className="flex-1">
+          <div className="flex items-center mb-4">
+            <div className="stat-icon stat-icon-primary mr-4 flex-shrink-0">
+              <PresentationChartBarIcon className="h-8 w-8 text-white" />
             </div>
-            Dashboard Overview
-            {isRealTimeActive && (
-              <span
-                className="real-time-indicator ml-4"
-                role="status"
-                aria-live="polite"
-              >
-                Live
-              </span>
-            )}
-          </h1>
-          <p className="page-subtitle">
-            Monitor your order management system performance
-          </p>
-          <div className="flex items-center space-x-4 mt-3">
+            <div className="flex-1">
+              <h1 className="page-title flex items-center" id="dashboard-title">
+                Dashboard Overview
+                {isRealTimeActive && (
+                  <span
+                    className="real-time-indicator ml-3"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                      <div className="w-2 h-2 bg-green-400 rounded-full mr-1.5 animate-pulse"></div>
+                      Live
+                    </span>
+                  </span>
+                )}
+              </h1>
+              <p className="page-subtitle mt-1">
+                Monitor your order management system performance and key metrics
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 mt-4">
             <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-              <ClockIcon className="w-4 h-4 mr-1 icon-contrast-secondary" />
-              <span>Last updated: {new Date().toLocaleTimeString()}</span>
+              <ClockIcon className="w-4 h-4 mr-2 icon-contrast-secondary" />
+              <span className="font-medium">Last updated:</span>
+              <span className="ml-1">{new Date().toLocaleTimeString()}</span>
             </div>
+
             <div className="flex items-center text-sm text-green-600 dark:text-green-400">
-              <BoltIcon className="w-4 h-4 mr-1 icon-contrast-success" />
-              <span>System Active</span>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                <BoltIcon className="w-4 h-4 mr-1 icon-contrast-success" />
+                <span className="font-medium">System Active</span>
+              </div>
             </div>
+
             {hasActiveAlerts && (
-              <div className="flex items-center text-sm text-amber-600">
-                <BellIcon className="w-4 h-4 mr-1 icon-contrast-warning" />
-                <span>
+              <div className="flex items-center text-sm text-amber-600 dark:text-amber-400">
+                <BellIcon className="w-4 h-4 mr-2 icon-contrast-warning animate-pulse" />
+                <span className="font-medium">
                   {alerts.length} Alert{alerts.length !== 1 ? "s" : ""}
                 </span>
+                <span className="ml-1 text-xs">(requiring attention)</span>
               </div>
             )}
           </div>
         </div>
 
-        <div className="page-actions">
-          <div className="form-group">
-            <select
-              value={selectedPeriod}
-              onChange={(e) => handlePeriodChange(e.target.value)}
-              className="form-input"
-              aria-label="Select time period for dashboard data"
-            >
-              <option value="7d">Last 7 days</option>
-              <option value="30d">Last 30 days</option>
-              <option value="90d">Last 90 days</option>
-              <option value="1y">Last year</option>
-            </select>
+        <div className="page-actions flex-shrink-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="form-group">
+              <label className="sr-only" htmlFor="time-period">
+                Time Period
+              </label>
+              <select
+                id="time-period"
+                value={selectedPeriod}
+                onChange={(e) => handlePeriodChange(e.target.value)}
+                className="form-input min-w-[140px]"
+                aria-label="Select time period for dashboard data"
+              >
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+                <option value="90d">Last 90 days</option>
+                <option value="1y">Last year</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSyncData}
+                className="btn btn-primary flex items-center gap-2"
+                title="Refresh dashboard data"
+              >
+                <ArrowPathIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Refresh</span>
+              </button>
+
+              <button
+                className="btn btn-ghost btn-sm"
+                title="Calendar view"
+                aria-label="Open calendar view"
+              >
+                <CalendarIcon className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-
-          <button onClick={handleSyncData} className="btn btn-primary">
-            <ArrowPathIcon className="h-4 w-4 mr-2" />
-            Refresh
-          </button>
-
-          <button className="btn btn-ghost btn-sm">
-            <CalendarIcon className="h-4 w-4" />
-          </button>
         </div>
       </div>
 
@@ -611,7 +640,7 @@ const Dashboard = () => {
                 </div>
               </div>
             </div>
-            <div className="card-body">
+            <div className="p-0">
               <div
                 className="chart-container"
                 role="img"
@@ -694,7 +723,9 @@ const Dashboard = () => {
                         </span>
                       </div>
                     </div>
-                    <div className="progress-bar">
+                    <div
+                      className={`progress-bar progress-bar-${status.variant}`}
+                    >
                       <div
                         className="progress-bar-fill"
                         style={{ width: `${percentage}%` }}

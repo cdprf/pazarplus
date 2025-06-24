@@ -338,10 +338,7 @@ const orderService = {
   // Print invoice
   printInvoice: async (orderId, options = {}) => {
     try {
-      const response = await api.post("/shipping/templates/generate-pdf", {
-        orderId,
-        templateId: options.templateId || null,
-      });
+      const response = await api.post(`/order-management/orders/${orderId}/generate-einvoice`);
       return response.data;
     } catch (error) {
       throw error;
@@ -768,19 +765,6 @@ const shippingAPI = {
   setDefaultTemplate: async (templateId) => {
     try {
       const response = await api.post("/shipping/templates/default", {
-        templateId,
-      });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Generate shipping slip with template (returns template data only)
-  generateShippingSlip: async (orderId, templateId = null) => {
-    try {
-      const response = await api.post("/shipping/templates/generate-slip", {
-        orderId,
         templateId,
       });
       return response.data;

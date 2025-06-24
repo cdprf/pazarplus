@@ -798,12 +798,7 @@ async function getTopProducts(userId, dateRange, limit = 10) {
     ], // Group by all selected columns
     order: [
       [
-        OrderItem.sequelize.fn(
-          "SUM",
-          OrderItem.sequelize.literal(
-            'CASE WHEN "OrderItem"."price" > 0 THEN "OrderItem"."quantity" * "OrderItem"."price" ELSE 0 END'
-          )
-        ),
+        OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
         "DESC",
       ],
     ],
@@ -812,7 +807,7 @@ async function getTopProducts(userId, dateRange, limit = 10) {
 
   return topProducts.map((item) => {
     const totalSold = parseInt(item.get("totalSold")) || 0;
-    const totalRevenue = parseFloat(item.get("totalRevenue"));
+    const totalRevenue = parseFloat(item.get("totalRevenue")) || 0;
 
     return {
       productId: item.productId,
@@ -821,10 +816,13 @@ async function getTopProducts(userId, dateRange, limit = 10) {
       category: item.product?.category || "Uncategorized",
       platform: item.order?.platform || "Unknown", // Add platform info
       totalSold,
-      totalRevenue: !isNaN(totalRevenue) ? totalRevenue : 0, // Handle NaN values
+      totalRevenue: isNaN(totalRevenue) ? 0 : totalRevenue, // Handle NaN values safely
+      orderCount: totalSold, // Add order count field for UI
       // Add backward compatibility fields
       sales: totalSold,
-      revenue: !isNaN(totalRevenue) ? totalRevenue : 0,
+      revenue: isNaN(totalRevenue) ? 0 : totalRevenue,
+      // Add price per unit calculation
+      avgPrice: totalSold > 0 ? totalRevenue / totalSold : 0,
     };
   });
 }

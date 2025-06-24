@@ -98,7 +98,7 @@ router.post(
   "/generate-slip",
   body("orderId").isInt().withMessage("Order ID must be an integer"),
   body("templateId").optional().isString(),
-  (req, res) => shippingTemplatesController.generateShippingSlip(req, res)
+  (req, res) => shippingTemplatesController.generatePDF(req, res)
 );
 
 /**

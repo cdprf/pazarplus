@@ -1,62 +1,95 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAlert } from "../../../contexts/AlertContext";
 import { API_BASE_URL } from "../utils/constants";
 import InlineVariantDashboard from "./InlineVariantDashboard.jsx";
 import PlatformVariantForm from "./PlatformVariantForm.jsx";
 import ProductDisplay from "./ProductDisplay.js";
-import ProductCreationModal from "./ProductCreationModal.jsx";
+import ProductCreationModal from "./ProductCreationModalFull.jsx";
 import VariantCreationModal from "./VariantCreationModal.jsx";
 import PlatformFieldMapping from "./PlatformFieldMapping.jsx";
+import MainVariantManager from "./MainVariantManager.jsx";
 
 // Enhanced Product Management API
 const enhancedProductAPI = {
+  // Helper function to ensure authentication
+  async ensureAuth() {
+    let token = localStorage.getItem("token");
+    if (!token) {
+      console.log("🔄 No token found, generating dev token...");
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/dev-token`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (response.ok) {
+          const { token: devToken } = await response.json();
+          localStorage.setItem("token", devToken);
+          token = devToken;
+          console.log("✅ Dev token generated and stored");
+        }
+      } catch (error) {
+        console.error("❌ Failed to generate dev token:", error);
+      }
+    }
+    return token;
+  },
+
   async getMainProducts(filters = {}) {
+    const token = await this.ensureAuth();
     const response = await fetch(
       `${API_BASE_URL}/enhanced-products/main-products`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
       }
     );
-    if (!response.ok)
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
     return response.json();
   },
 
   async createMainProduct(productData) {
+    const token = await this.ensureAuth();
     const response = await fetch(
       `${API_BASE_URL}/enhanced-products/main-products`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(productData),
       }
     );
-    if (!response.ok)
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
     return response.json();
   },
 
   async getMainProduct(id) {
+    const token = await this.ensureAuth();
     const response = await fetch(
       `${API_BASE_URL}/enhanced-products/main-products/${id}`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
       }
     );
-    if (!response.ok)
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
     return response.json();
   },
 
@@ -169,6 +202,10 @@ const EnhancedProductManagement = () => {
   const { id } = useParams();
   const { showAlert } = useAlert();
 
+  // Use ref to store the latest showAlert function to prevent infinite loops
+  const showAlertRef = useRef(showAlert);
+  showAlertRef.current = showAlert;
+
   // State management
   const [mainProducts, setMainProducts] = useState([]);
   const [selectedMainProduct, setSelectedMainProduct] = useState(null);
@@ -190,6 +227,9 @@ const EnhancedProductManagement = () => {
     useState(false);
   const [showFieldMappingModal, setShowFieldMappingModal] = useState(false);
   const [fieldMappingData, setFieldMappingData] = useState(null);
+  const [showMainVariantManager, setShowMainVariantManager] = useState(false);
+  const [bulkSelectedProducts, setBulkSelectedProducts] = useState([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
 
   // Load main products
   const loadMainProducts = useCallback(async () => {
@@ -203,11 +243,15 @@ const EnhancedProductManagement = () => {
       }
     } catch (error) {
       console.error("Error loading main products:", error);
-      showAlert("Ürünler yüklenirken hata oluştu", "error");
+      showAlertRef.current("Ürünler yüklenirken hata oluştu", "error");
     } finally {
       setLoading(false);
     }
-  }, [showAlert]);
+  }, []); // No dependencies - showAlert is accessed via ref
+
+  // Store stable references
+  const loadMainProductsRef = useRef(loadMainProducts);
+  loadMainProductsRef.current = loadMainProducts;
 
   // Load specific main product if ID is provided
   const loadMainProduct = useCallback(
@@ -223,22 +267,26 @@ const EnhancedProductManagement = () => {
         }
       } catch (error) {
         console.error("Error loading main product:", error);
-        showAlert("Ürün yüklenirken hata oluştu", "error");
+        showAlertRef.current("Ürün yüklenirken hata oluştu", "error");
       } finally {
         setLoading(false);
       }
     },
-    [showAlert]
+    [] // No dependencies - showAlert is accessed via ref
   );
+
+  // Store stable reference
+  const loadMainProductRef = useRef(loadMainProduct);
+  loadMainProductRef.current = loadMainProduct;
 
   // Initialize component
   useEffect(() => {
     if (id) {
-      loadMainProduct(id);
+      loadMainProductRef.current(id);
     } else {
-      loadMainProducts();
+      loadMainProductsRef.current();
     }
-  }, [id, loadMainProduct, loadMainProducts]);
+  }, [id]); // Only depend on id, use refs for functions
 
   // Handle main product creation
   const handleCreateMainProduct = async (productData) => {
@@ -257,7 +305,7 @@ const EnhancedProductManagement = () => {
       const response = await enhancedProductAPI.createMainProduct(productData);
       if (response.success) {
         showAlert("Ana ürün başarıyla oluşturuldu", "success");
-        await loadMainProducts();
+        await loadMainProductsRef.current();
       } else {
         throw new Error(response.message || "Failed to create product");
       }
@@ -274,7 +322,7 @@ const EnhancedProductManagement = () => {
     if (newProduct) {
       setMainProducts((prev) => [newProduct, ...prev]);
     } else {
-      loadMainProducts(); // Fallback to reload all
+      loadMainProductsRef.current(); // Fallback to reload all
     }
   };
 
@@ -293,7 +341,7 @@ const EnhancedProductManagement = () => {
       );
       // Refresh the main product data to show new variants
       if (selectedMainProduct) {
-        loadMainProduct(selectedMainProduct.id);
+        loadMainProductRef.current(selectedMainProduct.id);
       }
     }
     setShowVariantCreationModal(false);
@@ -320,6 +368,55 @@ const EnhancedProductManagement = () => {
     showAlert("Field mapping configuration saved", "success");
   };
 
+  // Handle bulk variant creation from selected products
+  const handleBulkVariantCreation = async (variantData) => {
+    if (bulkSelectedProducts.length === 0) {
+      showAlert("No products selected for variant creation", "warning");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const results = [];
+
+      for (const productId of bulkSelectedProducts) {
+        try {
+          const response = await enhancedProductAPI.createPlatformVariant(
+            productId,
+            variantData
+          );
+
+          if (response.success) {
+            results.push({ success: true, productId });
+          } else {
+            results.push({
+              success: false,
+              productId,
+              error: response.message || "Failed to create variant",
+            });
+          }
+        } catch (error) {
+          results.push({ success: false, productId, error: error.message });
+        }
+      }
+
+      const successCount = results.filter((r) => r.success).length;
+      if (successCount > 0) {
+        showAlert(`${successCount} variants created successfully`, "success");
+        await loadMainProductsRef.current();
+        setBulkSelectedProducts([]);
+        setSelectedProducts([]);
+      } else {
+        showAlert("Failed to create any variants", "error");
+      }
+    } catch (error) {
+      console.error("Error creating bulk variants:", error);
+      showAlert("Error creating variants", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Handle bulk product selection
   const handleBulkMarkAsMainProducts = async () => {
     if (selectedProducts.length === 0) {
@@ -333,6 +430,9 @@ const EnhancedProductManagement = () => {
 
       for (const productId of selectedProducts) {
         try {
+          // Get authentication token
+          const token = await enhancedProductAPI.ensureAuth();
+
           // Assuming there's an API endpoint to mark products as main products
           const response = await fetch(
             `${API_BASE_URL}/enhanced-products/mark-as-main/${productId}`,
@@ -340,7 +440,7 @@ const EnhancedProductManagement = () => {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
+                Authorization: `Bearer ${token}`,
               },
             }
           );
@@ -365,7 +465,7 @@ const EnhancedProductManagement = () => {
           `${successCount} products marked as main products`,
           "success"
         );
-        await loadMainProducts();
+        await loadMainProductsRef.current();
         setSelectedProducts([]);
       } else {
         showAlert("Failed to mark any products as main products", "error");
@@ -398,7 +498,7 @@ const EnhancedProductManagement = () => {
         setEditingVariant(null);
 
         // Refresh the main product data
-        await loadMainProduct(selectedMainProduct.id);
+        await loadMainProductRef.current(selectedMainProduct.id);
       } else {
         throw new Error(response.message || "Failed to create variant");
       }
@@ -426,7 +526,7 @@ const EnhancedProductManagement = () => {
 
         // Refresh the main product data
         if (selectedMainProduct) {
-          await loadMainProduct(selectedMainProduct.id);
+          await loadMainProductRef.current(selectedMainProduct.id);
         }
       } else {
         throw new Error(response.message || "Failed to update variant");
@@ -452,7 +552,7 @@ const EnhancedProductManagement = () => {
 
         // Refresh the main product data
         if (selectedMainProduct) {
-          await loadMainProduct(selectedMainProduct.id);
+          await loadMainProductRef.current(selectedMainProduct.id);
         }
       } else {
         throw new Error(response.message || "Failed to delete variant");
@@ -479,7 +579,7 @@ const EnhancedProductManagement = () => {
 
         // Refresh the main product data
         if (selectedMainProduct) {
-          await loadMainProduct(selectedMainProduct.id);
+          await loadMainProductRef.current(selectedMainProduct.id);
         }
       } else {
         throw new Error(response.message || "Failed to publish variants");
@@ -510,7 +610,7 @@ const EnhancedProductManagement = () => {
           matchedCount: response.data.matchedCount,
         });
         showAlert("Otomatik eşleştirme tamamlandı", "success");
-        await loadMainProducts();
+        await loadMainProductsRef.current();
       } else {
         throw new Error(response.message || "Failed to auto-match products");
       }
@@ -655,6 +755,17 @@ const EnhancedProductManagement = () => {
               <span>+</span>
               Ana Ürün Oluştur
             </button>
+
+            {selectedProducts.length > 0 && (
+              <button
+                onClick={() => setShowMainVariantManager(true)}
+                disabled={loading}
+                className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 flex items-center gap-2"
+              >
+                <span>⚙️</span>
+                Toplu Yönetim ({selectedProducts.length})
+              </button>
+            )}
           </div>
         </div>
 
@@ -695,7 +806,7 @@ const EnhancedProductManagement = () => {
           console.log("🎯 Import Products button clicked!");
           setShowProductCreationModal(true);
         }}
-        onSync={loadMainProducts}
+        onSync={loadMainProductsRef.current}
         onViewModeChange={setViewMode}
         enableVariantManagement={true}
         // Enhanced product display features
@@ -733,6 +844,110 @@ const EnhancedProductManagement = () => {
         targetPlatform={fieldMappingData?.targetPlatform}
         sampleData={fieldMappingData?.sampleData}
         onMappingComplete={handleFieldMappingComplete}
+      />
+
+      {/* Bulk Product Management Modal */}
+      {showMainVariantManager && selectedProducts.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">
+                Toplu Ürün Yönetimi ({selectedProducts.length} ürün seçildi)
+              </h2>
+              <button
+                onClick={() => setShowMainVariantManager(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Bulk Actions */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <button
+                  onClick={handleBulkMarkAsMainProducts}
+                  disabled={loading}
+                  className="p-4 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50 text-left"
+                >
+                  <div className="font-medium">Ana Ürün Olarak İşaretle</div>
+                  <div className="text-sm text-blue-600">
+                    Seçili ürünleri ana ürün olarak işaretle
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowMainVariantManager(false);
+                    setBulkSelectedProducts(selectedProducts);
+                    setShowVariantCreationModal(true);
+                  }}
+                  disabled={loading}
+                  className="p-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 disabled:opacity-50 text-left"
+                >
+                  <div className="font-medium">Varyant Oluştur</div>
+                  <div className="text-sm text-green-600">
+                    Seçili ürünlerden varyant oluştur
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setBulkSelectedProducts(selectedProducts);
+                    setShowFieldMappingModal(true);
+                    setShowMainVariantManager(false);
+                  }}
+                  disabled={loading}
+                  className="p-4 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 disabled:opacity-50 text-left"
+                >
+                  <div className="font-medium">Alan Eşleştirmesi</div>
+                  <div className="text-sm text-purple-600">
+                    Platform alanlarını eşleştir
+                  </div>
+                </button>
+              </div>
+
+              {/* Selected Products Preview */}
+              <div className="border rounded-lg p-4">
+                <h3 className="font-medium mb-2">Seçili Ürünler:</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                  {selectedProducts.map((productId) => {
+                    const product = mainProducts.find(
+                      (p) => p.id === productId
+                    );
+                    return (
+                      <div
+                        key={productId}
+                        className="text-sm bg-gray-50 p-2 rounded"
+                      >
+                        {product?.name ||
+                          product?.title ||
+                          `Ürün #${productId}`}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Variant Manager for detailed product management */}
+      <MainVariantManager
+        show={selectedMainProduct !== null && !showMainVariantManager}
+        onHide={() => setSelectedMainProduct(null)}
+        mainProduct={selectedMainProduct}
+        onRefresh={loadMainProductsRef.current}
+        onBulkPublish={handlePublishVariants}
+        onBulkDelete={handleDeleteVariant}
+        onBulkEdit={(variants) => {
+          if (variants && variants.length > 0) {
+            setEditingVariant(variants[0]);
+            setShowVariantForm(true);
+          }
+        }}
+        loading={loading}
       />
     </div>
   );

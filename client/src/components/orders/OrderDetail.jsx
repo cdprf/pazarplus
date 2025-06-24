@@ -753,11 +753,6 @@ const OrderDetail = () => {
                       {generatingSlip ? "Generating..." : "Generate Invoice"}
                     </button>
                   </div>
-
-                  {/* Print Diagnostics - For troubleshooting network printing issues */}
-                  <div className="border-t pt-4">
-                    <PrintDiagnostics order={order} />
-                  </div>
                 </>
               )}
             </div>

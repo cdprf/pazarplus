@@ -8,11 +8,8 @@ const QuickPrintButton = ({ orderId, type = "pdf", className = "" }) => {
       let response;
 
       switch (type) {
-        case "pdf":
-          response = await api.shipping.generatePDF(orderId);
-          break;
         case "shipping-slip":
-          response = await api.shipping.generateShippingSlip(orderId);
+          response = await api.shipping.generatePDF(orderId);
           break;
         case "invoice":
           response = await api.orders.printInvoice(orderId);

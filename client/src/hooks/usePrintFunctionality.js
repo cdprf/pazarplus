@@ -58,6 +58,8 @@ export const usePrintFunctionality = () => {
           ? response.data.labelUrl
           : `${baseUrl}${response.data.labelUrl}`;
 
+        console.log(`🖨️ Opening shipping slip: ${fullUrl}`);
+
         window.open(fullUrl, "_blank");
         return { success: true, url: fullUrl };
       } else {
