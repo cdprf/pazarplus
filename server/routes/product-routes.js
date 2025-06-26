@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const ProductController = require("../controllers/product-controller");
-const authMiddleware = require("../middleware/auth-middleware");
+const { auth: authMiddleware } = require("../middleware/auth");
 const { body, param, query } = require("express-validator");
 const validationMiddleware = require("../middleware/validation-middleware");
 
@@ -251,6 +251,69 @@ router.put(
     validationMiddleware,
   ],
   ProductController.updateProduct
+);
+
+// Variant Detection Routes
+router.get(
+  "/:id/variant-status",
+  [
+    param("id").isUUID().withMessage("Product ID must be a valid UUID"),
+    validationMiddleware,
+  ],
+  ProductController.classifyProductVariantStatus
+);
+
+router.post(
+  "/:id/variant-status",
+  [
+    param("id").isUUID().withMessage("Product ID must be a valid UUID"),
+    body("classification")
+      .isObject()
+      .withMessage("Classification data is required"),
+    validationMiddleware,
+  ],
+  ProductController.updateProductVariantStatus
+);
+
+router.delete(
+  "/:id/variant-status",
+  [
+    param("id").isUUID().withMessage("Product ID must be a valid UUID"),
+    validationMiddleware,
+  ],
+  ProductController.removeProductVariantStatus
+);
+
+router.post(
+  "/batch-variant-detection",
+  [
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 500 })
+      .withMessage("Limit must be between 1 and 500"),
+    query("category").optional().isString(),
+    query("status").optional().isIn(["active", "inactive", "draft"]),
+    validationMiddleware,
+  ],
+  ProductController.runBatchVariantDetection
+);
+
+// Background Variant Detection Service Routes
+router.get(
+  "/variant-detection/status",
+  ProductController.getBackgroundVariantDetectionStatus
+);
+router.post(
+  "/variant-detection/start",
+  ProductController.startBackgroundVariantDetection
+);
+router.post(
+  "/variant-detection/stop",
+  ProductController.stopBackgroundVariantDetection
+);
+router.put(
+  "/variant-detection/config",
+  ProductController.updateBackgroundVariantDetectionConfig
 );
 
 module.exports = router;

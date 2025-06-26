@@ -84,7 +84,12 @@ const seedSampleData = async () => {
       });
 
       if (!existingProduct) {
-        await Product.create(productData);
+        // Add sourcePlatform to sample data
+        const productWithSource = {
+          ...productData,
+          sourcePlatform: "sample", // Mark as sample data
+        };
+        await Product.create(productWithSource);
         console.log(`✅ Created product: ${productData.name}`);
       } else {
         console.log(`ℹ️ Product already exists: ${productData.name}`);

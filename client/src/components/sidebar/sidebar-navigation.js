@@ -196,16 +196,6 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
             ariaLabel: "Ürün listesini görüntüle",
           },
           {
-            name: "Base Products",
-            href: "/products/base",
-            ariaLabel: "Temel ürün yönetimi",
-          },
-          {
-            name: "Enhanced Products",
-            href: "/products/enhanced",
-            ariaLabel: "Gelişmiş ürün yönetimi",
-          },
-          {
             name: "Kategori Yönetimi",
             href: "/products/categories",
             ariaLabel: "Kategori yönetimi",

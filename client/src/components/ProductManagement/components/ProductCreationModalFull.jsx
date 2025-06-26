@@ -117,17 +117,14 @@ const ProductCreationModalFull = ({ show, onHide, onSuccess }) => {
     try {
       setLoading(true);
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/enhanced-products/main-products`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify(formData),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/products/main-products`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(formData),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to create product");
@@ -278,21 +275,18 @@ const ProductCreationModalFull = ({ show, onHide, onSuccess }) => {
         return mappedRow;
       });
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/enhanced-products/import/csv`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({
-            csvData: mappedData,
-            fieldMapping: fieldMapping,
-            fileName: importPreview.fileName,
-          }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/products/import/csv`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          csvData: mappedData,
+          fieldMapping: fieldMapping,
+          fileName: importPreview.fileName,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error("Import failed");
@@ -333,20 +327,17 @@ const ProductCreationModalFull = ({ show, onHide, onSuccess }) => {
       setLoading(true);
 
       // First, try to scrape the platform data
-      const response = await fetch(
-        `${API_BASE_URL}/api/enhanced-products/scrape-platform`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({
-            url: platformUrl,
-            platform: detectPlatform(platformUrl),
-          }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/products/scrape-platform`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          url: platformUrl,
+          platform: detectPlatform(platformUrl),
+        }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch platform data");
@@ -1088,7 +1079,7 @@ const ProductCreationModalFull = ({ show, onHide, onSuccess }) => {
 
                     // Use the new scrape-and-import endpoint for direct import
                     const response = await fetch(
-                      `${API_BASE_URL}/api/enhanced-products/scrape-and-import`,
+                      `${API_BASE_URL}/products/scrape-and-import`,
                       {
                         method: "POST",
                         headers: {

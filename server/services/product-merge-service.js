@@ -295,6 +295,7 @@ class ProductMergeService {
       platformProductId: this.extractPlatformProductId(bestProduct),
       stockCode: this.extractStockCode(bestProduct),
       categoryId: this.extractCategoryId(bestProduct),
+      sourcePlatform: this.extractSourcePlatform(bestProduct),
 
       // Status and approval information
       approvalStatus: this.extractApprovalStatus(bestProduct),
@@ -722,6 +723,7 @@ class ProductMergeService {
         categoryId: mergedProduct.categoryId || null,
         approvalStatus: mergedProduct.approvalStatus,
         platformStatus: mergedProduct.platformStatus || null,
+        sourcePlatform: mergedProduct.sourcePlatform || null, // Extract source platform
         urls: mergedProduct.urls || null,
         metadata: mergedProduct.metadata || null,
         shippingInfo: mergedProduct.shippingInfo || null,
@@ -1253,6 +1255,32 @@ class ProductMergeService {
         shipping.template = product.rawData.shippingTemplate;
     }
     return Object.keys(shipping).length > 0 ? shipping : null;
+  }
+
+  extractSourcePlatform(product) {
+    return (
+      product.sourcePlatform ||
+      product.platform ||
+      (product.rawData && product.rawData.sourcePlatform) ||
+      (product.rawData && product.rawData.platform) ||
+      (product.connectionName &&
+        this.derivePlatformFromConnectionName(product.connectionName)) ||
+      null
+    );
+  }
+
+  derivePlatformFromConnectionName(connectionName) {
+    if (!connectionName) return null;
+
+    const name = connectionName.toLowerCase();
+    if (name.includes("hepsiburada") || name.includes("hb"))
+      return "hepsiburada";
+    if (name.includes("trendyol") || name.includes("ty")) return "trendyol";
+    if (name.includes("n11")) return "n11";
+    if (name.includes("amazon")) return "amazon";
+    if (name.includes("gittigidiyor")) return "gittigidiyor";
+
+    return null;
   }
 }
 

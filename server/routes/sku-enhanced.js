@@ -5,19 +5,30 @@ const EnhancedSKUService = require("../services/enhanced-sku-service");
 
 // Initialize Enhanced SKU service
 const skuService = new EnhancedSKUService();
+let serviceInitialized = false;
 
-// Initialize with platform services (will be connected to actual platform services)
-const initializeService = async () => {
-  try {
-    // In the future, this will connect to actual platform services
-    await skuService.initialize({});
-    logger.info("Enhanced SKU Service initialized");
-  } catch (error) {
-    logger.error("Failed to initialize Enhanced SKU Service:", error);
+// Lazy initialization function
+const ensureServiceInitialized = async () => {
+  if (!serviceInitialized) {
+    try {
+      // In the future, this will connect to actual platform services
+      await skuService.initialize({});
+      serviceInitialized = true;
+      logger.info("Enhanced SKU Service initialized");
+    } catch (error) {
+      logger.error("Failed to initialize Enhanced SKU Service:", error);
+    }
   }
 };
 
-initializeService();
+// Middleware to ensure service is initialized
+const initMiddleware = async (req, res, next) => {
+  await ensureServiceInitialized();
+  next();
+};
+
+// Apply initialization middleware to all routes
+router.use(initMiddleware);
 
 /**
  * Process and classify a code (barcode or SKU)
@@ -509,13 +520,18 @@ router.post("/feedback", async (req, res) => {
       });
     }
 
-    logger.info("Feedback received:", { code, classification, isCorrect, comment });
+    logger.info("Feedback received:", {
+      code,
+      classification,
+      isCorrect,
+      comment,
+    });
 
     const result = skuService.provideFeedback({
       code,
       classification,
       isCorrect,
-      comment
+      comment,
     });
 
     res.json(result);

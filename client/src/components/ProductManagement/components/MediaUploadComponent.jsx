@@ -119,8 +119,8 @@ const MediaUploadComponent = ({
       });
 
       const endpoint = variantId
-        ? `${API_BASE_URL}/enhanced-products/${mainProductId}/variants/${variantId}/media`
-        : `${API_BASE_URL}/enhanced-products/${mainProductId}/media`;
+        ? `${API_BASE_URL}/products/${mainProductId}/variants/${variantId}/media`
+        : `${API_BASE_URL}/products/${mainProductId}/media`;
 
       const response = await fetch(endpoint, {
         method: "POST",

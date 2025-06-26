@@ -773,6 +773,7 @@ class TrendyolServiceGeneric {
           price: trendyolProductData.listPrice || 0,
           currency: "TRY",
           barcode: trendyolProductData.barcode,
+          sourcePlatform: "trendyol",
           mainImageUrl:
             trendyolProductData.images && trendyolProductData.images.length > 0
               ? trendyolProductData.images[0]

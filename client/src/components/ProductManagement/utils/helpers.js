@@ -159,18 +159,44 @@ export const validateProduct = (product) => {
 
 export const filterProducts = (products, filters) => {
   return products.filter((product) => {
-    // Search filter
+    // Enhanced search filter - includes all relevant fields
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
       const searchFields = [
         product.name,
         product.sku,
+        product.barcode,
         product.description,
         product.category,
+        product.brand,
+        product.modelCode,
+        product.productCode,
+        product.baseSku,
+        product.productType,
         ...(product.tags || []),
       ].filter(Boolean);
 
-      const matchesSearch = searchFields.some((field) =>
+      // Add platform-specific data to search
+      const platformData = [];
+      if (product.sources) {
+        platformData.push(...product.sources.map((s) => s.sku).filter(Boolean));
+        platformData.push(
+          ...product.sources.map((s) => s.barcode).filter(Boolean)
+        );
+        platformData.push(
+          ...product.sources.map((s) => s.name).filter(Boolean)
+        );
+      }
+      if (product.platforms) {
+        Object.values(product.platforms).forEach((p) => {
+          if (p?.platformSku) platformData.push(p.platformSku);
+          if (p?.platformBarcode) platformData.push(p.platformBarcode);
+          if (p?.platformTitle) platformData.push(p.platformTitle);
+        });
+      }
+
+      const allSearchFields = [...searchFields, ...platformData];
+      const matchesSearch = allSearchFields.some((field) =>
         field.toLowerCase().includes(searchTerm)
       );
 

@@ -81,8 +81,7 @@ export const PlatformIcons = {
 };
 
 // API Base Configuration
-export const API_BASE_URL =
-  process.env.REACT_APP_API_URL || "/api";
+export const API_BASE_URL = process.env.REACT_APP_API_URL || "/api";
 
 // Core Status Options
 export const STATUS_OPTIONS = [
@@ -104,6 +103,25 @@ export const STOCK_STATUS_OPTIONS = [
   { value: "in_stock", label: "Stokta", variant: "success" },
   { value: "low_stock", label: "Az Stok", variant: "warning" },
   { value: "out_of_stock", label: "Stok Yok", variant: "danger" },
+];
+
+// Product Type Options
+export const PRODUCT_TYPE_OPTIONS = [
+  { value: "main", label: "Ana Ürün", variant: "primary" },
+  { value: "variant", label: "Varyant", variant: "secondary" },
+  { value: "unset", label: "Belirtilmemiş", variant: "outline" },
+];
+
+// Platform Filter Options
+export const PLATFORM_FILTER_OPTIONS = [
+  { value: "all", label: "Tüm Platformlar" },
+  { value: "trendyol", label: "Trendyol" },
+  { value: "hepsiburada", label: "Hepsiburada" },
+  { value: "n11", label: "N11" },
+  { value: "amazon", label: "Amazon" },
+  { value: "local", label: "Yerel" },
+  { value: "csv", label: "CSV" },
+  { value: "multiple", label: "Çoklu Platform" },
 ];
 
 // Sync Status Options
@@ -168,4 +186,7 @@ export const STATUS_TAB_CONFIG = {
   rejected: { key: "rejected", label: "Reddedildi", icon: "XCircle" },
   out_of_stock: { key: "out_of_stock", label: "Stok Yok", icon: "Package" },
   low_stock: { key: "low_stock", label: "Az Stok", icon: "AlertTriangle" },
+  main_products: { key: "main_products", label: "Ana Ürünler", icon: "Crown" },
+  variants: { key: "variants", label: "Varyantlar", icon: "Layers" },
+  unset: { key: "unset", label: "Tür Belirtilmemiş", icon: "AlertCircle" },
 };

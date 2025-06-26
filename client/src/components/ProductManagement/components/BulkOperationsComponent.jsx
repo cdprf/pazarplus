@@ -90,7 +90,7 @@ const BulkOperationsComponent = ({
 
       switch (selectedOperation) {
         case "publish":
-          endpoint = `${API_BASE_URL}/enhanced-products/bulk/publish`;
+          endpoint = `${API_BASE_URL}/products/bulk/publish`;
           payload = {
             variantIds: selectedVariants.map((v) => v.id),
             platforms: selectedPlatforms,
@@ -98,7 +98,7 @@ const BulkOperationsComponent = ({
           break;
 
         case "updatePrices":
-          endpoint = `${API_BASE_URL}/enhanced-products/bulk/update-prices`;
+          endpoint = `${API_BASE_URL}/products/bulk/update-prices`;
           payload = {
             updates: selectedVariants.map((v) => ({
               variantId: v.id,
@@ -108,7 +108,7 @@ const BulkOperationsComponent = ({
           break;
 
         case "updateStock":
-          endpoint = `${API_BASE_URL}/enhanced-products/bulk/update-stock`;
+          endpoint = `${API_BASE_URL}/products/bulk/update-stock`;
           payload = {
             updates: selectedVariants.map((v) => ({
               mainProductId: v.mainProductId,

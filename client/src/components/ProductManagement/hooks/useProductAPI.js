@@ -157,8 +157,12 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
           draft: overview.draftProducts || 0,
           pending: overview.pendingProducts || 0,
           rejected: overview.rejectedProducts || 0,
-          outOfStock: overview.outOfStockProducts || 0,
-          lowStock: overview.lowStockProducts || 0,
+          // Map backend camelCase to frontend properties
+          outOfStock: overview.outOfStockProducts || 0, // for compatibility
+          lowStock: overview.lowStockProducts || 0, // for compatibility
+          inStock: overview.inStockProducts || 0,
+          pasif: overview.pasifProducts || 0,
+          aktif: overview.aktifProducts || 0,
         };
       }
     } catch (error) {
@@ -234,6 +238,30 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
     [createAPICall, updateState, showAlert, handleError]
   );
 
+  // Internal update product function without alerts (for bulk operations)
+  const updateProductInternal = useCallback(
+    async (
+      productId,
+      productData,
+      requestKey = `updateProduct-${productId}`
+    ) => {
+      const data = await createAPICall(
+        `${API_BASE_URL}/products/${productId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(productData),
+        },
+        requestKey
+      );
+
+      if (data && data.success) {
+        return data.product;
+      }
+      throw new Error(`Failed to update product ${productId}`);
+    },
+    [createAPICall]
+  );
+
   // Delete product
   const deleteProduct = useCallback(
     async (productId) => {
@@ -268,21 +296,79 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
       try {
         updateState({ loading: true });
 
-        const data = await createAPICall(
-          `${API_BASE_URL}/products/bulk-update`,
-          {
-            method: "PUT",
-            body: JSON.stringify({ productIds, updateData }),
-          },
-          "bulkUpdateProducts"
-        );
-
-        if (data && data.success) {
-          showAlert(
-            `${productIds.length} ürün başarıyla güncellendi`,
-            "success"
+        // For status updates, use the specific endpoint
+        if (updateData.status) {
+          const data = await createAPICall(
+            `${API_BASE_URL}/products/bulk/status`,
+            {
+              method: "PUT",
+              body: JSON.stringify({ productIds, status: updateData.status }),
+            },
+            "bulkUpdateStatus"
           );
-          return data.updatedProducts;
+
+          if (data && data.success) {
+            showAlert(
+              `${productIds.length} ürün durumu başarıyla güncellendi`,
+              "success"
+            );
+            return data.updatedIds;
+          }
+        }
+
+        // For stock updates, use the specific endpoint
+        if (updateData.stockQuantity !== undefined) {
+          const updates = productIds.map((productId) => ({
+            productId,
+            stockQuantity: updateData.stockQuantity,
+          }));
+
+          const data = await createAPICall(
+            `${API_BASE_URL}/products/bulk/stock`,
+            {
+              method: "PUT",
+              body: JSON.stringify({ updates }),
+            },
+            "bulkUpdateStock"
+          );
+
+          if (data && data.success) {
+            showAlert(
+              `${productIds.length} ürün stoğu başarıyla güncellendi`,
+              "success"
+            );
+            return data.updates;
+          }
+        }
+
+        // For other updates, iterate through individual updates
+        const results = [];
+        let successCount = 0;
+
+        for (let i = 0; i < productIds.length; i++) {
+          const productId = productIds[i];
+          try {
+            const product = await updateProductInternal(
+              productId,
+              updateData,
+              `bulkUpdate-${productId}-${i}-${Date.now()}`
+            );
+
+            if (product) {
+              successCount++;
+              results.push({ success: true, product });
+            }
+          } catch (error) {
+            console.error(`Failed to update product ${productId}:`, error);
+            results.push({ success: false, error: error.message });
+          }
+        }
+
+        if (successCount > 0) {
+          showAlert(`${successCount} ürün başarıyla güncellendi`, "success");
+          return results;
+        } else {
+          throw new Error("No products were updated successfully");
         }
       } catch (error) {
         handleError(error, " - bulkUpdateProducts");
@@ -291,7 +377,7 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
         updateState({ loading: false });
       }
     },
-    [createAPICall, updateState, showAlert, handleError]
+    [createAPICall, updateState, showAlert, handleError, updateProductInternal]
   );
 
   const bulkDeleteProducts = useCallback(
@@ -300,9 +386,9 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
         updateState({ loading: true });
 
         const data = await createAPICall(
-          `${API_BASE_URL}/products/bulk-delete`,
+          `${API_BASE_URL}/products/bulk/delete`,
           {
-            method: "DELETE",
+            method: "POST",
             body: JSON.stringify({ productIds }),
           },
           "bulkDeleteProducts"
@@ -427,6 +513,54 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
     [updateState, showAlert, handleError]
   );
 
+  // Fetch main products with enhanced features
+  const fetchMainProducts = useCallback(
+    async (params = {}) => {
+      try {
+        updateState({ loading: true });
+
+        const queryParams = new URLSearchParams({
+          page: params.page || 1,
+          limit: params.limit || 20,
+          sortField: params.sortField || "updatedAt",
+          sortOrder: params.sortOrder || "desc",
+          ...params.filters,
+        });
+
+        // Only add search parameter if it has a value
+        if (params.search && params.search.trim() !== "") {
+          queryParams.set("search", params.search.trim());
+        }
+
+        console.log(
+          "URL:",
+          `${API_BASE_URL}/products/main-products?${queryParams.toString()}`
+        );
+
+        const data = await createAPICall(
+          `${API_BASE_URL}/products/main-products?${queryParams.toString()}`,
+          {},
+          "fetchMainProducts"
+        );
+
+        if (data && data.success) {
+          const responseData = data.data || {};
+          updateState({
+            products: responseData.products || [],
+            totalItems: responseData.pagination?.totalItems || 0,
+            totalPages: responseData.pagination?.totalPages || 1,
+            currentPage: responseData.pagination?.currentPage || 1,
+            loading: false,
+          });
+        }
+      } catch (error) {
+        handleError(error, " - fetchMainProducts");
+        updateState({ loading: false, products: [] });
+      }
+    },
+    [createAPICall, updateState, handleError]
+  );
+
   // Cleanup function
   const cleanup = useCallback(() => {
     // Clear any pending debounce timeouts
@@ -445,6 +579,7 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
 
   return {
     fetchProducts,
+    fetchMainProducts,
     fetchProductStats,
     createProduct,
     updateProduct,

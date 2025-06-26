@@ -9,7 +9,6 @@ import {
   TrendingDown,
   Download,
   Upload,
-  Edit,
 } from "lucide-react";
 
 // Context and hooks
@@ -18,13 +17,16 @@ import { useProductState } from "./hooks/useProductState";
 import { useProductAPI } from "./hooks/useProductAPI";
 import { useProductPerformance } from "./hooks/useProductPerformance";
 
+// Services
+// import variantDetectionAPI from "../../services/variantDetectionAPI"; // Removed: variant detection no longer supported
+
 // UI Components
 import { Button, Modal } from "../ui";
 import ProductDisplay from "./components/ProductDisplay";
 import { ImagePreviewModal } from "./components/ProductModals";
 import EnhancedProductAnalytics from "./components/ProductAnalyticsFixed";
 import BulkEditModal from "./components/BulkEditModal";
-import AdvancedSearchPanel from "./components/AdvancedSearchPanel";
+import SearchPanel from "./components/SearchPanel";
 import ProductManagementErrorBoundary, {
   ErrorDisplay,
   useErrorHandler,
@@ -252,7 +254,7 @@ const ProductManagement = () => {
 
   // Performance optimizations
   const { debouncedSearch, handleSelectProduct, handleSelectAll, batchUpdate } =
-    useProductPerformance(state, actions.updateMultiple, showAlert);
+    useProductPerformance(state, actions, showAlert);
 
   // Memoized values
   const statusCounts = useMemo(() => selectors.getStatusCounts(), [selectors]);
@@ -298,9 +300,7 @@ const ProductManagement = () => {
         search: state.searchValue,
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  // Note: fetchProducts is intentionally excluded from dependencies to prevent infinite re-renders
-  // The function is stable due to useCallback in useProductAPI
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     state.currentPage,
     state.itemsPerPage,
@@ -407,9 +407,9 @@ const ProductManagement = () => {
 
   const handleViewProduct = useCallback(
     (product) => {
-      actions.setModals({ detailsModal: { open: true, product } });
+      navigate(`/products/${product.id}`);
     },
-    [actions]
+    [navigate]
   );
 
   const handleImageClick = useCallback(
@@ -630,6 +630,15 @@ const ProductManagement = () => {
         case "low_stock":
           newFilters.stockStatus = "low_stock";
           break;
+        case "in_stock":
+          newFilters.stockStatus = "in_stock";
+          break;
+        case "pasif":
+          newFilters.stockStatus = "pasif";
+          break;
+        case "aktif":
+          newFilters.stockStatus = "aktif";
+          break;
         default:
           // 'all' tab doesn't add filters
           break;
@@ -841,18 +850,20 @@ const ProductManagement = () => {
           {/* Search and Filters Section */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
             <div className="p-4">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                <div className="flex-1 mr-4">
-                  <AdvancedSearchPanel
-                    searchValue={state.searchValue}
-                    filters={state.filters}
-                    onFilterChange={handleFilterChange}
-                    onClearFilters={handleClearFilters}
-                    categories={CATEGORIES}
-                    onSearch={handleSearch}
-                  />
-                </div>
+              {/* Search Bar - Full Width */}
+              <div className="w-full mb-4">
+                <SearchPanel
+                  searchValue={state.searchValue}
+                  filters={state.filters}
+                  onFilterChange={handleFilterChange}
+                  onClearFilters={handleClearFilters}
+                  categories={CATEGORIES}
+                  onSearch={handleSearch}
+                />
+              </div>
 
+              {/* Stats Row */}
+              <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-500 dark:text-gray-400">
                     {state?.products?.length || 0} / {state.totalItems} ürün
@@ -861,22 +872,6 @@ const ProductManagement = () => {
                     <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                       {activeFiltersCount} filtre aktif
                     </span>
-                  )}
-                  {state.selectedProducts.length > 0 && (
-                    <Button
-                      onClick={() =>
-                        actions.setModals({ showBulkEditModal: true })
-                      }
-                      variant="primary"
-                      size="sm"
-                      className="flex items-center space-x-2"
-                      aria-label={`${state.selectedProducts.length} ürünü toplu düzenle`}
-                    >
-                      <Edit className="h-4 w-4" />
-                      <span>
-                        Toplu Düzenle ({state.selectedProducts.length})
-                      </span>
-                    </Button>
                   )}
                 </div>
               </div>
@@ -1081,66 +1076,103 @@ const ProductManagement = () => {
             try {
               actions.setLoading(true);
 
-              // Process bulk updates
-              await Promise.all(
-                selectedProducts.map((id) => {
-                  const data = {};
+              // Prepare bulk update data
+              const bulkData = {};
 
-                  // Handle price updates
-                  if (updateData.price) {
-                    if (updateData.price.operation === "set") {
-                      data.price = updateData.price.value;
+              // Handle price updates
+              if (updateData.price) {
+                if (updateData.price.operation === "set") {
+                  bulkData.price = updateData.price.value;
+                } else {
+                  // For percentage updates, we need to process each product individually
+                  // since prices may differ between products
+                  const updates = selectedProducts.map((id) => {
+                    const product = state?.products?.find((p) => p.id === id);
+                    const currentPrice = product?.price || 0;
+                    const percentage = updateData.price.value / 100;
+
+                    if (updateData.price.operation === "increase") {
+                      return { id, price: currentPrice * (1 + percentage) };
                     } else {
-                      const product = state?.products?.find((p) => p.id === id);
-                      const currentPrice = product?.price || 0;
-                      const percentage = updateData.price.value / 100;
-
-                      if (updateData.price.operation === "increase") {
-                        data.price = currentPrice * (1 + percentage);
-                      } else {
-                        data.price = currentPrice * (1 - percentage);
-                      }
+                      return { id, price: currentPrice * (1 - percentage) };
                     }
+                  });
+
+                  // Process individual price updates
+                  for (const update of updates) {
+                    await bulkUpdateProducts([update.id], {
+                      price: update.price,
+                    });
                   }
 
-                  // Handle status updates
-                  if (updateData.status) {
-                    data.status = updateData.status;
-                  }
+                  // Clear selected products after successful update
+                  actions.setSelectedProducts([]);
+                  await fetchProducts();
+                  await fetchProductStats().then((stats) =>
+                    actions.setProductStats(stats)
+                  );
+                  return;
+                }
+              }
 
-                  // Handle category updates
-                  if (updateData.category) {
-                    data.category = updateData.category;
-                  }
+              // Handle status updates
+              if (updateData.status) {
+                bulkData.status = updateData.status;
+              }
 
-                  // Handle stock updates
-                  if (updateData.stock) {
-                    if (updateData.stock.operation === "set") {
-                      data.stockQuantity = updateData.stock.value;
+              // Handle category updates
+              if (updateData.category) {
+                bulkData.category = updateData.category;
+              }
+
+              // Handle stock updates
+              if (updateData.stock) {
+                if (updateData.stock.operation === "set") {
+                  bulkData.stockQuantity = updateData.stock.value;
+                } else {
+                  // For relative stock updates, we need to process each product individually
+                  const updates = selectedProducts.map((id) => {
+                    const product = state?.products?.find((p) => p.id === id);
+                    const currentStock = product?.stockQuantity || 0;
+
+                    if (updateData.stock.operation === "increase") {
+                      return {
+                        id,
+                        stockQuantity: currentStock + updateData.stock.value,
+                      };
                     } else {
-                      const product = state?.products?.find((p) => p.id === id);
-                      const currentStock = product?.stockQuantity || 0;
-
-                      if (updateData.stock.operation === "increase") {
-                        data.stockQuantity =
-                          currentStock + updateData.stock.value;
-                      } else {
-                        data.stockQuantity = Math.max(
+                      return {
+                        id,
+                        stockQuantity: Math.max(
                           0,
                           currentStock - updateData.stock.value
-                        );
-                      }
+                        ),
+                      };
                     }
+                  });
+
+                  // Process individual stock updates
+                  for (const update of updates) {
+                    await bulkUpdateProducts([update.id], {
+                      stockQuantity: update.stockQuantity,
+                    });
                   }
 
-                  return updateProduct(id, data);
-                })
-              );
+                  // Clear selected products after successful update
+                  actions.setSelectedProducts([]);
+                  await fetchProducts();
+                  await fetchProductStats().then((stats) =>
+                    actions.setProductStats(stats)
+                  );
+                  return;
+                }
+              }
 
-              showAlert(
-                `${selectedProducts.length} ürün başarıyla güncellendi`,
-                "success"
-              );
+              // Use the proper bulk update function
+              await bulkUpdateProducts(selectedProducts, bulkData);
+
+              // Clear selected products after successful update
+              actions.setSelectedProducts([]);
               await fetchProducts();
               await fetchProductStats().then((stats) =>
                 actions.setProductStats(stats)

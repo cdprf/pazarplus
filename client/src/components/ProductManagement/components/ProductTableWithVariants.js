@@ -70,6 +70,30 @@ const calculateCompletionScore = (product) => {
   return Math.round((filledFields / fields.length) * 100);
 };
 
+// Helper function to get variant badge info
+const getVariantBadgeInfo = (product) => {
+  if (product.isVariant) {
+    return {
+      show: true,
+      variant: "info",
+      text: `Variant: ${
+        product.variantValue || product.variantType || "Unknown"
+      }`,
+      icon: null,
+      confidence: product.variantDetectionConfidence,
+    };
+  } else if (product.isMainProduct) {
+    return {
+      show: true,
+      variant: "primary",
+      text: "Main Product",
+      icon: null,
+      confidence: product.variantDetectionConfidence,
+    };
+  }
+  return { show: false };
+};
+
 const ProductTable = ({
   products,
   onView,
@@ -86,6 +110,7 @@ const ProductTable = ({
   showMoreMenu,
   onToggleMoreMenu,
   onInlineEdit,
+  onRemoveVariantStatus,
   tableSettings = null,
 }) => {
   const [expandedProducts, setExpandedProducts] = useState(new Set());
@@ -122,6 +147,17 @@ const ProductTable = ({
 
   const handleInlineEditCancel = () => {
     setEditingCell(null);
+  };
+
+  // Handle variant status removal
+  const handleRemoveVariantStatus = async (productId) => {
+    if (onRemoveVariantStatus) {
+      try {
+        await onRemoveVariantStatus(productId);
+      } catch (error) {
+        console.error("Failed to remove variant status:", error);
+      }
+    }
   };
 
   // Handle bulk selection of variants
@@ -180,8 +216,10 @@ const ProductTable = ({
 
     return (
       <th
-        className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 ${
-          tableSettings?.stickyHeaders ? "sticky top-0 bg-gray-50 dark:bg-gray-800 z-10" : ""
+        className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 ${
+          tableSettings?.stickyHeaders
+            ? "sticky top-0 bg-gray-50 dark:bg-gray-800 z-10"
+            : ""
         }`}
         onClick={() => handleSort(field)}
       >
@@ -214,7 +252,8 @@ const ProductTable = ({
       return "";
     };
 
-    const images = product.images && product.images.length > 0 ? product.images : [];
+    const images =
+      product.images && product.images.length > 0 ? product.images : [];
 
     return (
       <td
@@ -267,7 +306,39 @@ const ProductTable = ({
               </Tooltip>
             </div>
 
-            <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+            {/* Variant Status Badges */}
+            {!isVariant && (product.isVariant || product.isMainProduct) && (
+              <div className="flex items-center space-x-2 mb-2">
+                {(() => {
+                  const badgeInfo = getVariantBadgeInfo(product);
+                  return (
+                    badgeInfo.show && (
+                      <div className="flex items-center space-x-1">
+                        <Badge variant={badgeInfo.variant} size="xs">
+                          {badgeInfo.text}
+                        </Badge>
+                        {badgeInfo.confidence && (
+                          <span className="text-xs text-gray-400">
+                            ({Math.round(badgeInfo.confidence * 100)}%)
+                          </span>
+                        )}
+                        <Button
+                          onClick={() => handleRemoveVariantStatus(product.id)}
+                          variant="ghost"
+                          size="sm"
+                          className="h-4 w-4 p-0 text-gray-400 hover:text-red-500"
+                          title="Remove variant status"
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    )
+                  );
+                })()}
+              </div>
+            )}
+
+            <div className="space-y-1 text-xs text-gray-500 dark:text-gray-400">
               <div className="flex items-center space-x-2">
                 <span>Stok Kodu:</span>
                 <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">
@@ -564,7 +635,7 @@ const ProductTable = ({
                   variant="ghost"
                   size="sm"
                   icon={Eye}
-                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:text-gray-500"
+                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
                 />
                 <Button
                   onClick={() => onEdit?.(product)}
@@ -586,7 +657,7 @@ const ProductTable = ({
                     variant="ghost"
                     size="sm"
                     icon={MoreVertical}
-                    className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:text-gray-500"
+                    className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
                   />
                   {showMoreMenu === product.id && (
                     <div className="absolute right-0 top-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-20 min-w-48">
@@ -712,7 +783,7 @@ const ProductTable = ({
                       variant="ghost"
                       size="sm"
                       icon={Eye}
-                      className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:text-gray-500"
+                      className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
                     />
                     <Button
                       onClick={() => onEdit?.(variant)}
@@ -729,7 +800,7 @@ const ProductTable = ({
                         variant="ghost"
                         size="sm"
                         icon={MoreVertical}
-                        className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:text-gray-500"
+                        className="text-gray-400 hover:text-gray-600 dark:text-gray-500"
                       />
                       {showMoreMenu === `variant-${variant.id}` && (
                         <div className="absolute right-0 top-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-20 min-w-48">
@@ -832,7 +903,7 @@ const ProductTable = ({
             {/* Actions Header */}
             {isColumnVisible("actions") && (
               <th
-                className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 dark:bg-gray-800 z-10`}
+                className={`px-6 ${rowHeightClass} text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky right-0 bg-gray-50 dark:bg-gray-800 z-10`}
               >
                 İşlemler
               </th>

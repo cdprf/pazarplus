@@ -334,4 +334,4 @@ class MediaUploadService {
   }
 }
 
-module.exports = new MediaUploadService();
+module.exports = MediaUploadService;

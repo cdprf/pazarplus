@@ -31,6 +31,9 @@ const initialState = {
     rejected: 0,
     outOfStock: 0,
     lowStock: 0,
+    inStock: 0,
+    pasif: 0,
+    aktif: 0,
   },
 
   // Loading states
@@ -340,8 +343,11 @@ export const useProductState = () => {
         draft: stats?.draft || 0,
         pending: stats?.pending || 0,
         rejected: stats?.rejected || 0,
-        outOfStock: stats?.outOfStock || 0,
-        lowStock: stats?.lowStock || 0,
+        out_of_stock: stats?.outOfStock || 0,
+        low_stock: stats?.lowStock || 0,
+        in_stock: stats?.inStock || 0,
+        pasif: stats?.pasif || 0,
+        aktif: stats?.aktif || 0,
       };
     }, [state?.allProductsStats]),
   };

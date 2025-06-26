@@ -1461,7 +1461,7 @@ class HepsiburadaService extends BasePlatformService {
             try {
               await existingOrder.update({
                 status: this.mapOrderStatus(
-                  order.status || (order.items && order.items[0]?.status)
+                  order.status || (order.items && order.items[0]?.status) || order.details.items[0].status
                 ),
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date(),

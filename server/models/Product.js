@@ -147,6 +147,69 @@ Product.init(
       defaultValue: [],
       comment: "Variant attribute definitions (color, size, etc.)",
     },
+    sourcePlatform: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: "Original platform this product was imported from",
+    },
+    // Variant Detection Fields
+    isVariant: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: "Whether this product is a variant of another product",
+    },
+    isMainProduct: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: "Whether this product is a main product with variants",
+    },
+    variantGroupId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      comment: "ID linking variants to their group",
+    },
+    variantType: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: "Type of variant (color, size, style, etc.)",
+    },
+    variantValue: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      comment: "Value of the variant (red, large, premium, etc.)",
+    },
+    parentProductId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "products",
+        key: "id",
+      },
+      comment: "Parent product ID if this is a variant",
+    },
+    variantDetectionConfidence: {
+      type: DataTypes.DECIMAL(3, 2),
+      allowNull: true,
+      comment: "Confidence score for variant detection (0.00-1.00)",
+    },
+    variantDetectionSource: {
+      type: DataTypes.ENUM(
+        "auto",
+        "manual",
+        "platform",
+        "sku_analysis",
+        "text_analysis"
+      ),
+      allowNull: true,
+      comment: "Source of variant detection",
+    },
+    lastVariantDetectionAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: "Last time variant detection was run on this product",
+    },
   },
   {
     sequelize,
@@ -172,6 +235,18 @@ Product.init(
       },
       {
         fields: ["barcode"],
+      },
+      {
+        fields: ["isVariant"],
+      },
+      {
+        fields: ["isMainProduct"],
+      },
+      {
+        fields: ["variantGroupId"],
+      },
+      {
+        fields: ["parentProductId"],
       },
     ],
     // hooks: {

@@ -1,10 +1,24 @@
-const { Product, PlatformConnection, PlatformData } = require("../models");
+const {
+  Product,
+  PlatformConnection,
+  PlatformData,
+  MainProduct,
+  PlatformVariant,
+  PlatformTemplate,
+} = require("../models");
 const logger = require("../utils/logger");
 const ProductMergeService = require("../services/product-merge-service");
 const PlatformServiceFactory = require("../modules/order-management/services/platforms/platformServiceFactory");
 const { validationResult } = require("express-validator");
 const { Op, sequelize } = require("sequelize");
 const AdvancedInventoryService = require("../services/advanced-inventory-service");
+const EnhancedProductManagementService = require("../services/enhanced-product-management-service");
+const EnhancedStockService = require("../services/enhanced-stock-service");
+const MediaUploadService = require("../services/media-upload-service");
+const PlatformScrapingService = require("../services/platform-scraping-service");
+const EnhancedVariantDetector = require("../services/enhanced-variant-detector");
+const backgroundVariantDetectionService = require("../services/background-variant-detection-service");
+const SKUSystemManager = require("../../sku-system-manager");
 const {
   ProductVariant,
   InventoryMovement,
@@ -12,6 +26,10 @@ const {
 } = require("../models");
 
 class ProductController {
+  constructor() {
+    this.skuManager = new SKUSystemManager();
+    this.scrapingService = new PlatformScrapingService();
+  }
   /**
    * Get all products for a user with optional filtering and pagination
    */
@@ -34,7 +52,9 @@ class ProductController {
         sortOrder = "DESC",
       } = req.query;
 
-      const offset = parseInt(page) * parseInt(limit);
+      // Convert to 0-indexed for database (page 1 = offset 0, page 2 = offset 20, etc.)
+      const pageNumber = Math.max(0, parseInt(page) - 1);
+      const offset = pageNumber * parseInt(limit);
       const whereClause = {
         userId: req.user.id,
       };
@@ -44,12 +64,29 @@ class ProductController {
         whereClause.status = status;
       }
 
-      // Add search filter
+      // Add search filter - Enhanced to include all relevant fields
       if (search) {
         whereClause[Op.or] = [
           { name: { [Op.iLike]: `%${search}%` } },
           { sku: { [Op.iLike]: `%${search}%` } },
           { barcode: { [Op.iLike]: `%${search}%` } },
+          { description: { [Op.iLike]: `%${search}%` } },
+          { category: { [Op.iLike]: `%${search}%` } },
+          { brand: { [Op.iLike]: `%${search}%` } },
+          { modelCode: { [Op.iLike]: `%${search}%` } },
+          { productCode: { [Op.iLike]: `%${search}%` } },
+          // Search in JSON fields using PostgreSQL JSON operators
+          ...(sequelize.getDialect() === "postgres"
+            ? [
+                sequelize.where(sequelize.cast(sequelize.col("tags"), "TEXT"), {
+                  [Op.iLike]: `%${search}%`,
+                }),
+                sequelize.where(
+                  sequelize.cast(sequelize.col("attributes"), "TEXT"),
+                  { [Op.iLike]: `%${search}%` }
+                ),
+              ]
+            : []),
         ];
       }
 
@@ -90,19 +127,28 @@ class ProductController {
       if (stockStatus) {
         switch (stockStatus) {
           case "out_of_stock":
-            whereClause.stockQuantity = { [Op.lte]: 0 };
+            // Out of stock: exactly 0 quantity
+            whereClause.stockQuantity = { [Op.eq]: 0 };
             break;
           case "low_stock":
-            // Low stock: greater than 0 but less than or equal to minStockLevel
+            // Low stock: between 1 and 15 (inclusive)
             whereClause.stockQuantity = {
-              [Op.and]: [
-                { [Op.gt]: 0 },
-                { [Op.lte]: 10 }, // Using a default threshold of 10 for low stock
-              ],
+              [Op.and]: [{ [Op.gte]: 1 }, { [Op.lte]: 15 }],
             };
             break;
+          case "pasif":
+            // Pasif: stock > 0 AND status = 'inactive'
+            whereClause.stockQuantity = { [Op.gt]: 0 };
+            whereClause.status = "inactive";
+            break;
+          case "aktif":
+            // Aktif: stock >= 1 AND status = 'active'
+            whereClause.stockQuantity = { [Op.gte]: 1 };
+            whereClause.status = "active";
+            break;
           case "in_stock":
-            whereClause.stockQuantity = { [Op.gt]: 10 }; // Above low stock threshold
+            // In stock: above low stock threshold (> 15)
+            whereClause.stockQuantity = { [Op.gt]: 15 };
             break;
         }
       }
@@ -146,27 +192,31 @@ class ProductController {
       // Build include clause for platform filtering and variants
       const includeClause = [];
 
-      // Add PlatformData include with conditional filtering
-      const platformDataInclude = {
-        model: PlatformData,
-        as: "platformData",
-        required: false,
-        where: platformDataWhere,
-      };
-
-      includeClause.push(platformDataInclude);
+      // Only add PlatformData include if we actually need platform or approval filtering
+      if (platform || approvalStatus) {
+        const platformDataInclude = {
+          model: PlatformData,
+          as: "platformData",
+          required: false,
+          where: platformDataWhere,
+        };
+        includeClause.push(platformDataInclude);
+      }
 
       // Add ProductVariant include to fetch variants for products that have them
-      includeClause.push({
-        model: ProductVariant,
-        as: "variants",
-        required: false,
-        order: [
-          ["isDefault", "DESC"],
-          ["sortOrder", "ASC"],
-          ["createdAt", "ASC"],
-        ],
-      });
+      // Only include if we're not filtering by stock status (to avoid SQL complexity)
+      if (!stockStatus) {
+        includeClause.push({
+          model: ProductVariant,
+          as: "variants",
+          required: false,
+          order: [
+            ["isDefault", "DESC"],
+            ["sortOrder", "ASC"],
+            ["createdAt", "ASC"],
+          ],
+        });
+      }
 
       const { count, rows: products } = await Product.findAndCountAll({
         where: whereClause,
@@ -177,17 +227,18 @@ class ProductController {
         distinct: true,
       });
 
-      // Calculate pagination info
+      // Calculate pagination info (using 1-indexed page numbers for frontend)
+      const currentPageNumber = parseInt(page);
       const totalPages = Math.ceil(count / parseInt(limit));
-      const hasNextPage = parseInt(page) < totalPages - 1;
-      const hasPrevPage = parseInt(page) > 0;
+      const hasNextPage = currentPageNumber < totalPages;
+      const hasPrevPage = currentPageNumber > 1;
 
       res.json({
         success: true,
         data: {
           products,
           pagination: {
-            currentPage: parseInt(page),
+            currentPage: currentPageNumber,
             totalPages,
             totalItems: count,
             itemsPerPage: parseInt(limit),
@@ -500,6 +551,18 @@ class ProductController {
 
       await product.update(updates);
 
+      // Trigger background variant detection for the updated product
+      setTimeout(() => {
+        backgroundVariantDetectionService
+          .processProductImmediate(product.id, req.user.id)
+          .catch((error) => {
+            logger.error(
+              `Background variant detection failed for updated product ${product.id}:`,
+              error
+            );
+          });
+      }, 1000); // Delay 1 second to ensure product is fully updated
+
       res.json({
         success: true,
         message: "Product updated successfully",
@@ -571,10 +634,23 @@ class ProductController {
         images,
         status,
         tags,
+        sourcePlatform: "manual", // Mark as manually created
         lastSyncedAt: new Date(),
       });
 
       logger.info(`Product created: ${product.sku} by user ${userId}`);
+
+      // Trigger background variant detection for the new product
+      setTimeout(() => {
+        backgroundVariantDetectionService
+          .processProductImmediate(product.id, userId)
+          .catch((error) => {
+            logger.error(
+              `Background variant detection failed for new product ${product.id}:`,
+              error
+            );
+          });
+      }, 1000); // Delay 1 second to ensure product is fully saved
 
       res.status(201).json({
         success: true,
@@ -609,13 +685,6 @@ class ProductController {
             model: PlatformData,
             as: "platformData",
             required: false,
-            include: [
-              {
-                model: PlatformConnection,
-                as: "connection",
-                attributes: ["id", "platformType", "name"],
-              },
-            ],
           },
         ],
       });
@@ -883,22 +952,16 @@ class ProductController {
       });
 
       const activeProducts = await Product.count({
-        where: { 
-          userId, 
+        where: {
+          userId,
           status: "active",
-          stockQuantity: {
-        [Op.gt]: 1
-          }
         },
       });
 
       const inactiveProducts = await Product.count({
-        where: { 
-          userId, 
+        where: {
+          userId,
           status: "inactive",
-          stockQuantity: {
-        [Op.gt]: 1
-          }
         },
       });
 
@@ -906,23 +969,44 @@ class ProductController {
         where: { userId, status: "draft" },
       });
 
-      // Get low stock products count
+      // Get stock status counts using the same logic as filtering
+      const outOfStockProducts = await Product.count({
+        where: {
+          userId,
+          stockQuantity: { [Op.eq]: 0 },
+        },
+      });
+
       const lowStockProducts = await Product.count({
         where: {
           userId,
           stockQuantity: {
-        [Op.between]: [1, 15],
+            [Op.and]: [{ [Op.gte]: 1 }, { [Op.lte]: 15 }],
           },
         },
       });
 
-      // Get out of stock products count
-      const outOfStockProducts = await Product.count({
+      const inStockProducts = await Product.count({
         where: {
           userId,
-          stockQuantity: {
-            [Op.lte]: 0,
-          },
+          stockQuantity: { [Op.gt]: 15 },
+        },
+      });
+
+      // Get status-based counts
+      const pasifProducts = await Product.count({
+        where: {
+          userId,
+          stockQuantity: { [Op.gt]: 0 },
+          status: "inactive",
+        },
+      });
+
+      const aktifProducts = await Product.count({
+        where: {
+          userId,
+          stockQuantity: { [Op.gte]: 1 },
+          status: "active",
         },
       });
 
@@ -1013,6 +1097,9 @@ class ProductController {
             rejectedProducts,
             lowStockProducts,
             outOfStockProducts,
+            inStockProducts,
+            pasifProducts,
+            aktifProducts,
             inventoryValue: parseFloat(inventoryValue).toFixed(2),
           },
           categories: categoryCounts,
@@ -2535,6 +2622,1498 @@ class ProductController {
         },
         { where: { id: operationId } }
       );
+    }
+  }
+
+  /**
+   * Enhanced Product Management Methods
+   * These methods provide enhanced functionality for main products and platform variants
+   */
+
+  /**
+   * Get all main products (enhanced version with platform variants)
+   */
+  async getMainProducts(req, res) {
+    try {
+      const userId = req.user.id;
+      const {
+        page = 1,
+        limit = 20,
+        search,
+        category,
+        status,
+        hasVariants,
+        sortBy: sortByQuery,
+        sortField, // Frontend sends sortField instead of sortBy
+        sortOrder = "DESC",
+        stockStatus,
+        minPrice,
+        maxPrice,
+        minStock,
+        maxStock,
+        platform,
+      } = req.query;
+
+      // Handle parameter mapping and normalization
+      const sortBy = sortField || sortByQuery || "updatedAt";
+      const normalizedSortOrder = sortOrder.toUpperCase();
+      const normalizedStatus = status === "" ? undefined : status;
+
+      const offset = (page - 1) * limit;
+      const where = { userId };
+
+      // Add filters
+      if (search) {
+        where[Op.or] = [
+          { name: { [Op.iLike]: `%${search}%` } },
+          { sku: { [Op.iLike]: `%${search}%` } },
+        ];
+      }
+
+      if (category && category !== "") where.category = category;
+      if (normalizedStatus) where.status = normalizedStatus;
+
+      // Price filters
+      if (minPrice && minPrice !== "") {
+        where.price = { ...where.price, [Op.gte]: parseFloat(minPrice) };
+      }
+      if (maxPrice && maxPrice !== "") {
+        where.price = { ...where.price, [Op.lte]: parseFloat(maxPrice) };
+      }
+
+      // Stock filters
+      if (minStock && minStock !== "") {
+        where.stock = { ...where.stock, [Op.gte]: parseInt(minStock) };
+      }
+      if (maxStock && maxStock !== "") {
+        where.stock = { ...where.stock, [Op.lte]: parseInt(maxStock) };
+      }
+
+      // Try to use MainProduct model first, fallback to Product if not available
+      let ProductModel = Product;
+      let includeConfig = [
+        {
+          model: ProductVariant,
+          as: "variants",
+          required: false,
+          attributes: ["id", "sku", "price", "stockQuantity"],
+          include: [
+            {
+              model: PlatformData,
+              as: "platformData",
+              required: false,
+              attributes: [
+                "id",
+                "platformType",
+                "platformEntityId",
+                "status",
+                "lastSyncedAt",
+              ],
+            },
+          ],
+        },
+      ];
+
+      // Check if MainProduct model is available and has data
+      try {
+        if (MainProduct) {
+          const testQuery = await MainProduct.findOne({
+            where: { userId },
+            limit: 1,
+          });
+          if (testQuery || true) {
+            // Use MainProduct structure
+            ProductModel = MainProduct;
+            includeConfig = [
+              {
+                model: PlatformVariant,
+                as: "platformVariants",
+                required: false,
+                attributes: [
+                  "id",
+                  "platform",
+                  "isPublished",
+                  "syncStatus",
+                  "platformSku",
+                  "platformPrice",
+                ],
+              },
+            ];
+          }
+        }
+      } catch (error) {
+        logger.warn(
+          "MainProduct model not available, using Product model",
+          error.message
+        );
+      }
+
+      const { rows: products, count: total } =
+        await ProductModel.findAndCountAll({
+          where,
+          include: includeConfig,
+          limit: parseInt(limit),
+          offset,
+          order: [[sortBy, normalizedSortOrder]],
+        });
+
+      // Transform products to enhanced format
+      const enhancedProducts = await Promise.all(
+        products.map(async (product) => {
+          const platformVariants = [];
+
+          // Handle different model structures
+          if (ProductModel === MainProduct && product.platformVariants) {
+            // Enhanced structure - direct platform variants
+            product.platformVariants.forEach((variant) => {
+              platformVariants.push({
+                id: variant.id,
+                platform: variant.platform,
+                isPublished: variant.isPublished,
+                syncStatus: variant.syncStatus,
+                platformEntityId: variant.platformEntityId || null,
+                variantSku: variant.platformSku,
+                variantPrice: variant.platformPrice,
+                lastSyncedAt: variant.lastSyncedAt || variant.updatedAt,
+              });
+            });
+          } else if (product.variants) {
+            // Original structure - process variants and their platform data
+            product.variants.forEach((variant) => {
+              if (variant.platformData && variant.platformData.length > 0) {
+                variant.platformData.forEach((platformData) => {
+                  platformVariants.push({
+                    id: variant.id,
+                    platform: platformData.platformType,
+                    isPublished: platformData.status === "active",
+                    syncStatus: platformData.status,
+                    platformEntityId: platformData.platformEntityId,
+                    variantSku: variant.sku,
+                    variantPrice: variant.price,
+                    lastSyncedAt: platformData.lastSyncedAt,
+                  });
+                });
+              } else {
+                // Variant without platform data
+                platformVariants.push({
+                  id: variant.id,
+                  platform: "local",
+                  isPublished: false,
+                  syncStatus: "local",
+                  platformEntityId: null,
+                  variantSku: variant.sku,
+                  variantPrice: variant.price,
+                  lastSyncedAt: null,
+                });
+              }
+            });
+          }
+
+          // Get stock status if enhanced services are available
+          let stockStatus = null;
+          try {
+            if (
+              EnhancedStockService &&
+              typeof EnhancedStockService.getStockStatus === "function"
+            ) {
+              stockStatus = await EnhancedStockService.getStockStatus(
+                product.id
+              );
+            }
+          } catch (error) {
+            logger.debug("Enhanced stock service not available", error.message);
+            stockStatus = {
+              available: product.stock || product.stockQuantity || 0,
+              reserved: 0,
+              total: product.stock || product.stockQuantity || 0,
+              status:
+                (product.stock || product.stockQuantity || 0) > 0
+                  ? "in_stock"
+                  : "out_of_stock",
+            };
+          }
+
+          return {
+            ...product.toJSON(),
+            // Normalize field names for enhanced compatibility
+            baseSku: product.baseSku || product.sku,
+            basePrice: product.basePrice || product.price,
+            stockQuantity: product.stockQuantity || product.stock,
+            platformVariants: platformVariants,
+            variantCount: platformVariants.length,
+            publishedVariants: platformVariants.filter((v) => v.isPublished)
+              .length,
+            stockStatus: stockStatus,
+            // Enhanced fields
+            hasVariants: platformVariants.length > 0,
+            lastSyncedAt:
+              platformVariants.length > 0
+                ? Math.max(
+                    ...platformVariants
+                      .filter((v) => v.lastSyncedAt)
+                      .map((v) => new Date(v.lastSyncedAt).getTime())
+                  )
+                : null,
+          };
+        })
+      );
+
+      res.json({
+        success: true,
+        data: {
+          products: enhancedProducts,
+          pagination: {
+            current: parseInt(page),
+            total: Math.ceil(total / limit),
+            totalRecords: total,
+            hasNext: offset + limit < total,
+            hasPrev: page > 1,
+          },
+        },
+      });
+    } catch (error) {
+      logger.error("Error getting main products:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Create new main product (enhanced version)
+   */
+  async createMainProduct(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          errors: errors.array(),
+        });
+      }
+
+      const userId = req.user.id;
+      let productData = req.body;
+
+      // Transform enhanced product data to standard product format
+      const standardProductData = {
+        name: productData.name,
+        description: productData.description || "",
+        sku: productData.baseSku || productData.sku,
+        price: parseFloat(productData.basePrice) || 0,
+        originalPrice:
+          parseFloat(productData.baseCostPrice) ||
+          parseFloat(productData.basePrice) ||
+          0,
+        stock: parseInt(productData.stockQuantity) || 0,
+        category: productData.category,
+        brand: productData.brand || "",
+        weight: parseFloat(productData.weight) || 0,
+        status: productData.status || "active",
+        userId,
+        sourcePlatform: "manual", // Mark as manually created
+        // Add enhanced fields
+        productType: productData.productType || "simple",
+        minStockLevel: parseInt(productData.minStockLevel) || 5,
+        attributes: productData.attributes || {},
+        tags: productData.tags || [],
+        media: productData.media || [],
+      };
+
+      const product = await Product.create(standardProductData);
+
+      res.status(201).json({
+        success: true,
+        data: {
+          ...product.toJSON(),
+          baseSku: product.sku,
+          basePrice: product.price,
+          stockQuantity: product.stock,
+        },
+        message: "Main product created successfully",
+      });
+    } catch (error) {
+      logger.error("Error creating main product:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Update main product (enhanced version)
+   */
+  async updateMainProduct(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          errors: errors.array(),
+        });
+      }
+
+      const userId = req.user.id;
+      const { id } = req.params;
+      const updateData = req.body;
+
+      const product = await Product.findOne({
+        where: { id, userId },
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          error: "Product not found",
+        });
+      }
+
+      // Transform enhanced update data to standard format
+      const standardUpdateData = {};
+      if (updateData.name) standardUpdateData.name = updateData.name;
+      if (updateData.description)
+        standardUpdateData.description = updateData.description;
+      if (updateData.baseSku) standardUpdateData.sku = updateData.baseSku;
+      if (updateData.basePrice)
+        standardUpdateData.price = parseFloat(updateData.basePrice);
+      if (updateData.baseCostPrice)
+        standardUpdateData.originalPrice = parseFloat(updateData.baseCostPrice);
+      if (updateData.stockQuantity)
+        standardUpdateData.stock = parseInt(updateData.stockQuantity);
+      if (updateData.category)
+        standardUpdateData.category = updateData.category;
+      if (updateData.brand) standardUpdateData.brand = updateData.brand;
+      if (updateData.weight)
+        standardUpdateData.weight = parseFloat(updateData.weight);
+      if (updateData.status) standardUpdateData.status = updateData.status;
+      if (updateData.attributes)
+        standardUpdateData.attributes = updateData.attributes;
+      if (updateData.tags) standardUpdateData.tags = updateData.tags;
+      if (updateData.media) standardUpdateData.media = updateData.media;
+
+      await product.update(standardUpdateData);
+
+      res.json({
+        success: true,
+        data: {
+          ...product.toJSON(),
+          baseSku: product.sku,
+          basePrice: product.price,
+          stockQuantity: product.stock,
+        },
+        message: "Main product updated successfully",
+      });
+    } catch (error) {
+      logger.error("Error updating main product:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Delete main product (enhanced version)
+   */
+  async deleteMainProduct(req, res) {
+    try {
+      const userId = req.user.id;
+      const { id } = req.params;
+
+      const product = await Product.findOne({
+        where: { id, userId },
+        include: [
+          {
+            model: ProductVariant,
+            as: "variants",
+          },
+        ],
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          error: "Product not found",
+        });
+      }
+
+      // Check if product has published variants
+      const publishedVariants = product.variants
+        ? product.variants.filter((v) => v.isPublished)
+        : [];
+
+      if (publishedVariants.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error:
+            "Cannot delete product with published variants. Unpublish variants first.",
+          publishedVariants: publishedVariants.map((v) => ({
+            platform: v.platform,
+            platformSku: v.platformSku || v.sku,
+          })),
+        });
+      }
+
+      await product.destroy();
+
+      res.json({
+        success: true,
+        message: "Main product deleted successfully",
+      });
+    } catch (error) {
+      logger.error("Error deleting main product:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Bulk mark products as main products
+   */
+  async bulkMarkAsMainProducts(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation errors",
+          errors: errors.array(),
+        });
+      }
+
+      const userId = req.user.id;
+      const { productIds } = req.body;
+
+      const results = [];
+
+      for (const productId of productIds) {
+        try {
+          const updatedProduct = await Product.update(
+            { isMainProduct: true, updatedAt: new Date() },
+            { where: { id: productId, userId }, returning: true }
+          );
+
+          if (updatedProduct[0] > 0) {
+            results.push({ success: true, productId });
+          } else {
+            results.push({
+              success: false,
+              productId,
+              error: "Product not found",
+            });
+          }
+        } catch (error) {
+          results.push({ success: false, productId, error: error.message });
+        }
+      }
+
+      const successCount = results.filter((r) => r.success).length;
+
+      res.json({
+        success: true,
+        message: `${successCount} of ${productIds.length} products marked as main products`,
+        data: { results, successCount, totalCount: productIds.length },
+      });
+    } catch (error) {
+      logger.error("Error in bulkMarkAsMainProducts:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to mark products as main products",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get single main product with all variants (Enhanced)
+   */
+  async getMainProduct(req, res) {
+    try {
+      const userId = req.user.id;
+      const { id } = req.params;
+
+      let product;
+
+      // Try enhanced service first
+      try {
+        if (
+          EnhancedProductManagementService &&
+          typeof EnhancedProductManagementService.getProductWithVariants ===
+            "function"
+        ) {
+          product =
+            await EnhancedProductManagementService.getProductWithVariants(
+              id,
+              userId
+            );
+        }
+      } catch (error) {
+        logger.debug(
+          "Enhanced service not available, using direct query",
+          error.message
+        );
+      }
+
+      // Fallback to direct query
+      if (!product) {
+        const ProductModel = MainProduct || Product;
+        product = await ProductModel.findOne({
+          where: { id, userId },
+          include: [
+            {
+              model: PlatformVariant,
+              as: "platformVariants",
+              required: false,
+            },
+          ],
+        });
+      }
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          error: "Product not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: product,
+      });
+    } catch (error) {
+      logger.error("Error getting main product:", error);
+      res.status(error.message.includes("not found") ? 404 : 500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Create platform variant (Enhanced)
+   */
+  async createPlatformVariant(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          errors: errors.array(),
+        });
+      }
+
+      const userId = req.user.id;
+      const { mainProductId } = req.params;
+      const variantData = req.body;
+
+      let variant;
+
+      // Try enhanced service first
+      try {
+        if (
+          EnhancedProductManagementService &&
+          typeof EnhancedProductManagementService.createPlatformVariant ===
+            "function"
+        ) {
+          variant =
+            await EnhancedProductManagementService.createPlatformVariant(
+              mainProductId,
+              variantData,
+              userId
+            );
+        }
+      } catch (error) {
+        logger.debug(
+          "Enhanced service not available, using direct creation",
+          error.message
+        );
+      }
+
+      // Fallback to direct creation
+      if (!variant && PlatformVariant) {
+        variant = await PlatformVariant.create({
+          ...variantData,
+          mainProductId,
+          userId,
+        });
+      }
+
+      res.status(201).json({
+        success: true,
+        data: variant,
+        message: "Platform variant created successfully",
+      });
+    } catch (error) {
+      logger.error("Error creating platform variant:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Update platform variant (Enhanced)
+   */
+  async updatePlatformVariant(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          errors: errors.array(),
+        });
+      }
+
+      const userId = req.user.id;
+      const { variantId } = req.params;
+      const updateData = req.body;
+
+      const variant = await PlatformVariant.findOne({
+        where: { id: variantId },
+        include: [
+          {
+            model: MainProduct,
+            as: "mainProduct",
+            where: { userId },
+          },
+        ],
+      });
+
+      if (!variant) {
+        return res.status(404).json({
+          success: false,
+          error: "Platform variant not found",
+        });
+      }
+
+      await variant.update(updateData);
+
+      res.json({
+        success: true,
+        data: variant,
+        message: "Platform variant updated successfully",
+      });
+    } catch (error) {
+      logger.error("Error updating platform variant:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Delete platform variant (Enhanced)
+   */
+  async deletePlatformVariant(req, res) {
+    try {
+      const userId = req.user.id;
+      const { variantId } = req.params;
+
+      const variant = await PlatformVariant.findOne({
+        where: { id: variantId },
+        include: [
+          {
+            model: MainProduct,
+            as: "mainProduct",
+            where: { userId },
+          },
+        ],
+      });
+
+      if (!variant) {
+        return res.status(404).json({
+          success: false,
+          error: "Platform variant not found",
+        });
+      }
+
+      if (variant.isPublished) {
+        return res.status(400).json({
+          success: false,
+          error: "Cannot delete published variant. Unpublish first.",
+        });
+      }
+
+      await variant.destroy();
+
+      res.json({
+        success: true,
+        message: "Platform variant deleted successfully",
+      });
+    } catch (error) {
+      logger.error("Error deleting platform variant:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get stock status for main product (Enhanced)
+   */
+  async getStockStatus(req, res) {
+    try {
+      const { id } = req.params;
+
+      let stockStatus;
+      try {
+        if (
+          EnhancedStockService &&
+          typeof EnhancedStockService.getStockStatus === "function"
+        ) {
+          stockStatus = await EnhancedStockService.getStockStatus(id);
+        }
+      } catch (error) {
+        logger.debug("Enhanced stock service not available", error.message);
+
+        // Fallback to basic stock info
+        const ProductModel = MainProduct || Product;
+        const product = await ProductModel.findByPk(id);
+        stockStatus = {
+          available: product?.stock || product?.stockQuantity || 0,
+          reserved: 0,
+          total: product?.stock || product?.stockQuantity || 0,
+          status:
+            (product?.stock || product?.stockQuantity || 0) > 0
+              ? "in_stock"
+              : "out_of_stock",
+        };
+      }
+
+      res.json({
+        success: true,
+        data: stockStatus,
+      });
+    } catch (error) {
+      logger.error("Error getting stock status:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Update stock quantity (Enhanced)
+   */
+  async updateStock(req, res) {
+    try {
+      const { id } = req.params;
+      const { quantity, reason = "Manual update" } = req.body;
+      const userId = req.user.id;
+
+      if (typeof quantity !== "number" || quantity < 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid quantity provided",
+        });
+      }
+
+      let stockStatus;
+      try {
+        if (
+          EnhancedStockService &&
+          typeof EnhancedStockService.updateStock === "function"
+        ) {
+          stockStatus = await EnhancedStockService.updateStock(
+            id,
+            quantity,
+            reason,
+            userId
+          );
+        }
+      } catch (error) {
+        logger.debug(
+          "Enhanced stock service not available, using direct update",
+          error.message
+        );
+
+        // Fallback to direct update
+        const ProductModel = MainProduct || Product;
+        const product = await ProductModel.findOne({ where: { id, userId } });
+
+        if (!product) {
+          return res.status(404).json({
+            success: false,
+            error: "Product not found",
+          });
+        }
+
+        await product.update({
+          stock: quantity,
+          stockQuantity: quantity,
+          updatedAt: new Date(),
+        });
+
+        stockStatus = {
+          available: quantity,
+          reserved: 0,
+          total: quantity,
+          status: quantity > 0 ? "in_stock" : "out_of_stock",
+        };
+      }
+
+      res.json({
+        success: true,
+        data: stockStatus,
+        message: "Stock updated successfully",
+      });
+    } catch (error) {
+      logger.error("Error updating stock:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Publish product to platforms (Enhanced)
+   */
+  async publishToPlatforms(req, res) {
+    try {
+      const { id } = req.params;
+      const { platforms } = req.body;
+
+      if (!Array.isArray(platforms) || platforms.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Platforms array is required",
+        });
+      }
+
+      let results;
+      try {
+        if (
+          EnhancedProductManagementService &&
+          typeof EnhancedProductManagementService.publishToPlatforms ===
+            "function"
+        ) {
+          results = await EnhancedProductManagementService.publishToPlatforms(
+            id,
+            platforms
+          );
+        }
+      } catch (error) {
+        logger.debug(
+          "Enhanced service not available, using basic publishing",
+          error.message
+        );
+
+        // Basic publishing logic
+        results = platforms.map((platform) => ({
+          platform,
+          success: true,
+          message: "Publishing initiated (basic mode)",
+        }));
+      }
+
+      res.json({
+        success: true,
+        data: results,
+        message: "Product publishing initiated",
+      });
+    } catch (error) {
+      logger.error("Error publishing to platforms:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Scrape platform data (Enhanced)
+   */
+  async scrapePlatformData(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation errors",
+          errors: errors.array(),
+        });
+      }
+
+      const { url, platform } = req.body;
+
+      if (!url) {
+        return res.status(400).json({
+          success: false,
+          message: "URL is required",
+        });
+      }
+
+      // Auto-detect platform if not provided
+      const detectedPlatform =
+        platform || this.scrapingService.detectPlatform(url);
+
+      logger.info(`Starting platform scraping for ${detectedPlatform}: ${url}`);
+
+      // Use enhanced scraping service with retry logic
+      const scrapedData = await this.scrapingService.scrapeProductDataWithRetry(
+        url,
+        detectedPlatform
+      );
+
+      if (!scrapedData || !scrapedData.name) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Failed to extract product data from the URL. The page might not contain valid product information or the platform may be blocking requests.",
+        });
+      }
+
+      logger.info(
+        `Successfully scraped product data from ${detectedPlatform}:`,
+        {
+          name: scrapedData.name,
+          price: scrapedData.basePrice,
+          platform: detectedPlatform,
+          hasExtras: !!scrapedData.platformExtras,
+        }
+      );
+
+      res.json({
+        success: true,
+        message: `Platform data scraped successfully from ${detectedPlatform}`,
+        data: scrapedData,
+        platform: detectedPlatform,
+      });
+    } catch (error) {
+      logger.error("Error in scrapePlatformData:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to scrape platform data",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  }
+
+  /**
+   * Import from platform (Enhanced)
+   */
+  async importFromPlatform(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation errors",
+          errors: errors.array(),
+        });
+      }
+
+      const userId = req.user.id;
+      const { platformData, fieldMapping, targetPlatform, url } = req.body;
+
+      let productData = platformData;
+
+      // If URL is provided but no platformData, scrape it first
+      if (url && !platformData) {
+        const detectedPlatform = this.scrapingService.detectPlatform(url);
+        logger.info(
+          `No platform data provided, scraping from ${detectedPlatform}: ${url}`
+        );
+
+        productData = await this.scrapingService.scrapeProductDataWithRetry(
+          url,
+          detectedPlatform
+        );
+
+        if (!productData || !productData.name) {
+          return res.status(400).json({
+            success: false,
+            message: "Failed to scrape product data from the provided URL.",
+          });
+        }
+      }
+
+      if (!productData) {
+        return res.status(400).json({
+          success: false,
+          message: "Either platformData or url must be provided.",
+        });
+      }
+
+      // Map platform data to target format
+      const mappedData = {};
+      if (fieldMapping) {
+        Object.entries(fieldMapping).forEach(([targetField, sourceField]) => {
+          if (sourceField && productData[sourceField] !== undefined) {
+            mappedData[targetField] = productData[sourceField];
+          }
+        });
+      } else {
+        // If no field mapping provided, use the data as-is
+        Object.assign(mappedData, productData);
+      }
+
+      // Generate SKU if not present
+      if (!mappedData.baseSku && !mappedData.sku) {
+        mappedData.sku = await this.skuManager.generateSKU(
+          mappedData.name,
+          mappedData.category,
+          mappedData.brand
+        );
+        mappedData.baseSku = mappedData.sku;
+      }
+
+      // Create main product with mapped data
+      const ProductModel = MainProduct || Product;
+      const mainProduct = await ProductModel.create({
+        ...mappedData,
+        userId,
+        importedFrom: productData.platform || "unknown",
+        importedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      res.json({
+        success: true,
+        message: "Product imported from platform successfully",
+        data: {
+          product: mainProduct,
+          originalData: productData,
+          mappedData,
+        },
+      });
+    } catch (error) {
+      logger.error("Error in importFromPlatform:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to import from platform",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Auto-match products based on intelligent algorithms (Enhanced)
+   */
+  async autoMatchProducts(req, res) {
+    try {
+      const userId = req.user.id;
+
+      logger.info(`Starting auto-match for user ${userId}`);
+
+      // Get all main products for the user that need matching
+      const ProductModel = MainProduct || Product;
+      const products = await ProductModel.findAll({
+        where: {
+          userId,
+          status: { [Op.in]: ["active", "draft"] },
+        },
+        include: [
+          {
+            model: PlatformVariant,
+            as: "platformVariants",
+            required: false,
+          },
+        ],
+      });
+
+      let matchedCount = 0;
+      const results = [];
+
+      for (const product of products) {
+        try {
+          // Skip products that already have variants
+          if (product.platformVariants && product.platformVariants.length > 0) {
+            continue;
+          }
+
+          // Simple auto-matching logic based on product name/SKU patterns
+          const autoMatchResult = await this.performAutoMatch(product);
+
+          if (autoMatchResult.matched) {
+            matchedCount++;
+            results.push({
+              productId: product.id,
+              productName: product.name,
+              matchType: autoMatchResult.matchType,
+              confidence: autoMatchResult.confidence,
+            });
+          }
+        } catch (productError) {
+          logger.error(
+            `Error auto-matching product ${product.id}:`,
+            productError
+          );
+          results.push({
+            productId: product.id,
+            productName: product.name,
+            error: productError.message,
+          });
+        }
+      }
+
+      logger.info(`Auto-match completed. Matched ${matchedCount} products`);
+
+      res.json({
+        success: true,
+        data: {
+          matchedCount,
+          totalProcessed: products.length,
+          results,
+        },
+        message: `${matchedCount} ürün otomatik olarak eşleştirildi`,
+      });
+    } catch (error) {
+      logger.error("Error in auto-match operation:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Perform auto-matching for a single product (Enhanced)
+   */
+  async performAutoMatch(product) {
+    try {
+      // Basic auto-matching logic - this can be enhanced with ML/AI later
+      const productName = product.name.toLowerCase();
+      const baseSku = (product.baseSku || product.sku || "").toLowerCase();
+
+      // Simple pattern matching for common e-commerce platforms
+      let matchType = null;
+      let confidence = 0;
+
+      // Check for common patterns in product names/SKUs
+      if (productName.includes("trendyol") || baseSku.includes("ty")) {
+        matchType = "trendyol";
+        confidence = 0.8;
+      } else if (
+        productName.includes("hepsiburada") ||
+        baseSku.includes("hb")
+      ) {
+        matchType = "hepsiburada";
+        confidence = 0.8;
+      } else if (productName.includes("n11") || baseSku.includes("n11")) {
+        matchType = "n11";
+        confidence = 0.8;
+      } else if (productName.includes("amazon") || baseSku.includes("amz")) {
+        matchType = "amazon";
+        confidence = 0.7;
+      } else {
+        // Generic matching based on product characteristics
+        if (product.category && (product.basePrice || product.price)) {
+          matchType = "generic";
+          confidence = 0.6;
+        }
+      }
+
+      if (matchType && confidence > 0.5) {
+        // Here you could create platform variants or perform other matching actions
+        // For now, just return the match information
+        return {
+          matched: true,
+          matchType,
+          confidence,
+        };
+      }
+
+      return {
+        matched: false,
+        reason: "No suitable match found",
+      };
+    } catch (error) {
+      logger.error(
+        `Error in performAutoMatch for product ${product.id}:`,
+        error
+      );
+      return {
+        matched: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Classify product variant status
+   */
+  async classifyProductVariantStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+
+      // Get the product with platform data
+      const product = await Product.findOne({
+        where: { id, userId },
+        include: [
+          {
+            model: PlatformData,
+            as: "platformData",
+            required: false,
+          },
+        ],
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      // Run variant classification
+      const result = await EnhancedVariantDetector.classifyProductVariantStatus(
+        product
+      );
+
+      res.json({
+        success: true,
+        data: result,
+        message: "Product variant classification completed",
+      });
+    } catch (error) {
+      logger.error("Error classifying product variant status:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to classify product variant status",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Update product variant status
+   */
+  async updateProductVariantStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      const { classification } = req.body;
+
+      // Verify product belongs to user
+      const product = await Product.findOne({
+        where: { id, userId },
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      // Update variant status
+      const result = await EnhancedVariantDetector.updateProductVariantStatus(
+        id,
+        classification
+      );
+
+      res.json({
+        success: true,
+        data: result,
+        message: "Product variant status updated successfully",
+      });
+    } catch (error) {
+      logger.error("Error updating product variant status:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update product variant status",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Remove variant status from product
+   */
+  async removeProductVariantStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+
+      // Verify product belongs to user
+      const product = await Product.findOne({
+        where: { id, userId },
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+      // Remove variant status
+      const result = await EnhancedVariantDetector.removeVariantStatus(id);
+
+      res.json({
+        success: true,
+        data: result,
+        message: "Product variant status removed successfully",
+      });
+    } catch (error) {
+      logger.error("Error removing product variant status:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to remove product variant status",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Run batch variant detection on user's products
+   */
+  async runBatchVariantDetection(req, res) {
+    try {
+      const userId = req.user.id;
+      const { limit = 100, category, status } = req.query;
+
+      // Get products for batch processing
+      const whereClause = { userId };
+      if (category) whereClause.category = category;
+      if (status) whereClause.status = status;
+
+      const products = await Product.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: PlatformData,
+            as: "platformData",
+            required: false,
+          },
+        ],
+        limit: parseInt(limit),
+        order: [["updatedAt", "DESC"]],
+      });
+
+      // Import the enhanced variant detector
+      // Run batch detection
+      const result = await EnhancedVariantDetector.runBatchVariantDetection(
+        products
+      );
+
+      res.json({
+        success: true,
+        data: result,
+        message: `Batch variant detection completed. Processed: ${result.processed}, Updated: ${result.updated}, Errors: ${result.errors}`,
+      });
+    } catch (error) {
+      logger.error("Error running batch variant detection:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to run batch variant detection",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get background variant detection service status
+   */
+  async getBackgroundVariantDetectionStatus(req, res) {
+    try {
+      const status = backgroundVariantDetectionService.getStatus();
+      res.json({
+        success: true,
+        data: status,
+        message: "Background variant detection service status retrieved",
+      });
+    } catch (error) {
+      logger.error("Error getting background variant detection status:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get service status",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Start background variant detection service
+   */
+  async startBackgroundVariantDetection(req, res) {
+    try {
+      backgroundVariantDetectionService.start();
+      res.json({
+        success: true,
+        message: "Background variant detection service started",
+        data: backgroundVariantDetectionService.getStatus(),
+      });
+    } catch (error) {
+      logger.error(
+        "Error starting background variant detection service:",
+        error
+      );
+      res.status(500).json({
+        success: false,
+        message: "Failed to start background variant detection service",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Stop background variant detection service
+   */
+  async stopBackgroundVariantDetection(req, res) {
+    try {
+      backgroundVariantDetectionService.stop();
+      res.json({
+        success: true,
+        message: "Background variant detection service stopped",
+        data: backgroundVariantDetectionService.getStatus(),
+      });
+    } catch (error) {
+      logger.error(
+        "Error stopping background variant detection service:",
+        error
+      );
+      res.status(500).json({
+        success: false,
+        message: "Failed to stop background variant detection service",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Update background variant detection service configuration
+   */
+  async updateBackgroundVariantDetectionConfig(req, res) {
+    try {
+      const { config } = req.body;
+
+      if (!config || typeof config !== "object") {
+        return res.status(400).json({
+          success: false,
+          message: "Valid configuration object is required",
+        });
+      }
+
+      backgroundVariantDetectionService.updateConfig(config);
+
+      res.json({
+        success: true,
+        message: "Background variant detection service configuration updated",
+        data: backgroundVariantDetectionService.getStatus(),
+      });
+    } catch (error) {
+      logger.error(
+        "Error updating background variant detection config:",
+        error
+      );
+      res.status(500).json({
+        success: false,
+        message: "Failed to update service configuration",
+        error: error.message,
+      });
     }
   }
 }

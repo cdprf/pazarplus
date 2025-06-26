@@ -603,6 +603,7 @@ class N11Service extends BasePlatformService {
             stockQuantity: parseInt(n11ProductData.stockQuantity || 0, 10),
             currency: "TRY",
             barcode: n11ProductData.barcode,
+            sourcePlatform: "n11",
             mainImageUrl:
               n11ProductData.images && n11ProductData.images.length > 0
                 ? n11ProductData.images[0]

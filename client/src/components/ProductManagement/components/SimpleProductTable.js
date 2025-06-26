@@ -11,9 +11,13 @@ import {
   Copy,
   ExternalLink,
   BarChart3,
+  Crown,
+  Layers,
+  AlertCircle,
 } from "lucide-react";
 import { Badge } from "../../ui/Badge";
 import { Button } from "../../ui/Button";
+import { PlatformIcons } from "../utils/constants";
 
 const SimpleProductTable = ({
   products = [],
@@ -24,6 +28,7 @@ const SimpleProductTable = ({
   onEdit,
   onDelete,
   onImageClick,
+  onProductNameClick,
   sortField,
   sortOrder,
   onSort,
@@ -32,6 +37,10 @@ const SimpleProductTable = ({
   onExportProduct,
   onViewAnalytics,
   onCopyLink,
+  // Variant Detection props
+  onRemoveVariantStatus,
+  onClassifyVariantStatus,
+  onBatchVariantDetection,
 }) => {
   const [openMenuId, setOpenMenuId] = useState(null);
 
@@ -53,6 +62,65 @@ const SimpleProductTable = ({
       pending: { variant: "default", text: "Beklemede" },
     };
     return statusConfig[status] || { variant: "secondary", text: status };
+  };
+
+  const getProductTypeBadge = (product) => {
+    // Determine product type based on product properties
+    if (product.isMainProduct) {
+      return {
+        variant: "primary",
+        text: "Ana Ürün",
+        icon: <Crown className="h-3 w-3" />,
+      };
+    } else if (product.parentId || product.variantOf) {
+      return {
+        variant: "secondary",
+        text: "Varyant",
+        icon: <Layers className="h-3 w-3" />,
+      };
+    } else {
+      return {
+        variant: "outline",
+        text: "Belirtilmemiş",
+        icon: <AlertCircle className="h-3 w-3" />,
+      };
+    }
+  };
+  const getPlatformBadges = (product) => {
+    const platforms = [];
+
+    // Check if product has platform data
+    if (product.platforms) {
+      Object.entries(product.platforms).forEach(([platform, data]) => {
+        if (data.enabled || data.isActive) {
+          platforms.push({
+            name: platform,
+            icon: PlatformIcons[platform] || PlatformIcons.local,
+            label: platform.charAt(0).toUpperCase() + platform.slice(1),
+          });
+        }
+      });
+    }
+
+    // If no platforms specified, check for source platform
+    if (platforms.length === 0 && product.source) {
+      platforms.push({
+        name: product.source,
+        icon: PlatformIcons[product.source] || PlatformIcons.local,
+        label: product.source.charAt(0).toUpperCase() + product.source.slice(1),
+      });
+    }
+
+    // Default to local if no platforms found
+    if (platforms.length === 0) {
+      platforms.push({
+        name: "local",
+        icon: PlatformIcons.local,
+        label: "Yerel",
+      });
+    }
+
+    return platforms;
   };
 
   const formatPrice = (price) => {
@@ -106,8 +174,23 @@ const SimpleProductTable = ({
             >
               <div className="flex items-center space-x-1">
                 <span>Ürün</span>
-                <ArrowUpDown className="h-4 w-4" />
+                <ArrowUpDown
+                  className={`h-4 w-4 ${
+                    sortField === "name" ? "text-blue-600" : ""
+                  }`}
+                />
+                {sortField === "name" && (
+                  <span className="text-xs text-blue-600">
+                    {sortOrder === "asc" ? "↑" : "↓"}
+                  </span>
+                )}
               </div>
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              Tür
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              Platform
             </th>
             <th
               className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
@@ -115,7 +198,16 @@ const SimpleProductTable = ({
             >
               <div className="flex items-center space-x-1">
                 <span>SKU</span>
-                <ArrowUpDown className="h-4 w-4" />
+                <ArrowUpDown
+                  className={`h-4 w-4 ${
+                    sortField === "sku" ? "text-blue-600" : ""
+                  }`}
+                />
+                {sortField === "sku" && (
+                  <span className="text-xs text-blue-600">
+                    {sortOrder === "asc" ? "↑" : "↓"}
+                  </span>
+                )}
               </div>
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -127,7 +219,16 @@ const SimpleProductTable = ({
             >
               <div className="flex items-center space-x-1">
                 <span>Fiyat</span>
-                <ArrowUpDown className="h-4 w-4" />
+                <ArrowUpDown
+                  className={`h-4 w-4 ${
+                    sortField === "price" ? "text-blue-600" : ""
+                  }`}
+                />
+                {sortField === "price" && (
+                  <span className="text-xs text-blue-600">
+                    {sortOrder === "asc" ? "↑" : "↓"}
+                  </span>
+                )}
               </div>
             </th>
             <th
@@ -136,7 +237,16 @@ const SimpleProductTable = ({
             >
               <div className="flex items-center space-x-1">
                 <span>Stok</span>
-                <ArrowUpDown className="h-4 w-4" />
+                <ArrowUpDown
+                  className={`h-4 w-4 ${
+                    sortField === "stockQuantity" ? "text-blue-600" : ""
+                  }`}
+                />
+                {sortField === "stockQuantity" && (
+                  <span className="text-xs text-blue-600">
+                    {sortOrder === "asc" ? "↑" : "↓"}
+                  </span>
+                )}
               </div>
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -189,10 +299,102 @@ const SimpleProductTable = ({
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
+                      <div
+                        className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+                        onClick={() => onProductNameClick?.(product)}
+                      >
                         {product.name}
                       </div>
+                      {/* Variant Status Badges */}
+                      {(product.isVariant || product.isMainProduct) && (
+                        <div className="flex items-center space-x-2 mt-1">
+                          {product.isVariant && (
+                            <div className="flex items-center space-x-1">
+                              <Badge variant="info" size="xs">
+                                Variant: {product.variantValue || product.variantType || 'Unknown'}
+                              </Badge>
+                              {product.variantDetectionConfidence && (
+                                <span className="text-xs text-gray-400">
+                                  ({Math.round(product.variantDetectionConfidence * 100)}%)
+                                </span>
+                              )}
+                              {onRemoveVariantStatus && (
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRemoveVariantStatus(product.id);
+                                  }}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-4 w-4 p-0 text-gray-400 hover:text-red-500"
+                                  title="Remove variant status"
+                                >
+                                  ×
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                          {product.isMainProduct && (
+                            <div className="flex items-center space-x-1">
+                              <Badge variant="primary" size="xs">
+                                Main Product
+                              </Badge>
+                              {product.variantDetectionConfidence && (
+                                <span className="text-xs text-gray-400">
+                                  ({Math.round(product.variantDetectionConfidence * 100)}%)
+                                </span>
+                              )}
+                              {onRemoveVariantStatus && (
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRemoveVariantStatus(product.id);
+                                  }}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-4 w-4 p-0 text-gray-400 hover:text-red-500"
+                                  title="Remove variant status"
+                                >
+                                  ×
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
+                  </div>
+                </td>
+
+                {/* Product Type */}
+                <td className="px-6 py-4 whitespace-normal">
+                  {(() => {
+                    const typeBadge = getProductTypeBadge(product);
+                    return (
+                      <Badge
+                        variant={typeBadge.variant}
+                        className="flex items-center space-x-1"
+                      >
+                        {typeBadge.icon}
+                        <span>{typeBadge.text}</span>
+                      </Badge>
+                    );
+                  })()}
+                </td>
+
+                {/* Platform */}
+                <td className="px-6 py-4 whitespace-normal">
+                  <div className="flex flex-wrap gap-1">
+                    {getPlatformBadges(product).map((platform, index) => (
+                      <Badge
+                        key={`${platform.name}-${index}`}
+                        variant="outline"
+                        className="flex items-center space-x-1"
+                      >
+                        {platform.icon}
+                        <span className="text-xs">{platform.label}</span>
+                      </Badge>
+                    ))}
                   </div>
                 </td>
 
@@ -246,7 +448,10 @@ const SimpleProductTable = ({
                 <td className="px-6 py-4 whitespace-normal text-sm text-gray-500 dark:text-gray-400">
                   <div className="flex items-center space-x-1">
                     <Button
-                      onClick={() => onView?.(product)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onView?.(product);
+                      }}
                       size="sm"
                       variant="ghost"
                       className="p-1"
@@ -255,7 +460,10 @@ const SimpleProductTable = ({
                       <Eye className="h-4 w-4" />
                     </Button>
                     <Button
-                      onClick={() => onEdit?.(product)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit?.(product);
+                      }}
                       size="sm"
                       variant="ghost"
                       className="p-1"
@@ -264,7 +472,10 @@ const SimpleProductTable = ({
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button
-                      onClick={() => onDelete?.(product.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete?.(product.id);
+                      }}
                       size="sm"
                       variant="ghost"
                       className="p-1"
@@ -276,11 +487,12 @@ const SimpleProductTable = ({
                     {/* More Actions Dropdown */}
                     <div className="relative">
                       <Button
-                        onClick={() =>
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setOpenMenuId(
                             openMenuId === product.id ? null : product.id
-                          )
-                        }
+                          );
+                        }}
                         size="sm"
                         variant="ghost"
                         className="p-1"
@@ -294,7 +506,8 @@ const SimpleProductTable = ({
                           <div className="py-1">
                             {onDuplicate && (
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   onDuplicate(product);
                                   setOpenMenuId(null);
                                 }}
@@ -306,7 +519,8 @@ const SimpleProductTable = ({
                             )}
                             {onViewAnalytics && (
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   onViewAnalytics(product);
                                   setOpenMenuId(null);
                                 }}
@@ -318,7 +532,8 @@ const SimpleProductTable = ({
                             )}
                             {onExportProduct && (
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   onExportProduct(product);
                                   setOpenMenuId(null);
                                 }}
@@ -330,7 +545,8 @@ const SimpleProductTable = ({
                             )}
                             {onCopyLink && (
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   onCopyLink(product);
                                   setOpenMenuId(null);
                                 }}

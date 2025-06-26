@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Search, X } from "lucide-react";
 
 /**
- * Advanced Search Panel Component
+ * Search Panel Component
  * Provides comprehensive search and filter capabilities
  */
-const AdvancedSearchPanel = ({
+const SearchPanel = ({
   searchValue: propSearchValue = "",
   filters = {},
   onFilterChange,
@@ -67,16 +67,16 @@ const AdvancedSearchPanel = ({
   ];
 
   return (
-    <div className={`space-y-4 ${className}`}>
-      {/* Search Input Row */}
-      <div className="flex items-center space-x-4">
-        <form onSubmit={handleSearchSubmit} className="flex-1 relative">
+    <div className={`space-y-3 ${className}`}>
+      {/* Search Input Row - Full Width */}
+      <div className="w-full">
+        <form onSubmit={handleSearchSubmit} className="w-full relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
           <input
             type="text"
             value={searchValue}
             onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Ürün adı, SKU, barkod ile ara..."
+            placeholder="Ürün adı, SKU, barkod, açıklama, kategori, marka ile ara..."
             className="w-full pl-10 pr-20 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
           />
           <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
@@ -98,12 +98,14 @@ const AdvancedSearchPanel = ({
           </div>
         </form>
 
-        <button
-          onClick={handleClearAll}
-          className="px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-        >
-          Temizle
-        </button>
+        <div className="flex justify-end mt-2">
+          <button
+            onClick={handleClearAll}
+            className="px-4 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+          >
+            Temizle
+          </button>
+        </div>
       </div>
 
       {/* Filters Row */}
@@ -240,4 +242,4 @@ const AdvancedSearchPanel = ({
   );
 };
 
-export default AdvancedSearchPanel;
+export default SearchPanel;

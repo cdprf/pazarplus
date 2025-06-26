@@ -204,7 +204,7 @@ The component uses Tailwind CSS classes and follows these design principles:
 ProductDisplay/
 ├── ProductQuotaDisplay       # Quota tracking component
 ├── ProductStatusTabs         # Status navigation tabs
-├── AdvancedFilterPanel       # Multi-field filtering
+├── SearchPanel               # Enhanced search and filter capabilities
 ├── BulkOperations           # Bulk action dropdown
 ├── CompletionScore          # Score calculation and display
 ├── InlineEditor             # Editable field component

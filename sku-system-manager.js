@@ -3,13 +3,24 @@
  * Your Structured SKU Format: {NW+ProductType}-{Brand+Number}-{Variant}
  */
 
-const EnhancedVariantDetectionService = require("./server/services/enhanced-variant-detection-service");
+// Lazy import to avoid circular dependencies
+let EnhancedVariantDetectionService;
 
 // Your Brand Configuration Manager
 class SKUSystemManager {
   constructor() {
-    this.enhancedService = new EnhancedVariantDetectionService();
+    // Lazy initialization to avoid circular dependencies
+    this.enhancedService = null;
     this.customBrands = new Map(); // Store custom brands added at runtime
+  }
+
+  // Lazy initialize the enhanced service
+  getEnhancedService() {
+    if (!this.enhancedService && !EnhancedVariantDetectionService) {
+      EnhancedVariantDetectionService = require("./server/services/enhanced-variant-detection-service");
+      this.enhancedService = new EnhancedVariantDetectionService();
+    }
+    return this.enhancedService;
   }
 
   /**
@@ -240,7 +251,7 @@ class SKUSystemManager {
    * Generate SKU using the enhanced service
    */
   generateSKU({ productType, brand, variant, productName, category }) {
-    return this.enhancedService.generateSKU({
+    return this.getEnhancedService().generateSKU({
       productType,
       brand,
       variant,
@@ -253,14 +264,14 @@ class SKUSystemManager {
    * Parse SKU using the enhanced service
    */
   parseSKU(sku) {
-    return this.enhancedService.parseSKU(sku);
+    return this.getEnhancedService().parseSKU(sku);
   }
 
   /**
    * Validate SKU format using the enhanced service
    */
   validateSKUFormat(sku) {
-    return this.enhancedService.validateSKUFormat(sku);
+    return this.getEnhancedService().validateSKUFormat(sku);
   }
 
   /**
@@ -343,8 +354,8 @@ class SKUSystemManager {
 
     console.log("\n📦 Generated SKUs:");
     examples.forEach((example) => {
-      const sku = this.enhancedService.generateSKU(example);
-      const name = this.enhancedService.generateVariantName(
+      const sku = this.getEnhancedService().generateSKU(example);
+      const name = this.getEnhancedService().generateVariantName(
         example,
         example.variant
       );
@@ -368,7 +379,7 @@ class SKUSystemManager {
     };
 
     skus.forEach((sku) => {
-      const parsed = this.enhancedService.parseSKU(sku);
+      const parsed = this.getEnhancedService().parseSKU(sku);
 
       if (parsed && parsed.isStructured) {
         analysis.structured.push({ sku, parsed });
@@ -415,7 +426,7 @@ class SKUSystemManager {
       `\n🎯 Creating variants for ${baseProduct.brand} ${baseProduct.productType}`
     );
 
-    const variants = this.enhancedService.generateVariantSKUs(
+    const variants = this.getEnhancedService().generateVariantSKUs(
       baseProduct,
       variantTypes
     );

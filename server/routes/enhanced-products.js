@@ -10,6 +10,9 @@ const { auth } = require("../middleware/auth");
 const EnhancedProductController = require("../controllers/enhanced-product-controller");
 const MediaUploadService = require("../services/media-upload-service");
 
+// Create media upload service instance
+const mediaUploadService = new MediaUploadService();
+
 // Apply auth middleware to all routes
 router.use(auth);
 
@@ -246,7 +249,7 @@ router.post(
 router.post(
   "/main-products/:mainProductId/media",
   [param("mainProductId").isUUID().withMessage("Invalid main product ID")],
-  MediaUploadService.getUploadMiddleware(),
+  mediaUploadService.getUploadMiddleware(),
   EnhancedProductController.uploadMainProductMedia
 );
 
@@ -256,7 +259,7 @@ router.post(
     param("mainProductId").isUUID().withMessage("Invalid main product ID"),
     param("variantId").isUUID().withMessage("Invalid variant ID"),
   ],
-  MediaUploadService.getUploadMiddleware(),
+  mediaUploadService.getUploadMiddleware(),
   EnhancedProductController.uploadVariantMedia
 );
 

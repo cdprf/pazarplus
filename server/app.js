@@ -577,8 +577,14 @@ function initializeWebSocketServer(server) {
   }
 }
 
-// Initialize services when app starts
-initializeEnhancedServices();
+// Initialize services when app starts (temporarily disabled for debugging)
+// setImmediate(() => {
+//   initializeEnhancedServices().catch(error => {
+//     logger.error("Failed to initialize enhanced services:", error);
+//   });
+// });
+
+console.log("App module loaded successfully");
 
 // Graceful shutdown handling
 const gracefulShutdown = async (signal) => {

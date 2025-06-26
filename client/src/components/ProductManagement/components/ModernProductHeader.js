@@ -79,7 +79,7 @@ const ModernProductHeader = ({
                 type="text"
                 value={searchValue}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Ürün ara..."
+                placeholder="Ürün adı, SKU, barkod, marka ile ara..."
                 className="block w-full pl-10 pr-3 py-3 border-0 text-sm focus:ring-0 focus:outline-none bg-transparent"
               />
               {searchValue && (

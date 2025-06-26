@@ -12,6 +12,7 @@ const logger = require("./utils/logger");
 const sequelize = require("./config/database");
 const config = require("./config/config");
 const ProductLinkingJobService = require("./services/product-linking-job-service");
+const backgroundServicesManager = require("./services/background-services-manager");
 
 // Initialize stability manager
 const stabilityManager = new ServerStabilityManager();
@@ -120,8 +121,20 @@ async function startServer() {
         // Start background jobs
         try {
           productLinkingJobs.start();
-          logger.info("Background job services started", {
+
+          // Initialize background services including variant detection (non-blocking)
+          setImmediate(() => {
+            backgroundServicesManager.initialize().catch((error) => {
+              logger.error("Failed to initialize background services", {
+                service: "pazar-plus",
+                error: error.message,
+              });
+            });
+          });
+
+          logger.info("Background job services starting", {
             service: "pazar-plus",
+            services: ["product-linking", "variant-detection"],
           });
         } catch (error) {
           logger.error("Failed to start background jobs", {

@@ -503,7 +503,7 @@ export const productUtils = {
     return false;
   },
 
-  // Advanced search function
+  // Advanced search function - Enhanced to include all relevant fields
   searchProducts: (products, searchTerm) => {
     if (!searchTerm?.trim()) return products;
 
@@ -514,8 +514,16 @@ export const productUtils = {
       const searchFields = [
         product.name,
         product.sku,
+        product.barcode,
         product.description,
         product.category,
+        product.brand,
+        product.modelCode,
+        product.productCode,
+        product.baseSku,
+        product.productType,
+        product.model,
+        product.manufacturer,
       ]
         .filter(Boolean)
         .map((field) => field.toLowerCase());
@@ -523,14 +531,46 @@ export const productUtils = {
       // Search in tags
       const tags = product.tags || [];
 
-      // Search in platform SKUs
+      // Search in platform SKUs and related data
       const platformSkus = [];
+      const platformBarcodes = [];
+      const platformNames = [];
+
       if (product.sources) {
         platformSkus.push(...product.sources.map((s) => s.sku).filter(Boolean));
+        platformBarcodes.push(
+          ...product.sources.map((s) => s.barcode).filter(Boolean)
+        );
+        platformNames.push(
+          ...product.sources.map((s) => s.name).filter(Boolean)
+        );
       }
+
       if (product.platforms) {
         Object.values(product.platforms).forEach((p) => {
           if (p?.platformSku) platformSkus.push(p.platformSku);
+          if (p?.platformBarcode) platformBarcodes.push(p.platformBarcode);
+          if (p?.platformTitle) platformNames.push(p.platformTitle);
+        });
+      }
+
+      // Search in platform variants if available
+      if (product.platformVariants) {
+        product.platformVariants.forEach((variant) => {
+          if (variant.platformSku) platformSkus.push(variant.platformSku);
+          if (variant.platformBarcode)
+            platformBarcodes.push(variant.platformBarcode);
+          if (variant.platformTitle) platformNames.push(variant.platformTitle);
+        });
+      }
+
+      // Search in attributes
+      const attributeValues = [];
+      if (product.attributes && typeof product.attributes === "object") {
+        Object.values(product.attributes).forEach((value) => {
+          if (typeof value === "string") {
+            attributeValues.push(value.toLowerCase());
+          }
         });
       }
 
@@ -539,6 +579,9 @@ export const productUtils = {
         ...searchFields,
         ...tags.map((tag) => tag.toLowerCase()),
         ...platformSkus.map((sku) => sku.toLowerCase()),
+        ...platformBarcodes.map((barcode) => barcode.toLowerCase()),
+        ...platformNames.map((name) => name.toLowerCase()),
+        ...attributeValues,
       ].join(" ");
 
       return allSearchableText.includes(term);

@@ -21,6 +21,8 @@ import {
   SORT_OPTIONS,
   STATUS_OPTIONS,
   STOCK_STATUS_OPTIONS,
+  PRODUCT_TYPE_OPTIONS,
+  PLATFORM_FILTER_OPTIONS,
 } from "../utils/constants";
 
 // Search Input Component
@@ -28,7 +30,7 @@ const SearchInput = ({
   value,
   onChange,
   onClear,
-  placeholder = "Ürün ara...",
+  placeholder = "Ürün adı, SKU, barkod, marka ile ara...",
   className = "",
 }) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -37,7 +39,9 @@ const SearchInput = ({
     <div className={`relative ${className}`}>
       <div
         className={`relative flex items-center border rounded-lg transition-all duration-200 ${
-          isFocused ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-300 dark:border-gray-600"
+          isFocused
+            ? "border-blue-500 ring-2 ring-blue-200"
+            : "border-gray-300 dark:border-gray-600"
         }`}
       >
         <Search className="absolute left-3 h-4 w-4 text-gray-400 dark:text-gray-500" />
@@ -64,7 +68,9 @@ const SearchInput = ({
       {/* Search suggestions could go here */}
       {value && isFocused && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-          <div className="p-2 text-xs text-gray-500  dark:text-gray-500 border-b">Öneriler:</div>
+          <div className="p-2 text-xs text-gray-500  dark:text-gray-500 border-b">
+            Öneriler:
+          </div>
           <div className="p-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800 cursor-pointer">
             "{value}" için tüm ürünlerde ara
           </div>
@@ -83,6 +89,8 @@ const FilterPanel = ({
   onToggle,
   className = "",
 }) => {
+  const [activeTab, setActiveTab] = useState("basic");
+
   const activeFilterCount = useMemo(() => {
     return Object.values(filters).filter((value) => value && value !== "")
       .length;
@@ -124,140 +132,263 @@ const FilterPanel = ({
         />
       </Button>
 
-      {/* Filter Panel */}
+      {/* Enhanced Filter Panel with Tabs */}
       {isOpen && (
-        <Card className="absolute top-full left-0 right-0 mt-2 z-20 min-w-96">
+        <Card className="absolute top-full left-0 right-0 mt-2 z-20 min-w-96 border-0 shadow-lg">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Filtreler</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Filtreler
+                </h3>
+                {activeFilterCount > 0 && (
+                  <Badge variant="primary" className="text-xs">
+                    {activeFilterCount}
+                  </Badge>
+                )}
+              </div>
               <div className="flex items-center space-x-2">
-                <Button
-                  onClick={onClearFilters}
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs"
-                >
-                  Temizle
-                </Button>
                 <Button onClick={onToggle} variant="ghost" size="sm" icon={X} />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Category Filter */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Kategori
-                </label>
-                <select
-                  value={filters.category || ""}
-                  onChange={(e) =>
-                    handleFilterChange("category", e.target.value)
-                  }
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Tüm Kategoriler</option>
-                  {CATEGORIES.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Status Filter */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Durum
-                </label>
-                <select
-                  value={filters.status || ""}
-                  onChange={(e) => handleFilterChange("status", e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Tüm Durumlar</option>
-                  {STATUS_OPTIONS.map((status) => (
-                    <option key={status.value} value={status.value}>
-                      {status.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Stock Status Filter */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Stok Durumu
-                </label>
-                <select
-                  value={filters.stockStatus || ""}
-                  onChange={(e) =>
-                    handleFilterChange("stockStatus", e.target.value)
-                  }
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Tüm Stok Durumları</option>
-                  {STOCK_STATUS_OPTIONS.map((stockStatus) => (
-                    <option key={stockStatus.value} value={stockStatus.value}>
-                      {stockStatus.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Filter Tabs */}
+            <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
+              <button
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "basic"
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
+                onClick={() => setActiveTab("basic")}
+              >
+                Temel Filtreler
+              </button>
+              <button
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "price"
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
+                onClick={() => setActiveTab("price")}
+              >
+                Fiyat
+              </button>
+              <button
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "stock"
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
+                onClick={() => setActiveTab("stock")}
+              >
+                Stok
+              </button>
             </div>
 
-            {/* Price Range Filter */}
-            <div className="mt-4">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Fiyat Aralığı (₺)
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="number"
-                  placeholder="Min"
-                  value={filters.minPrice || ""}
-                  onChange={(e) =>
-                    handleFilterChange("minPrice", e.target.value)
-                  }
-                  className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <input
-                  type="number"
-                  placeholder="Max"
-                  value={filters.maxPrice || ""}
-                  onChange={(e) =>
-                    handleFilterChange("maxPrice", e.target.value)
-                  }
-                  className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
+            {/* Basic Filters Tab */}
+            {activeTab === "basic" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Category Filter */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Kategori
+                  </label>
+                  <select
+                    value={filters.category || ""}
+                    onChange={(e) =>
+                      handleFilterChange("category", e.target.value)
+                    }
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Tüm Kategoriler</option>
+                    {CATEGORIES.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            {/* Stock Range Filter */}
-            <div className="mt-4">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Stok Aralığı
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="number"
-                  placeholder="Min Stok"
-                  value={filters.minStock || ""}
-                  onChange={(e) =>
-                    handleFilterChange("minStock", e.target.value)
-                  }
-                  className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <input
-                  type="number"
-                  placeholder="Max Stok"
-                  value={filters.maxStock || ""}
-                  onChange={(e) =>
-                    handleFilterChange("maxStock", e.target.value)
-                  }
-                  className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                {/* Status Filter - Button Style */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Durum
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {STATUS_OPTIONS.map((status) => (
+                      <button
+                        key={status.value}
+                        className={`px-2 py-1.5 text-xs border rounded-md transition-colors ${
+                          filters.status === status.value
+                            ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                            : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+                        }`}
+                        onClick={() =>
+                          handleFilterChange(
+                            "status",
+                            filters.status === status.value ? "" : status.value
+                          )
+                        }
+                      >
+                        {status.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Product Type Filter */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Ürün Türü
+                  </label>
+                  <select
+                    value={filters.productType || ""}
+                    onChange={(e) =>
+                      handleFilterChange("productType", e.target.value)
+                    }
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Tüm Türler</option>
+                    {PRODUCT_TYPE_OPTIONS.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Platform Filter */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Platform
+                  </label>
+                  <select
+                    value={filters.platform || ""}
+                    onChange={(e) =>
+                      handleFilterChange("platform", e.target.value)
+                    }
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Tüm Platformlar</option>
+                    {PLATFORM_FILTER_OPTIONS.map((platform) => (
+                      <option key={platform.value} value={platform.value}>
+                        {platform.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Stock Status Filter - Button Style */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Stok Durumu
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {STOCK_STATUS_OPTIONS.map((stockStatus) => (
+                      <button
+                        key={stockStatus.value}
+                        className={`px-2 py-1.5 text-xs border rounded-md transition-colors ${
+                          filters.stockStatus === stockStatus.value
+                            ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                            : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+                        }`}
+                        onClick={() =>
+                          handleFilterChange(
+                            "stockStatus",
+                            filters.stockStatus === stockStatus.value
+                              ? ""
+                              : stockStatus.value
+                          )
+                        }
+                      >
+                        {stockStatus.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
+            )}
+
+            {/* Price Filters Tab */}
+            {activeTab === "price" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Minimum Fiyat (₺)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={filters.minPrice || ""}
+                    onChange={(e) =>
+                      handleFilterChange("minPrice", e.target.value)
+                    }
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Maximum Fiyat (₺)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={filters.maxPrice || ""}
+                    onChange={(e) =>
+                      handleFilterChange("maxPrice", e.target.value)
+                    }
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Stock Filters Tab */}
+            {activeTab === "stock" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Minimum Stok
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Min Stok"
+                    value={filters.minStock || ""}
+                    onChange={(e) =>
+                      handleFilterChange("minStock", e.target.value)
+                    }
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Maximum Stok
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Max Stok"
+                    value={filters.maxStock || ""}
+                    onChange={(e) =>
+                      handleFilterChange("maxStock", e.target.value)
+                    }
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Clear Filters Button - Positioned at Bottom Right */}
+            <div className="flex justify-end mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <Button
+                onClick={onClearFilters}
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7 px-3"
+                disabled={activeFilterCount === 0}
+              >
+                Temizle
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -309,9 +440,15 @@ const SortSelector = ({ value, onChange, className = "" }) => {
         title={`${field} sıralaması`}
       >
         {order === "asc" ? (
-          <SortAsc className="h-4 w-4 text-gray-600 dark:text-gray-500" title="Artan sıralama" />
+          <SortAsc
+            className="h-4 w-4 text-gray-600 dark:text-gray-500"
+            title="Artan sıralama"
+          />
         ) : (
-          <SortDesc className="h-4 w-4 text-gray-600 dark:text-gray-500" title="Azalan sıralama" />
+          <SortDesc
+            className="h-4 w-4 text-gray-600 dark:text-gray-500"
+            title="Azalan sıralama"
+          />
         )}
       </div>
     </div>
@@ -429,22 +566,26 @@ const QuickFilterTags = ({
           label = `Kategori: ${value}`;
           break;
         case "status":
-          label = `Durum: ${
-            value === "active"
-              ? "Aktif"
-              : value === "inactive"
-              ? "Pasif"
-              : "Taslak"
-          }`;
+          const statusOption = STATUS_OPTIONS.find((s) => s.value === value);
+          label = `Durum: ${statusOption ? statusOption.label : value}`;
           break;
         case "stockStatus":
-          label = `Stok: ${
-            value === "in_stock"
-              ? "Stokta"
-              : value === "low_stock"
-              ? "Az Stok"
-              : "Stok Yok"
-          }`;
+          const stockOption = STOCK_STATUS_OPTIONS.find(
+            (s) => s.value === value
+          );
+          label = `Stok: ${stockOption ? stockOption.label : value}`;
+          break;
+        case "productType":
+          const typeOption = PRODUCT_TYPE_OPTIONS.find(
+            (t) => t.value === value
+          );
+          label = `Tür: ${typeOption ? typeOption.label : value}`;
+          break;
+        case "platform":
+          const platformOption = PLATFORM_FILTER_OPTIONS.find(
+            (p) => p.value === value
+          );
+          label = `Platform: ${platformOption ? platformOption.label : value}`;
           break;
         case "minPrice":
           label = `Min Fiyat: ₺${value}`;
@@ -481,12 +622,14 @@ const QuickFilterTags = ({
 
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-      <span className="text-sm text-gray-600 dark:text-gray-500">Aktif filtreler:</span>
+      <span className="text-sm text-gray-600 dark:text-gray-500">
+        Aktif filtreler:
+      </span>
       {activeFilters.map((filter) => (
         <Badge
           key={`${filter.key}-${filter.value}`}
           variant="outline"
-          className="flex items-center gap-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-800"
+          className="flex items-center gap-1 py-1 px-2 bg-gray-50 dark:bg-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
         >
           {filter.label}
           <button
@@ -497,7 +640,8 @@ const QuickFilterTags = ({
                 onRemoveFilter(filter.key);
               }
             }}
-            className="ml-1 text-gray-500  dark:text-gray-500 hover:text-gray-700"
+            className="ml-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            title={`${filter.label} filtresini kaldır`}
           >
             <X className="h-3 w-3" />
           </button>
@@ -507,7 +651,7 @@ const QuickFilterTags = ({
         onClick={onClearAll}
         variant="ghost"
         size="sm"
-        className="text-xs text-gray-500  dark:text-gray-500 hover:text-gray-700 "
+        className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
       >
         Tümünü Temizle
       </Button>
@@ -527,8 +671,8 @@ const FiltersBar = ({
   onSortChange,
   viewMode,
   onViewModeChange,
-  showAdvancedFilters,
-  onToggleAdvancedFilters,
+  showFilters,
+  onToggleFilters,
   onClearAllFilters,
   // Action handlers
   onSync,
@@ -595,17 +739,19 @@ const FiltersBar = ({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {/* Primary Filter Row */}
+      {/* Search Bar - Full Width */}
+      <div className="w-full">
+        <SearchInput
+          value={searchValue}
+          onChange={onSearchChange}
+          onClear={handleClearSearch}
+          className="w-full"
+        />
+      </div>
+
+      {/* Secondary Filter Row */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          {/* Search */}
-          <SearchInput
-            value={searchValue}
-            onChange={onSearchChange}
-            onClear={handleClearSearch}
-            className="flex-1 min-w-0"
-          />
-
           {/* Quick Filters */}
           <div className="flex items-center gap-2">
             <ViewModeToggle mode={viewMode} onChange={onViewModeChange} />
@@ -615,8 +761,8 @@ const FiltersBar = ({
                 filters={filters}
                 onFiltersChange={onFiltersChange}
                 onClearFilters={handleClearFilters}
-                isOpen={showAdvancedFilters}
-                onToggle={onToggleAdvancedFilters}
+                isOpen={showFilters}
+                onToggle={onToggleFilters}
               />
             </div>
 

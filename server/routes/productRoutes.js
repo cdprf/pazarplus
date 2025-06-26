@@ -399,6 +399,135 @@ router.post(
 
 /**
  * @swagger
+ * /api/products/main-products:
+ *   get:
+ *     summary: Get all main products with enhanced features
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *         description: Items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Product category
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive, draft, archived]
+ *         description: Product status
+ *     responses:
+ *       200:
+ *         description: List of main products with pagination
+ */
+router.get(
+  "/main-products",
+  [
+    query("page").optional().isInt({ min: 1 }),
+    query("limit").optional().isInt({ min: 1, max: 100 }),
+    query("search").optional().isString(),
+    query("category").optional().isString(),
+    query("status")
+      .optional()
+      .custom((value) => {
+        // Allow empty string or valid status values
+        if (value === "" || value === null || value === undefined) {
+          return true;
+        }
+        if (["active", "inactive", "draft", "archived"].includes(value)) {
+          return true;
+        }
+        throw new Error(
+          "Status must be one of: active, inactive, draft, archived"
+        );
+      }),
+    query("hasVariants").optional().isBoolean(),
+    query("sortBy")
+      .optional()
+      .isIn([
+        "name",
+        "sku",
+        "category",
+        "price",
+        "stock",
+        "createdAt",
+        "updatedAt",
+      ]),
+    query("sortField")
+      .optional()
+      .isIn([
+        "name",
+        "sku",
+        "category",
+        "price",
+        "stock",
+        "createdAt",
+        "updatedAt",
+      ]),
+    query("sortOrder")
+      .optional()
+      .custom((value) => {
+        // Allow empty string or valid sort order values (case insensitive)
+        if (value === "" || value === null || value === undefined) {
+          return true;
+        }
+        if (["ASC", "DESC", "asc", "desc"].includes(value)) {
+          return true;
+        }
+        throw new Error("Sort order must be ASC or DESC");
+      }),
+    query("stockStatus").optional().isString(),
+    query("minPrice")
+      .optional()
+      .custom((value) => {
+        if (value === "" || value === null || value === undefined) return true;
+        return !isNaN(parseFloat(value)) && isFinite(value);
+      }),
+    query("maxPrice")
+      .optional()
+      .custom((value) => {
+        if (value === "" || value === null || value === undefined) return true;
+        return !isNaN(parseFloat(value)) && isFinite(value);
+      }),
+    query("minStock")
+      .optional()
+      .custom((value) => {
+        if (value === "" || value === null || value === undefined) return true;
+        return Number.isInteger(Number(value)) && Number(value) >= 0;
+      }),
+    query("maxStock")
+      .optional()
+      .custom((value) => {
+        if (value === "" || value === null || value === undefined) return true;
+        return Number.isInteger(Number(value)) && Number(value) >= 0;
+      }),
+    query("platform").optional().isString(),
+    validationMiddleware,
+  ],
+  ProductController.getMainProducts
+);
+
+/**
+ * @swagger
  * /api/products/{id}:
  *   get:
  *     summary: Get a single product by ID

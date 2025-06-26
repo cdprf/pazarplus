@@ -5,7 +5,7 @@ export { default as CompletionScore } from "./CompletionScore";
 export { default as InlineEditor } from "./InlineEditor";
 export { default as BulkOperations } from "./BulkOperations";
 export { default as EnhancedPagination } from "./EnhancedPagination";
-export { default as AdvancedFilterPanel } from "./AdvancedFilterPanel";
+export { default as SearchPanel } from "./SearchPanel";
 export { default as EmptyState } from "./EmptyState";
 export { default as LoadingState } from "./LoadingState";
 export { default as ProductCard } from "./ProductCard";

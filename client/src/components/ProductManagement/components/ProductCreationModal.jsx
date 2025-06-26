@@ -170,17 +170,14 @@ const ProductCreationModal = ({ show, onHide, onSuccess }) => {
       }
 
       // Call API to create product
-      const response = await fetch(
-        `${API_BASE_URL}/enhanced-products/main-products`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify(formData),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/products/main-products`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(formData),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to create product");
@@ -353,21 +350,18 @@ const ProductCreationModal = ({ show, onHide, onSuccess }) => {
       });
 
       // Call import API
-      const response = await fetch(
-        `${API_BASE_URL}/api/enhanced-products/import/csv`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({
-            csvData: mappedData,
-            fieldMapping: fieldMapping,
-            fileName: importPreview.fileName,
-          }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/products/import/csv`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          csvData: mappedData,
+          fieldMapping: fieldMapping,
+          fileName: importPreview.fileName,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error("Import failed");
@@ -405,7 +399,7 @@ const ProductCreationModal = ({ show, onHide, onSuccess }) => {
 
       // Call backend service to scrape product data
       const response = await fetch(
-        `${API_BASE_URL}/api/enhanced-products/import-from-platform`,
+        `${API_BASE_URL}/products/import-from-platform`,
         {
           method: "POST",
           headers: {
@@ -480,24 +474,21 @@ const ProductCreationModal = ({ show, onHide, onSuccess }) => {
       if (!mappedData.minStockLevel) mappedData.minStockLevel = 5;
 
       // Create product
-      const response = await fetch(
-        `${API_BASE_URL}/api/enhanced-products/main-products`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+      const response = await fetch(`${API_BASE_URL}/products/main-products`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          ...mappedData,
+          metadata: {
+            source: "platform_import",
+            originalUrl: platformUrl,
+            platform: detectPlatform(platformUrl),
           },
-          body: JSON.stringify({
-            ...mappedData,
-            metadata: {
-              source: "platform_import",
-              originalUrl: platformUrl,
-              platform: detectPlatform(platformUrl),
-            },
-          }),
-        }
-      );
+        }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to create product from platform data");

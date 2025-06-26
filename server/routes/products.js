@@ -1,4 +1,5 @@
 const express = require("express");
+const { body, param, query } = require("express-validator");
 const router = express.Router();
 const productController = require("../controllers/product-controller");
 const auth = require("../middleware/auth");
@@ -28,6 +29,75 @@ router.get("/", auth, productController.getProducts);
  *         description: Product statistics
  */
 router.get("/stats", auth, productController.getProductStats);
+
+/**
+ * @swagger
+ * /api/products/main-products:
+ *   get:
+ *     summary: Get all main products with enhanced features
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *         description: Items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Product category
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive, draft, archived]
+ *         description: Product status
+ *     responses:
+ *       200:
+ *         description: List of main products with pagination
+ */
+router.get(
+  "/main-products",
+  [
+    query("page").optional().isInt({ min: 1 }),
+    query("limit").optional().isInt({ min: 1, max: 100 }),
+    query("search").optional().isString(),
+    query("category").optional().isString(),
+    query("status")
+      .optional()
+      .isIn(["active", "inactive", "draft", "archived"]),
+    query("hasVariants").optional().isBoolean(),
+    query("sortBy")
+      .optional()
+      .isIn([
+        "name",
+        "sku",
+        "category",
+        "price",
+        "stock",
+        "createdAt",
+        "updatedAt",
+      ]),
+    query("sortOrder").optional().isIn(["ASC", "DESC"]),
+  ],
+  auth,
+  productController.getMainProducts
+);
 
 /**
  * @swagger
@@ -410,6 +480,258 @@ router.post(
   "/categories/sync/:platformType",
   auth,
   productController.syncPlatformCategories
+);
+
+// Enhanced Product Management Routes
+// These routes provide enhanced functionality compatible with the frontend
+
+/**
+ * @swagger
+ * /api/products/main-products:
+ *   post:
+ *     summary: Create a new main product
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - category
+ *               - basePrice
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 255
+ *               baseSku:
+ *                 type: string
+ *                 maxLength: 100
+ *               description:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               brand:
+ *                 type: string
+ *               basePrice:
+ *                 type: number
+ *                 minimum: 0
+ *               baseCostPrice:
+ *                 type: number
+ *                 minimum: 0
+ *               stockQuantity:
+ *                 type: integer
+ *                 minimum: 0
+ *               minStockLevel:
+ *                 type: integer
+ *                 minimum: 0
+ *               weight:
+ *                 type: number
+ *                 minimum: 0
+ *               status:
+ *                 type: string
+ *                 enum: [active, inactive, draft, archived]
+ *     responses:
+ *       201:
+ *         description: Main product created successfully
+ *       400:
+ *         description: Validation error
+ */
+router.post(
+  "/main-products",
+  [
+    body("name")
+      .notEmpty()
+      .isLength({ min: 1, max: 255 })
+      .withMessage("Name is required and must be 1-255 characters"),
+    body("baseSku").optional().isString().isLength({ min: 1, max: 100 }),
+    body("description").optional().isString(),
+    body("category").notEmpty().withMessage("Category is required"),
+    body("brand").optional().isString(),
+    body("productType").optional().isString(),
+    body("basePrice")
+      .custom((value) => {
+        const num = parseFloat(value);
+        if (isNaN(num) || num < 0) {
+          throw new Error("Base price must be a positive number");
+        }
+        return true;
+      })
+      .withMessage("Base price must be a positive number"),
+    body("baseCostPrice")
+      .optional()
+      .custom((value) => {
+        if (value === "" || value === null || value === undefined) return true;
+        const num = parseFloat(value);
+        if (isNaN(num) || num < 0) {
+          throw new Error("Base cost price must be a positive number");
+        }
+        return true;
+      }),
+    body("stockQuantity")
+      .optional()
+      .custom((value) => {
+        if (value === "" || value === null || value === undefined) return true;
+        const num = parseInt(value, 10);
+        if (isNaN(num) || num < 0) {
+          throw new Error("Stock quantity must be a positive integer");
+        }
+        return true;
+      }),
+    body("minStockLevel")
+      .optional()
+      .custom((value) => {
+        if (value === "" || value === null || value === undefined) return true;
+        const num = parseInt(value, 10);
+        if (isNaN(num) || num < 0) {
+          throw new Error("Minimum stock level must be a positive integer");
+        }
+        return true;
+      }),
+    body("weight")
+      .optional()
+      .custom((value) => {
+        if (value === "" || value === null || value === undefined) return true;
+        const num = parseFloat(value);
+        if (isNaN(num) || num < 0) {
+          throw new Error("Weight must be a positive number");
+        }
+        return true;
+      }),
+    body("attributes").optional().isObject(),
+    body("tags").optional().isArray(),
+    body("media").optional().isArray(),
+    body("status").optional().isIn(["active", "inactive", "draft", "archived"]),
+  ],
+  auth,
+  productController.createMainProduct
+);
+
+/**
+ * @swagger
+ * /api/products/main-products/{id}:
+ *   put:
+ *     summary: Update a main product
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Product ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 255
+ *               description:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               brand:
+ *                 type: string
+ *               basePrice:
+ *                 type: number
+ *                 minimum: 0
+ *               status:
+ *                 type: string
+ *                 enum: [active, inactive, draft, archived]
+ *     responses:
+ *       200:
+ *         description: Main product updated successfully
+ *       404:
+ *         description: Product not found
+ */
+router.put(
+  "/main-products/:id",
+  [
+    param("id").isUUID().withMessage("Invalid product ID"),
+    body("name").optional().isLength({ min: 1, max: 255 }),
+    body("description").optional().isString(),
+    body("category").optional().notEmpty(),
+    body("brand").optional().isString(),
+    body("basePrice").optional().isFloat({ min: 0 }),
+    body("status").optional().isIn(["active", "inactive", "draft", "archived"]),
+  ],
+  auth,
+  productController.updateMainProduct
+);
+
+/**
+ * @swagger
+ * /api/products/main-products/{id}:
+ *   delete:
+ *     summary: Delete a main product
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Product ID
+ *     responses:
+ *       200:
+ *         description: Main product deleted successfully
+ *       404:
+ *         description: Product not found
+ */
+router.delete(
+  "/main-products/:id",
+  [param("id").isUUID().withMessage("Invalid product ID")],
+  auth,
+  productController.deleteMainProduct
+);
+
+/**
+ * @swagger
+ * /api/products/bulk/mark-as-main:
+ *   post:
+ *     summary: Bulk mark products as main products
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - productIds
+ *             properties:
+ *               productIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 minItems: 1
+ *     responses:
+ *       200:
+ *         description: Products marked as main products successfully
+ *       400:
+ *         description: Validation error
+ */
+router.post(
+  "/bulk/mark-as-main",
+  [
+    body("productIds")
+      .isArray({ min: 1 })
+      .withMessage("At least one product ID is required"),
+    body("productIds.*").isUUID().withMessage("Invalid product ID format"),
+  ],
+  auth,
+  productController.bulkMarkAsMainProducts
 );
 
 module.exports = router;

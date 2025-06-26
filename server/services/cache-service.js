@@ -63,7 +63,17 @@ class CacheService {
         this.connectionAttempts = 0;
       });
 
-      await this.client.connect();
+      // Add manual timeout wrapper
+      const connectWithTimeout = () => {
+        return Promise.race([
+          this.client.connect(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Connection timeout")), 5000)
+          ),
+        ]);
+      };
+
+      await connectWithTimeout();
       await this.client.ping();
       logger.info("Redis cache service initialized successfully");
       return true;

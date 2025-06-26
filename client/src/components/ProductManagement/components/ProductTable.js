@@ -147,20 +147,21 @@ const ProductTable = ({
   };
 
   // Filter products based on stock filter
-  const filteredProducts = products?.filter(product => {
-    if (stockFilter === "outOfStock") {
-      return (product.stockQuantity || 0) === 0;
-    }
-    if (stockFilter === "inStock") {
-      return (product.stockQuantity || 0) > 0;
-    }
-    if (stockFilter === "lowStock") {
-      const stock = product.stockQuantity || 0;
-      return stock > 0 && stock <= 10;
-    }
-    return true; // "all" filter
-  }) || [];
-  
+  const filteredProducts =
+    products?.filter((product) => {
+      if (stockFilter === "outOfStock") {
+        return (product.stockQuantity || 0) === 0;
+      }
+      if (stockFilter === "inStock") {
+        return (product.stockQuantity || 0) > 0;
+      }
+      if (stockFilter === "lowStock") {
+        const stock = product.stockQuantity || 0;
+        return stock > 0 && stock <= 10;
+      }
+      return true; // "all" filter
+    }) || [];
+
   // Check if filtered products array is empty
   const isEmpty = filteredProducts.length === 0;
 
@@ -170,11 +171,14 @@ const ProductTable = ({
       <div className="table-toolbar">
         <div className="table-search">
           <Search className="search-icon h-4 w-4 text-gray-500" />
-          <input className="search-input" placeholder="Ürünleri ara..." />
+          <input
+            className="search-input"
+            placeholder="Ürün adı, SKU, barkod, marka ile ara..."
+          />
         </div>
         <div className="table-filters">
-          <select 
-            className="filter-select" 
+          <select
+            className="filter-select"
             value={stockFilter}
             onChange={(e) => setStockFilter(e.target.value)}
             aria-label="Stok durumuna göre filtrele"
@@ -831,18 +835,26 @@ const ProductTable = ({
             )}
           </div>
           <h3 className="empty-state-title">
-            {stockFilter !== "all" ? "Filtreye uygun ürün bulunamadı" : "Ürün bulunamadı"}
+            {stockFilter !== "all"
+              ? "Filtreye uygun ürün bulunamadı"
+              : "Ürün bulunamadı"}
           </h3>
           <p className="empty-state-description">
             {stockFilter !== "all" ? (
               <>Seçtiğiniz stok durumuna uygun ürün bulunmamaktadır.</>
             ) : (
-              <>Henüz hiç ürün eklenmemiş veya arama kriterlerinize uygun ürün bulunamadı.</>
+              <>
+                Henüz hiç ürün eklenmemiş veya arama kriterlerinize uygun ürün
+                bulunamadı.
+              </>
             )}
           </p>
           <div className="empty-state-actions">
             {stockFilter !== "all" ? (
-              <button className="btn btn-ghost" onClick={() => setStockFilter("all")}>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setStockFilter("all")}
+              >
                 Filtreyi Temizle
               </button>
             ) : (
@@ -861,8 +873,11 @@ const ProductTable = ({
           <div className="pagination-info">
             {stockFilter !== "all" ? (
               <>
-                <span className="font-medium">{filteredProducts.length}</span> ürün gösteriliyor 
-                <span className="text-gray-500">(toplam {products?.length || 0})</span>
+                <span className="font-medium">{filteredProducts.length}</span>{" "}
+                ürün gösteriliyor
+                <span className="text-gray-500">
+                  (toplam {products?.length || 0})
+                </span>
               </>
             ) : (
               <>Toplam {filteredProducts.length} ürün</>

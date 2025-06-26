@@ -5,7 +5,7 @@ const logger = require("../utils/logger");
 // Import centralized route modules
 const authRoutes = require("./auth");
 const platformRoutes = require("./platformRoutes");
-const productRoutes = require("./productRoutes");
+const productRoutes = require("./product-routes");
 const settingsRoutes = require("./settingsRoutes");
 const complianceRoutes = require("./complianceRoutes");
 const paymentRoutes = require("./paymentRoutes");
@@ -35,7 +35,7 @@ const databaseRoutes = require("./database");
 const shippingRoutes = require("./shipping");
 
 // Import enhanced SKU system routes
-const skuRoutes = require("./sku-enhanced");
+// const skuRoutes = require("./sku-enhanced"); // Temporarily disabled for debugging
 
 // Import font management routes
 const fontRoutes = require("./fonts");
@@ -79,7 +79,7 @@ router.use("*", (req, res, next) => {
 router.use("/auth", authRoutes);
 router.use("/platforms", platformRoutes);
 router.use("/products", productRoutes);
-router.use("/sku", skuRoutes);
+// router.use("/sku", skuRoutes); // Temporarily disabled for debugging
 router.use("/customers", customerRoutes);
 router.use("/settings", settingsRoutes);
 router.use("/compliance", complianceRoutes);
@@ -123,7 +123,7 @@ router.use("/database", databaseRoutes);
 router.use("/platform-operations", platformOperationsRoutes);
 
 // Enhanced SKU system routes
-router.use("/enhanced-sku", skuRoutes);
+// router.use("/enhanced-sku", skuRoutes); // Temporarily disabled for debugging
 
 // Font management routes
 router.use("/fonts", fontRoutes);
@@ -133,14 +133,13 @@ const unifiedIntelligenceRoutes = require("./unified-product-intelligence");
 router.use("/product-intelligence", unifiedIntelligenceRoutes);
 
 // ========================================
-// === NEW ENHANCED PRODUCT MANAGEMENT ROUTES ===
+// === ENHANCED PRODUCT MANAGEMENT ROUTES - DISABLED ===
 // ========================================
-// This is the NEW enhanced product management system API
-// Accessible at /api/enhanced-products/*
-// Features: MainProduct, PlatformVariant, Media Upload, Bulk Operations
+// Enhanced product functionality has been merged into the main product routes
+// at /api/products/main-products/* to avoid duplication and conflicts
 // ========================================
-const enhancedProductRoutes = require("./enhanced-products");
-router.use("/enhanced-products", enhancedProductRoutes);
+// const enhancedProductRoutes = require("./enhanced-products");
+// router.use("/enhanced-products", enhancedProductRoutes);
 
 // Catch-all for debugging
 router.use("/*", (req, res) => {

@@ -30,8 +30,10 @@ import EmailVerification from "./components/auth/EmailVerification";
 import Dashboard from "./components/dashboard/Dashboard";
 import Orders from "./pages/Orders"; // Consolidated order management
 import OrderDetail from "./components/orders/OrderDetail";
+import ProductDetail from "./components/products/ProductDetail"; // Product detail page
 import ProductManagement from "./components/ProductManagement/index.js"; // Modernized product management
 import EnhancedProductManagement from "./components/ProductManagement/components/EnhancedProductManagement"; // Enhanced product management system
+import VariantDetectionConfigurationPage from "./components/ProductManagement/VariantDetectionConfig/VariantDetectionConfigurationPage"; // Variant detection configuration
 import CustomerManagement from "./components/customers/CustomerManagement";
 import CustomerProfile from "./components/customers/CustomerProfile";
 import ShippingManagement from "./components/shipping/ShippingManagement";
@@ -136,6 +138,7 @@ function App() {
                         <Route path="dashboard" element={<Dashboard />} />
                         <Route path="orders" element={<Orders />} />
                         <Route path="orders/:id" element={<OrderDetail />} />
+                        <Route path="products/:id" element={<ProductDetail />} />
                         <Route path="analytics" element={<Analytics />} />
 
                         {/* ============================================ */}
@@ -176,6 +179,12 @@ function App() {
                         <Route
                           path="products/pricing"
                           element={<ProductManagement />}
+                        />
+                        
+                        {/* Variant Detection Configuration */}
+                        <Route
+                          path="products/variant-detection"
+                          element={<VariantDetectionConfigurationPage />}
                         />
 
                         {/* Customer Management */}
