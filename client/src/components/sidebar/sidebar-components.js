@@ -291,12 +291,15 @@ const EnhancedSidebarLink = ({
 
 // Enhanced Sidebar Section Component with Collapsible Logic
 const SidebarSection = ({ section, location, onNavigate, isCollapsed }) => {
+  // If the section has defaultOpen property and it's true, don't collapse it initially
   const [isSectionCollapsed, setIsSectionCollapsed] = useState(
-    !section.defaultOpen
+    section.defaultOpen === false
   );
 
-  const toggleSection = () => {
+  const toggleSection = (e) => {
     if (section.collapsible) {
+      e.preventDefault();
+      e.stopPropagation();
       setIsSectionCollapsed(!isSectionCollapsed);
     }
   };
@@ -346,7 +349,7 @@ const SidebarSection = ({ section, location, onNavigate, isCollapsed }) => {
             section.title && !isCollapsed ? "mt-3" : "",
             isSectionCollapsed
               ? "opacity-0 max-h-0 overflow-hidden"
-              : "opacity-100 max-h-none animate-fade-in"
+              : "opacity-100 max-h-[1000px] animate-fade-in" /* fixed height limit issue */
           )}
           aria-hidden={section.collapsible && isSectionCollapsed}
         >

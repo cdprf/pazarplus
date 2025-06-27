@@ -105,6 +105,19 @@
     backdrop-filter: var(--sidebar-backdrop-blur-mobile);
     -webkit-backdrop-filter: var(--sidebar-backdrop-blur-mobile);
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    z-index: 1050 !important; /* Ensure proper z-index on mobile */
+  }
+  
+  /* Fix for mobile sidebar interactions */
+  .sidebar-container {
+    height: 100vh !important;
+    top: 0 !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .sidebar-container.translate-x-0 {
+    transform: translateX(0);
   }
 }
 
@@ -259,7 +272,9 @@
   width: 0.75rem;
   height: 0.75rem;
   color: var(--gray-400);
-  transition: transform 300ms ease-in-out;
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+  transform-origin: center;
 }
 
 .sidebar-section-chevron.rotated {
@@ -273,18 +288,21 @@
   gap: 0.5rem;
   transition: all 300ms ease-in-out;
   overflow: hidden;
+  will-change: max-height, opacity, transform;
 }
 
 .sidebar-section-items.collapsed {
   max-height: 0;
   opacity: 0;
   transform: translateY(-8px);
+  visibility: hidden; /* Add visibility change for better accessibility */
 }
 
 .sidebar-section-items.expanded {
-  max-height: 24rem;
+  max-height: 1000px; /* Increase the max-height to accommodate all possible content */
   opacity: 1;
   transform: translateY(0);
+  visibility: visible;
 }
 
 .nav-item {
@@ -422,18 +440,12 @@
 .sidebar-footer {
   padding: 1rem;
   border-top: 1px solid var(--sidebar-border);
-  background: linear-gradient(to top, var(--gray-50), rgba(249, 250, 251, 0.5));
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: var(--gray-50);
   flex-shrink: 0;
 }
 
 [data-theme="dark"] .sidebar-footer {
-  background: linear-gradient(
-    to top,
-    rgba(55, 65, 81, 0.8),
-    rgba(55, 65, 81, 0.4)
-  );
+  background: var(--gray-800);
 }
 
 /* User Profile */
@@ -567,6 +579,7 @@
   justify-content: center;
   padding-left: 0.5rem;
   padding-right: 0.5rem;
+  margin-top: auto;
 }
 
 .sidebar.collapsed .user-info {

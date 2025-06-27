@@ -1315,10 +1315,10 @@ const OrderManagement = React.memo(() => {
                 <Clock className="h-8 w-8 icon-contrast-warning" />
                 <div className="ml-3">
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Bekleyen
+                    Yeni Siparişler
                   </p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    {stats.pending}
+                    {stats.new}
                   </p>
                 </div>
               </div>

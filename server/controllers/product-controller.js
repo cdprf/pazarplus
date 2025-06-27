@@ -1013,77 +1013,106 @@ class ProductController {
       // Get approval status counts through platform data
       // Note: Products don't have "pending" status - this is platform-specific
       // Check for products that have pending approval on platforms instead
-      const pendingProducts = await PlatformData.count({
-        where: {
-          entityType: "product",
-          [Op.or]: [
-            { "data.approvalStatus": "Pending" },
-            { "data.status": "pending" },
-            { platformStatus: "pending" },
-          ],
-        },
-      });
+      let pendingProducts = 0;
+      let rejectedProducts = 0;
 
-      const rejectedProducts = await PlatformData.count({
-        where: {
-          entityType: "product",
-          [Op.or]: [
-            { "data.rejected": true },
-            { "data.approvalStatus": "Rejected" },
-            { "data.status": "rejected" },
-          ],
-        },
-        include: [
-          {
-            model: Product,
-            as: "product",
-            where: { userId },
-            attributes: [],
+      try {
+        pendingProducts = await PlatformData.count({
+          where: {
+            entityType: "product",
+            [Op.or]: [
+              { "data.approvalStatus": "Pending" },
+              { "data.status": "pending" },
+              { platformStatus: "pending" },
+            ],
           },
-        ],
-      });
+        });
+      } catch (error) {
+        logger.warn("Could not fetch pending products count:", error.message);
+      }
 
-      // Get products by category
-      const categoryCounts = await Product.findAll({
-        where: { userId },
-        attributes: [
-          "category",
-          [Product.sequelize.fn("COUNT", Product.sequelize.col("id")), "count"],
-        ],
-        group: ["category"],
-        raw: true,
-      });
-
-      // Get total inventory value
-      const inventoryValue =
-        (await Product.sum("price", {
-          where: { userId, status: "active" },
-        })) || 0;
-
-      // Get platform distribution
-      const platformCounts = await PlatformData.findAll({
-        attributes: [
-          "platformType",
-          [
-            PlatformData.sequelize.fn(
-              "COUNT",
-              PlatformData.sequelize.col("PlatformData.id")
-            ),
-            "count",
-          ],
-        ],
-        include: [
-          {
-            model: Product,
-            as: "product",
-            where: { userId },
-            attributes: [],
+      try {
+        rejectedProducts = await PlatformData.count({
+          where: {
+            entityType: "product",
+            [Op.or]: [
+              { "data.rejected": true },
+              { "data.approvalStatus": "Rejected" },
+              { "data.status": "rejected" },
+            ],
           },
-        ],
-        where: { entityType: "product" },
-        group: ["platformType"],
-        raw: true,
-      });
+          include: [
+            {
+              model: Product,
+              as: "product",
+              where: { userId },
+              attributes: [],
+            },
+          ],
+        });
+      } catch (error) {
+        logger.warn("Could not fetch rejected products count:", error.message);
+      }
+
+      // Get products by category with error handling
+      let categoryCounts = [];
+      try {
+        categoryCounts = await Product.findAll({
+          where: { userId },
+          attributes: [
+            "category",
+            [
+              Product.sequelize.fn("COUNT", Product.sequelize.col("id")),
+              "count",
+            ],
+          ],
+          group: ["category"],
+          raw: true,
+        });
+      } catch (error) {
+        logger.warn("Could not fetch category counts:", error.message);
+      }
+
+      // Get total inventory value with error handling
+      let inventoryValue = 0;
+      try {
+        inventoryValue =
+          (await Product.sum("price", {
+            where: { userId, status: "active" },
+          })) || 0;
+      } catch (error) {
+        logger.warn("Could not calculate inventory value:", error.message);
+      }
+
+      // Get platform distribution with error handling
+      let platformCounts = [];
+      try {
+        platformCounts = await PlatformData.findAll({
+          attributes: [
+            "platformType",
+            [
+              PlatformData.sequelize.fn(
+                "COUNT",
+                PlatformData.sequelize.col("PlatformData.id")
+              ),
+              "count",
+            ],
+          ],
+          include: [
+            {
+              model: Product,
+              as: "product",
+              where: { userId },
+              attributes: [],
+            },
+          ],
+          where: { entityType: "product" },
+          group: ["platformType"],
+          raw: true,
+        });
+      } catch (error) {
+        logger.warn("Could not fetch platform counts:", error.message);
+      }
 
       res.json({
         success: true,
@@ -1108,10 +1137,33 @@ class ProductController {
       });
     } catch (error) {
       logger.error("Error getting product statistics:", error);
-      res.status(500).json({
+
+      // Return graceful error response instead of 500
+      res.status(200).json({
         success: false,
-        message: "Failed to get product statistics",
-        error: error.message,
+        data: {
+          overview: {
+            totalProducts: 0,
+            activeProducts: 0,
+            inactiveProducts: 0,
+            draftProducts: 0,
+            pendingProducts: 0,
+            rejectedProducts: 0,
+            lowStockProducts: 0,
+            outOfStockProducts: 0,
+            inStockProducts: 0,
+            pasifProducts: 0,
+            aktifProducts: 0,
+            inventoryValue: "0.00",
+          },
+          categories: [],
+          platforms: [],
+        },
+        error: {
+          message: "Failed to get product statistics due to system error",
+          details: error.message,
+          errorType: "DATABASE_ERROR",
+        },
       });
     }
   }
@@ -4112,6 +4164,141 @@ class ProductController {
       res.status(500).json({
         success: false,
         message: "Failed to update service configuration",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get product model structure for field mapping
+   */
+  async getModelStructure(req, res) {
+    try {
+      logger.info("📋 Fetching product model structure for field mapping");
+
+      // Define the product model structure based on your Product model
+      const modelStructure = {
+        fields: [
+          {
+            name: "name",
+            type: "string",
+            required: true,
+            description: "Product name/title",
+            category: "basic",
+          },
+          {
+            name: "description",
+            type: "text",
+            required: false,
+            description: "Product description",
+            category: "basic",
+          },
+          {
+            name: "price",
+            type: "decimal",
+            required: true,
+            description: "Product price",
+            category: "pricing",
+          },
+          {
+            name: "stockQuantity",
+            type: "integer",
+            required: false,
+            description: "Stock quantity",
+            category: "inventory",
+          },
+          {
+            name: "sku",
+            type: "string",
+            required: false,
+            description: "Stock Keeping Unit",
+            category: "basic",
+          },
+          {
+            name: "barcode",
+            type: "string",
+            required: false,
+            description: "Product barcode",
+            category: "basic",
+          },
+          {
+            name: "brand",
+            type: "string",
+            required: false,
+            description: "Product brand",
+            category: "basic",
+          },
+          {
+            name: "category",
+            type: "string",
+            required: false,
+            description: "Product category",
+            category: "basic",
+          },
+          {
+            name: "weight",
+            type: "decimal",
+            required: false,
+            description: "Product weight",
+            category: "physical",
+          },
+          {
+            name: "dimensions",
+            type: "object",
+            required: false,
+            description: "Product dimensions (length, width, height)",
+            category: "physical",
+          },
+          {
+            name: "images",
+            type: "array",
+            required: false,
+            description: "Product images",
+            category: "media",
+          },
+          {
+            name: "tags",
+            type: "array",
+            required: false,
+            description: "Product tags",
+            category: "meta",
+          },
+          {
+            name: "status",
+            type: "enum",
+            required: false,
+            description: "Product status (active, inactive, draft)",
+            category: "meta",
+            options: ["active", "inactive", "draft"],
+          },
+        ],
+        categories: [
+          { id: "basic", name: "Basic Information" },
+          { id: "pricing", name: "Pricing" },
+          { id: "inventory", name: "Inventory" },
+          { id: "physical", name: "Physical Properties" },
+          { id: "media", name: "Media" },
+          { id: "meta", name: "Meta Information" },
+        ],
+      };
+
+      logger.info(
+        `✅ Retrieved product model structure with ${modelStructure.fields.length} fields`
+      );
+
+      res.json({
+        success: true,
+        data: modelStructure,
+      });
+    } catch (error) {
+      logger.error("❌ Error fetching product model structure:", {
+        error: error.message,
+        stack: error.stack,
+      });
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch product model structure",
         error: error.message,
       });
     }

@@ -46,9 +46,11 @@ import PlatformSyncHistory from "./components/platforms/PlatformSyncHistory";
 import ProductLinkingDashboard from "./pages/admin/ProductLinkingDashboard";
 import Analytics from "./pages/Analytics"; // Analytics dashboard
 import PlatformOperations from "./pages/PlatformOperations"; // Platform Operations
+import CustomerQuestions from "./components/CustomerQuestions"; // Customer Questions Management
 import Settings from "./components/settings/Settings";
 import PrintSettings from "./components/settings/PrintSettings";
 import DatabaseBusyModal from "./components/DatabaseBusyModal"; // Database transaction management modal
+import PlatformCategoriesManagement from "./components/PlatformCategoriesManagement.jsx";
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -138,7 +140,10 @@ function App() {
                         <Route path="dashboard" element={<Dashboard />} />
                         <Route path="orders" element={<Orders />} />
                         <Route path="orders/:id" element={<OrderDetail />} />
-                        <Route path="products/:id" element={<ProductDetail />} />
+                        <Route
+                          path="products/:id"
+                          element={<ProductDetail />}
+                        />
                         <Route path="analytics" element={<Analytics />} />
 
                         {/* ============================================ */}
@@ -174,13 +179,13 @@ function App() {
                         />
                         <Route
                           path="products/categories"
-                          element={<ProductManagement />}
+                          element={<PlatformCategoriesManagement />}
                         />
                         <Route
                           path="products/pricing"
                           element={<ProductManagement />}
                         />
-                        
+
                         {/* Variant Detection Configuration */}
                         <Route
                           path="products/variant-detection"
@@ -195,6 +200,12 @@ function App() {
                         <Route
                           path="customers/:email"
                           element={<CustomerProfile />}
+                        />
+
+                        {/* Customer Questions Management */}
+                        <Route
+                          path="customer-questions"
+                          element={<CustomerQuestions />}
                         />
 
                         {/* Shipping Management - with sub-routes */}

@@ -78,6 +78,17 @@ class N11Service extends BasePlatformService {
     this.directCredentials = directCredentials;
     this.apiUrl = N11_API.BASE_URL;
     this.logger = this.getLogger();
+
+    // Enhanced logging for N11 service initialization
+    this.logger.info("N11Service constructor called", {
+      connectionId:
+        typeof connectionId === "object"
+          ? connectionId.id || connectionId.connection?.id
+          : connectionId,
+      hasDirectCredentials: !!directCredentials,
+      apiUrl: this.apiUrl,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   /**
@@ -112,6 +123,11 @@ class N11Service extends BasePlatformService {
 
       // Validate required credentials with a more descriptive error message
       if (!appKey || !appSecret) {
+        this.logger.error("Missing N11 credentials", {
+          hasAppKey: !!appKey,
+          hasAppSecret: !!appSecret,
+          connectionId: this.connectionId,
+        });
         throw new Error("Missing required N11 credentials: appKey, appSecret");
       }
 
@@ -126,9 +142,12 @@ class N11Service extends BasePlatformService {
         timeout: 30000,
       });
     } catch (error) {
-      this.logger.error(`Failed to setup Axios instance: ${error.message}`, {
-        connectionId: this.connectionId,
-      });
+      this.logger.error(
+        `Failed to setup N11 Axios instance: ${error.message}`,
+        {
+          connectionId: this.connectionId,
+        }
+      );
       throw error;
     }
   }
@@ -169,7 +188,8 @@ class N11Service extends BasePlatformService {
       };
     } catch (error) {
       this.logger.error(`Failed to decrypt N11 credentials: ${error.message}`, {
-        error,
+        error: error.message,
+        connectionId: this.connectionId,
       });
       // Return default values instead of throwing to make error handling more graceful
       return { appKey: null, appSecret: null, endpointUrl: N11_API.BASE_URL };
@@ -1298,9 +1318,12 @@ class N11Service extends BasePlatformService {
         },
       };
     } catch (error) {
-      this.logger.error(`Failed to normalize orders: ${error.message}`, {
-        error,
+      this.logger.error(`Failed to normalize N11 orders: ${error.message}`, {
+        error: error.message,
+        stack: error.stack,
         connectionId: this.connectionId,
+        orderCount: n11Orders?.length || 0,
+        processedCount: successCount + updatedCount + skippedCount,
       });
       throw error;
     }
@@ -1390,62 +1413,82 @@ class N11Service extends BasePlatformService {
    * @returns {string} Internal order status compatible with Order model ENUM
    */
   mapOrderStatus(apiStatus) {
+    // Ensure we handle case variations from the API
+    if (!apiStatus) return "Created";
+
+    // Convert to string and handle both proper case and lowercase API responses
+    const status = String(apiStatus);
+
     const statusMap = {
-      // N11 statuses mapped to internal status names
-      Approved: "pending",
-      New: "new",
-      Picking: "processing",
-      Shipped: "shipped",
-      Delivered: "delivered",
-      Cancelled: "cancelled",
-      Returned: "returned",
-      Created: "new",
-      UnPacked: "failed",
-      UnSupplied: "failed",
+      // N11 statuses mapped to internal status names - Using proper case to match enum
+      Approved: "Processing",
+      New: "Created",
+      Picking: "Picking",
+      Shipped: "Shipped",
+      Delivered: "Delivered",
+      Cancelled: "Cancelled",
+      Returned: "Returned",
+      Created: "Created",
+      UnPacked: "Cancelled",
+      UnSupplied: "Cancelled",
+      // Lowercase variations that come from the API
+      approved: "Processing",
+      new: "Created",
+      picking: "Picking",
+      shipped: "Shipped",
+      delivered: "Delivered",
+      cancelled: "Cancelled",
+      returned: "Returned",
+      created: "Created",
+      unpacked: "Cancelled",
+      unsupplied: "Cancelled",
+      failed: "Failed",
+      expired: "Cancelled",
       // Additional N11 statuses that might be encountered
-      Confirmed: "pending",
-      InProgress: "processing",
-      ReadyToShip: "processing",
-      InTransit: "shipped",
-      PartiallyShipped: "shipped",
-      Completed: "delivered",
-      Rejected: "cancelled",
-      Refunded: "returned",
-      Failed: "failed",
-      Expired: "cancelled",
+      Confirmed: "Processing",
+      InProgress: "Processing",
+      ReadyToShip: "Processing",
+      InTransit: "Shipped",
+      PartiallyShipped: "Shipped",
+      Completed: "Delivered",
+      Rejected: "Cancelled",
+      Refunded: "Returned",
+      Failed: "Failed",
+      Expired: "Cancelled",
       // Turkish versions for consistency
-      Onaylandı: "pending",
-      Yeni: "new",
-      Hazırlanıyor: "processing",
-      Kargoda: "shipped",
-      "Teslim Edildi": "delivered",
-      "İptal Edildi": "cancelled",
-      "İade Edildi": "returned",
-      Oluşturuldu: "new",
-      Paketlenmedi: "failed",
-      "Tedarik Edilmedi": "failed",
-      Onaylandı: "pending",
-      "Devam Ediyor": "processing",
-      "Gönderilmeye Hazır": "processing",
-      Yolda: "shipped",
-      "Kısmi Gönderildi": "shipped",
-      Tamamlandı: "delivered",
-      Reddedildi: "cancelled",
-      "İade Edildi": "returned",
-      Başarısız: "failed",
-      "Süresi Doldu": "cancelled",
+      Onaylandı: "Processing",
+      Yeni: "Created",
+      Hazırlanıyor: "Processing",
+      Kargoda: "Shipped",
+      "Teslim Edildi": "Delivered",
+      "İptal Edildi": "Cancelled",
+      "İade Edildi": "Returned",
+      Oluşturuldu: "Created",
+      Paketlenmedi: "Cancelled",
+      "Tedarik Edilmedi": "Cancelled",
+      "Devam Ediyor": "Processing",
+      "Gönderilmeye Hazır": "Processing",
+      Yolda: "Shipped",
+      "Kısmi Gönderildi": "Shipped",
+      Tamamlandı: "Delivered",
+      Reddedildi: "Cancelled",
+      "İade Edildi": "Returned",
+      Başarısız: "Failed",
+      "Süresi Doldu": "Cancelled",
     };
 
+    const mappedStatus = statusMap[status];
+
     // Log unknown statuses for debugging
-    if (!statusMap[apiStatus]) {
-      this.logger.warn(`Unknown N11 order status received: ${apiStatus}`, {
+    if (!mappedStatus) {
+      this.logger.warn(`Unknown N11 order status received: ${status}`, {
         platform: "n11",
-        status: apiStatus,
-        mappedTo: "new",
+        status: status,
+        mappedTo: "Created",
       });
     }
 
-    return statusMap[apiStatus] || "new";
+    return mappedStatus || "Created";
   }
 
   /**
@@ -2182,6 +2225,552 @@ class N11Service extends BasePlatformService {
 
     // Fallback to string conversion
     return String(cargoTrackingNumber);
+  }
+
+  /**
+   * Create a single product on N11 platform
+   * @param {Object} productData - Product data in N11 format
+   * @returns {Promise<Object>} - Result of product creation
+   */
+  async createProduct(productData) {
+    try {
+      await this.initialize();
+
+      // Validate required fields for N11
+      const requiredFields = [
+        "productName",
+        "category",
+        "price",
+        "stockItems",
+        "images",
+        "description",
+      ];
+
+      for (const field of requiredFields) {
+        if (productData[field] === undefined || productData[field] === null) {
+          throw new Error(`Missing required field: ${field}`);
+        }
+      }
+
+      // Validate stock items structure
+      if (!productData.stockItems || !productData.stockItems.stockItem) {
+        throw new Error("Stock items structure is required");
+      }
+
+      // Validate images array
+      if (
+        !Array.isArray(productData.images) ||
+        productData.images.length === 0
+      ) {
+        throw new Error(
+          "Images array is required and must contain at least one image"
+        );
+      }
+
+      // Format the product data according to N11 API requirements
+      const n11ProductData = {
+        productName: productData.productName,
+        category: productData.category,
+        price: parseFloat(productData.price),
+        stockItems: {
+          stockItem: {
+            quantity: parseInt(productData.stockItems.stockItem.quantity, 10),
+            sellerStockCode: productData.stockItems.stockItem.sellerStockCode,
+            attributes: productData.stockItems.stockItem.attributes || {},
+          },
+        },
+        images: {
+          image: Array.isArray(productData.images)
+            ? productData.images
+            : [productData.images],
+        },
+        description: productData.description,
+        shipmentTemplate: productData.shipmentTemplate || "default",
+        preparingDay: productData.preparingDay || 1,
+        discount: productData.discount || null,
+        currencyType: productData.currencyType || "TL",
+        approvalStatus: productData.approvalStatus || false,
+      };
+
+      // Add optional fields if provided
+      if (productData.brand) {
+        n11ProductData.brand = productData.brand;
+      }
+
+      if (productData.mpn) {
+        n11ProductData.mpn = productData.mpn;
+      }
+
+      if (productData.gtin) {
+        n11ProductData.gtin = productData.gtin;
+      }
+
+      if (productData.vendorCode) {
+        n11ProductData.vendorCode = productData.vendorCode;
+      }
+
+      this.logger.info(`Creating product on N11`, {
+        productName: productData.productName,
+        sellerStockCode: productData.stockItems.stockItem.sellerStockCode,
+      });
+
+      // Note: This endpoint needs to be verified with official N11 API documentation
+      // Current implementation is based on reverse engineering from existing API patterns
+      const endpoint = "/rest/product/v1/create"; // This may need adjustment based on official docs
+
+      const response = await this.axiosInstance.post(endpoint, n11ProductData);
+
+      this.logger.info(`Product created successfully on N11`, {
+        productName: productData.productName,
+        response: response.data,
+      });
+
+      return {
+        success: true,
+        message: "Product created successfully on N11",
+        data: response.data,
+        platformProductId: response.data?.productId || response.data?.id,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to create product on N11: ${error.message}`, {
+        error: error.message,
+        status: error.response?.status,
+        productName: productData?.productName,
+        connectionId: this.connectionId,
+      });
+
+      return {
+        success: false,
+        message: `Failed to create product on N11: ${error.message}`,
+        error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  /**
+   * Create multiple products on N11 (bulk creation)
+   * @param {Array} productsData - Array of product data in N11 format
+   * @returns {Promise<Object>} - Result of bulk product creation
+   */
+  async createProductsBulk(productsData) {
+    try {
+      await this.initialize();
+
+      if (!Array.isArray(productsData) || productsData.length === 0) {
+        throw new Error("Products data must be a non-empty array");
+      }
+
+      this.logger.info(`Creating ${productsData.length} products on N11`, {
+        productCount: productsData.length,
+      });
+
+      const results = [];
+      const errors = [];
+
+      // Process products sequentially to avoid rate limiting
+      for (let i = 0; i < productsData.length; i++) {
+        const productData = productsData[i];
+
+        try {
+          const result = await this.createProduct(productData);
+          results.push({
+            index: i,
+            productName: productData.productName,
+            result: result,
+          });
+
+          // Add a small delay between requests to be respectful to the API
+          if (i < productsData.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 200));
+          }
+        } catch (error) {
+          errors.push({
+            index: i,
+            productName: productData.productName,
+            error: error.message,
+          });
+        }
+      }
+
+      const successCount = results.filter((r) => r.result.success).length;
+      const failureCount =
+        errors.length + results.filter((r) => !r.result.success).length;
+
+      this.logger.info(`Bulk product creation completed on N11`, {
+        total: productsData.length,
+        success: successCount,
+        failed: failureCount,
+      });
+
+      return {
+        success: successCount > 0,
+        message: `Bulk creation completed: ${successCount} successful, ${failureCount} failed`,
+        data: {
+          results,
+          errors,
+          summary: {
+            total: productsData.length,
+            successful: successCount,
+            failed: failureCount,
+          },
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to create products bulk on N11: ${error.message}`,
+        {
+          error,
+          productCount: productsData?.length,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to create products bulk: ${error.message}`,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Update product information on N11
+   * @param {string} productId - Product ID or seller stock code
+   * @param {Object} updateData - Data to update
+   * @returns {Promise<Object>} - Update result
+   */
+  async updateProduct(productId, updateData) {
+    try {
+      await this.initialize();
+
+      if (!productId) {
+        throw new Error("Product ID is required for product update");
+      }
+
+      // Format update data according to N11 requirements
+      const n11UpdateData = {};
+
+      if (updateData.price !== undefined) {
+        n11UpdateData.price = parseFloat(updateData.price);
+      }
+
+      if (updateData.stockQuantity !== undefined) {
+        n11UpdateData.stockItems = {
+          stockItem: {
+            quantity: parseInt(updateData.stockQuantity, 10),
+            sellerStockCode: productId,
+          },
+        };
+      }
+
+      if (updateData.productName) {
+        n11UpdateData.productName = updateData.productName;
+      }
+
+      if (updateData.description) {
+        n11UpdateData.description = updateData.description;
+      }
+
+      if (updateData.preparingDay !== undefined) {
+        n11UpdateData.preparingDay = parseInt(updateData.preparingDay, 10);
+      }
+
+      this.logger.info(`Updating product on N11`, {
+        productId,
+        updateFields: Object.keys(updateData),
+      });
+
+      // Note: This endpoint needs to be verified with official documentation
+      const endpoint = `/rest/product/v1/update/${productId}`;
+
+      const response = await this.axiosInstance.put(endpoint, n11UpdateData);
+
+      this.logger.info(`Product updated successfully on N11`, {
+        productId,
+        response: response.data,
+      });
+
+      return {
+        success: true,
+        message: "Product updated successfully on N11",
+        data: response.data,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to update product on N11: ${error.message}`, {
+        error,
+        productId,
+        connectionId: this.connectionId,
+      });
+
+      return {
+        success: false,
+        message: `Failed to update product: ${error.message}`,
+        error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  /**
+   * Helper method to validate N11 product data structure
+   * @param {Object} productData - Product data to validate
+   * @returns {Object} - Validation result
+   */
+  validateProductData(productData) {
+    const errors = [];
+    const warnings = [];
+
+    // Required field validation for N11
+    const requiredFields = {
+      productName: { type: "string", maxLength: 150 },
+      category: { type: "object" },
+      price: { type: "number", min: 0 },
+      description: { type: "string", maxLength: 5000 },
+    };
+
+    // Validate required fields
+    for (const [field, rules] of Object.entries(requiredFields)) {
+      if (productData[field] === undefined || productData[field] === null) {
+        errors.push(`Missing required field: ${field}`);
+        continue;
+      }
+
+      const value = productData[field];
+
+      // Type validation
+      if (rules.type === "string" && typeof value !== "string") {
+        errors.push(`Field ${field} must be a string`);
+      } else if (rules.type === "number" && typeof value !== "number") {
+        errors.push(`Field ${field} must be a number`);
+      } else if (rules.type === "object" && typeof value !== "object") {
+        errors.push(`Field ${field} must be an object`);
+      }
+
+      // Length validation
+      if (
+        rules.maxLength &&
+        typeof value === "string" &&
+        value.length > rules.maxLength
+      ) {
+        errors.push(
+          `Field ${field} exceeds maximum length of ${rules.maxLength}`
+        );
+      }
+
+      // Min value validation
+      if (
+        rules.min !== undefined &&
+        typeof value === "number" &&
+        value < rules.min
+      ) {
+        errors.push(`Field ${field} must be at least ${rules.min}`);
+      }
+    }
+
+    // Stock items validation
+    if (!productData.stockItems || !productData.stockItems.stockItem) {
+      errors.push("Stock items structure is required");
+    } else {
+      const stockItem = productData.stockItems.stockItem;
+
+      if (!stockItem.quantity || typeof stockItem.quantity !== "number") {
+        errors.push("Stock item quantity is required and must be a number");
+      }
+
+      if (
+        !stockItem.sellerStockCode ||
+        typeof stockItem.sellerStockCode !== "string"
+      ) {
+        errors.push(
+          "Stock item seller stock code is required and must be a string"
+        );
+      }
+    }
+
+    // Images validation
+    if (!productData.images || !Array.isArray(productData.images)) {
+      errors.push("Images field is required and must be an array");
+    } else {
+      if (productData.images.length === 0) {
+        errors.push("At least one image is required");
+      }
+
+      productData.images.forEach((imageUrl, index) => {
+        if (!imageUrl || typeof imageUrl !== "string") {
+          errors.push(
+            `Image ${index + 1}: URL is required and must be a string`
+          );
+        } else if (
+          !imageUrl.startsWith("http://") &&
+          !imageUrl.startsWith("https://")
+        ) {
+          errors.push(`Image ${index + 1}: Must be a valid HTTP/HTTPS URL`);
+        }
+      });
+    }
+
+    // Category validation
+    if (productData.category && typeof productData.category === "object") {
+      if (!productData.category.id && !productData.category.categoryId) {
+        errors.push("Category must have an id or categoryId field");
+      }
+    }
+
+    // Business logic validations
+    if (
+      productData.preparingDay &&
+      (productData.preparingDay < 1 || productData.preparingDay > 30)
+    ) {
+      warnings.push("Preparing day should be between 1 and 30 days");
+    }
+
+    if (productData.price && productData.price < 1) {
+      warnings.push("Product price seems very low, please verify");
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  }
+
+  /**
+   * NOTE: The following methods require official N11 API documentation
+   * Current implementation is based on assumptions from existing API patterns
+   * Please verify endpoints and request/response formats with official documentation
+   */
+
+  /**
+   * Get product status from N11
+   * @param {string} productId - Product ID or seller stock code
+   * @returns {Promise<Object>} - Product status information
+   */
+  async getProductStatus(productId) {
+    try {
+      await this.initialize();
+
+      if (!productId) {
+        throw new Error("Product ID is required");
+      }
+
+      // Note: Endpoint needs verification with official documentation
+      const endpoint = `/rest/product/v1/status/${productId}`;
+
+      const response = await this.axiosInstance.get(endpoint);
+
+      return {
+        success: true,
+        data: response.data,
+        message: "Product status retrieved successfully",
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get product status: ${error.message}`, {
+        error,
+        productId,
+        connectionId: this.connectionId,
+      });
+
+      return {
+        success: false,
+        message: `Failed to get product status: ${error.message}`,
+        error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  /**
+   * Get N11 categories
+   */
+  async getCategories() {
+    try {
+      await this.initialize();
+      // Return sample categories for now
+      return [
+        {
+          categoryId: 1000001,
+          categoryName: "Elektronik",
+          parentCategoryId: null,
+        },
+        { categoryId: 1000002, categoryName: "Giyim", parentCategoryId: null },
+        {
+          categoryId: 1000003,
+          categoryName: "Ev & Bahçe",
+          parentCategoryId: null,
+        },
+      ];
+    } catch (error) {
+      this.logger.error("Failed to fetch N11 categories", {
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get category attributes for N11
+   */
+  async getCategoryAttributes(categoryId) {
+    try {
+      await this.initialize();
+      // Return sample attributes for now
+      return [
+        {
+          attributeId: "color",
+          attributeName: "Renk",
+          attributeType: "TEXT",
+          required: true,
+        },
+        {
+          attributeId: "size",
+          attributeName: "Beden",
+          attributeType: "TEXT",
+          required: false,
+        },
+      ];
+    } catch (error) {
+      this.logger.error("Failed to fetch N11 category attributes", {
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get N11-specific product fields
+   */
+  async getProductFields(categoryId = null) {
+    const attributes = categoryId
+      ? await this.getCategoryAttributes(categoryId)
+      : [];
+
+    return {
+      platform: "n11",
+      requiredFields: [
+        {
+          name: "productName",
+          label: "Product Name",
+          type: "text",
+          required: true,
+        },
+        { name: "barcode", label: "Barcode", type: "text", required: true },
+        {
+          name: "categoryId",
+          label: "Category",
+          type: "select",
+          required: true,
+        },
+        {
+          name: "salePrice",
+          label: "Sale Price",
+          type: "number",
+          required: true,
+        },
+      ],
+      optionalFields: [
+        { name: "productDescription", label: "Description", type: "textarea" },
+      ],
+      categoryAttributes: attributes,
+    };
   }
 }
 

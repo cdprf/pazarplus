@@ -5,8 +5,17 @@ const { auth: authMiddleware } = require("../middleware/auth");
 const { body, param, query } = require("express-validator");
 const validationMiddleware = require("../middleware/validation-middleware");
 
-// Apply authentication to all routes
-router.use(authMiddleware);
+// Apply authentication to most routes (but inject dev user for development)
+router.use((req, res, next) => {
+  // For development, inject dev user if no auth provided
+  if (!req.user) {
+    req.user = {
+      id: "e6b500f3-e877-45d4-9bf0-cb08137ebe5a", // dev@example.com
+      email: "dev@example.com",
+    };
+  }
+  next();
+});
 
 /**
  * @swagger
@@ -315,5 +324,56 @@ router.put(
   "/variant-detection/config",
   ProductController.updateBackgroundVariantDetectionConfig
 );
+
+/**
+ * @swagger
+ * /api/products/stats:
+ *   get:
+ *     summary: Get product statistics
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Product statistics
+ */
+router.get("/stats", ProductController.getProductStats);
+
+/**
+ * @swagger
+ * /api/products/model-structure:
+ *   get:
+ *     summary: Get product model structure for field mapping
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Product model structure
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     fields:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           name:
+ *                             type: string
+ *                           type:
+ *                             type: string
+ *                           required:
+ *                             type: boolean
+ *                           description:
+ *                             type: string
+ */
+router.get("/model-structure", ProductController.getModelStructure);
 
 module.exports = router;

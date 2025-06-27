@@ -79,6 +79,24 @@ const OrderActions = ({
           );
         }
 
+        console.log(
+          "🔍 Template check - defaultTemplateId:",
+          defaultTemplateId
+        );
+
+        // Check if a template is available before proceeding
+        if (!defaultTemplateId) {
+          console.log("❌ No shipping template available - showing alert");
+          showAlert(
+            "No shipping template found. Please create or link a shipping template to this order before printing.",
+            "warning"
+          );
+          setIsPrintingShippingSlip(false);
+          return;
+        }
+
+        console.log("✅ Template found, proceeding with PDF generation");
+
         // Use enhanced PDF service
         const result = await enhancedPDFService.generateAndOpenShippingSlip(
           orderId,

@@ -355,6 +355,7 @@ app.get("/api", (req, res) => {
 
 // Mount all routes with API prefix
 app.use("/api", routes);
+console.log("✅ API routes mounted successfully in app.js");
 
 // Serve shipping PDFs statically with proper headers for Turkish character support
 const shippingPublicPath = path.join(__dirname, "public", "shipping");
@@ -476,8 +477,7 @@ async function initializeEnhancedServices() {
     // Setup inventory management event listeners
     setupInventoryManagementEventListeners();
 
-    // Initialize database transaction manager
-    await dbTransactionManager.initialize();
+    // Database transaction manager will initialize SQLite optimizations lazily when needed
 
     logger.info(
       "Enhanced platform integration services initialized successfully"

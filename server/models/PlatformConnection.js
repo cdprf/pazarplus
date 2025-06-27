@@ -13,7 +13,7 @@ const PlatformConnection = sequelize.define(
       type: DataTypes.UUID, // Fixed: Changed from INTEGER to UUID to match User model
       allowNull: false,
       references: {
-        model: "Users",
+        model: "users",
         key: "id",
       },
     },
@@ -240,7 +240,9 @@ PlatformConnection.prototype.needsSync = function () {
   if (!this.autoSync || !this.isActive) return false;
   if (!this.lastSyncAt) return true;
 
-  const nextSync = new Date(this.lastSyncAt.getTime() + this.syncInterval * 1000);
+  const nextSync = new Date(
+    this.lastSyncAt.getTime() + this.syncInterval * 1000
+  );
   return new Date() >= nextSync;
 };
 

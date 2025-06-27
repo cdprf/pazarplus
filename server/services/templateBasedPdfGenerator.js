@@ -1340,13 +1340,13 @@ class TemplateBasedPDFGenerator {
       // Get alignment settings from element style with modern CSS support
       const elementStyle = element.style || {};
       const modernStyle = this.modernizeAlignment(elementStyle);
-      
+
       const horizontalAlign = this.convertJustifyContentToTextAlign(
-        modernStyle.justifyContent, 
+        modernStyle.justifyContent,
         elementStyle.textAlign || "left"
       );
       const verticalAlign = this.convertAlignItemsToVerticalAlign(
-        modernStyle.alignItems, 
+        modernStyle.alignItems,
         elementStyle.verticalAlign || "top"
       );
 
@@ -1794,27 +1794,68 @@ class TemplateBasedPDFGenerator {
       verticalAlign,
     } = fontOptions;
 
-    // Calculate vertical alignment offset
-    let startY = y;
+    // Calculate better estimates for content height
     const lineHeightPx = fontSize * lineHeight;
-    const totalContentHeight = data.length * (lineHeightPx + lineSpacing);
+
+    // Estimate initial content height more accurately by looking at actual data
+    let estimatedLines = 0;
+    for (const item of data) {
+      if (!item.value) continue;
+      const valueString = String(item.value);
+
+      // Check if this will likely be a multi-line entry
+      if (
+        valueString.includes("\n") ||
+        valueString.length > 30 ||
+        (item.label && item.label.toLowerCase().includes("adres"))
+      ) {
+        // Address or multi-line: count at least 2 lines (label + 1 line of value)
+        estimatedLines += 2 + Math.min(2, Math.floor(valueString.length / 40));
+      } else {
+        // Regular single-line entry
+        estimatedLines += 1;
+      }
+    }
+
+    // Calculate total height with proper spacing
+    const totalContentHeight =
+      estimatedLines * lineHeightPx + (data.length - 1) * lineSpacing;
+
+    // Add a small padding buffer to prevent overlap
+    const padding = fontSize;
+
+    // Calculate vertical alignment offset - improved
+    let startY = y + padding;
 
     if (verticalAlign === "middle") {
-      startY = y + (height - totalContentHeight) / 2;
+      startY = y + Math.max(padding, (height - totalContentHeight) / 2);
     } else if (verticalAlign === "bottom") {
-      startY = y + height - totalContentHeight;
+      startY = y + Math.max(padding, height - totalContentHeight - padding);
     }
-    // "top" alignment uses original y position
 
-    let currentY = Math.max(startY, y); // Ensure we don't go above the element bounds
-    const maxY = y + height; // Boundary check
+    // Add a small buffer to prevent overlap with content above
+    const topBuffer = fontSize * 0.3;
+    let currentY = Math.max(startY, y + padding + topBuffer);
+
+    // Limit content to stay within borders
+    const maxY = y + height - padding; // Boundary check with padding buffer
 
     for (const item of data) {
       if (!item.value) continue;
 
-      // Check if we have space for at least one line
-      if (currentY + lineHeightPx > maxY) {
-        break; // Stop if we've exceeded the element height
+      // Check if we have space for at least one line plus some padding
+      if (currentY + lineHeightPx + fontSize * 0.5 > maxY) {
+        logger.debug("Truncating recipient content - not enough space", {
+          currentY,
+          maxY,
+          remainingItems: data.length - data.indexOf(item),
+        });
+        break; // Stop if we've exceeded the element height or are too close to border
+      }
+
+      // Ensure text stays within vertical boundaries
+      if (currentY < y) {
+        currentY = y + fontSize * 0.3; // Reset Y if it's above the top boundary
       }
 
       try {
@@ -1859,28 +1900,63 @@ class TemplateBasedPDFGenerator {
           align: "left",
         };
 
-        const labelText = `${item.label}:`;
+        // Normalize label text to prevent wrapping
+        const normalizedLabel = item.label.replace(/\s+/g, " ").trim();
+        const labelText = `${normalizedLabel}:`;
+
+        // Measure width with the normal text (with spaces) for calculations
         const labelWidth = doc.widthOfString(labelText);
+
+        // Ensure labels never wrap - they should be on a single line
+        // If label is too long, we'll truncate with ellipsis
+        const maxLabelWidth = width * 0.6; // Labels shouldn't take more than 60% of width
+        const actualLabelWidth = Math.min(labelWidth, maxLabelWidth);
 
         // Calculate available width for value
         const availableValueWidth = Math.max(
-          width - labelWidth - labelSpacing,
+          width - actualLabelWidth - labelSpacing,
           width * 0.3
         );
 
         // For long addresses, we might need to wrap text
         const valueString = String(item.value);
+
+        // Better wrapping detection:
+        // 1. Check for explicit line breaks
+        // 2. Check if text is too long to fit in one line (using PDFKit's widthOfString)
+        // 3. Special handling for address field (always wrap address)
+        const textWidth = doc.widthOfString(valueString);
+        const isAddress =
+          item.label && item.label.toLowerCase().includes("adres");
         const shouldWrapText =
-          valueString.length > 30 || valueString.includes("\n");
+          valueString.includes("\n") ||
+          textWidth > (width - labelWidth - labelSpacing) * 0.9 ||
+          (isAddress && valueString.length > 25);
 
         if (shouldWrapText) {
-          // Render label on its own line for better layout
-          doc.text(labelText, x, currentY, {
+          // Check if we're too close to the top or a previous element
+          // This ensures labels don't overlap with content above
+          const labelTopBuffer = fontSize * 0.3;
+
+          // Make sure there's enough space for the label
+          if (currentY < y + labelTopBuffer) {
+            currentY = y + labelTopBuffer;
+          }
+
+          // Render label on its own line - ensure it NEVER wraps
+          // Force rendering as a single line by replacing spaces with non-breaking spaces
+          const noWrapLabelText = labelText.replace(/ /g, "\u00A0");
+          // Also replace slash character which can cause wrapping
+          const finalLabelText = noWrapLabelText.replace(/\//g, "\u2215");
+
+          doc.text(finalLabelText, x, currentY, {
             width: width,
             align: textAlign || "left",
-            ellipsis: false,
+            ellipsis: true, // Use ellipsis if too long
+            lineBreak: false, // No line breaks in labels
           });
 
+          // Move down for value with appropriate spacing
           currentY += lineHeightPx;
 
           // Check if we still have space for the value
@@ -1911,35 +1987,69 @@ class TemplateBasedPDFGenerator {
             }
           }
 
-          // Render value with wrapping, indented slightly
-          const indentX = x + 10;
+          // Special handling for address fields - better formatting
+          const isAddress =
+            item.label && item.label.toLowerCase().includes("adres");
+          const indentX = x + (isAddress ? 10 : 5);
           const remainingHeight = maxY - currentY;
-          doc.text(valueString, indentX, currentY, {
-            width: width - 10,
+
+          // For addresses, pre-format with linebreaks if it doesn't have them already
+          let formattedValue = valueString;
+          if (isAddress && !formattedValue.includes("\n")) {
+            // Try to intelligently split address on commas or dashes
+            formattedValue = formattedValue
+              .replace(/,\s*/g, ",\n") // Break after commas
+              .replace(/\s-\s/g, "\n-") // Break before dashes
+              .replace(/(\d{5})\s+([A-Z])/g, "$1\n$2"); // Break after postal codes
+          }
+
+          // Now render with proper formatting
+          doc.text(formattedValue, indentX, currentY, {
+            width: width - (indentX - x),
             align: textAlign || "left",
             ellipsis: true,
-            height: Math.min(lineHeightPx * 3, remainingHeight), // Limit to 3 lines or remaining height
+            height: Math.min(lineHeightPx * 4, remainingHeight), // Allow up to 4 lines for addresses
+            lineGap: isAddress ? lineSpacing * 0.5 : lineSpacing * 0.25, // Better line spacing for addresses
           });
 
-          // Calculate how many lines the text actually took
-          const textHeight = Math.min(
-            lineHeightPx * Math.ceil(valueString.length / 40),
-            lineHeightPx * 3
+          // Better calculation of how many lines the text actually took
+          // Count actual line breaks plus estimated wrapping
+          const explicitLines = (valueString.match(/\n/g) || []).length + 1;
+          const estimatedLines = Math.ceil(
+            doc.widthOfString(valueString) / (width - 10)
           );
-          currentY += Math.min(textHeight, remainingHeight) + lineSpacing;
+          const actualLines = Math.max(explicitLines, estimatedLines);
+
+          // Calculate actual text height and ensure we don't overlap with next element
+          const textHeight = Math.min(
+            lineHeightPx * Math.min(actualLines, 5), // Cap at 5 lines maximum
+            lineHeightPx * 3,
+            remainingHeight
+          );
+
+          // Add proper spacing after multiline text but don't exceed container bounds
+          const nextLabelBuffer = fontSize * 0.5; // Add extra buffer between this value and next label
+          currentY += textHeight + lineSpacing + nextLabelBuffer;
         } else {
           // Single line layout
 
-          // Render bold label
-          doc.text(labelText, x, currentY, {
-            width: labelWidth,
+          // Render bold label - ensure it NEVER wraps, even with spaces or slashes
+          // Force rendering as a single line by replacing spaces with non-breaking spaces
+          const noWrapLabelText = labelText.replace(/ /g, "\u00A0");
+          // Also replace slash character which can cause wrapping
+          const finalLabelText = noWrapLabelText.replace(/\//g, "\u2215");
+
+          doc.text(finalLabelText, x, currentY, {
+            width: actualLabelWidth, // Use the capped width to prevent wrapping
             align: textAlign || "left",
             continued: false,
-            ellipsis: false,
+            ellipsis: true, // Use ellipsis if label is too long
+            lineBreak: false, // Explicitly disable line breaks
           });
 
-          // Add label spacing
-          const valueStartX = x + labelWidth + labelSpacing;
+          // Add label spacing - ensure value starts after label but not beyond reasonable width
+          const valueStartX =
+            x + Math.min(actualLabelWidth, width * 0.6) + labelSpacing;
 
           // Set normal font for value
           try {
@@ -1972,8 +2082,9 @@ class TemplateBasedPDFGenerator {
             ellipsis: true,
           });
 
-          // Move to next line with line spacing
-          currentY += lineHeightPx + lineSpacing;
+          // Move to next line with improved spacing to prevent label overlap
+          const nextLabelSpacing = fontSize * 0.7; // Give enough room for the next label
+          currentY += lineHeightPx + lineSpacing + nextLabelSpacing;
         }
       } catch (error) {
         logger.error("Error rendering label-value pair in recipient element", {
@@ -2607,8 +2718,7 @@ class TemplateBasedPDFGenerator {
       const itemsData = [];
 
       orderData.items.forEach((item, index) => {
-        const itemName =
-          item.product.name || `Ürün ${index + 1}`;
+        const itemName = item.product.name || `Ürün ${index + 1}`;
         const quantity = item.quantity || item.qty || 1;
         const sku = item.product.sku || item.sku || "Bilinmiyor";
 

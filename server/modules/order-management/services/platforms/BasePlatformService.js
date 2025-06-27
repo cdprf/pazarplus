@@ -100,6 +100,80 @@ class BasePlatformService {
   }
 
   /**
+   * Validate product data for the platform
+   * Can be overridden by specific platform services for custom validation
+   * @param {Object} productData - Product data to validate
+   * @returns {Object} Validation result with isValid, errors, and warnings
+   */
+  validateProductData(productData) {
+    const errors = [];
+    const warnings = [];
+
+    // Basic validation that applies to all platforms
+    if (!productData) {
+      errors.push("Product data is required");
+    } else {
+      // Check for common required fields
+      if (!productData.title && !productData.productName && !productData.name) {
+        errors.push("Product title/name is required");
+      }
+
+      if (
+        !productData.barcode &&
+        !productData.sku &&
+        !productData.merchantSku
+      ) {
+        warnings.push("Product identifier (barcode/sku) is recommended");
+      }
+
+      if (
+        !productData.price &&
+        !productData.salePrice &&
+        !productData.listPrice
+      ) {
+        errors.push("Product price is required");
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  }
+
+  /**
+   * Get platform categories
+   * Should be implemented by each platform service
+   * @returns {Promise<Array>} List of categories
+   */
+  async getCategories() {
+    throw new Error("getCategories must be implemented by platform service");
+  }
+
+  /**
+   * Get category attributes/properties
+   * Should be implemented by each platform service
+   * @param {string} categoryId - Category ID
+   * @returns {Promise<Array>} List of category attributes
+   */
+  async getCategoryAttributes(categoryId) {
+    throw new Error(
+      "getCategoryAttributes must be implemented by platform service"
+    );
+  }
+
+  /**
+   * Get platform-specific product fields for variant creation
+   * Should be implemented by each platform service
+   * @param {string} categoryId - Category ID (optional)
+   * @returns {Promise<Object>} Platform-specific field definitions
+   */
+  async getProductFields(categoryId = null) {
+    throw new Error("getProductFields must be implemented by platform service");
+  }
+
+  /**
    * Decrypt credentials from the platform connection
    * @param {String} encryptedCredentials - Encrypted credentials string
    * @returns {Object} Decrypted credentials

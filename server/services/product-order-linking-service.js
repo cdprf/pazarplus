@@ -453,7 +453,7 @@ class ProductOrderLinkingService {
         {
           model: N11Product,
           as: "n11Product",
-          attributes: ["n11ProductId", "sellerCode", "barcode"],
+          attributes: ["n11ProductId", "sellerId", "barcode"],
           required: false,
         },
       ],
@@ -575,11 +575,11 @@ class ProductOrderLinkingService {
         ) {
           return true;
         }
-        // Check N11 product ID or seller code
+        // Check N11 product ID or seller ID
         if (
           p.n11Product &&
           (p.n11Product.n11ProductId === orderItem.platformProductId ||
-            p.n11Product.sellerCode === orderItem.platformProductId)
+            p.n11Product.sellerId === orderItem.platformProductId)
         ) {
           return true;
         }
@@ -1052,11 +1052,11 @@ class ProductOrderLinkingService {
           ) {
             return true;
           }
-          // Check N11 product ID or seller code
+          // Check N11 product ID or seller ID
           if (
             p.n11Product &&
             (p.n11Product.n11ProductId === orderItem.platformProductId ||
-              p.n11Product.sellerCode === orderItem.platformProductId)
+              p.n11Product.sellerId === orderItem.platformProductId)
           ) {
             return true;
           }

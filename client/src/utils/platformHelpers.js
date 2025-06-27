@@ -153,20 +153,35 @@ export const formatCurrency = (amount, currency = "TRY") => {
   }
 };
 
-// Date formatter
-export const formatDate = (order) => {
-  if (!order) return "Tarih yok";
+// Date formatter - can handle both Date objects and order objects
+export const formatDate = (dateInput) => {
+  if (!dateInput) return "Tarih yok";
 
-  // Try different date fields with fallbacks
-  const dateValue =
-    order.displayDate || order.orderDate || order.createdAt || order.date;
-  if (!dateValue) return "Tarih yok";
+  let dateValue;
+
+  // If it's already a Date object, use it directly
+  if (dateInput instanceof Date) {
+    dateValue = dateInput;
+  } else if (typeof dateInput === "string") {
+    // If it's a date string, parse it
+    dateValue = new Date(dateInput);
+  } else if (typeof dateInput === "object") {
+    // If it's an order object, try different date fields with fallbacks
+    const rawDate =
+      dateInput.displayDate ||
+      dateInput.orderDate ||
+      dateInput.createdAt ||
+      dateInput.date;
+    if (!rawDate) return "Tarih yok";
+    dateValue = new Date(rawDate);
+  } else {
+    return "Geçersiz tarih";
+  }
 
   try {
-    const date = new Date(dateValue);
-    if (isNaN(date.getTime())) return "Geçersiz tarih";
+    if (isNaN(dateValue.getTime())) return "Geçersiz tarih";
 
-    return date.toLocaleDateString("tr-TR", {
+    return dateValue.toLocaleDateString("tr-TR", {
       year: "numeric",
       month: "short",
       day: "numeric",

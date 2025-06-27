@@ -3,6 +3,7 @@ const User = require("./User");
 const Order = require("./Order");
 const OrderItem = require("./OrderItem");
 const Product = require("./Product");
+const Customer = require("./Customer");
 const PlatformConnection = require("./PlatformConnection");
 const PlatformData = require("./PlatformData");
 const PlatformConflict = require("./PlatformConflict");
@@ -41,6 +42,12 @@ const Invoice = require("./Invoice");
 // === BACKGROUND TASK MODELS ===
 const BackgroundTask = require("./BackgroundTask")(sequelize);
 
+// === CUSTOMER QUESTION MODELS ===
+const CustomerQuestion = require("./CustomerQuestion");
+const CustomerReply = require("./CustomerReply");
+const ReplyTemplate = require("./ReplyTemplate");
+const QuestionStats = require("./QuestionStats");
+
 // ========================================
 // === NEW ENHANCED PRODUCT MANAGEMENT MODELS ===
 // ========================================
@@ -55,6 +62,7 @@ const models = {
   Order: Order,
   OrderItem: OrderItem,
   Product: Product,
+  Customer: Customer,
   PlatformConnection: PlatformConnection,
   PlatformData: PlatformData,
   PlatformConflict: PlatformConflict,
@@ -92,6 +100,12 @@ const models = {
 
   // === BACKGROUND TASK MODELS ===
   BackgroundTask: BackgroundTask,
+
+  // === CUSTOMER QUESTION MODELS ===
+  CustomerQuestion: CustomerQuestion,
+  CustomerReply: CustomerReply,
+  ReplyTemplate: ReplyTemplate,
+  QuestionStats: QuestionStats,
 
   // ========================================
   // === NEW ENHANCED PRODUCT MANAGEMENT MODELS ===
@@ -156,6 +170,18 @@ models.OrderItem.belongsTo(models.Order, {
   foreignKey: "orderId",
   as: "order",
   allowNull: false,
+});
+
+// Customer associations
+models.Customer.hasMany(models.Order, {
+  foreignKey: "customerEmail",
+  sourceKey: "email",
+  as: "orders",
+});
+models.Order.belongsTo(models.Customer, {
+  foreignKey: "customerEmail",
+  targetKey: "email",
+  as: "customer",
 });
 
 models.Product.hasMany(models.OrderItem, {

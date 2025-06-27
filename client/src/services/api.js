@@ -145,6 +145,60 @@ const orderService = {
         totalPages: backendPagination.totalPages || backendStats.pages || 1,
       };
     } catch (error) {
+      console.error("Order API error:", {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+      });
+
+      // Check for connection-related errors or graceful error responses
+      if (
+        error.response?.status === 500 ||
+        error.response?.data?.error?.errorType === "DATABASE_ERROR" ||
+        error.response?.data?.meta?.errorType === "DATABASE_CONNECTION_ERROR" ||
+        error.response?.data?.meta?.databaseError ||
+        error.message?.includes("CONNECTION_NOT_FOUND") ||
+        error.message?.includes("no connection found")
+      ) {
+        console.warn(
+          "Orders API failed due to connection issues, returning empty state"
+        );
+
+        // Check if the server provided a graceful error response
+        if (error.response?.data && error.response.data.success === false) {
+          console.log("Using server's graceful error response");
+          return error.response.data; // Use the server's graceful response
+        }
+
+        return {
+          success: true, // Return success to prevent UI breaking
+          data: {
+            orders: [],
+            pagination: {
+              total: 0,
+              totalPages: 1,
+              currentPage: 1,
+              limit: 20,
+              hasNext: false,
+              hasPrev: false,
+              showing: 0,
+              from: 0,
+              to: 0,
+            },
+            stats: { total: 0, page: 1, pages: 1 },
+          },
+          meta: {
+            connectionError: true,
+            message:
+              "Platform bağlantısı bulunamadı. Lütfen platform bağlantılarınızı kontrol edin.",
+          },
+          total: 0,
+          page: 1,
+          totalPages: 1,
+        };
+      }
+
       return {
         success: false,
         message: error.response?.data?.message || error.message,
@@ -299,10 +353,10 @@ const orderService = {
   getOrderStats: async (params = {}) => {
     try {
       const queryParams = new URLSearchParams(params).toString();
-      const url = queryParams 
+      const url = queryParams
         ? `/order-management/orders/stats?${queryParams}`
         : "/order-management/orders/stats";
-      
+
       const response = await api.get(url);
       return response.data;
     } catch (error) {
@@ -338,7 +392,9 @@ const orderService = {
   // Print invoice
   printInvoice: async (orderId, options = {}) => {
     try {
-      const response = await api.post(`/order-management/orders/${orderId}/generate-einvoice`);
+      const response = await api.post(
+        `/order-management/orders/${orderId}/generate-einvoice`
+      );
       return response.data;
     } catch (error) {
       throw error;

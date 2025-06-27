@@ -14,7 +14,7 @@ ShippingDetail.init(
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: "Orders",
+        model: "orders",
         key: "id",
       },
     },

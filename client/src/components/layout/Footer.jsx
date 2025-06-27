@@ -68,7 +68,7 @@ const Footer = () => {
 
   return (
     <footer
-      className={`${themeClasses.footer} border-t mt-auto transition-colors duration-200`}
+      className={`${themeClasses.footer} border-t transition-colors duration-200 w-full flex-shrink-0`}
     >
       <div className="px-4 sm:px-6 lg:px-8">
         {/* Main footer content */}

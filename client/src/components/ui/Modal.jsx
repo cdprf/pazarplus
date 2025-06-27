@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import { X } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { Button } from "./Button";
@@ -12,10 +12,20 @@ export const Modal = ({
   closeOnOverlayClick = true,
   showCloseButton = true,
   className,
+  id,
+  describedBy,
+  initialFocusRef,
+  finalFocusRef,
   ...props
 }) => {
   const modalRef = useRef(null);
   const previousFocusRef = useRef(null);
+  const closeButtonRef = useRef(null);
+
+  // Generate unique IDs for accessibility
+  const modalId = id || `modal-${Math.random().toString(36).substr(2, 9)}`;
+  const titleId = `${modalId}-title`;
+  const contentId = `${modalId}-content`;
 
   const sizeClasses = {
     sm: "max-w-md w-[30vw] min-w-[400px]",
@@ -25,39 +35,136 @@ export const Modal = ({
     full: "max-w-full mx-4",
   };
 
+  // Focus management
+  const handleFocusManagement = useCallback(() => {
+    if (isOpen) {
+      // Store the previously focused element
+      previousFocusRef.current = document.activeElement;
+
+      // Set initial focus
+      setTimeout(() => {
+        if (initialFocusRef?.current) {
+          initialFocusRef.current.focus();
+        } else if (closeButtonRef.current) {
+          closeButtonRef.current.focus();
+        } else if (modalRef.current) {
+          modalRef.current.focus();
+        }
+      }, 100);
+    } else {
+      // Return focus to the element that was focused before the modal opened
+      const elementToFocus = finalFocusRef?.current || previousFocusRef.current;
+      if (elementToFocus && typeof elementToFocus.focus === "function") {
+        elementToFocus.focus();
+      }
+    }
+  }, [isOpen, initialFocusRef, finalFocusRef]);
+
+  // Focus trap
+  const handleKeyDown = useCallback(
+    (event) => {
+      if (!isOpen) return;
+
+      // Handle Escape key
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      // Handle Tab key for focus trapping
+      if (event.key === "Tab") {
+        const modal = modalRef.current;
+        if (!modal) return;
+
+        const focusableElements = modal.querySelectorAll(
+          'button:not([disabled]), [href]:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled]), [contenteditable]:not([disabled])'
+        );
+        const focusableArray = Array.from(focusableElements).filter(
+          (element) => {
+            // Additional check to ensure element is actually focusable and visible
+            const style = window.getComputedStyle(element);
+            return (
+              style.display !== "none" &&
+              style.visibility !== "hidden" &&
+              element.offsetWidth > 0
+            );
+          }
+        );
+
+        if (focusableArray.length === 0) return;
+
+        const firstElement = focusableArray[0];
+        const lastElement = focusableArray[focusableArray.length - 1];
+        const currentIndex = focusableArray.indexOf(document.activeElement);
+
+        if (event.shiftKey) {
+          // Shift + Tab (backwards)
+          if (currentIndex <= 0) {
+            event.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          // Tab (forwards)
+          if (currentIndex >= focusableArray.length - 1) {
+            event.preventDefault();
+            firstElement.focus();
+          }
+        }
+      }
+    },
+    [isOpen, onClose]
+  );
+
   useEffect(() => {
     if (isOpen) {
+      // Store the previously focused element
       previousFocusRef.current = document.activeElement;
+
+      // Prevent body scroll
       document.body.style.overflow = "hidden";
 
-      // Focus the modal when it opens
-      if (modalRef.current) {
-        modalRef.current.focus();
-      }
+      // Hide everything behind the modal from screen readers
+      const rootElements = document.querySelectorAll(
+        'body > *:not([role="dialog"])'
+      );
+      rootElements.forEach((element) => {
+        if (element !== modalRef.current?.closest('[role="dialog"]')) {
+          element.setAttribute("aria-hidden", "true");
+        }
+      });
+
+      handleFocusManagement();
     } else {
+      // Restore body scroll
       document.body.style.overflow = "unset";
 
-      // Return focus to previously focused element
-      if (previousFocusRef.current) {
-        previousFocusRef.current.focus();
-      }
+      // Restore screen reader access to other elements
+      const rootElements = document.querySelectorAll(
+        'body > *[aria-hidden="true"]'
+      );
+      rootElements.forEach((element) => {
+        element.removeAttribute("aria-hidden");
+      });
+
+      handleFocusManagement();
     }
 
     return () => {
       document.body.style.overflow = "unset";
+      const rootElements = document.querySelectorAll(
+        'body > *[aria-hidden="true"]'
+      );
+      rootElements.forEach((element) => {
+        element.removeAttribute("aria-hidden");
+      });
     };
-  }, [isOpen]);
+  }, [isOpen, handleFocusManagement]);
 
   useEffect(() => {
-    const handleEscape = (event) => {
-      if (event.key === "Escape" && isOpen) {
-        onClose();
-      }
-    };
-
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [isOpen, onClose]);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
 
   if (!isOpen) {
     return null;
@@ -71,16 +178,17 @@ export const Modal = ({
 
   return (
     <div
-      className="modal modal-open"
+      className="modal modal-open fixed inset-0 z-[1040] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-labelledby={title ? "modal-title" : undefined}
+      aria-labelledby={title ? titleId : undefined}
+      aria-describedby={describedBy || contentId}
+      onClick={handleOverlayClick}
     >
       {/* Overlay - clickable background */}
-      <div 
-        className="modal-backdrop fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity duration-300" 
-        style={{ zIndex: 1040 }}
-        onClick={handleOverlayClick} 
+      <div
+        className="modal-backdrop fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity duration-300"
+        aria-hidden="true"
       />
 
       {/* Modal */}
@@ -91,10 +199,9 @@ export const Modal = ({
           "transform transition-all duration-300",
           "max-h-[90vh] overflow-y-auto",
           isOpen ? "scale-100 opacity-100" : "scale-95 opacity-0",
-          sizeClasses[size], 
+          sizeClasses[size],
           className
         )}
-        style={{ zIndex: 1050 }}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         {...props}
@@ -103,12 +210,16 @@ export const Modal = ({
         {(title || showCloseButton) && (
           <div className="modal-header flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             {title && (
-              <h2 id="modal-title" className="modal-title text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h2
+                id={titleId}
+                className="modal-title text-lg font-semibold text-gray-900 dark:text-gray-100"
+              >
                 {title}
               </h2>
             )}
             {showCloseButton && (
               <Button
+                ref={closeButtonRef}
                 variant="ghost"
                 size="sm"
                 onClick={onClose}
@@ -121,7 +232,9 @@ export const Modal = ({
         )}
 
         {/* Content */}
-        <div className="modal-body px-6 py-4">{children}</div>
+        <div id={contentId} className="modal-body px-6 py-4">
+          {children}
+        </div>
       </div>
     </div>
   );

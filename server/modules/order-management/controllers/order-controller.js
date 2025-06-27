@@ -70,11 +70,61 @@ async function getAllOrders(req, res) {
       sortOrder = "DESC",
     } = req.query;
 
-    // Check if user has any platform connections
-    const platformConnections = await PlatformConnection.findAll({
-      where: { userId },
-      attributes: ["id", "platformType", "name", "isActive"],
-    });
+    // Check if user has any platform connections with error handling
+    let platformConnections = [];
+    try {
+      platformConnections = await PlatformConnection.findAll({
+        where: { userId },
+        attributes: ["id", "platformType", "name", "isActive"],
+      });
+    } catch (connectionError) {
+      logger.warn(
+        "Could not fetch platform connections:",
+        connectionError.message
+      );
+      // Return empty state with guidance message for no connections
+      return res.status(200).json({
+        success: true,
+        data: {
+          orders: [],
+          pagination: {
+            total: 0,
+            totalPages: 0,
+            currentPage: 1,
+            limit: parseInt(limit) || 20,
+            hasNext: false,
+            hasPrev: false,
+            showing: 0,
+            from: 0,
+            to: 0,
+          },
+        },
+        stats: {
+          total: 0,
+          page: 1,
+          pages: 0,
+        },
+        meta: {
+          platformConnections: {
+            total: 0,
+            active: 0,
+            platforms: [],
+          },
+          guidance: {
+            hasConnections: false,
+            hasActiveConnections: false,
+            message:
+              "Veritabanı bağlantısı kurulamadı. Lütfen sistem yöneticisiyle iletişime geçin.",
+            nextSteps: [
+              "Sistem yöneticisiyle iletişime geçin",
+              "Veritabanı bağlantısını kontrol edin",
+              "Uygulamayı yeniden başlatmayı deneyin",
+            ],
+            errorType: "DATABASE_CONNECTION_ERROR",
+          },
+        },
+      });
+    }
 
     // Ensure page and limit are positive integers to prevent negative OFFSET
     const validPage = Math.max(1, parseInt(page) || 1);
@@ -124,34 +174,92 @@ async function getAllOrders(req, res) {
     const sortField = validSortFields.includes(sortBy) ? sortBy : "orderDate";
     const sortDirection = sortOrder.toLowerCase() === "asc" ? "ASC" : "DESC";
 
-    // Get orders with pagination and include related models
-    const orders = await Order.findAndCountAll({
-      where,
-      limit: validLimit,
-      offset: offset,
-      include: [
-        {
-          model: OrderItem,
-          as: "items",
-          include: [
-            {
-              model: Product,
-              as: "product",
-              required: false,
-            },
-          ],
+    // Get orders with pagination and include related models with enhanced error handling
+    let orders;
+    try {
+      orders = await Order.findAndCountAll({
+        where,
+        limit: validLimit,
+        offset: offset,
+        include: [
+          {
+            model: OrderItem,
+            as: "items",
+            include: [
+              {
+                model: Product,
+                as: "product",
+                required: false,
+              },
+            ],
+            required: false, // Make items optional in case of association issues
+          },
+          {
+            model: ShippingDetail,
+            as: "shippingDetail",
+            required: false, // Make shipping details optional
+          },
+          {
+            model: PlatformConnection,
+            as: "platformConnection",
+            attributes: ["platformType", "name", "isActive"],
+            required: false, // Make this optional to handle orders without platform connections
+          },
+        ],
+        order: [[sortField, sortDirection]],
+        distinct: true,
+      });
+    } catch (dbError) {
+      logger.error("Database error when fetching orders:", dbError);
+
+      // If there's a database/association error, return empty result with guidance
+      return res.status(200).json({
+        success: true,
+        data: {
+          orders: [],
+          pagination: {
+            total: 0,
+            totalPages: 1,
+            currentPage: validPage,
+            limit: validLimit,
+            hasNext: false,
+            hasPrev: false,
+            showing: 0,
+            from: 0,
+            to: 0,
+          },
         },
-        { model: ShippingDetail, as: "shippingDetail" },
-        {
-          model: PlatformConnection,
-          as: "platformConnection",
-          attributes: ["platformType", "name", "isActive"],
-          required: false, // Make this optional to handle orders without platform connections
+        stats: {
+          total: 0,
+          page: validPage,
+          pages: 1,
         },
-      ],
-      order: [[sortField, sortDirection]],
-      distinct: true,
-    });
+        meta: {
+          databaseError: true,
+          platformConnections: {
+            total: platformConnections.length,
+            active: platformConnections.filter((pc) => pc.isActive).length,
+            platforms: platformConnections.map((pc) => ({
+              id: pc.id,
+              name: pc.name,
+              type: pc.platformType,
+              isActive: pc.isActive,
+            })),
+          },
+          guidance: {
+            hasConnections: platformConnections.length > 0,
+            hasActiveConnections: platformConnections.some((pc) => pc.isActive),
+            message:
+              "Veritabanı bağlantısında sorun var. Platform bağlantılarınızı kontrol edin.",
+            nextSteps: [
+              "Platform bağlantılarınızı kontrol edin",
+              "Deaktif bağlantıları aktifleştirin",
+              "Senkronizasyon işlemini yeniden deneyin",
+            ],
+          },
+        },
+      });
+    }
 
     // Transform orders to frontend-compatible format
     const transformedOrders = orders.rows.map((order) => {
@@ -243,10 +351,53 @@ async function getAllOrders(req, res) {
     return res.status(200).json(response);
   } catch (error) {
     logger.error("Get orders error:", error);
-    return res.status(500).json({
+
+    // Return graceful error response instead of 500
+    return res.status(200).json({
       success: false,
-      message: "Error fetching orders",
-      error: error.message,
+      data: {
+        orders: [],
+        pagination: {
+          total: 0,
+          totalPages: 1,
+          currentPage: 1,
+          limit: parseInt(req.query.limit) || 20,
+          hasNext: false,
+          hasPrev: false,
+          showing: 0,
+          from: 0,
+          to: 0,
+        },
+      },
+      stats: {
+        total: 0,
+        page: 1,
+        pages: 1,
+      },
+      meta: {
+        error: true,
+        errorType: "SYSTEM_ERROR",
+        platformConnections: {
+          total: 0,
+          active: 0,
+          platforms: [],
+        },
+        guidance: {
+          hasConnections: false,
+          hasActiveConnections: false,
+          message:
+            "Sistem hatası nedeniyle siparişler yüklenemedi. Lütfen daha sonra tekrar deneyin.",
+          nextSteps: [
+            "Sayfayı yenileyin",
+            "Platform bağlantılarınızı kontrol edin",
+            "Sorun devam ederse sistem yöneticisiyle iletişime geçin",
+          ],
+        },
+      },
+      error: {
+        message: "Failed to fetch orders due to system error",
+        details: error.message,
+      },
     });
   }
 }
@@ -746,30 +897,35 @@ async function getOrderStats(req, res) {
     };
     const startDate = dateRanges[period] || dateRanges["30d"];
 
-    // Get comprehensive order statistics
-    const [
-      totalOrders,
-      periodOrders,
-      statusCounts,
-      platformCounts,
-      totalRevenue,
-      periodRevenue,
-      recentOrders,
-      platformConnections,
-    ] = await Promise.all([
-      // Total orders count
-      Order.count({ where: { userId } }),
+    // Get comprehensive order statistics with error handling for each query
+    let totalOrders = 0;
+    let periodOrders = 0;
+    let statusCounts = [];
+    let platformCounts = [];
+    let totalRevenue = 0;
+    let periodRevenue = 0;
+    let recentOrders = [];
+    let platformConnections = { count: 0, rows: [] };
 
-      // Orders in selected period
-      Order.count({
+    try {
+      totalOrders = await Order.count({ where: { userId } });
+    } catch (error) {
+      logger.warn("Could not fetch total orders count:", error.message);
+    }
+
+    try {
+      periodOrders = await Order.count({
         where: {
           userId,
           createdAt: { [Op.gte]: startDate },
         },
-      }),
+      });
+    } catch (error) {
+      logger.warn("Could not fetch period orders count:", error.message);
+    }
 
-      // Status breakdown for all orders
-      Order.findAll({
+    try {
+      statusCounts = await Order.findAll({
         where: { userId },
         attributes: [
           "orderStatus",
@@ -777,59 +933,64 @@ async function getOrderStats(req, res) {
         ],
         group: ["orderStatus"],
         raw: true,
-      }),
+      });
+    } catch (error) {
+      logger.warn("Could not fetch status counts:", error.message);
+    }
 
-      // Platform breakdown for all orders - with graceful handling for missing connections
-      (async () => {
-        try {
-          // First check if user has any platform connections
-          const hasConnections = await PlatformConnection.count({
-            where: { userId },
-          });
+    // Platform breakdown with enhanced error handling
+    try {
+      const hasConnections = await PlatformConnection.count({
+        where: { userId },
+      });
 
-          if (hasConnections === 0) {
-            return []; // Return empty array if no connections exist
+      if (hasConnections > 0) {
+        platformCounts = await Order.sequelize.query(
+          `
+          SELECT pc."platformType", COUNT(o.id) as count
+          FROM orders o 
+          JOIN platform_connections pc ON o."connectionId" = pc.id 
+          WHERE o."userId" = :userId
+          GROUP BY pc."platformType"
+        `,
+          {
+            replacements: { userId },
+            type: Order.sequelize.QueryTypes.SELECT,
           }
+        );
+      }
+    } catch (error) {
+      logger.warn(`Error fetching platform breakdown: ${error.message}`);
+    }
 
-          return await Order.sequelize.query(
-            `
-            SELECT pc."platformType", COUNT(o.id) as count
-            FROM orders o 
-            JOIN platform_connections pc ON o."connectionId" = pc.id 
-            WHERE o."userId" = :userId
-            GROUP BY pc."platformType"
-          `,
-            {
-              replacements: { userId },
-              type: Order.sequelize.QueryTypes.SELECT,
-            }
-          );
-        } catch (error) {
-          logger.warn(`Error fetching platform breakdown: ${error.message}`);
-          return []; // Return empty array on error
-        }
-      })(),
+    try {
+      totalRevenue =
+        (await Order.sum("totalAmount", { where: { userId } })) || 0;
+    } catch (error) {
+      logger.warn("Could not fetch total revenue:", error.message);
+    }
 
-      // Total revenue
-      Order.sum("totalAmount", { where: { userId } }),
+    try {
+      periodRevenue =
+        (await Order.sum("totalAmount", {
+          where: {
+            userId,
+            createdAt: { [Op.gte]: startDate },
+          },
+        })) || 0;
+    } catch (error) {
+      logger.warn("Could not fetch period revenue:", error.message);
+    }
 
-      // Revenue in selected period
-      Order.sum("totalAmount", {
-        where: {
-          userId,
-          createdAt: { [Op.gte]: startDate },
-        },
-      }),
-
-      // Recent orders (last 10)
-      Order.findAll({
+    try {
+      recentOrders = await Order.findAll({
         where: { userId },
         include: [
           {
             model: PlatformConnection,
             as: "platformConnection",
             attributes: ["platformType", "name"],
-            required: false, // Make optional to handle orders without platform connections
+            required: false,
           },
         ],
         order: [["createdAt", "DESC"]],
@@ -845,14 +1006,19 @@ async function getOrderStats(req, res) {
           "createdAt",
           "orderDate",
         ],
-      }),
+      });
+    } catch (error) {
+      logger.warn("Could not fetch recent orders:", error.message);
+    }
 
-      // Platform connection stats
-      PlatformConnection.findAndCountAll({
+    try {
+      platformConnections = await PlatformConnection.findAndCountAll({
         where: { userId },
         attributes: ["id", "platformType", "name", "isActive"],
-      }),
-    ]);
+      });
+    } catch (error) {
+      logger.warn("Could not fetch platform connections:", error.message);
+    }
 
     // Transform status counts to object
     const byStatus = {};
@@ -892,39 +1058,46 @@ async function getOrderStats(req, res) {
       })),
     };
 
-    // Calculate growth metrics (simplified - comparing with previous period)
-    const previousPeriodStart = new Date(
-      startDate.getTime() - (now.getTime() - startDate.getTime())
-    );
-    const [previousPeriodOrders, previousPeriodRevenue] = await Promise.all([
-      Order.count({
-        where: {
-          userId,
-          createdAt: {
-            [Op.between]: [previousPeriodStart, startDate],
-          },
-        },
-      }),
-      Order.sum("totalAmount", {
-        where: {
-          userId,
-          createdAt: {
-            [Op.between]: [previousPeriodStart, startDate],
-          },
-        },
-      }) || 0,
-    ]);
+    // Calculate growth metrics with error handling
+    let orderGrowth = 0;
+    let revenueGrowth = 0;
+    try {
+      const previousPeriodStart = new Date(
+        startDate.getTime() - (now.getTime() - startDate.getTime())
+      );
 
-    const orderGrowth =
-      previousPeriodOrders > 0
-        ? ((periodOrders - previousPeriodOrders) / previousPeriodOrders) * 100
-        : 0;
-    const revenueGrowth =
-      previousPeriodRevenue > 0
-        ? (((periodRevenue || 0) - previousPeriodRevenue) /
-            previousPeriodRevenue) *
-          100
-        : 0;
+      const previousPeriodOrders = await Order.count({
+        where: {
+          userId,
+          createdAt: {
+            [Op.between]: [previousPeriodStart, startDate],
+          },
+        },
+      });
+
+      const previousPeriodRevenue =
+        (await Order.sum("totalAmount", {
+          where: {
+            userId,
+            createdAt: {
+              [Op.between]: [previousPeriodStart, startDate],
+            },
+          },
+        })) || 0;
+
+      orderGrowth =
+        previousPeriodOrders > 0
+          ? ((periodOrders - previousPeriodOrders) / previousPeriodOrders) * 100
+          : 0;
+      revenueGrowth =
+        previousPeriodRevenue > 0
+          ? (((periodRevenue || 0) - previousPeriodRevenue) /
+              previousPeriodRevenue) *
+            100
+          : 0;
+    } catch (error) {
+      logger.warn("Could not calculate growth metrics:", error.message);
+    }
 
     // Comprehensive response
     const response = {
@@ -985,10 +1158,47 @@ async function getOrderStats(req, res) {
     return res.status(200).json(response);
   } catch (error) {
     logger.error("Error fetching comprehensive order stats:", error);
-    return res.status(500).json({
+
+    // Return graceful error response instead of 500
+    return res.status(200).json({
       success: false,
-      message: "Error fetching order statistics",
-      error: error.message,
+      data: {
+        newOrders: 0,
+        processingOrders: 0,
+        shippedOrders: 0,
+        deliveredOrders: 0,
+        cancelledOrders: 0,
+        totalOrders: 0,
+        total: 0,
+        totalRevenue: 0,
+        periodRevenue: 0,
+        byStatus: {},
+        byPlatform: {},
+        recentOrders: [],
+        platforms: {
+          active: 0,
+          inactive: 0,
+          total: 0,
+          connections: [],
+        },
+        growth: {
+          orders: 0,
+          revenue: 0,
+        },
+        period: {
+          selected: req.query.period || "30d",
+          ordersInPeriod: 0,
+          revenueInPeriod: 0,
+        },
+        averageOrderValue: 0,
+        completionRate: 0,
+        cancellationRate: 0,
+      },
+      error: {
+        message: "System error occurred while fetching order statistics",
+        details: error.message,
+        errorType: "DATABASE_ERROR",
+      },
     });
   }
 }

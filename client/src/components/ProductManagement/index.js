@@ -27,6 +27,7 @@ import { ImagePreviewModal } from "./components/ProductModals";
 import EnhancedProductAnalytics from "./components/ProductAnalyticsFixed";
 import BulkEditModal from "./components/BulkEditModal";
 import SearchPanel from "./components/SearchPanel";
+import PlatformVariantModal from "./components/PlatformVariantModal";
 import ProductManagementErrorBoundary, {
   ErrorDisplay,
   useErrorHandler,
@@ -435,6 +436,15 @@ const ProductManagement = () => {
       navigate(`/products/${product.id}`);
     },
     [navigate]
+  );
+
+  const handleCreateVariant = useCallback(
+    (product) => {
+      actions.setModals({
+        platformVariantModal: { open: true, product },
+      });
+    },
+    [actions]
   );
 
   // Filter and search handlers
@@ -892,6 +902,7 @@ const ProductManagement = () => {
               onDelete={handleDeleteProduct}
               onImageClick={handleImageClick}
               onProductNameClick={handleProductNameClick}
+              onCreateVariant={handleCreateVariant}
               onAddProduct={handleAddProduct}
               onSync={handleSync}
               sortField={state.sortField}
@@ -1195,6 +1206,23 @@ const ProductManagement = () => {
             actions.updateMultiple({ analyticsTimeRange: range })
           }
           productId={state.detailsModal.product?.id}
+        />
+
+        {/* Platform Variant Modal */}
+        <PlatformVariantModal
+          isOpen={state.platformVariantModal?.open || false}
+          onClose={() =>
+            actions.setModals({
+              platformVariantModal: { open: false, product: null },
+            })
+          }
+          selectedProduct={state.platformVariantModal?.product}
+          platformConnections={[
+            // Mock platform connections - should come from actual platform connections
+            { id: "1", platform: "trendyol" },
+            { id: "2", platform: "hepsiburada" },
+            { id: "3", platform: "n11" },
+          ]}
         />
       </div>
     </ProductManagementErrorBoundary>

@@ -112,6 +112,17 @@ const PrintOrderActions = ({ order }) => {
       return;
     }
 
+    // Check if a template is selected or available
+    if (!selectedTemplate && templates.length === 0) {
+      alert("No shipping template available. Please create a shipping template first to print shipping slips.");
+      return;
+    }
+
+    if (!selectedTemplate) {
+      alert("Please select a shipping template before printing the shipping slip.");
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await api.shipping.generatePDF(order.id);

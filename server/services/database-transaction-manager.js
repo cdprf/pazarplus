@@ -19,8 +19,7 @@ class DatabaseTransactionManager extends EventEmitter {
     this.pausedOperations = new Map();
     this.isInitialized = false;
 
-    // Initialize SQLite optimizations
-    this.initializeSQLiteOptimizations();
+    // Note: SQLite optimizations will be initialized lazily when first needed
   }
 
   /**

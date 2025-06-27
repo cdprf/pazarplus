@@ -22,6 +22,7 @@ class SQLiteOptimizer {
     try {
       // Check if we're using SQLite dialect
       const dialect = sequelize.getDialect();
+      logger.debug(`Database dialect detected: ${dialect}`);
 
       if (dialect !== "sqlite") {
         logger.info(

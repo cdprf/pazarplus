@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const logger = require("../utils/logger");
 const { auth } = require("../middleware/auth");
+const CustomerService = require("../services/CustomerService");
 const {
   Order,
   OrderItem,
@@ -14,6 +15,51 @@ const sequelize = require("../config/database");
 // Apply authentication middleware to all routes
 router.use(auth);
 
+// POST /api/customers/sync - Extract customers from orders and save to database
+router.post("/sync", async (req, res) => {
+  try {
+    logger.info("Starting customer sync", { userId: req.user.id });
+
+    // Extract customers from orders
+    await CustomerService.extractAndSaveCustomersFromOrders();
+
+    // Get updated statistics
+    const stats = await CustomerService.getCustomerStats();
+
+    res.json({
+      success: true,
+      message: "Customers synchronized successfully",
+      data: stats,
+    });
+  } catch (error) {
+    logger.error("Error syncing customers", { error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Failed to sync customers",
+      error: error.message,
+    });
+  }
+});
+
+// GET /api/customers/stats - Get customer statistics
+router.get("/stats", async (req, res) => {
+  try {
+    const stats = await CustomerService.getCustomerStats();
+
+    res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    logger.error("Error fetching customer stats", { error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch customer statistics",
+      error: error.message,
+    });
+  }
+});
+
 // GET /api/customers - Get all customers with filtering and pagination
 router.get("/", async (req, res) => {
   try {
@@ -21,9 +67,10 @@ router.get("/", async (req, res) => {
       page = 1,
       limit = 20,
       search = "",
-      status = "all",
-      sortBy = "name",
-      sortOrder = "asc",
+      customerType = "all",
+      riskLevel = "all",
+      sortBy = "totalSpent",
+      sortOrder = "desc",
     } = req.query;
 
     // Check if user is authenticated
@@ -34,165 +81,31 @@ router.get("/", async (req, res) => {
       });
     }
 
-    logger.info("Fetching customers from orders", {
+    logger.info("Fetching customers with analytics", {
       userId: req.user.id,
       page,
       limit,
       search,
-      status,
+      customerType,
+      riskLevel,
       sortBy,
       sortOrder,
     });
 
-    // Build where condition for search - use LIKE instead of ILIKE for SQLite compatibility
-    const whereCondition = {
-      userId: req.user.id, // Filter by current user
-      customerName: { [Op.ne]: null }, // Only orders with customer names
-    };
-
-    if (search) {
-      whereCondition[Op.or] = [
-        { customerName: { [Op.like]: `%${search}%` } },
-        { customerEmail: { [Op.like]: `%${search}%` } },
-      ];
-    }
-
-    // Use Sequelize ORM instead of raw SQL for better compatibility
-    const orders = await Order.findAll({
-      where: whereCondition,
-      attributes: [
-        "customerName",
-        "customerEmail",
-        "customerPhone",
-        "shippingAddress",
-        "orderDate",
-        "totalAmount",
-      ],
-      order: [
-        ["customerName", "ASC"],
-        ["orderDate", "DESC"],
-      ],
+    // Use CustomerService to get customers with analytics
+    const result = await CustomerService.getCustomersWithAnalytics({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      search,
+      customerType,
+      riskLevel,
+      sortBy,
+      sortOrder,
     });
-
-    // Process orders to extract unique customers
-    const customerMap = new Map();
-
-    orders.forEach((order) => {
-      const customerKey = `${order.customerName?.toLowerCase().trim()}_${(
-        order.customerEmail || ""
-      )
-        .toLowerCase()
-        .trim()}`;
-
-      if (!customerMap.has(customerKey)) {
-        // Parse shipping address
-        let address = {};
-        try {
-          if (order.shippingAddress) {
-            address =
-              typeof order.shippingAddress === "string"
-                ? JSON.parse(order.shippingAddress)
-                : order.shippingAddress;
-          }
-        } catch (error) {
-          logger.warn("Failed to parse shipping address", {
-            error: error.message,
-          });
-        }
-
-        customerMap.set(customerKey, {
-          name: order.customerName,
-          email: order.customerEmail || "",
-          phone: order.customerPhone || "",
-          address: {
-            street: address.address1 || address.street || "",
-            city: address.city || "",
-            state: address.state || address.district || "",
-            zipCode: address.postalCode || address.zipCode || "",
-            country: address.country || "Turkey",
-          },
-          orderCount: 1,
-          totalSpent: parseFloat(order.totalAmount) || 0,
-          firstOrderDate: order.orderDate,
-          lastOrderDate: order.orderDate,
-        });
-      } else {
-        // Update existing customer data
-        const customer = customerMap.get(customerKey);
-        customer.orderCount += 1;
-        customer.totalSpent += parseFloat(order.totalAmount) || 0;
-
-        if (new Date(order.orderDate) > new Date(customer.lastOrderDate)) {
-          customer.lastOrderDate = order.orderDate;
-        }
-        if (new Date(order.orderDate) < new Date(customer.firstOrderDate)) {
-          customer.firstOrderDate = order.orderDate;
-        }
-      }
-    });
-
-    // Convert to array and add generated IDs and status
-    const uniqueCustomers = Array.from(customerMap.values()).map(
-      (customer, index) => {
-        // Determine customer status based on last order date
-        const lastOrderDate = new Date(customer.lastOrderDate);
-        const daysSinceLastOrder =
-          (new Date() - lastOrderDate) / (1000 * 60 * 60 * 24);
-        const customerStatus = daysSinceLastOrder > 90 ? "inactive" : "active";
-
-        return {
-          id: `customer_${index + 1}`, // Generate a unique ID for frontend
-          name: customer.name,
-          email: customer.email,
-          phone: customer.phone,
-          address: customer.address,
-          status: customerStatus,
-          orderCount: customer.orderCount,
-          totalSpent: customer.totalSpent,
-          createdAt: customer.firstOrderDate,
-          updatedAt: customer.lastOrderDate,
-        };
-      }
-    );
-
-    // Apply status filter
-    const filteredCustomers =
-      status === "all"
-        ? uniqueCustomers
-        : uniqueCustomers.filter((customer) => customer.status === status);
-
-    // Sort customers
-    filteredCustomers.sort((a, b) => {
-      let aValue = a[sortBy === "name" ? "name" : sortBy];
-      let bValue = b[sortBy === "name" ? "name" : sortBy];
-
-      if (typeof aValue === "string") {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
-      }
-
-      if (sortOrder === "desc") {
-        return bValue > aValue ? 1 : -1;
-      }
-      return aValue > bValue ? 1 : -1;
-    });
-
-    // Paginate results
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + parseInt(limit);
-    const paginatedCustomers = filteredCustomers.slice(startIndex, endIndex);
-
-    const totalPages = Math.ceil(filteredCustomers.length / limit);
 
     res.json({
       success: true,
-      customers: paginatedCustomers,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: filteredCustomers.length,
-        totalPages,
-      },
+      data: result,
     });
   } catch (error) {
     logger.error("Error fetching customers:", error);
@@ -493,6 +406,47 @@ router.get("/:id/orders", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error fetching customer orders",
+      error: error.message,
+    });
+  }
+});
+
+// GET /api/customers/by-email/:email - Get customer by email with orders
+router.get("/by-email/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    logger.info("Fetching customer by email", {
+      userId: req.user.id,
+      email: email,
+    });
+
+    // Use CustomerService to get customer with orders
+    const customer = await CustomerService.getCustomerByEmail(email);
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: customer,
+    });
+  } catch (error) {
+    logger.error("Error fetching customer by email:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching customer",
       error: error.message,
     });
   }

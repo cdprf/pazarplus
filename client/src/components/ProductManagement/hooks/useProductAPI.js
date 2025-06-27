@@ -164,21 +164,49 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
           pasif: overview.pasifProducts || 0,
           aktif: overview.aktifProducts || 0,
         };
+      } else {
+        // Handle the case where API returns success: false
+        console.warn("Product stats API returned unsuccessful response:", data);
+        return getDefaultStats();
       }
     } catch (error) {
+      // More detailed error logging for debugging
+      console.error("fetchProductStats error details:", {
+        message: error.message,
+        status: error.status,
+        stack: error.stack,
+      });
+
+      // Check if it's a connection error
+      if (
+        error.message?.includes("CONNECTION_NOT_FOUND") ||
+        error.message?.includes("no connection found") ||
+        error.status === 500
+      ) {
+        console.warn(
+          "Product stats failed due to connection issues, returning defaults"
+        );
+      }
+
       handleError(error, " - fetchProductStats");
-      return {
-        total: 0,
-        active: 0,
-        inactive: 0,
-        draft: 0,
-        pending: 0,
-        rejected: 0,
-        outOfStock: 0,
-        lowStock: 0,
-      };
+      return getDefaultStats();
     }
   }, [createAPICall, handleError]);
+
+  // Helper function for default stats
+  const getDefaultStats = () => ({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    draft: 0,
+    pending: 0,
+    rejected: 0,
+    outOfStock: 0,
+    lowStock: 0,
+    inStock: 0,
+    pasif: 0,
+    aktif: 0,
+  });
 
   // Create product
   const createProduct = useCallback(

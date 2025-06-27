@@ -77,6 +77,7 @@ N11Order.init(
         "Cancelled",
         "Returned",
         "Processing",
+        "Failed",
       ],
       allowNull: false,
       defaultValue: "Created",

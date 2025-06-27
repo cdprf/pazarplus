@@ -37,6 +37,7 @@ const SimpleProductTable = ({
   onExportProduct,
   onViewAnalytics,
   onCopyLink,
+  onCreateVariant,
   // Variant Detection props
   onRemoveVariantStatus,
   onClassifyVariantStatus,
@@ -311,11 +312,18 @@ const SimpleProductTable = ({
                           {product.isVariant && (
                             <div className="flex items-center space-x-1">
                               <Badge variant="info" size="xs">
-                                Variant: {product.variantValue || product.variantType || 'Unknown'}
+                                Variant:{" "}
+                                {product.variantValue ||
+                                  product.variantType ||
+                                  "Unknown"}
                               </Badge>
                               {product.variantDetectionConfidence && (
                                 <span className="text-xs text-gray-400">
-                                  ({Math.round(product.variantDetectionConfidence * 100)}%)
+                                  (
+                                  {Math.round(
+                                    product.variantDetectionConfidence * 100
+                                  )}
+                                  %)
                                 </span>
                               )}
                               {onRemoveVariantStatus && (
@@ -341,7 +349,11 @@ const SimpleProductTable = ({
                               </Badge>
                               {product.variantDetectionConfidence && (
                                 <span className="text-xs text-gray-400">
-                                  ({Math.round(product.variantDetectionConfidence * 100)}%)
+                                  (
+                                  {Math.round(
+                                    product.variantDetectionConfidence * 100
+                                  )}
+                                  %)
                                 </span>
                               )}
                               {onRemoveVariantStatus && (
@@ -504,6 +516,19 @@ const SimpleProductTable = ({
                       {openMenuId === product.id && (
                         <div className="absolute right-0 top-8 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-10">
                           <div className="py-1">
+                            {onCreateVariant && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onCreateVariant(product);
+                                  setOpenMenuId(null);
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              >
+                                <Layers className="h-4 w-4 mr-2" />
+                                Platform Varyantı Oluştur
+                              </button>
+                            )}
                             {onDuplicate && (
                               <button
                                 onClick={(e) => {

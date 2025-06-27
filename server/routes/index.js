@@ -10,7 +10,12 @@ const settingsRoutes = require("./settingsRoutes");
 const complianceRoutes = require("./complianceRoutes");
 const paymentRoutes = require("./paymentRoutes");
 const customerRoutes = require("./customerRoutes");
+console.log("📞 About to require customerQuestions routes...");
+const customerQuestionRoutes = require("./customerQuestions");
+console.log("✅ customerQuestions routes required successfully");
+console.log("📞 About to require importExportRoutes...");
 const importExportRoutes = require("./importExportRoutes");
+console.log("📞 About to require orderManagementRoutes...");
 const orderManagementRoutes = require("../modules/order-management/routes");
 
 // Import enhanced platform integration routes
@@ -43,6 +48,9 @@ const fontRoutes = require("./fonts");
 // Import platform operations routes
 const platformOperationsRoutes = require("./platform-operations");
 
+// Import platform products routes
+const platformProductsRoutes = require("./platform-products");
+
 // Health check endpoint - should be accessible at /api/health
 router.get("/health", (req, res) => {
   logger.info("Health check accessed");
@@ -57,6 +65,7 @@ router.get("/health", (req, res) => {
       products: "/api/products",
       sku: "/api/sku",
       customers: "/api/customers",
+      customerQuestions: "/api/customer-questions",
       settings: "/api/settings",
       compliance: "/api/compliance",
       orderManagement: "/api/order-management",
@@ -65,6 +74,7 @@ router.get("/health", (req, res) => {
       rateLimits: "/api/admin", // Rate limiting management
       database: "/api/database", // Database transaction management
       platformOperations: "/api/platform-operations", // Background tasks and platform operations
+      platformProducts: "/api/platform-products", // Platform product creation and management
     },
   });
 });
@@ -81,6 +91,8 @@ router.use("/platforms", platformRoutes);
 router.use("/products", productRoutes);
 // router.use("/sku", skuRoutes); // Temporarily disabled for debugging
 router.use("/customers", customerRoutes);
+router.use("/customer-questions", customerQuestionRoutes);
+console.log("✅ Customer questions routes mounted successfully");
 router.use("/settings", settingsRoutes);
 router.use("/compliance", complianceRoutes);
 router.use("/payments", paymentRoutes);
@@ -122,6 +134,9 @@ router.use("/database", databaseRoutes);
 // Platform operations routes
 router.use("/platform-operations", platformOperationsRoutes);
 
+// Platform products routes
+router.use("/platform-products", platformProductsRoutes);
+
 // Enhanced SKU system routes
 // router.use("/enhanced-sku", skuRoutes); // Temporarily disabled for debugging
 
@@ -155,6 +170,8 @@ router.use("/*", (req, res) => {
       "/api/v1/enhanced-platforms",
       "/api/products",
       "/api/sku",
+      "/api/customers",
+      "/api/customer-questions",
       "/api/enhanced-sku", // Enhanced SKU system
       "/api/product-intelligence", // Unified Product Intelligence System
       "/api/enhanced-products", // Enhanced Product Management System
@@ -173,4 +190,5 @@ router.use("/*", (req, res) => {
   });
 });
 
+console.log("✅ All routes configured successfully");
 module.exports = router;

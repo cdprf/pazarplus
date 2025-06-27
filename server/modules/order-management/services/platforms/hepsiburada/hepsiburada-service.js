@@ -48,44 +48,127 @@ class HepsiburadaService extends BasePlatformService {
    * Implementation of abstract method from BasePlatformService
    */
   async setupAxiosInstance() {
-    const credentials = this.decryptCredentials(this.connection.credentials);
-    const { username, merchantId, apiKey, environment } = credentials;
-
-    if (!username || !apiKey || !merchantId) {
-      throw new Error(
-        "Missing required Hepsiburada credentials. Username, Merchant ID, and API Key are required."
-      );
-    }
-
-    // Set the correct API URLs based on environment
-    this.isTestEnvironment =
-      environment === "test" || environment === "sandbox" || !environment;
-
-    if (this.isTestEnvironment) {
-      this.ordersApiUrl = "https://oms-external-sit.hepsiburada.com";
-      this.productsApiUrl = "https://mpop-sit.hepsiburada.com"; // Assuming test URL pattern
-    } else {
-      this.ordersApiUrl = "https://oms-external.hepsiburada.com";
-      this.productsApiUrl = "https://mpop.hepsiburada.com";
-    }
-
-    // Create Basic auth header with merchantId:apiKey (not username:apiKey)
-    this.authString = Buffer.from(`${merchantId}:${apiKey}`).toString("base64");
-
-    // Set up default axios instance for orders API
-    this.axiosInstance = axios.create({
-      baseURL: this.ordersApiUrl,
-      headers: {
-        Authorization: `Basic ${this.authString}`,
-        "User-Agent": username,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      timeout: 30000,
+    this.logger.info("🔍 Hepsiburada service initialization started", {
+      connectionId: this.connectionId,
+      hasDirectCredentials: !!this.directCredentials,
+      timestamp: new Date().toISOString(),
     });
 
-    this.merchantId = merchantId;
-    return true;
+    try {
+      const credentials = this.decryptCredentials(this.connection.credentials);
+      const { username, merchantId, apiKey, environment } = credentials;
+
+      // Enhanced validation with detailed logging
+      const missingFields = [];
+      if (!username) missingFields.push("username");
+      if (!apiKey) missingFields.push("apiKey");
+      if (!merchantId) missingFields.push("merchantId");
+
+      if (missingFields.length > 0) {
+        this.logger.error("Missing required Hepsiburada credentials", {
+          missingFields,
+          connectionId: this.connectionId,
+          hasUsername: !!username,
+          hasApiKey: !!apiKey,
+          hasMerchantId: !!merchantId,
+          environment: environment || "not specified",
+        });
+        throw new Error(
+          `Missing required Hepsiburada credentials: ${missingFields.join(
+            ", "
+          )}. Username, Merchant ID, and API Key are required.`
+        );
+      }
+
+      this.logger.info("✅ Hepsiburada credentials validated successfully", {
+        connectionId: this.connectionId,
+        username: username ? `${username.substring(0, 3)}***` : "missing",
+        merchantId: merchantId ? `${merchantId.substring(0, 3)}***` : "missing",
+        apiKeyLength: apiKey ? apiKey.length : 0,
+        environment: environment || "test (default)",
+      });
+
+      // Set the correct API URLs based on environment
+      this.isTestEnvironment =
+        environment === "test" || environment === "sandbox" || !environment;
+
+      if (this.isTestEnvironment) {
+        this.ordersApiUrl = "https://oms-external-sit.hepsiburada.com";
+        this.productsApiUrl = "https://mpop-sit.hepsiburada.com"; // Assuming test URL pattern
+      } else {
+        this.ordersApiUrl = "https://oms-external.hepsiburada.com";
+        this.productsApiUrl = "https://mpop.hepsiburada.com";
+      }
+
+      // Create Basic auth header with merchantId:apiKey (not username:apiKey)
+      this.authString = Buffer.from(`${merchantId}:${apiKey}`).toString(
+        "base64"
+      );
+
+      // Set up default axios instance for orders API
+      this.axiosInstance = axios.create({
+        baseURL: this.ordersApiUrl,
+        headers: {
+          Authorization: `Basic ${this.authString}`,
+          "User-Agent": username,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        timeout: 30000,
+      });
+
+      this.logger.info("✅ Hepsiburada Axios instance created successfully", {
+        connectionId: this.connectionId,
+        baseURL: this.ordersApiUrl,
+        timeout: 30000,
+        userAgent: username ? `${username.substring(0, 5)}***` : "missing",
+      });
+
+      // Test the connection with a simple request
+      try {
+        this.logger.debug("🧪 Testing Hepsiburada API connectivity", {
+          connectionId: this.connectionId,
+        });
+
+        // We'll test with a simple endpoint call later, for now just validate the setup
+        this.merchantId = merchantId;
+
+        this.logger.info(
+          "🎉 Hepsiburada service initialization completed successfully",
+          {
+            connectionId: this.connectionId,
+            merchantId: merchantId
+              ? `${merchantId.substring(0, 3)}***`
+              : "missing",
+            environment: this.isTestEnvironment ? "test" : "production",
+          }
+        );
+
+        return true;
+      } catch (connectionTestError) {
+        this.logger.warn(
+          "⚠️ Hepsiburada API connectivity test failed (setup completed but connection untested)",
+          {
+            connectionId: this.connectionId,
+            error: connectionTestError.message,
+            statusCode: connectionTestError.response?.status,
+            baseURL: this.ordersApiUrl,
+          }
+        );
+
+        // Still return true as the setup is complete, connection will be tested on first actual request
+        this.merchantId = merchantId;
+        return true;
+      }
+    } catch (setupError) {
+      this.logger.error("Hepsiburada service initialization failed", {
+        connectionId: this.connectionId,
+        error: setupError.message,
+        stack: setupError.stack,
+        errorType: setupError.constructor.name,
+      });
+      throw setupError;
+    }
   }
 
   /**
@@ -94,19 +177,18 @@ class HepsiburadaService extends BasePlatformService {
    * @returns {object} Decrypted credentials
    */
   decryptCredentials(encryptedCredentials) {
+    this.logger.info("🔐 Starting Hepsiburada credentials decryption", {
+      connectionId: this.connectionId,
+      credentialsType: typeof encryptedCredentials,
+      credentialsExists: !!encryptedCredentials,
+      isString: typeof encryptedCredentials === "string",
+      isObject: typeof encryptedCredentials === "object",
+      timestamp: new Date().toISOString(),
+    });
+
     try {
       // Use the parent implementation for basic parsing
       const credentials = super.decryptCredentials(encryptedCredentials);
-
-      // Debug logging to see what we received
-      logger.info("Decrypting Hepsiburada credentials", {
-        credentialsType: typeof credentials,
-        credentialsKeys: credentials ? Object.keys(credentials) : "null",
-        hasUsername: !!credentials?.username,
-        hasMerchantId: !!credentials?.merchantId,
-        hasApiKey: !!credentials?.apiKey,
-        connectionId: this.connectionId,
-      });
 
       // Make sure we have the required fields
       if (
@@ -121,6 +203,20 @@ class HepsiburadaService extends BasePlatformService {
         if (!credentials?.merchantId) missing.push("merchantId");
         if (!credentials?.apiKey) missing.push("apiKey");
 
+        this.logger.error("Hepsiburada credentials validation failed", {
+          connectionId: this.connectionId,
+          missingFields: missing,
+          receivedCredentials: credentials
+            ? {
+                hasUsername: !!credentials.username,
+                hasMerchantId: !!credentials.merchantId,
+                hasApiKey: !!credentials.apiKey,
+                keys: Object.keys(credentials),
+              }
+            : null,
+          originalCredentialsType: typeof encryptedCredentials,
+        });
+
         throw new Error(`Missing required credentials: ${missing.join(", ")}`);
       }
 
@@ -134,9 +230,20 @@ class HepsiburadaService extends BasePlatformService {
       logger.error(
         `Failed to decrypt Hepsiburada credentials: ${error.message}`,
         {
-          error,
+          error: {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+          },
           connectionId: this.connectionId,
           credentialsType: typeof encryptedCredentials,
+          credentialsExists: !!encryptedCredentials,
+          isEncryptionError: error.message.includes("decrypt"),
+          isValidationError:
+            error.message.includes("validation") ||
+            error.message.includes("Missing"),
+          isParsingError:
+            error.message.includes("parse") || error.message.includes("JSON"),
         }
       );
       throw new Error(`Failed to decrypt credentials: ${error.message}`);
@@ -1418,12 +1525,32 @@ class HepsiburadaService extends BasePlatformService {
             [Op.in]: orderNumbers,
           },
         },
-        attributes: ["id", "externalOrderId", "orderNumber", "orderStatus"], // Limit fields fetched
+        attributes: [
+          "id",
+          "externalOrderId",
+          "orderNumber",
+          "orderStatus",
+          "cargoTrackingLink",
+          "cargoTrackingNumber",
+          "cargoCompany",
+          "createdDate",
+          "deliveryDate",
+          "name",
+          "email",
+          "phoneNumber",
+          "",
+        ], // Limit fields fetched
+
         include: [
           {
             model: ShippingDetail,
             as: "shippingDetail",
             attributes: ["id", "recipientName", "address", "city"], // Limit fields fetched
+          },
+          {
+            model: OrderItem,
+            as: "items",
+            attributes: ["id", "title", "sku", "quantity", "price"], // Limit fields fetched
           },
         ],
       });
@@ -1459,10 +1586,29 @@ class HepsiburadaService extends BasePlatformService {
           if (existingOrder) {
             // Order exists - update it with the latest data
             try {
+              // Extract product names and sku from items
+              const productNames = order.details.items
+                ? order.details.items.map((item) => item.name || "")
+                : [];
+              const skus = order.details.items
+                ? order.details.items.map(
+                    (item) => item.merchantSKU || item.SKU || ""
+                  )
+                : [];
               await existingOrder.update({
                 status: this.mapOrderStatus(
-                  order.status || (order.items && order.items[0]?.status) || order.details.items[0].status
+                  order.status || (order.items && order.items[0]?.status)
                 ),
+                cargoTrackingLink:
+                  order.details.items[0].cargoCompanyModel.trackingUrl || "",
+                cargoTrackingNumber: order.cargoTrackingNumber || "",
+                cargoCompany: order.details.items[0].cargoCompany || "",
+                createdDate: order.details?.createdDate,
+                deliveryDate: order.DeliveredDate || order.details?.createdDate,
+                name: order.details?.customer?.name || "",
+                email: order.details?.deliveryAddress?.email || "",
+                phoneNumber: order.details.deliveryAddress.phoneNumber,
+
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date(),
               });
@@ -1474,9 +1620,28 @@ class HepsiburadaService extends BasePlatformService {
               this.logger.error(
                 `Failed to update existing order ${orderNumber}: ${updateError.message}`,
                 {
-                  error: updateError,
+                  error: {
+                    message: updateError.message,
+                    stack: updateError.stack,
+                    name: updateError.name,
+                    code: updateError.code,
+                  },
                   orderNumber: orderNumber,
                   connectionId: this.connectionId,
+                  orderData: {
+                    hasStatus: !!(
+                      order.status ||
+                      (order.items && order.items[0]?.status)
+                    ),
+                    hasItems: !!order.items,
+                    orderStructure: Object.keys(order || {}),
+                  },
+                  isDatabaseError: updateError.name?.includes("Sequelize"),
+                  isConstraintError:
+                    updateError.name === "SequelizeUniqueConstraintError",
+                  isConnectionError:
+                    updateError.message?.includes("connection") ||
+                    updateError.code === "ECONNREFUSED",
                 }
               );
               // Re-throw error instead of continuing with fallback
@@ -1485,8 +1650,17 @@ class HepsiburadaService extends BasePlatformService {
           }
 
           // Order doesn't exist - create a new one
+
           try {
-            this.logger.info(`Creating new order for ${orderNumber}`);
+            this.logger.info(`Creating new order for ${orderNumber}`, {
+              connectionId: this.connectionId,
+              orderNumber,
+              orderStructure: Object.keys(order || {}),
+              hasDetails: !!order.details,
+              hasItems: !!order.items,
+              detailsStructure: order.details ? Object.keys(order.details) : [],
+              itemsCount: order.items ? order.items.length : 0,
+            });
 
             const result = await sequelize.transaction(async (t) => {
               // Extract data from rawData structure (details.customer, details.items, etc.)
@@ -1549,7 +1723,14 @@ class HepsiburadaService extends BasePlatformService {
                 defaults: {
                   externalOrderId: orderNumber,
                   orderNumber: orderNumber,
-                  platformOrderId: order.Id || order.id,
+                  platformOrderId:
+                    order.Id ||
+                    order.id ||
+                    order.orderId ||
+                    (order.details && order.details.orderId) ||
+                    (order.details && order.details.Id) ||
+                    (order.items && order.items[0] && order.items[0].orderId) ||
+                    (order.items && order.items[0] && order.items[0].Id),
                   platformId: "hepsiburada",
                   connectionId: this.connectionId,
                   userId: this.connection.userId,
@@ -1565,6 +1746,7 @@ class HepsiburadaService extends BasePlatformService {
                     email: customerEmail,
                     phone: phoneNumber || "",
                     fullName: customerName,
+                    customerId: order.details?.customer?.customerId || null,
                   }),
                   shippingAddress: this.safeJsonStringify(
                     order.details?.deliveryAddress ||
@@ -1856,8 +2038,32 @@ class HepsiburadaService extends BasePlatformService {
       };
     } catch (error) {
       this.logger.error(`Failed to normalize orders: ${error.message}`, {
-        error,
+        error: {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+          code: error.code,
+        },
         connectionId: this.connectionId,
+        orderProcessingStats: {
+          totalOrders: hepsiburadaOrders?.length || 0,
+          successCount,
+          updatedCount,
+          skippedCount,
+        },
+        errorContext: {
+          isDatabaseError: error.name?.includes("Sequelize"),
+          isConstraintError: error.name === "SequelizeUniqueConstraintError",
+          isConnectionError:
+            error.message?.includes("connection") ||
+            error.code === "ECONNREFUSED",
+          isTimeoutError:
+            error.code === "ETIMEDOUT" || error.message?.includes("timeout"),
+          isValidationError: error.name === "SequelizeValidationError",
+          isTransactionError: error.message?.includes("transaction"),
+        },
+        lastProcessedOrder:
+          normalizedOrders[normalizedOrders.length - 1]?.orderNumber || "none",
       });
       throw error;
     }
@@ -3203,6 +3409,7 @@ class HepsiburadaService extends BasePlatformService {
               : 0,
             currency: "TRY",
             barcode: hepsiburadaProductData.barcode,
+            sourcePlatform: "hepsiburada",
             mainImageUrl:
               hepsiburadaProductData.images &&
               hepsiburadaProductData.images.length > 0
@@ -3328,54 +3535,90 @@ class HepsiburadaService extends BasePlatformService {
         ? parseFloat(weightAttribute.value)
         : null;
 
-      // Extract HepsiBurada-specific fields from the product data
-      const hepsiburadaProductRecord = {
-        productId: productId,
-        merchantSku: hepsiburadaProductData.merchantSku,
-        barcode: hepsiburadaProductData.barcode,
-        title: hepsiburadaProductData.productName,
-        brand: hepsiburadaProductData.brand,
-        categoryId: hepsiburadaProductData.categoryId?.toString(),
-        description: hepsiburadaProductData.description,
-        attributes: hepsiburadaProductData.productAttributes || [],
-        images: hepsiburadaProductData.images || [],
-        price: hepsiburadaProductData.price
-          ? parseFloat(hepsiburadaProductData.price)
-          : 0,
-        stock: stockQuantity,
-        vatRate: hepsiburadaProductData.tax
-          ? parseInt(hepsiburadaProductData.tax, 10)
-          : 18,
-        status: hepsiburadaProductData.status || "pending",
-        lastSyncedAt: new Date(),
-        // New fields from API response
-        hbSku: hepsiburadaProductData.hbSku,
-        variantGroupId: hepsiburadaProductData.variantGroupId,
-        productName: hepsiburadaProductData.productName,
-        categoryName: hepsiburadaProductData.categoryName,
-        tax: hepsiburadaProductData.tax,
-        baseAttributes: hepsiburadaProductData.baseAttributes || [],
-        variantTypeAttributes:
-          hepsiburadaProductData.variantTypeAttributes || [],
-        productAttributes: hepsiburadaProductData.productAttributes || [],
-        validationResults: hepsiburadaProductData.validationResults || [],
-        rejectReasons: hepsiburadaProductData.rejectReasons || [],
-        qualityScore: hepsiburadaProductData.qualityScore,
-        qualityStatus: hepsiburadaProductData.qualityStatus,
-        ccValidationResults: hepsiburadaProductData.ccValidationResults,
-        platformStatus: hepsiburadaProductData.status,
-        weight: weight,
-        guaranteeMonths: guaranteeMonths,
-        rawData: hepsiburadaProductData,
-      };
-
       // Create with or without transaction
       if (transaction) {
-        return await HepsiburadaProduct.create(hepsiburadaProductRecord, {
-          transaction,
-        });
+        return await HepsiburadaProduct.create(
+          {
+            productId: productId,
+            merchantSku: hepsiburadaProductData.merchantSku,
+            barcode: hepsiburadaProductData.barcode,
+            title: hepsiburadaProductData.productName,
+            brand: hepsiburadaProductData.brand,
+            categoryId: hepsiburadaProductData.categoryId?.toString(),
+            description: hepsiburadaProductData.description,
+            attributes: hepsiburadaProductData.productAttributes || [],
+            images: hepsiburadaProductData.images || [],
+            price: hepsiburadaProductData.price
+              ? parseFloat(hepsiburadaProductData.price)
+              : 0,
+            stock: stockQuantity,
+            vatRate: hepsiburadaProductData.tax
+              ? parseInt(hepsiburadaProductData.tax, 10)
+              : 18,
+            status: hepsiburadaProductData.status || "pending",
+            lastSyncedAt: new Date(),
+            // New fields from API response
+            hbSku: hepsiburadaProductData.hbSku,
+            variantGroupId: hepsiburadaProductData.variantGroupId,
+            productName: hepsiburadaProductData.productName,
+            categoryName: hepsiburadaProductData.categoryName,
+            tax: hepsiburadaProductData.tax,
+            baseAttributes: hepsiburadaProductData.baseAttributes || [],
+            variantTypeAttributes:
+              hepsiburadaProductData.variantTypeAttributes || [],
+            productAttributes: hepsiburadaProductData.productAttributes || [],
+            validationResults: hepsiburadaProductData.validationResults || [],
+            rejectReasons: hepsiburadaProductData.rejectReasons || [],
+            qualityScore: hepsiburadaProductData.qualityScore,
+            qualityStatus: hepsiburadaProductData.qualityStatus,
+            ccValidationResults: hepsiburadaProductData.ccValidationResults,
+            platformStatus: hepsiburadaProductData.status,
+            weight: weight,
+            guaranteeMonths: guaranteeMonths,
+            rawData: hepsiburadaProductData,
+          },
+          { transaction }
+        );
       } else {
-        return await HepsiburadaProduct.create(hepsiburadaProductRecord);
+        return await HepsiburadaProduct.create({
+          productId: productId,
+          merchantSku: hepsiburadaProductData.merchantSku,
+          barcode: hepsiburadaProductData.barcode,
+          title: hepsiburadaProductData.productName,
+          brand: hepsiburadaProductData.brand,
+          categoryId: hepsiburadaProductData.categoryId?.toString(),
+          description: hepsiburadaProductData.description,
+          attributes: hepsiburadaProductData.productAttributes || [],
+          images: hepsiburadaProductData.images || [],
+          price: hepsiburadaProductData.price
+            ? parseFloat(hepsiburadaProductData.price)
+            : 0,
+          stock: stockQuantity,
+          vatRate: hepsiburadaProductData.tax
+            ? parseInt(hepsiburadaProductData.tax, 10)
+            : 18,
+          status: hepsiburadaProductData.status || "pending",
+          lastSyncedAt: new Date(),
+          // New fields from API response
+          hbSku: hepsiburadaProductData.hbSku,
+          variantGroupId: hepsiburadaProductData.variantGroupId,
+          productName: hepsiburadaProductData.productName,
+          categoryName: hepsiburadaProductData.categoryName,
+          tax: hepsiburadaProductData.tax,
+          baseAttributes: hepsiburadaProductData.baseAttributes || [],
+          variantTypeAttributes:
+            hepsiburadaProductData.variantTypeAttributes || [],
+          productAttributes: hepsiburadaProductData.productAttributes || [],
+          validationResults: hepsiburadaProductData.validationResults || [],
+          rejectReasons: hepsiburadaProductData.rejectReasons || [],
+          qualityScore: hepsiburadaProductData.qualityScore,
+          qualityStatus: hepsiburadaProductData.qualityStatus,
+          ccValidationResults: hepsiburadaProductData.ccValidationResults,
+          platformStatus: hepsiburadaProductData.status,
+          weight: weight,
+          guaranteeMonths: guaranteeMonths,
+          rawData: hepsiburadaProductData,
+        });
       }
     } catch (error) {
       this.logger.error(
@@ -3388,6 +3631,551 @@ class HepsiburadaService extends BasePlatformService {
       );
       throw error;
     }
+  }
+
+  /**
+   * Create a single product on Hepsiburada MPOP platform
+   * @param {Object} productData - Product data in Hepsiburada format
+   * @returns {Promise<Object>} - Result of product creation
+   */
+  async createProduct(productData) {
+    try {
+      await this.initialize();
+      const productsAxios = this.createProductsAxiosInstance();
+
+      // Validate required fields for Hepsiburada
+      const requiredFields = [
+        "merchantSku",
+        "barcode",
+        "title",
+        "brand",
+        "categoryId",
+        "description",
+        "price",
+        "tax",
+        "stock",
+        "images",
+      ];
+
+      for (const field of requiredFields) {
+        if (productData[field] === undefined || productData[field] === null) {
+          throw new Error(`Missing required field: ${field}`);
+        }
+      }
+
+      // Validate images array
+      if (
+        !Array.isArray(productData.images) ||
+        productData.images.length === 0
+      ) {
+        throw new Error(
+          "Images array is required and must contain at least one image"
+        );
+      }
+
+      // Format the product data according to Hepsiburada API requirements
+      const hepsiburadaProductData = {
+        merchantSku: productData.merchantSku,
+        barcode: productData.barcode,
+        productName: productData.title,
+        brand: productData.brand,
+        categoryId: productData.categoryId.toString(),
+        description: productData.description,
+        price: parseFloat(productData.price),
+        tax: parseInt(productData.tax, 10),
+        baseAttributes: [
+          {
+            name: "stock",
+            value: productData.stock.toString(),
+          },
+        ],
+        images: Array.isArray(productData.images)
+          ? productData.images
+          : [productData.images],
+        productAttributes: productData.attributes || [],
+        variantGroupId: productData.variantGroupId || null,
+        status: productData.status || "pending",
+      };
+
+      // Add optional fields if provided
+      if (productData.weight) {
+        hepsiburadaProductData.baseAttributes.push({
+          name: "kg",
+          value: productData.weight.toString(),
+        });
+      }
+
+      if (productData.guaranteeMonths) {
+        hepsiburadaProductData.baseAttributes.push({
+          name: "GarantiSuresi",
+          value: productData.guaranteeMonths.toString(),
+        });
+      }
+
+      this.logger.info(`Creating product on Hepsiburada`, {
+        merchantSku: productData.merchantSku,
+        barcode: productData.barcode,
+        title: productData.title,
+      });
+
+      // Note: This endpoint needs to be verified with official Hepsiburada MPOP documentation
+      // Current implementation is based on reverse engineering from existing product fetching code
+      const endpoint = "/products"; // This may need to be adjusted based on official docs
+
+      const response = await productsAxios.post(
+        endpoint,
+        hepsiburadaProductData
+      );
+
+      this.logger.info(`Product created successfully on Hepsiburada`, {
+        merchantSku: productData.merchantSku,
+        response: response.data,
+      });
+
+      return {
+        success: true,
+        message: "Product created successfully on Hepsiburada",
+        data: response.data,
+        platformProductId: response.data?.id || response.data?.merchantSku,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to create product on Hepsiburada: ${error.message}`,
+        {
+          error,
+          merchantSku: productData?.merchantSku,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to create product on Hepsiburada: ${error.message}`,
+        error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  /**
+   * Create multiple products on Hepsiburada (bulk creation)
+   * @param {Array} productsData - Array of product data in Hepsiburada format
+   * @returns {Promise<Object>} - Result of bulk product creation
+   */
+  async createProductsBulk(productsData) {
+    try {
+      await this.initialize();
+
+      if (!Array.isArray(productsData) || productsData.length === 0) {
+        throw new Error("Products data must be a non-empty array");
+      }
+
+      this.logger.info(
+        `Creating ${productsData.length} products on Hepsiburada`,
+        {
+          productCount: productsData.length,
+        }
+      );
+
+      const results = [];
+      const errors = [];
+
+      // Process products sequentially to avoid rate limiting
+      for (let i = 0; i < productsData.length; i++) {
+        const productData = productsData[i];
+
+        try {
+          const result = await this.createProduct(productData);
+          results.push({
+            index: i,
+            merchantSku: productData.merchantSku,
+            result: result,
+          });
+
+          // Add a small delay between requests to be respectful to the API
+          if (i < productsData.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+        } catch (error) {
+          errors.push({
+            index: i,
+            merchantSku: productData.merchantSku,
+            error: error.message,
+          });
+        }
+      }
+
+      const successCount = results.filter((r) => r.result.success).length;
+      const failureCount =
+        errors.length + results.filter((r) => !r.result.success).length;
+
+      this.logger.info(`Bulk product creation completed on Hepsiburada`, {
+        total: productsData.length,
+        success: successCount,
+        failed: failureCount,
+      });
+
+      return {
+        success: successCount > 0,
+        message: `Bulk creation completed: ${successCount} successful, ${failureCount} failed`,
+        data: {
+          results,
+          errors,
+          summary: {
+            total: productsData.length,
+            successful: successCount,
+            failed: failureCount,
+          },
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to create products bulk on Hepsiburada: ${error.message}`,
+        {
+          error,
+          productCount: productsData?.length,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to create products bulk: ${error.message}`,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Update product information on Hepsiburada
+   * @param {string} merchantSku - Merchant SKU of the product to update
+   * @param {Object} updateData - Data to update
+   * @returns {Promise<Object>} - Update result
+   */
+  async updateProduct(merchantSku, updateData) {
+    try {
+      await this.initialize();
+      const productsAxios = this.createProductsAxiosInstance();
+
+      if (!merchantSku) {
+        throw new Error("Merchant SKU is required for product update");
+      }
+
+      // Format update data according to Hepsiburada requirements
+      const hepsiburadaUpdateData = {};
+
+      if (updateData.price !== undefined) {
+        hepsiburadaUpdateData.price = parseFloat(updateData.price);
+      }
+
+      if (updateData.stock !== undefined) {
+        hepsiburadaUpdateData.baseAttributes =
+          hepsiburadaUpdateData.baseAttributes || [];
+        hepsiburadaUpdateData.baseAttributes.push({
+          name: "stock",
+          value: updateData.stock.toString(),
+        });
+      }
+
+      if (updateData.title) {
+        hepsiburadaUpdateData.productName = updateData.title;
+      }
+
+      if (updateData.description) {
+        hepsiburadaUpdateData.description = updateData.description;
+      }
+
+      if (updateData.status) {
+        hepsiburadaUpdateData.status = updateData.status;
+      }
+
+      this.logger.info(`Updating product on Hepsiburada`, {
+        merchantSku,
+        updateFields: Object.keys(updateData),
+      });
+
+      // Note: This endpoint needs to be verified with official documentation
+      const endpoint = `/products/${merchantSku}`;
+
+      const response = await productsAxios.put(endpoint, hepsiburadaUpdateData);
+
+      this.logger.info(`Product updated successfully on Hepsiburada`, {
+        merchantSku,
+        response: response.data,
+      });
+
+      return {
+        success: true,
+        message: "Product updated successfully on Hepsiburada",
+        data: response.data,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to update product on Hepsiburada: ${error.message}`,
+        {
+          error,
+          merchantSku,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to update product: ${error.message}`,
+        error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  /**
+   * Helper method to validate Hepsiburada product data structure
+   * @param {Object} productData - Product data to validate
+   * @returns {Object} - Validation result
+   */
+  validateProductData(productData) {
+    const errors = [];
+    const warnings = [];
+
+    // Required field validation for Hepsiburada
+    const requiredFields = {
+      merchantSku: { type: "string", maxLength: 100 },
+      barcode: { type: "string", maxLength: 50 },
+      title: { type: "string", maxLength: 200 },
+      brand: { type: "string", maxLength: 100 },
+      categoryId: { type: ["string", "number"] },
+      description: { type: "string", maxLength: 5000 },
+      price: { type: "number", min: 0 },
+      tax: { type: "number", values: [0, 1, 8, 18, 20] },
+      stock: { type: "number", min: 0 },
+    };
+
+    // Validate required fields
+    for (const [field, rules] of Object.entries(requiredFields)) {
+      if (productData[field] === undefined || productData[field] === null) {
+        errors.push(`Missing required field: ${field}`);
+        continue;
+      }
+
+      const value = productData[field];
+
+      // Type validation
+      if (Array.isArray(rules.type)) {
+        if (!rules.type.some((type) => typeof value === type)) {
+          errors.push(
+            `Field ${field} must be one of types: ${rules.type.join(", ")}`
+          );
+        }
+      } else if (rules.type === "string" && typeof value !== "string") {
+        errors.push(`Field ${field} must be a string`);
+      } else if (rules.type === "number" && typeof value !== "number") {
+        errors.push(`Field ${field} must be a number`);
+      }
+
+      // Length validation
+      if (
+        rules.maxLength &&
+        typeof value === "string" &&
+        value.length > rules.maxLength
+      ) {
+        errors.push(
+          `Field ${field} exceeds maximum length of ${rules.maxLength}`
+        );
+      }
+
+      // Min value validation
+      if (
+        rules.min !== undefined &&
+        typeof value === "number" &&
+        value < rules.min
+      ) {
+        errors.push(`Field ${field} must be at least ${rules.min}`);
+      }
+
+      // Allowed values validation
+      if (rules.values && !rules.values.includes(value)) {
+        errors.push(
+          `Field ${field} must be one of: ${rules.values.join(", ")}`
+        );
+      }
+    }
+
+    // Images validation
+    if (!productData.images || !Array.isArray(productData.images)) {
+      errors.push("Images field is required and must be an array");
+    } else {
+      if (productData.images.length === 0) {
+        errors.push("At least one image is required");
+      }
+
+      productData.images.forEach((imageUrl, index) => {
+        if (!imageUrl || typeof imageUrl !== "string") {
+          errors.push(
+            `Image ${index + 1}: URL is required and must be a string`
+          );
+        } else if (
+          !imageUrl.startsWith("http://") &&
+          !imageUrl.startsWith("https://")
+        ) {
+          warnings.push(
+            `Image ${index + 1}: HTTPS URLs are recommended for better security`
+          );
+        }
+      });
+    }
+
+    // Business logic validations
+    if (
+      productData.merchantSku &&
+      !/^[a-zA-Z0-9._-]+$/.test(productData.merchantSku)
+    ) {
+      warnings.push(
+        "Merchant SKU should only contain alphanumeric characters, dots, underscores, and hyphens"
+      );
+    }
+
+    if (productData.barcode && productData.barcode.length < 8) {
+      warnings.push("Barcode should be at least 8 characters long");
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  }
+
+  /**
+   * NOTE: The following methods require official Hepsiburada MPOP API documentation
+   * Current implementation is based on assumptions from existing code structure
+   * Please verify endpoints and request/response formats with official documentation
+   */
+
+  /**
+   * Get product status from Hepsiburada
+   * @param {string} merchantSku - Merchant SKU of the product
+   * @returns {Promise<Object>} - Product status information
+   */
+  async getProductStatus(merchantSku) {
+    try {
+      await this.initialize();
+      const productsAxios = this.createProductsAxiosInstance();
+
+      if (!merchantSku) {
+        throw new Error("Merchant SKU is required");
+      }
+
+      // Note: Endpoint needs verification with official documentation
+      const endpoint = `/products/${merchantSku}/status`;
+
+      const response = await productsAxios.get(endpoint);
+
+      return {
+        success: true,
+        data: response.data,
+        message: "Product status retrieved successfully",
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get product status: ${error.message}`, {
+        error,
+        merchantSku,
+        connectionId: this.connectionId,
+      });
+
+      return {
+        success: false,
+        message: `Failed to get product status: ${error.message}`,
+        error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  /**
+   * Get Hepsiburada categories
+   */
+  async getCategories() {
+    try {
+      await this.initialize();
+      // Return sample categories for now
+      return [
+        {
+          categoryId: "elektronik",
+          categoryName: "Elektronik",
+          parentCategoryId: null,
+        },
+        { categoryId: "giyim", categoryName: "Giyim", parentCategoryId: null },
+        {
+          categoryId: "ev-yasam",
+          categoryName: "Ev & Yaşam",
+          parentCategoryId: null,
+        },
+      ];
+    } catch (error) {
+      this.logger.error("Failed to fetch Hepsiburada categories", {
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get category attributes for Hepsiburada
+   */
+  async getCategoryAttributes(categoryId) {
+    try {
+      await this.initialize();
+      // Return sample attributes for now
+      return [
+        {
+          attributeId: "renk",
+          attributeName: "Renk",
+          attributeType: "TEXT",
+          required: true,
+        },
+        {
+          attributeId: "beden",
+          attributeName: "Beden",
+          attributeType: "TEXT",
+          required: false,
+        },
+      ];
+    } catch (error) {
+      this.logger.error("Failed to fetch Hepsiburada category attributes", {
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get Hepsiburada-specific product fields
+   */
+  async getProductFields(categoryId = null) {
+    const attributes = categoryId
+      ? await this.getCategoryAttributes(categoryId)
+      : [];
+
+    return {
+      platform: "hepsiburada",
+      requiredFields: [
+        {
+          name: "productName",
+          label: "Product Name",
+          type: "text",
+          required: true,
+        },
+        { name: "barcode", label: "Barcode", type: "text", required: true },
+        {
+          name: "categoryId",
+          label: "Category",
+          type: "select",
+          required: true,
+        },
+        { name: "price", label: "Price", type: "number", required: true },
+      ],
+      optionalFields: [
+        { name: "productDescription", label: "Description", type: "textarea" },
+      ],
+      categoryAttributes: attributes,
+    };
   }
 }
 

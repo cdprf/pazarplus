@@ -218,6 +218,13 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
         icon: UserGroupIcon,
         description: "Müşteri bilgileri",
         ariaLabel: "Müşteri yönetimi",
+        subItems: [
+          {
+            name: "Customer Questions",
+            href: "/customer-questions",
+            ariaLabel: "Müşteri soruları ve cevapları",
+          },
+        ],
       },
       {
         name: "Analytics",

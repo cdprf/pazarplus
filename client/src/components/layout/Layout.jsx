@@ -51,20 +51,20 @@ const Layout = () => {
         )}
       </div>
 
-      {/* Main content area with proper top padding */}
-      <div className="pt-16 min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-        <div className="flex flex-1">
+      {/* Main layout with proper structure */}
+      <div className="pt-16 min-h-[calc(100vh-4rem)] flex flex-col bg-gray-50 dark:bg-gray-900">
+        {/* Content area with sidebar and main content */}
+        <div className="flex flex-1 min-h-0">
           {isAuthenticated && (
             <AdvancedSidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
           )}
 
-          <main className="flex-1 transition-all duration-300 bg-gray-50 dark:bg-gray-900">
-            <div className="min-h-full bg-gray-50 dark:bg-gray-900">
-              <Outlet />
-            </div>
+          <main className="flex-1 transition-all duration-300 bg-gray-50 dark:bg-gray-900 overflow-auto">
+            <Outlet />
           </main>
         </div>
-
+        
+        {/* Footer spans full width below content area */}
         <Footer />
       </div>
 

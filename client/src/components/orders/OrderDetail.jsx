@@ -260,6 +260,15 @@ const OrderDetail = () => {
       return;
     }
 
+    // Check if template is available
+    if (!linkedTemplate && !defaultTemplate) {
+      showNotification(
+        "No shipping template found. Please create or link a shipping template to this order before printing.", 
+        "warning"
+      );
+      return;
+    }
+
     setGeneratingSlip(true);
     console.log(`🖨️ Starting PDF generation for order ${order.id}`);
 

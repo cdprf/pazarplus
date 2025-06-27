@@ -129,7 +129,7 @@ module.exports = (sequelize) => {
         type: DataTypes.UUID,
         allowNull: false,
         references: {
-          model: "Users",
+          model: "users",
           key: "id",
         },
         onUpdate: "CASCADE",
@@ -143,25 +143,25 @@ module.exports = (sequelize) => {
       underscored: true,
       indexes: [
         {
-          fields: ["mainProductId"],
+          fields: ["main_product_id"],
         },
         {
-          fields: ["variantId"],
+          fields: ["variant_id"],
         },
         {
           fields: ["type"],
         },
         {
-          fields: ["isPrimary"],
+          fields: ["is_primary"],
         },
         {
           fields: ["status"],
         },
         {
-          fields: ["userId"],
+          fields: ["user_id"],
         },
         {
-          fields: ["mainProductId", "sortOrder"],
+          fields: ["main_product_id", "sort_order"],
           name: "enhanced_product_media_sort_order_idx",
         },
       ],

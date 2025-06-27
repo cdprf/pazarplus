@@ -59,6 +59,7 @@ const ProductDisplay = ({
   onDelete,
   onImageClick,
   onProductNameClick,
+  onCreateVariant,
   onAddProduct,
   onImportProducts,
   onSync,

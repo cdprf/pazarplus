@@ -204,7 +204,7 @@ const AdvancedSidebar = ({ isOpen, onToggle, className, ...props }) => {
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-all duration-300 lg:hidden"
-          style={{ zIndex: "var(--z-sidebar-backdrop)" }}
+          style={{ zIndex: 30 }} /* Use explicit z-index value */
           onClick={onToggle}
         />
       )}
@@ -213,12 +213,12 @@ const AdvancedSidebar = ({ isOpen, onToggle, className, ...props }) => {
       <aside
         className={cn(
           "sidebar-container",
-          "fixed left-0 top-0 h-full transition-all duration-300 ease-in-out",
+          "fixed left-0 top-16 h-[calc(100vh-4rem)] transition-all duration-300 ease-in-out",
           "bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700",
           "shadow-xl dark:shadow-2xl",
 
           // Mobile behavior
-          "lg:relative lg:translate-x-0",
+          "lg:relative lg:top-0 lg:h-full lg:min-h-0",
           {
             "translate-x-0": isOpen,
             "-translate-x-full lg:translate-x-0": !isOpen,
@@ -226,7 +226,7 @@ const AdvancedSidebar = ({ isOpen, onToggle, className, ...props }) => {
             "w-80": !isCollapsed || isOpen,
           }
         )}
-        style={{ zIndex: "var(--z-sidebar)" }}
+        style={{ zIndex: 40 }} /* Use explicit z-index value lower than navbar */
         onMouseEnter={() => {}}
         onMouseLeave={() => {}}
         role="navigation"
@@ -235,7 +235,7 @@ const AdvancedSidebar = ({ isOpen, onToggle, className, ...props }) => {
       >
         <div className="h-full flex flex-col">
           {/* Enhanced Header with improved toggle button */}
-          <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+          <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/90 dark:bg-gray-800/90 backdrop-blur-sm flex-shrink-0">
             <div className="flex items-center space-x-2">
               {/* Enhanced Desktop collapse toggle */}
               {!isMobile && (
@@ -269,7 +269,7 @@ const AdvancedSidebar = ({ isOpen, onToggle, className, ...props }) => {
 
                   {/* Tooltip for collapsed state */}
                   {isCollapsed && (
-                    <div className="absolute left-full ml-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap sidebar-tooltip">
+                    <div className="absolute left-full ml-2 px-3 py-1.5 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap sidebar-tooltip z-50">
                       Expand sidebar
                       <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900 dark:border-r-gray-700" />
                     </div>
@@ -330,7 +330,7 @@ const AdvancedSidebar = ({ isOpen, onToggle, className, ...props }) => {
 
           {/* Enhanced Navigation with Error Boundary */}
           <nav
-            className="flex-1 overflow-y-auto overflow-x-hidden px-1 py-1 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600"
+            className="flex-1 overflow-y-auto overflow-x-hidden px-1 py-1 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 min-h-0"
             role="navigation"
             aria-label="Main menu"
           >
@@ -367,7 +367,7 @@ const AdvancedSidebar = ({ isOpen, onToggle, className, ...props }) => {
           </nav>
 
           {/* Enhanced Footer */}
-          <footer className="border-t border-gray-200 dark:border-gray-700">
+          <footer className="border-t border-gray-200 dark:border-gray-700 mt-auto bg-white dark:bg-gray-900 flex-shrink-0">
             {/* Quick Actions Panel */}
             <div className="p-4">
               <QuickActionsPanel isCollapsed={isCollapsed} />
