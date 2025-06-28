@@ -519,7 +519,22 @@ const OrderManagementRefactored = () => {
         {/* Stats Cards Section */}
         <section className="section-bg w-full max-w-7xl mx-auto">
           <div className="section-container">
-            <OrderStatsCards stats={stats} className="w-full animate-fade-in" />
+            {/* Add info text when filters are active but stats show all orders */}
+            {OrderService.hasActiveFilters(filters) && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                <div className="flex items-center text-blue-700 dark:text-blue-300">
+                  <span className="text-sm">
+                    İstatistikler tüm siparişleri göstermektedir. Aşağıdaki
+                    liste filtrelerinize göre sınırlandırılmıştır.
+                  </span>
+                </div>
+              </div>
+            )}
+            <OrderStatsCards
+              stats={stats}
+              className="w-full animate-fade-in"
+              isGlobalStats={true}
+            />
           </div>
         </section>
 

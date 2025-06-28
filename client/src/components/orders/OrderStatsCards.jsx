@@ -160,6 +160,7 @@ const OrderStatsCards = ({
   onStatClick,
   className = "",
   gridCols = 6,
+  isGlobalStats = true, // New prop to indicate these are stats for all orders
 }) => {
   const defaultStats = [
     "total",
@@ -171,20 +172,34 @@ const OrderStatsCards = ({
   ];
 
   return (
-    <div className={`w-full dashboard-grid-full ${className}`}>
-      {defaultStats.map((statKey) => (
-        <StatCard
-          key={statKey}
-          stat={statKey}
-          value={stats[statKey]}
-          previousValue={previousStats?.[statKey]}
-          currency={currency}
-          showTrend={showTrend}
-          onClick={
-            onStatClick ? () => onStatClick(statKey, stats[statKey]) : undefined
-          }
-        />
-      ))}
+    <div className={`w-full ${className}`}>
+      {isGlobalStats && (
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+            Tüm Sipariş İstatistikleri
+          </h3>
+          <span className="text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+            Tüm zamanlar
+          </span>
+        </div>
+      )}
+      <div className="dashboard-grid-full">
+        {defaultStats.map((statKey) => (
+          <StatCard
+            key={statKey}
+            stat={statKey}
+            value={stats[statKey]}
+            previousValue={previousStats?.[statKey]}
+            currency={currency}
+            showTrend={showTrend}
+            onClick={
+              onStatClick
+                ? () => onStatClick(statKey, stats[statKey])
+                : undefined
+            }
+          />
+        ))}
+      </div>
     </div>
   );
 };
@@ -361,6 +376,7 @@ const OrderStatsDashboard = ({
   currency = "TRY",
   onStatClick,
   className = "",
+  isGlobalStats = true,
 }) => {
   return (
     <div className={`space-y-8 ${className}`}>
@@ -372,6 +388,7 @@ const OrderStatsDashboard = ({
           currency={currency}
           showTrend={showTrend}
           onStatClick={onStatClick}
+          isGlobalStats={isGlobalStats}
         />
       </div>
 

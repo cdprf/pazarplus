@@ -625,6 +625,8 @@ class OrderService {
       };
     }
 
+    console.log(`Calculating stats for ALL ${ordersData.length} orders`);
+
     const stats = {
       total: ordersData.length,
       new: 0,
@@ -664,15 +666,43 @@ class OrderService {
       }
 
       // Calculate total revenue from all non-cancelled orders
-      if (status !== "cancelled" && status !== "returned" && status !== "failed" && order.totalAmount) {
+      if (
+        status !== "cancelled" &&
+        status !== "returned" &&
+        status !== "failed" &&
+        order.totalAmount
+      ) {
         const amount = parseFloat(order.totalAmount) || 0;
         stats.totalRevenue += amount;
-        console.log(`Adding revenue: ${amount} for order ${order.id || order.orderNumber} (status: ${status})`);
+        console.log(
+          `Adding revenue: ${amount} for order ${
+            order.id || order.orderNumber
+          } (status: ${status})`
+        );
       }
     });
 
     console.log("Final calculated stats:", stats);
     return stats;
+  }
+
+  /**
+   * Check if any filters are active
+   * Returns true if any filters are set to non-default values
+   */
+  static hasActiveFilters(filters = {}) {
+    if (!filters) return false;
+
+    // Check if any non-default filter values are set
+    if (filters.status && filters.status !== "all") return true;
+    if (filters.platform && filters.platform !== "all") return true;
+    if (filters.search && filters.search.trim() !== "") return true;
+    if (filters.dateFrom && filters.dateFrom !== "") return true;
+    if (filters.dateTo && filters.dateTo !== "") return true;
+    if (filters.priceMin && filters.priceMin !== "") return true;
+    if (filters.priceMax && filters.priceMax !== "") return true;
+
+    return false;
   }
 
   /**
@@ -714,14 +744,15 @@ class OrderService {
    */
   static async fetchOrderStats(filters = {}) {
     try {
-      console.log("Fetching order stats with filters:", filters);
+      console.log("Fetching order stats for ALL orders");
 
       // Fetch all orders without pagination for accurate stats
+      // Ignore any filters passed in to ensure we get stats for ALL orders
       const params = {
-        ...filters,
         limit: 10000, // Large number to get all orders
         page: 1,
-        statsOnly: true // Hint to backend that we only need stats
+        statsOnly: true, // Hint to backend that we only need stats
+        includeAllOrders: true, // Special flag to indicate we want stats for ALL orders
       };
 
       const response = await api.orders.getOrders(params);
@@ -735,7 +766,11 @@ class OrderService {
           ordersData = response.data;
         } else if (response.data && Array.isArray(response.data.orders)) {
           ordersData = response.data.orders;
-        } else if (response.data && response.data.data && Array.isArray(response.data.data.orders)) {
+        } else if (
+          response.data &&
+          response.data.data &&
+          Array.isArray(response.data.data.orders)
+        ) {
           ordersData = response.data.data.orders;
         } else if (response.data && Array.isArray(response.data.data)) {
           ordersData = response.data.data;

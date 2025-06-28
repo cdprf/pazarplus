@@ -342,9 +342,8 @@ export const useOrderState = (initialOrders = []) => {
     try {
       console.log("Fetching accurate stats for ALL orders...");
 
-      // Don't pass any filter parameters to get stats for ALL orders
-      // This ensures stats always show the complete picture, not filtered results
-      const statsResult = await OrderService.fetchOrderStats({});
+      // We don't pass any filters to ensure we get stats for ALL orders regardless of current view
+      const statsResult = await OrderService.fetchOrderStats();
 
       if (statsResult.success) {
         dispatch({ type: "SET_STATS", payload: statsResult.data });
@@ -355,18 +354,19 @@ export const useOrderState = (initialOrders = []) => {
     } catch (error) {
       console.error("Error fetching stats:", error);
     }
-  }, []); // Remove dependency on state.filters to always fetch all orders
+  }, []); // No dependencies to ensure it always fetches ALL orders
 
   // Effect for initial data loading and when dependencies change
   useEffect(() => {
     fetchOrders();
-    fetchStats(); // Fetch accurate stats for all orders
+    fetchStats(); // Fetch accurate stats for all orders separately
   }, [fetchOrders, fetchStats]); // Include fetchStats to satisfy linter
 
   // Effect for handling refresh trigger
   useEffect(() => {
     if (state.refreshTrigger > 0) {
       console.log("Refresh triggered, fetching data...");
+      // Fetch both orders (which respect current filters) and overall stats (which include all orders)
       fetchOrders();
       fetchStats();
     }

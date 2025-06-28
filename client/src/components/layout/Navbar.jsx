@@ -455,7 +455,9 @@ const Navbar = ({ toggleSidebar }) => {
                     content={
                       wsConnected
                         ? unreadCount > 0
-                          ? `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`
+                          ? `${unreadCount} unread notification${
+                              unreadCount !== 1 ? "s" : ""
+                            }`
                           : "No new notifications"
                         : "Connecting to notifications..."
                     }
@@ -469,26 +471,29 @@ const Navbar = ({ toggleSidebar }) => {
                     >
                       <BellIcon className="h-5 w-5" />
                       {unreadCount > 0 && (
-                        <div className="absolute -top-1 -right-1 flex items-center justify-center" style={{ zIndex: "var(--z-tooltip)" }}>
+                        <div
+                          className="absolute -top-1 -right-1 flex items-center justify-center"
+                          style={{ zIndex: "var(--z-notification-badge)" }}
+                        >
                           <span
                             className={cn(
-                              "h-5 w-5 text-white text-xs rounded-full flex items-center justify-center font-medium",
+                              "h-5 w-5 text-white text-xs rounded-full flex items-center justify-center font-medium shadow-lg",
                               highPriorityCount > 0
                                 ? "bg-red-500 animate-pulse"
                                 : "bg-primary-500"
                             )}
                           >
-                          {unreadCount > 9 ? "9+" : unreadCount}
-                        </span>
-                      </div>
-                    )}
-                  </Button>
+                            {unreadCount > 9 ? "9+" : unreadCount}
+                          </span>
+                        </div>
+                      )}
+                    </Button>
                   </Tooltip>
 
                   {showNotifications && (
                     <div
                       className="absolute right-0 top-full mt-2 w-96 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 animate-scale-in"
-                      style={{ zIndex: "var(--z-dropdown)" }}
+                      style={{ zIndex: "var(--z-popover)" }}
                     >
                       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex items-center justify-between">
