@@ -120,21 +120,21 @@ const PLATFORM_CONFIG = {
 const STOCK_STATUS_CONFIG = {
   in_stock: {
     value: "in_stock",
-    label: "Stokta",
+    label: "Stokta Bulunan",
     variant: "success",
     icon: CheckCircle,
     color: "text-green-500",
   },
   low_stock: {
     value: "low_stock",
-    label: "Az Stok",
+    label: "Stoku Azalan",
     variant: "warning",
     icon: AlertTriangle,
     color: "text-amber-500",
   },
   out_of_stock: {
     value: "out_of_stock",
-    label: "Stok Yok",
+    label: "Stokta Olmayan",
     variant: "danger",
     icon: AlertCircle,
     color: "text-red-500",
@@ -145,21 +145,21 @@ const STOCK_STATUS_CONFIG = {
 const PRODUCT_STATUS_CONFIG = {
   active: {
     value: "active",
-    label: "Aktif",
+    label: "Aktif Ürünler",
     variant: "success",
     icon: CheckCircle,
     color: "text-green-500",
   },
   inactive: {
     value: "inactive",
-    label: "Pasif",
+    label: "Pasif Ürünler",
     variant: "secondary",
     icon: AlertCircle,
     color: "text-gray-500",
   },
   draft: {
     value: "draft",
-    label: "Taslak",
+    label: "Taslak Ürünler",
     variant: "warning",
     icon: Edit,
     color: "text-yellow-500",

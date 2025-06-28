@@ -13,6 +13,7 @@ const sequelize = require("../../../../../config/database");
 const logger = require("../../../../../utils/logger");
 const BasePlatformService = require("../BasePlatformService"); // Fixed import path
 const ProductOrderLinkingService = require("../../../../../services/product-order-linking-service");
+const { mapOrderStatus } = require("../../../../../utils/enum-validators");
 
 class HepsiburadaService extends BasePlatformService {
   constructor(connectionId, directCredentials = null, options = {}) {
@@ -1538,7 +1539,6 @@ class HepsiburadaService extends BasePlatformService {
           "name",
           "email",
           "phoneNumber",
-          "",
         ], // Limit fields fetched
 
         include: [
@@ -2250,61 +2250,8 @@ class HepsiburadaService extends BasePlatformService {
    * @returns {String} Internal status
    */
   mapOrderStatus(hepsiburadaStatus) {
-    const statusMap = {
-      // Hepsiburada statuses mapped to Turkish status names for consistency
-      Open: "pending",
-      PaymentCompleted: "processing",
-      Packaged: "shipped",
-      InTransit: "in_transit",
-      Delivered: "delivered",
-      CancelledByMerchant: "cancelled",
-      CancelledByCustomer: "cancelled",
-      CancelledBySap: "cancelled",
-      ReadyToShip: "processing",
-      ClaimCreated: "claim_created",
-      // Turkish versions for consistency
-      Açık: "pending",
-      "Ödeme Tamamlandı": "processing",
-      Paketlendi: "shipped",
-      Kargoda: "in_transit",
-      "Teslim Edildi": "delivered",
-      "Satıcı Tarafından İptal": "cancelled",
-      "Müşteri Tarafından İptal": "cancelled",
-      "Sistem Tarafından İptal": "cancelled",
-      "Kargoya Hazır": "processing",
-      "Talep Oluşturuldu": "claim_created",
-    };
-
-    const mappedStatus = statusMap[hepsiburadaStatus];
-
-    // Log unknown statuses for investigation
-    if (!mappedStatus && hepsiburadaStatus) {
-      this.logger.warn(
-        `Unknown Hepsiburada order status encountered: ${hepsiburadaStatus}`,
-        {
-          platformType: "hepsiburada",
-          connectionId: this.connectionId,
-          unmappedStatus: hepsiburadaStatus,
-        }
-      );
-
-      // Fall back to a reasonable default based on context
-      if (hepsiburadaStatus.toLowerCase().includes("cancel")) {
-        return "cancelled";
-      } else if (hepsiburadaStatus.toLowerCase().includes("ship")) {
-        return "shipped";
-      } else if (hepsiburadaStatus.toLowerCase().includes("deliver")) {
-        return "delivered";
-      } else if (hepsiburadaStatus.toLowerCase().includes("return")) {
-        return "returned";
-      } else if (hepsiburadaStatus.toLowerCase().includes("payment")) {
-        return "pending";
-      }
-
-      return "unknown";
-    }
-
-    return mappedStatus || "unknown";
+    // Use the shared utility with Hepsiburada-specific mappings
+    return mapOrderStatus(hepsiburadaStatus, "hepsiburada");
   }
 
   /**

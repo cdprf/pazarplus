@@ -60,6 +60,14 @@ class CustomerQuestionService {
         "Loaded platform configs from database:",
         Object.keys(platformConfigs)
       );
+
+      // Check if no configurations were found
+      if (Object.keys(platformConfigs).length === 0) {
+        debug(
+          "No platform connections found in database. System may need configuration."
+        );
+      }
+
       return platformConfigs;
     } catch (error) {
       debug("Error loading platform configs from database:", error.message);
@@ -111,6 +119,13 @@ class CustomerQuestionService {
         "Customer question service initialized for platforms:",
         Object.keys(this.platformServices)
       );
+
+      // Warn if no platforms were initialized
+      if (Object.keys(this.platformServices).length === 0) {
+        debug(
+          "Warning: No platform services initialized. Check platform connections in database."
+        );
+      }
     } catch (error) {
       debug("Error initializing customer question service:", error.message);
       throw error;
@@ -137,6 +152,16 @@ class CustomerQuestionService {
       totalSynced: 0,
       errors: [],
     };
+
+    // Check if any platforms are available
+    if (platforms.length === 0) {
+      const errorMsg =
+        "No platform services available. Please configure platform connections first.";
+      results.errors.push(errorMsg);
+      results.success = false;
+      debug(errorMsg);
+      return results;
+    }
 
     for (const platform of platforms) {
       if (!this.platformServices[platform]) {

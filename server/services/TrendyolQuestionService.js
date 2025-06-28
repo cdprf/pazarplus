@@ -7,10 +7,11 @@ class TrendyolQuestionService {
     this.apiKey = config.apiKey;
     this.apiSecret = config.apiSecret;
     this.supplierId = config.supplierId;
-    this.sellerId = config.sellerId;
+    // For Trendyol Q&A API, sellerId is often the same as supplierId
+    this.sellerId = config.sellerId || config.supplierId;
     this.baseURL = config.isTest
-      ? "https://stageapigw.trendyol.com/integration/qna"
-      : "https://apigw.trendyol.com/integration/qna";
+      ? "https://stageapigw.trendyol.com"
+      : "https://apigw.trendyol.com";
   }
 
   /**
@@ -56,7 +57,7 @@ class TrendyolQuestionService {
       if (status) params.status = status;
       if (barcode) params.barcode = barcode;
 
-      const url = `${this.baseURL}/sellers/${this.sellerId}/questions/filter`;
+      const url = `${this.baseURL}/integration/qna/sellers/${this.sellerId}/questions/filter`;
 
       debug("Fetching questions from Trendyol:", { url, params });
 
@@ -109,7 +110,7 @@ class TrendyolQuestionService {
       if (status) params.status = status;
       if (barcode) params.barcode = barcode;
 
-      const url = `${this.baseURL}/sellers/${this.sellerId}/questions/filter`;
+      const url = `${this.baseURL}/integration/qna/sellers/${this.sellerId}/questions/filter`;
 
       debug("Fetching questions from Trendyol (original format):", {
         url,
@@ -141,7 +142,7 @@ class TrendyolQuestionService {
    */
   async getQuestionById(questionId) {
     try {
-      const url = `${this.baseURL}/sellers/${this.sellerId}/questions/${questionId}`;
+      const url = `${this.baseURL}/integration/qna/sellers/${this.sellerId}/questions/${questionId}`;
 
       debug("Fetching question by ID from Trendyol:", { url, questionId });
 
@@ -173,7 +174,7 @@ class TrendyolQuestionService {
         throw new Error("Answer text must be between 10 and 2000 characters");
       }
 
-      const url = `${this.baseURL}/sellers/${this.sellerId}/questions/${questionId}/answers`;
+      const url = `${this.baseURL}/integration/qna/sellers/${this.sellerId}/questions/${questionId}/answers`;
 
       debug("Answering question on Trendyol:", {
         url,
@@ -243,7 +244,9 @@ class TrendyolQuestionService {
       platform: "trendyol",
       platform_question_id: question.id?.toString(),
       customer_id: question.customerId?.toString(),
-      customer_name: question.userName || "",
+      customer_name:
+        question.userName ||
+        (question.customerId ? `Müşteri-${question.customerId}` : ""),
       show_customer_name: question.showUserName,
       question_text: question.text,
       status: question.status,
@@ -338,7 +341,7 @@ class TrendyolQuestionService {
           size: 1, // We only need the count
         });
 
-        const count = response.pagination.totalElements;
+        const count = response.totalElements;
         stats.total_questions += count;
 
         switch (status) {

@@ -18,7 +18,6 @@ const Register = () => {
   
   const [loading, setLoading] = useState(false);
   const [formErrors, setFormErrors] = useState({});
-  const [verificationSent, setVerificationSent] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [passwordErrors, setPasswordErrors] = useState([]);
   const [validationError, setValidationError] = useState(null);
@@ -167,12 +166,11 @@ const Register = () => {
     try {
       const response = await register(formData);
       if (response.success) {
-        // Generate and store verification token
-        const verificationToken = Math.random().toString(36).substr(2, 32);
-        localStorage.setItem('pendingVerificationEmail', email);
-        localStorage.setItem('verificationToken', verificationToken);
-        setVerificationSent(true);
-        showSuccess('Registration successful! Please check your email to verify your account.');
+        // Since email verification is disabled, directly show success and redirect to login
+        showSuccess('Registration successful! You can now log in with your credentials.');
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
       }
     } catch (err) {
       showError(err.response?.data?.message || 'Registration failed');
@@ -181,33 +179,6 @@ const Register = () => {
       setLoading(false);
     }
   };
-
-  if (verificationSent) {
-    return (
-      <Container className="py-5">
-        <Row className="justify-content-center">
-          <Col md={6}>
-            <Card>
-              <Card.Body className="text-center">
-                <h2 className="mb-4">Verify Your Email</h2>
-                <Alert variant="info">
-                  <h4>Almost there!</h4>
-                  <p>We've sent a verification email to <strong>{email}</strong></p>
-                  <p>Please check your inbox and click the verification link to complete your registration.</p>
-                </Alert>
-                <Button 
-                  variant="primary"
-                  onClick={() => navigate('/login')}
-                >
-                  Go to Login
-                </Button>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
-    );
-  }
 
   return (
     <Container className="py-5">

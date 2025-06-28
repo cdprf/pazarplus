@@ -14,6 +14,7 @@ const {
 const { Op } = require("sequelize");
 const logger = require("../../../utils/logger");
 const sequelize = require("../../../config/database");
+const { mapOrderStatus } = require("../../../utils/enum-validators");
 
 /**
  * Order Processor Service
@@ -189,7 +190,7 @@ class OrderProcessorService {
       }
 
       const invalidStatusOrders = orders.filter(
-        (o) => !["new", "processing"].includes(o.status)
+        (o) => !["new", "processing"].includes(o.orderStatus)
       );
 
       if (invalidStatusOrders.length > 0) {
@@ -213,7 +214,7 @@ class OrderProcessorService {
           .substring(2, 10)}`,
         customerName: primaryOrder.customerName,
         customerEmail: primaryOrder.customerEmail,
-        status: "consolidated",
+        orderStatus: "consolidated", // Use proper field name and validate enum
         orderDate: new Date(),
         totalAmount: totals.totalAmount,
         subtotal: totals.subtotal,
@@ -292,7 +293,7 @@ class OrderProcessorService {
           // Update original order
           await order.update(
             {
-              status: "consolidated",
+              orderStatus: mapOrderStatus("consolidated", "system"),
               consolidatedToOrderId: newOrder.id,
               metadata: {
                 ...order.metadata,
@@ -496,15 +497,13 @@ class OrderProcessorService {
             },
           },
           { transaction }
-        );
-
-        // Link orders to batch
+        ); // Link orders to batch
         await Promise.all(
           batch.orders.map((order) =>
             order.update(
               {
                 batchId: batchRecord.id,
-                status: "in_batch",
+                orderStatus: mapOrderStatus("in_batch", "system"),
               },
               { transaction }
             )
@@ -579,7 +578,7 @@ class OrderProcessorService {
       if (paymentStatus === "completed" && order.orderStatus === "pending") {
         await order.update(
           {
-            status: "processing",
+            orderStatus: mapOrderStatus("processing", "system"),
           },
           { transaction }
         );
@@ -746,14 +745,15 @@ class OrderProcessorService {
       switch (data.event.toLowerCase()) {
         case "order_created":
           // Update if we already have it but with different status
-          if (order.orderStatus !== "new") {
-            order.orderStatus = "new";
+          const newStatus = mapOrderStatus("new", "trendyol");
+          if (order.orderStatus !== newStatus) {
+            order.orderStatus = newStatus;
             await order.save();
           }
           break;
 
         case "order_shipped":
-          order.orderStatus = "shipped";
+          order.orderStatus = mapOrderStatus("shipped", "trendyol");
           if (data.trackingNumber) {
             order.trackingNumber = data.trackingNumber;
           }
@@ -761,7 +761,7 @@ class OrderProcessorService {
           break;
 
         case "order_cancelled":
-          order.orderStatus = "cancelled";
+          order.orderStatus = mapOrderStatus("cancelled", "trendyol");
           if (data.cancellationReason) {
             order.cancellationReason = data.cancellationReason;
           }
@@ -770,7 +770,7 @@ class OrderProcessorService {
           break;
 
         case "order_delivered":
-          order.orderStatus = "delivered";
+          order.orderStatus = mapOrderStatus("delivered", "trendyol");
           order.deliveryDate = new Date();
           await order.save();
           break;
@@ -826,19 +826,20 @@ class OrderProcessorService {
 
       switch (data.event.toLowerCase()) {
         case "created":
-          if (order.orderStatus !== "new") {
-            order.orderStatus = "new";
+          const createdStatus = mapOrderStatus("new", "hepsiburada");
+          if (order.orderStatus !== createdStatus) {
+            order.orderStatus = createdStatus;
             await order.save();
           }
           break;
 
         case "packaging":
-          order.orderStatus = "processing";
+          order.orderStatus = mapOrderStatus("processing", "hepsiburada");
           await order.save();
           break;
 
         case "shipped":
-          order.orderStatus = "shipped";
+          order.orderStatus = mapOrderStatus("shipped", "hepsiburada");
           if (data.cargoTrackingNumber) {
             order.trackingNumber = data.cargoTrackingNumber;
           }
@@ -849,20 +850,20 @@ class OrderProcessorService {
           break;
 
         case "delivered":
-          order.orderStatus = "delivered";
+          order.orderStatus = mapOrderStatus("delivered", "hepsiburada");
           order.deliveryDate = new Date();
           await order.save();
           break;
 
         case "cancelled":
-          order.orderStatus = "cancelled";
+          order.orderStatus = mapOrderStatus("cancelled", "hepsiburada");
           order.cancellationReason = data.reason || "";
           order.cancellationDate = new Date();
           await order.save();
           break;
 
         case "returned":
-          order.orderStatus = "returned";
+          order.orderStatus = mapOrderStatus("returned", "hepsiburada");
           order.returnReason = data.reason || "";
           order.returnDate = new Date();
           await order.save();
@@ -919,20 +920,21 @@ class OrderProcessorService {
 
       switch (data.event.toLowerCase()) {
         case "new":
-          if (order.orderStatus !== "new") {
-            order.orderStatus = "new";
+          const newOrderStatus = mapOrderStatus("new", "n11");
+          if (order.orderStatus !== newOrderStatus) {
+            order.orderStatus = newOrderStatus;
             await order.save();
           }
           break;
 
         case "accepted":
         case "picking":
-          order.orderStatus = "processing";
+          order.orderStatus = mapOrderStatus("processing", "n11");
           await order.save();
           break;
 
         case "shipped":
-          order.orderStatus = "shipped";
+          order.orderStatus = mapOrderStatus("shipped", "n11");
           if (data.shipmentInfo) {
             order.trackingNumber = data.shipmentInfo.trackingNumber;
             order.trackingUrl = data.shipmentInfo.trackingUrl;
@@ -942,21 +944,21 @@ class OrderProcessorService {
           break;
 
         case "delivered":
-          order.orderStatus = "delivered";
+          order.orderStatus = mapOrderStatus("delivered", "n11");
           order.deliveryDate = new Date();
           await order.save();
           break;
 
         case "rejected":
         case "cancelled":
-          order.orderStatus = "cancelled";
+          order.orderStatus = mapOrderStatus("cancelled", "n11");
           order.cancellationReason = data.reason || "";
           order.cancellationDate = new Date();
           await order.save();
           break;
 
         case "returned":
-          order.orderStatus = "returned";
+          order.orderStatus = mapOrderStatus("returned", "n11");
           order.returnReason = data.reason || "";
           order.returnDate = new Date();
           await order.save();

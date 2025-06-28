@@ -64,11 +64,25 @@ class N11QuestionService {
             <appSecret>${this.secretKey}</appSecret>
          </auth>
          <productQuestionSearch>
-            ${productId ? `<productId>${productId}</productId>` : '<productId></productId>'}
-            ${buyerEmail ? `<buyerEmail>${buyerEmail}</buyerEmail>` : '<buyerEmail></buyerEmail>'}
-            ${subject ? `<subject>${subject}</subject>` : '<subject></subject>'}
-            ${status ? `<status>${status}</status>` : '<status></status>'}
-            ${questionDate ? `<questionDate>${this.formatDate(questionDate)}</questionDate>` : '<questionDate></questionDate>'}
+            ${
+              productId
+                ? `<productId>${productId}</productId>`
+                : "<productId></productId>"
+            }
+            ${
+              buyerEmail
+                ? `<buyerEmail>${buyerEmail}</buyerEmail>`
+                : "<buyerEmail></buyerEmail>"
+            }
+            ${subject ? `<subject>${subject}</subject>` : "<subject></subject>"}
+            ${status ? `<status>${status}</status>` : "<status></status>"}
+            ${
+              questionDate
+                ? `<questionDate>${this.formatDate(
+                    questionDate
+                  )}</questionDate>`
+                : "<questionDate></questionDate>"
+            }
          </productQuestionSearch>
          <pagingData>
             <currentPage>${page}</currentPage>
@@ -172,7 +186,7 @@ class N11QuestionService {
         "Error fetching question detail from N11:",
         error.response?.data || error.message
       );
-      
+
       // Graceful fallback
       if (error.response?.status === 404 || error.code === "ENOTFOUND") {
         debug("N11 question detail API endpoint not available");
@@ -422,7 +436,9 @@ class N11QuestionService {
       product_image_url: null, // Not provided in N11 API
       subject: question.questionSubject || question.subject || "",
       public: true, // Default to public
-      creation_date: question.questionDate ? this.parseN11Date(question.questionDate) : new Date(),
+      creation_date: question.questionDate
+        ? this.parseN11Date(question.questionDate)
+        : new Date(),
       answered_date: answerText ? new Date() : null, // N11 list doesn't provide answered date
       answer_text: answerText,
       expire_date: null, // N11 doesn't provide expiry dates
@@ -693,7 +709,9 @@ class N11QuestionService {
               buyer_expose: questionData.buyerExpose,
               seller_expose: questionData.sellerExpose,
               raw_data: questionData,
-              question_hash: this.generateQuestionHash(questionData.question || ""),
+              question_hash: this.generateQuestionHash(
+                questionData.question || ""
+              ),
             };
 
             resolve(normalizedQuestion);

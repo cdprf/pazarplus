@@ -147,6 +147,13 @@ router.use("/fonts", fontRoutes);
 const unifiedIntelligenceRoutes = require("./unified-product-intelligence");
 router.use("/product-intelligence", unifiedIntelligenceRoutes);
 
+// Test routes for development (only enabled in development mode)
+if (process.env.NODE_ENV === "development") {
+  const testNotificationRoutes = require("./test-notifications");
+  router.use("/test", testNotificationRoutes);
+  console.log("✅ Test notification routes mounted (development mode)");
+}
+
 // ========================================
 // === ENHANCED PRODUCT MANAGEMENT ROUTES - DISABLED ===
 // ========================================

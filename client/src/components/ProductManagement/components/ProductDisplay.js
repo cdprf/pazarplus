@@ -33,17 +33,41 @@ const TRANSLATIONS = {
   next: "Sonraki",
   last: "Son",
   ofPages: "{total} sayfadan {current}",
-  // Status translations
-  all: "Tümü",
-  active: "Aktif",
-  pending: "Beklemede",
-  inactive: "Pasif",
-  outOfStock: "Stokta Yok",
+  // Enhanced status translations - matching working stats only
+  all: "Tüm Ürünler",
+  out_of_stock: "Stokta Olmayan",
+  low_stock: "Stoku Azalan",
+  in_stock: "Stokta Bulunan",
+  pasif: "Pasif",
+  aktif: "Aktif",
 };
 
 // Helper function for text interpolation
 const interpolate = (text, params) => {
   return text.replace(/{(\w+)}/g, (match, key) => params[key] || match);
+};
+
+// Filter to show only working tabs in proper order
+const getWorkingTabsOnly = (statusCounts) => {
+  // Define the working tabs based on your current data:
+  // Out_of_stock (1416), Low_stock (2110), In_stock (2076), Pasif (0), Aktif (4186)
+  const workingTabOrder = [
+    "all", // Always show All first
+    "out_of_stock", // Working: Stokta Olmayan
+    "low_stock", // Working: Stoku Azalan
+    "in_stock", // Working: Stokta Bulunan
+    "pasif", // Working: Pasif Ürünler (from backend pasifProducts)
+    "aktif", // Working: Aktif Ürünler (from backend aktifProducts)
+  ];
+
+  const filteredCounts = {};
+  workingTabOrder.forEach((key) => {
+    if (statusCounts[key] !== undefined) {
+      filteredCounts[key] = statusCounts[key];
+    }
+  });
+
+  return filteredCounts;
 };
 
 // Main Product Display Component
@@ -424,20 +448,22 @@ const ProductDisplay = ({
         {/* Status Tabs */}
         <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-3">
           <div className="tabs">
-            {Object.entries(statusCounts).map(([key, count]) => (
-              <button
-                key={key}
-                className={`tab ${activeTab === key ? "tab-active" : ""}`}
-                onClick={() => onTabChange?.(key)}
-                aria-label={`${
-                  TRANSLATIONS[key] || key
-                } durumundaki ürünler (${count})`}
-              >
-                {TRANSLATIONS[key] ||
-                  key.charAt(0).toUpperCase() + key.slice(1)}{" "}
-                ({count})
-              </button>
-            ))}
+            {Object.entries(getWorkingTabsOnly(statusCounts)).map(
+              ([key, count]) => (
+                <button
+                  key={key}
+                  className={`tab ${activeTab === key ? "tab-active" : ""}`}
+                  onClick={() => onTabChange?.(key)}
+                  aria-label={`${
+                    TRANSLATIONS[key] || key
+                  } durumundaki ürünler (${count})`}
+                >
+                  {TRANSLATIONS[key] ||
+                    key.charAt(0).toUpperCase() + key.slice(1)}{" "}
+                  ({count})
+                </button>
+              )
+            )}
           </div>
         </div>
 

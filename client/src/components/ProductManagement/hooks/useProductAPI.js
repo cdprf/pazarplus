@@ -49,6 +49,15 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
       const requestPromise = (async () => {
         try {
           console.log(`[API] Starting request: ${requestKey}`);
+
+          // Handle timeout option
+          let timeoutId;
+          if (options.timeout) {
+            timeoutId = setTimeout(() => {
+              abortController.abort();
+            }, options.timeout);
+          }
+
           const response = await fetch(url, {
             ...options,
             signal: abortController.signal,
@@ -57,7 +66,14 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
               ...options.headers,
             },
+            // Remove timeout from options passed to fetch since it's handled above
+            timeout: undefined,
           });
+
+          // Clear timeout if request completes successfully
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
 
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -130,6 +146,12 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
             currentPage: responseData.pagination?.currentPage || 1,
             loading: false,
           });
+        } else if (data === null) {
+          // Request was aborted - keep current state but stop loading
+          updateState({ loading: false });
+        } else {
+          // API returned error - clear products and show empty state
+          updateState({ loading: false, products: [] });
         }
       } catch (error) {
         handleError(error, " - fetchProducts");
@@ -164,6 +186,9 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
           pasif: overview.pasifProducts || 0,
           aktif: overview.aktifProducts || 0,
         };
+      } else if (data === null) {
+        // Request was aborted - return default stats silently
+        return getDefaultStats();
       } else {
         // Handle the case where API returns success: false
         console.warn("Product stats API returned unsuccessful response:", data);
@@ -441,19 +466,68 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
     try {
       updateState({ syncing: true });
 
+      // Show initial progress message
+      showAlert(
+        "Ürün senkronizasyonu başlatılıyor... Bu işlem birkaç dakika sürebilir.",
+        "info"
+      );
+
       const data = await createAPICall(
         `${API_BASE_URL}/products/sync`,
         {
           method: "POST",
+          // Add longer timeout for sync operation (5 minutes)
+          timeout: 5 * 60 * 1000, // 5 minutes in milliseconds
         },
         "syncProducts"
       );
 
       if (data && data.success) {
-        showAlert("Ürünler başarıyla senkronize edildi", "success");
-        return data.syncedCount;
+        const { totalSaved, platformResults } = data.data || {};
+        const successfulPlatforms =
+          platformResults?.filter((p) => p.success).length || 0;
+        showAlert(
+          `Senkronizasyon tamamlandı! ${
+            totalSaved || 0
+          } ürün ${successfulPlatforms} platformdan başarıyla alındı.`,
+          "success"
+        );
+        return data.syncedCount || totalSaved || 0;
+      } else if (data && !data.success) {
+        // Handle specific error messages from the API
+        if (
+          data.code === "NO_PLATFORM_CONNECTIONS" ||
+          data.message.includes("No active platform connections")
+        ) {
+          showAlert(
+            "Platform bağlantısı bulunamadı. Önce platformlarınızı bağlayın.",
+            "warning"
+          );
+        } else {
+          showAlert(`Senkronizasyon hatası: ${data.message}`, "error");
+        }
+        return data.syncedCount || 0;
       }
     } catch (error) {
+      // Check if it's an abort error (timeout)
+      if (
+        error.name === "AbortError" ||
+        (error.message && error.message.includes("aborted"))
+      ) {
+        showAlert(
+          "Senkronizasyon zaman aşımına uğradı. Lütfen tekrar deneyin.",
+          "error"
+        );
+        return 0;
+      }
+      // Check if it's a 400 error with no platform connections
+      if (error.message && error.message.includes("HTTP 400")) {
+        showAlert(
+          "Platform bağlantısı bulunamadı. Önce platformlarınızı bağlayın.",
+          "warning"
+        );
+        return 0;
+      }
       handleError(error, " - syncProducts");
       throw error;
     } finally {

@@ -1,4 +1,5 @@
 const PlatformServiceFactory = require("../modules/order-management/services/platforms/platformServiceFactory");
+const { mapOrderStatus } = require("../utils/enum-validators");
 
 class PlatformServiceManager {
   constructor() {
@@ -249,11 +250,18 @@ class PlatformServiceManager {
   normalizeStatus(platformStatus, platform) {
     if (!platformStatus) return "pending";
 
+    // Use our centralized status mapping utility first
+    const mappedStatus = mapOrderStatus(platformStatus, platform);
+    if (mappedStatus && mappedStatus !== "unknown") {
+      return mappedStatus;
+    }
+
     // Use platform-specific service mappings for consistency
     try {
       const service = this.getService(platform);
       if (service && typeof service.mapOrderStatus === "function") {
-        return service.mapOrderStatus(platformStatus);
+        const serviceResult = service.mapOrderStatus(platformStatus);
+        return mapOrderStatus(serviceResult, platform); // Ensure result is valid
       }
     } catch (error) {
       console.warn(
@@ -262,28 +270,8 @@ class PlatformServiceManager {
       );
     }
 
-    // Fallback to common status mappings if service is not available
-    const status = platformStatus.toLowerCase();
-    const commonStatusMappings = {
-      created: "new",
-      new: "new",
-      confirmed: "pending",
-      approved: "pending",
-      preparing: "processing",
-      picking: "processing",
-      packaged: "shipped",
-      shipped: "shipped",
-      intransit: "shipped",
-      in_transit: "shipped",
-      delivered: "delivered",
-      cancelled: "cancelled",
-      returned: "returned",
-      refunded: "refunded",
-      failed: "failed",
-      undelivered: "failed",
-    };
-
-    return commonStatusMappings[status] || "unknown";
+    // If all else fails, return unknown (which is a valid enum value)
+    return "unknown";
   }
 
   extractCustomerName(order, platform) {
@@ -569,7 +557,9 @@ class PlatformServiceManager {
 
       case "n11":
         return !!(
-          connection.credentials?.apiKey && connection.credentials?.secretKey
+          connection.credentials?.apiKey &&
+          (connection.credentials?.secretKey ||
+            connection.credentials?.apiSecret)
         );
 
       default:

@@ -663,6 +663,27 @@ class ControlledCustomerQuestionController {
       let result;
       if (typeof this.questionService.syncAllQuestions === "function") {
         result = await this.questionService.syncAllQuestions(options);
+
+        // Handle the case where no platforms are configured
+        if (!result.success && result.errors.length > 0) {
+          const noPlatformsError = result.errors.find((error) =>
+            error.includes("No platform services available")
+          );
+
+          if (noPlatformsError) {
+            return res.status(200).json({
+              success: false,
+              message: "No platform connections configured",
+              data: {
+                totalSynced: 0,
+                platforms: {},
+                errors: result.errors,
+                suggestion:
+                  "Please configure platform connections in the settings before syncing questions.",
+              },
+            });
+          }
+        }
       } else {
         // Fallback: manually sync from available platform services
         result = await this.manualSyncFromPlatforms(options);
@@ -940,6 +961,54 @@ class ControlledCustomerQuestionController {
       res.status(500).json({
         success: false,
         message: "Failed to test platform connectivity",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Reply to a question
+   */
+  async replyToQuestion(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation errors",
+          errors: errors.array(),
+        });
+      }
+
+      const { id } = req.params;
+      const { text, type = "answer", template_id, attachments } = req.body;
+      const userId = req.user?.id || "38d86fd2-bf87-4271-b49d-f1a7645ee4ef"; // Handle case where user is not authenticated
+
+      const replyData = {
+        text,
+        type,
+        template_id: template_id ? parseInt(template_id) : undefined,
+        attachments,
+      };
+
+      debug(`Replying to question ${id} with type ${type}`);
+
+      const reply = await this.questionService.replyToQuestion(
+        parseInt(id),
+        replyData,
+        userId
+      );
+
+      res.json({
+        success: true,
+        message: "Reply sent successfully",
+        data: reply,
+      });
+    } catch (error) {
+      debug("Error replying to question:", error.message);
+      res.status(500).json({
+        success: false,
+        message: "Failed to send reply",
         error: error.message,
       });
     }

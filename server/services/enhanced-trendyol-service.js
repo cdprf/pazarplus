@@ -5,6 +5,7 @@ const axios = require("axios");
 const EventEmitter = require("events");
 const logger = require("../utils/logger");
 const { TurkishComplianceService } = require("./turkishComplianceService");
+const { mapOrderStatus } = require("../utils/enum-validators");
 
 /**
  * Enhanced Trendyol Integration Service
@@ -418,7 +419,9 @@ class EnhancedTrendyolService extends EventEmitter {
         customerEmail: trendyolOrder.customerEmail,
         customerPhone: trendyolOrder.shipmentAddress?.phone,
         orderDate: new Date(trendyolOrder.orderDate),
-        orderStatus: this.mapOrderStatus(trendyolOrder.shipmentPackageStatus || trendyolOrder.status),
+        orderStatus: this.mapOrderStatus(
+          trendyolOrder.shipmentPackageStatus || trendyolOrder.status
+        ),
         totalAmount: trendyolOrder.totalPrice || 0,
         currency: "TRY",
         shippingDetailId: shippingDetail.id,
@@ -464,7 +467,9 @@ class EnhancedTrendyolService extends EventEmitter {
   async updateExistingOrder(existingOrder, trendyolOrder, transaction) {
     await existingOrder.update(
       {
-        orderStatus: this.mapOrderStatus(trendyolorder.orderStatus),
+        orderStatus: this.mapOrderStatus(
+          trendyolOrder.shipmentPackageStatus || trendyolOrder.status
+        ),
         rawData: JSON.stringify(trendyolOrder),
         lastSyncedAt: new Date(),
       },
@@ -549,30 +554,30 @@ class EnhancedTrendyolService extends EventEmitter {
   mapOrderStatus(trendyolStatus) {
     const statusMap = {
       // Trendyol Order Statuses
-      "Awaiting": "new",
-      "Created": "new", 
-      "ReadyToShip": "processing",
-      "Picking": "processing",
-      "Invoiced": "processing",
-      "Shipped": "shipped",
-      "InTransit": "in_transit",
-      "AtCollectionPoint": "shipped", // Package available for pickup
-      "Delivered": "delivered",
-      "Cancelled": "cancelled",
-      "UnDelivered": "failed",
-      "Returned": "returned",
-      "Refunded": "refunded",
+      Awaiting: "new",
+      Created: "new",
+      ReadyToShip: "processing",
+      Picking: "processing",
+      Invoiced: "processing",
+      Shipped: "shipped",
+      InTransit: "in_transit",
+      AtCollectionPoint: "shipped", // Package available for pickup
+      Delivered: "delivered",
+      Cancelled: "cancelled",
+      UnDelivered: "failed",
+      Returned: "returned",
+      Refunded: "refunded",
       // Additional shipment package statuses
-      "Processing": "processing",
-      "InProcess": "processing",
-      "ReadyForShipping": "processing",
-      "OnTheWay": "in_transit",
-      "DeliveredToCustomer": "delivered",
+      Processing: "processing",
+      InProcess: "processing",
+      ReadyForShipping: "processing",
+      OnTheWay: "in_transit",
+      DeliveredToCustomer: "delivered",
     };
 
     const mappedStatus = statusMap[trendyolStatus];
 
-    // Log unknown statuses for investigation
+    // Use centralized mapping as fallback and validation
     if (!mappedStatus && trendyolStatus) {
       console.warn(
         `Unknown Trendyol order status encountered: ${trendyolStatus}`,
@@ -583,41 +588,32 @@ class EnhancedTrendyolService extends EventEmitter {
         }
       );
 
-      // Fall back to a reasonable default based on context
-      if (trendyolStatus.toLowerCase().includes("cancel")) {
-        return "cancelled";
-      } else if (trendyolStatus.toLowerCase().includes("ship")) {
-        return "shipped";
-      } else if (trendyolStatus.toLowerCase().includes("deliver")) {
-        return "delivered";
-      } else if (trendyolStatus.toLowerCase().includes("return")) {
-        return "returned";
-      }
-
-      return "unknown";
+      // Use centralized mapping utility as fallback
+      return mapOrderStatus(trendyolStatus, "trendyol");
     }
 
-    return mappedStatus || "unknown";
+    // Validate the mapped status through centralized utility
+    return mapOrderStatus(mappedStatus || trendyolStatus, "trendyol");
   }
 
   // Preserve cargo tracking number as string to avoid scientific notation
   preserveCargoTrackingNumber(cargoTrackingNumber) {
     if (!cargoTrackingNumber) return null;
-    
+
     // If it's already a string, return as-is
-    if (typeof cargoTrackingNumber === 'string') {
+    if (typeof cargoTrackingNumber === "string") {
       return cargoTrackingNumber;
     }
-    
+
     // If it's a number, check if it's in scientific notation
-    if (typeof cargoTrackingNumber === 'number') {
+    if (typeof cargoTrackingNumber === "number") {
       // Convert to string using toFixed to avoid scientific notation
       if (cargoTrackingNumber > 1e15 || cargoTrackingNumber < -1e15) {
         return cargoTrackingNumber.toFixed(0);
       }
       return String(cargoTrackingNumber);
     }
-    
+
     // Fallback to string conversion
     return String(cargoTrackingNumber);
   }

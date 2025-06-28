@@ -150,21 +150,12 @@ const CustomerQuestions = () => {
       if (response.data.success) {
         const statsData = response.data.data;
         setStats({
-          total: statsData.total || 0,
-          waiting:
-            statsData.statusCounts?.find(
-              (s) => s.status === "WAITING_FOR_ANSWER"
-            )?.count || 0,
-          answered:
-            statsData.statusCounts?.find((s) => s.status === "ANSWERED")
-              ?.count || 0,
-          rejected:
-            statsData.statusCounts?.find((s) => s.status === "REJECTED")
-              ?.count || 0,
-          autoClosed:
-            statsData.statusCounts?.find((s) => s.status === "AUTO_CLOSED")
-              ?.count || 0,
-          avgResponseTime: Math.round(statsData.avgResponseTime || 0),
+          total: statsData.totalQuestions || 0,
+          waiting: statsData.openQuestions || 0,
+          answered: statsData.answeredQuestions || 0,
+          rejected: statsData.rejectedQuestions || 0,
+          autoClosed: statsData.autoClosedQuestions || 0,
+          avgResponseTime: Math.round(parseFloat(statsData.responseRate) || 0),
         });
       }
     } catch (err) {
@@ -1025,16 +1016,87 @@ const CustomerQuestions = () => {
               </p>
             </div>
 
-            {selectedQuestion.answer_text && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Yanıt
-                </label>
-                <p className="mt-1 text-sm text-gray-900 bg-green-50 p-3 rounded">
-                  {selectedQuestion.answer_text}
-                </p>
-              </div>
-            )}
+            {/* Display replies if available */}
+            {selectedQuestion.replies &&
+              selectedQuestion.replies.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Yanıtlar ({selectedQuestion.replies.length})
+                  </label>
+                  <div className="space-y-3">
+                    {selectedQuestion.replies.map((reply, index) => (
+                      <div
+                        key={reply.id}
+                        className="bg-green-50 border-l-4 border-green-400 p-3 rounded-r"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-medium text-green-600 uppercase">
+                            {reply.reply_type === "reject"
+                              ? "Reddedildi"
+                              : "Yanıtlandı"}
+                          </span>
+                          <div className="text-xs text-gray-500">
+                            <span
+                              className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                                reply.status === "sent"
+                                  ? "bg-green-100 text-green-800"
+                                  : reply.status === "failed"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }`}
+                            >
+                              {reply.status === "sent"
+                                ? "Gönderildi"
+                                : reply.status === "failed"
+                                ? "Başarısız"
+                                : "Taslak"}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-900">
+                          {reply.reply_text}
+                        </p>
+                        <div className="mt-2 text-xs text-gray-500">
+                          {reply.sent_date ? (
+                            <>
+                              Gönderildi:{" "}
+                              {format(
+                                new Date(reply.sent_date),
+                                "dd/MM/yyyy HH:mm",
+                                { locale: tr }
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              Oluşturuldu:{" "}
+                              {format(
+                                new Date(reply.creation_date),
+                                "dd/MM/yyyy HH:mm",
+                                { locale: tr }
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            {/* Show message if no replies for answered questions */}
+            {selectedQuestion.status === "ANSWERED" &&
+              (!selectedQuestion.replies ||
+                selectedQuestion.replies.length === 0) && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Yanıt
+                  </label>
+                  <p className="mt-1 text-sm text-gray-500 bg-yellow-50 p-3 rounded">
+                    Bu soru yanıtlanmış olarak işaretlenmiş ancak yanıt
+                    detayları mevcut değil.
+                  </p>
+                </div>
+              )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -1049,14 +1111,14 @@ const CustomerQuestions = () => {
                   )}
                 </p>
               </div>
-              {selectedQuestion.answer_date && (
+              {selectedQuestion.answered_date && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Yanıt Tarihi
+                    Yanıtlanma Tarihi
                   </label>
                   <p className="mt-1 text-sm text-gray-900">
                     {format(
-                      new Date(selectedQuestion.answer_date),
+                      new Date(selectedQuestion.answered_date),
                       "dd/MM/yyyy HH:mm",
                       { locale: tr }
                     )}

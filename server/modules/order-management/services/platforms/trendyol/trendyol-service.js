@@ -12,6 +12,7 @@ const {
 const { Op } = require("sequelize");
 const sequelize = require("../../../../../config/database");
 const logger = require("../../../../../utils/logger");
+const { mapOrderStatus } = require("../../../../../utils/enum-validators");
 
 // Constants for Trendyol API endpoints and configurations
 const TRENDYOL_API = {

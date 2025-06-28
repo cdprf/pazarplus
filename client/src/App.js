@@ -26,7 +26,6 @@ import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 import ForgotPassword from "./components/auth/ForgotPassword";
 import ResetPassword from "./components/auth/ResetPassword";
-import EmailVerification from "./components/auth/EmailVerification";
 import Dashboard from "./components/dashboard/Dashboard";
 import Orders from "./pages/Orders"; // Consolidated order management
 import OrderDetail from "./components/orders/OrderDetail";
@@ -98,14 +97,6 @@ function App() {
                         element={
                           <PublicRoute>
                             <Register />
-                          </PublicRoute>
-                        }
-                      />
-                      <Route
-                        path="/verify-email"
-                        element={
-                          <PublicRoute>
-                            <EmailVerification />
                           </PublicRoute>
                         }
                       />

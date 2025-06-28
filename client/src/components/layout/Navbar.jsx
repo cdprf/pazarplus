@@ -3,8 +3,9 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useNotification } from "../../contexts/NotificationContext";
+import { useWebSocketNotifications } from "../../hooks/useWebSocketNotifications";
 import { cn } from "../../utils/cn";
-import { Button, Badge } from "../ui";
+import { Button, Badge, Tooltip } from "../ui";
 import api from "../../services/api";
 import {
   Bars3Icon,
@@ -24,13 +25,16 @@ import {
   MagnifyingGlassIcon,
   CommandLineIcon,
   SparklesIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 
 const Navbar = ({ toggleSidebar }) => {
   const { user, logout, isAuthenticated } = useAuth();
   const { theme, setLightTheme, setDarkTheme, followSystemTheme, systemTheme } =
     useTheme();
-  const { showNotification } = useNotification();
+  const { notifications, unreadCount, markAllAsRead, addTestNotifications } =
+    useNotification();
+  const { isConnected: wsConnected } = useWebSocketNotifications();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -146,7 +150,6 @@ const Navbar = ({ toggleSidebar }) => {
 
   const handleLogout = () => {
     logout();
-    showNotification("Successfully logged out", "success");
     navigate("/login");
     setShowUserMenu(false);
   };
@@ -154,13 +157,10 @@ const Navbar = ({ toggleSidebar }) => {
   const handleThemeChange = (newTheme) => {
     if (newTheme === "system") {
       followSystemTheme();
-      showNotification("Theme set to follow system preference", "info");
     } else if (newTheme === "light") {
       setLightTheme();
-      showNotification("Light theme activated", "info");
     } else if (newTheme === "dark") {
       setDarkTheme();
-      showNotification("Dark theme activated", "info");
     }
     setShowThemeMenu(false);
   };
@@ -173,61 +173,58 @@ const Navbar = ({ toggleSidebar }) => {
 
   const ThemeIcon = getThemeIcon();
 
-  // Enhanced notifications with better categorization
-  const notifications = [
-    {
-      id: 1,
-      title: "New Order Received",
-      message: "Order #12345 from Trendyol - ₺1,250",
-      time: "2 minutes ago",
-      type: "order",
-      priority: "high",
-      unread: true,
-      icon: ShoppingCartIcon,
-      color: "text-green-600 dark:text-green-400",
-      bgColor: "bg-green-100 dark:bg-green-900/30",
-    },
-    {
-      id: 2,
-      title: "Shipment Update",
-      message: "Package delivered successfully to Istanbul",
-      time: "1 hour ago",
-      type: "shipping",
-      priority: "medium",
-      unread: true,
-      icon: TruckIcon,
-      color: "text-blue-600 dark:text-blue-400",
-      bgColor: "bg-blue-100 dark:bg-blue-900/30",
-    },
-    {
-      id: 3,
-      title: "Platform Sync Complete",
-      message: "Hepsiburada sync finished - 125 products updated",
-      time: "3 hours ago",
-      type: "sync",
-      priority: "low",
-      unread: false,
-      icon: SparklesIcon,
-      color: "text-purple-600 dark:text-purple-400",
-      bgColor: "bg-purple-100 dark:bg-purple-900/30",
-    },
-    {
-      id: 4,
-      title: "Low Stock Alert",
-      message: "5 products are running low on inventory",
-      time: "5 hours ago",
-      type: "inventory",
-      priority: "high",
-      unread: true,
-      icon: CommandLineIcon,
-      color: "text-amber-600 dark:text-amber-400",
-      bgColor: "bg-amber-100 dark:bg-amber-900/30",
-    },
-  ];
+  // Map notification types to icons and styles
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case "order":
+        return ShoppingCartIcon;
+      case "shipping":
+        return TruckIcon;
+      case "sync":
+        return SparklesIcon;
+      case "inventory":
+        return CommandLineIcon;
+      case "error":
+        return ExclamationTriangleIcon;
+      default:
+        return BellIcon;
+    }
+  };
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const getNotificationStyle = (type, priority) => {
+    const baseStyles = {
+      order: {
+        color: "text-green-600 dark:text-green-400",
+        bgColor: "bg-green-100 dark:bg-green-900/30",
+      },
+      shipping: {
+        color: "text-blue-600 dark:text-blue-400",
+        bgColor: "bg-blue-100 dark:bg-blue-900/30",
+      },
+      sync: {
+        color: "text-purple-600 dark:text-purple-400",
+        bgColor: "bg-purple-100 dark:bg-purple-900/30",
+      },
+      inventory: {
+        color: "text-amber-600 dark:text-amber-400",
+        bgColor: "bg-amber-100 dark:bg-amber-900/30",
+      },
+      error: {
+        color: "text-red-600 dark:text-red-400",
+        bgColor: "bg-red-100 dark:bg-red-900/30",
+      },
+    };
+
+    return (
+      baseStyles[type] || {
+        color: "text-gray-600 dark:text-gray-400",
+        bgColor: "bg-gray-100 dark:bg-gray-900/30",
+      }
+    );
+  };
+
   const highPriorityCount = notifications.filter(
-    (n) => n.unread && n.priority === "high"
+    (n) => !n.read && n.priority === "high"
   ).length;
 
   // Enhanced quick navigation items
@@ -454,28 +451,39 @@ const Navbar = ({ toggleSidebar }) => {
               <>
                 {/* Enhanced Notifications */}
                 <div className="relative" ref={notificationRef}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowNotifications(!showNotifications)}
-                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 relative"
+                  <Tooltip
+                    content={
+                      wsConnected
+                        ? unreadCount > 0
+                          ? `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`
+                          : "No new notifications"
+                        : "Connecting to notifications..."
+                    }
+                    position="bottom"
                   >
-                    <BellIcon className="h-5 w-5" />
-                    {unreadCount > 0 && (
-                      <div className="absolute -top-1 -right-1 flex items-center justify-center">
-                        <span
-                          className={cn(
-                            "h-5 w-5 text-white text-xs rounded-full flex items-center justify-center font-medium",
-                            highPriorityCount > 0
-                              ? "bg-red-500 animate-pulse"
-                              : "bg-primary-500"
-                          )}
-                        >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowNotifications(!showNotifications)}
+                      className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 relative"
+                    >
+                      <BellIcon className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <div className="absolute -top-1 -right-1 flex items-center justify-center" style={{ zIndex: "var(--z-tooltip)" }}>
+                          <span
+                            className={cn(
+                              "h-5 w-5 text-white text-xs rounded-full flex items-center justify-center font-medium",
+                              highPriorityCount > 0
+                                ? "bg-red-500 animate-pulse"
+                                : "bg-primary-500"
+                            )}
+                          >
                           {unreadCount > 9 ? "9+" : unreadCount}
                         </span>
                       </div>
                     )}
                   </Button>
+                  </Tooltip>
 
                   {showNotifications && (
                     <div
@@ -502,12 +510,9 @@ const Navbar = ({ toggleSidebar }) => {
                               variant="ghost"
                               size="xs"
                               className="text-xs"
-                              onClick={() =>
-                                showNotification(
-                                  "All notifications marked as read",
-                                  "success"
-                                )
-                              }
+                              onClick={() => {
+                                markAllAsRead();
+                              }}
                             >
                               Mark all read
                             </Button>
@@ -515,55 +520,90 @@ const Navbar = ({ toggleSidebar }) => {
                         </div>
                       </div>
                       <div className="max-h-80 overflow-y-auto scrollbar-thin">
-                        {notifications.map((notification) => {
-                          const Icon = notification.icon;
-                          return (
-                            <div
-                              key={notification.id}
-                              className={cn(
-                                "p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer",
-                                notification.unread &&
-                                  "bg-primary-50/30 dark:bg-primary-900/10"
-                              )}
-                            >
-                              <div className="flex items-start space-x-3">
-                                <div
-                                  className={cn(
-                                    "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center",
-                                    notification.bgColor
-                                  )}
-                                >
-                                  <Icon
+                        {notifications.length > 0 ? (
+                          notifications.map((notification) => {
+                            const IconComponent = getNotificationIcon(
+                              notification.type
+                            );
+                            const styles = getNotificationStyle(
+                              notification.type,
+                              notification.priority
+                            );
+                            const timeAgo = notification.createdAt
+                              ? new Date(
+                                  notification.createdAt
+                                ).toLocaleString()
+                              : "Recently";
+
+                            return (
+                              <div
+                                key={notification.id}
+                                className={cn(
+                                  "p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer",
+                                  !notification.read &&
+                                    "bg-primary-50/30 dark:bg-primary-900/10"
+                                )}
+                              >
+                                <div className="flex items-start space-x-3">
+                                  <div
                                     className={cn(
-                                      "h-4 w-4",
-                                      notification.color
+                                      "flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center",
+                                      styles.bgColor
                                     )}
-                                  />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-start justify-between">
-                                    <div>
-                                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                        {notification.title}
-                                      </p>
-                                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                        {notification.message}
-                                      </p>
-                                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                                        {notification.time}
-                                      </p>
+                                  >
+                                    <IconComponent
+                                      className={cn("h-4 w-4", styles.color)}
+                                    />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between">
+                                      <div>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                          {notification.title}
+                                        </p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                          {notification.message}
+                                        </p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                          {timeAgo}
+                                        </p>
+                                      </div>
+                                      {!notification.read && (
+                                        <div className="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0 mt-2" />
+                                      )}
                                     </div>
-                                    {notification.unread && (
-                                      <div className="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0 mt-2" />
-                                    )}
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })
+                        ) : (
+                          <div className="p-8 text-center">
+                            <BellIcon className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                            <p className="text-gray-500 dark:text-gray-400">
+                              No notifications yet
+                            </p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                              {wsConnected
+                                ? "Connected to real-time notifications"
+                                : "Connecting..."}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      <div className="p-3 border-t border-gray-200 dark:border-gray-700">
+                      <div className="p-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                        {process.env.NODE_ENV === "development" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-center text-xs"
+                            onClick={() => {
+                              addTestNotifications();
+                            }}
+                          >
+                            Add Test Notifications (Dev)
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"

@@ -48,7 +48,8 @@
   },
   "scripts": {
     "start": "REACT_APP_HOST=0.0.0.0 HOST=0.0.0.0 GENERATE_SOURCEMAP=true react-scripts start",
-    "build": "react-scripts build --source-map",
+    "build": "react-scripts build",
+    "vercel-build": "npm run build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "analyze-bundle": "npm run build && npx webpack-bundle-analyzer build/static/js/*.js",

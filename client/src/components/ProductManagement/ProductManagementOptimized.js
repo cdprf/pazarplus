@@ -622,19 +622,25 @@ const ProductManagement = () => {
       // Apply new tab filter
       switch (tab) {
         case "active":
-          newFilters.status = "active";
-          break;
-        case "inactive":
-          newFilters.status = "inactive";
+          newFilters.stockStatus = "aktif";
           break;
         case "draft":
-          newFilters.status = "draft";
+          newFilters.stockStatus = "draft";
+          break;
+        case "rejected":
+          newFilters.stockStatus = "rejected";
           break;
         case "out_of_stock":
           newFilters.stockStatus = "out_of_stock";
           break;
         case "low_stock":
           newFilters.stockStatus = "low_stock";
+          break;
+        case "in_stock":
+          newFilters.stockStatus = "in_stock";
+          break;
+        case "pasif":
+          newFilters.stockStatus = "pasif";
           break;
         default:
           // 'all' tab doesn't add filters

@@ -24,6 +24,7 @@ const {
   InventoryMovement,
   StockReservation,
 } = require("../models");
+const { sanitizePlatformType } = require("../utils/enum-validators");
 
 class ProductController {
   constructor() {
@@ -60,12 +61,12 @@ class ProductController {
       };
 
       // Status filter - only add if specified (remove default "active")
-      if (status) {
+      if (status && status.trim() !== "") {
         whereClause.status = status;
       }
 
       // Add search filter - Enhanced to include all relevant fields
-      if (search) {
+      if (search && search.trim() !== "") {
         whereClause[Op.or] = [
           { name: { [Op.iLike]: `%${search}%` } },
           { sku: { [Op.iLike]: `%${search}%` } },
@@ -91,7 +92,7 @@ class ProductController {
       }
 
       // Add category filter
-      if (category) {
+      if (category && category.trim() !== "") {
         whereClause.category = { [Op.iLike]: `%${category}%` };
       }
 
@@ -158,8 +159,11 @@ class ProductController {
         entityType: "product",
       };
 
-      if (platform) {
-        platformDataWhere.platformType = platform;
+      if (platform && platform !== "all" && platform.trim() !== "") {
+        const sanitizedPlatform = sanitizePlatformType(platform);
+        if (sanitizedPlatform) {
+          platformDataWhere.platformType = sanitizedPlatform;
+        }
       }
 
       if (approvalStatus) {
@@ -193,7 +197,10 @@ class ProductController {
       const includeClause = [];
 
       // Only add PlatformData include if we actually need platform or approval filtering
-      if (platform || approvalStatus) {
+      if (
+        (platform && platform !== "all" && platform.trim() !== "") ||
+        approvalStatus
+      ) {
         const platformDataInclude = {
           model: PlatformData,
           as: "platformData",
@@ -262,10 +269,38 @@ class ProductController {
    */
   async syncProducts(req, res) {
     try {
-      const { platforms, options = {} } = req.body;
-      const userId = req.user.id;
+      // Handle both GET and POST requests - extract parameters from query or body
+      let platforms = req.body?.platforms || req.query?.platforms;
+      const options = req.body?.options || req.query?.options || {};
+      const userId = req.user?.id;
 
-      logger.info(`Starting product sync for user ${userId}`);
+      // Handle comma-separated platforms in query string
+      if (typeof platforms === "string" && platforms.includes(",")) {
+        platforms = platforms
+          .split(",")
+          .map((p) => p.trim())
+          .filter((p) => p.length > 0);
+      }
+
+      // Additional safety checks
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "User not authenticated",
+          error: "Missing user ID",
+        });
+      }
+
+      logger.info(`Starting product sync for user ${userId}`, {
+        platforms,
+        options,
+        requestMethod: req.method,
+        hasBody: Object.keys(req.body || {}).length > 0,
+        bodyKeys: Object.keys(req.body || {}),
+        queryKeys: Object.keys(req.query || {}),
+        platformsType: typeof platforms,
+        platformsValue: platforms,
+      });
 
       // Get active platform connections
       const whereClause = {
@@ -273,18 +308,58 @@ class ProductController {
         isActive: true,
       };
 
-      if (platforms && platforms.length > 0) {
-        whereClause.platformType = { [Op.in]: platforms };
+      // Only filter by platforms if specific ones are requested
+      if (platforms && Array.isArray(platforms) && platforms.length > 0) {
+        // Validate platform types before using them
+        const validPlatforms = platforms.filter((platform) => {
+          const sanitized = sanitizePlatformType(platform);
+          return sanitized !== null;
+        });
+
+        if (validPlatforms.length > 0) {
+          whereClause.platformType = { [Op.in]: validPlatforms };
+          logger.debug(`Filtering by platforms: ${validPlatforms.join(", ")}`);
+        }
+      } else if (
+        platforms &&
+        typeof platforms === "string" &&
+        platforms.trim() !== ""
+      ) {
+        // Handle single platform as string
+        const sanitizedPlatform = sanitizePlatformType(platforms);
+        if (sanitizedPlatform) {
+          whereClause.platformType = sanitizedPlatform;
+          logger.debug(`Filtering by single platform: ${sanitizedPlatform}`);
+        }
+      } else {
+        logger.info(
+          "No platform filtering applied - syncing from all active platforms"
+        );
       }
 
       const connections = await PlatformConnection.findAll({
         where: whereClause,
       });
 
+      logger.debug(
+        `Found ${connections.length} active platform connections for sync`
+      );
+
       if (connections.length === 0) {
-        return res.status(400).json({
+        return res.status(200).json({
           success: false,
           message: "No active platform connections found",
+          code: "NO_PLATFORM_CONNECTIONS",
+          syncedCount: 0,
+          requestedPlatforms: platforms,
+          availableConnections: await PlatformConnection.count({
+            where: { userId },
+          }),
+          debug: {
+            whereClause,
+            platformsProvided: platforms,
+            userId,
+          },
         });
       }
 
@@ -3325,7 +3400,7 @@ class ProductController {
       const { variantId } = req.params;
       const updateData = req.body;
 
-      const variant = await PlatformVariant.findOne({
+      const variant = await ProductVariant.findOne({
         where: { id: variantId },
         include: [
           {
@@ -3367,7 +3442,7 @@ class ProductController {
       const userId = req.user.id;
       const { variantId } = req.params;
 
-      const variant = await PlatformVariant.findOne({
+      const variant = await ProductVariant.findOne({
         where: { id: variantId },
         include: [
           {

@@ -1,7 +1,7 @@
 const express = require("express");
 const { body, query, param } = require("express-validator");
-// Temporarily skip auth middleware to isolate the hanging issue
-// const auth = require("../middleware/auth");
+// Re-enable auth middleware now that we have the reply method implemented
+const auth = require("../middleware/auth");
 
 // Import simplified controller class
 const ControlledCustomerQuestionController = require("../controllers/ControlledCustomerQuestionController");

@@ -193,6 +193,8 @@ const register = async (req, res) => {
       businessType,
       monthlyRevenue,
       referralCode,
+      // Skip email verification for now (no email hosting)
+      emailVerified: true,
       // Trial setup - user starts with trial by default
       subscriptionPlan: "trial",
       subscriptionStatus: "trial",
@@ -590,7 +592,7 @@ const verifyEmail = async (req, res) => {
     }
 
     await user.update({
-      isEmailVerified: true,
+      emailVerified: true,
       emailVerificationToken: null,
       emailVerifiedAt: new Date(),
     });
@@ -634,7 +636,7 @@ const resendVerification = async (req, res) => {
       });
     }
 
-    if (user.isEmailVerified) {
+    if (user.emailVerified) {
       return res.status(400).json({
         success: false,
         message: "Email is already verified",
@@ -812,7 +814,7 @@ const generateDevToken = async (req, res) => {
         role: "admin",
         subscriptionPlan: "enterprise",
         subscriptionStatus: "active",
-        isEmailVerified: true,
+        emailVerified: true,
         isActive: true,
         onboardingCompleted: true,
         featuresEnabled: {

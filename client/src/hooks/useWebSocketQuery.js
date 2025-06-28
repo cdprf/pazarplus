@@ -15,7 +15,13 @@ export const useWebSocketQuery = (queryKey, events, options = {}) => {
 
   useEffect(() => {
     // Implement WebSocket connection
-    const wsUrl = options.url || "ws://localhost:5001";
+    // For development, use the dev server URL which will be proxied
+    // For production, use the actual server URL
+    const isDevelopment = process.env.NODE_ENV === "development";
+    const wsUrl = isDevelopment
+      ? `ws://localhost:3000/ws/notifications` // Development server proxy
+      : options.url || "ws://localhost:5001/ws/notifications"; // Production server
+
     let ws = null;
     let reconnectTimer = null;
     let isComponentMounted = true;
@@ -25,6 +31,7 @@ export const useWebSocketQuery = (queryKey, events, options = {}) => {
 
       try {
         setLoading(true);
+        console.log(`Attempting WebSocket connection to: ${wsUrl}`);
         ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
@@ -32,16 +39,24 @@ export const useWebSocketQuery = (queryKey, events, options = {}) => {
           setLoading(false);
           setError(null);
 
-          // Send initial query
-          if (queryKeyRef.current) {
-            ws.send(
-              JSON.stringify({
-                type: "subscribe",
-                queryKey: queryKeyRef.current,
-                events: eventsRef.current,
-              })
-            );
-          }
+          // Ensure WebSocket is fully ready before sending messages
+          setTimeout(() => {
+            if (ws && ws.readyState === WebSocket.OPEN && queryKeyRef.current) {
+              try {
+                ws.send(
+                  JSON.stringify({
+                    type: "subscribe",
+                    channels: ["all"], // Subscribe to all notifications
+                    queryKey: queryKeyRef.current,
+                    events: eventsRef.current,
+                  })
+                );
+                console.log("Subscription message sent successfully");
+              } catch (error) {
+                console.error("Failed to send subscription message:", error);
+              }
+            }
+          }, 100); // Small delay to ensure connection is fully established
         };
 
         ws.onmessage = (event) => {
@@ -87,7 +102,7 @@ export const useWebSocketQuery = (queryKey, events, options = {}) => {
         ws.close(1000, "Component unmounting");
       }
     };
-  }, []); // Empty dependency array is now safe with refs
+  }, [options.url]); // Include options.url in dependency array
 
   return { data, loading, error };
 };

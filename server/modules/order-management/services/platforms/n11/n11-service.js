@@ -13,6 +13,7 @@ const {
 } = require("../../../../../models");
 const logger = require("../../../../../utils/logger");
 const ProductOrderLinkingService = require("../../../../../services/product-order-linking-service");
+const { mapOrderStatus } = require("../../../../../utils/enum-validators");
 
 const BasePlatformService = require("../BasePlatformService");
 
@@ -709,7 +710,17 @@ class N11Service extends BasePlatformService {
       size: params.size || 100,
     };
 
-    const queryParams = { ...defaultParams, ...params };
+    // Only include valid API parameters to avoid sending extra data to N11
+    const validApiParams = ["startDate", "endDate", "page", "size", "status"];
+    const filteredParams = {};
+
+    validApiParams.forEach((key) => {
+      if (params[key] !== undefined) {
+        filteredParams[key] = params[key];
+      }
+    });
+
+    const queryParams = { ...defaultParams, ...filteredParams };
 
     this.logger.debug(
       `Fetching N11 orders (single page) with params: ${JSON.stringify(
@@ -1413,82 +1424,8 @@ class N11Service extends BasePlatformService {
    * @returns {string} Internal order status compatible with Order model ENUM
    */
   mapOrderStatus(apiStatus) {
-    // Ensure we handle case variations from the API
-    if (!apiStatus) return "Created";
-
-    // Convert to string and handle both proper case and lowercase API responses
-    const status = String(apiStatus);
-
-    const statusMap = {
-      // N11 statuses mapped to internal status names - Using proper case to match enum
-      Approved: "Processing",
-      New: "Created",
-      Picking: "Picking",
-      Shipped: "Shipped",
-      Delivered: "Delivered",
-      Cancelled: "Cancelled",
-      Returned: "Returned",
-      Created: "Created",
-      UnPacked: "Cancelled",
-      UnSupplied: "Cancelled",
-      // Lowercase variations that come from the API
-      approved: "Processing",
-      new: "Created",
-      picking: "Picking",
-      shipped: "Shipped",
-      delivered: "Delivered",
-      cancelled: "Cancelled",
-      returned: "Returned",
-      created: "Created",
-      unpacked: "Cancelled",
-      unsupplied: "Cancelled",
-      failed: "Failed",
-      expired: "Cancelled",
-      // Additional N11 statuses that might be encountered
-      Confirmed: "Processing",
-      InProgress: "Processing",
-      ReadyToShip: "Processing",
-      InTransit: "Shipped",
-      PartiallyShipped: "Shipped",
-      Completed: "Delivered",
-      Rejected: "Cancelled",
-      Refunded: "Returned",
-      Failed: "Failed",
-      Expired: "Cancelled",
-      // Turkish versions for consistency
-      Onaylandı: "Processing",
-      Yeni: "Created",
-      Hazırlanıyor: "Processing",
-      Kargoda: "Shipped",
-      "Teslim Edildi": "Delivered",
-      "İptal Edildi": "Cancelled",
-      "İade Edildi": "Returned",
-      Oluşturuldu: "Created",
-      Paketlenmedi: "Cancelled",
-      "Tedarik Edilmedi": "Cancelled",
-      "Devam Ediyor": "Processing",
-      "Gönderilmeye Hazır": "Processing",
-      Yolda: "Shipped",
-      "Kısmi Gönderildi": "Shipped",
-      Tamamlandı: "Delivered",
-      Reddedildi: "Cancelled",
-      "İade Edildi": "Returned",
-      Başarısız: "Failed",
-      "Süresi Doldu": "Cancelled",
-    };
-
-    const mappedStatus = statusMap[status];
-
-    // Log unknown statuses for debugging
-    if (!mappedStatus) {
-      this.logger.warn(`Unknown N11 order status received: ${status}`, {
-        platform: "n11",
-        status: status,
-        mappedTo: "Created",
-      });
-    }
-
-    return mappedStatus || "Created";
+    // Use the shared enum validator utility to ensure database compatibility
+    return mapOrderStatus(apiStatus, "n11");
   }
 
   /**

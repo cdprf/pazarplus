@@ -5,17 +5,8 @@ const { auth: authMiddleware } = require("../middleware/auth");
 const { body, param, query } = require("express-validator");
 const validationMiddleware = require("../middleware/validation-middleware");
 
-// Apply authentication to most routes (but inject dev user for development)
-router.use((req, res, next) => {
-  // For development, inject dev user if no auth provided
-  if (!req.user) {
-    req.user = {
-      id: "e6b500f3-e877-45d4-9bf0-cb08137ebe5a", // dev@example.com
-      email: "dev@example.com",
-    };
-  }
-  next();
-});
+// Apply authentication middleware to all routes
+router.use(authMiddleware);
 
 /**
  * @swagger
@@ -69,6 +60,74 @@ router.get("/", ProductController.getProducts);
 
 /**
  * @swagger
+ * /api/products:
+ *   post:
+ *     summary: Create a new product
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - sku
+ *               - basePrice
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Product name
+ *               sku:
+ *                 type: string
+ *                 description: Product SKU
+ *               description:
+ *                 type: string
+ *                 description: Product description
+ *               basePrice:
+ *                 type: number
+ *                 description: Base price
+ *               currency:
+ *                 type: string
+ *                 default: TRY
+ *                 description: Currency
+ *               category:
+ *                 type: string
+ *                 description: Product category
+ *               status:
+ *                 type: string
+ *                 enum: [active, inactive, draft]
+ *                 default: active
+ *               stock:
+ *                 type: integer
+ *                 minimum: 0
+ *                 description: Stock quantity
+ *     responses:
+ *       201:
+ *         description: Successfully created product
+ *       400:
+ *         description: Invalid product data
+ */
+router.post(
+  "/",
+  [
+    body("name").notEmpty().isString().isLength({ min: 1, max: 255 }),
+    body("sku").notEmpty().isString().isLength({ min: 1, max: 100 }),
+    body("description").optional().isString(),
+    body("basePrice").isNumeric().isFloat({ min: 0 }),
+    body("currency").optional().isString().isLength({ min: 3, max: 3 }),
+    body("category").optional().isString(),
+    body("status").optional().isIn(["active", "inactive", "draft"]),
+    body("stock").optional().isInt({ min: 0 }),
+    validationMiddleware,
+  ],
+  ProductController.createProduct
+);
+
+/**
+ * @swagger
  * /api/products/sync:
  *   post:
  *     summary: Sync products from all connected platforms
@@ -109,6 +168,9 @@ router.post(
   ],
   ProductController.syncProducts
 );
+
+// Add GET route for easier testing
+router.get("/sync", ProductController.syncProducts);
 
 /**
  * @swagger
@@ -212,6 +274,51 @@ router.get("/sync-status", ProductController.getSyncStatus);
 
 /**
  * @swagger
+ * /api/products/stats:
+ *   get:
+ *     summary: Get product statistics
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Product statistics
+ */
+router.get("/stats", ProductController.getProductStats);
+
+/**
+ * @swagger
+ * /api/products/{id}:
+ *   get:
+ *     summary: Get a single product by ID
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Product ID
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved product
+ *       404:
+ *         description: Product not found
+ */
+router.get(
+  "/:id",
+  [
+    param("id").isUUID().withMessage("Product ID must be a valid UUID"),
+    validationMiddleware,
+  ],
+  ProductController.getProductById
+);
+
+/**
+ * @swagger
  * /api/products/{id}:
  *   put:
  *     summary: Update product information
@@ -260,6 +367,39 @@ router.put(
     validationMiddleware,
   ],
   ProductController.updateProduct
+);
+
+/**
+ * @swagger
+ * /api/products/{id}:
+ *   delete:
+ *     summary: Delete a product
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Product ID to delete
+ *     responses:
+ *       200:
+ *         description: Successfully deleted product
+ *       404:
+ *         description: Product not found
+ *       403:
+ *         description: Unauthorized to delete this product
+ */
+router.delete(
+  "/:id",
+  [
+    param("id").isUUID().withMessage("Product ID must be a valid UUID"),
+    validationMiddleware,
+  ],
+  ProductController.deleteProduct
 );
 
 // Variant Detection Routes
@@ -324,20 +464,6 @@ router.put(
   "/variant-detection/config",
   ProductController.updateBackgroundVariantDetectionConfig
 );
-
-/**
- * @swagger
- * /api/products/stats:
- *   get:
- *     summary: Get product statistics
- *     tags: [Products]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Product statistics
- */
-router.get("/stats", ProductController.getProductStats);
 
 /**
  * @swagger

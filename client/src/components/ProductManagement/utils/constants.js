@@ -83,26 +83,26 @@ export const PlatformIcons = {
 // API Base Configuration
 export const API_BASE_URL = process.env.REACT_APP_API_URL || "/api";
 
-// Core Status Options
+// Core Status Options - Enhanced with better display names
 export const STATUS_OPTIONS = [
-  { value: "active", label: "Aktif", variant: "success" },
-  { value: "inactive", label: "Pasif", variant: "secondary" },
-  { value: "draft", label: "Taslak", variant: "warning" },
+  { value: "active", label: "Aktif Ürünler", variant: "success" },
+  { value: "inactive", label: "Pasif Ürünler", variant: "secondary" },
+  { value: "draft", label: "Taslak Ürünler", variant: "warning" },
 ];
 
-// Approval Status Options
+// Approval Status Options - Enhanced with better display names
 export const APPROVAL_STATUS_OPTIONS = [
-  { value: "pending", label: "Onay Bekliyor", variant: "warning" },
-  { value: "approved", label: "Onaylandı", variant: "success" },
-  { value: "rejected", label: "Reddedildi", variant: "danger" },
+  { value: "pending", label: "Onay Bekleyen", variant: "warning" },
+  { value: "approved", label: "Onaylanmış", variant: "success" },
+  { value: "rejected", label: "Reddedilen", variant: "danger" },
   { value: "unapproved", label: "Onaysız", variant: "secondary" },
 ];
 
-// Stock Status Options
+// Stock Status Options - Enhanced with better display names
 export const STOCK_STATUS_OPTIONS = [
-  { value: "in_stock", label: "Stokta", variant: "success" },
-  { value: "low_stock", label: "Az Stok", variant: "warning" },
-  { value: "out_of_stock", label: "Stok Yok", variant: "danger" },
+  { value: "in_stock", label: "Stokta Bulunan", variant: "success" },
+  { value: "low_stock", label: "Stoku Azalan", variant: "warning" },
+  { value: "out_of_stock", label: "Stokta Olmayan", variant: "danger" },
 ];
 
 // Product Type Options
@@ -176,16 +176,21 @@ export const DEFAULT_PRODUCT_FORM = {
   tags: [],
 };
 
-// Status Tab Configuration
+// Status Tab Configuration - Enhanced with better display names
 export const STATUS_TAB_CONFIG = {
   all: { key: "all", label: "Tüm Ürünler", icon: "Package" },
-  active: { key: "active", label: "Aktif", icon: "CheckCircle" },
-  inactive: { key: "inactive", label: "Pasif", icon: "AlertCircle" },
-  draft: { key: "draft", label: "Taslak", icon: "Edit" },
-  pending: { key: "pending", label: "Onay Bekliyor", icon: "AlertTriangle" },
-  rejected: { key: "rejected", label: "Reddedildi", icon: "XCircle" },
-  out_of_stock: { key: "out_of_stock", label: "Stok Yok", icon: "Package" },
-  low_stock: { key: "low_stock", label: "Az Stok", icon: "AlertTriangle" },
+  active: { key: "active", label: "Aktif Ürünler", icon: "CheckCircle" },
+  inactive: { key: "inactive", label: "Pasif Ürünler", icon: "AlertCircle" },
+  draft: { key: "draft", label: "Taslak Ürünler", icon: "Edit" },
+  pending: { key: "pending", label: "Onay Bekleyen", icon: "AlertTriangle" },
+  rejected: { key: "rejected", label: "Reddedilen", icon: "XCircle" },
+  out_of_stock: {
+    key: "out_of_stock",
+    label: "Stokta Olmayan",
+    icon: "Package",
+  },
+  low_stock: { key: "low_stock", label: "Stoku Azalan", icon: "AlertTriangle" },
+  in_stock: { key: "in_stock", label: "Stokta Bulunan", icon: "CheckCircle" },
   main_products: { key: "main_products", label: "Ana Ürünler", icon: "Crown" },
   variants: { key: "variants", label: "Varyantlar", icon: "Layers" },
   unset: { key: "unset", label: "Tür Belirtilmemiş", icon: "AlertCircle" },

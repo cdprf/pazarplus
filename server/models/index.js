@@ -747,6 +747,53 @@ models.Product.hasOne(models.PlatformVariant, {
 });
 
 // ========================================
+// === CUSTOMER QUESTIONS & REPLIES ASSOCIATIONS ===
+// ========================================
+
+// CustomerQuestion <-> CustomerReply (One-to-Many)
+models.CustomerQuestion.hasMany(models.CustomerReply, {
+  foreignKey: "question_id",
+  as: "replies",
+  onDelete: "CASCADE",
+  hooks: true,
+});
+models.CustomerReply.belongsTo(models.CustomerQuestion, {
+  foreignKey: "question_id",
+  as: "question",
+  allowNull: false,
+});
+
+// User <-> CustomerReply (One-to-Many)
+models.User.hasMany(models.CustomerReply, {
+  foreignKey: "created_by",
+  as: "customerReplies",
+  onDelete: "SET NULL",
+  hooks: true,
+});
+models.CustomerReply.belongsTo(models.User, {
+  foreignKey: "created_by",
+  as: "creator",
+  allowNull: true,
+});
+
+// ReplyTemplate <-> CustomerReply (One-to-Many)
+models.ReplyTemplate.hasMany(models.CustomerReply, {
+  foreignKey: "template_id",
+  as: "replies",
+  onDelete: "SET NULL",
+  hooks: true,
+});
+models.CustomerReply.belongsTo(models.ReplyTemplate, {
+  foreignKey: "template_id",
+  as: "template",
+  allowNull: true,
+});
+
+// ========================================
+// === END CUSTOMER QUESTIONS & REPLIES ===
+// ========================================
+
+// ========================================
 // === NEW ENHANCED PRODUCT MANAGEMENT ===
 // ========================================
 // This section handles the NEW enhanced product management system

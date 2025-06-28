@@ -13,6 +13,10 @@ const PlatformServiceFactory = require("../services/platforms/platformServiceFac
 const logger = require("../../../utils/logger");
 // const wsService = require('../services/websocketService'); // Comment out if websocketService doesn't exist
 const { Op } = require("sequelize");
+const {
+  mapOrderStatus,
+  sanitizePlatformType,
+} = require("../../../utils/enum-validators");
 
 /**
  * Safely serialize Sequelize models to JSON, avoiding circular references
@@ -404,9 +408,23 @@ async function getAllOrders(req, res) {
 
 async function createOrder(req, res) {
   try {
-    // ...existing validation and creation code...
+    // Validate and sanitize order data, especially enum fields
+    const orderData = { ...req.body };
 
-    const order = await Order.create(req.body);
+    // Ensure orderStatus is valid
+    if (orderData.orderStatus) {
+      orderData.orderStatus = mapOrderStatus(orderData.orderStatus);
+    }
+
+    // Sanitize any platform-related fields
+    if (orderData.platformType) {
+      orderData.platformType = sanitizePlatformType(orderData.platformType);
+      if (!orderData.platformType) {
+        delete orderData.platformType; // Remove invalid platform types
+      }
+    }
+
+    const order = await Order.create(orderData);
 
     // Notify connected clients about the new order (if websocket service exists)
     // if (wsService && wsService.notifyNewOrder) {

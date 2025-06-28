@@ -25,10 +25,13 @@ const envSchema = Joi.object({
   // Database Configuration
   DB_TYPE: Joi.string().valid("sqlite", "postgresql").default("sqlite"),
 
-  // PostgreSQL Configuration
+  // PostgreSQL Connection URL (for Neon, Supabase, etc.)
+  DATABASE_URL: Joi.string().uri().optional(),
+
+  // PostgreSQL Configuration (traditional)
   DB_HOST: Joi.string().when("DB_TYPE", {
     is: "postgresql",
-    then: Joi.required(),
+    then: Joi.optional(),
     otherwise: Joi.optional(),
   }),
 
@@ -42,13 +45,13 @@ const envSchema = Joi.object({
 
   DB_NAME: Joi.string().when("DB_TYPE", {
     is: "postgresql",
-    then: Joi.required(),
+    then: Joi.optional(),
     otherwise: Joi.optional(),
   }),
 
   DB_USER: Joi.string().when("DB_TYPE", {
     is: "postgresql",
-    then: Joi.required(),
+    then: Joi.optional(),
     otherwise: Joi.optional(),
   }),
 
@@ -106,38 +109,56 @@ const getDatabaseConfig = (config) => {
       freezeTableName: false,
     },
     pool: {
-      max: 20, // Increased max connections for PostgreSQL
+      max: config.NODE_ENV === "production" ? 5 : 20, // Reduced for serverless
       min: 0,
       acquire: 60000,
       idle: 10000,
-      evict: 1000, // Connection eviction timeout
+      evict: 1000,
     },
   };
 
   if (config.DB_TYPE === "postgresql") {
-    return {
-      ...baseConfig,
-      dialect: "postgres",
-      host: config.DB_HOST,
-      port: config.DB_PORT,
-      database: config.DB_NAME,
-      username: config.DB_USER,
-      password: config.DB_PASSWORD,
-      dialectOptions: {
-        ssl: config.DB_SSL
-          ? {
-              require: true,
-              rejectUnauthorized: false,
-            }
-          : false,
-        // Ensure UTF-8 encoding for Turkish characters
+    // Use DATABASE_URL if provided (Neon, Supabase, etc.)
+    if (config.DATABASE_URL) {
+      return {
+        ...baseConfig,
+        dialect: "postgres",
+        dialectOptions: {
+          ssl: {
+            require: true,
+            rejectUnauthorized: false, // For Neon compatibility
+          },
+          charset: "utf8",
+        },
+        // Parse DATABASE_URL for connection details
+        url: config.DATABASE_URL,
+        timezone: "+03:00", // Turkey timezone
         charset: "utf8",
-        collate: "utf8_unicode_ci",
-      },
-      // Ensure proper charset and timezone
-      timezone: "+03:00", // Turkey timezone
-      charset: "utf8",
-    };
+      };
+    } else {
+      // Traditional connection parameters
+      return {
+        ...baseConfig,
+        dialect: "postgres",
+        host: config.DB_HOST,
+        port: config.DB_PORT,
+        database: config.DB_NAME,
+        username: config.DB_USER,
+        password: config.DB_PASSWORD,
+        dialectOptions: {
+          ssl: config.DB_SSL
+            ? {
+                require: true,
+                rejectUnauthorized: false,
+              }
+            : false,
+          charset: "utf8",
+          collate: "utf8_unicode_ci",
+        },
+        timezone: "+03:00", // Turkey timezone
+        charset: "utf8",
+      };
+    }
   } else {
     return {
       ...baseConfig,

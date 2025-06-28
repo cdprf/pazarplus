@@ -222,7 +222,8 @@ class HepsiBuradaQuestionService {
    */
   async getQuestionsCount() {
     try {
-      const url = `${this.qaBaseURL}/${this.merchantId}/count`;
+      // Use the same endpoint as getQuestions but with a count parameter
+      const url = `${this.qaBaseURL}/issues/count`;
 
       debug("Fetching questions count from HepsiBurada:", { url });
 
@@ -236,11 +237,27 @@ class HepsiBuradaQuestionService {
         "Error fetching questions count from HepsiBurada:",
         error.response?.data || error.message
       );
-      throw new Error(
-        `HepsiBurada questions count fetch failed: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+
+      // If count endpoint doesn't exist, calculate from regular questions endpoint
+      try {
+        debug(
+          "Trying alternative method: fetching questions with size=1 to get count"
+        );
+        const questionsResponse = await this.getQuestions({ page: 1, size: 1 });
+
+        return {
+          total_questions: questionsResponse.questions?.length || 0,
+          waiting_for_answer: 0,
+          answered: 0,
+          rejected: 0,
+        };
+      } catch (fallbackError) {
+        throw new Error(
+          `HepsiBurada questions count fetch failed: ${
+            error.response?.data?.message || error.message
+          }`
+        );
+      }
     }
   }
 

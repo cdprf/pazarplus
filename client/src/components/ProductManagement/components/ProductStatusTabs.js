@@ -5,8 +5,6 @@ import {
   AlertTriangle,
   AlertCircle,
   Info,
-  Edit,
-  XCircle,
 } from "lucide-react";
 import { Tooltip } from "../../ui";
 
@@ -16,18 +14,16 @@ const ProductStatusTabs = ({
   tabs = [],
   counts = {
     all: 0,
-    active: 0,
-    pending: 0,
-    inactive: 0,
-    outOfStock: 0,
-    draft: 0,
-    rejected: 0,
-    lowStock: 0,
+    out_of_stock: 0,
+    low_stock: 0,
+    in_stock: 0,
+    pasif: 0,
+    aktif: 0,
   },
   compact = false, // New prop for compact layout
   noWrap = false, // New prop for no-wrap horizontal scroll
 }) => {
-  // Use dynamic tabs if provided, otherwise fallback to default tabs
+  // Enhanced tab configuration - showing only working tabs
   const tabsToRender =
     tabs.length > 0
       ? tabs
@@ -35,66 +31,49 @@ const ProductStatusTabs = ({
           // Core Status
           {
             key: "all",
-            label: "Tümü",
+            label: "Tüm Ürünler",
             count: counts.all,
-            description:
-              "Arşivlenmemiş ve onaylı tüm ürünlerinize ulaşabilirsiniz.",
+            description: "Tüm ürünlerinizi görüntüleyebilirsiniz.",
             icon: <Package className="h-4 w-4" />,
           },
           {
-            key: "active",
+            key: "aktif",
             label: "Aktif",
-            count: counts.active,
-            description: "Satıştaki ürünlerinizi gösterir.",
+            count: counts.aktif,
+            description: "Aktif durumundaki ürünlerinizi gösterir.",
             icon: <CheckCircle className="h-4 w-4 text-green-500" />,
           },
+
+          // Working Status tabs (from backend)
           {
-            key: "inactive",
+            key: "pasif",
             label: "Pasif",
-            count: counts.inactive,
-            description: "Tükenen, kilitli ve arşiv ürünlerinizi gösterir.",
+            count: counts.pasif,
+            description: "Pasif durumundaki ürünlerinizi gösterir.",
             icon: <AlertCircle className="h-4 w-4 text-red-500" />,
           },
           {
-            key: "draft",
-            label: "Taslak",
-            count: counts.draft,
-            description: "Henüz tamamlanmamış taslak ürünlerinizi gösterir.",
-            icon: <Edit className="h-4 w-4 text-gray-500" />,
+            key: "low_stock",
+            label: "Stoku Azalan",
+            count: counts.low_stock,
+            description: "Stok seviyesi kritik olan ürünlerinizi gösterir.",
+            icon: <AlertTriangle className="h-4 w-4 text-orange-500" />,
           },
 
-          // Approval Status
-          {
-            key: "pending",
-            label: "Bekliyor",
-            count: counts.pending,
-            description:
-              "Onay bekleyen ve revize gereken ürünlerinizi gösterir.",
-            icon: <AlertTriangle className="h-4 w-4 text-yellow-500" />,
-          },
-          {
-            key: "rejected",
-            label: "Red",
-            count: counts.rejected,
-            description:
-              "Platform tarafından reddedilen ürünlerinizi gösterir.",
-            icon: <XCircle className="h-4 w-4 text-red-600" />,
-          },
-
-          // Stock Status
+          // Working Stock Status tabs
           {
             key: "out_of_stock",
-            label: "Stoksuz",
-            count: counts.outOfStock,
-            description: "Stokta bulunmayan ürünlerinizi gösterir.",
+            label: "Stokta Olmayan",
+            count: counts.out_of_stock,
+            description: "Stoku tükenen ürünlerinizi gösterir.",
             icon: <Package className="h-4 w-4 text-red-500" />,
           },
           {
-            key: "low_stock",
-            label: "Az Stok",
-            count: counts.lowStock,
-            description: "Stok seviyesi düşük olan ürünlerinizi gösterir.",
-            icon: <AlertTriangle className="h-4 w-4 text-orange-500" />,
+            key: "in_stock",
+            label: "Stokta Bulunan",
+            count: counts.in_stock,
+            description: "Yeterli stoku olan ürünlerinizi gösterir.",
+            icon: <CheckCircle className="h-4 w-4 text-green-500" />,
           },
         ];
 

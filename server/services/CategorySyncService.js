@@ -4,6 +4,7 @@ const HepsiburadaService = require("../modules/order-management/services/platfor
 const N11Service = require("../modules/order-management/services/platforms/n11/n11-service");
 const logger = require("../utils/logger");
 const { Op } = require("sequelize");
+const { sanitizePlatformType } = require("../utils/enum-validators");
 
 /**
  * Service for synchronizing platform categories
@@ -63,7 +64,13 @@ class CategorySyncService {
     forceRefresh = false
   ) {
     try {
-      this.logger.info(`Starting category sync for ${platform}`, {
+      // Validate platform type before database operations
+      const sanitizedPlatform = sanitizePlatformType(platform);
+      if (!sanitizedPlatform) {
+        throw new Error(`Invalid platform type: ${platform}`);
+      }
+
+      this.logger.info(`Starting category sync for ${sanitizedPlatform}`, {
         userId,
         connectionId,
         forceRefresh,
@@ -73,7 +80,7 @@ class CategorySyncService {
       if (!forceRefresh) {
         const recentSync = await PlatformCategory.findOne({
           where: {
-            platformType: platform,
+            platformType: sanitizedPlatform,
             updatedAt: {
               [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000), // 24 hours ago
             },
@@ -83,14 +90,14 @@ class CategorySyncService {
 
         if (recentSync) {
           this.logger.info(
-            `Categories for ${platform} were synced recently, skipping`,
+            `Categories for ${sanitizedPlatform} were synced recently, skipping`,
             {
               lastSync: recentSync.updatedAt,
             }
           );
 
           const existingCategories = await PlatformCategory.findAll({
-            where: { platformType: platform, isActive: true },
+            where: { platformType: sanitizedPlatform, isActive: true },
             order: [["name", "ASC"]],
           });
 
@@ -106,7 +113,7 @@ class CategorySyncService {
 
       // Get platform service
       const service = await this.getPlatformService(
-        platform,
+        sanitizedPlatform,
         userId,
         connectionId
       );
@@ -115,11 +122,11 @@ class CategorySyncService {
       const platformCategories = await service.getCategories();
 
       if (!platformCategories || platformCategories.length === 0) {
-        throw new Error(`No categories received from ${platform} API`);
+        throw new Error(`No categories received from ${sanitizedPlatform} API`);
       }
 
       this.logger.info(
-        `Received ${platformCategories.length} categories from ${platform}`,
+        `Received ${platformCategories.length} categories from ${sanitizedPlatform}`,
         {
           sampleCategory: platformCategories[0],
         }
@@ -131,7 +138,7 @@ class CategorySyncService {
       for (const platformCategory of platformCategories) {
         try {
           const categoryData = this.transformPlatformCategory(
-            platform,
+            sanitizedPlatform,
             platformCategory,
             userId
           );
@@ -140,7 +147,7 @@ class CategorySyncService {
             categoryData,
             {
               where: {
-                platformType: platform,
+                platformType: sanitizedPlatform,
                 platformCategoryId: categoryData.platformCategoryId,
               },
             }
@@ -336,7 +343,7 @@ class CategorySyncService {
   /**
    * Get sync status for all platforms
    * @param {string} userId - User ID
-   * @returns {Promise<Object>} Sync status for each platform
+   * @returns {Promise<Object} Sync status for each platform
    */
   async getSyncStatus(userId) {
     const status = {};

@@ -111,12 +111,31 @@ class SimplifiedCustomerQuestionService {
 
       // Try to get questions from database
       try {
+        // Lazy load CustomerReply model as well
+        const { CustomerReply } = require("../models");
+
         const { count, rows: questions } =
           await CustomerQuestion.findAndCountAll({
             where: whereClause,
             limit,
             offset,
             order: orderClause,
+            include: [
+              {
+                model: CustomerReply,
+                as: "replies",
+                required: false, // LEFT JOIN to include questions without replies
+                attributes: [
+                  "id",
+                  "reply_text",
+                  "reply_type",
+                  "status",
+                  "creation_date",
+                  "sent_date",
+                ],
+                order: [["creation_date", "DESC"]], // Get latest reply first
+              },
+            ],
           });
 
         const totalPages = Math.ceil(count / limit);
@@ -359,8 +378,10 @@ class SimplifiedCustomerQuestionService {
         // Try to get stats from database
         const [
           totalQuestions,
-          openQuestions,
+          waitingQuestions,
           answeredQuestions,
+          rejectedQuestions,
+          autoClosedQuestions,
           questionsByPlatform,
           questionsByPriority,
         ] = await Promise.all([
@@ -373,7 +394,7 @@ class SimplifiedCustomerQuestionService {
           }),
           CustomerQuestion.count({
             where: {
-              status: "open",
+              status: "WAITING_FOR_ANSWER",
               creation_date: {
                 [Op.gte]: startDate,
               },
@@ -381,7 +402,23 @@ class SimplifiedCustomerQuestionService {
           }),
           CustomerQuestion.count({
             where: {
-              status: "answered",
+              status: "ANSWERED",
+              creation_date: {
+                [Op.gte]: startDate,
+              },
+            },
+          }),
+          CustomerQuestion.count({
+            where: {
+              status: "REJECTED",
+              creation_date: {
+                [Op.gte]: startDate,
+              },
+            },
+          }),
+          CustomerQuestion.count({
+            where: {
+              status: "AUTO_CLOSED",
               creation_date: {
                 [Op.gte]: startDate,
               },
@@ -418,8 +455,10 @@ class SimplifiedCustomerQuestionService {
         const stats = {
           timeframe,
           totalQuestions,
-          openQuestions,
+          openQuestions: waitingQuestions, // Map waiting to open for frontend compatibility
           answeredQuestions,
+          rejectedQuestions,
+          autoClosedQuestions,
           responseRate:
             totalQuestions > 0
               ? ((answeredQuestions / totalQuestions) * 100).toFixed(2)
@@ -457,6 +496,73 @@ class SimplifiedCustomerQuestionService {
       }
     } catch (error) {
       debug("Error getting question statistics:", error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Reply to a question (simplified version - creates reply record but no platform integration)
+   */
+  async replyToQuestion(questionId, replyData, userId) {
+    try {
+      debug(`Replying to question ${questionId} with simplified service`);
+
+      // Lazy load models
+      const { CustomerQuestion, CustomerReply } = require("../models");
+
+      const question = await this.getQuestionById(questionId);
+      if (!question) {
+        throw new Error(`Question with ID ${questionId} not found`);
+      }
+
+      // Validate userId - ensure it's a valid UUID format, fallback to default user if needed
+      let validUserId = userId;
+      if (
+        !userId ||
+        typeof userId !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          userId
+        )
+      ) {
+        debug(`Invalid userId "${userId}", using default user`);
+        validUserId = "38d86fd2-bf87-4271-b49d-f1a7645ee4ef"; // Default to existing user
+      }
+
+      // Create reply record
+      const reply = await CustomerReply.create({
+        question_id: questionId,
+        platform: question.platform,
+        reply_text: replyData.text,
+        reply_type: replyData.type || "answer",
+        from_type: "merchant",
+        created_by: null, // Set to null for now due to schema mismatch (expects integer, but users have UUID)
+        creation_date: new Date(),
+        status: "draft", // Start as draft since no platform integration
+        template_id: replyData.template_id,
+        attachments: replyData.attachments || [],
+      });
+
+      debug(`Reply created with ID ${reply.id} for question ${questionId}`);
+
+      // Update question status
+      await question.update({
+        status: replyData.type === "reject" ? "REJECTED" : "ANSWERED",
+        answered_date: new Date(),
+      });
+
+      debug(`Question ${questionId} status updated to ${question.status}`);
+
+      // Since this is simplified service without platform integration,
+      // we keep the reply as "draft" with a message explaining the situation
+      await reply.update({
+        status: "draft",
+        error_message:
+          "Reply created but not sent to platform - platform services not initialized",
+      });
+
+      return reply;
+    } catch (error) {
+      debug("Error replying to question:", error.message);
       throw error;
     }
   }

@@ -5,7 +5,7 @@ module.exports = function (app) {
   const SERVER_HOST = process.env.REACT_APP_SERVER_HOST || "localhost";
   const SERVER_PORT = 5001;
 
-  // Proxy only API requests to the backend server
+  // Proxy API requests to the backend server
   app.use(
     "/api",
     createProxyMiddleware({
@@ -21,6 +21,28 @@ module.exports = function (app) {
       onProxyReq: (proxyReq, req, res) => {
         console.log(
           `Proxying ${req.method} ${req.url} -> http://${SERVER_HOST}:${SERVER_PORT}${req.url}`
+        );
+      },
+    })
+  );
+
+  // Proxy WebSocket connections to the backend server
+  app.use(
+    "/ws",
+    createProxyMiddleware({
+      target: `http://${SERVER_HOST}:${SERVER_PORT}`,
+      changeOrigin: true,
+      secure: false,
+      ws: true, // Enable WebSocket proxying
+      logLevel: "info",
+      onError: (err, req, res) => {
+        console.log("WebSocket proxy error:", err.message);
+        console.log("WebSocket Request URL:", req.url);
+        console.log("WebSocket Target:", `ws://${SERVER_HOST}:${SERVER_PORT}`);
+      },
+      onProxyReqWs: (proxyReq, req, socket, options, head) => {
+        console.log(
+          `Proxying WebSocket ${req.url} -> ws://${SERVER_HOST}:${SERVER_PORT}${req.url}`
         );
       },
     })
