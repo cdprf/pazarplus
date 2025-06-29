@@ -1511,12 +1511,27 @@ class HepsiburadaService extends BasePlatformService {
 
     try {
       // Get array of order numbers for efficient querying
-      const orderNumbers = hepsiburadaOrders.map(
-        (order) =>
-          order.orderNumber ||
-          order.OrderNumber ||
-          (order.items && order.items[0]?.orderNumber)
-      );
+      const orderNumbers = hepsiburadaOrders
+        .map(
+          (order) =>
+            order.orderNumber ||
+            order.OrderNumber ||
+            (order.items && order.items[0]?.orderNumber)
+        )
+        .filter(Boolean); // Remove undefined/null/empty values
+
+      // If no valid order numbers found, return early
+      if (orderNumbers.length === 0) {
+        return {
+          success: true,
+          normalizedOrders: [],
+          summary: {
+            successCount: 0,
+            skippedCount: hepsiburadaOrders.length,
+            updatedCount: 0,
+          },
+        };
+      }
 
       // First query - fetch all orders matching our criteria
       const existingOrders = await Order.findAll({
@@ -1534,11 +1549,10 @@ class HepsiburadaService extends BasePlatformService {
           "cargoTrackingLink",
           "cargoTrackingNumber",
           "cargoCompany",
-          "createdDate",
-          "deliveryDate",
-          "name",
-          "email",
-          "phoneNumber",
+          "orderDate",
+          "customerName",
+          "customerEmail",
+          "customerPhone",
         ], // Limit fields fetched
 
         include: [
@@ -1587,27 +1601,26 @@ class HepsiburadaService extends BasePlatformService {
             // Order exists - update it with the latest data
             try {
               // Extract product names and sku from items
-              const productNames = order.details.items
-                ? order.details.items.map((item) => item.name || "")
+              const productNames = order.items
+                ? order.items.map((item) => item.name || "")
                 : [];
-              const skus = order.details.items
-                ? order.details.items.map(
-                    (item) => item.merchantSKU || item.SKU || ""
-                  )
+              const skus = order.items
+                ? order.items.map((item) => item.merchantSKU || item.SKU || "")
                 : [];
               await existingOrder.update({
                 status: this.mapOrderStatus(
-                  order.status || (order.items && order.items[0]?.status)
+                  order.details.items[0].status || (order.items && order.items[0]?.status)
                 ),
                 cargoTrackingLink:
                   order.details.items[0].cargoCompanyModel.trackingUrl || "",
-                cargoTrackingNumber: order.cargoTrackingNumber || "",
+                cargoTrackingNumber: order.Barcode || "",
                 cargoCompany: order.details.items[0].cargoCompany || "",
-                createdDate: order.details?.createdDate,
-                deliveryDate: order.DeliveredDate || order.details?.createdDate,
-                name: order.details?.customer?.name || "",
-                email: order.details?.deliveryAddress?.email || "",
-                phoneNumber: order.details.deliveryAddress.phoneNumber,
+                orderDate: order.details?.createdDate
+                  ? new Date(order.details.createdDate)
+                  : null,
+                customerName: order.details.deliveryAddress.name || "",
+                customerEmail: order.details?.deliveryAddress?.email || "",
+                customerPhone: order.details.deliveryAddress.phoneNumber,
 
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date(),

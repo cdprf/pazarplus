@@ -109,10 +109,10 @@ const getDatabaseConfig = (config) => {
       freezeTableName: false,
     },
     pool: {
-      max: config.NODE_ENV === "production" ? 5 : 20, // Reduced for serverless
+      max: config.NODE_ENV === "production" ? 3 : 5, // Further reduced for faster startup
       min: 0,
-      acquire: 60000,
-      idle: 10000,
+      acquire: 5000, // Reduced from 10000 to 5000 (5 seconds)
+      idle: 3000, // Reduced from 5000 to 3000 (3 seconds)
       evict: 1000,
     },
   };
@@ -129,6 +129,7 @@ const getDatabaseConfig = (config) => {
             rejectUnauthorized: false, // For Neon compatibility
           },
           charset: "utf8",
+          connectTimeout: 5000, // Add 5 second connection timeout
         },
         // Parse DATABASE_URL for connection details
         url: config.DATABASE_URL,

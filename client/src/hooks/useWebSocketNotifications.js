@@ -20,7 +20,7 @@ export const useWebSocketNotifications = () => {
     const isDevelopment = process.env.NODE_ENV === "development";
 
     if (isDevelopment) {
-      return `ws://localhost:3000/ws/notifications`; // Development server proxy
+      return `ws://localhost:5001/ws/notifications`; // Connect directly to backend in development
     } else {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.hostname;

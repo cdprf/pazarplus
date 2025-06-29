@@ -1,32 +1,68 @@
-// This file configures the database connection for the Order Management Service.
-// It supports both SQLite and PostgreSQL based on environment configuration.
+// This file configures the PostgreSQL database connection for the Order Management Service.
 // The database connection settings are validated and loaded from environment variables.
 
 require("dotenv").config();
 
 const { Sequelize } = require("sequelize");
-const { loadConfig, getDatabaseConfig } = require("./env");
 const logger = require("../utils/logger");
 
-// Load and validate environment configuration
-const config = loadConfig();
+// PostgreSQL database configuration
+const dbConfig = {
+  dialect: "postgres",
+  host: process.env.DB_HOST || "localhost",
+  port: process.env.DB_PORT || 5432,
+  database: process.env.DB_NAME || "pazar_plus",
+  username: process.env.DB_USER || "postgres",
+  password: process.env.DB_PASSWORD || "",
+  logging: process.env.NODE_ENV === "development" ? console.log : false,
+  dialectOptions: {
+    ssl:
+      process.env.DB_SSL === "true"
+        ? {
+            require: true,
+            rejectUnauthorized: false,
+          }
+        : false,
+    connectTimeout: 5000,
+  },
+  pool: {
+    max: process.env.NODE_ENV === "production" ? 20 : 5,
+    min: 0,
+    acquire: 10000,
+    idle: 5000,
+    evict: 1000,
+  },
+  define: {
+    timestamps: true,
+    underscored: false,
+    freezeTableName: false,
+  },
+};
 
-// Get database configuration based on environment
-const dbConfig = getDatabaseConfig(config);
-
-// Configure Sequelize with the database connection
-const sequelize = new Sequelize(dbConfig);
+// Use DATABASE_URL if provided (for cloud deployments like Neon, Heroku, etc.)
+let sequelize;
+if (process.env.DATABASE_URL) {
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
+    ...dbConfig,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+    },
+  });
+} else {
+  sequelize = new Sequelize(dbConfig);
+}
 
 // Function to test the database connection
 const testConnection = async () => {
   try {
     await sequelize.authenticate();
-    logger.info(
-      `Database connection established successfully (${config.DB_TYPE.toUpperCase()})`
-    );
+    logger.info("PostgreSQL database connection established successfully");
     return true;
   } catch (error) {
-    logger.error("Unable to connect to the database:", error);
+    logger.error("Unable to connect to the PostgreSQL database:", error);
     return false;
   }
 };
@@ -57,4 +93,4 @@ module.exports = sequelize;
 module.exports.testConnection = testConnection;
 module.exports.syncDatabase = syncDatabase;
 module.exports.closeConnection = closeConnection;
-module.exports.config = config;
+module.exports.config = dbConfig;

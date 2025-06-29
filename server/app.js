@@ -1,22 +1,29 @@
+// Core dependencies
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const logger = require("./utils/logger");
-const { loadConfig } = require("./config/env");
+
+// Load configuration
+const config = require("./config/config");
+
+// Error handling and middleware
 const {
   errorHandler,
   notFoundHandler,
   AppError,
 } = require("./middleware/errorHandler");
+
 const {
   apiVersioning,
   deprecationWarning,
 } = require("./middleware/versioning");
+
 const path = require("path");
 const fs = require("fs");
 
-// Import enhanced security and performance monitoring
+// Enhanced security and performance monitoring
 const {
   createEnhancedSecurityStack,
   createPerformanceMiddleware,
@@ -25,23 +32,24 @@ const {
   cacheService,
 } = require("./middleware");
 
-// Import enhanced platform services
+// Enhanced platform services
 const enhancedPlatformService = require("./services/enhanced-platform-service");
 const inventoryManagementService = require("./services/inventory-management-service");
 const notificationService = require("./services/notification-service");
 
-// Import database transaction management services
+// Database transaction management services
 const dbTransactionManager = require("./services/database-transaction-manager");
 const databaseStatusWebSocket = require("./services/database-status-websocket");
-
-// Import unified WebSocket server
 const unifiedWebSocketServer = require("./services/unified-websocket-server");
 
-// Import Swagger configuration
+// Swagger configuration
 const { initializeSwagger } = require("./config/swagger");
 
-// Load and validate environment configuration
-const config = loadConfig();
+// Log application startup
+logger.info("Initializing Pazar+ application", {
+  service: "pazar-plus",
+  nodeEnv: process.env.NODE_ENV,
+});
 
 const app = express();
 
@@ -354,9 +362,19 @@ app.get("/api", (req, res) => {
 });
 
 // Mount all routes with API prefix
-app.use("/api", routes);
-console.log("✅ API routes mounted successfully in app.js");
+try {
+  logger.info("Mounting API routes", { path: "/api" });
+  app.use("/api", routes);
+  logger.info("API routes mounted successfully", { path: "/api" });
+} catch (error) {
+  logger.error("Failed to mount API routes", {
+    error: error.message,
+    stack: error.stack,
+  });
+  throw error;
+}
 
+logger.debug("Setting up static file serving");
 // Serve shipping PDFs statically with proper headers for Turkish character support
 const shippingPublicPath = path.join(__dirname, "public", "shipping");
 
@@ -379,6 +397,7 @@ app.use("/shipping", (req, res, next) => {
 app.use("/shipping", express.static(shippingPublicPath));
 logger.info(`Serving shipping PDFs from: ${shippingPublicPath}`);
 
+logger.debug("Checking for order management shipping path");
 // Also serve PDFs from order-management module
 const orderManagementShippingPath = path.join(
   __dirname,
@@ -392,14 +411,27 @@ if (fs.existsSync(orderManagementShippingPath)) {
   logger.info(
     `Serving order management shipping PDFs from: ${orderManagementShippingPath}`
   );
+} else {
+  logger.debug("Order management shipping path does not exist");
 }
 
+logger.debug("Initializing Swagger documentation");
 // Initialize Swagger documentation at /api-docs
-initializeSwagger(app);
+try {
+  initializeSwagger(app);
+  logger.info("Swagger documentation initialized successfully");
+} catch (error) {
+  logger.error("Failed to initialize Swagger", { error: error.message });
+}
+
+logger.debug("Setting up development/production routing", {
+  nodeEnv: process.env.NODE_ENV,
+});
 
 // Only serve static files in production mode
 // In development, the React dev server handles the frontend on port 3000
 if (process.env.NODE_ENV === "production") {
+  logger.info("Setting up production static file serving");
   // Serve static files from the React app build directory
   const clientBuildPath = path.resolve(__dirname, "..", "client", "build");
   logger.info(`Serving static files from: ${clientBuildPath}`);
@@ -428,6 +460,7 @@ if (process.env.NODE_ENV === "production") {
     });
   });
 } else {
+  logger.debug("Development mode - React dev server handles frontend");
   // In development mode, just serve a simple message for non-API routes
   app.get("*", (req, res, next) => {
     // Skip API and known non-file routes, and WebSocket upgrade paths
@@ -451,6 +484,7 @@ if (process.env.NODE_ENV === "production") {
       },
     });
   });
+  logger.debug("Development mode routing configured");
 }
 
 // Handle 404 errors for all unmatched routes
@@ -461,9 +495,12 @@ app.use(createErrorTrackingMiddleware());
 
 // Global error handling middleware (must be last)
 app.use(errorHandler);
+logger.info("Error handlers configured");
 
+logger.debug("Initializing enhanced platform services");
 // Initialize enhanced platform services
 async function initializeEnhancedServices() {
+  logger.debug("Starting enhanced services initialization");
   try {
     // Start performance monitoring periodic updates
     performanceMonitor.startPeriodicUpdates();
@@ -483,7 +520,10 @@ async function initializeEnhancedServices() {
       "Enhanced platform integration services initialized successfully"
     );
   } catch (error) {
-    logger.error("Failed to initialize enhanced platform services:", error);
+    logger.error("Failed to initialize enhanced platform services", {
+      error: error.message,
+      stack: error.stack,
+    });
   }
 }
 
@@ -556,24 +596,41 @@ function setupInventoryManagementEventListeners() {
 
 // Initialize WebSocket server for real-time notifications
 function initializeWebSocketServer(server) {
-  try {
-    // Initialize notification service (without WebSocket server)
-    notificationService.initialize();
+  logger.debug("Starting WebSocket server initialization");
 
-    // Initialize unified WebSocket server (handles all WebSocket paths)
-    unifiedWebSocketServer.initialize(server);
+  try {
+    // First initialize notification service (without WebSocket server)
+    logger.debug("Initializing notification service");
+    notificationService.initialize();
+    logger.debug("Notification service initialized successfully");
+
+    // Then initialize unified WebSocket server with better error handling
+    logger.debug("Initializing unified WebSocket server");
+    try {
+      unifiedWebSocketServer.initialize(server);
+      logger.debug("Unified WebSocket server initialized successfully");
+    } catch (wsError) {
+      logger.error("Failed to initialize unified WebSocket server", {
+        error: wsError.message,
+        stack: wsError.stack,
+      });
+      // Continue execution even if WebSocket server fails
+    }
 
     // Setup real-time notification handlers
+    logger.debug("Setting up real-time notification handlers");
     notificationService.setupRealTimeNotifications();
 
     // Start periodic cleanup for notification service
+    logger.debug("Starting periodic cleanup for notification service");
     notificationService.startPeriodicCleanup();
 
-    logger.info(
-      "Unified WebSocket server initialized successfully with all services"
-    );
+    logger.info("WebSocket initialization process completed");
   } catch (error) {
-    logger.error("Failed to initialize WebSocket server:", error);
+    logger.error("Failed to initialize WebSocket server", {
+      error: error.message,
+      stack: error.stack,
+    });
   }
 }
 
@@ -584,7 +641,7 @@ function initializeWebSocketServer(server) {
 //   });
 // });
 
-console.log("App module loaded successfully");
+logger.debug("App module loaded successfully");
 
 // Graceful shutdown handling
 const gracefulShutdown = async (signal) => {
@@ -615,20 +672,26 @@ process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 // Handle unhandled promise rejections
+logger.debug("Setting up global error handlers");
 process.on("unhandledRejection", (err) => {
-  logger.error("Unhandled Promise Rejection:", err);
+  logger.error("Unhandled Promise Rejection", {
+    error: err.message,
+    stack: err.stack,
+  });
   performanceMonitor.trackError("UnhandledRejection", "global", "system");
-  if (config.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production") {
     process.exit(1);
   }
 });
 
 // Handle uncaught exceptions
 process.on("uncaughtException", (err) => {
-  logger.error("Uncaught Exception:", err);
+  logger.error("Uncaught Exception", { error: err.message, stack: err.stack });
   performanceMonitor.trackError("UncaughtException", "global", "system");
   process.exit(1);
 });
+
+logger.info("Pazar+ application setup complete");
 
 // Export both app and WebSocket initialization function
 module.exports = { app, initializeWebSocketServer };

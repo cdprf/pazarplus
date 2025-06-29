@@ -1,5 +1,6 @@
 const { ProductVariant, PlatformData } = require("../models");
 const logger = require("../utils/logger");
+const crypto = require("crypto");
 
 // Import the enhanced detection service for SKU pattern parsing
 const EnhancedVariantDetectionService = require("./enhanced-variant-detection-service");
@@ -373,7 +374,17 @@ class EnhancedVariantDetector {
   }
 
   /**
+   * Check if a string is a valid UUID format
+   */
+  static isValidUUID(str) {
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+  }
+
+  /**
    * Generate a variant group ID for related products
+   * Creates a deterministic UUID based on the product's base characteristics
    */
   static generateVariantGroupId(product) {
     // Use base SKU or name to generate consistent group ID
@@ -386,7 +397,25 @@ class EnhancedVariantDetector {
       : null;
 
     const base = baseSKU || baseName || product.id;
-    return `vg_${base.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}`;
+
+    // Generate a deterministic UUID based on the base identifier
+    // This ensures the same base products always get the same variant group ID
+    const baseString = `variant-group-${base
+      .replace(/[^a-zA-Z0-9]/g, "_")
+      .toLowerCase()}`;
+    const hash = crypto.createHash("sha256").update(baseString).digest("hex");
+
+    // Create a UUID v4 format from the hash
+    const uuid = [
+      hash.substr(0, 8),
+      hash.substr(8, 4),
+      "4" + hash.substr(13, 3), // Version 4
+      ((parseInt(hash.substr(16, 1), 16) & 0x3) | 0x8).toString(16) +
+        hash.substr(17, 3), // Variant bits
+      hash.substr(20, 12),
+    ].join("-");
+
+    return uuid;
   }
 
   /**
@@ -396,12 +425,25 @@ class EnhancedVariantDetector {
     try {
       const { Product } = require("../models");
 
+      // Validate variantGroupId is a proper UUID format if provided
+      let variantGroupId = classification.variantGroupId;
+      if (variantGroupId && !this.isValidUUID(variantGroupId)) {
+        logger.warn(
+          `Invalid UUID format for variantGroupId: ${variantGroupId}, setting to null`,
+          {
+            productId,
+            originalVariantGroupId: variantGroupId,
+          }
+        );
+        variantGroupId = null;
+      }
+
       const updateData = {
         isVariant: classification.isVariant,
         isMainProduct: classification.isMainProduct,
         variantType: classification.variantType,
         variantValue: classification.variantValue,
-        variantGroupId: classification.variantGroupId,
+        variantGroupId: variantGroupId,
         variantDetectionConfidence: classification.confidence,
         variantDetectionSource: classification.source,
         lastVariantDetectionAt: new Date(),

@@ -15,11 +15,10 @@ export const useWebSocketQuery = (queryKey, events, options = {}) => {
 
   useEffect(() => {
     // Implement WebSocket connection
-    // For development, use the dev server URL which will be proxied
-    // For production, use the actual server URL
+    // Connect directly to backend server in all environments
     const isDevelopment = process.env.NODE_ENV === "development";
     const wsUrl = isDevelopment
-      ? `ws://localhost:3000/ws/notifications` // Development server proxy
+      ? `ws://localhost:5001/ws/notifications` // Connect directly to backend in development
       : options.url || "ws://localhost:5001/ws/notifications"; // Production server
 
     let ws = null;

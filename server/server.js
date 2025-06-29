@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ path: "../.env.unified" });
 
 // Import network detection utility
 const { setNetworkEnvironment } = require("./utils/networkDetection");
@@ -80,6 +80,16 @@ async function startServer() {
     // Start server with error handling - bind to all interfaces for network access
     const server = stabilityManager.wrapServer(
       app.listen(PORT, "0.0.0.0", () => {
+        logger.info("Pazar+ server started successfully", {
+          port: PORT,
+          host: "0.0.0.0",
+          networkIP: networkIP,
+          environment: process.env.NODE_ENV,
+        });
+        console.log(
+          "🔍 AGGRESSIVE DEBUG: Inside server listen callback - server is ACTUALLY running now"
+        );
+
         logger.info(
           `Server running on port ${PORT} (accessible from network)`,
           {
@@ -96,7 +106,9 @@ async function startServer() {
         );
 
         // Initialize WebSocket server for real-time notifications
+        logger.debug("Initializing WebSocket server");
         const wsServer = initializeWebSocketServer(server);
+        logger.info("WebSocket server initialized successfully");
 
         // Register WebSocket server cleanup
         stabilityManager.registerCleanupHandler(async () => {
@@ -119,27 +131,62 @@ async function startServer() {
         });
 
         // Start background jobs
+        logger.info("Starting background jobs", {
+          service: "pazar-plus",
+        });
+
         try {
-          productLinkingJobs.start();
-
-          // Initialize background services including variant detection (non-blocking)
-          setImmediate(() => {
-            backgroundServicesManager.initialize().catch((error) => {
-              logger.error("Failed to initialize background services", {
-                service: "pazar-plus",
-                error: error.message,
-              });
+          // Check if background jobs should be disabled for faster startup
+          if (process.env.DISABLE_BACKGROUND_JOBS === "true") {
+            logger.info(
+              "Background jobs disabled via DISABLE_BACKGROUND_JOBS environment variable",
+              { service: "pazar-plus" }
+            );
+          } else {
+            // Start product linking jobs with error handling
+            logger.info("Starting product linking jobs - debug point 2", {
+              service: "pazar-plus",
             });
-          });
+            productLinkingJobs.start();
+            logger.info("Product linking jobs started successfully", {
+              service: "pazar-plus",
+            });
 
-          logger.info("Background job services starting", {
-            service: "pazar-plus",
-            services: ["product-linking", "variant-detection"],
-          });
+            // Initialize background services in separate setTimeout to avoid blocking
+            logger.info(
+              "Setting up background services initialization - debug point 3",
+              { service: "pazar-plus" }
+            );
+            setTimeout(() => {
+              logger.info("Initializing background services - debug point 4", {
+                service: "pazar-plus",
+              });
+              backgroundServicesManager
+                .initialize()
+                .then(() => {
+                  logger.info("Background services initialized successfully", {
+                    service: "pazar-plus",
+                  });
+                })
+                .catch((error) => {
+                  logger.error("Failed to initialize background services", {
+                    service: "pazar-plus",
+                    error: error.message,
+                    stack: error.stack,
+                  });
+                });
+            }, 30000); // Increased delay from 3 seconds to 30 seconds to allow server startup to complete
+
+            logger.info("Background job services initialization queued", {
+              service: "pazar-plus",
+              services: ["product-linking", "variant-detection"],
+            });
+          }
         } catch (error) {
           logger.error("Failed to start background jobs", {
             service: "pazar-plus",
             error: error.message,
+            stack: error.stack,
           });
         }
       })

@@ -10,12 +10,8 @@ const settingsRoutes = require("./settingsRoutes");
 const complianceRoutes = require("./complianceRoutes");
 const paymentRoutes = require("./paymentRoutes");
 const customerRoutes = require("./customerRoutes");
-console.log("📞 About to require customerQuestions routes...");
 const customerQuestionRoutes = require("./customerQuestions");
-console.log("✅ customerQuestions routes required successfully");
-console.log("📞 About to require importExportRoutes...");
 const importExportRoutes = require("./importExportRoutes");
-console.log("📞 About to require orderManagementRoutes...");
 const orderManagementRoutes = require("../modules/order-management/routes");
 
 // Import enhanced platform integration routes
@@ -92,7 +88,6 @@ router.use("/products", productRoutes);
 // router.use("/sku", skuRoutes); // Temporarily disabled for debugging
 router.use("/customers", customerRoutes);
 router.use("/customer-questions", customerQuestionRoutes);
-console.log("✅ Customer questions routes mounted successfully");
 router.use("/settings", settingsRoutes);
 router.use("/compliance", complianceRoutes);
 router.use("/payments", paymentRoutes);
@@ -146,13 +141,6 @@ router.use("/fonts", fontRoutes);
 // Unified Product Intelligence routes
 const unifiedIntelligenceRoutes = require("./unified-product-intelligence");
 router.use("/product-intelligence", unifiedIntelligenceRoutes);
-
-// Test routes for development (only enabled in development mode)
-if (process.env.NODE_ENV === "development") {
-  const testNotificationRoutes = require("./test-notifications");
-  router.use("/test", testNotificationRoutes);
-  console.log("✅ Test notification routes mounted (development mode)");
-}
 
 // ========================================
 // === ENHANCED PRODUCT MANAGEMENT ROUTES - DISABLED ===

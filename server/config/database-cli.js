@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ path: "../../.env.unified" });
 
 module.exports = {
   development: {
@@ -7,7 +7,7 @@ module.exports = {
     database: process.env.DB_NAME || "pazar_plus",
     host: process.env.DB_HOST || "localhost",
     port: process.env.DB_PORT || 5432,
-    dialect: process.env.DB_TYPE || "postgresql",
+    dialect: "postgresql",
     logging: console.log,
     define: {
       underscored: true,
@@ -22,7 +22,7 @@ module.exports = {
     database: process.env.DB_NAME_TEST || "pazar_plus_test",
     host: process.env.DB_HOST || "localhost",
     port: process.env.DB_PORT || 5432,
-    dialect: process.env.DB_TYPE || "postgresql",
+    dialect: "postgresql",
     logging: false,
     define: {
       underscored: true,
@@ -37,7 +37,7 @@ module.exports = {
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
-    dialect: process.env.DB_TYPE || "postgresql",
+    dialect: "postgresql",
     logging: false,
     define: {
       underscored: true,

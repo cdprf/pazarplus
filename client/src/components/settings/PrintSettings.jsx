@@ -21,6 +21,7 @@ import { Switch } from "../ui/Switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/Tabs";
 import { Printer, FileText, Settings, Eye, Save } from "lucide-react";
 import { useAlert } from "../../contexts/AlertContext";
+import qnbFinansService from "../../services/qnbFinansService";
 
 const PrintSettings = () => {
   const { showAlert } = useAlert();
@@ -58,11 +59,21 @@ const PrintSettings = () => {
     // E-fatura integration
     eFatura: {
       enabled: false,
-      provider: "n11faturam",
+      provider: "n11faturam", // 'n11faturam' or 'qnb_finans'
       apiKey: "",
       username: "",
       password: "",
       environment: "test", // 'test' or 'production'
+    },
+    // QNB Finans e-solutions integration
+    qnbFinans: {
+      enabled: false,
+      environment: "test", // 'test' or 'production'
+      apiKey: "",
+      clientId: "",
+      clientSecret: "",
+      autoGenerate: false,
+      documentType: "auto", // 'auto', 'einvoice', 'earsiv'
     },
     // Company information
     company: {
@@ -81,10 +92,25 @@ const PrintSettings = () => {
   const loadSettings = useCallback(async () => {
     try {
       setLoading(true);
+
       // Load settings from backend
       const savedSettings = localStorage.getItem("printSettings");
       if (savedSettings) {
-        setSettings({ ...settings, ...JSON.parse(savedSettings) });
+        setSettings((prev) => ({ ...prev, ...JSON.parse(savedSettings) }));
+      }
+
+      // Load QNB Finans settings from API
+      try {
+        const qnbSettings = await qnbFinansService.getSettings();
+        if (qnbSettings.success) {
+          setSettings((prev) => ({
+            ...prev,
+            qnbFinans: qnbSettings.data,
+          }));
+        }
+      } catch (error) {
+        console.warn("Could not load QNB Finans settings:", error);
+        // Continue with default settings
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -92,7 +118,7 @@ const PrintSettings = () => {
     } finally {
       setLoading(false);
     }
-  }, [settings, showAlert]);
+  }, [showAlert]);
 
   useEffect(() => {
     loadSettings();
@@ -101,8 +127,39 @@ const PrintSettings = () => {
   const saveSettings = async () => {
     try {
       setLoading(true);
-      // Save settings to backend
-      localStorage.setItem("printSettings", JSON.stringify(settings));
+
+      // Save general settings to localStorage
+      localStorage.setItem(
+        "printSettings",
+        JSON.stringify({
+          shippingSlip: settings.shippingSlip,
+          invoice: settings.invoice,
+          eFatura: settings.eFatura,
+          company: settings.company,
+        })
+      );
+
+      // Save QNB Finans settings via API
+      try {
+        const qnbResult = await qnbFinansService.saveSettings(
+          settings.qnbFinans
+        );
+        if (!qnbResult.success) {
+          showAlert(
+            `QNB Finans ayarları kaydedilemedi: ${qnbResult.message}`,
+            "warning"
+          );
+        }
+      } catch (error) {
+        console.error("Error saving QNB Finans settings:", error);
+        showAlert(
+          `QNB Finans ayarları kaydedilemedi: ${qnbFinansService.formatErrorMessage(
+            error
+          )}`,
+          "warning"
+        );
+      }
+
       showAlert("Ayarlar başarıyla kaydedildi", "success");
     } catch (error) {
       console.error("Error saving settings:", error);
@@ -148,6 +205,45 @@ const PrintSettings = () => {
     }
   };
 
+  const testQNBFinansConnection = async () => {
+    try {
+      setLoading(true);
+
+      // Validate credentials first
+      const validation = qnbFinansService.validateCredentials(
+        settings.qnbFinans
+      );
+      if (!validation.isValid) {
+        showAlert(validation.errors.join(", "), "error");
+        return;
+      }
+
+      showAlert("QNB Finans bağlantısı test ediliyor...", "info");
+
+      // Test connection with actual API
+      const result = await qnbFinansService.testConnection(settings.qnbFinans);
+
+      if (result.success) {
+        showAlert("QNB Finans bağlantısı başarılı", "success");
+      } else {
+        showAlert(
+          `QNB Finans bağlantısı başarısız: ${result.message}`,
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("QNB Finans connection test failed:", error);
+      showAlert(
+        `QNB Finans bağlantısı başarısız: ${qnbFinansService.formatErrorMessage(
+          error
+        )}`,
+        "error"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-6xl">
       <div className="flex items-center justify-between mb-6">
@@ -170,7 +266,7 @@ const PrintSettings = () => {
       </div>
 
       <Tabs defaultValue="shipping" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="shipping" className="flex items-center gap-2">
             <Printer className="w-4 h-4" />
             Gönderi Belgesi
@@ -181,7 +277,11 @@ const PrintSettings = () => {
           </TabsTrigger>
           <TabsTrigger value="efatura" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
-            E-Fatura
+            E-Fatura (N11)
+          </TabsTrigger>
+          <TabsTrigger value="qnbfinans" className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            QNB Finans
           </TabsTrigger>
           <TabsTrigger value="company" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
@@ -589,6 +689,152 @@ const PrintSettings = () => {
 
                   <Button
                     onClick={testEFaturaConnection}
+                    disabled={loading}
+                    className="w-full"
+                  >
+                    {loading ? "Test Ediliyor..." : "Bağlantıyı Test Et"}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* QNB Finans Settings */}
+        <TabsContent value="qnbfinans">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="w-5 h-5" />
+                QNB Finans Entegrasyonu
+              </CardTitle>
+              <CardDescription>
+                QNB Finans API ile e-fatura entegrasyonunu yapılandırın
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="qnbfinans-enabled">
+                    QNB Finans Entegrasyonu
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    QNB Finans API entegrasyonunu etkinleştir
+                  </p>
+                </div>
+                <Switch
+                  id="qnbfinans-enabled"
+                  checked={settings.qnbFinans.enabled}
+                  onCheckedChange={(value) =>
+                    handleSettingChange("qnbFinans", "enabled", value)
+                  }
+                />
+              </div>
+
+              {settings.qnbFinans.enabled && (
+                <div className="space-y-4 border-t pt-4">
+                  <div>
+                    <Label htmlFor="qnbfinans-environment">Ortam</Label>
+                    <Select
+                      value={settings.qnbFinans.environment}
+                      onValueChange={(value) =>
+                        handleSettingChange("qnbFinans", "environment", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="test">Test</SelectItem>
+                        <SelectItem value="production">Canlı</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="qnbfinans-api-key">API Anahtarı</Label>
+                    <Input
+                      id="qnbfinans-api-key"
+                      type="password"
+                      value={settings.qnbFinans.apiKey}
+                      onChange={(e) =>
+                        handleSettingChange(
+                          "qnbFinans",
+                          "apiKey",
+                          e.target.value
+                        )
+                      }
+                      placeholder="API anahtarınızı girin"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="client-id">Client ID</Label>
+                    <Input
+                      id="client-id"
+                      value={settings.qnbFinans.clientId}
+                      onChange={(e) =>
+                        handleSettingChange(
+                          "qnbFinans",
+                          "clientId",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Client ID'nizi girin"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="client-secret">Client Secret</Label>
+                    <Input
+                      id="client-secret"
+                      type="password"
+                      value={settings.qnbFinans.clientSecret}
+                      onChange={(e) =>
+                        handleSettingChange(
+                          "qnbFinans",
+                          "clientSecret",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Client Secret'inizi girin"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="qnbfinans-auto-generate">
+                      Otomatik Oluştur
+                    </Label>
+                    <Switch
+                      id="qnbfinans-auto-generate"
+                      checked={settings.qnbFinans.autoGenerate}
+                      onCheckedChange={(value) =>
+                        handleSettingChange("qnbFinans", "autoGenerate", value)
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="document-type">Belge Tipi</Label>
+                    <Select
+                      value={settings.qnbFinans.documentType}
+                      onValueChange={(value) =>
+                        handleSettingChange("qnbFinans", "documentType", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">Otomatik</SelectItem>
+                        <SelectItem value="einvoice">E-Fatura</SelectItem>
+                        <SelectItem value="earsiv">E-Arşiv Fatura</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    onClick={testQNBFinansConnection}
                     disabled={loading}
                     className="w-full"
                   >

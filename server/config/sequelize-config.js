@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ path: "../../.env.unified" });
 
 module.exports = {
   development: {

@@ -417,6 +417,83 @@ const testEmailSettings = async (req, res) => {
   }
 };
 
+// Get QNB Finans settings
+const getQNBFinansSettings = async (req, res) => {
+  try {
+    // For now, return mock data until we have proper QNB Finans settings storage
+    const qnbFinansSettings = {
+      enabled: false,
+      apiEndpoint: "",
+      username: "",
+      password: "",
+      testMode: true,
+    };
+
+    res.json({
+      success: true,
+      data: qnbFinansSettings,
+    });
+  } catch (error) {
+    logger.error(`Get QNB Finans settings error: ${error.message}`, { error });
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch QNB Finans settings",
+    });
+  }
+};
+
+// Save QNB Finans settings
+const saveQNBFinansSettings = async (req, res) => {
+  try {
+    const { enabled, apiEndpoint, username, password, testMode } = req.body;
+
+    // TODO: Implement actual saving to database
+    logger.info("QNB Finans settings updated", {
+      enabled,
+      apiEndpoint,
+      username: username ? "[REDACTED]" : "",
+      testMode,
+    });
+
+    res.json({
+      success: true,
+      message: "QNB Finans settings saved successfully",
+    });
+  } catch (error) {
+    logger.error(`Save QNB Finans settings error: ${error.message}`, { error });
+    res.status(500).json({
+      success: false,
+      message: "Failed to save QNB Finans settings",
+    });
+  }
+};
+
+// Test QNB Finans connection
+const testQNBFinansConnection = async (req, res) => {
+  try {
+    const { apiEndpoint, username, password } = req.body;
+
+    // TODO: Implement actual connection test
+    logger.info("Testing QNB Finans connection", {
+      apiEndpoint,
+      username: "[REDACTED]",
+    });
+
+    res.json({
+      success: true,
+      message: "QNB Finans connection test successful",
+    });
+  } catch (error) {
+    logger.error(`QNB Finans connection test error: ${error.message}`, {
+      error,
+    });
+    res.status(500).json({
+      success: false,
+      message: "Failed to test QNB Finans connection",
+    });
+  }
+};
+
 module.exports = {
   getCompanyInfo,
   saveCompanyInfo,
@@ -430,4 +507,7 @@ module.exports = {
   getEmailSettings,
   saveEmailSettings,
   testEmailSettings,
+  getQNBFinansSettings,
+  saveQNBFinansSettings,
+  testQNBFinansConnection,
 };

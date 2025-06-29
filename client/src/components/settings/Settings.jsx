@@ -8,19 +8,20 @@ import {
   EyeIcon,
   EyeSlashIcon,
   GlobeAltIcon,
-  CreditCardIcon,
   MoonIcon,
   SunIcon,
   ComputerDesktopIcon,
   LockClosedIcon,
   EnvelopeIcon,
   ExclamationTriangleIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { AuthContext } from "../../contexts/AuthContext";
 import { useAlert } from "../../contexts/AlertContext";
 import { Button } from "../ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/Tabs";
+import InvoiceSettings from "./InvoiceSettings";
 import api from "../../services/api";
 
 const Settings = () => {
@@ -218,7 +219,7 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile" className="flex items-center space-x-2">
             <UserIcon className="h-4 w-4" />
             <span>Profil</span>
@@ -233,6 +234,10 @@ const Settings = () => {
           >
             <BellIcon className="h-4 w-4" />
             <span>Bildirimler</span>
+          </TabsTrigger>
+          <TabsTrigger value="invoices" className="flex items-center space-x-2">
+            <DocumentTextIcon className="h-4 w-4" />
+            <span>Fatura</span>
           </TabsTrigger>
           <TabsTrigger
             value="preferences"
@@ -708,6 +713,11 @@ const Settings = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Invoice Settings Tab */}
+        <TabsContent value="invoices">
+          <InvoiceSettings />
         </TabsContent>
 
         {/* Preferences Tab */}

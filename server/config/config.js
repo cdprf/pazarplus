@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ path: "../../.env.unified" });
 
 const config = {
   // Server configuration
@@ -9,15 +9,14 @@ const config = {
     clientUrl: process.env.CLIENT_URL || "http://localhost:3000",
   },
 
-  // Database configuration
+  // Database configuration (PostgreSQL only)
   database: {
     name: process.env.DB_NAME || "pazar_plus",
-    username: process.env.DB_USER || "root",
+    username: process.env.DB_USER || "postgres",
     password: process.env.DB_PASSWORD || "",
     host: process.env.DB_HOST || "localhost",
-    port: process.env.DB_PORT || 3306,
-    dialect: process.env.DB_DIALECT || "mysql",
-    storage: process.env.DB_STORAGE || "database.sqlite",
+    port: process.env.DB_PORT || 5432,
+    dialect: "postgres",
     logging: process.env.DB_LOGGING === "true",
     poolMax: parseInt(process.env.DB_POOL_MAX || "5", 10),
     poolMin: parseInt(process.env.DB_POOL_MIN || "0", 10),
@@ -77,6 +76,21 @@ const config = {
         ? parseInt(process.env.RATE_LIMIT_MAX || "1000", 10) // 1000 requests for dev
         : parseInt(process.env.RATE_LIMIT_MAX || "100", 10), // 100 requests for production
   },
+
+  // Expose rate limiting properties for backwards compatibility
+  RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10),
+  RATE_LIMIT_MAX_REQUESTS:
+    process.env.NODE_ENV === "development"
+      ? parseInt(process.env.RATE_LIMIT_MAX || "1000", 10)
+      : parseInt(process.env.RATE_LIMIT_MAX || "100", 10),
+
+  // Add NODE_ENV for easier access
+  NODE_ENV: process.env.NODE_ENV || "development",
+
+  // Feature flags
+  ENABLE_COMPLIANCE_MODULE: process.env.ENABLE_COMPLIANCE_MODULE === "true" || false,
+  ENABLE_ANALYTICS_MODULE: process.env.ENABLE_ANALYTICS_MODULE === "true" || false,
+  ENABLE_B2B_MARKETPLACE: process.env.ENABLE_B2B_MARKETPLACE === "true" || false,
 
   // CORS configuration for network access
   CORS_ORIGINS: [
