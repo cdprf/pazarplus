@@ -90,20 +90,24 @@ const EnhancedSidebarLink = ({
         onMouseLeave={handleMouseLeave}
         className={cn(
           // Base classes following design system with consistent spacing
-          "group relative flex items-center rounded-lg text-sm font-medium",
+          "group relative flex items-center text-sm font-medium",
           "transition-all duration-200 ease-in-out",
 
-          // Enhanced hover effects from design system
-          "hover:shadow-md hover:-translate-y-0.5",
-          "hover:bg-gradient-to-r hover:from-gray-50 hover:to-white",
-          "dark:hover:from-gray-800/50 dark:hover:to-gray-700/30",
+          // Enhanced hover effects from design system - disabled for collapsed
+          !isCollapsed && "rounded-lg hover:shadow-md hover:-translate-y-0.5",
+          !isCollapsed &&
+            "hover:bg-gradient-to-r hover:from-gray-50 hover:to-white",
+          !isCollapsed &&
+            "dark:hover:from-gray-800/50 dark:hover:to-gray-700/30",
 
           // Enhanced focus states with proper ring offset
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2",
           "focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-900",
 
-          // Active states with improved contrast
-          isActive && !hasSubItems
+          // Active states with improved contrast - special handling for collapsed
+          isActive && !hasSubItems && isCollapsed
+            ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border-l-4 border-primary-500"
+            : isActive && !hasSubItems && !isCollapsed
             ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-md border-l-4 border-primary-500"
             : hasSubItems && showSubItems
             ? "bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-gray-100"
@@ -111,7 +115,7 @@ const EnhancedSidebarLink = ({
 
           // Collapsed state with center alignment and proper spacing
           isCollapsed
-            ? "justify-center px-2 py-3 w-12 h-12 mx-auto"
+            ? "justify-center p-0 w-full h-auto relative"
             : "px-3 py-2.5",
 
           // Error state with subtle indicator
@@ -127,19 +131,15 @@ const EnhancedSidebarLink = ({
         data-tooltip={isCollapsed ? item.name : undefined}
       >
         <div className="flex items-center w-full relative">
-          {/* Enhanced loading state with proper sizing */}
           {isLoading ? (
-            <div className={cn("animate-pulse", isCollapsed ? "mr-0" : "mr-3")}>
-              <div className="w-5 h-5 bg-gray-300 dark:bg-gray-600 rounded"></div>
-            </div>
+            <div className="animate-pulse w-5 h-5 bg-gray-300 dark:bg-gray-600 rounded mr-3"></div>
           ) : (
             <item.icon
               className={cn(
-                // Fixed icon sizing - removed hardcoded dimensions
                 "h-5 w-5 transition-all duration-200 flex-shrink-0",
                 "group-hover:scale-110 group-hover:text-primary-600 dark:group-hover:text-primary-400",
                 isActive && "text-primary-600 dark:text-primary-400",
-                isCollapsed ? "mr-0" : "mr-3"
+                !isCollapsed && "mr-3"
               )}
             />
           )}
@@ -206,8 +206,10 @@ const EnhancedSidebarLink = ({
           )}
         </div>
 
-        {/* Enhanced ripple effect with proper opacity */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-lg" />
+        {/* Enhanced ripple effect with proper opacity - disabled for collapsed */}
+        {!isCollapsed && (
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-lg" />
+        )}
 
         {/* Error indicator with proper positioning */}
         {error && (
@@ -353,11 +355,14 @@ const SidebarSection = ({ section, location, onNavigate, isCollapsed }) => {
           )}
           aria-hidden={section.collapsible && isSectionCollapsed}
         >
-          <div className={cn("space-y-1", isCollapsed && "space-y-2")}>
+          <div className={cn("space-y-1", isCollapsed && "space-y-0")}>
             {section.items.map((item, index) => (
               <div
                 key={item.name}
-                className="animate-slide-in-left"
+                className={cn(
+                  "animate-slide-in-left",
+                  isCollapsed && "nav-item"
+                )}
                 style={{ animationDelay: `${index * 75}ms` }}
               >
                 <EnhancedSidebarLink
@@ -572,20 +577,20 @@ const UserProfile = ({
 
   if (isCollapsed) {
     return (
-      <div className="user-profile-collapsed p-2 border-t border-gray-200 dark:border-gray-700">
+      <div className="user-profile-collapsed">
         <button
           onClick={() => setShowUserMenu(!showUserMenu)}
-          className="w-8 h-8 rounded-full bg-primary-500 text-white flex items-center justify-center text-sm font-medium hover:bg-primary-600 transition-colors"
           aria-label="User menu"
+          aria-expanded={showUserMenu}
         >
           {user?.email?.charAt(0).toUpperCase() || "U"}
         </button>
 
         {showUserMenu && (
-          <div className="absolute bottom-14 left-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2 space-y-1 z-50">
+          <div className="user-menu-dropdown">
             <button
               onClick={handleThemeToggle}
-              className="w-full flex items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+              className="w-full flex items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
             >
               {theme === "dark" ? (
                 <SunIcon className="h-4 w-4 mr-2" />
@@ -596,7 +601,7 @@ const UserProfile = ({
             </button>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
+              className="w-full flex items-center px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
             >
               <ArrowRightOnRectangleIcon className="h-4 w-4 mr-2" />
               Logout

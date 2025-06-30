@@ -1,51 +1,15 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-import { Alert, Button } from 'react-bootstrap';
-import { useQueryClient } from '@tanstack/react-query';
-
-// Separate ResetQueryCacheButton into a standalone component
-const ResetQueryCacheButton = ({ onReset }) => {
-  // Add try-catch to handle case when QueryClient is not available
-  try {
-    const queryClient = useQueryClient();
-    
-    const handleReset = () => {
-      // Clear the React Query cache
-      queryClient.clear();
-      // Then reset the error boundary
-      if (onReset) onReset();
-    };
-    
-    return (
-      <Button 
-        variant="outline-danger" 
-        onClick={handleReset}
-      >
-        Reset Data & Try Again
-      </Button>
-    );
-  } catch (error) {
-    console.warn('QueryClient not available:', error);
-    // Return a button that just calls onReset without clearing cache
-    return onReset ? (
-      <Button 
-        variant="outline-danger" 
-        onClick={onReset}
-      >
-        Try Again
-      </Button>
-    ) : null;
-  }
-};
+import React from "react";
+import PropTypes from "prop-types";
+import ErrorState from "./common/ErrorState";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { 
-      hasError: false, 
-      error: null, 
+    this.state = {
+      hasError: false,
+      error: null,
       errorInfo: null,
-      eventId: null
+      eventId: null,
     };
   }
 
@@ -56,9 +20,9 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     // Log the error to an error reporting service
-    console.error('ErrorBoundary caught an error', error, errorInfo);
+    console.error("ErrorBoundary caught an error", error, errorInfo);
     this.setState({ errorInfo });
-    
+
     // Report to monitoring service if available
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
@@ -66,54 +30,66 @@ class ErrorBoundary extends React.Component {
   }
 
   resetError = () => {
-    this.setState({ 
-      hasError: false, 
-      error: null, 
+    this.setState({
+      hasError: false,
+      error: null,
       errorInfo: null,
-      eventId: null
+      eventId: null,
     });
+  };
+
+  handleResetWithQueryCache = () => {
+    // Try to clear React Query cache if available
+    try {
+      if (window.queryClient) {
+        window.queryClient.clear();
+      }
+    } catch (error) {
+      console.warn("Could not clear query cache:", error);
+    }
+    this.resetError();
   };
 
   render() {
     if (this.state.hasError) {
-      // You can render any custom fallback UI
+      // Use the new ErrorState component for a better user experience
       return (
-        <div className="error-boundary p-4 text-center">
-          <Alert variant="danger">
-            <Alert.Heading>{this.props.fallbackTitle || 'Something went wrong'}</Alert.Heading>
-            <p>
-              {this.props.fallbackMessage || 
-               (this.state.error?.message || 'An unexpected error occurred')}
-            </p>
-            {this.props.showDetails && process.env.NODE_ENV !== 'production' && (
-              <details className="text-start">
-                <summary>Error Details</summary>
-                <pre className="mt-2 p-2 bg-light">
-                  {this.state.error?.toString()}
-                </pre>
-                {this.state.errorInfo && (
-                  <pre className="mt-2 p-2 bg-light">
-                    {this.state.errorInfo.componentStack}
-                  </pre>
-                )}
-              </details>
-            )}
-            <div className="mt-3">
-              <Button 
-                variant="outline-primary" 
-                onClick={this.resetError}
-                className="me-2"
-              >
-                Try Again
-              </Button>
-              {this.props.showResetButton && (
-                <ResetQueryCacheButton 
-                  onReset={this.resetError} 
-                />
-              )}
-            </div>
-          </Alert>
-        </div>
+        <ErrorState
+          type="general"
+          title={this.props.fallbackTitle || "Something went wrong"}
+          message={
+            this.props.fallbackMessage ||
+            this.state.error?.message ||
+            "An unexpected error occurred"
+          }
+          details={
+            this.props.showDetails && process.env.NODE_ENV !== "production"
+              ? {
+                  error: this.state.error?.toString(),
+                  componentStack: this.state.errorInfo?.componentStack,
+                }
+              : null
+          }
+          showDetailsToggle={
+            this.props.showDetails && process.env.NODE_ENV !== "production"
+          }
+          primaryAction={{
+            label: "Try Again",
+            onClick: this.resetError,
+            variant: "primary",
+          }}
+          secondaryAction={
+            this.props.showResetButton
+              ? {
+                  label: "Reset Data & Try Again",
+                  onClick: this.handleResetWithQueryCache,
+                  variant: "outline-danger",
+                }
+              : null
+          }
+          size="large"
+          className="error-boundary"
+        />
       );
     }
 
@@ -127,12 +103,12 @@ ErrorBoundary.propTypes = {
   fallbackMessage: PropTypes.string,
   showDetails: PropTypes.bool,
   showResetButton: PropTypes.bool,
-  onError: PropTypes.func
+  onError: PropTypes.func,
 };
 
 ErrorBoundary.defaultProps = {
-  showDetails: process.env.NODE_ENV === 'development',
-  showResetButton: true
+  showDetails: process.env.NODE_ENV === "development",
+  showResetButton: true,
 };
 
 export default ErrorBoundary;

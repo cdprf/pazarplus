@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import analyticsService from "../../services/analyticsService";
 import {
   formatCurrency,
@@ -7,51 +7,26 @@ import {
   processInsightsData,
 } from "../../utils/analyticsFormatting";
 import {
-  Card,
-  Row,
-  Col,
-  Badge,
-  Button,
-  Dropdown,
-  Alert,
-  Spinner,
-  ProgressBar,
-  ListGroup,
-  Modal,
-} from "react-bootstrap";
+  OptimizedBarChart,
+  OptimizedAreaChart,
+  OptimizedPieChart,
+} from "./OptimizedCharts";
+import AnalyticsErrorBoundary from "./AnalyticsErrorBoundary";
+import AnalyticsSkeletons from "./AnalyticsSkeletons";
+import ChartPlaceholder from "./ChartPlaceholder";
 import {
   ChartBarIcon,
   ArrowPathIcon,
   DocumentArrowDownIcon,
-  DocumentArrowUpIcon,
-  ExclamationCircleIcon,
-  InformationCircleIcon,
+  ExclamationTriangleIcon,
+  ChevronDownIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   BellIcon,
-  ExclamationTriangleIcon,
-  CheckCircleIcon,
 } from "@heroicons/react/24/solid";
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  ComposedChart,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
 
 /**
  * Enhanced Business Intelligence Dashboard for Month 5 Phase 1
@@ -63,29 +38,17 @@ const BusinessIntelligenceDashboard = () => {
   const [businessIntelligence, setBusinessIntelligence] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [selectedRecommendation, setSelectedRecommendation] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showTimeframeDropdown, setShowTimeframeDropdown] = useState(false);
 
-  // Color schemes for charts
-  const colors = {
-    primary: "#0066cc",
-    success: "#28a745",
-    warning: "#ffc107",
-    danger: "#dc3545",
-    info: "#17a2b8",
-    secondary: "#6c757d",
-  };
-
-  const chartColors = [
-    "#0066cc",
-    "#28a745",
-    "#ffc107",
-    "#dc3545",
-    "#17a2b8",
-    "#6c757d",
-  ];
+  // Memoized color scheme for consistent theming
+  const chartColors = useMemo(
+    () => ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#6b7280"],
+    []
+  );
 
   // Fetch dashboard analytics
   const fetchAnalytics = useCallback(async () => {
@@ -278,74 +241,65 @@ const BusinessIntelligenceDashboard = () => {
     }
   }, [fetchAnalytics, autoRefresh]);
 
-  // Helper functions
-  const getTrendIcon = (value) => {
+  // Helper functions for UI
+  const getTrendIcon = useCallback((value) => {
     if (value > 0)
-      return <ArrowTrendingUpIcon className="h-4 w-4 text-success" />;
+      return <ArrowTrendingUpIcon className="h-4 w-4 text-green-500" />;
     if (value < 0)
-      return <ArrowTrendingDownIcon className="h-4 w-4 text-danger" />;
-    return <span className="h-4 w-4 text-muted">-</span>;
-  };
+      return <ArrowTrendingDownIcon className="h-4 w-4 text-red-500" />;
+    return <span className="h-4 w-4 text-gray-400">-</span>;
+  }, []);
 
-  const getPriorityVariant = (priority) => {
+  const getPriorityVariant = useCallback((priority) => {
     switch (priority?.toLowerCase()) {
       case "high":
       case "critical":
-        return "danger";
+        return "bg-red-100 text-red-800";
       case "medium":
-        return "warning";
+        return "bg-yellow-100 text-yellow-800";
       case "low":
-        return "info";
+        return "bg-blue-100 text-blue-800";
       default:
-        return "secondary";
+        return "bg-gray-100 text-gray-800";
     }
-  };
+  }, []);
 
-  const handleExport = (format) => {
+  const getPriorityBorderColor = useCallback((priority) => {
+    switch (priority?.toLowerCase()) {
+      case "high":
+      case "critical":
+        return "border-red-500";
+      case "medium":
+        return "border-yellow-500";
+      case "low":
+        return "border-blue-500";
+      default:
+        return "border-gray-300";
+    }
+  }, []);
+
+  const handleExport = useCallback((format) => {
     // Placeholder export functionality
     console.log(`Exporting analytics data in ${format} format`);
+    setShowExportModal(false);
     // In a real implementation, this would export the analytics data
-  };
+  }, []);
 
-  // Export analytics data
-  const handleExportData = async (format) => {
-    try {
-      const data = await analyticsService.exportAnalytics(
-        "dashboard",
-        timeframe,
-        format
-      );
+  const timeframeOptions = useMemo(
+    () => [
+      { value: "7d", label: "Last 7 days" },
+      { value: "30d", label: "Last 30 days" },
+      { value: "90d", label: "Last 90 days" },
+      { value: "1y", label: "Last year" },
+    ],
+    []
+  );
 
-      const blob = new Blob([data], {
-        type:
-          format === "csv"
-            ? "text/csv"
-            : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `analytics-dashboard-${timeframe}.${format}`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-      setShowExportModal(false);
-    } catch (error) {
-      console.error("Export failed:", error);
-      setError("Failed to export data");
-    }
-  };
-
+  // Loading state
   if (loading && !analytics) {
     return (
-      <div
-        className="d-flex justify-content-center align-items-center"
-        style={{ height: "400px" }}
-      >
-        <div className="text-center">
-          <Spinner animation="border" variant="primary" />
-          <div className="mt-2">Loading Business Intelligence...</div>
-        </div>
+      <div className="space-y-6">
+        <AnalyticsSkeletons.DashboardSkeleton />
       </div>
     );
   }
@@ -353,37 +307,37 @@ const BusinessIntelligenceDashboard = () => {
   // Empty state handling
   if (!loading && !error && (!analytics || !businessIntelligence)) {
     return (
-      <div className="business-intelligence-dashboard">
-        <div className="text-center py-5">
-          <div className="mb-4">
-            <ChartBarIcon className="h-16 w-16 text-muted mx-auto mb-3" />
-            <h3 className="text-muted">No Analytics Data Available</h3>
-            <p className="text-muted mb-4">
-              We couldn't find any analytics data for the selected time period.
-              This might be because:
-            </p>
-            <ul className="list-unstyled text-muted mb-4">
-              <li>• No orders or sales data exists for this period</li>
-              <li>• The selected timeframe is too recent</li>
-              <li>• Data is still being processed</li>
-            </ul>
-          </div>
-          <div className="d-flex gap-2 justify-content-center">
-            <Button
-              variant="primary"
+      <div className="min-h-96 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <ChartBarIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            No Analytics Data Available
+          </h3>
+          <p className="text-gray-500 mb-4">
+            We couldn't find any analytics data for the selected time period.
+            This might be because:
+          </p>
+          <ul className="text-left text-gray-500 mb-6 space-y-1">
+            <li>• No orders or sales data exists for this period</li>
+            <li>• The selected timeframe is too recent</li>
+            <li>• Data is still being processed</li>
+          </ul>
+          <div className="flex gap-3 justify-center">
+            <button
               onClick={fetchAnalytics}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors"
               aria-label="Refresh analytics data"
             >
-              <ArrowPathIcon className="h-4 w-4 me-2" />
+              <ArrowPathIcon className="h-4 w-4" />
               Refresh Data
-            </Button>
-            <Button
-              variant="outline-secondary"
+            </button>
+            <button
               onClick={() => setTimeframe("90d")}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               aria-label="Try a longer time period"
             >
               Try Longer Period
-            </Button>
+            </button>
           </div>
         </div>
       </div>
@@ -402,37 +356,37 @@ const BusinessIntelligenceDashboard = () => {
       businessIntelligence.recommendations.length === 0)
   ) {
     return (
-      <div className="business-intelligence-dashboard">
-        <Row className="mb-4">
-          <Col>
-            <div className="d-flex justify-content-between align-items-center">
-              <div>
-                <h2 className="mb-1">Business Intelligence</h2>
-                <small className="text-muted">
-                  AI-powered insights and recommendations
-                </small>
-              </div>
-            </div>
-          </Col>
-        </Row>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Business Intelligence
+            </h2>
+            <p className="text-gray-500">
+              AI-powered insights and recommendations
+            </p>
+          </div>
+        </div>
 
-        <div className="text-center py-5">
-          <div className="mb-4">
-            <ExclamationTriangleIcon className="h-16 w-16 text-warning mx-auto mb-3" />
-            <h3 className="text-muted">No Insights Generated</h3>
-            <p className="text-muted mb-4">
+        <div className="min-h-96 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto p-6">
+            <ExclamationTriangleIcon className="h-16 w-16 text-yellow-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No Insights Generated
+            </h3>
+            <p className="text-gray-500 mb-6">
               We have analytics data but couldn't generate business insights.
               This could be due to insufficient data patterns or recent changes.
             </p>
+            <button
+              onClick={fetchAnalytics}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors mx-auto"
+              aria-label="Generate new insights"
+            >
+              <ArrowPathIcon className="h-4 w-4" />
+              Generate Insights
+            </button>
           </div>
-          <Button
-            variant="primary"
-            onClick={fetchAnalytics}
-            aria-label="Generate new insights"
-          >
-            <ArrowPathIcon className="h-4 w-4 me-2" />
-            Generate Insights
-          </Button>
         </div>
       </div>
     );
@@ -440,108 +394,122 @@ const BusinessIntelligenceDashboard = () => {
 
   if (error) {
     return (
-      <Alert variant="danger" className="m-4">
-        <ExclamationTriangleIcon className="h-5 w-5 me-2" />
-        <div>
-          <strong>Unable to load analytics data</strong>
-          <p className="mb-2">{error}</p>
-          {error.includes("Access denied") || error.includes("401") ? (
-            <p className="mb-2">
-              <small className="text-muted">
-                Please ensure you are logged in to view analytics data.
-              </small>
-            </p>
-          ) : error.includes("timeout") ? (
-            <p className="mb-2">
-              <small className="text-muted">
-                The analytics service is taking too long to respond. Please try
-                again.
-              </small>
-            </p>
-          ) : (
-            <p className="mb-2">
-              <small className="text-muted">
-                There was an issue connecting to the analytics service.
-              </small>
-            </p>
-          )}
-          <Button variant="outline-danger" size="sm" onClick={fetchAnalytics}>
-            Retry
-          </Button>
+      <div className="m-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="text-red-800 font-medium mb-1">
+                Unable to load analytics data
+              </h3>
+              <p className="text-red-700 mb-3">{error}</p>
+              {error.includes("Access denied") || error.includes("401") ? (
+                <p className="text-red-600 text-sm mb-3">
+                  Please ensure you are logged in to view analytics data.
+                </p>
+              ) : error.includes("timeout") ? (
+                <p className="text-red-600 text-sm mb-3">
+                  The analytics service is taking too long to respond. Please
+                  try again.
+                </p>
+              ) : (
+                <p className="text-red-600 text-sm mb-3">
+                  There was an issue connecting to the analytics service.
+                </p>
+              )}
+              <button
+                onClick={fetchAnalytics}
+                className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
         </div>
-      </Alert>
+      </div>
     );
   }
 
   return (
-    <main
-      className="business-intelligence-dashboard"
-      role="main"
-      aria-label="Business Intelligence Dashboard"
-    >
-      {/* Header Controls */}
-      <Row className="mb-4">
-        <Col>
-          <div className="d-flex justify-content-between align-items-center">
-            <div>
-              <h2 className="mb-1">Business Intelligence</h2>
-              <small className="text-muted">
-                AI-powered insights and recommendations
-                {lastUpdated && (
-                  <span className="ms-2">
-                    Last updated: {lastUpdated.toLocaleTimeString()}
-                  </span>
-                )}
-              </small>
-            </div>
-            <div className="d-flex gap-2">
-              <Dropdown>
-                <Dropdown.Toggle variant="outline-secondary" size="sm">
-                  {timeframe}
-                </Dropdown.Toggle>
-                <Dropdown.Menu>
-                  <Dropdown.Item onClick={() => setTimeframe("7d")}>
-                    Last 7 days
-                  </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setTimeframe("30d")}>
-                    Last 30 days
-                  </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setTimeframe("90d")}>
-                    Last 90 days
-                  </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setTimeframe("1y")}>
-                    Last year
-                  </Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown>
-
-              <Button
-                variant="outline-primary"
-                size="sm"
-                onClick={fetchAnalytics}
-                disabled={loading}
-              >
-                <ArrowPathIcon className="h-4 w-4" />
-              </Button>
-
-              <Button
-                variant="outline-secondary"
-                size="sm"
-                onClick={() => setShowExportModal(true)}
-              >
-                <DocumentArrowDownIcon className="h-4 w-4" />
-              </Button>
-            </div>
+    <AnalyticsErrorBoundary>
+      <main
+        className="space-y-6"
+        role="main"
+        aria-label="Business Intelligence Dashboard"
+      >
+        {/* Header Controls */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Business Intelligence
+            </h2>
+            <p className="text-gray-500">
+              AI-powered insights and recommendations
+              {lastUpdated && (
+                <span className="ml-2 text-sm">
+                  Last updated: {lastUpdated.toLocaleTimeString()}
+                </span>
+              )}
+            </p>
           </div>
-        </Col>
-      </Row>
+          <div className="flex gap-3">
+            {/* Timeframe Selector */}
+            <div className="relative">
+              <button
+                onClick={() => setShowTimeframeDropdown(!showTimeframeDropdown)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center gap-2"
+              >
+                {timeframeOptions.find((opt) => opt.value === timeframe)
+                  ?.label || timeframe}
+                <ChevronDownIcon className="h-4 w-4" />
+              </button>
 
-      {/* Key Performance Indicators */}
-      <Row className="mb-4">
-        <Col md={3}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Body className="text-center">
-              <div className="display-6 text-primary fw-bold">
+              {showTimeframeDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                  {timeframeOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setTimeframe(option.value);
+                        setShowTimeframeDropdown(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg"
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Refresh Button */}
+            <button
+              onClick={fetchAnalytics}
+              disabled={loading}
+              className="p-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Refresh data"
+            >
+              <ArrowPathIcon
+                className={`h-5 w-5 ${loading ? "animate-spin" : ""}`}
+              />
+            </button>
+
+            {/* Export Button */}
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="p-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Export data"
+            >
+              <DocumentArrowDownIcon className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Key Performance Indicators */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600 mb-1">
                 {formatCurrency(
                   analytics?.summary?.totalRevenue ||
                     analytics?.orderSummary?.totalRevenue ||
@@ -549,21 +517,21 @@ const BusinessIntelligenceDashboard = () => {
                     0
                 )}
               </div>
-              <div className="text-muted">Total Revenue</div>
+              <div className="text-gray-500 text-sm mb-3">Total Revenue</div>
               {(analytics?.revenue?.growth || analytics?.summary?.growth) && (
-                <div className="d-flex align-items-center justify-content-center mt-2">
+                <div className="flex items-center justify-center gap-1">
                   {getTrendIcon(
                     analytics.revenue.growth.rate ||
                       analytics.revenue.growth.current ||
                       0
                   )}
                   <span
-                    className={`ms-1 ${
+                    className={`text-sm font-medium ${
                       (analytics.revenue?.growth?.rate ||
                         analytics.revenue.growth.current ||
                         0) > 0
-                        ? "text-success"
-                        : "text-danger"
+                        ? "text-green-600"
+                        : "text-red-600"
                     }`}
                   >
                     {formatPercentage(
@@ -574,537 +542,538 @@ const BusinessIntelligenceDashboard = () => {
                   </span>
                 </div>
               )}
-            </Card.Body>
-          </Card>
-        </Col>
+            </div>
+          </div>
 
-        <Col md={3}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Body className="text-center">
-              <div className="display-6 text-info fw-bold">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-cyan-600 mb-1">
                 {analytics?.orderSummary?.totalOrders || 0}
               </div>
-              <div className="text-muted">Total Orders</div>
-              <div className="text-success mt-2">
-                <small>
-                  Avg:{" "}
-                  {formatCurrency(
-                    analytics?.orderSummary?.avgOrderValue ||
-                      analytics?.orderSummary?.averageOrderValue ||
-                      analytics?.summary?.averageOrderValue ||
-                      0
-                  )}
-                </small>
+              <div className="text-gray-500 text-sm mb-3">Total Orders</div>
+              <div className="text-green-600 text-sm font-medium">
+                Avg:{" "}
+                {formatCurrency(
+                  analytics?.orderSummary?.avgOrderValue ||
+                    analytics?.orderSummary?.averageOrderValue ||
+                    analytics?.summary?.averageOrderValue ||
+                    0
+                )}
               </div>
-            </Card.Body>
-          </Card>
-        </Col>
+            </div>
+          </div>
 
-        <Col md={3}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Body className="text-center">
-              <div className="display-6 text-success fw-bold">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600 mb-1">
                 {analytics?.platforms?.length || 0}
               </div>
-              <div className="text-muted">Active Platforms</div>
-              <div className="text-info mt-2">
-                <small>
-                  {analytics?.platforms?.length > 0
-                    ? "Integrated & Syncing"
-                    : "No platforms connected"}
-                </small>
+              <div className="text-gray-500 text-sm mb-3">Active Platforms</div>
+              <div className="text-cyan-600 text-sm font-medium">
+                {analytics?.platforms?.length > 0
+                  ? "Integrated & Syncing"
+                  : "No platforms connected"}
               </div>
-            </Card.Body>
-          </Card>
-        </Col>
+            </div>
+          </div>
 
-        <Col md={3}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Body className="text-center">
-              <div className="display-6 text-warning fw-bold">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-yellow-600 mb-1">
                 {businessIntelligence?.recommendations?.length || 0}
               </div>
-              <div className="text-muted">AI Recommendations</div>
-              <div className="text-danger mt-2">
-                <small>Action Required</small>
+              <div className="text-gray-500 text-sm mb-3">
+                AI Recommendations
               </div>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+              <div className="text-red-600 text-sm font-medium">
+                Action Required
+              </div>
+            </div>
+          </div>
+        </div>
 
-      {/* AI Recommendations */}
-      {businessIntelligence?.recommendations?.length > 0 && (
-        <Row className="mb-4">
-          <Col>
-            <Card className="border-0 shadow-sm">
-              <Card.Header
-                className="bg-gradient"
-                style={{
-                  background:
-                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                }}
-              >
-                <div className="d-flex align-items-center text-white">
-                  <BellIcon className="h-5 w-5 me-2" />
-                  <h5 className="mb-0">AI-Powered Recommendations</h5>
-                </div>
-              </Card.Header>
-              <Card.Body>
-                <Row>
-                  {businessIntelligence.recommendations.map((rec, index) => {
+        {/* AI Recommendations */}
+        {businessIntelligence?.recommendations?.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+              <div className="flex items-center text-gray-900">
+                <BellIcon className="h-5 w-5 mr-3 text-blue-600" />
+                <h3 className="text-lg font-semibold">
+                  AI-Powered Recommendations
+                </h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {businessIntelligence.recommendations.map((rec, index) => (
+                  <div
+                    key={index}
+                    className={`bg-white rounded-lg border-l-4 ${getPriorityBorderColor(
+                      rec.priority || "medium"
+                    )} border border-gray-200 shadow-sm p-4 h-full`}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full uppercase ${getPriorityVariant(
+                          rec.priority || "medium"
+                        )}`}
+                      >
+                        {rec.priority || "medium"} Priority
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {rec.category || "General"}
+                      </span>
+                    </div>
+                    <h4 className="font-medium text-gray-900 mb-2">
+                      {rec.title || "Recommendation"}
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-4">
+                      {rec.description || "No details available"}
+                    </p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-green-600">
+                        {rec.estimatedImpact || "High Impact"}
+                      </span>
+                      <button
+                        onClick={() => setSelectedRecommendation(rec)}
+                        className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+                      >
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Revenue Analytics & Sales Forecast */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Revenue Trends & Forecast
+                </h3>
+              </div>
+              <div className="p-6">
+                {analytics?.revenue?.trends?.length > 0 ? (
+                  <OptimizedAreaChart
+                    data={analytics.revenue.trends}
+                    height={350}
+                    xKey="date"
+                    yKey="revenue"
+                    title="Revenue Trends"
+                  />
+                ) : (
+                  <ChartPlaceholder
+                    icon={ChartBarIcon}
+                    title="Revenue Trends Chart"
+                    description="Revenue trend data will appear here once orders are processed."
+                    height={350}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Platform Performance
+                </h3>
+              </div>
+              <div className="p-6">
+                {analytics?.platforms?.length > 0 ? (
+                  <OptimizedPieChart
+                    data={analytics.platforms.map((platform) => ({
+                      name: platform.platform || platform.name,
+                      value: platform.totalRevenue || platform.revenue || 0,
+                      color:
+                        chartColors[
+                          analytics.platforms.indexOf(platform) %
+                            chartColors.length
+                        ],
+                    }))}
+                    height={350}
+                    showLabels={true}
+                    showTooltip={true}
+                  />
+                ) : (
+                  <ChartPlaceholder
+                    icon={ChartBarIcon}
+                    title="Platform Performance"
+                    description="Platform performance data will appear here once platforms are connected."
+                    height={350}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Top Products & Market Intelligence */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Top Performing Products
+              </h3>
+            </div>
+            <div className="p-6">
+              {analytics?.topProducts?.length > 0 ? (
+                <div className="space-y-4">
+                  {analytics.topProducts.slice(0, 5).map((product, index) => {
+                    // Enhanced field mapping with debugging
+                    const productName =
+                      product.name ||
+                      product.title ||
+                      product.productName ||
+                      product.product_name ||
+                      product.Product?.name ||
+                      "Unknown Product";
+
+                    const productSku =
+                      product.sku ||
+                      product.SKU ||
+                      product.productSku ||
+                      product.product_sku ||
+                      product.Product?.sku ||
+                      "N/A";
+
+                    const productCategory =
+                      product.category ||
+                      product.categoryName ||
+                      product.category_name ||
+                      product.productCategory ||
+                      product.Product?.category ||
+                      "Uncategorized";
+
+                    const revenue =
+                      product.totalRevenue ||
+                      product.total_revenue ||
+                      product.revenue ||
+                      0;
+
+                    const sold =
+                      product.totalSold ||
+                      product.total_sold ||
+                      product.quantity_sold ||
+                      product.sold ||
+                      product.sales ||
+                      0;
+
                     return (
-                      <Col md={6} lg={4} key={index} className="mb-3">
-                        <Card
-                          className="h-100 border-start border-4"
-                          style={{
-                            borderLeftColor:
-                              colors[
-                                getPriorityVariant(rec.priority || "medium")
-                              ],
-                          }}
-                        >
-                          <Card.Body>
-                            <div className="d-flex justify-content-between align-items-start mb-2">
-                              <Badge
-                                bg={getPriorityVariant(
-                                  rec.priority || "medium"
-                                )}
-                                className="text-uppercase"
-                              >
-                                {rec.priority || "medium"} Priority
-                              </Badge>
-                              <small className="text-muted">
-                                {rec.category || "General"}
-                              </small>
-                            </div>
-                            <h6 className="card-title">
-                              {rec.title || "Recommendation"}
-                            </h6>
-                            <p className="card-text small text-muted">
-                              {rec.description || "No details available"}
+                      <div
+                        key={product.id || product.productId || index}
+                        className="flex justify-between items-center p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-900 mb-1">
+                            {productName}
+                          </h4>
+                          <p className="text-sm text-gray-500">
+                            SKU: {productSku} | {productCategory}
+                          </p>
+                          {product.platform && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              Platform: {product.platform}
                             </p>
-                            <div className="d-flex justify-content-between align-items-center">
-                              <small className="text-success fw-bold">
-                                {rec.estimatedImpact || "High Impact"}
-                              </small>
-                              <Button
-                                variant="outline-primary"
-                                size="sm"
-                                onClick={() => setSelectedRecommendation(rec)}
-                              >
-                                View Details
-                              </Button>
-                            </div>
-                          </Card.Body>
-                        </Card>
-                      </Col>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold text-green-600">
+                            {formatCurrency(revenue)}
+                          </div>
+                          <p className="text-sm text-gray-500">{sold} sold</p>
+                        </div>
+                      </div>
                     );
                   })}
-                </Row>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      )}
-
-      {/* Revenue Analytics & Sales Forecast */}
-      <Row className="mb-4">
-        <Col lg={8}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Header>
-              <h5 className="mb-0">Revenue Trends & Forecast</h5>
-            </Card.Header>
-            <Card.Body>
-              {analytics?.revenue?.trends?.length > 0 ? (
-                <ResponsiveContainer width="100%" height={350}>
-                  <AreaChart data={analytics.revenue.trends}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip
-                      formatter={(value) => [formatCurrency(value), "Revenue"]}
-                      labelFormatter={(label) => `Date: ${label}`}
-                    />
-                    <Legend />
-                    <Area
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke={colors.primary}
-                      fill={colors.primary}
-                      fillOpacity={0.3}
-                      name="Daily Revenue"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="text-center py-5">
-                  <p className="text-muted">
-                    No revenue trend data available for this period.
-                  </p>
-                  <small className="text-muted">
-                    Revenue trend data will appear here once orders are
-                    processed.
-                  </small>
                 </div>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-
-        <Col lg={4}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Header>
-              <h5 className="mb-0">Platform Performance</h5>
-            </Card.Header>
-            <Card.Body>
-              {analytics?.platforms && (
-                <ResponsiveContainer width="100%" height={350}>
-                  <PieChart>
-                    <Pie
-                      data={analytics.platforms}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="totalRevenue"
-                      nameKey="platform"
-                      label={({ platform, percent }) =>
-                        `${platform} ${(percent * 100).toFixed(0)}%`
-                      }
-                    >
-                      {analytics.platforms.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={chartColors[index % chartColors.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value) => [formatCurrency(value), "Revenue"]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Top Products & Market Intelligence */}
-      <Row className="mb-4">
-        <Col lg={6}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Header>
-              <h5 className="mb-0">Top Performing Products</h5>
-            </Card.Header>
-            <Card.Body>
-              {analytics?.topProducts?.length > 0 ? (
-                <ListGroup variant="flush">
-                  {analytics.topProducts.slice(0, 5).map((product, index) => (
-                    <ListGroup.Item
-                      key={product.id || index}
-                      className="d-flex justify-content-between align-items-center"
-                    >
-                      <div>
-                        <h6 className="mb-1">
-                          {product.name || "Unknown Product"}
-                        </h6>
-                        <small className="text-muted">
-                          SKU: {product.sku || "N/A"} |{" "}
-                          {product.category || "Uncategorized"}
-                        </small>
-                      </div>
-                      <div className="text-end">
-                        <div className="fw-bold text-success">
-                          {formatCurrency(product.totalRevenue)}
-                        </div>
-                        <small className="text-muted">
-                          {product.totalSold || 0} sold
-                        </small>
-                      </div>
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
               ) : (
-                <div className="text-center py-4">
-                  <p className="text-muted">
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-2">
                     No top products data available for this period.
                   </p>
-                  <small className="text-muted">
+                  <p className="text-sm text-gray-400">
                     Product performance data will appear here once orders are
                     processed.
-                  </small>
+                  </p>
                 </div>
               )}
-            </Card.Body>
-          </Card>
-        </Col>
+            </div>
+          </div>
 
-        <Col lg={6}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Header>
-              <h5 className="mb-0">Financial KPIs</h5>
-            </Card.Header>
-            <Card.Body>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Financial KPIs
+              </h3>
+            </div>
+            <div className="p-6">
               {analytics?.financialKPIs ||
               businessIntelligence?.financialKPIs ? (
-                <Row>
-                  <Col sm={6} className="mb-3">
-                    <div className="text-center p-3 bg-light rounded">
-                      <div className="h4 text-success">
-                        {formatPercentage(
-                          analytics?.financialKPIs?.growthRates?.revenue ||
-                            businessIntelligence?.financialKPIs?.growthRates
-                              ?.revenue ||
-                            analytics?.revenue?.growth ||
-                            0
-                        )}
-                      </div>
-                      <div className="text-muted">Revenue Growth</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600 mb-1">
+                      {formatPercentage(
+                        analytics?.financialKPIs?.growthRates?.revenue ||
+                          businessIntelligence?.financialKPIs?.growthRates
+                            ?.revenue ||
+                          analytics?.revenue?.growth ||
+                          0
+                      )}
                     </div>
-                  </Col>
-                  <Col sm={6} className="mb-3">
-                    <div className="text-center p-3 bg-light rounded">
-                      <div className="h4 text-primary">
-                        {formatCurrency(
-                          analytics?.financialKPIs?.avgOrderValue ||
-                            businessIntelligence?.financialKPIs
-                              ?.avgOrderValue ||
-                            analytics?.orderSummary?.averageOrderValue ||
-                            0
-                        )}
-                      </div>
-                      <div className="text-muted">Avg Order Value</div>
+                    <div className="text-sm text-gray-500">Revenue Growth</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600 mb-1">
+                      {formatCurrency(
+                        analytics?.financialKPIs?.avgOrderValue ||
+                          businessIntelligence?.financialKPIs?.avgOrderValue ||
+                          analytics?.orderSummary?.averageOrderValue ||
+                          0
+                      )}
                     </div>
-                  </Col>
-                  <Col sm={6} className="mb-3">
-                    <div className="text-center p-3 bg-light rounded">
-                      <div className="h4 text-info">
-                        {formatCurrency(
-                          analytics?.financialKPIs?.customerLifetimeValue ||
-                            businessIntelligence?.financialKPIs
-                              ?.customerLifetimeValue ||
-                            0
-                        )}
-                      </div>
-                      <div className="text-muted">Customer LTV</div>
+                    <div className="text-sm text-gray-500">Avg Order Value</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-cyan-600 mb-1">
+                      {formatCurrency(
+                        analytics?.financialKPIs?.customerLifetimeValue ||
+                          businessIntelligence?.financialKPIs
+                            ?.customerLifetimeValue ||
+                          0
+                      )}
                     </div>
-                  </Col>
-                  <Col sm={6} className="mb-3">
-                    <div className="text-center p-3 bg-light rounded">
-                      <div className="h4 text-warning">
-                        {formatPercentage(
-                          analytics?.financialKPIs?.profitMargins?.gross ||
-                            businessIntelligence?.financialKPIs?.profitMargins
-                              ?.gross ||
-                            analytics?.financialKPIs?.keyMetrics?.grossMargin ||
-                            0
-                        )}
-                      </div>
-                      <div className="text-muted">Gross Margin</div>
+                    <div className="text-sm text-gray-500">Customer LTV</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-yellow-600 mb-1">
+                      {formatPercentage(
+                        analytics?.financialKPIs?.profitMargins?.gross ||
+                          businessIntelligence?.financialKPIs?.profitMargins
+                            ?.gross ||
+                          analytics?.financialKPIs?.keyMetrics?.grossMargin ||
+                          0
+                      )}
                     </div>
-                  </Col>
-                </Row>
+                    <div className="text-sm text-gray-500">Gross Margin</div>
+                  </div>
+                </div>
               ) : (
-                <div className="text-center text-muted py-4">
-                  <p>No financial data available for the selected timeframe.</p>
-                  <small>
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-2">
+                    No financial data available for the selected timeframe.
+                  </p>
+                  <p className="text-sm text-gray-400">
                     Financial KPIs will appear here once order data is
                     available.
-                  </small>
+                  </p>
                 </div>
               )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+            </div>
+          </div>
+        </div>
 
-      {/* Order Status & Trends Analytics */}
-      <Row className="mb-4">
-        <Col lg={6}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Header>
-              <h5 className="mb-0">Order Status Breakdown</h5>
-            </Card.Header>
-            <Card.Body>
+        {/* Order Status & Trends Analytics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Order Status Breakdown
+              </h3>
+            </div>
+            <div className="p-6">
               {analytics?.orderSummary?.ordersByStatus?.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={analytics.orderSummary.ordersByStatus.map(
-                        (status) => ({
-                          name: status.status || "Unknown",
-                          value: status.count || 0,
-                          amount: status.totalAmount || 0,
-                        })
-                      )}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={({ name, percent }) =>
-                        `${name} ${(percent * 100).toFixed(0)}%`
-                      }
-                    >
-                      {analytics.orderSummary.ordersByStatus.map(
-                        (entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={chartColors[index % chartColors.length]}
-                          />
-                        )
-                      )}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value, name) => [`${value} orders`, name]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                <OptimizedPieChart
+                  data={analytics.orderSummary.ordersByStatus.map(
+                    (status, index) => ({
+                      name: status.status || "Unknown",
+                      value: status.count || 0,
+                      amount: status.totalAmount || 0,
+                      color: chartColors[index % chartColors.length],
+                    })
+                  )}
+                  height={300}
+                  showLabels={true}
+                  showTooltip={true}
+                />
               ) : (
-                <div className="text-center py-5">
-                  <p className="text-muted">No order status data available.</p>
-                  <small className="text-muted">
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-2">
+                    No order status data available.
+                  </p>
+                  <p className="text-sm text-gray-400">
                     {error
                       ? "Unable to load order status data. Please check your connection and try again."
                       : "Order status breakdown will appear here once orders are processed."}
-                  </small>
+                  </p>
                 </div>
               )}
-            </Card.Body>
-          </Card>
-        </Col>
+            </div>
+          </div>
 
-        <Col lg={6}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Header>
-              <h5 className="mb-0">Orders & Revenue Trends</h5>
-            </Card.Header>
-            <Card.Body>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Orders & Revenue Trends
+              </h3>
+            </div>
+            <div className="p-6">
               {analytics?.orders?.trends?.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <ComposedChart data={analytics.orders.trends}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" />
-                    <Tooltip />
-                    <Legend />
-                    <Bar
-                      yAxisId="left"
-                      dataKey="orders"
-                      fill={colors.info}
-                      name="Orders"
-                    />
-                    <Line
-                      yAxisId="right"
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke={colors.success}
-                      strokeWidth={2}
-                      name="Revenue"
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
+                <OptimizedBarChart
+                  data={analytics.orders.trends}
+                  height={300}
+                  xKey="date"
+                  leftYKey="orders"
+                  rightYKey="revenue"
+                  leftYLabel="Orders"
+                  rightYLabel="Revenue"
+                  showLegend={true}
+                />
               ) : (
-                <div className="text-center py-5">
-                  <p className="text-muted">No order trends data available.</p>
-                  <small className="text-muted">
-                    {error
+                <ChartPlaceholder
+                  icon={ChartBarIcon}
+                  title="Order & Revenue Trends"
+                  description={
+                    error
                       ? "Unable to load order trends data. Please check your connection and try again."
-                      : "Order and revenue trends will appear here once orders are processed."}
-                  </small>
-                </div>
+                      : "Order and revenue trends will appear here once orders are processed."
+                  }
+                  height={300}
+                />
               )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+            </div>
+          </div>
+        </div>
 
-      {/* Recommendation Details Modal */}
-      <Modal
-        show={!!selectedRecommendation}
-        onHide={() => setSelectedRecommendation(null)}
-        size="lg"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>{selectedRecommendation?.title}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedRecommendation && (
-            <>
-              <div className="mb-3">
-                <Badge
-                  bg={getPriorityVariant(selectedRecommendation.priority)}
-                  className="me-2"
+        {/* Recommendation Details Modal */}
+        {selectedRecommendation && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {selectedRecommendation.title}
+                </h3>
+                <button
+                  onClick={() => setSelectedRecommendation(null)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  {selectedRecommendation.priority} Priority
-                </Badge>
-                <Badge bg="secondary">{selectedRecommendation.category}</Badge>
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
               </div>
 
-              <p>{selectedRecommendation.description}</p>
+              <div className="p-6">
+                <div className="mb-4 flex gap-2">
+                  <span
+                    className={`px-2 py-1 text-xs font-medium rounded-full uppercase ${getPriorityVariant(
+                      selectedRecommendation.priority
+                    )}`}
+                  >
+                    {selectedRecommendation.priority} Priority
+                  </span>
+                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
+                    {selectedRecommendation.category}
+                  </span>
+                </div>
 
-              <h6>Recommended Actions:</h6>
-              <ul>
-                {selectedRecommendation.actions?.map((action, index) => (
-                  <li key={index}>{action}</li>
-                ))}
-              </ul>
+                <p className="text-gray-700 mb-6">
+                  {selectedRecommendation.description}
+                </p>
 
-              <Row className="mt-3">
-                <Col sm={6}>
-                  <strong>Estimated Impact:</strong>
-                  <div className="text-success">
-                    {selectedRecommendation.estimatedImpact}
+                {selectedRecommendation.actions?.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="font-medium text-gray-900 mb-3">
+                      Recommended Actions:
+                    </h4>
+                    <ul className="space-y-2">
+                      {selectedRecommendation.actions.map((action, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="text-blue-500 mr-2">•</span>
+                          <span className="text-gray-700">{action}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </Col>
-                <Col sm={6}>
-                  <strong>Timeframe:</strong>
-                  <div className="text-info">
-                    {selectedRecommendation.timeframe}
-                  </div>
-                </Col>
-              </Row>
-            </>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setSelectedRecommendation(null)}
-          >
-            Close
-          </Button>
-          <Button variant="primary">Mark as Implemented</Button>
-        </Modal.Footer>
-      </Modal>
+                )}
 
-      {/* Export Modal */}
-      <Modal show={showExportModal} onHide={() => setShowExportModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Export Analytics Data</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p>Choose the format for exporting your analytics data:</p>
-          <div className="d-grid gap-2">
-            <Button
-              variant="outline-primary"
-              onClick={() => handleExport("json")}
-            >
-              Export as JSON
-            </Button>
-            <Button
-              variant="outline-success"
-              onClick={() => handleExport("csv")}
-            >
-              Export as CSV
-            </Button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <strong className="text-gray-900">Estimated Impact:</strong>
+                    <div className="text-green-600 font-medium">
+                      {selectedRecommendation.estimatedImpact}
+                    </div>
+                  </div>
+                  <div>
+                    <strong className="text-gray-900">Timeframe:</strong>
+                    <div className="text-blue-600 font-medium">
+                      {selectedRecommendation.timeframe}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setSelectedRecommendation(null)}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Mark as Implemented
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-        </Modal.Body>
-      </Modal>
-    </main>
+        )}
+
+        {/* Export Modal */}
+        {showExportModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl max-w-md w-full">
+              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Export Analytics Data
+                </h3>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="p-6">
+                <p className="text-gray-700 mb-4">
+                  Choose the format for exporting your analytics data:
+                </p>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => handleExport("json")}
+                    className="w-full px-4 py-3 border border-blue-300 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <DocumentArrowDownIcon className="h-5 w-5" />
+                    Export as JSON
+                  </button>
+                  <button
+                    onClick={() => handleExport("csv")}
+                    className="w-full px-4 py-3 border border-green-300 text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <DocumentArrowDownIcon className="h-5 w-5" />
+                    Export as CSV
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </AnalyticsErrorBoundary>
   );
 };
 

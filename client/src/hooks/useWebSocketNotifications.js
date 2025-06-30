@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useNotification } from "../contexts/NotificationContext";
 
 /**
@@ -29,7 +29,7 @@ export const useWebSocketNotifications = () => {
     }
   };
 
-  const connect = () => {
+  const connect = useCallback(() => {
     try {
       const wsUrl = getWebSocketUrl();
       console.log("🔌 Connecting to notifications WebSocket:", wsUrl);
@@ -226,7 +226,7 @@ export const useWebSocketNotifications = () => {
       console.error("❌ Failed to create WebSocket connection:", error);
       setConnectionError("Failed to establish WebSocket connection");
     }
-  };
+  }, [addNotification]);
 
   const disconnect = () => {
     if (reconnectTimeoutRef.current) {
@@ -269,7 +269,7 @@ export const useWebSocketNotifications = () => {
     return () => {
       disconnect();
     };
-  }, []);
+  }, [connect]);
 
   return {
     isConnected,

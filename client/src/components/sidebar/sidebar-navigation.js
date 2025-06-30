@@ -21,6 +21,7 @@ import {
   DocumentArrowDownIcon,
   WifiIcon,
   LinkIcon,
+  CommandLineIcon,
 } from "@heroicons/react/24/outline";
 
 // Enhanced Order Counts Hook with Real-time Updates
@@ -451,6 +452,30 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
         icon: LinkIcon,
         description: "Ürün bağlama işlemleri",
         ariaLabel: "Ürün bağlama dashboard",
+      },
+      {
+        name: "Background Tasks",
+        href: "/admin/background-tasks",
+        icon: CommandLineIcon,
+        description: "Arka plan görev yönetimi",
+        ariaLabel: "Arka plan görevleri",
+        subItems: [
+          {
+            name: "Aktif Görevler",
+            href: "/admin/background-tasks?status=active",
+            ariaLabel: "Aktif görevleri görüntüle",
+          },
+          {
+            name: "Tamamlanan",
+            href: "/admin/background-tasks?status=completed",
+            ariaLabel: "Tamamlanan görevler",
+          },
+          {
+            name: "Başarısız",
+            href: "/admin/background-tasks?status=failed",
+            ariaLabel: "Başarısız görevler",
+          },
+        ],
       },
       {
         name: "Help & Support",

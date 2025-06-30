@@ -15,6 +15,10 @@ const SimplePreviewModal = ({
   const [scale, setScale] = useState(1);
   const [rotation, setRotation] = useState(0);
 
+  // Use provided paperDimensions or fallback to default
+  const actualPaperDimensions =
+    paperDimensions || getPaperDimensions(templateConfig?.paperSize || "A4");
+
   const handlePrint = () => {
     window.print();
   };
@@ -25,8 +29,8 @@ const SimplePreviewModal = ({
     const ctx = canvas.getContext("2d");
 
     // Set canvas size based on paper dimensions
-    canvas.width = paperDimensions.width * 3; // Higher resolution
-    canvas.height = paperDimensions.height * 3;
+    canvas.width = actualPaperDimensions.width * 3; // Higher resolution
+    canvas.height = actualPaperDimensions.height * 3;
 
     // White background
     ctx.fillStyle = "#ffffff";
@@ -135,8 +139,8 @@ const SimplePreviewModal = ({
               className="bg-white shadow-lg border border-gray-300"
               style={{
                 ...previewStyle,
-                width: `${paperDimensions.width}px`,
-                height: `${paperDimensions.height}px`,
+                width: `${actualPaperDimensions.width}px`,
+                height: `${actualPaperDimensions.height}px`,
                 position: "relative",
               }}
             >
@@ -147,7 +151,7 @@ const SimplePreviewModal = ({
                   element={element}
                   isSelected={false}
                   isPreview={true}
-                  paperDimensions={paperDimensions}
+                  paperDimensions={actualPaperDimensions}
                   onSelect={() => {}} // No selection in preview
                   onDragStart={() => {}} // No dragging in preview
                   onResizeStart={() => {}} // No resizing in preview
@@ -169,7 +173,8 @@ const SimplePreviewModal = ({
             <div className="flex items-center space-x-4">
               <span>Öğe Sayısı: {elements.length}</span>
               <span>
-                Boyut: {paperDimensions.width} × {paperDimensions.height}px
+                Boyut: {actualPaperDimensions.width} ×{" "}
+                {actualPaperDimensions.height}px
               </span>
               <span>Kağıt: {templateConfig.paperSize || "A4"}</span>
             </div>

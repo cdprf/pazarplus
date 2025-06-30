@@ -5,7 +5,9 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { AlertProvider } from "./contexts/AlertContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
+import { ErrorProvider } from "./contexts/ErrorContext";
 import ErrorBoundary from "./components/ErrorBoundary";
+import ToastManager from "./components/common/ToastManager";
 
 // Import CSS
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -50,6 +52,9 @@ import Settings from "./components/settings/Settings";
 import PrintSettings from "./components/settings/PrintSettings";
 import DatabaseBusyModal from "./components/DatabaseBusyModal"; // Database transaction management modal
 import PlatformCategoriesManagement from "./components/PlatformCategoriesManagement.jsx";
+import ErrorPage from "./pages/ErrorPage"; // Error page component
+import ErrorHandlingDemo from "./components/demo/ErrorHandlingDemo"; // Error handling demo
+import BackgroundTaskManager from "./components/tasks/BackgroundTaskManager"; // Background task management
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -74,261 +79,299 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <Router>
-          <AuthProvider>
-            <AlertProvider>
-              <ThemeProvider>
-                <NotificationProvider>
-                  <div className="App">
-                    {/* Database transaction management modal - globally available */}
-                    <DatabaseBusyModal />
+          <ErrorProvider>
+            <AuthProvider>
+              <AlertProvider>
+                <ThemeProvider>
+                  <NotificationProvider>
+                    <div className="App">
+                      {/* Global Toast Manager */}
+                      <ToastManager />
 
-                    <Routes>
-                      {/* Public routes */}
-                      <Route
-                        path="/login"
-                        element={
-                          <PublicRoute>
-                            <Login />
-                          </PublicRoute>
-                        }
-                      />
-                      <Route
-                        path="/register"
-                        element={
-                          <PublicRoute>
-                            <Register />
-                          </PublicRoute>
-                        }
-                      />
-                      <Route
-                        path="/forgot-password"
-                        element={
-                          <PublicRoute>
-                            <ForgotPassword />
-                          </PublicRoute>
-                        }
-                      />
-                      <Route
-                        path="/reset-password"
-                        element={
-                          <PublicRoute>
-                            <ResetPassword />
-                          </PublicRoute>
-                        }
-                      />
+                      {/* Database transaction management modal - globally available */}
+                      <DatabaseBusyModal />
 
-                      {/* Private routes - consolidated and organized */}
-                      <Route
-                        path="/"
-                        element={
-                          <PrivateRoute>
-                            <Layout />
-                          </PrivateRoute>
-                        }
-                      >
-                        {/* Dashboard routes */}
-                        <Route index element={<Dashboard />} />
-                        <Route path="dashboard" element={<Dashboard />} />
-                        <Route path="orders" element={<Orders />} />
-                        <Route path="orders/:id" element={<OrderDetail />} />
+                      <Routes>
+                        {/* Public routes */}
                         <Route
-                          path="products/:id"
-                          element={<ProductDetail />}
+                          path="/login"
+                          element={
+                            <PublicRoute>
+                              <Login />
+                            </PublicRoute>
+                          }
                         />
-                        <Route path="analytics" element={<Analytics />} />
-
-                        {/* ============================================ */}
-                        {/* === LEGACY PRODUCT MANAGEMENT (OLD) === */}
-                        {/* ============================================ */}
                         <Route
-                          path="products"
-                          element={<ProductManagement />}
+                          path="/register"
+                          element={
+                            <PublicRoute>
+                              <Register />
+                            </PublicRoute>
+                          }
                         />
-                        {/* Base products route using legacy system */}
                         <Route
-                          path="products/base"
-                          element={<ProductManagement />}
+                          path="/forgot-password"
+                          element={
+                            <PublicRoute>
+                              <ForgotPassword />
+                            </PublicRoute>
+                          }
+                        />
+                        <Route
+                          path="/reset-password"
+                          element={
+                            <PublicRoute>
+                              <ResetPassword />
+                            </PublicRoute>
+                          }
                         />
 
-                        {/* ============================================ */}
-                        {/* === NEW ENHANCED PRODUCT MANAGEMENT === */}
-                        {/* ============================================ */}
-                        {/* Access the NEW enhanced system at /products/enhanced */}
+                        {/* Private routes - consolidated and organized */}
                         <Route
-                          path="products/enhanced"
-                          element={<EnhancedProductManagement />}
-                        />
-                        <Route
-                          path="products/enhanced/:id"
-                          element={<EnhancedProductManagement />}
-                        />
-                        {/* ============================================ */}
+                          path="/"
+                          element={
+                            <PrivateRoute>
+                              <Layout />
+                            </PrivateRoute>
+                          }
+                        >
+                          {/* Dashboard routes */}
+                          <Route index element={<Dashboard />} />
+                          <Route path="dashboard" element={<Dashboard />} />
+                          <Route path="orders" element={<Orders />} />
+                          <Route path="orders/:id" element={<OrderDetail />} />
+                          <Route
+                            path="products/:id"
+                            element={<ProductDetail />}
+                          />
+                          <Route path="analytics" element={<Analytics />} />
 
-                        <Route
-                          path="products/:id/edit"
-                          element={<ProductManagement />}
-                        />
-                        <Route
-                          path="products/categories"
-                          element={<PlatformCategoriesManagement />}
-                        />
-                        <Route
-                          path="products/pricing"
-                          element={<ProductManagement />}
-                        />
+                          {/* ============================================ */}
+                          {/* === LEGACY PRODUCT MANAGEMENT (OLD) === */}
+                          {/* ============================================ */}
+                          <Route
+                            path="products"
+                            element={<ProductManagement />}
+                          />
+                          {/* Base products route using legacy system */}
+                          <Route
+                            path="products/base"
+                            element={<ProductManagement />}
+                          />
 
-                        {/* Variant Detection Configuration */}
-                        <Route
-                          path="products/variant-detection"
-                          element={<VariantDetectionConfigurationPage />}
-                        />
+                          {/* ============================================ */}
+                          {/* === NEW ENHANCED PRODUCT MANAGEMENT === */}
+                          {/* ============================================ */}
+                          {/* Access the NEW enhanced system at /products/enhanced */}
+                          <Route
+                            path="products/enhanced"
+                            element={<EnhancedProductManagement />}
+                          />
+                          <Route
+                            path="products/enhanced/:id"
+                            element={<EnhancedProductManagement />}
+                          />
+                          {/* ============================================ */}
 
-                        {/* Customer Management */}
-                        <Route
-                          path="customers"
-                          element={<CustomerManagement />}
-                        />
-                        <Route
-                          path="customers/:email"
-                          element={<CustomerProfile />}
-                        />
+                          <Route
+                            path="products/:id/edit"
+                            element={<ProductManagement />}
+                          />
+                          <Route
+                            path="products/categories"
+                            element={<PlatformCategoriesManagement />}
+                          />
+                          <Route
+                            path="products/pricing"
+                            element={<ProductManagement />}
+                          />
 
-                        {/* Customer Questions Management */}
-                        <Route
-                          path="customer-questions"
-                          element={<CustomerQuestions />}
-                        />
+                          {/* Variant Detection Configuration */}
+                          <Route
+                            path="products/variant-detection"
+                            element={<VariantDetectionConfigurationPage />}
+                          />
 
-                        {/* Shipping Management - with sub-routes */}
-                        <Route
-                          path="shipping"
-                          element={<ShippingManagement />}
-                        />
-                        <Route
-                          path="shipping/create"
-                          element={<ShippingManagement />}
-                        />
-                        <Route
-                          path="shipping/tracking"
-                          element={<ShippingManagement />}
-                        />
-                        <Route
-                          path="shipping/carriers"
-                          element={<ShippingManagement />}
-                        />
-                        <Route
-                          path="shipping/rates"
-                          element={<ShippingManagement />}
-                        />
-                        <Route
-                          path="shipping/slip-designer"
-                          element={<EnhancedShippingSlipDesigner />}
-                        />
+                          {/* Customer Management */}
+                          <Route
+                            path="customers"
+                            element={<CustomerManagement />}
+                          />
+                          <Route
+                            path="customers/:email"
+                            element={<CustomerProfile />}
+                          />
 
-                        {/* Platform Management - enhanced */}
-                        <Route
-                          path="platforms"
-                          element={<PlatformConnections />}
-                        />
-                        <Route
-                          path="platforms/trendyol"
-                          element={<PlatformConnections />}
-                        />
-                        <Route
-                          path="platforms/hepsiburada"
-                          element={<PlatformConnections />}
-                        />
-                        <Route
-                          path="platforms/n11"
-                          element={<PlatformConnections />}
-                        />
-                        <Route
-                          path="platforms/gittigidiyor"
-                          element={<PlatformConnections />}
-                        />
-                        <Route
-                          path="platforms/:platformId/settings"
-                          element={<PlatformSettings />}
-                        />
-                        <Route
-                          path="platforms/:platformId/analytics"
-                          element={<PlatformAnalytics />}
-                        />
-                        <Route
-                          path="platforms/:platformId/sync-history"
-                          element={<PlatformSyncHistory />}
-                        />
+                          {/* Customer Questions Management */}
+                          <Route
+                            path="customer-questions"
+                            element={<CustomerQuestions />}
+                          />
 
-                        {/* Platform Operations */}
+                          {/* Shipping Management - with sub-routes */}
+                          <Route
+                            path="shipping"
+                            element={<ShippingManagement />}
+                          />
+                          <Route
+                            path="shipping/create"
+                            element={<ShippingManagement />}
+                          />
+                          <Route
+                            path="shipping/tracking"
+                            element={<ShippingManagement />}
+                          />
+                          <Route
+                            path="shipping/carriers"
+                            element={<ShippingManagement />}
+                          />
+                          <Route
+                            path="shipping/rates"
+                            element={<ShippingManagement />}
+                          />
+                          <Route
+                            path="shipping/slip-designer"
+                            element={<EnhancedShippingSlipDesigner />}
+                          />
+
+                          {/* Platform Management - enhanced */}
+                          <Route
+                            path="platforms"
+                            element={<PlatformConnections />}
+                          />
+                          <Route
+                            path="platforms/trendyol"
+                            element={<PlatformConnections />}
+                          />
+                          <Route
+                            path="platforms/hepsiburada"
+                            element={<PlatformConnections />}
+                          />
+                          <Route
+                            path="platforms/n11"
+                            element={<PlatformConnections />}
+                          />
+                          <Route
+                            path="platforms/gittigidiyor"
+                            element={<PlatformConnections />}
+                          />
+                          <Route
+                            path="platforms/:platformId/settings"
+                            element={<PlatformSettings />}
+                          />
+                          <Route
+                            path="platforms/:platformId/analytics"
+                            element={<PlatformAnalytics />}
+                          />
+                          <Route
+                            path="platforms/:platformId/sync-history"
+                            element={<PlatformSyncHistory />}
+                          />
+
+                          {/* Platform Operations */}
+                          <Route
+                            path="platform-operations"
+                            element={<PlatformOperations />}
+                          />
+
+                          {/* Orders - enhanced with sub-routes */}
+                          <Route path="orders" element={<Orders />} />
+                          <Route path="orders/:id" element={<OrderDetail />} />
+                          <Route path="orders/new" element={<Orders />} />
+                          <Route path="orders/completed" element={<Orders />} />
+
+                          {/* Product-Order Linking Management */}
+                          <Route
+                            path="admin/product-linking"
+                            element={<ProductLinkingDashboard />}
+                          />
+
+                          {/* Background Task Management */}
+                          <Route
+                            path="admin/background-tasks"
+                            element={<BackgroundTaskManager />}
+                          />
+
+                          {/* Payment Management */}
+                          <Route
+                            path="payments"
+                            element={<CustomerManagement />}
+                          />
+
+                          {/* Compliance */}
+                          <Route path="compliance" element={<Settings />} />
+
+                          {/* User Profile */}
+                          <Route path="profile" element={<Settings />} />
+
+                          {/* Notifications */}
+                          <Route path="notifications" element={<Dashboard />} />
+
+                          {/* Settings - enhanced with sub-routes */}
+                          <Route path="settings" element={<Settings />} />
+                          <Route
+                            path="settings/notifications"
+                            element={<Settings />}
+                          />
+                          <Route path="settings/api" element={<Settings />} />
+                          <Route path="settings/users" element={<Settings />} />
+                          <Route
+                            path="print-settings"
+                            element={<PrintSettings />}
+                          />
+
+                          {/* Support */}
+                          <Route path="support" element={<Dashboard />} />
+
+                          {/* Import/Export */}
+                          <Route
+                            path="import-export"
+                            element={<ImportExport />}
+                          />
+
+                          {/* Footer and Static Pages */}
+                          <Route path="help" element={<Dashboard />} />
+                          <Route path="docs" element={<Dashboard />} />
+                          <Route path="api-docs" element={<Dashboard />} />
+                          <Route path="about" element={<Dashboard />} />
+                          <Route path="privacy" element={<Dashboard />} />
+                          <Route path="terms" element={<Dashboard />} />
+                          <Route path="security" element={<Dashboard />} />
+
+                          {/* Development tools */}
+                          <Route
+                            path="dev/error-demo"
+                            element={<ErrorHandlingDemo />}
+                          />
+                        </Route>
+
+                        {/* Error routes - outside private routes for public access */}
                         <Route
-                          path="platform-operations"
-                          element={<PlatformOperations />}
+                          path="/404"
+                          element={<ErrorPage type="notFound" />}
                         />
-
-                        {/* Orders - enhanced with sub-routes */}
-                        <Route path="orders" element={<Orders />} />
-                        <Route path="orders/:id" element={<OrderDetail />} />
-                        <Route path="orders/new" element={<Orders />} />
-                        <Route path="orders/completed" element={<Orders />} />
-
-                        {/* Product-Order Linking Management */}
                         <Route
-                          path="admin/product-linking"
-                          element={<ProductLinkingDashboard />}
+                          path="/500"
+                          element={<ErrorPage type="server" />}
                         />
-
-                        {/* Payment Management */}
                         <Route
-                          path="payments"
-                          element={<CustomerManagement />}
+                          path="/unauthorized"
+                          element={<ErrorPage type="unauthorized" />}
                         />
+                        <Route path="/error" element={<ErrorPage />} />
 
-                        {/* Compliance */}
-                        <Route path="compliance" element={<Settings />} />
-
-                        {/* User Profile */}
-                        <Route path="profile" element={<Settings />} />
-
-                        {/* Notifications */}
-                        <Route path="notifications" element={<Dashboard />} />
-
-                        {/* Settings - enhanced with sub-routes */}
-                        <Route path="settings" element={<Settings />} />
+                        {/* Catch all route - must be last */}
                         <Route
-                          path="settings/notifications"
-                          element={<Settings />}
+                          path="*"
+                          element={<ErrorPage type="notFound" />}
                         />
-                        <Route path="settings/api" element={<Settings />} />
-                        <Route path="settings/users" element={<Settings />} />
-                        <Route
-                          path="print-settings"
-                          element={<PrintSettings />}
-                        />
-
-                        {/* Support */}
-                        <Route path="support" element={<Dashboard />} />
-
-                        {/* Import/Export */}
-                        <Route
-                          path="import-export"
-                          element={<ImportExport />}
-                        />
-
-                        {/* Footer and Static Pages */}
-                        <Route path="help" element={<Dashboard />} />
-                        <Route path="docs" element={<Dashboard />} />
-                        <Route path="api-docs" element={<Dashboard />} />
-                        <Route path="about" element={<Dashboard />} />
-                        <Route path="privacy" element={<Dashboard />} />
-                        <Route path="terms" element={<Dashboard />} />
-                        <Route path="security" element={<Dashboard />} />
-                      </Route>
-                    </Routes>
-                  </div>
-                </NotificationProvider>
-              </ThemeProvider>
-            </AlertProvider>
-          </AuthProvider>
+                      </Routes>
+                    </div>
+                  </NotificationProvider>
+                </ThemeProvider>
+              </AlertProvider>
+            </AuthProvider>
+          </ErrorProvider>
         </Router>
       </ErrorBoundary>
     </QueryClientProvider>

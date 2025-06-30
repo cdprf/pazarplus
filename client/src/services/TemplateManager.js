@@ -184,9 +184,10 @@ class TemplateManager {
       // Always update local storage (as backup or primary storage)
       try {
         const templates = this.fetchFromLocalStorage();
+        const finalTemplate = savedTemplate || templateToSave; // Use API response if available
         const updatedTemplates = [
-          ...templates.filter((t) => t.id !== templateToSave.id),
-          templateToSave,
+          ...templates.filter((t) => t.id !== finalTemplate.id),
+          finalTemplate,
         ];
         localStorage.setItem(
           "shippingTemplates",

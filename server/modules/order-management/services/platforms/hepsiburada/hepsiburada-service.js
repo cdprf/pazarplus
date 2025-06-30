@@ -1599,29 +1599,64 @@ class HepsiburadaService extends BasePlatformService {
 
           if (existingOrder) {
             // Order exists - update it with the latest data
+            if (String(orderNumber) == "4507068418") {
+              console.log(
+                `Updating existing order ${orderNumber} with new data`,
+                {
+                  order: JSON.stringify(order),
+                  connectionId: this.connectionId,
+                }
+              );
+            }
             try {
               // Extract product names and sku from items
               const productNames = order.items
-                ? order.items.map((item) => item.name || "")
+                ? order.items.map((item) => item.productName || "")
                 : [];
               const skus = order.items
                 ? order.items.map((item) => item.merchantSKU || item.SKU || "")
                 : [];
               await existingOrder.update({
                 status: this.mapOrderStatus(
-                  order.details.items[0].status || (order.items && order.items[0]?.status)
+                  (order.details && order.details.items[0].status) ||
+                    (order.items && order.items[0]?.status)
                 ),
                 cargoTrackingLink:
-                  order.details.items[0].cargoCompanyModel.trackingUrl || "",
+                  (order.details &&
+                    order.details.items[0].cargoCompanyModel.trackingUrl) ||
+                  "",
                 cargoTrackingNumber: order.Barcode || "",
-                cargoCompany: order.details.items[0].cargoCompany || "",
+                cargoCompany:
+                  (order.details && order.details.items[0].cargoCompany) ||
+                  (order.items && order.items[0]?.cargoCompany) ||
+                  "",
                 orderDate: order.details?.createdDate
                   ? new Date(order.details.createdDate)
+                  : null || order.createdDate
+                  ? new Date(order.createdDate)
+                  : null || order.orderDate
+                  ? new Date(order.orderDate)
                   : null,
-                customerName: order.details.deliveryAddress.name || "",
-                customerEmail: order.details?.deliveryAddress?.email || "",
-                customerPhone: order.details.deliveryAddress.phoneNumber,
-
+                customerName:
+                  order.customerName ||
+                  (order.details &&
+                    order.details.customer &&
+                    order.details.customer.name) ||
+                  "",
+                customerEmail:
+                  order.email ||
+                  (order.details &&
+                    order.details.customer &&
+                    order.details.customer.email) ||
+                  "",
+                customerPhone:
+                  order.phoneNumber ||
+                  (order.details &&
+                    order.details.customer &&
+                    order.details.customer.phoneNumber) ||
+                  "",
+                productNames: productNames,
+                skus: skus,
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date(),
               });
@@ -1700,7 +1735,12 @@ class HepsiburadaService extends BasePlatformService {
                 totalAmount = order.details.items.reduce((sum, item) => {
                   return sum + (item.totalPrice?.amount || 0);
                 }, 0);
+              } else if (order.items && Array.isArray(order.items)) {
+                totalAmount = order.items.reduce((sum, item) => {
+                  return sum + (item.totalPrice?.amount || 0);
+                }, 0);
               }
+
               // Fallback to order level total
               if (totalAmount === 0) {
                 totalAmount = order.totalPrice?.amount || 0;
@@ -1708,21 +1748,19 @@ class HepsiburadaService extends BasePlatformService {
 
               // Extract order status from items
               const orderStatus =
-                order.details?.items?.[0]?.status || order.status || "new";
+                order.details?.items?.[0]?.status ||
+                order.items?.[0]?.status ||
+                order.status ||
+                "new";
 
               // Extract cargo tracking info
-              const cargoTrackingNumber =
-                order.details?.items?.[0]?.packageNumber ||
-                order.details?.items?.[0]?.barcode ||
-                order.PackageNumber ||
-                order.Barcode ||
-                null;
+              const cargoTrackingNumber = order.Barcode || null;
 
               // Extract order date
-              const orderDate = order.details?.orderDate
+              const orderDate = order.details?.createdDate
                 ? new Date(order.details.orderDate)
-                : order.details?.createdDate
-                ? new Date(order.details.createdDate)
+                : order.details?.orderDate
+                ? new Date(order.details.orderDate)
                 : order.orderDate
                 ? new Date(order.orderDate)
                 : new Date();
@@ -1763,8 +1801,9 @@ class HepsiburadaService extends BasePlatformService {
                   }),
                   shippingAddress: this.safeJsonStringify(
                     order.details?.deliveryAddress ||
-                      order.details?.items?.[0]?.shippingAddress ||
-                      order.shippingAddressDetail ||
+                      order.details?.items?.[0]?.deliveryAddress ||
+                      order.items?.[0]?.deliveryAddress ||
+                      order.deliveryAddress ||
                       {}
                   ),
 
@@ -1796,7 +1835,8 @@ class HepsiburadaService extends BasePlatformService {
               // Create shipping detail with orderId - extract from rawData
               const shippingAddress =
                 order.details?.deliveryAddress ||
-                order.details?.items?.[0]?.shippingAddress ||
+                order.details?.items?.[0]?.deliveryAddress ||
+                order.items?.[0]?.deliveryAddress ||
                 {};
 
               const shippingDetail = await ShippingDetail.create(

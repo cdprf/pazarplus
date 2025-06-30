@@ -212,10 +212,10 @@ const AdvancedSidebar = ({ isOpen, onToggle, className, ...props }) => {
       {/* Sidebar Container with proper z-index and enhanced styling */}
       <aside
         className={cn(
-          "sidebar-container",
+          "sidebar-container sidebar",
           "fixed left-0 top-16 h-[calc(100vh-4rem)] transition-all duration-300 ease-in-out",
           "bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700",
-          "shadow-xl dark:shadow-2xl",
+          "dark:shadow-2xl",
 
           // Mobile behavior
           "lg:relative lg:top-0 lg:h-full lg:min-h-0",
@@ -224,9 +224,12 @@ const AdvancedSidebar = ({ isOpen, onToggle, className, ...props }) => {
             "-translate-x-full lg:translate-x-0": !isOpen,
             "w-20": isCollapsed && !isOpen,
             "w-80": !isCollapsed || isOpen,
+            collapsed: isCollapsed,
           }
         )}
-        style={{ zIndex: 40 }} /* Use explicit z-index value lower than navbar */
+        style={{
+          zIndex: 40,
+        }} /* Use explicit z-index value lower than navbar */
         onMouseEnter={() => {}}
         onMouseLeave={() => {}}
         role="navigation"
@@ -330,13 +333,16 @@ const AdvancedSidebar = ({ isOpen, onToggle, className, ...props }) => {
 
           {/* Enhanced Navigation with Error Boundary */}
           <nav
-            className="flex-1 overflow-y-auto overflow-x-hidden px-1 py-1 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 min-h-0"
+            className={cn(
+              "flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 min-h-0 sidebar-navigation",
+              isCollapsed ? "px-0 py-0" : "px-1 py-1"
+            )}
             role="navigation"
             aria-label="Main menu"
           >
             <SidebarErrorBoundary fallback="Navigation failed to load">
               <SidebarPerformanceOptimization>
-                <div className="space-y-6">
+                <div className={cn("space-y-6", isCollapsed && "space-y-0")}>
                   {navigationSections.map((section) => (
                     <SidebarSection
                       key={section.id}

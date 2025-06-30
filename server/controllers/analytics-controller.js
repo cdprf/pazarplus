@@ -1,6 +1,23 @@
 const analyticsService = require("../services/analytics-service");
 const logger = require("../utils/logger");
 
+// Analytics timeout configuration
+const ANALYTICS_TIMEOUT = 30000; // 30 seconds
+const CRITICAL_ANALYTICS_TIMEOUT = 45000; // 45 seconds for complex operations
+
+// Helper function to create timeout wrapper
+const withTimeout = (promise, timeout = ANALYTICS_TIMEOUT) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`Operation timeout after ${timeout}ms`)),
+        timeout
+      )
+    ),
+  ]);
+};
+
 // Utility function to safely serialize data and prevent circular references
 const safeJsonResponse = (data) => {
   try {
@@ -106,9 +123,10 @@ class AnalyticsController {
 
       logger.info("Dashboard analytics request", { userId, timeframe });
 
-      const analytics = await analyticsService.getDashboardAnalytics(
-        userId,
-        timeframe
+      // Add timeout protection for analytics operations
+      const analytics = await withTimeout(
+        analyticsService.getDashboardAnalytics(userId, timeframe),
+        ANALYTICS_TIMEOUT
       );
 
       // Debug logging
@@ -134,11 +152,23 @@ class AnalyticsController {
       });
     } catch (error) {
       logger.error("Dashboard analytics error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to retrieve dashboard analytics",
-        error: error.message,
-      });
+
+      // Handle timeout errors specifically
+      if (error.message.includes("timeout")) {
+        res.status(504).json({
+          success: false,
+          message:
+            "Analytics request timeout - please try again or contact support",
+          error: "TIMEOUT",
+          timeframe: req.query.timeframe || "30d",
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "Failed to retrieve dashboard analytics",
+          error: error.message,
+        });
+      }
     }
   }
 
@@ -1477,6 +1507,54 @@ class AnalyticsController {
         success: false,
         error: "Failed to generate custom report",
         details: error.message,
+      });
+    }
+  }
+
+  /**
+   * Analytics system health check
+   */
+  async healthCheck(req, res) {
+    try {
+      const startTime = Date.now();
+
+      // Test database connection
+      const dbTest = await Order.findOne({
+        limit: 1,
+        attributes: ["id"],
+      });
+
+      // Test cache service
+      const cacheTest = (await cacheService.get("health_check")) || "ok";
+      await cacheService.set("health_check", "ok", 60);
+
+      // Test analytics service
+      const userId = req.user?.id || 1;
+      const testAnalytics = await analyticsService.getOrderSummary(userId, {
+        start: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        end: new Date(),
+      });
+
+      const responseTime = Date.now() - startTime;
+
+      res.json({
+        success: true,
+        status: "healthy",
+        checks: {
+          database: dbTest ? "ok" : "error",
+          cache: cacheTest ? "ok" : "error",
+          analytics: testAnalytics ? "ok" : "error",
+        },
+        responseTime: `${responseTime}ms`,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error("Analytics health check failed:", error);
+      res.status(500).json({
+        success: false,
+        status: "unhealthy",
+        error: error.message,
+        timestamp: new Date().toISOString(),
       });
     }
   }

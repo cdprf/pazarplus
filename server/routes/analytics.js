@@ -3,6 +3,7 @@ const router = express.Router();
 const analyticsController = require("../controllers/analytics-controller");
 const { auth } = require("../middleware/auth"); // Fixed: destructure auth from middleware
 const rateLimit = require("express-rate-limit");
+const analyticsPerformanceMiddleware = require("../middleware/analyticsPerformance");
 
 // Rate limiting for analytics endpoints
 const analyticsRateLimit = rateLimit({
@@ -16,6 +17,7 @@ const analyticsRateLimit = rateLimit({
 // Apply middleware to all routes
 router.use(auth);
 router.use(analyticsRateLimit);
+router.use(analyticsPerformanceMiddleware);
 
 /**
  * @swagger
@@ -651,5 +653,20 @@ router.post(
   "/custom-reports",
   analyticsController.generateCustomReport.bind(analyticsController)
 );
+
+
+/**
+ * @swagger
+ * /api/analytics/health:
+ *   get:
+ *     summary: Analytics system health check
+ *     tags: [Analytics]
+ *     responses:
+ *       200:
+ *         description: System is healthy
+ *       500:
+ *         description: System health issues detected
+ */
+router.get("/health", analyticsController.healthCheck.bind(analyticsController));
 
 module.exports = router;

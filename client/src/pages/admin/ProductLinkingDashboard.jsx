@@ -12,13 +12,7 @@ import {
   Alert,
   Pagination,
 } from "react-bootstrap";
-import {
-  FiLink,
-  FiUnlink,
-  FiRefreshCw,
-  FiSearch,
-  FiFilter,
-} from "react-icons/fi";
+import { FiLink, FiRefreshCw, FiFilter, FiSearch, FiX } from "react-icons/fi";
 import api from "../../services/api";
 
 const ProductLinkingDashboard = () => {
@@ -170,23 +164,32 @@ const ProductLinkingDashboard = () => {
     <div className="product-linking-dashboard">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>Product-Order Linking Management</h2>
-        <Button
-          variant="primary"
-          onClick={handleRunRetroactive}
-          disabled={processLoading}
-        >
-          {processLoading ? (
-            <>
-              <Spinner size="sm" className="me-2" />
-              Processing...
-            </>
-          ) : (
-            <>
-              <FiRefreshCw className="me-2" />
-              Run Retroactive Linking
-            </>
-          )}
-        </Button>
+        <div className="d-flex gap-2">
+          <Form.Control
+            type="text"
+            placeholder="Search products..."
+            style={{ width: "200px" }}
+            className="me-2"
+          />
+          <FiSearch className="align-self-center text-muted" />
+          <Button
+            variant="primary"
+            onClick={handleRunRetroactive}
+            disabled={processLoading}
+          >
+            {processLoading ? (
+              <>
+                <Spinner size="sm" className="me-2" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <FiRefreshCw className="me-2" />
+                Run Retroactive Linking
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -385,6 +388,15 @@ const ProductLinkingDashboard = () => {
                     >
                       <FiLink /> Link
                     </Button>
+                    {item.productId && (
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={() => handleUnlink(item.id)}
+                      >
+                        <FiX /> Unlink
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}

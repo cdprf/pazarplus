@@ -2,50 +2,124 @@ const express = require("express");
 const router = express.Router();
 const logger = require("../utils/logger");
 
-// Import centralized route modules
-const authRoutes = require("./auth");
-const platformRoutes = require("./platformRoutes");
-const productRoutes = require("./product-routes");
-const settingsRoutes = require("./settingsRoutes");
-const complianceRoutes = require("./complianceRoutes");
-const paymentRoutes = require("./paymentRoutes");
-const customerRoutes = require("./customerRoutes");
-const customerQuestionRoutes = require("./customerQuestions");
-const importExportRoutes = require("./importExportRoutes");
-const orderManagementRoutes = require("../modules/order-management/routes");
+console.log("Testing route loading...");
+try {
+  // Test loading the main routes
+  console.log("Loading main routes index...");
 
-// Import enhanced platform integration routes
-const enhancedPlatformRoutes = require("./enhanced-platforms");
+  // Import centralized route modules
+  const authRoutes = require("./auth");
+  const platformRoutes = require("./platformRoutes");
+  const productRoutes = require("./product-routes");
+  const settingsRoutes = require("./settingsRoutes");
+  const complianceRoutes = require("./complianceRoutes");
+  const paymentRoutes = require("./paymentRoutes");
+  const customerRoutes = require("./customerRoutes");
+  const customerQuestionRoutes = require("./customerQuestions");
+  const importExportRoutes = require("./importExportRoutes");
+  const orderManagementRoutes = require("../modules/order-management/routes");
 
-// Analytics & Business Intelligence routes
-const analyticsRoutes = require("./analytics");
+  // Import enhanced platform integration routes
+  const enhancedPlatformRoutes = require("./enhanced-platforms");
 
-// Subscription & Multi-tenant routes
-const subscriptionRoutes = require("./subscription");
+  // Analytics & Business Intelligence routes
+  const analyticsRoutes = require("./analytics");
 
-// Import rate limiting management routes
-const rateLimitRoutes = require("./rate-limits");
+  // Subscription & Multi-tenant routes
+  const subscriptionRoutes = require("./subscription");
 
-// Import shipping templates routes
-const shippingTemplatesRoutes = require("./shipping-templates");
+  // Import rate limiting management routes
+  const rateLimitRoutes = require("./rate-limits");
 
-// Import database transaction management routes
-const databaseRoutes = require("./database");
+  // Import shipping templates routes
+  const shippingTemplatesRoutes = require("./shipping-templates");
 
-// Import shipping related routes
-const shippingRoutes = require("./shipping");
+  // Import database transaction management routes
+  const databaseRoutes = require("./database");
 
-// Import enhanced SKU system routes
-// const skuRoutes = require("./sku-enhanced"); // Temporarily disabled for debugging
+  // Import shipping related routes
+  const shippingRoutes = require("./shipping");
 
-// Import font management routes
-const fontRoutes = require("./fonts");
+  // Import enhanced SKU system routes
+  // const skuRoutes = require("./sku-enhanced"); // Temporarily disabled for debugging
 
-// Import platform operations routes
-const platformOperationsRoutes = require("./platform-operations");
+  // Import font management routes
+  const fontRoutes = require("./fonts");
 
-// Import platform products routes
-const platformProductsRoutes = require("./platform-products");
+  // Import platform operations routes
+  const platformOperationsRoutes = require("./platform-operations");
+
+  // Import platform products routes
+  const platformProductsRoutes = require("./platform-products");
+
+  // Import background tasks routes
+  const backgroundTasksRoutes = require("./backgroundTasks");
+
+  // Unified Product Intelligence routes
+  const unifiedIntelligenceRoutes = require("./unified-product-intelligence");
+
+  // Mount centralized routes
+  router.use("/auth", authRoutes);
+  router.use("/platforms", platformRoutes);
+  router.use("/products", productRoutes);
+  // router.use("/sku", skuRoutes); // Temporarily disabled for debugging
+  router.use("/customers", customerRoutes);
+  router.use("/customer-questions", customerQuestionRoutes);
+  router.use("/settings", settingsRoutes);
+  router.use("/compliance", complianceRoutes);
+  router.use("/payments", paymentRoutes);
+
+  // Import/Export routes - mount at specific path to avoid conflicts
+  router.use("/import-export", importExportRoutes);
+
+  // Compatibility route for legacy /api/orders endpoint
+  // Forward requests to the order management module
+  router.use("/orders", orderManagementRoutes);
+
+  // Module-specific routes
+  router.use("/order-management", orderManagementRoutes);
+
+  // Enhanced platform integration routes (Week 5-6 features)
+  router.use("/v1/enhanced-platforms", enhancedPlatformRoutes);
+
+  // Month 5 Phase 1: Advanced Analytics & Business Intelligence routes
+  router.use("/analytics", analyticsRoutes);
+
+  // Month 5 Phase 2: Subscription Management & Multi-tenant SaaS routes
+  router.use("/subscription", subscriptionRoutes);
+
+  // Admin routes (including rate limiting management)
+  router.use("/admin", rateLimitRoutes);
+
+  // Shipping templates routes
+  router.use("/shipping/templates", shippingTemplatesRoutes);
+
+  // Main shipping routes - direct mounting to match client API calls
+  router.use("/shipping", shippingRoutes);
+
+  // Database transaction management routes
+  router.use("/database", databaseRoutes);
+
+  // Platform operations routes
+  router.use("/platform-operations", platformOperationsRoutes);
+
+  // Platform products routes
+  router.use("/platform-products", platformProductsRoutes);
+
+  // Background tasks routes
+  router.use("/background-tasks", backgroundTasksRoutes);
+
+  // Font management routes
+  router.use("/fonts", fontRoutes);
+
+  // Unified Product Intelligence routes
+  router.use("/product-intelligence", unifiedIntelligenceRoutes);
+
+  console.log("✅ Main routes loaded");
+} catch (error) {
+  console.error("❌ Error loading routes:", error.message);
+  console.error("Stack:", error.stack);
+}
 
 // Health check endpoint - should be accessible at /api/health
 router.get("/health", (req, res) => {
@@ -71,6 +145,7 @@ router.get("/health", (req, res) => {
       database: "/api/database", // Database transaction management
       platformOperations: "/api/platform-operations", // Background tasks and platform operations
       platformProducts: "/api/platform-products", // Platform product creation and management
+      backgroundTasks: "/api/background-tasks", // Background task management
     },
   });
 });
@@ -80,67 +155,6 @@ router.use("*", (req, res, next) => {
   logger.debug(`API Route accessed: ${req.method} /api${req.url}`);
   next();
 });
-
-// Mount centralized routes
-router.use("/auth", authRoutes);
-router.use("/platforms", platformRoutes);
-router.use("/products", productRoutes);
-// router.use("/sku", skuRoutes); // Temporarily disabled for debugging
-router.use("/customers", customerRoutes);
-router.use("/customer-questions", customerQuestionRoutes);
-router.use("/settings", settingsRoutes);
-router.use("/compliance", complianceRoutes);
-router.use("/payments", paymentRoutes);
-
-// Import/Export routes - mount at specific path to avoid conflicts
-router.use("/import-export", importExportRoutes);
-
-// Compatibility route for legacy /api/orders endpoint
-// Forward requests to the order management module
-router.use("/orders", orderManagementRoutes);
-
-// Module-specific routes
-router.use("/order-management", orderManagementRoutes);
-
-// Enhanced platform integration routes (Week 5-6 features)
-router.use("/v1/enhanced-platforms", enhancedPlatformRoutes);
-
-// Month 5 Phase 1: Advanced Analytics & Business Intelligence routes
-router.use("/analytics", analyticsRoutes);
-
-// Month 5 Phase 2: Subscription Management & Multi-tenant SaaS routes
-router.use("/subscription", subscriptionRoutes);
-
-// Admin routes (including rate limiting management)
-router.use("/admin", rateLimitRoutes);
-
-// Shipping templates routes
-router.use("/shipping/templates", shippingTemplatesRoutes);
-
-// Main shipping routes - direct mounting to match client API calls
-router.use("/shipping", shippingRoutes);
-
-// Main shipping routes (DEPRECATED - using new modular shipping API in order-management)
-// router.use("/shipping", shippingRoutes);
-
-// Database transaction management routes
-router.use("/database", databaseRoutes);
-
-// Platform operations routes
-router.use("/platform-operations", platformOperationsRoutes);
-
-// Platform products routes
-router.use("/platform-products", platformProductsRoutes);
-
-// Enhanced SKU system routes
-// router.use("/enhanced-sku", skuRoutes); // Temporarily disabled for debugging
-
-// Font management routes
-router.use("/fonts", fontRoutes);
-
-// Unified Product Intelligence routes
-const unifiedIntelligenceRoutes = require("./unified-product-intelligence");
-router.use("/product-intelligence", unifiedIntelligenceRoutes);
 
 // ========================================
 // === ENHANCED PRODUCT MANAGEMENT ROUTES - DISABLED ===
@@ -177,6 +191,7 @@ router.use("/*", (req, res) => {
       "/api/subscription", // Month 5 Phase 2 - NEW
       "/api/database", // Database transaction management
       "/api/fonts", // Font management and validation
+      "/api/background-tasks", // Background task management
       "/api/order-management/orders/:orderId/items-with-products", // Product linking
       "/api/order-management/products/search", // Product search for linking
       "/api/order-management/order-items/:itemId/link-product", // Link order item to product

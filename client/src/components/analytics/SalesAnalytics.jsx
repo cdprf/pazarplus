@@ -1,40 +1,17 @@
 import React, { useState, useEffect } from "react";
 import {
-  Row,
-  Col,
-  Card,
-  ButtonGroup,
-  Button,
-  Alert,
-  Spinner,
-} from "react-bootstrap";
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LabelList,
-} from "recharts";
+  OptimizedLineChart,
+  OptimizedBarChart,
+  OptimizedAreaChart,
+  ChartContainer,
+} from "./OptimizedCharts";
 import analyticsService from "../../services/analyticsService";
 import {
   formatCurrency,
   formatNumber,
   formatPercentage,
   processAnalyticsData,
-  safeNumeric,
 } from "../../utils/analyticsFormatting";
-import KPICard from "./KPICard";
 import ExportButton from "./ExportButton";
 import {
   ChartBarIcon,
@@ -45,7 +22,6 @@ import {
 
 const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
   const [chartType, setChartType] = useState("line");
-  const [chartPeriod, setChartPeriod] = useState("daily");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -164,13 +140,9 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
   // Loading state
   if (loading) {
     return (
-      <div
-        className="d-flex justify-content-center align-items-center"
-        style={{ minHeight: "400px" }}
-      >
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading sales analytics...</span>
-        </Spinner>
+      <div className="flex items-center justify-center min-h-96">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-3 text-gray-600">Loading sales analytics...</span>
       </div>
     );
   }
@@ -178,39 +150,52 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
   // Error state
   if (error) {
     return (
-      <Alert variant="danger" className="m-4">
-        <Alert.Heading>Unable to load sales analytics</Alert.Heading>
-        <div>
-          <p className="mb-2">{error}</p>
-          {error.includes("Authentication required") ||
-          error.includes("log in") ? (
-            <p className="mb-2">
-              <small className="text-muted">
-                Please ensure you are logged in to view sales analytics data.
-              </small>
-            </p>
-          ) : error.includes("timeout") ? (
-            <p className="mb-2">
-              <small className="text-muted">
-                The sales analytics service is taking too long to respond.
-                Please try again.
-              </small>
-            </p>
-          ) : (
-            <p className="mb-2">
-              <small className="text-muted">
-                There was an issue connecting to the sales analytics service.
-              </small>
-            </p>
-          )}
-          <Button
-            variant="outline-danger"
-            onClick={() => window.location.reload()}
-          >
-            Retry
-          </Button>
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 m-4">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <svg
+              className="h-5 w-5 text-red-400"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-red-800">
+              Unable to load sales analytics
+            </h3>
+            <div className="mt-2">
+              <p className="text-sm text-red-700 mb-2">{error}</p>
+              {error.includes("Authentication required") ||
+              error.includes("log in") ? (
+                <p className="text-sm text-red-700 mb-2">
+                  Please ensure you are logged in to view sales analytics data.
+                </p>
+              ) : error.includes("timeout") ? (
+                <p className="text-sm text-red-700 mb-2">
+                  The sales analytics service is taking too long to respond.
+                  Please try again.
+                </p>
+              ) : (
+                <p className="text-sm text-red-700 mb-2">
+                  There was an issue connecting to the sales analytics service.
+                </p>
+              )}
+              <button
+                className="inline-flex items-center px-3 py-2 border border-red-300 text-sm leading-4 font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </button>
+            </div>
+          </div>
         </div>
-      </Alert>
+      </div>
     );
   }
 
@@ -279,262 +264,270 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
   }));
 
   return (
-    <div className="sales-analytics">
-      {/* KPI Cards */}
-      <Row className="mb-4">
-        {salesKPIs.map((kpi, index) => (
-          <Col lg={3} md={6} key={index}>
-            <KPICard {...kpi} />
-          </Col>
-        ))}
-      </Row>
+    <div className="h-full flex flex-col bg-gray-50">
+      {/* Header Section */}
+      <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Sales Analytics
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Revenue trends and sales performance insights
+            </p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
+              <button
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  chartType === "line"
+                    ? "bg-blue-100 text-blue-700 border border-blue-200"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+                onClick={() => setChartType("line")}
+              >
+                Line
+              </button>
+              <button
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  chartType === "area"
+                    ? "bg-blue-100 text-blue-700 border border-blue-200"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+                onClick={() => setChartType("area")}
+              >
+                Area
+              </button>
+              <button
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  chartType === "bar"
+                    ? "bg-blue-100 text-blue-700 border border-blue-200"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+                onClick={() => setChartType("bar")}
+              >
+                Bar
+              </button>
+            </div>
+            <ExportButton
+              data={data}
+              filename={`sales-analytics-${timeframe}`}
+              title="Export Sales Data"
+            />
+          </div>
+        </div>
+      </div>
 
-      {/* Chart Controls */}
-      <Row className="mb-3">
-        <Col md={6}>
-          <ButtonGroup>
-            <Button
-              variant={chartType === "line" ? "primary" : "outline-primary"}
-              onClick={() => setChartType("line")}
+      <div className="flex-1 min-h-0 p-6 space-y-6">
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {salesKPIs.map((kpi, index) => (
+            <div
+              key={index}
+              className="bg-white rounded-lg shadow-sm border border-gray-200 p-4"
             >
-              Line Chart
-            </Button>
-            <Button
-              variant={chartType === "area" ? "primary" : "outline-primary"}
-              onClick={() => setChartType("area")}
-            >
-              Area Chart
-            </Button>
-            <Button
-              variant={chartType === "bar" ? "primary" : "outline-primary"}
-              onClick={() => setChartType("bar")}
-            >
-              Bar Chart
-            </Button>
-          </ButtonGroup>
-        </Col>
-        <Col md={6} className="text-end">
-          <ExportButton
-            data={data}
-            filename={`sales-analytics-${timeframe}`}
-            title="Export Sales Data"
-          />
-        </Col>
-      </Row>
-
-      {/* Revenue Trends Chart */}
-      <Row className="mb-4">
-        <Col>
-          <Card>
-            <Card.Header>
-              <Card.Title>Revenue Trends</Card.Title>
-            </Card.Header>
-            <Card.Body>
-              <div style={{ height: "300px" }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  {chartType === "line" && (
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip
-                        formatter={(value) => [
-                          formatCurrency(value),
-                          "Revenue",
-                        ]}
-                        labelFormatter={(label) => `Date: ${label}`}
-                      />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke={colors[0]}
-                        strokeWidth={2}
-                        dot={{ fill: colors[0] }}
-                      />
-                    </LineChart>
-                  )}
-                  {chartType === "area" && (
-                    <AreaChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip
-                        formatter={(value) => [
-                          formatCurrency(value),
-                          "Revenue",
-                        ]}
-                        labelFormatter={(label) => `Date: ${label}`}
-                      />
-                      <Legend />
-                      <Area
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke={colors[0]}
-                        fill={colors[0]}
-                        fillOpacity={0.6}
-                      />
-                    </AreaChart>
-                  )}
-                  {chartType === "bar" && (
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip
-                        formatter={(value) => [
-                          formatCurrency(value),
-                          "Revenue",
-                        ]}
-                        labelFormatter={(label) => `Date: ${label}`}
-                      />
-                      <Legend />
-                      <Bar dataKey="revenue" fill={colors[0]} />
-                    </BarChart>
-                  )}
-                </ResponsiveContainer>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className={`p-2 rounded-lg bg-${kpi.color}-100`}>
+                    <kpi.icon className={`h-5 w-5 text-${kpi.color}-600`} />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-600">
+                      {kpi.title}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Top Selling Products */}
-      <Row className="mb-4">
-        <Col>
-          <Card>
-            <Card.Header>
-              <Card.Title>Top Selling Products</Card.Title>
-            </Card.Header>
-            <Card.Body>
-              <div style={{ height: "400px" }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topProductsData} layout="horizontal">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={150} />
-                    <Tooltip
-                      formatter={(value, name, props) => {
-                        if (name === "revenue") {
-                          const data = topProductsData[props.payload?.index];
-                          return [
-                            formatCurrency(value),
-                            `Revenue (${data?.unitsSold || 0} units sold)`,
-                          ];
-                        }
-                        return [value, name];
-                      }}
-                      labelFormatter={(label) => `Product: ${label}`}
-                    />
-                    <Legend />
-                    <Bar
-                      dataKey="revenue"
-                      fill={colors[0]}
-                      radius={[0, 4, 4, 0]}
-                      name="Revenue"
+              <div className="mt-3">
+                <div className="flex items-baseline">
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {kpi.value}
+                  </p>
+                  {kpi.change !== 0 && (
+                    <p
+                      className={`ml-2 text-sm font-medium ${
+                        kpi.change > 0 ? "text-green-600" : "text-red-600"
+                      }`}
                     >
-                      <LabelList
-                        dataKey="revenue"
-                        position="right"
-                        formatter={(value, props) => {
-                          try {
-                            if (!value || value === 0) return "";
-
-                            if (
-                              !props ||
-                              props.index === undefined ||
-                              !topProductsData ||
-                              !topProductsData[props.index]
-                            ) {
-                              return formatCurrency(Number(value));
-                            }
-
-                            const data = topProductsData[props.index];
-                            const units = data.unitsSold || data.totalSold || 0;
-                            return `${formatCurrency(
-                              Number(value)
-                            )} (${units} units)`;
-                          } catch (error) {
-                            console.warn("LabelList formatter error:", error);
-                            return value ? formatCurrency(Number(value)) : "";
-                          }
-                        }}
-                        style={{ fontSize: "10px", fill: "#666" }}
-                      />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                      {kpi.change > 0 ? "+" : ""}
+                      {formatPercentage(kpi.change)}
+                    </p>
+                  )}
+                </div>
               </div>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+            </div>
+          ))}
+        </div>
 
-      {/* Product Statistics Table */}
-      <Row>
-        <Col>
-          <Card>
-            <Card.Header>
-              <Card.Title>Product Performance Details</Card.Title>
-            </Card.Header>
-            <Card.Body>
-              <div className="table-responsive">
-                <table className="table table-striped">
-                  <thead>
-                    <tr>
-                      <th>Product Name</th>
-                      <th>Revenue</th>
-                      <th>Units Sold</th>
-                      <th>Avg Price</th>
-                      <th>Performance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topProductsData.map((product, index) => (
-                      <tr key={index}>
-                        <td>
-                          <strong>{product.fullName}</strong>
-                        </td>
-                        <td>{formatCurrency(product.revenue)}</td>
-                        <td>{formatNumber(product.unitsSold)}</td>
-                        <td>{formatCurrency(product.avgPrice)}</td>
-                        <td>
-                          <div className="d-flex align-items-center">
+        {/* Revenue Trends Chart */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">
+              Revenue Trends
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Sales performance over time
+            </p>
+          </div>
+          <div className="p-6">
+            <div className="h-80">
+              <ChartContainer isLoading={loading} error={error}>
+                {chartType === "line" && (
+                  <OptimizedLineChart
+                    data={chartData}
+                    height={300}
+                    lines={[{ dataKey: "revenue", color: colors[0] }]}
+                    formatter={formatCurrency}
+                  />
+                )}
+                {chartType === "area" && (
+                  <OptimizedAreaChart
+                    data={chartData}
+                    height={300}
+                    areas={[
+                      {
+                        dataKey: "revenue",
+                        strokeColor: colors[0],
+                        fillColor: colors[0],
+                        fillOpacity: 0.6,
+                      },
+                    ]}
+                    formatter={formatCurrency}
+                  />
+                )}
+                {chartType === "bar" && (
+                  <OptimizedBarChart
+                    data={chartData}
+                    height={300}
+                    bars={[{ dataKey: "revenue", color: colors[0] }]}
+                    formatter={formatCurrency}
+                  />
+                )}
+              </ChartContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Top Selling Products */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">
+              Top Selling Products
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Best performing products by revenue
+            </p>
+          </div>
+          <div className="p-6">
+            <div className="h-96">
+              <ChartContainer isLoading={loading} error={error}>
+                <OptimizedBarChart
+                  data={topProductsData}
+                  height={350}
+                  bars={[{ dataKey: "revenue", color: colors[0] }]}
+                  formatter={(value) => {
+                    const index = topProductsData.findIndex(
+                      (item) => item.revenue === value
+                    );
+                    const data = topProductsData[index];
+                    const units = data?.unitsSold || data?.totalSold || 0;
+                    return `${formatCurrency(value)} (${units} units)`;
+                  }}
+                  layout="horizontal"
+                />
+              </ChartContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Product Performance Table */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">
+              Product Performance Details
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Detailed statistics for each product
+            </p>
+          </div>
+          <div className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Product Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Revenue
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Units Sold
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Avg Price
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Performance
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {topProductsData.map((product, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {product.fullName}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {formatCurrency(product.revenue)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {formatNumber(product.unitsSold)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {formatCurrency(product.avgPrice)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-16 bg-gray-200 rounded-full h-2 mr-3">
                             <div
-                              className="progress me-2"
-                              style={{ width: "60px", height: "6px" }}
-                            >
-                              <div
-                                className="progress-bar bg-primary"
-                                style={{
-                                  width: `${Math.min(
-                                    100,
-                                    (product.revenue /
-                                      (topProductsData[0]?.revenue || 1)) *
-                                      100
-                                  )}%`,
-                                }}
-                              ></div>
-                            </div>
-                            <small className="text-muted">
-                              {Math.round(
-                                (product.revenue /
-                                  (topProductsData[0]?.revenue || 1)) *
-                                  100
-                              )}
-                              %
-                            </small>
+                              className="bg-blue-600 h-2 rounded-full"
+                              style={{
+                                width: `${Math.min(
+                                  100,
+                                  (product.revenue /
+                                    (topProductsData[0]?.revenue || 1)) *
+                                    100
+                                )}%`,
+                              }}
+                            ></div>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+                          <span className="text-sm text-gray-600">
+                            {Math.round(
+                              (product.revenue /
+                                (topProductsData[0]?.revenue || 1)) *
+                                100
+                            )}
+                            %
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

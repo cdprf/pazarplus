@@ -1,52 +1,233 @@
 import api from "./api";
 
 /**
- * Analytics Service - Frontend service for fetching analytics data
+ * Consolidated Analytics Service - Frontend service for fetching analytics data
+ * This service consolidates functionality from both analyticsAPI.js and analyticsService.js
+ *
+ * Features:
+ * - Comprehensive analytics endpoints
+ * - Error handling and retry logic
+ * - Caching support
+ * - Timeout protection
  */
 class AnalyticsService {
+  constructor() {
+    this.cache = new Map();
+    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+    this.requestTimeout = 30000; // 30 seconds
+  }
+
   /**
-   * Get dashboard analytics data
+   * Generic request with timeout and caching
    */
-  async getDashboardAnalytics(timeframe = "30d") {
+  async makeRequest(endpoint, options = {}) {
+    const cacheKey = `${endpoint}-${JSON.stringify(options)}`;
+
+    // Check cache first
+    if (this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      if (Date.now() - cached.timestamp < this.cacheTimeout) {
+        return cached.data;
+      }
+      this.cache.delete(cacheKey);
+    }
+
     try {
-      const response = await api.get(
-        `/analytics/dashboard?timeframe=${timeframe}`
+      // Create timeout promise
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Request timeout")),
+          this.requestTimeout
+        )
       );
+
+      // Make API request
+      const requestPromise = api.get(endpoint, {
+        timeout: this.requestTimeout,
+        ...options,
+      });
+
+      const response = await Promise.race([requestPromise, timeoutPromise]);
+
+      // Cache successful response
+      this.cache.set(cacheKey, {
+        data: response.data,
+        timestamp: Date.now(),
+      });
+
       return response.data;
     } catch (error) {
-      console.error("Error fetching dashboard analytics:", error);
-      throw error;
+      console.error(`Error fetching ${endpoint}:`, error);
+      throw this.enhanceError(error, endpoint);
     }
+  }
+
+  /**
+   * Enhance error with more context
+   */
+  enhanceError(error, endpoint) {
+    const enhancedError = new Error(error.message);
+    enhancedError.endpoint = endpoint;
+    enhancedError.timestamp = new Date();
+    enhancedError.originalError = error;
+
+    if (error.message.includes("timeout")) {
+      enhancedError.type = "TIMEOUT";
+      enhancedError.message = "Request timed out. Please try again.";
+    } else if (error.response?.status === 401) {
+      enhancedError.type = "UNAUTHORIZED";
+      enhancedError.message = "Authentication required. Please log in.";
+    } else if (error.response?.status >= 500) {
+      enhancedError.type = "SERVER_ERROR";
+      enhancedError.message = "Server error. Please try again later.";
+    }
+
+    return enhancedError;
+  }
+
+  /**
+   * Clear cache
+   */
+  clearCache(pattern = null) {
+    if (pattern) {
+      for (const key of this.cache.keys()) {
+        if (key.includes(pattern)) {
+          this.cache.delete(key);
+        }
+      }
+    } else {
+      this.cache.clear();
+    }
+  }
+  /**
+   * Get comprehensive dashboard analytics
+   */
+  async getDashboardAnalytics(timeframe = "30d") {
+    return this.makeRequest(`/analytics/dashboard?timeframe=${timeframe}`);
+  }
+
+  /**
+   * Get business intelligence insights
+   */
+  async getBusinessIntelligence(timeframe = "30d") {
+    return this.makeRequest(
+      `/analytics/business-intelligence?timeframe=${timeframe}`
+    );
   }
 
   /**
    * Get revenue analytics data
    */
-  async getRevenueAnalytics(timeframe = "30d") {
-    try {
-      const response = await api.get(
-        `/analytics/revenue?timeframe=${timeframe}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching revenue analytics:", error);
-      throw error;
-    }
+  async getRevenueAnalytics(timeframe = "30d", breakdown = "daily") {
+    const params = breakdown ? `&breakdown=${breakdown}` : "";
+    return this.makeRequest(
+      `/analytics/revenue?timeframe=${timeframe}${params}`
+    );
   }
 
   /**
    * Get sales analytics data (using dashboard endpoint)
    */
   async getSalesAnalytics(timeframe = "30d") {
-    try {
-      const response = await api.get(
-        `/analytics/dashboard?timeframe=${timeframe}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching sales analytics:", error);
-      throw error;
-    }
+    return this.makeRequest(`/analytics/dashboard?timeframe=${timeframe}`);
+  }
+
+  /**
+   * Get platform performance comparison
+   */
+  async getPlatformPerformance(timeframe = "30d") {
+    return this.makeRequest(
+      `/analytics/platform-performance?timeframe=${timeframe}`
+    );
+  }
+
+  /**
+   * Get inventory insights and optimization suggestions
+   */
+  async getInventoryInsights(timeframe = "30d") {
+    return this.makeRequest(`/analytics/inventory?timeframe=${timeframe}`);
+  }
+
+  /**
+   * Get customer analytics and segmentation
+   */
+  async getCustomerAnalytics(timeframe = "30d") {
+    return this.makeRequest(
+      `/analytics/customer-analytics?timeframe=${timeframe}`
+    );
+  }
+
+  /**
+   * Get predictive analytics and forecasting
+   */
+  async getPredictiveAnalytics(timeframe = "30d") {
+    return this.makeRequest(`/analytics/predictions?timeframe=${timeframe}`);
+  }
+
+  /**
+   * Get real-time analytics dashboard
+   */
+  async getRealTimeAnalytics() {
+    return this.makeRequest("/analytics/real-time");
+  }
+
+  /**
+   * Get anomaly detection insights
+   */
+  async getAnomalyDetection(timeframe = "30d") {
+    return this.makeRequest(
+      `/analytics/anomaly-detection?timeframe=${timeframe}`
+    );
+  }
+
+  /**
+   * Get trends analysis
+   */
+  async getTrends(timeframe = "30d") {
+    return this.makeRequest(`/analytics/trends?timeframe=${timeframe}`);
+  }
+
+  /**
+   * Get competitive analysis
+   */
+  async getCompetitiveAnalysis(timeframe = "30d") {
+    return this.makeRequest(
+      `/analytics/competitive-analysis?timeframe=${timeframe}`
+    );
+  }
+
+  /**
+   * Get funnel analysis
+   */
+  async getFunnelAnalysis(timeframe = "30d") {
+    return this.makeRequest(
+      `/analytics/funnel-analysis?timeframe=${timeframe}`
+    );
+  }
+
+  /**
+   * Get attribution analysis
+   */
+  async getAttributionAnalysis(timeframe = "30d") {
+    return this.makeRequest(
+      `/analytics/attribution-analysis?timeframe=${timeframe}`
+    );
+  }
+
+  /**
+   * Get enhanced product analytics
+   */
+  async getEnhancedProductAnalytics(timeframe = "30d") {
+    return this.makeRequest(`/analytics/products?timeframe=${timeframe}`);
+  }
+
+  /**
+   * Get advanced analytics (combination of multiple endpoints)
+   */
+  async getAdvancedAnalytics(timeframe = "30d") {
+    return this.makeRequest(
+      `/analytics/business-intelligence?timeframe=${timeframe}`
+    );
   }
 
   /**
@@ -75,21 +256,6 @@ class AnalyticsService {
       return response.data;
     } catch (error) {
       console.error("Error fetching platform analytics:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get customer analytics data (using dashboard endpoint for now)
-   */
-  async getCustomerAnalytics(timeframe = "30d") {
-    try {
-      const response = await api.get(
-        `/analytics/dashboard?timeframe=${timeframe}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching customer analytics:", error);
       throw error;
     }
   }
@@ -142,21 +308,6 @@ class AnalyticsService {
       return response.data;
     } catch (error) {
       console.error("Error exporting analytics:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get business intelligence data
-   */
-  async getBusinessIntelligence(timeframe = "30d") {
-    try {
-      const response = await api.get(
-        `/analytics/business-intelligence?timeframe=${timeframe}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching business intelligence:", error);
       throw error;
     }
   }
@@ -249,21 +400,6 @@ class AnalyticsService {
   }
 
   /**
-   * Get inventory insights analytics
-   */
-  async getInventoryInsights(timeframe = "30d") {
-    try {
-      const response = await api.get(
-        `/analytics/inventory-insights?timeframe=${timeframe}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching inventory insights:", error);
-      throw error;
-    }
-  }
-
-  /**
    * Get market analysis data
    */
   async getMarketAnalysis(timeframe = "30d") {
@@ -274,21 +410,6 @@ class AnalyticsService {
       return response.data;
     } catch (error) {
       console.error("Error fetching market analysis:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get real-time analytics data
-   */
-  async getRealTimeAnalytics(timeframe = "30d") {
-    try {
-      const response = await api.get(
-        `/analytics/realtime?timeframe=${timeframe}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching real-time analytics:", error);
       throw error;
     }
   }
@@ -339,21 +460,6 @@ class AnalyticsService {
   }
 
   /**
-   * Get trends analytics
-   */
-  async getTrends(timeframe = "30d") {
-    try {
-      const response = await api.get(
-        `/analytics/trends?timeframe=${timeframe}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching trends:", error);
-      throw error;
-    }
-  }
-
-  /**
    * Get accurate analytics data
    */
   async getAccurateAnalytics(timeframe = "30d") {
@@ -369,36 +475,6 @@ class AnalyticsService {
   }
 
   /**
-   * Get competitive analysis data
-   */
-  async getCompetitiveAnalysis(timeframe = "30d") {
-    try {
-      const response = await api.get(
-        `/analytics/competitive-analysis?timeframe=${timeframe}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching competitive analysis:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get funnel analysis data
-   */
-  async getFunnelAnalysis(timeframe = "30d") {
-    try {
-      const response = await api.get(
-        `/analytics/funnel-analysis?timeframe=${timeframe}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching funnel analysis:", error);
-      throw error;
-    }
-  }
-
-  /**
    * Get alternative real-time analytics
    */
   async getRealTimeMetrics(timeframe = "30d") {
@@ -409,121 +485,6 @@ class AnalyticsService {
       return response.data;
     } catch (error) {
       console.error("Error fetching real-time metrics:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get attribution analysis data
-   */
-  async getAttributionAnalysis(timeframe = "30d") {
-    try {
-      const response = await api.get(
-        `/analytics/attribution-analysis?timeframe=${timeframe}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching attribution analysis:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get anomaly detection data
-   */
-  async getAnomalyDetection(timeframe = "30d") {
-    try {
-      const response = await api.get(
-        `/analytics/anomaly-detection?timeframe=${timeframe}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching anomaly detection:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get comprehensive analytics combining multiple endpoints
-   */
-  async getAdvancedAnalytics(timeframe = "30d") {
-    try {
-      const [
-        inventory,
-        market,
-        trends,
-        competitive,
-        funnel,
-        attribution,
-        anomalies,
-      ] = await Promise.allSettled([
-        this.getInventoryInsights(timeframe),
-        this.getMarketAnalysis(timeframe),
-        this.getTrends(timeframe),
-        this.getCompetitiveAnalysis(timeframe),
-        this.getFunnelAnalysis(timeframe),
-        this.getAttributionAnalysis(timeframe),
-        this.getAnomalyDetection(timeframe),
-      ]);
-
-      return {
-        inventory: inventory.status === "fulfilled" ? inventory.value : null,
-        market: market.status === "fulfilled" ? market.value : null,
-        trends: trends.status === "fulfilled" ? trends.value : null,
-        competitive:
-          competitive.status === "fulfilled" ? competitive.value : null,
-        funnel: funnel.status === "fulfilled" ? funnel.value : null,
-        attribution:
-          attribution.status === "fulfilled" ? attribution.value : null,
-        anomalies: anomalies.status === "fulfilled" ? anomalies.value : null,
-        timeframe,
-        generatedAt: new Date(),
-        errors: [
-          ...(inventory.status === "rejected" ? [inventory.reason] : []),
-          ...(market.status === "rejected" ? [market.reason] : []),
-          ...(trends.status === "rejected" ? [trends.reason] : []),
-          ...(competitive.status === "rejected" ? [competitive.reason] : []),
-          ...(funnel.status === "rejected" ? [funnel.reason] : []),
-          ...(attribution.status === "rejected" ? [attribution.reason] : []),
-          ...(anomalies.status === "rejected" ? [anomalies.reason] : []),
-        ],
-      };
-    } catch (error) {
-      console.error("Error fetching advanced analytics:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get enhanced product analytics combining multiple product endpoints
-   */
-  async getEnhancedProductAnalytics(timeframe = "30d") {
-    try {
-      const [products, performance, insights, realtime] =
-        await Promise.allSettled([
-          this.getProductAnalytics(timeframe),
-          this.getProductPerformance(timeframe),
-          this.getProductInsights(timeframe),
-          this.getProductRealTime(timeframe),
-        ]);
-
-      return {
-        overview: products.status === "fulfilled" ? products.value : null,
-        performance:
-          performance.status === "fulfilled" ? performance.value : null,
-        insights: insights.status === "fulfilled" ? insights.value : null,
-        realtime: realtime.status === "fulfilled" ? realtime.value : null,
-        timeframe,
-        generatedAt: new Date(),
-        errors: [
-          ...(products.status === "rejected" ? [products.reason] : []),
-          ...(performance.status === "rejected" ? [performance.reason] : []),
-          ...(insights.status === "rejected" ? [insights.reason] : []),
-          ...(realtime.status === "rejected" ? [realtime.reason] : []),
-        ],
-      };
-    } catch (error) {
-      console.error("Error fetching enhanced product analytics:", error);
       throw error;
     }
   }

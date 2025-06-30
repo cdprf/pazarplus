@@ -40,6 +40,7 @@ const UsageRecord = require("./UsageRecord");
 const Invoice = require("./Invoice");
 
 // === BACKGROUND TASK MODELS ===
+// Temporarily commenting out BackgroundTask to debug server hang
 const BackgroundTask = require("./BackgroundTask")(sequelize);
 
 // === CUSTOMER QUESTION MODELS ===
@@ -728,6 +729,16 @@ models.PlatformConnection.hasMany(models.BackgroundTask, {
 models.BackgroundTask.belongsTo(models.PlatformConnection, {
   foreignKey: "platformConnectionId",
   as: "platformConnection",
+});
+
+// BackgroundTask self-referencing for parent-child relationships
+models.BackgroundTask.belongsTo(models.BackgroundTask, {
+  foreignKey: "parentTaskId",
+  as: "parentTask",
+});
+models.BackgroundTask.hasMany(models.BackgroundTask, {
+  foreignKey: "parentTaskId",
+  as: "childTasks",
 });
 
 // ========================================
