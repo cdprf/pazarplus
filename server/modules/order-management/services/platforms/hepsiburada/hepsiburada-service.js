@@ -81,14 +81,6 @@ class HepsiburadaService extends BasePlatformService {
         );
       }
 
-      this.logger.info("✅ Hepsiburada credentials validated successfully", {
-        connectionId: this.connectionId,
-        username: username ? `${username.substring(0, 3)}***` : "missing",
-        merchantId: merchantId ? `${merchantId.substring(0, 3)}***` : "missing",
-        apiKeyLength: apiKey ? apiKey.length : 0,
-        environment: environment || "test (default)",
-      });
-
       // Set the correct API URLs based on environment
       this.isTestEnvironment =
         environment === "test" || environment === "sandbox" || !environment;
@@ -118,19 +110,8 @@ class HepsiburadaService extends BasePlatformService {
         timeout: 30000,
       });
 
-      this.logger.info("✅ Hepsiburada Axios instance created successfully", {
-        connectionId: this.connectionId,
-        baseURL: this.ordersApiUrl,
-        timeout: 30000,
-        userAgent: username ? `${username.substring(0, 5)}***` : "missing",
-      });
-
       // Test the connection with a simple request
       try {
-        this.logger.debug("🧪 Testing Hepsiburada API connectivity", {
-          connectionId: this.connectionId,
-        });
-
         // We'll test with a simple endpoint call later, for now just validate the setup
         this.merchantId = merchantId;
 
@@ -1586,10 +1567,9 @@ class HepsiburadaService extends BasePlatformService {
 
           // Skip orders without valid identifier
           if (!orderNumber) {
-            this.logger.warn(`Skipping order without valid identifier`, {
-              order: JSON.stringify(order),
-              connectionId: this.connectionId,
-            });
+            this.logger.warn(
+              `Skipping order ${orderNumber} without valid identifier`
+            );
             skippedCount++;
             continue;
           }
@@ -1599,34 +1579,26 @@ class HepsiburadaService extends BasePlatformService {
 
           if (existingOrder) {
             // Order exists - update it with the latest data
-            if (String(orderNumber) == "4507068418") {
+            if (String(orderNumber) == "4548385896") {
               console.log(
-                `Updating existing order ${orderNumber} with new data`,
-                {
-                  order: JSON.stringify(order),
-                  connectionId: this.connectionId,
-                }
+                `Updating existing order ${orderNumber} with new data`
               );
             }
             try {
-              // Extract product names and sku from items
-              const productNames = order.items
-                ? order.items.map((item) => item.productName || "")
-                : [];
-              const skus = order.items
-                ? order.items.map((item) => item.merchantSKU || item.SKU || "")
-                : [];
+              // Update the order
               await existingOrder.update({
-                status: this.mapOrderStatus(
-                  (order.details && order.details.items[0].status) ||
+                orderStatus: this.mapOrderStatus(
+                  order.status ||
+                    (order.details && order.details.items[0].status) ||
                     (order.items && order.items[0]?.status)
                 ),
                 cargoTrackingLink:
                   (order.details &&
                     order.details.items[0].cargoCompanyModel.trackingUrl) ||
                   "",
-                cargoTrackingNumber: order.Barcode || "",
+                cargoTrackingNumber: order.barcode || order.Barcode || "",
                 cargoCompany:
+                  order.cargoCompany ||
                   (order.details && order.details.items[0].cargoCompany) ||
                   (order.items && order.items[0]?.cargoCompany) ||
                   "",
@@ -1646,20 +1618,201 @@ class HepsiburadaService extends BasePlatformService {
                 customerEmail:
                   order.email ||
                   (order.details &&
-                    order.details.customer &&
-                    order.details.customer.email) ||
+                    order.details.deliveryAddress &&
+                    order.details.deliveryAddress.email) ||
                   "",
                 customerPhone:
                   order.phoneNumber ||
                   (order.details &&
-                    order.details.customer &&
-                    order.details.customer.phoneNumber) ||
+                    order.details.deliveryAddress &&
+                    order.details.deliveryAddress.phoneNumber) ||
                   "",
-                productNames: productNames,
-                skus: skus,
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date(),
               });
+
+              // Also update the OrderItem records with new product names and SKUs
+              let orderItemsToUpdate = [];
+
+              if (order.details?.items && Array.isArray(order.details.items)) {
+                orderItemsToUpdate = order.details.items;
+              } else if (order.items && Array.isArray(order.items)) {
+                orderItemsToUpdate = order.items;
+              }
+
+              if (orderItemsToUpdate.length > 0) {
+                for (const [index, item] of orderItemsToUpdate.entries()) {
+                  try {
+                    // Use multiple strategies to find existing order item
+                    let existingOrderItem = null;
+
+                    // Strategy 1: Find by platformProductId (most reliable)
+                    const itemPlatformProductId =
+                      item.productBarcode || item.sku || item.merchantSKU || "";
+                    if (itemPlatformProductId) {
+                      existingOrderItem = await OrderItem.findOne({
+                        where: {
+                          orderId: existingOrder.id,
+                          platformProductId: itemPlatformProductId,
+                        },
+                      });
+                    }
+
+                    // Strategy 2: Find by SKU if platformProductId match failed
+                    if (!existingOrderItem && (item.merchantSKU || item.sku)) {
+                      existingOrderItem = await OrderItem.findOne({
+                        where: {
+                          orderId: existingOrder.id,
+                          sku: item.merchantSKU || item.sku,
+                        },
+                      });
+                    }
+
+                    // Strategy 3: Find by title/product name if other strategies failed
+                    if (
+                      !existingOrderItem &&
+                      (item.productName || item.name || item.title)
+                    ) {
+                      existingOrderItem = await OrderItem.findOne({
+                        where: {
+                          orderId: existingOrder.id,
+                          title: item.productName || item.name || item.title,
+                        },
+                      });
+                    }
+
+                    // Strategy 4: Find by index if we have the same number of items
+                    if (!existingOrderItem) {
+                      const existingItems = await OrderItem.findAll({
+                        where: { orderId: existingOrder.id },
+                        order: [["createdAt", "ASC"]],
+                      });
+
+                      if (existingItems.length > index) {
+                        existingOrderItem = existingItems[index];
+                      }
+                    }
+
+                    if (existingOrderItem) {
+                      // Update the order item with new product name and SKU
+                      const updateData = {};
+
+                      // Only update fields if new data is available and different
+                      if (
+                        (item.productName || item.name || item.title) &&
+                        (item.productName || item.name || item.title) !==
+                          existingOrderItem.title
+                      ) {
+                        updateData.title =
+                          item.productName || item.name || item.title;
+                      }
+
+                      if (
+                        (item.merchantSKU || item.sku) &&
+                        (item.merchantSKU || item.sku) !== existingOrderItem.sku
+                      ) {
+                        updateData.sku = item.merchantSKU || item.sku;
+                      }
+
+                      if (
+                        (item.productBarcode || item.barcode) &&
+                        (item.productBarcode || item.barcode) !==
+                          existingOrderItem.barcode
+                      ) {
+                        updateData.barcode =
+                          item.productBarcode || item.barcode;
+                      }
+
+                      if (
+                        item.quantity &&
+                        item.quantity !== existingOrderItem.quantity
+                      ) {
+                        updateData.quantity = item.quantity;
+                      }
+
+                      if (
+                        (item.unitPrice?.amount || item.totalPrice?.amount) &&
+                        (item.unitPrice?.amount || item.totalPrice?.amount) !==
+                          existingOrderItem.price
+                      ) {
+                        updateData.price =
+                          item.unitPrice?.amount || item.totalPrice?.amount;
+                      }
+
+                      const newTotalPrice =
+                        item.totalPrice?.amount ||
+                        item.unitPrice?.amount * (item.quantity || 1);
+                      if (
+                        newTotalPrice &&
+                        newTotalPrice !== existingOrderItem.totalPrice
+                      ) {
+                        updateData.totalPrice = newTotalPrice;
+                      }
+
+                      // Always update rawData to keep it current
+                      updateData.rawData = JSON.stringify(item);
+
+                      // Only perform update if there are changes
+                      if (Object.keys(updateData).length > 0) {
+                        await existingOrderItem.update(updateData);
+
+                        this.logger.debug(
+                          `Updated OrderItem ${existingOrderItem.id} for order ${orderNumber}`,
+                          {
+                            itemId: existingOrderItem.id,
+                            updatedFields: Object.keys(updateData),
+                            newTitle: updateData.title,
+                            newSku: updateData.sku,
+                            orderNumber,
+                            matchStrategy:
+                              existingOrderItem.platformProductId ===
+                              itemPlatformProductId
+                                ? "platformProductId"
+                                : existingOrderItem.sku ===
+                                  (item.merchantSKU || item.sku)
+                                ? "sku"
+                                : existingOrderItem.title ===
+                                  (item.productName || item.name || item.title)
+                                ? "title"
+                                : "index",
+                          }
+                        );
+                      } else {
+                        this.logger.debug(
+                          `No changes needed for OrderItem ${existingOrderItem.id} in order ${orderNumber}`,
+                          {
+                            orderNumber,
+                            itemId: existingOrderItem.id,
+                          }
+                        );
+                      }
+                    } else {
+                      this.logger.warn(
+                        `Could not find matching OrderItem for order ${orderNumber}, item ${index}`,
+                        {
+                          orderNumber,
+                          itemIndex: index,
+                          itemData: {
+                            platformProductId: itemPlatformProductId,
+                            sku: item.merchantSKU || item.sku,
+                            title: item.productName || item.name || item.title,
+                          },
+                        }
+                      );
+                    }
+                  } catch (itemUpdateError) {
+                    this.logger.warn(
+                      `Failed to update OrderItem for order ${orderNumber}:`,
+                      {
+                        error: itemUpdateError.message,
+                        itemIndex: index,
+                        orderNumber,
+                      }
+                    );
+                    // Continue with other items if one fails
+                  }
+                }
+              }
 
               updatedCount++;
               normalizedOrders.push(existingOrder);
@@ -1906,8 +2059,8 @@ class HepsiburadaService extends BasePlatformService {
                       item.productBarcode || item.sku || item.merchantSKU || "",
                     productId: null, // Will be set by product linking
                     title:
-                      item.name ||
                       item.productName ||
+                      item.name ||
                       item.title ||
                       "Unknown Product",
                     sku: item.merchantSKU || item.sku || "",
@@ -4089,59 +4242,299 @@ class HepsiburadaService extends BasePlatformService {
   }
 
   /**
-   * Get Hepsiburada categories
+   * Get categories from Hepsiburada API
+   * Based on official documentation: https://developers.hepsiburada.com/hepsiburada/reference/katalog-onemli-bilgiler
+   * @param {Object} params - Query parameters
+   * @returns {Promise<Array>} Categories array
    */
-  async getCategories() {
+  async getCategories(params = {}) {
     try {
       await this.initialize();
-      // Return sample categories for now
+
+      // Create MPOP API instance for categories
+      const mpopAxios = this.createProductsAxiosInstance();
+
+      const defaultParams = {
+        page: 0,
+        size: 2000, // Maximum allowed by Hepsiburada API
+        // Only get active, available, leaf categories for product creation
+        // leaf: true,
+        // status: 'active',
+        // available: true
+      };
+
+      const queryParams = { ...defaultParams, ...params };
+
+      this.logger.info("Fetching categories from Hepsiburada MPOP API", {
+        url: `${this.productsApiUrl}/product/api/categories`,
+        params: queryParams,
+      });
+
+      const response = await mpopAxios.get("/product/api/categories", {
+        params: queryParams,
+        timeout: 30000,
+      });
+
+      if (response.data?.success && response.data?.data) {
+        this.logger.info(
+          `Successfully fetched ${response.data.data.length} categories from Hepsiburada`,
+          {
+            total: response.data.totalElements,
+            pages: response.data.totalPages,
+            currentPage: response.data.number,
+          }
+        );
+
+        // Transform to standard format compatible with existing code
+        return response.data.data.map((cat) => ({
+          id: cat.categoryId,
+          categoryId: cat.categoryId, // Keep both for compatibility
+          name: cat.name,
+          categoryName: cat.name, // Keep both for compatibility
+          parentId: cat.parentCategoryId,
+          parentCategoryId: cat.parentCategoryId, // Keep both for compatibility
+          path: cat.paths,
+          paths: cat.paths, // Keep both for compatibility
+          isLeaf: cat.leaf,
+          leaf: cat.leaf, // Keep both for compatibility
+          status: cat.status,
+          available: cat.available,
+          platformCategoryId: cat.categoryId.toString(),
+          level: this.calculateCategoryLevel(cat.paths),
+        }));
+      } else {
+        this.logger.warn(
+          "Hepsiburada categories API returned unsuccessful response",
+          {
+            success: response.data?.success,
+            message: response.data?.message,
+          }
+        );
+        throw new Error(
+          response.data?.message ||
+            "Invalid response format from Hepsiburada categories API"
+        );
+      }
+    } catch (error) {
+      this.logger.error("Failed to fetch categories from Hepsiburada", {
+        error: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url,
+      });
+
+      // Provide meaningful fallback categories instead of empty array
+      this.logger.warn(
+        "Falling back to basic Hepsiburada categories due to API error"
+      );
       return [
         {
-          categoryId: "elektronik",
+          id: 18026,
+          categoryId: 18026,
+          name: "Elektronik",
           categoryName: "Elektronik",
+          parentId: null,
           parentCategoryId: null,
+          path: "Elektronik",
+          paths: "Elektronik",
+          isLeaf: false,
+          leaf: false,
+          status: "ACTIVE",
+          available: true,
+          platformCategoryId: "18026",
+          level: 1,
         },
-        { categoryId: "giyim", categoryName: "Giyim", parentCategoryId: null },
         {
-          categoryId: "ev-yasam",
-          categoryName: "Ev & Yaşam",
+          id: 1000,
+          categoryId: 1000,
+          name: "Giyim & Aksesuar",
+          categoryName: "Giyim & Aksesuar",
+          parentId: null,
           parentCategoryId: null,
+          path: "Giyim & Aksesuar",
+          paths: "Giyim & Aksesuar",
+          isLeaf: false,
+          leaf: false,
+          status: "ACTIVE",
+          available: true,
+          platformCategoryId: "1000",
+          level: 1,
+        },
+        {
+          id: 2000,
+          categoryId: 2000,
+          name: "Ev & Bahçe",
+          categoryName: "Ev & Bahçe",
+          parentId: null,
+          parentCategoryId: null,
+          path: "Ev & Bahçe",
+          paths: "Ev & Bahçe",
+          isLeaf: false,
+          leaf: false,
+          status: "ACTIVE",
+          available: true,
+          platformCategoryId: "2000",
+          level: 1,
+        },
+        {
+          id: 3000,
+          categoryId: 3000,
+          name: "Kozmetik & Kişisel Bakım",
+          categoryName: "Kozmetik & Kişisel Bakım",
+          parentId: null,
+          parentCategoryId: null,
+          path: "Kozmetik & Kişisel Bakım",
+          paths: "Kozmetik & Kişisel Bakım",
+          isLeaf: false,
+          leaf: false,
+          status: "ACTIVE",
+          available: true,
+          platformCategoryId: "3000",
+          level: 1,
         },
       ];
-    } catch (error) {
-      this.logger.error("Failed to fetch Hepsiburada categories", {
-        error: error.message,
-      });
-      throw error;
     }
   }
 
   /**
+   * Calculate category level from path
+   * @param {string} paths - Category path (e.g., "Electronics > Phones > Mobile")
+   * @returns {number} Category level
+   */
+  calculateCategoryLevel(paths) {
+    if (!paths || typeof paths !== "string") return 1;
+    return paths.split(" > ").length;
+  }
+
+  /**
    * Get category attributes for Hepsiburada
+   * Based on official documentation: https://developers.hepsiburada.com/hepsiburada/reference/getallattributesbycategory
+   * @param {number} categoryId - Category ID
+   * @returns {Promise<Array>} Category attributes
    */
   async getCategoryAttributes(categoryId) {
     try {
       await this.initialize();
-      // Return sample attributes for now
+
+      if (!categoryId) {
+        throw new Error("Category ID is required");
+      }
+
+      const mpopAxios = this.createProductsAxiosInstance();
+
+      this.logger.info(
+        "Fetching category attributes from Hepsiburada MPOP API",
+        {
+          categoryId,
+          url: `${this.productsApiUrl}/product/api/categories/${categoryId}/attributes`,
+        }
+      );
+
+      const response = await mpopAxios.get(
+        `/product/api/categories/${categoryId}/attributes`,
+        {
+          timeout: 10000,
+        }
+      );
+
+      if (response.data?.success && response.data?.data) {
+        this.logger.info(
+          `Successfully fetched ${response.data.data.length} attributes for category ${categoryId}`,
+          {
+            categoryId,
+            attributesCount: response.data.data.length,
+          }
+        );
+
+        // Transform to standard format
+        return response.data.data.map((attr) => ({
+          id: attr.id,
+          attributeId: attr.id, // Keep both for compatibility
+          name: attr.name,
+          attributeName: attr.name, // Keep both for compatibility
+          type: attr.type,
+          attributeType: attr.type, // Keep both for compatibility
+          mandatory: attr.mandatory,
+          required: attr.mandatory, // Keep both for compatibility
+          multiValue: attr.multiValue,
+        }));
+      } else {
+        this.logger.warn(
+          "Hepsiburada category attributes API returned unsuccessful response",
+          {
+            categoryId,
+            success: response.data?.success,
+            message: response.data?.message,
+          }
+        );
+        throw new Error(
+          response.data?.message || "Failed to fetch category attributes"
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        "Failed to fetch category attributes from Hepsiburada",
+        {
+          categoryId,
+          error: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+        }
+      );
+
+      // Provide meaningful fallback attributes instead of empty array
+      this.logger.warn(
+        "Falling back to basic Hepsiburada category attributes due to API error",
+        {
+          categoryId,
+        }
+      );
       return [
         {
-          attributeId: "renk",
-          attributeName: "Renk",
+          id: "brand",
+          attributeId: "brand",
+          name: "Marka",
+          attributeName: "Marka",
+          type: "TEXT",
           attributeType: "TEXT",
+          mandatory: true,
           required: true,
+          multiValue: false,
         },
         {
-          attributeId: "beden",
-          attributeName: "Beden",
+          id: "model",
+          attributeId: "model",
+          name: "Model",
+          attributeName: "Model",
+          type: "TEXT",
           attributeType: "TEXT",
+          mandatory: false,
           required: false,
+          multiValue: false,
+        },
+        {
+          id: "color",
+          attributeId: "color",
+          name: "Renk",
+          attributeName: "Renk",
+          type: "TEXT",
+          attributeType: "TEXT",
+          mandatory: false,
+          required: false,
+          multiValue: false,
+        },
+        {
+          id: "size",
+          attributeId: "size",
+          name: "Beden",
+          attributeName: "Beden",
+          type: "TEXT",
+          attributeType: "TEXT",
+          mandatory: false,
+          required: false,
+          multiValue: false,
         },
       ];
-    } catch (error) {
-      this.logger.error("Failed to fetch Hepsiburada category attributes", {
-        error: error.message,
-      });
-      throw error;
     }
   }
 

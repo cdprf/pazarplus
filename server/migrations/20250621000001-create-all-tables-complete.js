@@ -2475,6 +2475,11 @@ module.exports = {
         ),
         allowNull: false,
       },
+      priority: {
+        type: Sequelize.ENUM("low", "normal", "high", "urgent"),
+        allowNull: false,
+        defaultValue: "normal",
+      },
       status: {
         type: Sequelize.ENUM(
           "pending",
@@ -4684,6 +4689,7 @@ module.exports = {
     await queryInterface.addIndex("background_tasks", ["platformConnectionId"]);
     await queryInterface.addIndex("background_tasks", ["status"]);
     await queryInterface.addIndex("background_tasks", ["taskType"]);
+    await queryInterface.addIndex("background_tasks", ["priority"]);
     await queryInterface.addIndex("background_tasks", ["updatedAt"]);
     await queryInterface.addIndex("background_tasks", ["startedAt"]);
     await queryInterface.addIndex("background_tasks", ["completedAt"]);

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
 import {
   CogIcon,
   ArrowPathIcon,
@@ -19,39 +20,38 @@ const OperationalAnalytics = ({ timeframe = "30d" }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchOperationalData = async () => {
-      try {
-        setLoading(true);
+  const fetchOperationalData = useCallback(async () => {
+    try {
+      setLoading(true);
 
-        // Fetch operational analytics data
-        const [realTime, performance, anomalyData] = await Promise.all([
-          analyticsService.getRealTimeMetrics
-            ? analyticsService.getRealTimeMetrics()
-            : Promise.resolve(null),
-          analyticsService.getOperationalAnalytics(timeframe),
-          analyticsService.getAnomalyDetection
-            ? analyticsService.getAnomalyDetection()
-            : Promise.resolve(null),
-        ]);
+      // Fetch operational analytics data
+      const [realTime, performance, anomalyData] = await Promise.all([
+        analyticsService.getRealTimeMetrics
+          ? analyticsService.getRealTimeMetrics()
+          : Promise.resolve(null),
+        analyticsService.getOperationalAnalytics(timeframe),
+        analyticsService.getAnomalyDetection
+          ? analyticsService.getAnomalyDetection()
+          : Promise.resolve(null),
+      ]);
 
-        setRealTimeData(realTime);
-        setPerformanceData(performance);
-        setAnomalies(anomalyData);
-      } catch (err) {
-        console.error("Operational analytics error:", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOperationalData();
-
-    // Set up real-time updates every 30 seconds
-    const interval = setInterval(fetchOperationalData, 30000);
-    return () => clearInterval(interval);
+      setRealTimeData(realTime);
+      setPerformanceData(performance);
+      setAnomalies(anomalyData);
+    } catch (err) {
+      console.error("Operational analytics error:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, [timeframe]);
+
+  useEffect(() => {
+    fetchOperationalData();
+  }, [fetchOperationalData]);
+
+  // Set up network-aware real-time updates every 30 seconds
+  useNetworkAwareInterval(fetchOperationalData, 30000);
 
   if (loading) {
     return (

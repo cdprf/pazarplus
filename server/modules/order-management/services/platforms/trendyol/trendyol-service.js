@@ -93,22 +93,26 @@ class TrendyolService extends BasePlatformService {
       // Validate required credentials
       if (!apiKey || !apiSecret || !supplierId) {
         const missingFields = [];
-        if (!apiKey) missingFields.push('apiKey');
-        if (!apiSecret) missingFields.push('apiSecret');
-        if (!supplierId) missingFields.push('supplierId');
-        
-        this.logger.error('Missing required Trendyol credentials', {
+        if (!apiKey) missingFields.push("apiKey");
+        if (!apiSecret) missingFields.push("apiSecret");
+        if (!supplierId) missingFields.push("supplierId");
+
+        this.logger.error("Missing required Trendyol credentials", {
           missingFields,
-          connectionId: this.connectionId
+          connectionId: this.connectionId,
         });
-        
+
         throw new Error(
-          `Missing required Trendyol credentials. API key, API secret, and supplier ID are all required. Missing: ${missingFields.join(', ')}`
+          `Missing required Trendyol credentials. API key, API secret, and supplier ID are all required. Missing: ${missingFields.join(
+            ", "
+          )}`
         );
       }
 
       // Format the auth credentials according to Trendyol's requirements
-      const authString = Buffer.from(`${apiKey}:${apiSecret}`).toString("base64");
+      const authString = Buffer.from(`${apiKey}:${apiSecret}`).toString(
+        "base64"
+      );
 
       const axios = require("axios");
       this.axiosInstance = axios.create({
@@ -121,19 +125,21 @@ class TrendyolService extends BasePlatformService {
         timeout: 30000,
       });
 
-      this.logger.info('Trendyol Axios instance setup completed successfully', {
+      this.logger.info("Trendyol Axios instance setup completed successfully", {
         baseURL: TRENDYOL_API.BASE_URL,
         timeout: 30000,
-        supplierId: supplierId ? `${supplierId}`.substring(0, 4) + '****' : 'N/A',
-        userAgent: `${supplierId} - SelfIntegration`
+        supplierId: supplierId
+          ? `${supplierId}`.substring(0, 4) + "****"
+          : "N/A",
+        userAgent: `${supplierId} - SelfIntegration`,
       });
 
       return true;
     } catch (error) {
-      this.logger.error('Failed to setup Trendyol Axios instance', {
+      this.logger.error("Failed to setup Trendyol Axios instance", {
         error: error.message,
         stack: error.stack,
-        connectionId: this.connectionId
+        connectionId: this.connectionId,
       });
       throw error;
     }
@@ -145,9 +151,9 @@ class TrendyolService extends BasePlatformService {
    * @returns {object} Decrypted credentials
    */
   decryptCredentials(encryptedCredentials) {
-    this.logger.debug('Decrypting Trendyol credentials', {
+    this.logger.debug("Decrypting Trendyol credentials", {
       credentialsType: typeof encryptedCredentials,
-      connectionId: this.connectionId
+      connectionId: this.connectionId,
     });
 
     try {
@@ -165,11 +171,11 @@ class TrendyolService extends BasePlatformService {
     } catch (error) {
       this.logger.error(
         `Failed to decrypt Trendyol credentials: ${error.message}`,
-        { 
+        {
           error: error.message,
           stack: error.stack,
           connectionId: this.connectionId,
-          credentialsType: typeof encryptedCredentials
+          credentialsType: typeof encryptedCredentials,
         }
       );
       throw new Error("Failed to decrypt credentials");
@@ -601,11 +607,14 @@ class TrendyolService extends BasePlatformService {
 
           // Order doesn't exist - create a new one
           try {
-            this.logger.debug(`Creating new Trendyol order for ${order.orderNumber}`, {
-              customerName: order.shipmentAddress?.fullName || 'Unknown',
-              status: order.status,
-              connectionId: this.connectionId
-            });
+            this.logger.debug(
+              `Creating new Trendyol order for ${order.orderNumber}`,
+              {
+                customerName: order.shipmentAddress?.fullName || "Unknown",
+                status: order.status,
+                connectionId: this.connectionId,
+              }
+            );
 
             // Use findOrCreate for atomic upsert behavior
             const [normalizedOrder, created] = await Order.findOrCreate({
@@ -688,7 +697,7 @@ class TrendyolService extends BasePlatformService {
               this.logger.info(`Successfully created new Trendyol order`, {
                 orderNumber: order.orderNumber,
                 orderId: normalizedOrder.id,
-                connectionId: this.connectionId
+                connectionId: this.connectionId,
               });
             } else {
               this.logger.debug(
@@ -3546,6 +3555,124 @@ class TrendyolService extends BasePlatformService {
       );
       return JSON.stringify(fallback);
     }
+  }
+
+  /**
+   * Get platform categories
+   * @returns {Promise<Array>} List of categories
+   */
+  async getCategories() {
+    try {
+      this.logger.info("🔍 Fetching categories from Trendyol API");
+
+      // Ensure connection is established
+      if (!this.connection) {
+        await this.initialize();
+      }
+
+      // Use the correct working endpoint
+      const endpoint = "/product-categories";
+
+      this.logger.debug("Making request to categories endpoint", {
+        endpoint,
+      });
+
+      const response = await this.axiosInstance.get(endpoint);
+      const categoriesData = response.data;
+
+      if (!categoriesData || !categoriesData.categories) {
+        this.logger.warn("Invalid categories response from Trendyol", {
+          response: typeof categoriesData,
+          hasData: !!categoriesData,
+          hasCategories: !!categoriesData?.categories,
+        });
+        return [];
+      }
+
+      // Extract categories from the nested structure
+      const rawCategories = categoriesData.categories;
+
+      // Flatten the hierarchical structure and transform to standard format
+      const categories = this.flattenCategories(rawCategories);
+
+      this.logger.info(
+        `✅ Retrieved ${categories.length} categories from Trendyol`
+      );
+      return categories;
+    } catch (error) {
+      // Safely serialize error to avoid circular structure issues
+      const errorInfo = {
+        message: error.message,
+        stack: error.stack,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        url: error.config?.url,
+      };
+
+      this.logger.error(
+        "❌ Error fetching categories from Trendyol:",
+        errorInfo
+      );
+
+      // Return empty array instead of throwing to prevent breaking the app
+      if (
+        error.message.includes("404") ||
+        error.message.includes("not found")
+      ) {
+        this.logger.warn(
+          "Categories endpoint not found, returning empty array"
+        );
+        return [];
+      }
+
+      // Create a clean error object without circular references
+      const cleanError = new Error(error.message);
+      cleanError.status = error.response?.status;
+      cleanError.statusText = error.response?.statusText;
+      throw cleanError;
+    }
+  }
+
+  /**
+   * Flatten hierarchical categories structure
+   * @param {Array} categories - Hierarchical categories array
+   * @param {number} level - Current depth level
+   * @returns {Array} Flattened categories array
+   */
+  flattenCategories(categories, level = 0) {
+    let flatCategories = [];
+
+    categories.forEach((category) => {
+      // Add current category
+      flatCategories.push({
+        id: category.id,
+        name: category.name,
+        parentId: category.parentId || null,
+        hasChildren:
+          category.subCategories && category.subCategories.length > 0,
+        isLeaf: !category.subCategories || category.subCategories.length === 0,
+        path: category.path || null,
+        level: level,
+        platformSpecific: {
+          trendyolId: category.id,
+          fullPath: category.fullPath,
+          commission: category.commission,
+          attributes: category.attributes || [],
+          subCategories: category.subCategories || [],
+        },
+      });
+
+      // Recursively add subcategories
+      if (category.subCategories && category.subCategories.length > 0) {
+        const subCategories = this.flattenCategories(
+          category.subCategories,
+          level + 1
+        );
+        flatCategories = flatCategories.concat(subCategories);
+      }
+    });
+
+    return flatCategories;
   }
 }
 

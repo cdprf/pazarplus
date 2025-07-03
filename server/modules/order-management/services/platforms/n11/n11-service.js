@@ -41,7 +41,7 @@ const N11_API = {
 
     // Category Management
     CATEGORIES: "/cdn/categories",
-    CATEGORY_ATTRIBUTES: "/cdn/categories/{categoryId}/attributes",
+    CATEGORY_ATTRIBUTES: "/cdn/category/{categoryId}/attribute",
 
     // Catalog Service
     CATALOG_SEARCH: "/catalog/v1/search",
@@ -138,7 +138,8 @@ class N11Service extends BasePlatformService {
           "Content-Type": "application/json",
           Accept: "application/json",
           appkey: appKey,
-          appsecret: appSecret,
+          // Note: Based on official N11 documentation, only appkey is required for categories API
+          // appsecret is not needed for /cdn/ endpoints
         },
         timeout: 30000,
       });
@@ -2616,59 +2617,193 @@ class N11Service extends BasePlatformService {
   }
 
   /**
-   * Get N11 categories
+   * Get N11 categories from real API
    */
   async getCategories() {
     try {
       await this.initialize();
-      // Return sample categories for now
+
+      this.logger.info("Fetching N11 categories from API", {
+        endpoint: N11_API.ENDPOINTS.CATEGORIES,
+        baseUrl: this.apiUrl,
+      });
+
+      const response = await this.axiosInstance.get(
+        N11_API.ENDPOINTS.CATEGORIES
+      );
+
+      this.logger.info("Successfully fetched N11 categories", {
+        categoriesCount: response.data?.length || 0,
+        status: response.status,
+      });
+
+      // Transform the response based on official N11 API documentation
+      // The API returns a hierarchical category tree
+      const categories = response.data || [];
+
+      // Flatten the category tree for easier use
+      const flattenCategories = (cats, level = 0, parentId = null) => {
+        let result = [];
+        cats.forEach((category) => {
+          result.push({
+            categoryId: category.id,
+            categoryName: category.name,
+            parentCategoryId: parentId,
+            level: level,
+            hasChildren:
+              category.subCategories && category.subCategories.length > 0,
+            fullPath: category.name,
+            isLeaf:
+              !category.subCategories || category.subCategories.length === 0,
+          });
+
+          // Recursively add subcategories
+          if (category.subCategories && category.subCategories.length > 0) {
+            result = result.concat(
+              flattenCategories(category.subCategories, level + 1, category.id)
+            );
+          }
+        });
+        return result;
+      };
+
+      return flattenCategories(categories);
+    } catch (error) {
+      this.logger.error("Failed to fetch N11 categories from API", {
+        error: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        endpoint: N11_API.ENDPOINTS.CATEGORIES,
+      });
+
+      // Fallback: Return basic categories if API fails
+      this.logger.warn("Falling back to basic N11 categories due to API error");
       return [
         {
           categoryId: 1000001,
           categoryName: "Elektronik",
           parentCategoryId: null,
+          level: 0,
+          hasChildren: true,
+          fullPath: "Elektronik",
         },
-        { categoryId: 1000002, categoryName: "Giyim", parentCategoryId: null },
+        {
+          categoryId: 1000002,
+          categoryName: "Giyim",
+          parentCategoryId: null,
+          level: 0,
+          hasChildren: true,
+          fullPath: "Giyim",
+        },
         {
           categoryId: 1000003,
           categoryName: "Ev & Bahçe",
           parentCategoryId: null,
+          level: 0,
+          hasChildren: true,
+          fullPath: "Ev & Bahçe",
         },
       ];
-    } catch (error) {
-      this.logger.error("Failed to fetch N11 categories", {
-        error: error.message,
-      });
-      throw error;
     }
   }
 
   /**
-   * Get category attributes for N11
+   * Get category attributes for N11 from real API
    */
   async getCategoryAttributes(categoryId) {
     try {
       await this.initialize();
-      // Return sample attributes for now
+
+      if (!categoryId) {
+        throw new Error("Category ID is required for fetching attributes");
+      }
+
+      const endpoint = N11_API.ENDPOINTS.CATEGORY_ATTRIBUTES.replace(
+        "{categoryId}",
+        categoryId
+      );
+
+      this.logger.info("Fetching N11 category attributes from API", {
+        categoryId,
+        endpoint,
+        baseUrl: this.apiUrl,
+      });
+
+      const response = await this.axiosInstance.get(endpoint);
+
+      this.logger.info("Successfully fetched N11 category attributes", {
+        categoryId,
+        attributesCount: response.data?.categoryAttributes?.length || 0,
+        status: response.status,
+      });
+
+      // Transform the response based on official N11 API documentation format
+      const categoryData = response.data || {};
+      const attributes = categoryData.categoryAttributes || [];
+
+      return attributes.map((attr) => ({
+        attributeId: attr.attributeId,
+        categoryId: attr.categoryId,
+        attributeName: attr.attributeName,
+        attributeType: "TEXT", // N11 doesn't specify type in response, defaulting to TEXT
+        required: attr.isMandatory || false,
+        isVariant: attr.isVariant || false,
+        isSlicer: attr.isSlicer || false,
+        isCustomValue: attr.isCustomValue || false,
+        isN11Grouping: attr.isN11Grouping || false,
+        attributeOrder: attr.attributeOrder || 0,
+        values: (attr.attributeValues || []).map((val) => ({
+          id: val.id,
+          value: val.value,
+        })),
+        description: `${attr.attributeName} - ${
+          attr.isMandatory ? "Zorunlu" : "Opsiyonel"
+        }`,
+      }));
+    } catch (error) {
+      this.logger.error("Failed to fetch N11 category attributes from API", {
+        categoryId,
+        error: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+      });
+
+      // Fallback: Return basic attributes if API fails
+      this.logger.warn(
+        "Falling back to basic N11 category attributes due to API error",
+        {
+          categoryId,
+        }
+      );
       return [
         {
           attributeId: "color",
           attributeName: "Renk",
           attributeType: "TEXT",
           required: true,
+          multipleChoice: false,
+          values: [],
+          description: "Ürün rengi",
         },
         {
           attributeId: "size",
           attributeName: "Beden",
           attributeType: "TEXT",
           required: false,
+          multipleChoice: false,
+          values: [],
+          description: "Ürün bedeni",
+        },
+        {
+          attributeId: "brand",
+          attributeName: "Marka",
+          attributeType: "TEXT",
+          required: true,
+          multipleChoice: false,
+          values: [],
+          description: "Ürün markası",
         },
       ];
-    } catch (error) {
-      this.logger.error("Failed to fetch N11 category attributes", {
-        error: error.message,
-      });
-      throw error;
     }
   }
 

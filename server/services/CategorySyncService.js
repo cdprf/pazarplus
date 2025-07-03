@@ -19,11 +19,36 @@ class CategorySyncService {
    * Get platform service instance
    * @param {string} platform - Platform name
    * @param {string} userId - User ID
-   * @param {string} connectionId - Connection ID
+   * @param {string} connectionId - Connection ID (optional, will lookup by user if not provided)
    * @returns {Object} Platform service instance
    */
   async getPlatformService(platform, userId, connectionId) {
     try {
+      const { PlatformConnection } = require("../models");
+
+      let actualConnectionId = connectionId;
+
+      // If no connectionId provided, look up by user and platform
+      if (!actualConnectionId) {
+        const connection = await PlatformConnection.findOne({
+          where: {
+            userId: userId,
+            platformType: platform,
+            isActive: true,
+          },
+        });
+
+        if (!connection) {
+          throw new Error(`No active ${platform} connection found for user`);
+        }
+
+        actualConnectionId = connection.id;
+        this.logger.debug(`Found connection for ${platform}`, {
+          userId,
+          connectionId: actualConnectionId,
+        });
+      }
+
       let ServiceClass;
 
       switch (platform.toLowerCase()) {
@@ -40,7 +65,8 @@ class CategorySyncService {
           throw new Error(`Unsupported platform: ${platform}`);
       }
 
-      const service = new ServiceClass(userId, connectionId);
+      // Pass the connection ID (integer) as the first parameter, not userId
+      const service = new ServiceClass(actualConnectionId);
       await service.initialize();
       return service;
     } catch (error) {
@@ -220,6 +246,15 @@ class CategorySyncService {
         ? String(platformCategory.parentId)
         : null,
       isActive: true,
+      userId: userId, // Add userId to base data to satisfy database constraint
+      level: 0,
+      isLeaf: false,
+      fieldDefinitions: {},
+      requiredFields: [],
+      restrictions: {},
+      metadata: {},
+      syncStatus: "completed",
+      lastSyncAt: new Date(),
     };
 
     // Platform-specific transformations (only use fields that exist)

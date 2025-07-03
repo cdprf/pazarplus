@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import logger from "../utils/logger";
 
 export const useWebSocketQuery = (queryKey, events, options = {}) => {
   const [data, setData] = useState(null);
@@ -30,11 +31,19 @@ export const useWebSocketQuery = (queryKey, events, options = {}) => {
 
       try {
         setLoading(true);
-        console.log(`Attempting WebSocket connection to: ${wsUrl}`);
+        logger.websocket.info("Attempting connection", {
+          wsUrl,
+          queryKey: queryKeyRef.current,
+          events: eventsRef.current,
+        });
         ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
-          console.log("WebSocket connected for query:", queryKeyRef.current);
+          logger.websocket.success("Connection established", {
+            queryKey: queryKeyRef.current,
+            events: eventsRef.current,
+            readyState: ws.readyState,
+          });
           setLoading(false);
           setError(null);
 
@@ -42,18 +51,33 @@ export const useWebSocketQuery = (queryKey, events, options = {}) => {
           setTimeout(() => {
             if (ws && ws.readyState === WebSocket.OPEN && queryKeyRef.current) {
               try {
-                ws.send(
-                  JSON.stringify({
-                    type: "subscribe",
-                    channels: ["all"], // Subscribe to all notifications
-                    queryKey: queryKeyRef.current,
-                    events: eventsRef.current,
-                  })
-                );
-                console.log("Subscription message sent successfully");
+                const subscriptionMessage = {
+                  type: "subscribe",
+                  channels: ["all"], // Subscribe to all notifications
+                  queryKey: queryKeyRef.current,
+                  events: eventsRef.current,
+                };
+
+                ws.send(JSON.stringify(subscriptionMessage));
+                logger.websocket.info("Subscription message sent", {
+                  message: subscriptionMessage,
+                });
               } catch (error) {
-                console.error("Failed to send subscription message:", error);
+                logger.websocket.error("Failed to send subscription message", {
+                  error: error.message,
+                  stack: error.stack,
+                  queryKey: queryKeyRef.current,
+                });
               }
+            } else {
+              logger.websocket.warn(
+                "Cannot send subscription - connection not ready",
+                {
+                  wsExists: !!ws,
+                  readyState: ws?.readyState,
+                  queryKey: queryKeyRef.current,
+                }
+              );
             }
           }, 100); // Small delay to ensure connection is fully established
         };
@@ -61,43 +85,85 @@ export const useWebSocketQuery = (queryKey, events, options = {}) => {
         ws.onmessage = (event) => {
           try {
             const message = JSON.parse(event.data);
-            console.log("WebSocket message received:", message);
+            logger.websocket.info("Message received", {
+              message,
+              queryKey: queryKeyRef.current,
+              messageType: message.type,
+            });
             setData(message);
           } catch (err) {
-            console.error("Failed to parse WebSocket message:", err);
+            logger.websocket.error("Failed to parse message", {
+              error: err.message,
+              rawData: event.data,
+              queryKey: queryKeyRef.current,
+            });
           }
         };
 
         ws.onclose = (event) => {
-          console.log("WebSocket closed:", event.code, event.reason);
+          logger.websocket.info("Connection closed", {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean,
+            queryKey: queryKeyRef.current,
+          });
+
           if (isComponentMounted && event.code !== 1000) {
+            logger.websocket.info("Attempting reconnection in 3 seconds", {
+              code: event.code,
+              reason: event.reason,
+              queryKey: queryKeyRef.current,
+            });
             // Reconnect after 3 seconds if not a normal closure
             reconnectTimer = setTimeout(connect, 3000);
           }
         };
 
         ws.onerror = (error) => {
-          console.error("WebSocket error:", error);
+          logger.websocket.error("Connection error", {
+            error,
+            queryKey: queryKeyRef.current,
+            wsUrl,
+            readyState: ws?.readyState,
+          });
           setError("WebSocket connection failed");
           setLoading(false);
         };
       } catch (err) {
-        console.error("Failed to create WebSocket connection:", err);
+        logger.websocket.error("Failed to create connection", {
+          error: err.message,
+          stack: err.stack,
+          wsUrl,
+          queryKey: queryKeyRef.current,
+        });
         setError("Failed to establish WebSocket connection");
         setLoading(false);
       }
     };
 
     // Start connection
+    logger.websocket.info("Initializing connection", {
+      queryKey: queryKeyRef.current,
+      events: eventsRef.current,
+      wsUrl,
+    });
     connect();
 
     // Cleanup function
     return () => {
+      logger.websocket.info("Cleaning up connection", {
+        queryKey: queryKeyRef.current,
+        hadConnection: !!ws,
+        readyState: ws?.readyState,
+      });
+
       isComponentMounted = false;
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
+        logger.websocket.debug("Cancelled reconnection timer");
       }
       if (ws && ws.readyState === WebSocket.OPEN) {
+        logger.websocket.info("Closing connection gracefully");
         ws.close(1000, "Component unmounting");
       }
     };

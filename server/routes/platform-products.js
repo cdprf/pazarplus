@@ -4,8 +4,24 @@ const { body, param, query } = require("express-validator");
 const platformProductController = require("../controllers/platform-product-controller");
 const { auth } = require("../middleware/auth");
 
-// Temporarily disable auth for testing
-// router.use(auth);
+// Development middleware that adds a fallback user if none exists
+const devAuth = (req, res, next) => {
+  if (req.user) {
+    // User already authenticated, continue
+    return next();
+  }
+
+  // Add development user for testing
+  req.user = {
+    id: "38d86fd2-bf87-4271-b49d-f1a7645ee4ef",
+    email: "dev@example.com",
+  };
+
+  next();
+};
+
+// Use auth for production, devAuth as fallback
+router.use(process.env.NODE_ENV === "production" ? auth : devAuth);
 
 /**
  * @swagger

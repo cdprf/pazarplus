@@ -745,17 +745,30 @@ models.BackgroundTask.hasMany(models.BackgroundTask, {
 // === END LEGACY PRODUCT MANAGEMENT SYSTEM ===
 // ========================================
 
-// PlatformVariant <-> Product (One-to-One optional)
+// PlatformVariant <-> Product (One-to-Many optional)
 models.PlatformVariant.belongsTo(models.Product, {
   foreignKey: "productId",
   as: "product",
   allowNull: true,
 });
-models.Product.hasOne(models.PlatformVariant, {
+models.Product.hasMany(models.PlatformVariant, {
   foreignKey: "productId",
-  as: "platformVariant",
+  as: "platformVariants",
   onDelete: "SET NULL",
 });
+
+// MainProduct <-> PlatformVariant (One-to-Many)
+// Note: Both MainProduct -> PlatformVariant and PlatformVariant -> MainProduct
+// associations are defined in their respective model files
+
+// User <-> MainProduct (One-to-Many)
+models.User.hasMany(models.MainProduct, {
+  foreignKey: "userId",
+  as: "mainProducts",
+  onDelete: "CASCADE",
+  hooks: true,
+});
+// Note: MainProduct -> User association is defined in MainProduct.js model file
 
 // ========================================
 // === CUSTOMER QUESTIONS & REPLIES ASSOCIATIONS ===

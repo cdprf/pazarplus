@@ -7,6 +7,7 @@
 
 const logger = require("../utils/logger");
 const backgroundVariantDetectionService = require("../services/background-variant-detection-service");
+const { taskQueueManager } = require("../services/TaskQueueManager");
 
 class BackgroundServicesManager {
   constructor() {
@@ -26,6 +27,9 @@ class BackgroundServicesManager {
     logger.info("Initializing background services...");
 
     try {
+      // Start task queue manager first
+      await this.startTaskQueueManager();
+
       // Start variant detection service
       await this.startVariantDetectionService();
 
@@ -33,6 +37,63 @@ class BackgroundServicesManager {
       logger.info("All background services initialized successfully");
     } catch (error) {
       logger.error("Error initializing background services:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Start the task queue manager
+   */
+  async startTaskQueueManager() {
+    try {
+      logger.info("Starting task queue manager...");
+
+      // Check if task queue manager is already running
+      const status = taskQueueManager.getStatus();
+      if (status.isProcessing) {
+        logger.warn("Task queue manager is already running", { status });
+        return;
+      }
+
+      // Start the task queue manager
+      taskQueueManager.start();
+
+      // Verify it started successfully
+      const newStatus = taskQueueManager.getStatus();
+      logger.info("Task queue manager started successfully", {
+        status: newStatus,
+      });
+
+      this.services.push({
+        name: "task-queue-manager",
+        service: taskQueueManager,
+        startedAt: new Date(),
+        status: newStatus,
+      });
+
+      // Set up logging for task queue events
+      taskQueueManager.on("taskProgress", (taskId, progress) => {
+        logger.debug("Task progress", { taskId, progress });
+      });
+
+      taskQueueManager.on("taskCompleted", (taskId, result) => {
+        logger.info("Task completed", { taskId, result });
+      });
+
+      taskQueueManager.on("taskFailed", (taskId, error) => {
+        logger.error("Task failed", { taskId, error });
+      });
+
+      taskQueueManager.on("taskCancelled", (taskId) => {
+        logger.info("Task cancelled", { taskId });
+      });
+
+      logger.info("Task queue manager event listeners configured");
+    } catch (error) {
+      logger.error("Error starting task queue manager:", {
+        error: error.message,
+        stack: error.stack,
+      });
       throw error;
     }
   }

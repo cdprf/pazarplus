@@ -49,6 +49,9 @@ try {
   // Import platform operations routes
   const platformOperationsRoutes = require("./platform-operations");
 
+  // Import platform variants routes
+  const platformVariantsRoutes = require("./platform-variants");
+
   // Import platform products routes
   const platformProductsRoutes = require("./platform-products");
 
@@ -102,6 +105,9 @@ try {
 
   // Platform operations routes
   router.use("/platform-operations", platformOperationsRoutes);
+
+  // Platform variants routes
+  router.use("/platform-variants", platformVariantsRoutes);
 
   // Platform products routes
   router.use("/platform-products", platformProductsRoutes);

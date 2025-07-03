@@ -8,22 +8,7 @@ class BackgroundTaskController {
    * GET /api/background-tasks
    */
   static async getTasks(req, res) {
-    console.log('🔍 BackgroundTaskController.getTasks called');
-    console.log('User:', req.user ? `${req.user.id} (${req.user.email})` : 'No user');
-    console.log('Query params:', req.query);
-    
     try {
-      // Check if user is authenticated
-      if (!req.user) {
-        console.log('❌ No user authenticated');
-        return res.status(401).json({
-          success: false,
-          message: "Authentication required",
-        });
-      }
-
-      console.log('✅ User authenticated, proceeding...');
-
       const {
         page = 1,
         limit = 20,
@@ -56,16 +41,12 @@ class BackgroundTaskController {
         dateTo,
       });
 
-      console.log('✅ BackgroundTaskService.getTasks completed successfully');
-      console.log('Result:', { tasksCount: result.tasks.length, pagination: result.pagination });
-
       res.json({
         success: true,
         data: result.tasks,
         pagination: result.pagination,
       });
     } catch (error) {
-      console.error('❌ Error in BackgroundTaskController.getTasks:', error);
       logger.error("Error fetching background tasks:", error);
       res.status(500).json({
         success: false,
@@ -376,6 +357,25 @@ class BackgroundTaskController {
       });
     } catch (error) {
       logger.error("Error retrying task:", error);
+
+      // Provide more specific error responses
+      if (error.message === "Task not found") {
+        return res.status(404).json({
+          success: false,
+          message: "Task not found",
+          error: error.message,
+        });
+      }
+
+      if (error.message === "Task cannot be retried") {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Task cannot be retried. The task may have already completed successfully or exceeded maximum retry attempts.",
+          error: error.message,
+        });
+      }
+
       res.status(500).json({
         success: false,
         message: "Failed to retry task",
@@ -435,36 +435,57 @@ class BackgroundTaskController {
   }
 
   /**
-   * Get task statistics
+   * Get task statistics with enhanced metrics
    * GET /api/background-tasks/stats
    */
   static async getStats(req, res) {
-    console.log('🔍 BackgroundTaskController.getStats called');
-    console.log('User:', req.user ? `${req.user.id} (${req.user.email})` : 'No user');
-    
+    console.log("🔍 BackgroundTaskController.getStats called");
+    console.log(
+      "User:",
+      req.user ? `${req.user.id} (${req.user.email})` : "No user"
+    );
+
     try {
       // Check if user is authenticated
       if (!req.user) {
-        console.log('❌ No user authenticated for stats');
+        console.log("❌ No user authenticated for stats");
         return res.status(401).json({
           success: false,
           message: "Authentication required",
         });
       }
 
-      console.log('✅ User authenticated for stats, proceeding...');
+      console.log("✅ User authenticated for stats, proceeding...");
 
       const { timeframe = "24h" } = req.query;
 
       // Filter by user if not admin
       const userId = req.user.role === "admin" ? null : req.user.id;
 
+      // Get basic task stats
       const stats = await BackgroundTaskService.getTaskStats(userId, timeframe);
 
-      res.json({
+      // Get enhanced TaskQueueManager metrics (admin only or if user has running tasks)
+      let queueMetrics = null;
+      if (req.user.role === "admin") {
+        const { taskQueueManager } = require("../services/TaskQueueManager");
+        queueMetrics = taskQueueManager.getMetrics();
+
+        // Add queue status
+        queueMetrics.status = taskQueueManager.getStatus();
+      }
+
+      const response = {
         success: true,
-        data: stats,
-      });
+        data: {
+          ...stats,
+          queueMetrics,
+          timestamp: new Date().toISOString(),
+          timeframe,
+        },
+      };
+
+      res.json(response);
     } catch (error) {
       logger.error("Error fetching task stats:", error);
       res.status(500).json({

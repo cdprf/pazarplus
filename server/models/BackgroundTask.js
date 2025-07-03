@@ -169,10 +169,7 @@ module.exports = (sequelize) => {
         defaultValue: 0,
         allowNull: false,
         validate: {
-          min: {
-            args: 0,
-            msg: "Retry count cannot be negative",
-          },
+          min: 0,
         },
       },
       maxRetries: {
@@ -180,14 +177,8 @@ module.exports = (sequelize) => {
         defaultValue: 3,
         allowNull: false,
         validate: {
-          min: {
-            args: 0,
-            msg: "Max retries cannot be negative",
-          },
-          max: {
-            args: 10,
-            msg: "Max retries cannot exceed 10",
-          },
+          min: 0,
+          max: 10,
         },
       },
       parentTaskId: {
@@ -268,16 +259,56 @@ module.exports = (sequelize) => {
               task.logs = [];
             }
 
-            // Add creation log
+            // Add detailed creation log
             task.logs.push({
               timestamp: new Date(),
               level: "info",
-              message: `Task created with type: ${task.taskType}`,
+              message: `Task created: ${task.taskType}`,
               phase: "created",
+              data: {
+                taskType: task.taskType,
+                priority: task.priority,
+                userId: task.userId,
+                platformConnectionId: task.platformConnectionId,
+                config: task.config,
+                maxRetries: task.maxRetries,
+                timeoutAt: task.timeoutAt,
+              },
             });
+
+            console.log(
+              `[BACKGROUND_TASK] Task created - ID: ${
+                task.id || "pending"
+              }, Type: ${task.taskType}, User: ${task.userId}`
+            );
           } catch (error) {
             console.warn(
               "BackgroundTask beforeCreate hook error:",
+              error.message
+            );
+          }
+        },
+        afterCreate: (task) => {
+          try {
+            console.log(
+              `[BACKGROUND_TASK] Task saved to database - ID: ${task.id}, Status: ${task.status}`
+            );
+            if (!task.logs) task.logs = [];
+            task.logs.push({
+              timestamp: new Date(),
+              level: "info",
+              message: "Task created and saved to database",
+              phase: "persisted",
+              data: {
+                taskId: task.id,
+                status: task.status,
+                createdAt: task.createdAt,
+              },
+            });
+            // Don't call save() here to avoid infinite loop
+          } catch (error) {
+            console.warn(
+              "BackgroundTask afterCreate hook error:",
               error.message
             );
           }
@@ -305,19 +336,96 @@ module.exports = (sequelize) => {
               task.cancelledAt = new Date();
             }
 
-            // Add status change log
+            // Add detailed status change log
             if (task.changed && task.changed("status")) {
+              const previousStatus = task._previousDataValues?.status;
               if (!task.logs) task.logs = [];
+
               task.logs.push({
                 timestamp: new Date(),
                 level: "info",
-                message: `Status changed to: ${task.status}`,
+                message: `Status changed from '${previousStatus}' to '${task.status}'`,
                 phase: task.status,
+                data: {
+                  previousStatus,
+                  newStatus: task.status,
+                  taskId: task.id,
+                  taskType: task.taskType,
+                  retryCount: task.retryCount,
+                  duration: task.actualDuration,
+                },
               });
+
+              console.log(
+                `[BACKGROUND_TASK] Status change - ID: ${task.id}, ${previousStatus} -> ${task.status}`
+              );
+            }
+
+            // Log progress updates
+            if (task.changed && task.changed("progress")) {
+              const progress = task.progress;
+              if (progress && typeof progress === "object") {
+                if (!task.logs) task.logs = [];
+                task.logs.push({
+                  timestamp: new Date(),
+                  level: "debug",
+                  message: `Progress updated: ${progress.percentage}% (${progress.current}/${progress.total}) - ${progress.message}`,
+                  phase: progress.phase || task.status,
+                  data: progress,
+                });
+              }
+            }
+
+            // Log error details
+            if (task.changed && task.changed("error") && task.error) {
+              if (!task.logs) task.logs = [];
+              task.logs.push({
+                timestamp: new Date(),
+                level: "error",
+                message: `Task error: ${task.error}`,
+                phase: "error",
+                data: {
+                  error: task.error,
+                  taskId: task.id,
+                  taskType: task.taskType,
+                  retryCount: task.retryCount,
+                },
+              });
+
+              console.error(
+                `[BACKGROUND_TASK] Task error - ID: ${task.id}, Error: ${task.error}`
+              );
             }
           } catch (error) {
             console.warn(
               "BackgroundTask beforeUpdate hook error:",
+              error.message
+            );
+          }
+        },
+        afterUpdate: (task) => {
+          try {
+            // Log completed tasks with detailed results
+            if (task.status === "completed" && task.result) {
+              console.log(
+                `[BACKGROUND_TASK] Task completed - ID: ${task.id}, Duration: ${task.actualDuration}s`
+              );
+            }
+
+            // Log failed tasks
+            if (task.status === "failed") {
+              console.error(
+                `[BACKGROUND_TASK] Task failed - ID: ${task.id}, Error: ${task.error}`
+              );
+            }
+
+            // Log cancelled tasks
+            if (task.status === "cancelled") {
+              console.log(`[BACKGROUND_TASK] Task cancelled - ID: ${task.id}`);
+            }
+          } catch (error) {
+            console.warn(
+              "BackgroundTask afterUpdate hook error:",
               error.message
             );
           }
@@ -421,29 +529,141 @@ module.exports = (sequelize) => {
       message,
       updatedAt: new Date(),
     };
+
+    // Log progress updates to console for immediate visibility
+    console.log(
+      `[BACKGROUND_TASK:${this.id}] Progress: ${percentage}% (${current}/${total}) - ${message}`
+    );
+
     return this.save();
   };
 
-  BackgroundTask.prototype.addLog = function (level, message, data = null) {
+  BackgroundTask.prototype.addLog = async function (
+    level,
+    message,
+    data = null
+  ) {
     try {
+      // Initialize logs array if not exists
       if (!this.logs) this.logs = [];
-      this.logs.push({
+
+      // Validate log level
+      const validLevels = ["info", "error", "warn", "debug"];
+      const logLevel = validLevels.includes(level) ? level : "info";
+
+      // Create log entry with consistent structure
+      const logEntry = {
         timestamp: new Date(),
-        level,
-        message,
-        data,
+        level: logLevel,
+        message: message || "Log entry (no message)",
+        data: data || null,
         phase: this.progress?.phase || this.status,
-      });
-      return this.save();
+        taskId: this.id,
+        taskType: this.taskType,
+      };
+
+      // Add to logs array
+      this.logs.push(logEntry);
+
+      // Implement log rotation to prevent memory issues
+      const MAX_LOGS = parseInt(process.env.MAX_TASK_LOGS || "500", 10);
+      if (this.logs.length > MAX_LOGS) {
+        // Keep important logs (errors and warnings) and recent logs
+        const importantLogs = this.logs
+          .filter((log) => log.level === "error" || log.level === "warn")
+          .slice(-100); // Keep last 100 important logs
+
+        const recentLogs = this.logs.slice(-200); // Keep last 200 logs overall
+
+        // Combine and deduplicate
+        const logsToKeep = new Map();
+        [...importantLogs, ...recentLogs].forEach((log) => {
+          const key = `${log.timestamp.getTime()}_${
+            log.level
+          }_${log.message.substring(0, 50)}`;
+          logsToKeep.set(key, log);
+        });
+
+        this.logs = Array.from(logsToKeep.values()).sort(
+          (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+        );
+
+        // Add a log rotation notice
+        if (this.logs.length < MAX_LOGS * 0.8) {
+          this.logs.push({
+            timestamp: new Date(),
+            level: "info",
+            message: `Log rotation performed - kept ${this.logs.length} important/recent entries`,
+            data: {
+              rotatedAt: new Date(),
+              keptLogs: this.logs.length,
+              maxLogs: MAX_LOGS,
+            },
+            phase: this.progress?.phase || this.status,
+            taskId: this.id,
+            taskType: this.taskType,
+          });
+        }
+      }
+
+      // Also log to console for immediate visibility with better formatting
+      const consoleLogLevel =
+        logLevel === "error"
+          ? "error"
+          : logLevel === "warn"
+          ? "warn"
+          : logLevel === "debug"
+          ? "debug"
+          : "log";
+
+      const contextInfo = data
+        ? ` | Context: ${JSON.stringify(data).substring(0, 100)}`
+        : "";
+      console[consoleLogLevel](
+        `[TASK:${this.id}] [${
+          this.taskType
+        }] [${logLevel.toUpperCase()}] ${message}${contextInfo}`
+      );
+
+      // Use a more robust save approach that retries on failure
+      try {
+        await this.save();
+      } catch (saveError) {
+        console.warn(
+          `BackgroundTask save error on addLog: ${saveError.message}`
+        );
+        // Try one more time after a short delay
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        await this.save();
+      }
+
+      return this;
     } catch (error) {
-      console.warn("BackgroundTask addLog error:", error.message);
-      return Promise.resolve(this);
+      console.warn("BackgroundTask addLog error:", error.message, error.stack);
+      // Don't swallow errors completely - return the instance but don't hide the error
+      return this;
     }
   };
 
   BackgroundTask.prototype.markAsStarted = function () {
     this.status = "running";
     this.startedAt = new Date();
+
+    // Add log entry for task start
+    if (!this.logs) this.logs = [];
+    this.logs.push({
+      timestamp: new Date(),
+      level: "info",
+      message: "Task execution started",
+      phase: "running",
+      data: {
+        startedAt: this.startedAt,
+        taskId: this.id,
+        taskType: this.taskType,
+      },
+    });
+
+    console.log(`[BACKGROUND_TASK:${this.id}] Task execution started`);
     return this.save();
   };
 
@@ -488,7 +708,7 @@ module.exports = (sequelize) => {
   BackgroundTask.prototype.canRetry = function () {
     return (
       this.retryCount < this.maxRetries &&
-      ["failed", "timeout"].includes(this.status)
+      ["failed", "timeout", "cancelled"].includes(this.status)
     );
   };
 

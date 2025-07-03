@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useAlert } from "../../contexts/AlertContext";
+import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
 import api from "../../services/api";
 import {
   HomeIcon,
@@ -103,15 +104,10 @@ export const useOrderCounts = () => {
 
   useEffect(() => {
     fetchOrderCounts();
-
-    // Enhanced refresh with proper cleanup
-    const interval = setInterval(fetchOrderCounts, 30000);
-
-    // Cleanup function to prevent memory leaks
-    return () => {
-      clearInterval(interval);
-    };
   }, [fetchOrderCounts]);
+
+  // Use network-aware interval for order count polling
+  useNetworkAwareInterval(fetchOrderCounts, 30000);
 
   return { orderCounts, isLoading, error, refetch: fetchOrderCounts };
 };
@@ -486,6 +482,26 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
       },
     ],
   },
+  ...(process.env.NODE_ENV === "development"
+    ? [
+        {
+          id: "developer",
+          title: "Developer",
+          collapsible: true,
+          defaultOpen: false,
+          items: [
+            {
+              name: "Developer Tools",
+              href: "/developer",
+              icon: CommandLineIcon,
+              description: "Geliştirici araçları ve ayarları",
+              ariaLabel: "Geliştirici araçları",
+              badge: "dev",
+            },
+          ],
+        },
+      ]
+    : []),
 ];
 
 // Memoized navigation sections hook

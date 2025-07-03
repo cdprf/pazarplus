@@ -15,6 +15,24 @@ class PlatformProductController {
   }
 
   /**
+   * Get user ID with development fallback
+   * @param {Object} req - Express request object
+   * @returns {string} User ID
+   */
+  getUserId(req) {
+    let userId = req.user?.id;
+    if (!userId) {
+      // Development fallback - use an existing user with platform connections
+      userId = "38d86fd2-bf87-4271-b49d-f1a7645ee4ef"; // User that has active connections
+      this.logger.warn("⚠️ Using fallback user ID for development", {
+        fallbackUserId: userId,
+        originalUrl: req.originalUrl,
+      });
+    }
+    return userId;
+  }
+
+  /**
    * Create a single product on a specific platform
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
@@ -23,7 +41,7 @@ class PlatformProductController {
     try {
       const { platformId } = req.params;
       const { productData, connectionId } = req.body;
-      const userId = req.user?.id || "e6b500f3-e877-45d4-9bf0-cb08137ebe5a"; // Fallback to dev user for testing
+      const userId = this.getUserId(req);
 
       if (!productData) {
         return res.status(400).json({
@@ -492,7 +510,7 @@ class PlatformProductController {
     try {
       const { platformId } = req.params;
       const { connectionId, forceRefresh } = req.query;
-      const userId = req.user?.id || "e6b500f3-e877-45d4-9bf0-cb08137ebe5a"; // Fallback to dev user for testing
+      const userId = this.getUserId(req);
 
       // Use the category sync service to get categories
       const categories = await this.categorySyncService.getCategories(
@@ -982,7 +1000,7 @@ class PlatformProductController {
   async getAvailableCategories(req, res) {
     try {
       const { platformId } = req.params;
-      const userId = req.user?.id || "e6b500f3-e877-45d4-9bf0-cb08137ebe5a";
+      const userId = this.getUserId(req);
 
       this.logger.info(
         `🔍 Fetching available categories for platform: ${platformId}`

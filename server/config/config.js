@@ -1,4 +1,4 @@
-require("dotenv").config({ path: "../../.env.unified" });
+require("dotenv").config();
 
 const config = {
   // Server configuration
@@ -78,7 +78,10 @@ const config = {
   },
 
   // Expose rate limiting properties for backwards compatibility
-  RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000", 10),
+  RATE_LIMIT_WINDOW_MS: parseInt(
+    process.env.RATE_LIMIT_WINDOW_MS || "900000",
+    10
+  ),
   RATE_LIMIT_MAX_REQUESTS:
     process.env.NODE_ENV === "development"
       ? parseInt(process.env.RATE_LIMIT_MAX || "1000", 10)
@@ -88,9 +91,12 @@ const config = {
   NODE_ENV: process.env.NODE_ENV || "development",
 
   // Feature flags
-  ENABLE_COMPLIANCE_MODULE: process.env.ENABLE_COMPLIANCE_MODULE === "true" || false,
-  ENABLE_ANALYTICS_MODULE: process.env.ENABLE_ANALYTICS_MODULE === "true" || false,
-  ENABLE_B2B_MARKETPLACE: process.env.ENABLE_B2B_MARKETPLACE === "true" || false,
+  ENABLE_COMPLIANCE_MODULE:
+    process.env.ENABLE_COMPLIANCE_MODULE === "true" || false,
+  ENABLE_ANALYTICS_MODULE:
+    process.env.ENABLE_ANALYTICS_MODULE === "true" || false,
+  ENABLE_B2B_MARKETPLACE:
+    process.env.ENABLE_B2B_MARKETPLACE === "true" || false,
 
   // CORS configuration for network access
   CORS_ORIGINS: [
@@ -111,5 +117,8 @@ const config = {
     maxSize: process.env.LOG_MAX_SIZE || "5m",
   },
 };
+
+// Export JWT_SECRET separately for compatibility
+config.JWT_SECRET = config.jwt.secret;
 
 module.exports = config;

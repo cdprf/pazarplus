@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
 import analyticsService from "../../services/analyticsService";
 import {
   formatCurrency,
@@ -234,12 +235,14 @@ const BusinessIntelligenceDashboard = () => {
   // Auto-refresh functionality
   useEffect(() => {
     fetchAnalytics();
+  }, [fetchAnalytics]);
 
+  // Network-aware auto-refresh
+  useNetworkAwareInterval(() => {
     if (autoRefresh) {
-      const interval = setInterval(fetchAnalytics, 5 * 60 * 1000); // 5 minutes
-      return () => clearInterval(interval);
+      fetchAnalytics();
     }
-  }, [fetchAnalytics, autoRefresh]);
+  }, 5 * 60 * 1000); // 5 minutes
 
   // Helper functions for UI
   const getTrendIcon = useCallback((value) => {

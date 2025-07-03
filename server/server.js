@@ -157,10 +157,30 @@ async function startServer() {
               "Setting up background services initialization - debug point 3",
               { service: "pazar-plus" }
             );
-            setTimeout(() => {
-              logger.info("Initializing background services - debug point 4", {
-                service: "pazar-plus",
+            // Initialize TaskQueueManager immediately to avoid race conditions with task creation
+            const { taskQueueManager } = require("./services/TaskQueueManager");
+
+            if (!taskQueueManager.getStatus().isProcessing) {
+              logger.info(
+                "Starting TaskQueueManager immediately to handle incoming tasks",
+                {
+                  service: "pazar-plus",
+                }
+              );
+              taskQueueManager.start();
+              logger.info("TaskQueueManager started successfully", {
+                status: taskQueueManager.getStatus(),
               });
+            }
+
+            // Initialize other background services with delay
+            setTimeout(() => {
+              logger.info(
+                "Initializing remaining background services - debug point 4",
+                {
+                  service: "pazar-plus",
+                }
+              );
               backgroundServicesManager
                 .initialize()
                 .then(() => {
@@ -175,7 +195,7 @@ async function startServer() {
                     stack: error.stack,
                   });
                 });
-            }, 30000); // Increased delay from 3 seconds to 30 seconds to allow server startup to complete
+            }, 10000); // Reduced delay since TaskQueueManager is already running
 
             logger.info("Background job services initialization queued", {
               service: "pazar-plus",

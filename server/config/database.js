@@ -12,7 +12,7 @@ const dbConfig = {
   host: process.env.DB_HOST || "localhost",
   port: process.env.DB_PORT || 5432,
   database: process.env.DB_NAME || "pazar_plus",
-  username: process.env.DB_USER || "postgres",
+  username: process.env.DB_USER || process.env.USER || "ahmedabaas",
   password: process.env.DB_PASSWORD || "",
   logging: process.env.NODE_ENV === "development" ? console.log : false,
   dialectOptions: {
@@ -26,11 +26,19 @@ const dbConfig = {
     connectTimeout: 5000,
   },
   pool: {
-    max: process.env.NODE_ENV === "production" ? 20 : 5,
-    min: 0,
-    acquire: 10000,
-    idle: 5000,
-    evict: 1000,
+    max: parseInt(
+      process.env.DB_POOL_MAX ||
+        (process.env.NODE_ENV === "production" ? "25" : "15"),
+      10
+    ),
+    min: parseInt(process.env.DB_POOL_MIN || "2", 10),
+    acquire: parseInt(process.env.DB_POOL_ACQUIRE || "60000", 10), // 60 seconds
+    idle: parseInt(process.env.DB_POOL_IDLE || "30000", 10), // 30 seconds
+    evict: parseInt(process.env.DB_POOL_EVICT || "10000", 10), // 10 seconds
+    handleDisconnects: true,
+    validate: (client) => {
+      return !client.connection._ending;
+    },
   },
   define: {
     timestamps: true,

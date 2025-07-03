@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
 import {
   Container,
   Row,
@@ -196,14 +197,15 @@ const AdvancedAnalyticsDashboard = ({
 
             console.log(`✅ ${name} analytics loaded successfully`);
           } else {
-            const isAuthError = result.reason?.response?.status === 401 || 
-                              result.reason?.message?.includes('Access denied') ||
-                              result.reason?.message?.includes('No token provided');
-            
+            const isAuthError =
+              result.reason?.response?.status === 401 ||
+              result.reason?.message?.includes("Access denied") ||
+              result.reason?.message?.includes("No token provided");
+
             if (isAuthError) {
               authErrors++;
             }
-            
+
             status[name] = {
               success: false,
               data: false,
@@ -327,16 +329,12 @@ const AdvancedAnalyticsDashboard = ({
     [timeframe]
   );
 
-  // Auto-refresh functionality
-  useEffect(() => {
+  // Auto-refresh functionality with network awareness
+  useNetworkAwareInterval(() => {
     if (autoRefresh) {
-      const interval = setInterval(() => {
-        fetchAllAnalytics(false);
-      }, 30000); // Refresh every 30 seconds
-
-      return () => clearInterval(interval);
+      fetchAllAnalytics(false);
     }
-  }, [autoRefresh, fetchAllAnalytics]);
+  }, 30000);
 
   // Initial data fetch
   useEffect(() => {
@@ -395,8 +393,9 @@ const AdvancedAnalyticsDashboard = ({
   // Error state with authentication handling
   if (error && !dashboardData) {
     // Check if this is an authentication error
-    const isAuthError = error === "authentication_required" || error === "partial_auth_failure";
-    
+    const isAuthError =
+      error === "authentication_required" || error === "partial_auth_failure";
+
     if (isAuthError) {
       return (
         <Container fluid className="py-4">
@@ -404,14 +403,14 @@ const AdvancedAnalyticsDashboard = ({
             <LockClosedIcon className="h-16 w-16 text-warning mx-auto mb-3" />
             <h3 className="text-warning">Authentication Required</h3>
             <p className="text-muted mb-4">
-              {error === "authentication_required" 
+              {error === "authentication_required"
                 ? "You need to be logged in to view analytics data. Please log in to access your dashboard."
                 : "Some analytics endpoints require authentication. Please ensure you're logged in."}
             </p>
             <div className="mb-4">
-              <Button 
-                variant="primary" 
-                onClick={() => navigate('/login')}
+              <Button
+                variant="primary"
+                onClick={() => navigate("/login")}
                 className="me-2"
               >
                 <UserPlusIcon className="h-4 w-4 me-2" />
@@ -422,12 +421,20 @@ const AdvancedAnalyticsDashboard = ({
                 Retry
               </Button>
             </div>
-            
+
             {user && (
-              <Alert variant="info" className="mt-3 text-start" style={{ maxWidth: "600px", margin: "0 auto" }}>
+              <Alert
+                variant="info"
+                className="mt-3 text-start"
+                style={{ maxWidth: "600px", margin: "0 auto" }}
+              >
                 <InformationCircleIcon className="h-5 w-5 me-2" />
-                <strong>You appear to be logged in as {user.email || user.username}</strong>
-                <p className="mb-2 mt-2">If you're still seeing this error, try:</p>
+                <strong>
+                  You appear to be logged in as {user.email || user.username}
+                </strong>
+                <p className="mb-2 mt-2">
+                  If you're still seeing this error, try:
+                </p>
                 <ol className="mb-0">
                   <li>Refreshing the page</li>
                   <li>Logging out and logging back in</li>
@@ -436,7 +443,7 @@ const AdvancedAnalyticsDashboard = ({
                 </ol>
               </Alert>
             )}
-            
+
             <Button
               variant="outline-secondary"
               className="mt-3"
@@ -445,9 +452,12 @@ const AdvancedAnalyticsDashboard = ({
               <InformationCircleIcon className="h-4 w-4 me-2" />
               {showDebugInfo ? "Hide" : "Show"} Technical Details
             </Button>
-            
+
             {showDebugInfo && (
-              <div className="mt-4 p-3 bg-light rounded text-start" style={{ maxWidth: "800px", margin: "0 auto" }}>
+              <div
+                className="mt-4 p-3 bg-light rounded text-start"
+                style={{ maxWidth: "800px", margin: "0 auto" }}
+              >
                 <h6>🔍 Endpoint Status Debug Information:</h6>
                 <Table size="sm" className="mt-2">
                   <thead>
@@ -476,20 +486,28 @@ const AdvancedAnalyticsDashboard = ({
                             <Badge bg="secondary">No</Badge>
                           )}
                         </td>
-                        <td className="text-break" style={{ maxWidth: "200px" }}>
+                        <td
+                          className="text-break"
+                          style={{ maxWidth: "200px" }}
+                        >
                           {status.error || "N/A"}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </Table>
-                
+
                 <Alert variant="info" className="mt-3 mb-0">
-                  <strong>Current User:</strong> {user ? `${user.email || user.username} (ID: ${user.id})` : "Not logged in"}
+                  <strong>Current User:</strong>{" "}
+                  {user
+                    ? `${user.email || user.username} (ID: ${user.id})`
+                    : "Not logged in"}
                   <br />
-                  <strong>Token:</strong> {localStorage.getItem('token') ? "Present" : "Missing"}
+                  <strong>Token:</strong>{" "}
+                  {localStorage.getItem("token") ? "Present" : "Missing"}
                   <br />
-                  <strong>Last Updated:</strong> {lastUpdated ? lastUpdated.toLocaleString() : "Never"}
+                  <strong>Last Updated:</strong>{" "}
+                  {lastUpdated ? lastUpdated.toLocaleString() : "Never"}
                 </Alert>
               </div>
             )}
@@ -497,7 +515,7 @@ const AdvancedAnalyticsDashboard = ({
         </Container>
       );
     }
-    
+
     // Regular error state for non-auth errors
     return (
       <Container fluid className="py-4">

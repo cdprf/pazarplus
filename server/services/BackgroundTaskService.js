@@ -28,6 +28,15 @@ class BackgroundTaskService {
         throw new Error("UserId and taskType are required");
       }
 
+      logger.info(`Creating background task`, {
+        userId,
+        taskType,
+        priority,
+        platformConnectionId,
+        config,
+        metadata,
+      });
+
       // Validate dependencies exist
       if (dependsOnTaskIds.length > 0) {
         const existingTasks = await BackgroundTask.count({
@@ -36,6 +45,9 @@ class BackgroundTaskService {
         if (existingTasks !== dependsOnTaskIds.length) {
           throw new Error("One or more dependency tasks do not exist");
         }
+        logger.info(`Task has ${dependsOnTaskIds.length} dependencies`, {
+          dependsOnTaskIds,
+        });
       }
 
       const task = await BackgroundTask.create({
@@ -58,16 +70,31 @@ class BackgroundTaskService {
         },
       });
 
-      logger.info(`Background task created: ${task.id} (${taskType})`, {
+      logger.info(`Background task created successfully`, {
         taskId: task.id,
         userId,
         taskType,
         priority,
+        status: task.status,
+        scheduledFor: task.scheduledFor,
+        timeoutAt: task.timeoutAt,
       });
+
+      // Log platform connection details if available
+      if (platformConnectionId) {
+        logger.info(`Task associated with platform connection`, {
+          taskId: task.id,
+          platformConnectionId,
+        });
+      }
 
       return task;
     } catch (error) {
-      logger.error("Error creating background task:", error);
+      logger.error("Error creating background task:", {
+        error: error.message,
+        stack: error.stack,
+        taskData,
+      });
       throw error;
     }
   }
@@ -125,9 +152,9 @@ class BackgroundTaskService {
     const where = {};
 
     if (userId) where.userId = userId;
-    if (status && status !== 'all') where.status = status;
-    if (taskType && taskType !== 'all') where.taskType = taskType;
-    if (priority && priority !== 'all') where.priority = priority;
+    if (status && status !== "all") where.status = status;
+    if (taskType && taskType !== "all") where.taskType = taskType;
+    if (priority && priority !== "all") where.priority = priority;
     if (platformConnectionId) where.platformConnectionId = platformConnectionId;
 
     if (dateFrom || dateTo) {
@@ -192,7 +219,18 @@ class BackgroundTaskService {
    * @returns {Promise<BackgroundTask[]>}
    */
   static async getQueuedTasks(options = {}) {
-    return BackgroundTask.getQueuedTasks(options);
+    logger.debug("Getting queued tasks", { options });
+
+    const tasks = await BackgroundTask.getQueuedTasks(options);
+
+    logger.info("Retrieved queued tasks", {
+      count: tasks.length,
+      taskIds: tasks.map((t) => t.id),
+      taskTypes: tasks.map((t) => t.taskType),
+      priorities: tasks.map((t) => t.priority),
+    });
+
+    return tasks;
   }
 
   /**
@@ -238,13 +276,70 @@ class BackgroundTaskService {
    * @returns {Promise<BackgroundTask>}
    */
   static async addLog(taskId, level, message, data = null) {
-    const task = await BackgroundTask.findByPk(taskId);
-    if (!task) {
-      throw new Error("Task not found");
-    }
+    try {
+      // Validate inputs to prevent errors
+      if (!taskId) {
+        logger.warn("Cannot add log: Missing taskId");
+        return null;
+      }
 
-    await task.addLog(level, message, data);
-    return task;
+      if (!message) {
+        message = "Log entry (no message provided)";
+      }
+
+      // Standardize log level
+      const validLevels = ["info", "warn", "error", "debug"];
+      const normalizedLevel = validLevels.includes(level) ? level : "info";
+
+      // Attempt to find the task with retry logic
+      let task = null;
+      let attempts = 0;
+      const maxAttempts = 3;
+
+      while (!task && attempts < maxAttempts) {
+        attempts++;
+        try {
+          task = await BackgroundTask.findByPk(taskId);
+          if (!task && attempts < maxAttempts) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+        } catch (findError) {
+          logger.warn(
+            `Error finding task for logging (attempt ${attempts}): ${findError.message}`,
+            {
+              taskId,
+              error: findError.message,
+            }
+          );
+          if (attempts < maxAttempts) {
+            await new Promise((resolve) => setTimeout(resolve, 200));
+          }
+        }
+      }
+
+      if (!task) {
+        logger.error(
+          `Failed to add log: Task not found after ${maxAttempts} attempts`,
+          {
+            taskId,
+            level: normalizedLevel,
+            message: message.substring(0, 50),
+          }
+        );
+        return null;
+      }
+
+      // Add the log to the task
+      await task.addLog(normalizedLevel, message, data);
+      return task;
+    } catch (error) {
+      logger.error(`Error in BackgroundTaskService.addLog`, {
+        taskId,
+        error: error.message,
+        stack: error.stack,
+      });
+      return null;
+    }
   }
 
   /**
@@ -253,21 +348,47 @@ class BackgroundTaskService {
    * @returns {Promise<BackgroundTask>}
    */
   static async startTask(taskId) {
-    const task = await BackgroundTask.findByPk(taskId);
+    logger.info(`Starting background task`, { taskId });
+
+    const task = await BackgroundTask.findByPk(taskId, {
+      include: [
+        { model: User, as: "user" },
+        { model: PlatformConnection, as: "platformConnection" },
+      ],
+    });
+
     if (!task) {
+      logger.error(`Task not found for start operation`, { taskId });
       throw new Error("Task not found");
     }
 
     if (task.status !== "pending") {
+      logger.warn(`Task cannot be started - invalid status`, {
+        taskId,
+        currentStatus: task.status,
+        taskType: task.taskType,
+      });
       throw new Error(`Task cannot be started. Current status: ${task.status}`);
+    }
+
+    // Log platform connection details if available
+    if (task.platformConnection) {
+      logger.info(`Task starting with platform connection`, {
+        taskId,
+        platformType: task.platformConnection.platformType,
+        platformConnectionId: task.platformConnectionId,
+      });
     }
 
     await task.markAsStarted();
 
-    logger.info(`Background task started: ${taskId}`, {
+    logger.info(`Background task started successfully`, {
       taskId,
       taskType: task.taskType,
       userId: task.userId,
+      startedAt: task.startedAt,
+      timeoutAt: task.timeoutAt,
+      priority: task.priority,
     });
 
     return task;
@@ -280,18 +401,40 @@ class BackgroundTaskService {
    * @returns {Promise<BackgroundTask>}
    */
   static async completeTask(taskId, result = null) {
+    logger.info(`Completing background task`, {
+      taskId,
+      result: result ? Object.keys(result) : null,
+    });
+
     const task = await BackgroundTask.findByPk(taskId);
     if (!task) {
+      logger.error(`Task not found for completion`, { taskId });
       throw new Error("Task not found");
     }
 
+    const startTime = task.startedAt ? new Date(task.startedAt) : null;
+    const duration = startTime
+      ? Math.floor((new Date() - startTime) / 1000)
+      : null;
+
     await task.markAsCompleted(result);
 
-    logger.info(`Background task completed: ${taskId}`, {
+    logger.info(`Background task completed successfully`, {
       taskId,
       taskType: task.taskType,
-      duration: task.actualDuration,
-      result: result ? Object.keys(result) : null,
+      userId: task.userId,
+      duration: task.actualDuration || duration,
+      completedAt: task.completedAt,
+      result: result
+        ? {
+            keys: Object.keys(result),
+            summary:
+              typeof result === "object"
+                ? JSON.stringify(result).substring(0, 200)
+                : result,
+          }
+        : null,
+      progress: task.progress,
     });
 
     return task;
@@ -304,20 +447,40 @@ class BackgroundTaskService {
    * @returns {Promise<BackgroundTask>}
    */
   static async failTask(taskId, error) {
+    logger.error(`Failing background task`, {
+      taskId,
+      error: typeof error === "string" ? error : error.message,
+      stack: error.stack,
+    });
+
     const task = await BackgroundTask.findByPk(taskId);
     if (!task) {
+      logger.error(`Task not found for failure`, { taskId });
       throw new Error("Task not found");
     }
 
     await task.markAsFailed(error);
 
-    logger.error(`Background task failed: ${taskId}`, {
+    const canRetry = task.retryCount < task.maxRetries;
+
+    logger.error(`Background task failed`, {
       taskId,
       taskType: task.taskType,
+      userId: task.userId,
       error: typeof error === "string" ? error : error.message,
       retryCount: task.retryCount,
       maxRetries: task.maxRetries,
+      canRetry,
+      duration: task.actualDuration,
+      progress: task.progress,
     });
+
+    if (canRetry) {
+      logger.info(`Task can be retried`, {
+        taskId,
+        remainingRetries: task.maxRetries - task.retryCount,
+      });
+    }
 
     return task;
   }

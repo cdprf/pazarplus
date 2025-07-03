@@ -19,6 +19,7 @@ export const Modal = ({
   ...props
 }) => {
   const modalRef = useRef(null);
+  const modalContainerRef = useRef(null);
   const previousFocusRef = useRef(null);
   const closeButtonRef = useRef(null);
 
@@ -124,27 +125,49 @@ export const Modal = ({
       // Prevent body scroll
       document.body.style.overflow = "hidden";
 
-      // Hide everything behind the modal from screen readers
-      const rootElements = document.querySelectorAll(
-        'body > *:not([role="dialog"])'
-      );
-      rootElements.forEach((element) => {
-        if (element !== modalRef.current?.closest('[role="dialog"]')) {
-          element.setAttribute("aria-hidden", "true");
+      // Use setTimeout to ensure DOM is fully updated before setting aria-hidden
+      setTimeout(() => {
+        // For modals rendered inside the React root, we need to hide content differently
+        // Instead of hiding the root, hide its direct children except the modal
+        const rootElement = document.getElementById("root");
+        if (rootElement && modalContainerRef.current) {
+          // Hide direct children of root that are not the modal
+          const rootChildren = Array.from(rootElement.children);
+          rootChildren.forEach((child) => {
+            if (!child.contains(modalContainerRef.current)) {
+              child.setAttribute("aria-hidden", "true");
+              child.setAttribute("data-modal-hidden", "true");
+            }
+          });
+        } else {
+          // Fallback: hide body children except the root
+          const bodyChildren = Array.from(document.body.children);
+          bodyChildren.forEach((element) => {
+            if (
+              element.id !== "root" &&
+              element.tagName !== "SCRIPT" &&
+              element.tagName !== "STYLE" &&
+              !element.hasAttribute("data-modal-backdrop")
+            ) {
+              element.setAttribute("aria-hidden", "true");
+              element.setAttribute("data-modal-hidden", "true");
+            }
+          });
         }
-      });
+      }, 0);
 
       handleFocusManagement();
     } else {
       // Restore body scroll
       document.body.style.overflow = "unset";
 
-      // Restore screen reader access to other elements
-      const rootElements = document.querySelectorAll(
-        'body > *[aria-hidden="true"]'
+      // Restore screen reader access to elements we hid
+      const hiddenElements = document.querySelectorAll(
+        '[data-modal-hidden="true"]'
       );
-      rootElements.forEach((element) => {
+      hiddenElements.forEach((element) => {
         element.removeAttribute("aria-hidden");
+        element.removeAttribute("data-modal-hidden");
       });
 
       handleFocusManagement();
@@ -178,12 +201,14 @@ export const Modal = ({
 
   return (
     <div
+      ref={modalContainerRef}
       className="modal modal-open fixed inset-0 z-[1040] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? titleId : undefined}
       aria-describedby={describedBy || contentId}
       onClick={handleOverlayClick}
+      data-modal-backdrop="true"
     >
       {/* Overlay - clickable background */}
       <div

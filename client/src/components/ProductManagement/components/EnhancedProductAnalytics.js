@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNetworkAwareInterval } from "../../../hooks/useNetworkStatus";
 import {
   TrendingUp,
   ArrowUp,
@@ -164,13 +165,12 @@ const EnhancedProductAnalytics = ({
     }
   }, [isOpen, fetchProductAnalytics, fetchRealtimeData]);
 
-  // Auto-refresh real-time data
-  useEffect(() => {
+  // Auto-refresh real-time data with network awareness
+  useNetworkAwareInterval(() => {
     if (isOpen && activeTab === "realtime") {
-      const interval = setInterval(fetchRealtimeData, 60000); // Every minute
-      return () => clearInterval(interval);
+      fetchRealtimeData();
     }
-  }, [isOpen, activeTab, fetchRealtimeData]);
+  }, 60000); // Every minute
 
   // Helper functions
   const formatCurrency = (value) => {

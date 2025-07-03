@@ -37,6 +37,9 @@ const enhancedPlatformService = require("./services/enhanced-platform-service");
 const inventoryManagementService = require("./services/inventory-management-service");
 const notificationService = require("./services/notification-service");
 
+// Background services manager
+const BackgroundServicesManager = require("./services/background-services-manager");
+
 // Database transaction management services
 const dbTransactionManager = require("./services/database-transaction-manager");
 const databaseStatusWebSocket = require("./services/database-status-websocket");

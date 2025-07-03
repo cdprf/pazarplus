@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import React from "react";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../../hooks/useAuth";
+import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
 import api from "../../services/api";
 
 // Enhanced Error Boundary Component

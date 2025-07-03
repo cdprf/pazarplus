@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
 import {
   Activity,
   Play,
@@ -150,17 +151,13 @@ const BackgroundTaskManager = () => {
     loadStats();
   }, [loadStats]);
 
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!loading) {
-        loadTasks();
-        loadStats();
-      }
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [loadTasks, loadStats, loading]);
+  // Auto-refresh every 30 seconds with network awareness
+  useNetworkAwareInterval(() => {
+    if (!loading) {
+      loadTasks();
+      loadStats();
+    }
+  }, 30000);
 
   // Helper functions
   const getStatusIcon = useCallback((status) => {

@@ -15,6 +15,7 @@ import {
   EnvelopeIcon,
   ExclamationTriangleIcon,
   DocumentTextIcon,
+  CodeBracketIcon,
 } from "@heroicons/react/24/outline";
 import { AuthContext } from "../../contexts/AuthContext";
 import { useAlert } from "../../contexts/AlertContext";
@@ -246,6 +247,15 @@ const Settings = () => {
             <Cog6ToothIcon className="h-4 w-4" />
             <span>Tercihler</span>
           </TabsTrigger>
+          {process.env.NODE_ENV === "development" && (
+            <TabsTrigger
+              value="developer"
+              className="flex items-center space-x-2"
+            >
+              <CodeBracketIcon className="h-4 w-4" />
+              <span>Geliştirici</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Profile Tab */}

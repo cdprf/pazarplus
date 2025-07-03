@@ -88,7 +88,7 @@ class PlatformOperationsController {
         where: {
           userId,
           platformConnectionId,
-          status: "running",
+          status: ["pending", "running"],
           taskType: "order_fetching",
         },
       });
@@ -100,28 +100,63 @@ class PlatformOperationsController {
         });
       }
 
-      // Create background task record
-      const task = await BackgroundTask.create({
-        userId,
+      // ENHANCED: Create task using BackgroundTaskService with additional logging
+      logger.info(`Creating order fetching task via platform operations`, {
+        platformType: connection.platformType,
         platformConnectionId,
+        mode,
+        duration,
+        userId,
+      });
+
+      const BackgroundTaskService = require("../services/BackgroundTaskService");
+
+      // Ensure TaskQueueManager is running (will be a no-op if already running)
+      const { taskQueueManager } = require("../services/TaskQueueManager");
+      if (!taskQueueManager.getStatus().isProcessing) {
+        logger.info("Starting TaskQueueManager as it was not running");
+        taskQueueManager.start();
+      }
+
+      const task = await BackgroundTaskService.createTask({
+        userId,
         taskType: "order_fetching",
-        status: "running",
+        priority: "normal",
         config: {
           mode,
           duration,
           stopAtFirst,
           startDate: new Date(),
+          batchSize: 100,
+          maxOrders: mode === "auto" ? 1000 : 5000, // Limit for auto mode
         },
-        progress: {
-          currentMonth: 0,
-          totalMonths: mode === "auto" ? "unknown" : Math.ceil(duration / 30),
-          ordersProcessed: 0,
-          errors: [],
+        platformConnectionId,
+        metadata: {
+          source: "platform_operations",
+          automaticMode: mode === "auto",
+          createdBy: "platform_operations_controller",
+          createdAt: new Date(),
         },
       });
 
-      // Start the background task
-      this.executeOrderFetchingTask(task.id, connection);
+      // Add initial logs to task immediately
+      await BackgroundTaskService.addLog(
+        task.id,
+        "info",
+        `Order fetching task created via Platform Operations UI`,
+        {
+          mode,
+          duration,
+          stopAtFirst,
+          platformType: connection.platformType,
+        }
+      );
+
+      logger.info(`Order fetching task created successfully`, {
+        taskId: task.id,
+        platformConnectionId,
+        mode,
+      });
 
       res.json({
         success: true,
@@ -232,8 +267,8 @@ class PlatformOperationsController {
       const orderStats = await Order.findAll({
         where: whereClause,
         attributes: [
-          [literal("MIN(orderDate)"), "oldestOrder"],
-          [literal("MAX(orderDate)"), "newestOrder"],
+          [literal('MIN("Order"."orderDate")'), "oldestOrder"],
+          [literal('MAX("Order"."orderDate")'), "newestOrder"],
           [literal("COUNT(*)"), "totalOrders"],
         ],
         include: [

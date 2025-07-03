@@ -2,16 +2,19 @@ const express = require("express");
 const router = express.Router();
 const { body, param, query } = require("express-validator");
 const BackgroundTaskController = require("../controllers/BackgroundTaskController");
-const { auth: authMiddleware } = require("../middleware/auth");
+const { auth } = require("../middleware/auth");
 
 // Apply authentication middleware to all routes
 router.use((req, res, next) => {
-  console.log('🔍 BackgroundTasks route middleware - checking auth');
-  console.log('Authorization header:', req.headers.authorization ? 'Present' : 'Missing');
+  console.log("🔍 BackgroundTasks route middleware - checking auth");
+  console.log(
+    "Authorization header:",
+    req.headers.authorization ? "Present" : "Missing"
+  );
   next();
 });
 
-router.use(authMiddleware);
+router.use(auth);
 
 // Validation rules
 const createTaskValidation = [
@@ -58,8 +61,12 @@ const createTaskValidation = [
 
 const updateProgressValidation = [
   param("id").isUUID().withMessage("Task ID must be a valid UUID"),
-  body("current").isInt({ min: 0 }).withMessage("Current must be a non-negative integer"),
-  body("total").isInt({ min: 1 }).withMessage("Total must be a positive integer"),
+  body("current")
+    .isInt({ min: 0 })
+    .withMessage("Current must be a non-negative integer"),
+  body("total")
+    .isInt({ min: 1 })
+    .withMessage("Total must be a positive integer"),
   body("message").optional().isString().withMessage("Message must be a string"),
   body("phase").optional().isString().withMessage("Phase must be a string"),
 ];
@@ -93,17 +100,50 @@ const bulkOperationValidation = [
 router.get(
   "/",
   [
-    query("page").optional().isInt({ min: 1 }).withMessage("Page must be a positive integer"),
-    query("limit").optional().isInt({ min: 1, max: 100 }).withMessage("Limit must be between 1 and 100"),
-    query("status").optional().isString().withMessage("Status must be a string"),
-    query("taskType").optional().isString().withMessage("Task type must be a string"),
-    query("priority").optional().isString().withMessage("Priority must be a string"),
-    query("platformConnectionId").optional().isInt().withMessage("Platform connection ID must be an integer"),
-    query("search").optional().isString().withMessage("Search term must be a string"),
-    query("sortBy").optional().isString().withMessage("Sort field must be a string"),
-    query("sortOrder").optional().isIn(["asc", "desc"]).withMessage("Sort order must be asc or desc"),
-    query("dateFrom").optional().isISO8601().withMessage("Date from must be a valid date"),
-    query("dateTo").optional().isISO8601().withMessage("Date to must be a valid date"),
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
+    query("status")
+      .optional()
+      .isString()
+      .withMessage("Status must be a string"),
+    query("taskType")
+      .optional()
+      .isString()
+      .withMessage("Task type must be a string"),
+    query("priority")
+      .optional()
+      .isString()
+      .withMessage("Priority must be a string"),
+    query("platformConnectionId")
+      .optional()
+      .isInt()
+      .withMessage("Platform connection ID must be an integer"),
+    query("search")
+      .optional()
+      .isString()
+      .withMessage("Search term must be a string"),
+    query("sortBy")
+      .optional()
+      .isString()
+      .withMessage("Sort field must be a string"),
+    query("sortOrder")
+      .optional()
+      .isIn(["asc", "desc"])
+      .withMessage("Sort order must be asc or desc"),
+    query("dateFrom")
+      .optional()
+      .isISO8601()
+      .withMessage("Date from must be a valid date"),
+    query("dateTo")
+      .optional()
+      .isISO8601()
+      .withMessage("Date to must be a valid date"),
   ],
   BackgroundTaskController.getTasks
 );
@@ -124,10 +164,22 @@ router.get(
 router.get(
   "/queue",
   [
-    query("limit").optional().isInt({ min: 1, max: 100 }).withMessage("Limit must be between 1 and 100"),
-    query("taskType").optional().isString().withMessage("Task type must be a string"),
-    query("priority").optional().isString().withMessage("Priority must be a string"),
-    query("platformConnectionId").optional().isInt().withMessage("Platform connection ID must be an integer"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
+    query("taskType")
+      .optional()
+      .isString()
+      .withMessage("Task type must be a string"),
+    query("priority")
+      .optional()
+      .isString()
+      .withMessage("Priority must be a string"),
+    query("platformConnectionId")
+      .optional()
+      .isInt()
+      .withMessage("Platform connection ID must be an integer"),
   ],
   BackgroundTaskController.getQueue
 );
@@ -137,7 +189,10 @@ router.get(
   "/:id",
   [
     ...taskIdValidation,
-    query("includeChildren").optional().isBoolean().withMessage("Include children must be a boolean"),
+    query("includeChildren")
+      .optional()
+      .isBoolean()
+      .withMessage("Include children must be a boolean"),
   ],
   BackgroundTaskController.getTaskById
 );
@@ -146,34 +201,66 @@ router.get(
 router.post("/", createTaskValidation, BackgroundTaskController.createTask);
 
 // PATCH /api/background-tasks/:id/progress - Update task progress
-router.patch("/:id/progress", updateProgressValidation, BackgroundTaskController.updateProgress);
+router.patch(
+  "/:id/progress",
+  updateProgressValidation,
+  BackgroundTaskController.updateProgress
+);
 
 // POST /api/background-tasks/:id/logs - Add log entry
 router.post("/:id/logs", addLogValidation, BackgroundTaskController.addLog);
 
 // PATCH /api/background-tasks/:id/start - Start task
-router.patch("/:id/start", taskIdValidation, BackgroundTaskController.startTask);
+router.patch(
+  "/:id/start",
+  taskIdValidation,
+  BackgroundTaskController.startTask
+);
 
 // PATCH /api/background-tasks/:id/complete - Complete task
-router.patch("/:id/complete", taskIdValidation, BackgroundTaskController.completeTask);
+router.patch(
+  "/:id/complete",
+  taskIdValidation,
+  BackgroundTaskController.completeTask
+);
 
 // PATCH /api/background-tasks/:id/fail - Fail task
 router.patch("/:id/fail", taskIdValidation, BackgroundTaskController.failTask);
 
 // PATCH /api/background-tasks/:id/cancel - Cancel task
-router.patch("/:id/cancel", taskIdValidation, BackgroundTaskController.cancelTask);
+router.patch(
+  "/:id/cancel",
+  taskIdValidation,
+  BackgroundTaskController.cancelTask
+);
 
 // PATCH /api/background-tasks/:id/retry - Retry task
-router.patch("/:id/retry", taskIdValidation, BackgroundTaskController.retryTask);
+router.patch(
+  "/:id/retry",
+  taskIdValidation,
+  BackgroundTaskController.retryTask
+);
 
 // PATCH /api/background-tasks/:id/pause - Pause task
-router.patch("/:id/pause", taskIdValidation, BackgroundTaskController.pauseTask);
+router.patch(
+  "/:id/pause",
+  taskIdValidation,
+  BackgroundTaskController.pauseTask
+);
 
 // PATCH /api/background-tasks/:id/resume - Resume task
-router.patch("/:id/resume", taskIdValidation, BackgroundTaskController.resumeTask);
+router.patch(
+  "/:id/resume",
+  taskIdValidation,
+  BackgroundTaskController.resumeTask
+);
 
 // POST /api/background-tasks/bulk - Bulk operations
-router.post("/bulk", bulkOperationValidation, BackgroundTaskController.bulkOperation);
+router.post(
+  "/bulk",
+  bulkOperationValidation,
+  BackgroundTaskController.bulkOperation
+);
 
 // DELETE /api/background-tasks/cleanup - Cleanup old tasks (admin only)
 router.delete(

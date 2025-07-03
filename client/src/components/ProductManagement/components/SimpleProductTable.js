@@ -90,8 +90,27 @@ const SimpleProductTable = ({
   const getPlatformBadges = (product) => {
     const platforms = [];
 
-    // Check if product has platform data
-    if (product.platforms) {
+    // Check if product has platform variants (new system)
+    if (product.platformVariants && product.platformVariants.length > 0) {
+      product.platformVariants.forEach((variant) => {
+        // Only show published or synced variants
+        if (variant.isPublished || variant.syncStatus === "success") {
+          platforms.push({
+            name: variant.platform,
+            icon: PlatformIcons[variant.platform] || PlatformIcons.local,
+            label:
+              variant.platform.charAt(0).toUpperCase() +
+              variant.platform.slice(1),
+            status: variant.syncStatus,
+            isPublished: variant.isPublished,
+            externalUrl: variant.externalUrl,
+          });
+        }
+      });
+    }
+
+    // Check if product has platform data (old system)
+    if (platforms.length === 0 && product.platforms) {
       Object.entries(product.platforms).forEach(([platform, data]) => {
         if (data.enabled || data.isActive) {
           platforms.push({
@@ -397,16 +416,63 @@ const SimpleProductTable = ({
                 {/* Platform */}
                 <td className="px-6 py-4 whitespace-normal">
                   <div className="flex flex-wrap gap-1">
-                    {getPlatformBadges(product).map((platform, index) => (
-                      <Badge
-                        key={`${platform.name}-${index}`}
-                        variant="outline"
-                        className="flex items-center space-x-1"
-                      >
-                        {platform.icon}
-                        <span className="text-xs">{platform.label}</span>
-                      </Badge>
-                    ))}
+                    {getPlatformBadges(product).map((platform, index) => {
+                      // Determine badge variant based on platform status
+                      let badgeVariant = "outline";
+                      let statusIndicator = null;
+
+                      if (
+                        platform.status === "success" &&
+                        platform.isPublished
+                      ) {
+                        badgeVariant = "success";
+                        statusIndicator = (
+                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                        );
+                      } else if (platform.status === "syncing") {
+                        badgeVariant = "info";
+                        statusIndicator = (
+                          <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                        );
+                      } else if (platform.status === "error") {
+                        badgeVariant = "danger";
+                        statusIndicator = (
+                          <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                        );
+                      }
+
+                      const badgeContent = (
+                        <Badge
+                          key={`${platform.name}-${index}`}
+                          variant={badgeVariant}
+                          className="flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity"
+                          title={`${platform.label}${
+                            platform.isPublished ? " (Yayında)" : ""
+                          }${platform.status ? ` - ${platform.status}` : ""}`}
+                        >
+                          {platform.icon}
+                          <span className="text-xs">{platform.label}</span>
+                          {statusIndicator}
+                        </Badge>
+                      );
+
+                      // If there's an external URL, make it clickable
+                      if (platform.externalUrl) {
+                        return (
+                          <a
+                            key={`${platform.name}-${index}`}
+                            href={platform.externalUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block"
+                          >
+                            {badgeContent}
+                          </a>
+                        );
+                      }
+
+                      return badgeContent;
+                    })}
                   </div>
                 </td>
 

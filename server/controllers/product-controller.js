@@ -225,6 +225,24 @@ class ProductController {
         });
       }
 
+      // Add PlatformVariant include to fetch platform variants
+      includeClause.push({
+        model: PlatformVariant,
+        as: "platformVariants",
+        required: false,
+        attributes: [
+          "id",
+          "platform",
+          "platformSku",
+          "isPublished",
+          "syncStatus",
+          "externalId",
+          "externalUrl",
+          "createdAt",
+        ],
+        order: [["createdAt", "DESC"]],
+      });
+
       const { count, rows: products } = await Product.findAndCountAll({
         where: whereClause,
         include: includeClause,

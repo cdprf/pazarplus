@@ -30,14 +30,17 @@ import {
   User,
   DollarSign,
   Trash2,
+  WifiOff,
 } from "lucide-react";
 import api from "../../services/api";
 import { useAlert } from "../../contexts/AlertContext";
+import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { Button } from "../ui/Button";
 import { Card, CardContent } from "../ui/Card";
 import { Badge } from "../ui/Badge";
 import { Modal } from "../ui/Modal";
 import CancelOrderDialog from "../dialogs/CancelOrderDialog";
+import NetworkDebugger from "../NetworkDebugger";
 
 const OrderManagement = React.memo(() => {
   const navigate = useNavigate();
@@ -78,6 +81,9 @@ const OrderManagement = React.memo(() => {
     priceMax: "",
   });
   const [filterErrors, setFilterErrors] = useState({});
+
+  // Network status for handling server unavailability
+  const { isServerReachable, circuitBreakerState } = useNetworkStatus();
 
   // Enhanced stats state with proper structure
   const [stats, setStats] = useState({
@@ -467,10 +473,41 @@ const OrderManagement = React.memo(() => {
       }
     } catch (error) {
       console.error("Error fetching orders:", error);
-      setError(error.message);
-      setOrders([]);
-      setTotalRecords(0);
-      showAlert("Siparişler yüklenirken bir hata oluştu", "error");
+
+      // Handle circuit breaker errors gracefully
+      if (
+        error.isCircuitBreakerError ||
+        error.code === "CIRCUIT_BREAKER_OPEN"
+      ) {
+        setError(
+          "Sunucu şu anda erişilebilir değil. Bağlantı yeniden kurulduğunda otomatik olarak güncellenecek."
+        );
+        // Don't show repeated alerts for circuit breaker errors
+        if (!error.hasShownAlert) {
+          showAlert(
+            "Sunucu bağlantısı kesildi. Bağlantı restoring edene kadar istekler duraklatıldı.",
+            "warning"
+          );
+          error.hasShownAlert = true;
+        }
+      } else if (
+        error.code === "ECONNREFUSED" ||
+        error.message === "Network Error"
+      ) {
+        setError(
+          "Sunucuya bağlantı kurulamıyor. Lütfen internet bağlantınızı kontrol edin."
+        );
+        showAlert("Sunucuya bağlantı kurulamıyor", "error");
+      } else {
+        setError(error.message);
+        showAlert("Siparişler yüklenirken bir hata oluştu", "error");
+      }
+
+      // Only clear orders if it's not a temporary connectivity issue
+      if (!error.isCircuitBreakerError) {
+        setOrders([]);
+        setTotalRecords(0);
+      }
     } finally {
       setLoading(false);
     }
@@ -1235,6 +1272,10 @@ const OrderManagement = React.memo(() => {
   }
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Temporary Network Debugger */}
+      {/* Network Debugger - conditionally rendered based on developer settings */}
+      <NetworkDebugger />
+
       {/* Header Section */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -1289,6 +1330,22 @@ const OrderManagement = React.memo(() => {
           </div>
         </div>
       </div>
+
+      {/* Network Status Indicator */}
+      {!isServerReachable && (
+        <div className="bg-amber-50 border-l-4 border-amber-400 p-4">
+          <div className="flex">
+            <WifiOff className="h-5 w-5 text-amber-400" />
+            <div className="ml-3">
+              <p className="text-sm text-amber-700">
+                Sunucu bağlantısı kesildi. Bağlantı yeniden kurulana kadar
+                istekler duraklatıldı.
+                <span className="ml-2 text-xs">({circuitBreakerState})</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">

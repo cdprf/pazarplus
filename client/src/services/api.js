@@ -1,5 +1,36 @@
 import axios from "axios";
 import { handleJWTError } from "../utils/authRecovery";
+import networkStatusService from "./networkStatusService";
+
+// Create a safe wrapper to handle different import structures
+const networkService = networkStatusService?.default ||
+  networkStatusService || {
+    isCircuitOpen: () => false,
+    recordSuccess: () => {},
+    recordFailure: () => {},
+    isOnline: true,
+    isServerReachable: true,
+  };
+
+// Verify the service has the required methods and add fallbacks if needed
+if (typeof networkService?.isCircuitOpen !== "function") {
+  console.warn(
+    "⚠️ NetworkStatusService missing isCircuitOpen method, using fallback"
+  );
+  networkService.isCircuitOpen = () => false;
+}
+if (typeof networkService?.recordSuccess !== "function") {
+  console.warn(
+    "⚠️ NetworkStatusService missing recordSuccess method, using fallback"
+  );
+  networkService.recordSuccess = () => {};
+}
+if (typeof networkService?.recordFailure !== "function") {
+  console.warn(
+    "⚠️ NetworkStatusService missing recordFailure method, using fallback"
+  );
+  networkService.recordFailure = () => {};
+}
 
 // Determine the correct API base URL
 const getApiBaseUrl = () => {
@@ -22,6 +53,25 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
+    // Check circuit breaker before making request
+    try {
+      if (
+        networkService &&
+        typeof networkService.isCircuitOpen === "function" &&
+        networkService.isCircuitOpen()
+      ) {
+        const error = new Error(
+          "Circuit breaker is open - server appears to be unavailable"
+        );
+        error.code = "CIRCUIT_BREAKER_OPEN";
+        error.isCircuitBreakerError = true;
+        return Promise.reject(error);
+      }
+    } catch (circuitError) {
+      console.error("Error checking circuit breaker:", circuitError);
+      // Continue with the request if there's an error checking the circuit breaker
+    }
+
     const token = localStorage.getItem("token");
     if (token && token.length < 2000) {
       // Avoid large tokens that cause 431
@@ -54,6 +104,21 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response) => {
+    // Record successful response
+    try {
+      if (
+        networkService &&
+        typeof networkService.recordSuccess === "function"
+      ) {
+        networkService.recordSuccess();
+      }
+    } catch (error) {
+      console.error(
+        "Error recording success in network status service:",
+        error
+      );
+    }
+
     if (process.env.NODE_ENV === "development") {
       console.log(`✅ API Response: ${response.status}`, {
         url: response.config.url,
@@ -63,11 +128,34 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Record failed response for network status tracking
+    if (
+      error.code === "ECONNREFUSED" ||
+      error.code === "NETWORK_ERROR" ||
+      error.message === "Network Error" ||
+      !error.response
+    ) {
+      try {
+        if (
+          networkService &&
+          typeof networkService.recordFailure === "function"
+        ) {
+          networkService.recordFailure(error);
+        }
+      } catch (networkError) {
+        console.error(
+          "Error recording failure in network status service:",
+          networkError
+        );
+      }
+    }
+
     if (process.env.NODE_ENV === "development") {
       console.error("❌ API Response error:", {
         url: error.config?.url,
         status: error.response?.status,
         message: error.message,
+        code: error.code,
         data: error.response?.data,
       });
     }
