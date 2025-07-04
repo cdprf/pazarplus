@@ -242,9 +242,12 @@ class CategorySyncService {
         platformCategory.id || platformCategory.categoryId
       ),
       name: platformCategory.name || platformCategory.categoryName,
-      parentId: platformCategory.parentId
-        ? String(platformCategory.parentId)
-        : null,
+      parentId:
+        platformCategory.parentId || platformCategory.parentCategoryId
+          ? String(
+              platformCategory.parentId || platformCategory.parentCategoryId
+            )
+          : null,
       isActive: true,
       userId: userId, // Add userId to base data to satisfy database constraint
       level: 0,
@@ -283,9 +286,9 @@ class CategorySyncService {
       case "n11":
         return {
           ...baseData,
-          path: platformCategory.fullName || null,
+          path: platformCategory.fullPath || platformCategory.fullName || null,
           level: platformCategory.level || 0,
-          isLeaf: !platformCategory.hasSubCategories,
+          isLeaf: platformCategory.isLeaf || !platformCategory.hasChildren,
           fieldDefinitions: platformCategory.attributes || {},
           requiredFields: platformCategory.requiredAttributes || [],
         };

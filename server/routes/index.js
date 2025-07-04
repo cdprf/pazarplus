@@ -22,6 +22,12 @@ try {
   // Import enhanced platform integration routes
   const enhancedPlatformRoutes = require("./enhanced-platforms");
 
+  // Image proxy middleware for handling external images with SSL issues
+  const imageProxyRoutes = require("../middleware/image-proxy");
+
+  // Network configuration routes
+  const networkRoutes = require("./network");
+
   // Analytics & Business Intelligence routes
   const analyticsRoutes = require("./analytics");
 
@@ -84,6 +90,12 @@ try {
 
   // Enhanced platform integration routes (Week 5-6 features)
   router.use("/v1/enhanced-platforms", enhancedPlatformRoutes);
+
+  // Image proxy for handling external images with SSL issues
+  router.use("/", imageProxyRoutes);
+
+  // Network configuration routes
+  router.use("/network", networkRoutes);
 
   // Month 5 Phase 1: Advanced Analytics & Business Intelligence routes
   router.use("/analytics", analyticsRoutes);

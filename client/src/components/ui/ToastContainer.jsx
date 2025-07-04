@@ -75,7 +75,7 @@ export const ToastContainer = ({
           className="toast-overflow-indicator"
           style={{
             pointerEvents: "auto",
-            zIndex: 9999 - visibleToasts.length,
+            zIndex: "var(--z-toast)",
           }}
         >
           <div className="flex items-center justify-center p-3 rounded-lg shadow-lg border max-w-sm min-w-80 bg-white/90 dark:bg-gray-800/90 border-gray-200 dark:border-gray-700 backdrop-blur-sm">

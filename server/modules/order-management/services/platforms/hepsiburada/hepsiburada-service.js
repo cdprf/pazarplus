@@ -872,12 +872,15 @@ class HepsiburadaService extends BasePlatformService {
 
       // Check if any endpoint failed and log the failures
       const failedResults = results.filter((r) => !r || !r.success);
+      const successfulResults = results.filter((r) => r && r.success);
+
       if (failedResults.length > 0) {
-        this.logger.error(
+        this.logger.warn(
           `${failedResults.length} out of ${results.length} order endpoints failed`,
           {
             connectionId: this.connectionId,
             failedCount: failedResults.length,
+            successfulCount: successfulResults.length,
             totalCount: results.length,
             failures: failedResults.map((r) => ({
               message: r?.message || "Unknown error",
@@ -885,15 +888,34 @@ class HepsiburadaService extends BasePlatformService {
             })),
           }
         );
-
-        // If any endpoints failed, throw error instead of continuing
-        throw new Error(
-          `Order fetching failed: ${failedResults.length}/${results.length} endpoints failed`
-        );
       }
 
-      // Combine all data arrays from successful fetches
-      const allOrders = results.flatMap((r) => r.data);
+      // Only throw if all endpoints failed
+      if (successfulResults.length === 0) {
+        this.logger.error("All order fetching endpoints failed", {
+          connectionId: this.connectionId,
+          failures: failedResults.map((r) => ({
+            message: r?.message || "Unknown error",
+            error: r?.error || "No error details",
+          })),
+        });
+        throw new Error("Order fetching failed: all endpoints failed");
+      }
+
+      // Log success rate
+      this.logger.info(
+        `Order fetching partially successful: ${successfulResults.length}/${results.length} endpoints succeeded`,
+        {
+          connectionId: this.connectionId,
+          successRate: `${(
+            (successfulResults.length / results.length) *
+            100
+          ).toFixed(1)}%`,
+        }
+      );
+
+      // Combine all data arrays from successful fetches only
+      const allOrders = successfulResults.flatMap((r) => r.data);
 
       // Remove duplicates by orderNumber or id
       const seen = new Set();
@@ -2572,7 +2594,7 @@ class HepsiburadaService extends BasePlatformService {
 
       const defaultParams = {
         page: params.page || 0,
-        size: params.size || params.limit || 1000,
+        size: 100,
       };
 
       const queryParams = { ...defaultParams, ...params };
@@ -4266,14 +4288,17 @@ class HepsiburadaService extends BasePlatformService {
       const queryParams = { ...defaultParams, ...params };
 
       this.logger.info("Fetching categories from Hepsiburada MPOP API", {
-        url: `${this.productsApiUrl}/product/api/categories`,
+        url: `${this.productsApiUrl}/product/api/categories/get-all-categories`,
         params: queryParams,
       });
 
-      const response = await mpopAxios.get("/product/api/categories", {
-        params: queryParams,
-        timeout: 30000,
-      });
+      const response = await mpopAxios.get(
+        "/product/api/categories/get-all-categories",
+        {
+          params: queryParams,
+          timeout: 30000,
+        }
+      );
 
       if (response.data?.success && response.data?.data) {
         this.logger.info(
@@ -4328,6 +4353,7 @@ class HepsiburadaService extends BasePlatformService {
         "Falling back to basic Hepsiburada categories due to API error"
       );
       return [
+        // Main categories
         {
           id: 18026,
           categoryId: 18026,
@@ -4391,6 +4417,71 @@ class HepsiburadaService extends BasePlatformService {
           available: true,
           platformCategoryId: "3000",
           level: 1,
+        },
+        // Sub-categories with parent relationships
+        {
+          id: 18027,
+          categoryId: 18027,
+          name: "Telefon & Tablet",
+          categoryName: "Telefon & Tablet",
+          parentId: 18026,
+          parentCategoryId: 18026,
+          path: "Elektronik > Telefon & Tablet",
+          paths: "Elektronik > Telefon & Tablet",
+          isLeaf: false,
+          leaf: false,
+          status: "ACTIVE",
+          available: true,
+          platformCategoryId: "18027",
+          level: 2,
+        },
+        {
+          id: 18028,
+          categoryId: 18028,
+          name: "Bilgisayar",
+          categoryName: "Bilgisayar",
+          parentId: 18026,
+          parentCategoryId: 18026,
+          path: "Elektronik > Bilgisayar",
+          paths: "Elektronik > Bilgisayar",
+          isLeaf: false,
+          leaf: false,
+          status: "ACTIVE",
+          available: true,
+          platformCategoryId: "18028",
+          level: 2,
+        },
+        {
+          id: 1001,
+          categoryId: 1001,
+          name: "Kadın Giyim",
+          categoryName: "Kadın Giyim",
+          parentId: 1000,
+          parentCategoryId: 1000,
+          path: "Giyim & Aksesuar > Kadın Giyim",
+          paths: "Giyim & Aksesuar > Kadın Giyim",
+          isLeaf: true,
+          leaf: true,
+          status: "ACTIVE",
+          available: true,
+          platformCategoryId: "1001",
+          level: 2,
+        },
+        {
+          id: 1002,
+          categoryId: 1002,
+          name: "Erkek Giyim",
+          categoryName: "Erkek Giyim",
+          parentId: 1000,
+          parentCategoryId: 1000,
+          path: "Giyim & Aksesuar > Erkek Giyim",
+          paths: "Giyim & Aksesuar > Erkek Giyim",
+          isLeaf: true,
+          leaf: true,
+          status: "ACTIVE",
+          available: true,
+          platformCategoryId: "1002",
+          level: 2,
         },
       ];
     }

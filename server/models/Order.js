@@ -108,7 +108,8 @@ Order.init(
     // Customer information as JSON (required by database)
     customerInfo: {
       type: DataTypes.JSON,
-      allowNull: true,
+      allowNull: false, // Changed to match database constraint
+      defaultValue: {}, // Added default empty object
       comment: "Customer information in JSON format",
     },
     // Shipping information

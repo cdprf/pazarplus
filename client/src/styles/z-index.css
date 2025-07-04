@@ -1,0 +1,77 @@
+/* Z-Index Management System */
+/* Centralized z-index values to prevent conflicts */
+
+:root {
+  /* Base Layer (0-99) */
+  --z-base: 0;
+  --z-below: -1;
+
+  /* Element Layers (100-999) */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-overlay: 400;
+
+  /* Component Layers (1000-4999) */
+  --z-navbar: 1000;
+  --z-sidebar: 1100;
+  --z-sidebar-backdrop: 1050;
+
+  /* Modal Layers (5000-7999) */
+  --z-modal-backdrop: 5000;
+  --z-modal: 5100;
+  --z-modal-dropdown: 5200;
+
+  /* Notification Layers (8000-8999) */
+  --z-toast: 8000;
+  --z-notification: 8100;
+  --z-tooltip: 8200;
+  --z-popover: 8300;
+
+  /* Critical Layers (9000+) */
+  --z-debug: 9000;
+  --z-loading-overlay: 9100;
+  --z-emergency: 9999;
+}
+
+/* Apply consistent z-index values */
+.navbar {
+  z-index: var(--z-navbar);
+}
+
+.sidebar {
+  z-index: var(--z-sidebar);
+}
+
+.sidebar-backdrop {
+  z-index: var(--z-sidebar-backdrop);
+}
+
+.modal {
+  z-index: var(--z-modal);
+}
+
+.modal-backdrop {
+  z-index: var(--z-modal-backdrop);
+}
+
+.toast-container {
+  z-index: var(--z-toast);
+}
+
+.tooltip {
+  z-index: var(--z-tooltip);
+}
+
+.dropdown-menu {
+  z-index: var(--z-dropdown);
+}
+
+.loading-overlay {
+  z-index: var(--z-loading-overlay);
+}
+
+/* Debug overrides (only for development) */
+.debug-modal {
+  z-index: var(--z-debug) !important;
+}

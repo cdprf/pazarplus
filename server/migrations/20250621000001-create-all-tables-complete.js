@@ -493,6 +493,78 @@ module.exports = {
         type: JsonType,
         defaultValue: [],
       },
+      sourcePlatform: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: "Platform where this product originated from",
+      },
+      // Variant Detection Fields
+      isVariant: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        comment: "Whether this product is a variant of another product",
+      },
+      isMainProduct: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        comment: "Whether this product is a main product with variants",
+      },
+      variantGroupId: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        comment: "ID linking variants to their group",
+      },
+      variantType: {
+        type: Sequelize.ENUM(
+          "color",
+          "size",
+          "model",
+          "feature",
+          "mixed",
+          "unknown"
+        ),
+        allowNull: true,
+        comment: "Type of variant (color, size, style, etc.)",
+      },
+      variantValue: {
+        type: Sequelize.STRING(255),
+        allowNull: true,
+        comment: "Value of the variant (red, large, premium, etc.)",
+      },
+      parentProductId: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: "products",
+          key: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
+        comment: "Parent product ID if this is a variant",
+      },
+      variantDetectionConfidence: {
+        type: Sequelize.DECIMAL(3, 2),
+        allowNull: true,
+        comment: "Confidence score for variant detection (0.00-1.00)",
+      },
+      variantDetectionSource: {
+        type: Sequelize.ENUM(
+          "auto",
+          "manual",
+          "platform",
+          "sku_analysis",
+          "text_analysis"
+        ),
+        allowNull: true,
+        comment: "Source of variant detection",
+      },
+      lastVariantDetectionAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        comment: "Last time variant detection was run on this product",
+      },
       templateId: {
         type: Sequelize.UUID,
         allowNull: true,
@@ -1339,6 +1411,37 @@ module.exports = {
         allowNull: true,
         comment: "Last time this order was synced from platform",
       },
+      shippingLabelPrinted: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+        comment: "Whether shipping label has been printed",
+      },
+      shippingLabelPrintedAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        comment: "Timestamp when shipping label was printed",
+      },
+      invoicePrinted: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+        comment: "Whether invoice has been printed",
+      },
+      invoicePrintedAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        comment: "Timestamp when invoice was printed",
+      },
+      errorMessage: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+        comment: "Error message for failed orders or operations",
+      },
+      retryCount: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        defaultValue: 0,
+        comment: "Number of retry attempts for failed operations",
+      },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
@@ -1919,23 +2022,48 @@ module.exports = {
       },
       n11OrderId: {
         type: Sequelize.STRING,
-        allowNull: true,
-        comment: "N11 order ID",
+        allowNull: false,
+        comment: "N11 order ID from API (field: id)",
       },
       orderNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: "N11 order number",
+        comment: "N11 order number from API",
       },
       sellerId: {
-        type: Sequelize.STRING,
+        type: Sequelize.BIGINT,
         allowNull: true,
-        comment: "Seller ID in N11 system",
+        comment: "N11 seller ID from API",
       },
-      buyerId: {
+      customerId: {
+        type: Sequelize.BIGINT,
+        allowNull: true,
+        comment: "N11 customer ID from API",
+      },
+      customerEmail: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: "Buyer ID in N11 system",
+        comment: "Customer email from N11 API",
+      },
+      customerFullName: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: "Customer full name from N11 API",
+      },
+      tcIdentityNumber: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: "Turkish Identity Number from N11 API",
+      },
+      taxId: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: "Tax ID from N11 API",
+      },
+      taxOffice: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: "Tax office from N11 API",
       },
       orderStatus: {
         type: Sequelize.ENUM(
@@ -1945,81 +2073,123 @@ module.exports = {
           "Delivered",
           "Cancelled",
           "Returned",
-          "Processing"
+          "Processing",
+          "Failed"
         ),
-        allowNull: true,
-        comment: "N11 order status",
+        allowNull: false,
+        defaultValue: "Created",
+        comment: "Order status matching N11 API values",
       },
-      shippingCompany: {
+      cargoSenderNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: "Shipping company name",
+        comment: "Cargo sender number from N11 API",
       },
-      trackingNumber: {
+      cargoTrackingNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: "Tracking number",
+        comment: "Cargo tracking number from N11 API",
       },
-      trackingUrl: {
+      cargoTrackingLink: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: "Tracking URL",
+        comment: "Cargo tracking link from N11 API",
       },
-      estimatedDeliveryDate: {
-        type: Sequelize.DATE,
+      shipmentCompanyId: {
+        type: Sequelize.INTEGER,
         allowNull: true,
-        comment: "Estimated delivery date",
+        comment: "Shipment company ID from N11 API",
       },
-      actualDeliveryDate: {
-        type: Sequelize.DATE,
+      cargoProviderName: {
+        type: Sequelize.STRING,
         allowNull: true,
-        comment: "Actual delivery date",
+        comment: "Cargo provider name from N11 API",
+      },
+      shipmentMethod: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        comment: "Shipment method from N11 API",
+      },
+      installmentChargeWithVATprice: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: true,
+        defaultValue: 0.0,
+        comment: "Platform fees for the order",
+      },
+      cancellationReason: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+        comment: "Reason for order cancellation",
+      },
+      returnReason: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+        comment: "Reason for order return",
+      },
+      lastModifiedDate: {
+        type: Sequelize.BIGINT,
+        allowNull: true,
+        comment: "Last modified timestamp from N11 API",
+      },
+      agreedDeliveryDate: {
+        type: Sequelize.BIGINT,
+        allowNull: true,
+        comment: "Agreed delivery timestamp from N11 API",
+      },
+      totalAmount: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: true,
+        comment: "Total amount from N11 API",
+      },
+      totalDiscountAmount: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: true,
+        comment: "Total discount amount from N11 API",
+      },
+      packageHistories: {
+        type: JsonType,
+        allowNull: true,
+        comment: "Package status history from N11 API",
+      },
+      shipmentPackageStatus: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: "Current shipment package status from N11 API",
+      },
+      lines: {
+        type: JsonType,
+        allowNull: true,
+        comment: "Order line items from N11 API",
       },
       shippingAddress: {
         type: JsonType,
         allowNull: true,
-        comment: "Shipping address information",
+        comment: "N11 shipping address details from API",
       },
       billingAddress: {
         type: JsonType,
         allowNull: true,
-        comment: "Billing address information",
-      },
-      customerInfo: {
-        type: JsonType,
-        allowNull: true,
-        comment: "Customer information",
+        comment: "N11 billing address details from API",
       },
       n11OrderDate: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: "Order date from N11",
+        comment: "N11 order creation date",
       },
       lastSyncAt: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: "Last sync timestamp",
+        comment: "Last synchronization with N11 platform",
       },
       platformFees: {
-        type: Sequelize.DECIMAL(12, 2),
+        type: Sequelize.DECIMAL(10, 2),
         allowNull: true,
-        defaultValue: 0,
-        comment: "Platform fees",
-      },
-      cancellationReason: {
-        type: Sequelize.STRING,
-        allowNull: true,
-        comment: "Cancellation reason",
-      },
-      returnReason: {
-        type: Sequelize.STRING,
-        allowNull: true,
-        comment: "Return reason",
+        comment: "N11 platform commission fees",
       },
       platformOrderData: {
         type: JsonType,
         allowNull: true,
-        comment: "Complete platform order data",
+        comment: "Raw N11 order data for backup and debugging",
       },
       createdAt: {
         type: Sequelize.DATE,
@@ -2098,6 +2268,35 @@ module.exports = {
       commissionRate: {
         type: Sequelize.DECIMAL(5, 2),
         allowNull: true,
+      },
+      vatRate: {
+        type: Sequelize.DECIMAL(5, 2),
+        allowNull: true,
+      },
+      restrictions: {
+        type: JsonType,
+        allowNull: true,
+      },
+      metadata: {
+        type: JsonType,
+        allowNull: true,
+      },
+      lastSyncAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      syncStatus: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      userId: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: "users",
+          key: "id",
+        },
+        onDelete: "CASCADE",
       },
       createdAt: {
         type: Sequelize.DATE,
@@ -2427,6 +2626,114 @@ module.exports = {
         allowNull: true,
         comment: "Seller code for N11 product",
       },
+      // N11 API Response Fields
+      n11ProductId: {
+        type: Sequelize.BIGINT,
+        allowNull: true,
+        unique: true,
+        comment: "N11 Product ID from API response",
+      },
+      sellerId: {
+        type: Sequelize.BIGINT,
+        allowNull: true,
+        comment: "N11 Seller ID",
+      },
+      sellerNickname: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: "N11 Seller Nickname",
+      },
+      title: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+        comment: "Product title",
+      },
+      productMainId: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: "N11 Product Main ID",
+      },
+      n11Status: {
+        type: Sequelize.ENUM("Active", "Inactive"),
+        allowNull: true,
+        comment: "N11 Product Status",
+      },
+      saleStatus: {
+        type: Sequelize.ENUM("Active", "Inactive", "Out_Of_Stock", "Suspended"),
+        allowNull: true,
+        comment: "N11 Product Sale Status",
+      },
+      preparingDay: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        comment: "N11 Product Preparing Days",
+      },
+      shipmentTemplate: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: "N11 Shipment Template",
+      },
+      maxPurchaseQuantity: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        comment: "N11 Max Purchase Quantity",
+      },
+      catalogId: {
+        type: Sequelize.BIGINT,
+        allowNull: true,
+        comment: "N11 Catalog ID",
+      },
+      barcode: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: "Product barcode",
+      },
+      groupId: {
+        type: Sequelize.BIGINT,
+        allowNull: true,
+        comment: "N11 Group ID",
+      },
+      currencyType: {
+        type: Sequelize.STRING(3),
+        allowNull: true,
+        defaultValue: "TL",
+        comment: "N11 Currency Type",
+      },
+      salePrice: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: true,
+        comment: "N11 Sale Price",
+      },
+      quantity: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        comment: "N11 Stock Quantity",
+      },
+      imageUrls: {
+        type: JsonType,
+        allowNull: true,
+        comment: "N11 Product Image URLs Array",
+      },
+      vatRate: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        comment: "N11 VAT Rate",
+      },
+      commissionRate: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        comment: "N11 Commission Rate",
+      },
+      lastSyncedAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        comment: "Last synchronization timestamp",
+      },
+      syncErrors: {
+        type: JsonType,
+        allowNull: true,
+        comment: "Synchronization error details",
+      },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
@@ -2483,10 +2790,13 @@ module.exports = {
       status: {
         type: Sequelize.ENUM(
           "pending",
+          "queued",
           "running",
+          "paused",
           "completed",
           "failed",
-          "stopped"
+          "cancelled",
+          "timeout"
         ),
         defaultValue: "pending",
       },
@@ -2514,6 +2824,23 @@ module.exports = {
         type: Sequelize.TEXT,
         allowNull: true,
       },
+      logs: {
+        type: JsonType,
+        allowNull: true,
+        defaultValue: [],
+      },
+      metadata: {
+        type: JsonType,
+        allowNull: true,
+      },
+      estimatedDuration: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+      },
+      actualDuration: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+      },
       result: {
         type: JsonType,
         allowNull: true,
@@ -2530,6 +2857,14 @@ module.exports = {
         type: Sequelize.DATE,
         allowNull: true,
       },
+      pausedAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      cancelledAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
       stoppedAt: {
         type: Sequelize.DATE,
         allowNull: true,
@@ -2537,6 +2872,25 @@ module.exports = {
       scheduledFor: {
         type: Sequelize.DATE,
         allowNull: true,
+      },
+      timeoutAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      parentTaskId: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: "background_tasks",
+          key: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
+      },
+      dependsOnTaskIds: {
+        type: JsonType,
+        allowNull: true,
+        defaultValue: [],
       },
       retryCount: {
         type: Sequelize.INTEGER,
@@ -2555,6 +2909,11 @@ module.exports = {
         type: Sequelize.DATE,
         allowNull: false,
         defaultValue: Sequelize.NOW,
+      },
+      deletedAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        comment: "Soft delete timestamp for paranoid mode",
       },
     });
 
@@ -3726,6 +4085,90 @@ module.exports = {
         allowNull: false,
         defaultValue: Sequelize.NOW,
       },
+      // Additional columns from migrations
+      stockQuantity: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+      minStockLevel: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+      baseCostPrice: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: true,
+      },
+      media: {
+        type: JsonType,
+        allowNull: true,
+        defaultValue: [],
+      },
+      publishedPlatforms: {
+        type: JsonType,
+        allowNull: true,
+        defaultValue: [],
+      },
+      platformTemplates: {
+        type: JsonType,
+        allowNull: true,
+        defaultValue: {},
+      },
+      learnedFields: {
+        type: JsonType,
+        allowNull: true,
+        defaultValue: {},
+      },
+      categoryMappings: {
+        type: JsonType,
+        allowNull: true,
+        defaultValue: {},
+      },
+      attributes: {
+        type: JsonType,
+        allowNull: true,
+        defaultValue: {},
+      },
+      hasVariants: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      stockCodePattern: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      patternConfidence: {
+        type: Sequelize.DECIMAL(3, 2),
+        allowNull: true,
+        defaultValue: 0.0,
+      },
+      lastStockUpdate: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      platformExtras: {
+        type: JsonType,
+        allowNull: true,
+        defaultValue: {},
+      },
+      scrapedFrom: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      scrapedAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      importedFrom: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      importedAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
     });
 
     // Create Platform Variants table
@@ -3740,6 +4183,16 @@ module.exports = {
         allowNull: false,
         references: {
           model: "main_products",
+          key: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
+      },
+      productId: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: "products",
           key: "id",
         },
         onUpdate: "CASCADE",
@@ -4342,6 +4795,16 @@ module.exports = {
         onUpdate: "CASCADE",
         onDelete: "CASCADE",
       },
+      orderId: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: "orders",
+          key: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
+      },
       gtip: {
         type: Sequelize.STRING,
         allowNull: true,
@@ -4476,6 +4939,10 @@ module.exports = {
     await queryInterface.addIndex("products", ["updatedAt"]);
     await queryInterface.addIndex("products", ["lastSyncedAt"]);
     await queryInterface.addIndex("products", ["hasVariants"]);
+    await queryInterface.addIndex("products", ["isVariant"]);
+    await queryInterface.addIndex("products", ["isMainProduct"]);
+    await queryInterface.addIndex("products", ["variantGroupId"]);
+    await queryInterface.addIndex("products", ["parentProductId"]);
     await queryInterface.addIndex("products", ["brand"]);
     await queryInterface.addIndex("products", ["price"]);
     await queryInterface.addIndex("products", ["name"], {
@@ -4646,10 +5113,20 @@ module.exports = {
     await queryInterface.addIndex("trendyol_orders", ["cargoTrackingNumber"]);
 
     await queryInterface.addIndex("n11_orders", ["orderId"]);
-    await queryInterface.addIndex("n11_orders", ["n11OrderId"]);
+    await queryInterface.addIndex("n11_orders", ["n11OrderId"], {
+      unique: true,
+    });
     await queryInterface.addIndex("n11_orders", ["orderNumber"]);
     await queryInterface.addIndex("n11_orders", ["sellerId"]);
-    await queryInterface.addIndex("n11_orders", ["trackingNumber"]);
+    await queryInterface.addIndex("n11_orders", ["customerId"]);
+    await queryInterface.addIndex("n11_orders", ["customerEmail"]);
+    await queryInterface.addIndex("n11_orders", ["orderStatus"]);
+    await queryInterface.addIndex("n11_orders", ["cargoTrackingNumber"]);
+    await queryInterface.addIndex("n11_orders", ["shipmentPackageStatus"]);
+    await queryInterface.addIndex("n11_orders", ["n11OrderDate"]);
+    await queryInterface.addIndex("n11_orders", ["lastSyncAt"]);
+    await queryInterface.addIndex("n11_orders", ["lastModifiedDate"]);
+    await queryInterface.addIndex("n11_orders", ["agreedDeliveryDate"]);
 
     // Add index for the new trendyolProductId column
     await queryInterface.addIndex("trendyol_products", ["trendyolProductId"]);
@@ -4674,6 +5151,14 @@ module.exports = {
       "platformCategoryId",
     ]);
     await queryInterface.addIndex("platform_categories", ["parentId"]);
+    await queryInterface.addIndex("platform_categories", ["userId"]);
+
+    // Add unique constraint for platform categories
+    await queryInterface.addConstraint("platform_categories", {
+      fields: ["platformType", "platformCategoryId"],
+      type: "unique",
+      name: "platform_categories_unique_constraint",
+    });
 
     await queryInterface.addIndex("hepsiburada_products", ["productId"]);
     await queryInterface.addIndex("hepsiburada_products", ["merchantSku"]);
@@ -4684,6 +5169,14 @@ module.exports = {
 
     await queryInterface.addIndex("n11_products", ["productId"]);
     await queryInterface.addIndex("n11_products", ["stockCode"]);
+    await queryInterface.addIndex("n11_products", ["n11ProductId"], {
+      unique: true,
+    });
+    await queryInterface.addIndex("n11_products", ["sellerId"]);
+    await queryInterface.addIndex("n11_products", ["barcode"]);
+    await queryInterface.addIndex("n11_products", ["n11Status"]);
+    await queryInterface.addIndex("n11_products", ["saleStatus"]);
+    await queryInterface.addIndex("n11_products", ["lastSyncedAt"]);
 
     await queryInterface.addIndex("background_tasks", ["userId"]);
     await queryInterface.addIndex("background_tasks", ["platformConnectionId"]);
@@ -4874,6 +5367,7 @@ module.exports = {
 
       // Platform Variants table indexes
       await queryInterface.addIndex("platform_variants", ["mainProductId"]);
+      await queryInterface.addIndex("platform_variants", ["productId"]);
       await queryInterface.addIndex("platform_variants", ["platform"]);
       await queryInterface.addIndex("platform_variants", ["platformSku"]);
       await queryInterface.addIndex("platform_variants", ["platformProductId"]);
@@ -4938,6 +5432,7 @@ module.exports = {
       // Turkish Compliance table indexes
       await queryInterface.addIndex("turkish_compliance", ["productId"]);
       await queryInterface.addIndex("turkish_compliance", ["mainProductId"]);
+      await queryInterface.addIndex("turkish_compliance", ["orderId"]);
       await queryInterface.addIndex("turkish_compliance", ["gtip"]);
       await queryInterface.addIndex("turkish_compliance", ["complianceStatus"]);
       await queryInterface.addIndex("turkish_compliance", ["riskClass"]);

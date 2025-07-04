@@ -283,9 +283,19 @@ Product.associate = function (models) {
     as: "user",
   });
 
+  // Also define the reverse association
+  models.User.hasMany(Product, {
+    foreignKey: "userId",
+    as: "products",
+    onDelete: "CASCADE",
+    hooks: true,
+  });
+
   Product.hasMany(models.ProductVariant, {
     foreignKey: "productId",
     as: "variants",
+    onDelete: "CASCADE",
+    hooks: true,
   });
 
   Product.hasMany(models.InventoryMovement, {
@@ -305,6 +315,19 @@ Product.associate = function (models) {
       entityType: "product",
     },
     as: "platformData",
+  });
+
+  // Define the reverse association
+  models.PlatformData.belongsTo(Product, {
+    foreignKey: "entityId",
+    constraints: false,
+    as: "product",
+  });
+
+  Product.hasMany(models.PlatformVariant, {
+    foreignKey: "productId",
+    as: "platformVariants",
+    onDelete: "SET NULL",
   });
 };
 

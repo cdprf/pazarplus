@@ -537,7 +537,7 @@ const ProductCreationModal = ({ show, onHide, onSuccess }) => {
       backdrop="static"
       centered
       style={{
-        zIndex: 9999,
+        zIndex: "var(--z-modal)",
       }}
       contentClassName="border-0 shadow-lg"
       dialogClassName="modal-dialog-scrollable"

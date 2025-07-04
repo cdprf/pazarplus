@@ -201,10 +201,11 @@ module.exports = (sequelize) => {
       tableName: "background_tasks",
       timestamps: true,
       paranoid: true, // Soft delete support
+      underscored: false, // Use camelCase column names
       indexes: [
         {
           fields: ["userId"],
-          name: "background_tasks_user_id_idx",
+          name: "background_tasks_userId_idx",
         },
         {
           fields: ["status"],

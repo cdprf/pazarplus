@@ -533,12 +533,42 @@ class DatabaseTransactionManager extends EventEmitter {
         // Auto-retry with backoff
         return await this.retryOperation(operationId);
       }
+    } else if (this.isPostgreSQLTransactionAbortError(error)) {
+      // Handle PostgreSQL transaction abort errors
+      transaction.status = "aborted";
+      transaction.lastError = error.message;
+
+      logger.error(
+        `PostgreSQL transaction aborted for operation ${operationId}:`,
+        error.message
+      );
+      this.emit("transactionAborted", { operationId, error, transaction });
+
+      // Don't retry aborted transactions, they need to be handled at the application level
+      throw error;
     } else {
       transaction.status = "error";
       transaction.lastError = error.message;
       this.emit("transactionError", { operationId, error, transaction });
       throw error;
     }
+  }
+
+  /**
+   * Check if error is a PostgreSQL transaction abort error
+   */
+  isPostgreSQLTransactionAbortError(error) {
+    // PostgreSQL error code 25P02: current transaction is aborted
+    return (
+      error &&
+      (error.code === "25P02" ||
+        error.original?.code === "25P02" ||
+        error.parent?.code === "25P02" ||
+        (error.message &&
+          error.message.includes("current transaction is aborted")) ||
+        (error.original?.message &&
+          error.original.message.includes("current transaction is aborted")))
+    );
   }
 
   /**

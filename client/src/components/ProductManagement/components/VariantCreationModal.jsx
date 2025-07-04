@@ -227,11 +227,19 @@ const VariantCreationModal = ({
 
     // Validate variants
     const validVariants = variants.filter((variant) => {
-      return variant.name.trim() && variant.price > 0;
+      return (
+        variant.name.trim() &&
+        variant.price > 0 &&
+        variant.platform &&
+        ["trendyol", "hepsiburada", "n11"].includes(variant.platform)
+      );
     });
 
     if (validVariants.length === 0) {
-      showAlert("Please add at least one valid variant", "error");
+      showAlert(
+        "Please add at least one valid variant with a name, price > 0, and valid platform",
+        "error"
+      );
       return;
     }
 
@@ -241,33 +249,54 @@ const VariantCreationModal = ({
 
       for (const variant of validVariants) {
         try {
+          // Validate that a valid platform is selected
+          if (
+            !variant.platform ||
+            !["trendyol", "hepsiburada", "n11"].includes(variant.platform)
+          ) {
+            results.push({
+              success: false,
+              variant,
+              error:
+                "Please select a valid platform (Trendyol, Hepsiburada, or N11)",
+            });
+            continue;
+          }
+
           const variantData = {
-            mainProductId: mainProduct.id,
-            platformCode:
+            platform: variant.platform,
+            platformSku:
               variant.platformCode || `${mainProduct.baseSku}-${variant.id}`,
-            platform: variant.platform || "generic",
-            name: variant.name,
-            description: variant.description,
-            price: parseFloat(variant.price),
-            costPrice: variant.costPrice ? parseFloat(variant.costPrice) : null,
-            stockQuantity: parseInt(variant.stockQuantity) || 0,
-            minStockLevel: parseInt(variant.minStockLevel) || 5,
-            weight: variant.weight ? parseFloat(variant.weight) : null,
-            dimensions: Object.values(variant.dimensions).some((v) => v)
-              ? variant.dimensions
-              : null,
-            attributes:
-              Object.keys(variant.attributes).length > 0
-                ? variant.attributes
+            platformFields: {
+              platformTitle: variant.name,
+              platformDescription: variant.description,
+              platformPrice: parseFloat(variant.price),
+              costPrice: variant.costPrice
+                ? parseFloat(variant.costPrice)
                 : null,
-            platformSpecific:
-              Object.keys(variant.platformSpecific).length > 0
-                ? variant.platformSpecific
+              stockQuantity: parseInt(variant.stockQuantity) || 0,
+              minStockLevel: parseInt(variant.minStockLevel) || 5,
+              weight: variant.weight ? parseFloat(variant.weight) : null,
+              dimensions: Object.values(variant.dimensions).some((v) => v)
+                ? variant.dimensions
                 : null,
-            status: variant.status,
+              attributes:
+                Object.keys(variant.attributes).length > 0
+                  ? variant.attributes
+                  : null,
+              platformSpecific:
+                Object.keys(variant.platformSpecific).length > 0
+                  ? variant.platformSpecific
+                  : null,
+              status: variant.status,
+            },
+            autoPublish: false,
           };
 
-          const response = await apiClient.createPlatformVariant(variantData);
+          const response = await apiClient.createPlatformVariant(
+            mainProduct.id,
+            variantData
+          );
 
           if (response.success) {
             results.push({ success: true, variant: response.data });

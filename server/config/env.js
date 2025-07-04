@@ -16,7 +16,7 @@ const envSchema = Joi.object({
   // CORS Configuration
   CORS_ORIGINS: Joi.alternatives()
     .try(Joi.string(), Joi.array().items(Joi.string().uri()))
-    .default(["http://localhost:3000", "http://localhost:3001"]),
+    .default(["http://localhost:3000", "http://localhost:5001"]),
 
   // Rate Limiting Configuration
   RATE_LIMIT_WINDOW_MS: Joi.number().default(15 * 60 * 1000), // 15 minutes

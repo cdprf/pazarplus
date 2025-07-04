@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Container, Row, Col, Button, Alert } from "react-bootstrap";
 import { useError, useComponentError } from "../../contexts/ErrorContext";
+import { useAlert } from "../../contexts/AlertContext";
 import { useErrorHandler } from "../../hooks/useErrorHandler";
 import ErrorState from "../common/ErrorState";
 import { LoadingWithError } from "../common/withErrorHandling";
@@ -14,6 +15,9 @@ const ErrorHandlingDemo = () => {
 
   // Global error handling
   const { addToastError, handleApiError } = useError();
+
+  // Alert system for proper success/info messages
+  const { success: showSuccess } = useAlert();
 
   // Component-specific error handling
   const {
@@ -111,7 +115,8 @@ const ErrorHandlingDemo = () => {
       await withErrorHandling(async () => {
         await new Promise((resolve) => setTimeout(resolve, 1000));
         setDemoData("Successfully loaded data!");
-        addToastError("Data loaded successfully!", { type: "success" });
+        // Fix: Use proper success method instead of error method
+        showSuccess("Data loaded successfully!");
       });
     } catch (error) {
       // Error handled by withErrorHandling
@@ -124,7 +129,8 @@ const ErrorHandlingDemo = () => {
     retry(async () => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setDemoData("Retry successful!");
-      addToastError("Retry completed successfully!", { type: "success" });
+      // Fix: Use proper success method instead of error method
+      showSuccess("Retry completed successfully!");
     });
   };
 

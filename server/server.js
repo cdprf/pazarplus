@@ -1,6 +1,13 @@
 require("dotenv").config({ path: "../.env.unified" });
 
-// Import network detection utility
+// Import auto network configuration
+const AutoNetworkConfig = require("./utils/auto-network-config");
+
+// Initialize auto network configuration
+const autoNetworkConfig = new AutoNetworkConfig();
+const detectedIP = autoNetworkConfig.initialize();
+
+// Import network detection utility (legacy)
 const { setNetworkEnvironment } = require("./utils/networkDetection");
 const ServerStabilityManager = require("./utils/serverStabilityManager");
 
@@ -109,6 +116,12 @@ async function startServer() {
         logger.debug("Initializing WebSocket server");
         const wsServer = initializeWebSocketServer(server);
         logger.info("WebSocket server initialized successfully");
+
+        // Start network monitoring for automatic IP detection
+        console.log(
+          "🔄 Starting network monitoring for automatic IP updates..."
+        );
+        autoNetworkConfig.watchNetworkChanges();
 
         // Register WebSocket server cleanup
         stabilityManager.registerCleanupHandler(async () => {

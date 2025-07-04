@@ -57,21 +57,42 @@ export const Toast = ({
   const progressRef = useRef(null);
   const toastRef = useRef(null);
 
-  const Icon = toastIcons[variant];
-  const variantStyles = toastVariants[variant];
+  // Ensure valid variant and duration
+  const validVariants = ["success", "error", "warning", "info"];
+  const safeVariant = validVariants.includes(variant) ? variant : "info";
+  const safeDuration =
+    typeof duration === "number" && duration >= 0 ? duration : 5000;
+  const safeMessage = message || "Notification"; // Fallback message
+
+  const Icon = toastIcons[safeVariant] || toastIcons.info; // Fallback to info icon
+  const variantStyles = toastVariants[safeVariant] || toastVariants.info; // Fallback to info styles
   const CloseIcon = X;
 
   const handleClose = useCallback(() => {
+    if (isLeaving) return; // Prevent multiple close calls
     setIsLeaving(true);
     setTimeout(() => {
-      onClose?.(id);
+      try {
+        onClose?.(id);
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error in toast onClose callback:", error);
+        }
+      }
     }, 300); // Match exit animation duration
-  }, [id, onClose]);
+  }, [id, onClose, isLeaving]);
 
   // Animation and auto-hide logic
   useEffect(() => {
-    // Debug logging
-    console.log("🍞 Toast mounted:", { id, title, message, variant });
+    // Debug logging (only in development)
+    if (process.env.NODE_ENV === "development") {
+      console.log("🍞 Toast mounted:", {
+        id,
+        title,
+        message: safeMessage,
+        variant: safeVariant,
+      });
+    }
 
     // Entrance animation
     requestAnimationFrame(() => {
@@ -79,49 +100,75 @@ export const Toast = ({
     });
 
     // Auto-hide timer
-    if (duration > 0) {
+    if (safeDuration > 0) {
       timerRef.current = setTimeout(() => {
         handleClose();
-      }, duration);
+      }, safeDuration);
 
-      // Progress bar animation
+      // Progress bar animation - optimized with requestAnimationFrame
       if (showProgress) {
-        progressRef.current = setInterval(() => {
-          setProgress((prev) => {
-            const newProgress = prev - 100 / (duration / 100);
-            return newProgress <= 0 ? 0 : newProgress;
-          });
-        }, 100);
+        const startTime = Date.now();
+        const updateProgress = () => {
+          const elapsed = Date.now() - startTime;
+          const newProgress = Math.max(0, 100 - (elapsed / safeDuration) * 100);
+
+          setProgress(newProgress);
+
+          if (newProgress > 0 && elapsed < safeDuration) {
+            progressRef.current = requestAnimationFrame(updateProgress);
+          }
+        };
+        progressRef.current = requestAnimationFrame(updateProgress);
       }
     }
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      if (progressRef.current) clearInterval(progressRef.current);
-      console.log("🍞 Toast unmounted:", id);
+      if (progressRef.current) cancelAnimationFrame(progressRef.current);
+      if (process.env.NODE_ENV === "development") {
+        console.log("🍞 Toast unmounted:", id);
+      }
     };
-  }, [duration, showProgress, handleClose, id, title, message, variant]);
+  }, [
+    safeDuration,
+    showProgress,
+    handleClose,
+    id,
+    title,
+    safeMessage,
+    safeVariant,
+  ]);
 
-  // Pause on hover
+  // Pause on hover - optimized
   const handleMouseEnter = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (progressRef.current) clearInterval(progressRef.current);
+    if (progressRef.current) cancelAnimationFrame(progressRef.current);
   };
 
   const handleMouseLeave = () => {
-    if (duration > 0 && progress > 0) {
-      const remainingTime = (progress / 100) * duration;
+    if (safeDuration > 0 && progress > 0) {
+      const remainingTime = (progress / 100) * safeDuration;
       timerRef.current = setTimeout(() => {
         handleClose();
       }, remainingTime);
 
       if (showProgress) {
-        progressRef.current = setInterval(() => {
-          setProgress((prev) => {
-            const newProgress = prev - 100 / (remainingTime / 100);
-            return newProgress <= 0 ? 0 : newProgress;
-          });
-        }, 100);
+        const startTime = Date.now();
+        const initialProgress = progress;
+        const updateProgress = () => {
+          const elapsed = Date.now() - startTime;
+          const newProgress = Math.max(
+            0,
+            initialProgress - (elapsed / remainingTime) * initialProgress
+          );
+
+          setProgress(newProgress);
+
+          if (newProgress > 0 && elapsed < remainingTime) {
+            progressRef.current = requestAnimationFrame(updateProgress);
+          }
+        };
+        progressRef.current = requestAnimationFrame(updateProgress);
       }
     }
   };
@@ -135,27 +182,31 @@ export const Toast = ({
 
   // Enhanced animation classes with position-aware animations
   const getAnimationClass = () => {
-    const isRightPosition = position.includes('right');
-    const isLeftPosition = position.includes('left');
-    const isTopPosition = position.includes('top');
-    const isBottomPosition = position.includes('bottom');
-    
+    const isRightPosition = position.includes("right");
+    const isLeftPosition = position.includes("left");
+    const isTopPosition = position.includes("top");
+    const isBottomPosition = position.includes("bottom");
+
     if (isLeaving) {
       if (isRightPosition) return "animate-slide-out-to-right";
       if (isLeftPosition) return "animate-slide-out-to-left";
-      if (isTopPosition && !isRightPosition && !isLeftPosition) return "animate-slide-out-to-top";
-      if (isBottomPosition && !isRightPosition && !isLeftPosition) return "animate-slide-out-to-bottom";
+      if (isTopPosition && !isRightPosition && !isLeftPosition)
+        return "animate-slide-out-to-top";
+      if (isBottomPosition && !isRightPosition && !isLeftPosition)
+        return "animate-slide-out-to-bottom";
       return "animate-slide-out-to-right"; // Default
     }
-    
+
     if (isVisible) {
       if (isRightPosition) return "animate-slide-in-from-right";
       if (isLeftPosition) return "animate-slide-in-from-left";
-      if (isTopPosition && !isRightPosition && !isLeftPosition) return "animate-slide-in-from-top";
-      if (isBottomPosition && !isRightPosition && !isLeftPosition) return "animate-slide-in-from-bottom";
+      if (isTopPosition && !isRightPosition && !isLeftPosition)
+        return "animate-slide-in-from-top";
+      if (isBottomPosition && !isRightPosition && !isLeftPosition)
+        return "animate-slide-in-from-bottom";
       return "animate-slide-in-from-right"; // Default
     }
-    
+
     return "opacity-0 translate-x-full";
   };
 
@@ -168,13 +219,16 @@ export const Toast = ({
         "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700",
         "transition-all duration-300 ease-in-out",
         "focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2",
+        // Ensure proper z-index management
+        "relative z-toast",
         variantStyles.container,
         getAnimationClass(),
         className
       )}
       role="alert"
-      aria-live="assertive"
+      aria-live={safeVariant === "error" ? "assertive" : "polite"}
       aria-atomic="true"
+      aria-describedby={title ? `toast-title-${id}` : undefined}
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onMouseEnter={handleMouseEnter}
@@ -206,12 +260,19 @@ export const Toast = ({
       {/* Content */}
       <div className="flex-1 min-w-0">
         {title && (
-          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          <div
+            id={`toast-title-${id}`}
+            className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1"
+          >
             {title}
           </div>
         )}
-        <div className="text-sm text-gray-600 dark:text-gray-400 leading-5">
-          {message}
+        <div
+          className="text-sm text-gray-600 dark:text-gray-400 leading-5"
+          role="status"
+          aria-live="polite"
+        >
+          {safeMessage}
         </div>
       </div>
 
@@ -226,15 +287,15 @@ export const Toast = ({
       </button>
 
       {/* Progress Bar */}
-      {showProgress && duration > 0 && (
+      {showProgress && safeDuration > 0 && (
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700 rounded-b-lg overflow-hidden">
           <div
             className={cn(
               "h-full transition-all duration-100 ease-linear",
-              variant === "success" && "bg-green-500",
-              variant === "error" && "bg-red-500",
-              variant === "warning" && "bg-yellow-500",
-              variant === "info" && "bg-blue-500"
+              safeVariant === "success" && "bg-green-500",
+              safeVariant === "error" && "bg-red-500",
+              safeVariant === "warning" && "bg-yellow-500",
+              safeVariant === "info" && "bg-blue-500"
             )}
             style={{ width: `${progress}%` }}
             role="progressbar"

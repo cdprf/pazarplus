@@ -551,7 +551,24 @@ class ProductMergeService {
               mergedProduct.sku || mergedProduct.name
             }:`,
             productError
-          );
+          ); // Check if this is a PostgreSQL transaction abort error
+          if (this.isTransactionAbortError(productError)) {
+            logger.error(
+              "Transaction aborted due to error, rolling back and switching to individual processing"
+            );
+
+            try {
+              if (transaction && !transaction.finished) {
+                await transaction.rollback();
+              }
+            } catch (rollbackError) {
+              logger.error("Error during transaction rollback:", rollbackError);
+            }
+
+            // Switch to individual product processing for remaining products
+            return await this.processIndividualProducts(batch, userId);
+          }
+
           errors.push({
             product: mergedProduct.sku || mergedProduct.name || "unknown",
             error: productError.message,
@@ -570,7 +587,23 @@ class ProductMergeService {
 
       return { savedProducts, errors };
     } catch (error) {
-      await transaction.rollback();
+      // Check if transaction is still active before attempting rollback
+      if (transaction && !transaction.finished) {
+        try {
+          await transaction.rollback();
+        } catch (rollbackError) {
+          logger.error("Error during transaction rollback:", rollbackError);
+        }
+      }
+
+      // Check if this is a transaction abort error and switch to individual processing
+      if (this.isTransactionAbortError(error)) {
+        logger.info(
+          "Batch failed due to transaction abort, switching to individual processing"
+        );
+        return await this.processIndividualProducts(batch, userId);
+      }
+
       logger.error("Batch processing failed:", error);
       throw error;
     }
@@ -611,86 +644,101 @@ class ProductMergeService {
 
     // 2. Check if product already exists by SKU
     if (!existingProduct && mergedProduct.sku) {
-      existingProduct = await Product.findOne({
-        where: { userId, sku: mergedProduct.sku },
-        include: [
-          {
-            model: PlatformData,
-            as: "platformData",
-            where: { entityType: "product" },
-            required: false,
-          },
-        ],
+      existingProduct = await this.executeWithTransactionFallback(
+        async (tx) => {
+          return await Product.findOne({
+            where: { userId, sku: mergedProduct.sku },
+            include: [
+              {
+                model: PlatformData,
+                as: "platformData",
+                where: { entityType: "product" },
+                required: false,
+              },
+            ],
+            transaction: tx,
+          });
+        },
         transaction,
-      });
+        `find product by SKU ${mergedProduct.sku}`
+      );
     }
 
     // 3. Or by barcode if no SKU match
     if (!existingProduct && mergedProduct.barcode) {
-      existingProduct = await Product.findOne({
-        where: { userId, barcode: mergedProduct.barcode },
-        include: [
-          {
-            model: PlatformData,
-            as: "platformData",
-            where: { entityType: "product" },
-            required: false,
-          },
-        ],
+      existingProduct = await this.executeWithTransactionFallback(
+        async (tx) => {
+          return await Product.findOne({
+            where: { userId, barcode: mergedProduct.barcode },
+            include: [
+              {
+                model: PlatformData,
+                as: "platformData",
+                where: { entityType: "product" },
+                required: false,
+              },
+            ],
+            transaction: tx,
+          });
+        },
         transaction,
-      });
+        `find product by barcode ${mergedProduct.barcode}`
+      );
     }
 
     // Update existing or create new
     let product;
     if (existingProduct) {
-      // Update existing product with new extracted fields
-      await existingProduct.update(
-        {
-          name: mergedProduct.name || existingProduct.name,
-          description: mergedProduct.description || existingProduct.description,
-          price: mergedProduct.price || existingProduct.price,
-          stockQuantity:
-            mergedProduct.stockQuantity || existingProduct.stockQuantity,
-          images: mergedProduct.images || existingProduct.images,
-          barcode: mergedProduct.barcode || existingProduct.barcode,
-          category: mergedProduct.category || existingProduct.category,
-          brand: mergedProduct.brand || existingProduct.brand,
-          manufacturer:
-            mergedProduct.manufacturer || existingProduct.manufacturer,
-          variants: mergedProduct.variants || existingProduct.variants,
-          variantAttributes:
-            mergedProduct.variantAttributes ||
-            existingProduct.variantAttributes,
-          attributes: mergedProduct.attributes || existingProduct.attributes,
-          weight: mergedProduct.weight || existingProduct.weight,
-          dimensions: mergedProduct.dimensions || existingProduct.dimensions,
-          vatRate: mergedProduct.vatRate || existingProduct.vatRate,
-          platformProductId:
-            mergedProduct.platformProductId ||
-            existingProduct.platformProductId,
-          stockCode: mergedProduct.stockCode || existingProduct.stockCode,
-          categoryId: mergedProduct.categoryId || existingProduct.categoryId,
-          approvalStatus:
-            mergedProduct.approvalStatus !== null
-              ? mergedProduct.approvalStatus
-              : existingProduct.approvalStatus,
-          platformStatus:
-            mergedProduct.platformStatus || existingProduct.platformStatus,
-          urls: mergedProduct.urls || existingProduct.urls,
-          metadata: mergedProduct.metadata || existingProduct.metadata,
-          shippingInfo:
-            mergedProduct.shippingInfo || existingProduct.shippingInfo,
-          errorInfo: mergedProduct.errorInfo || existingProduct.errorInfo,
-          lastSyncedAt: new Date(),
+      // Update existing product with new extracted fields using transaction fallback
+      const updateData = {
+        name: mergedProduct.name || existingProduct.name,
+        description: mergedProduct.description || existingProduct.description,
+        price: mergedProduct.price || existingProduct.price,
+        stockQuantity:
+          mergedProduct.stockQuantity || existingProduct.stockQuantity,
+        images: mergedProduct.images || existingProduct.images,
+        barcode: mergedProduct.barcode || existingProduct.barcode,
+        category: mergedProduct.category || existingProduct.category,
+        brand: mergedProduct.brand || existingProduct.brand,
+        manufacturer:
+          mergedProduct.manufacturer || existingProduct.manufacturer,
+        variants: mergedProduct.variants || existingProduct.variants,
+        variantAttributes:
+          mergedProduct.variantAttributes || existingProduct.variantAttributes,
+        attributes: mergedProduct.attributes || existingProduct.attributes,
+        weight: mergedProduct.weight || existingProduct.weight,
+        dimensions: mergedProduct.dimensions || existingProduct.dimensions,
+        vatRate: mergedProduct.vatRate || existingProduct.vatRate,
+        platformProductId:
+          mergedProduct.platformProductId || existingProduct.platformProductId,
+        stockCode: mergedProduct.stockCode || existingProduct.stockCode,
+        categoryId: mergedProduct.categoryId || existingProduct.categoryId,
+        approvalStatus:
+          mergedProduct.approvalStatus !== null
+            ? mergedProduct.approvalStatus
+            : existingProduct.approvalStatus,
+        platformStatus:
+          mergedProduct.platformStatus || existingProduct.platformStatus,
+        urls: mergedProduct.urls || existingProduct.urls,
+        metadata: mergedProduct.metadata || existingProduct.metadata,
+        shippingInfo:
+          mergedProduct.shippingInfo || existingProduct.shippingInfo,
+        errorInfo: mergedProduct.errorInfo || existingProduct.errorInfo,
+        lastSyncedAt: new Date(),
+      };
+
+      await this.executeWithTransactionFallback(
+        async (tx) => {
+          return await existingProduct.update(updateData, { transaction: tx });
         },
-        { transaction }
+        transaction,
+        `update product ${existingProduct.sku}`
       );
 
       product = existingProduct;
       logger.debug(`Updated existing product: ${product.sku}`);
     } else {
-      // Create new product with required fields and all extracted data
+      // Create new product with required fields and all extracted data using transaction fallback
       const productData = {
         userId,
         sku: mergedProduct.sku,
@@ -736,7 +784,13 @@ class ProductMergeService {
         productData.barcode = mergedProduct.barcode;
       }
 
-      product = await Product.create(productData, { transaction });
+      product = await this.executeWithTransactionFallback(
+        async (tx) => {
+          return await Product.create(productData, { transaction: tx });
+        },
+        transaction,
+        `create product ${mergedProduct.sku}`
+      );
       logger.info(`Created new product: ${product.sku} - ${product.name}`);
     }
 
@@ -807,27 +861,40 @@ class ProductMergeService {
     if (mergedProduct.sources && Array.isArray(mergedProduct.sources)) {
       for (const source of mergedProduct.sources) {
         if (source.platform && source.externalId) {
-          const platformData = await PlatformData.findOne({
-            where: {
-              entityType: "product",
-              platformType: source.platform,
-              platformEntityId: source.externalId,
-            },
-            include: [
-              {
-                model: Product,
-                as: "product",
-                where: { userId },
+          try {
+            const platformData = await this.executeWithTransactionFallback(
+              async (tx) => {
+                return await PlatformData.findOne({
+                  where: {
+                    entityType: "product",
+                    platformType: source.platform,
+                    platformEntityId: source.externalId,
+                  },
+                  include: [
+                    {
+                      model: Product,
+                      as: "product",
+                      where: { userId },
+                    },
+                  ],
+                  transaction: tx,
+                });
               },
-            ],
-            transaction,
-          });
-
-          if (platformData && platformData.product) {
-            logger.debug(
-              `Found existing product by platform data: ${source.platform}:${source.externalId} -> ${platformData.product.sku}`
+              transaction,
+              `find platform data for ${source.platform}:${source.externalId}`
             );
-            return platformData.product;
+
+            if (platformData && platformData.product) {
+              logger.debug(
+                `Found existing product by platform data: ${source.platform}:${source.externalId} -> ${platformData.product.sku}`
+              );
+              return platformData.product;
+            }
+          } catch (error) {
+            // Log error and continue to next source
+            logger.error(
+              `Error finding platform data for ${source.platform}:${source.externalId}: ${error.message}`
+            );
           }
         }
       }
@@ -858,13 +925,16 @@ class ProductMergeService {
         },
       };
 
-      // Use upsert for better concurrency handling
-      const [platformData, created] = await PlatformData.upsert(
-        platformDataValues,
-        {
-          transaction,
-          conflictFields: ["entityType", "entityId", "platformType"],
-        }
+      // Use upsert for better concurrency handling with transaction fallback
+      const [platformData, created] = await this.executeWithTransactionFallback(
+        async (tx) => {
+          return await PlatformData.upsert(platformDataValues, {
+            transaction: tx,
+            conflictFields: ["entityType", "entityId", "platformType"],
+          });
+        },
+        transaction,
+        `upsert platform data for ${source.platform}:${source.externalId}`
       );
 
       logger.debug(
@@ -882,32 +952,44 @@ class ProductMergeService {
           platformError.message
         );
 
-        // Try to find and update the existing record
-        const existingPlatformData = await PlatformData.findOne({
-          where: {
-            entityType: "product",
-            entityId: product.id,
-            platformType: source.platform,
+        // Try to find and update the existing record using transaction fallback
+        const existingPlatformData = await this.executeWithTransactionFallback(
+          async (tx) => {
+            return await PlatformData.findOne({
+              where: {
+                entityType: "product",
+                entityId: product.id,
+                platformType: source.platform,
+              },
+              transaction: tx,
+            });
           },
           transaction,
-        });
+          `find existing platform data for ${source.platform}`
+        );
 
         if (existingPlatformData) {
-          await existingPlatformData.update(
-            {
-              platformEntityId: source.externalId,
-              platformSku: source.sku || product.sku,
-              platformPrice: parseFloat(source.price) || 0,
-              platformQuantity: parseInt(source.stockQuantity) || 0,
-              lastSyncedAt: new Date(),
-              status: "active",
-              data: {
-                source,
-                connectionId: source.connectionId,
-                connectionName: source.connectionName,
-              },
+          await this.executeWithTransactionFallback(
+            async (tx) => {
+              return await existingPlatformData.update(
+                {
+                  platformEntityId: source.externalId,
+                  platformSku: source.sku || product.sku,
+                  platformPrice: parseFloat(source.price) || 0,
+                  platformQuantity: parseInt(source.stockQuantity) || 0,
+                  lastSyncedAt: new Date(),
+                  status: "active",
+                  data: {
+                    source,
+                    connectionId: source.connectionId,
+                    connectionName: source.connectionName,
+                  },
+                },
+                { transaction: tx }
+              );
             },
-            { transaction }
+            transaction,
+            `update existing platform data for ${source.platform}:${source.externalId}`
           );
 
           logger.debug(
@@ -917,6 +999,101 @@ class ProductMergeService {
         }
       }
       throw platformError;
+    }
+  }
+
+  /**
+   * Check if error is a PostgreSQL transaction abort error
+   */
+  isTransactionAbortError(error) {
+    if (!error) return false;
+
+    // PostgreSQL error code 25P02: current transaction is aborted
+    const code25P02 =
+      error.code === "25P02" ||
+      error.original?.code === "25P02" ||
+      error.parent?.code === "25P02";
+
+    const messageCheck =
+      (error.message &&
+        error.message.includes("current transaction is aborted")) ||
+      (error.original?.message &&
+        error.original.message.includes("current transaction is aborted")) ||
+      (error.parent?.message &&
+        error.parent.message.includes("current transaction is aborted"));
+
+    // Also check for SequelizeDatabaseError name which often contains these errors
+    const isSequelizeDbError =
+      error.name === "SequelizeDatabaseError" && (code25P02 || messageCheck);
+
+    const result = code25P02 || messageCheck || isSequelizeDbError;
+
+    if (result) {
+      logger.warn(
+        `Detected PostgreSQL transaction abort error: ${error.name}, code: ${
+          error.code || error.original?.code || error.parent?.code
+        }, message: ${error.message}`
+      );
+    }
+
+    return result;
+  }
+
+  /**
+   * Check if a transaction is valid and usable
+   */
+  async isTransactionValid(transaction) {
+    if (!transaction || transaction.finished) {
+      return false;
+    }
+
+    try {
+      // Test if the transaction connection is still valid
+      await transaction.connection.query("SELECT 1");
+      return true;
+    } catch (error) {
+      // If any error occurs (including 25P02), the transaction is invalid
+      if (this.isTransactionAbortError(error)) {
+        logger.warn(`Transaction is aborted and invalid: ${error.message}`);
+      } else {
+        logger.warn(`Transaction validation failed: ${error.message}`);
+      }
+      return false;
+    }
+  }
+
+  /**
+   * Execute a database query with transaction fallback
+   * If the transaction is invalid, it will execute without transaction
+   */
+  async executeWithTransactionFallback(queryFn, transaction, operationName) {
+    try {
+      // First, check if transaction is valid
+      if (transaction && (await this.isTransactionValid(transaction))) {
+        return await queryFn(transaction);
+      } else {
+        // Execute without transaction
+        logger.warn(
+          `Executing ${operationName} without transaction due to invalid transaction state`
+        );
+        return await queryFn(null);
+      }
+    } catch (error) {
+      // If we get a transaction abort error, retry without transaction
+      if (this.isTransactionAbortError(error)) {
+        logger.warn(
+          `Transaction aborted during ${operationName}, retrying without transaction`
+        );
+        try {
+          return await queryFn(null);
+        } catch (retryError) {
+          logger.error(
+            `Failed to execute ${operationName} even without transaction: ${retryError.message}`
+          );
+          throw retryError;
+        }
+      }
+      throw error;
     }
   }
 

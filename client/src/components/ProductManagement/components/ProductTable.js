@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { SafeImage } from "../../../utils/imageUtils";
 import {
   SortAsc,
   SortDesc,
@@ -393,7 +394,7 @@ const ProductTable = ({
                           <div className="flex-shrink-0 h-16 w-16">
                             {product.images && product.images.length > 0 ? (
                               <div className="relative">
-                                <img
+                                <SafeImage
                                   className="h-16 w-16 rounded-lg object-cover cursor-pointer hover:opacity-80"
                                   src={product.images[0]}
                                   alt={product.name}
@@ -787,7 +788,7 @@ const ProductTable = ({
                               >
                                 <div className="flex items-center space-x-3">
                                   {variant.image && (
-                                    <img
+                                    <SafeImage
                                       src={variant.image}
                                       alt={variant.name}
                                       className="h-12 w-12 rounded object-cover"

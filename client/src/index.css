@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import custom styles in proper order */
+@import "./styles/z-index.css";
+@import "./styles/responsive-enhancements.css";
+@import "./styles/accessibility.css";
+
 /* Enhanced Design System CSS Variables */
 :root {
   /* Design System Color Palette - Primary Colors */

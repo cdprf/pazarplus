@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { SafeImage } from "../../../utils/imageUtils";
 import {
   Eye,
   Edit,
@@ -92,7 +93,7 @@ const ProductCard = ({
       <div className="relative">
         {product.images && product.images.length > 0 ? (
           <div className="relative overflow-hidden">
-            <img
+            <SafeImage
               src={product.images[0]}
               alt={product.name}
               className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105 cursor-pointer"
@@ -156,7 +157,9 @@ const ProductCard = ({
             )}
             <div className="flex items-center justify-between">
               <span>Stok Kodu:</span>
-              <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{product.sku}</code>
+              <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">
+                {product.sku}
+              </code>
             </div>
             {product.barcode && (
               <div className="flex items-center justify-between">
@@ -172,14 +175,18 @@ const ProductCard = ({
         {/* Metadata */}
         <div className="space-y-2 mb-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Kategori:</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
+              Kategori:
+            </span>
             <Badge variant="secondary" className="text-xs">
               {product.category}
             </Badge>
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Fiyat:</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
+              Fiyat:
+            </span>
             <InlineEditor
               value={product.price}
               onSave={(newPrice) =>
@@ -192,7 +199,9 @@ const ProductCard = ({
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Stok:</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
+              Stok:
+            </span>
             <div className="flex items-center space-x-1">
               {stockStatus.icon}
               <InlineEditor
@@ -208,7 +217,9 @@ const ProductCard = ({
 
           {/* Completion Score Row */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">Doluluk:</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
+              Doluluk:
+            </span>
             <CompletionScore score={completionScore} />
           </div>
         </div>

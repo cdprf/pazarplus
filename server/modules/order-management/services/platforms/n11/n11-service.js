@@ -120,16 +120,19 @@ class N11Service extends BasePlatformService {
   async setupAxiosInstance() {
     try {
       const credentials = this.decryptCredentials(this.connection.credentials);
-      const { appKey, appSecret } = credentials;
+      // Support both naming conventions: apiKey/apiSecret and appKey/appSecret
+      const apiKey = credentials.apiKey || credentials.appKey;
+      const apiSecret = credentials.apiSecret || credentials.appSecret;
 
       // Validate required credentials with a more descriptive error message
-      if (!appKey || !appSecret) {
+      if (!apiKey || !apiSecret) {
         this.logger.error("Missing N11 credentials", {
-          hasAppKey: !!appKey,
-          hasAppSecret: !!appSecret,
+          hasApiKey: !!apiKey,
+          hasApiSecret: !!apiSecret,
           connectionId: this.connectionId,
+          credentialKeys: Object.keys(credentials),
         });
-        throw new Error("Missing required N11 credentials: appKey, appSecret");
+        throw new Error("Missing required N11 credentials: apiKey, apiSecret");
       }
 
       this.axiosInstance = axios.create({
@@ -137,9 +140,10 @@ class N11Service extends BasePlatformService {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
-          appkey: appKey,
-          // Note: Based on official N11 documentation, only appkey is required for categories API
-          // appsecret is not needed for /cdn/ endpoints
+          appkey: apiKey,
+          appsecret: apiSecret, // Required for most N11 API endpoints including product-query
+          // Note: Both appkey and appsecret are required for most N11 API endpoints
+          // Only /cdn/ endpoints might work with just appkey
         },
         timeout: 30000,
       });
@@ -301,105 +305,101 @@ class N11Service extends BasePlatformService {
 
       const allProducts = [];
       let currentPage = 0;
-      let totalPages = 1;
       let hasMorePages = true;
-
-      const defaultParams = {
-        size: params.size || params.limit || 50,
-      };
+      let failedPages = 0;
+      let successfulPages = 0;
+      let totalPagesEstimate = 1;
 
       this.logger.info("Starting to fetch all products from N11...");
 
       while (hasMorePages) {
         const pageParams = {
-          ...defaultParams,
           ...params,
           page: currentPage,
+          size: 250, // Default page size
         };
 
         this.logger.debug(`Fetching N11 products page ${currentPage + 1}...`);
 
-        const result = await this.fetchSingleProductPage(pageParams);
+        try {
+          const result = await this.fetchSingleProductPage(pageParams);
 
-        if (!result.success) {
-          this.logger.error(
-            `Failed to fetch page ${currentPage + 1}: ${result.message}`
+          if (result.success && result.data) {
+            successfulPages++;
+            const products = Array.isArray(result.data)
+              ? result.data
+              : [result.data];
+            allProducts.push(...products);
+
+            // Update pagination info based on the response
+            if (result.pagination) {
+              totalPagesEstimate = result.pagination.totalPages;
+              hasMorePages = currentPage < totalPagesEstimate - 1;
+            } else {
+              // If no pagination info, stop if we got fewer items than requested
+              hasMorePages = products.length >= 250; // Use default page size
+            }
+          } else {
+            failedPages++;
+            this.logger.warn(
+              `Failed to fetch page ${currentPage + 1}: ${result.message}`,
+              {
+                error: result.error,
+                page: currentPage + 1,
+              }
+            );
+          }
+        } catch (pageError) {
+          failedPages++;
+          this.logger.warn(
+            `Error fetching page ${currentPage + 1}: ${pageError.message}`,
+            {
+              error: pageError,
+              page: currentPage + 1,
+              connectionId: this.connectionId,
+            }
           );
-          break;
         }
 
-        // Add products from this page
-        allProducts.push(...result.data);
+        currentPage++;
 
-        // Update pagination info
-        if (result.pagination) {
-          totalPages = result.pagination.totalPages;
-          currentPage = result.pagination.page + 1;
-          hasMorePages = currentPage < totalPages && !result.pagination.isLast;
-
-          this.logger.info(
-            `Completed page ${
-              result.pagination.page + 1
-            }/${totalPages}, retrieved ${result.data.length} products`
-          );
-        } else {
-          // No pagination info, assume this is the only page
-          hasMorePages = false;
-        }
-
-        // Safety check to prevent infinite loops
-        if (currentPage > 1000) {
-          this.logger.warn("Reached maximum page limit (1000), stopping");
-          break;
-        }
-
-        // If this page had no products or was marked as last, stop
-        if (result.data.length === 0 || result.pagination?.isLast) {
+        // Safety check - don't loop indefinitely if we can't determine total pages
+        if (currentPage > 100) {
+          this.logger.warn("Stopping product fetch after 100 pages for safety");
           hasMorePages = false;
         }
       }
 
-      this.logger.info(
-        `Completed fetching all products from N11: ${allProducts.length} total products across ${currentPage} pages`
-      );
+      // Consider the overall operation successful if we got any products
+      const hasAnySuccess = successfulPages > 0;
+      const message = hasAnySuccess
+        ? `Successfully fetched ${allProducts.length} products from N11. ${successfulPages} pages succeeded, ${failedPages} failed.`
+        : `Failed to fetch any products from N11 after trying ${currentPage} pages.`;
 
       return {
-        success: true,
-        message: `Successfully fetched ${allProducts.length} products from N11 across ${currentPage} pages`,
+        success: hasAnySuccess,
+        message,
         data: allProducts,
         pagination: {
           totalPages: currentPage,
           totalProducts: allProducts.length,
-          fetchedAllPages: true,
+          successfulPages,
+          failedPages,
         },
       };
     } catch (error) {
-      const statusCode = error.response?.status;
-      const apiError = error.response?.data;
-
       this.logger.error(
         `Failed to fetch all products from N11: ${error.message}`,
         {
           error,
-          statusCode,
-          apiError,
           connectionId: this.connectionId,
         }
       );
 
-      if (statusCode === 401 || statusCode === 403) {
-        return {
-          success: false,
-          message: "Authentication failed. Please check your API credentials.",
-          error: apiError || error.message,
-          data: [],
-        };
-      }
-
       return {
         success: false,
-        message: `Failed to fetch all products: ${error.message}`,
-        error: apiError || error.message,
+        message: `Failed to fetch products: ${error.message}`,
+        error: error.response?.data || error.message,
         data: [],
       };
     }
@@ -416,7 +416,7 @@ class N11Service extends BasePlatformService {
 
       const defaultParams = {
         page: 0,
-        size: 50,
+        size: 250,
       };
 
       const queryParams = { ...defaultParams, ...params };
@@ -438,6 +438,7 @@ class N11Service extends BasePlatformService {
           success: false,
           message:
             response.data?.result?.errorMessage ||
+            response.data?.errorMessage ||
             "No product data returned from N11",
           data: [],
         };
@@ -522,20 +523,16 @@ class N11Service extends BasePlatformService {
   async syncProducts(params = {}) {
     try {
       const { Product, N11Product } = require("../../../../../models");
-      const defaultUserId = process.env.DEFAULT_USER_ID || "1";
+      const defaultUserId =
+        process.env.DEFAULT_USER_ID || "8bd737ab-8a3f-4f50-ab2c-d310d43e867a";
 
       // Fetch products from N11
       const result = await this.fetchProducts(params);
 
-      if (!result.success) {
-        return {
-          success: false,
-          message: `Failed to fetch products from N11: ${result.message}`,
-          error: result.error,
-        };
-      }
-
-      const products = result.data;
+      // Even if we got a partial failure, proceed with any products we did get
+      const products = result.data || [];
+      const hadFetchErrors =
+        !result.success || result.pagination?.failedPages > 0;
 
       // Statistics for reporting
       const stats = {
@@ -544,19 +541,40 @@ class N11Service extends BasePlatformService {
         updated: 0,
         skipped: 0,
         failed: 0,
+        fetchErrors: hadFetchErrors,
+        fetchErrorDetails: result.success ? undefined : result.error,
       };
+
+      if (products.length === 0) {
+        return {
+          success: false,
+          message: `No products to sync: ${result.message}`,
+          error: result.error,
+          stats,
+        };
+      }
 
       // Process each product
       for (const n11Product of products) {
         try {
-          // Check if product already exists in our system
+          // Check if product exists (by merchantSku or other unique identifier)
           const externalProductId =
-            n11Product.productId || n11Product.id?.toString();
+            n11Product.n11ProductId?.toString() ||
+            n11Product.productId ||
+            n11Product.id?.toString();
+
+          if (!externalProductId) {
+            this.logger.warn("Skipping product with no ID", {
+              product: n11Product,
+            });
+            stats.skipped++;
+            continue;
+          }
 
           // Find existing N11 product details
           const existingN11Product = await N11Product.findOne({
-            where: { externalProductId },
-            include: [{ model: Product }],
+            where: { n11ProductId: externalProductId },
+            include: [{ model: Product, as: "product" }],
           });
 
           if (existingN11Product) {
@@ -564,38 +582,59 @@ class N11Service extends BasePlatformService {
             await this.updateExistingProduct(existingN11Product, n11Product);
             stats.updated++;
           } else {
-            // Create new product record
+            // Create new product
             await this.createNewProduct(n11Product, defaultUserId);
             stats.new++;
           }
         } catch (productError) {
+          stats.failed++;
           this.logger.error(
-            `Error processing N11 product: ${productError.message}`,
+            `Failed to process product ${n11Product.productId || "unknown"}: ${
+              productError.message
+            }`,
             {
               error: productError,
-              productId: n11Product.productId || n11Product.id,
               connectionId: this.connectionId,
+              product: {
+                productId: n11Product.productId,
+                name: n11Product.productName || n11Product.title,
+              },
             }
           );
-          stats.failed++;
         }
       }
 
+      // Consider sync successful even with some failures, as long as we processed some products
+      const hasAnySuccess = stats.new > 0 || stats.updated > 0;
+      const totalProcessed = stats.new + stats.updated;
+
       return {
-        success: true,
-        message: `Synced ${stats.total} products from N11: ${stats.new} new, ${stats.updated} updated, ${stats.failed} failed`,
-        data: stats,
+        success: hasAnySuccess,
+        message:
+          `Processed ${totalProcessed} out of ${stats.total} products. ` +
+          `Created: ${stats.new}, Updated: ${stats.updated}, ` +
+          `Failed: ${stats.failed}, Skipped: ${stats.skipped}` +
+          (hadFetchErrors ? " (with some fetch errors)" : ""),
+        stats,
       };
     } catch (error) {
-      this.logger.error(`Failed to sync products from N11: ${error.message}`, {
+      this.logger.error(`Product sync failed: ${error.message}`, {
         error,
         connectionId: this.connectionId,
       });
 
       return {
         success: false,
-        message: `Failed to sync products: ${error.message}`,
-        error: error.message,
+        message: `Product sync failed: ${error.message}`,
+        error: error.response?.data || error.message,
+        stats: {
+          total: 0,
+          new: 0,
+          updated: 0,
+          skipped: 0,
+          failed: 0,
+          syncError: error.message,
+        },
       };
     }
   }
@@ -612,43 +651,99 @@ class N11Service extends BasePlatformService {
       const { sequelize } = require("../../../../../models");
 
       const result = await sequelize.transaction(async (t) => {
-        // Create main product record
-        const mainProduct = await Product.create(
-          {
+        const productSku = n11ProductData.stockCode || n11ProductData.sku;
+
+        // Check if a product with this SKU already exists for this user
+        let mainProduct = await Product.findOne({
+          where: {
             userId: userId,
-            name: n11ProductData.title || n11ProductData.name,
-            description: n11ProductData.description || "",
-            price: parseFloat(
-              n11ProductData.displayPrice || n11ProductData.price || 0
-            ),
-            sku: n11ProductData.stockCode || n11ProductData.sku,
-            stockQuantity: parseInt(n11ProductData.stockQuantity || 0, 10),
-            currency: "TRY",
-            barcode: n11ProductData.barcode,
-            sourcePlatform: "n11",
-            mainImageUrl:
-              n11ProductData.images && n11ProductData.images.length > 0
-                ? n11ProductData.images[0]
-                : null,
-            additionalImages:
-              n11ProductData.images && n11ProductData.images.length > 1
-                ? n11ProductData.images.slice(1)
-                : null,
-            attributes: n11ProductData.attributes,
-            hasVariants:
-              n11ProductData.variants && n11ProductData.variants.length > 0,
-            metadata: {
-              source: "n11",
-              externalProductId: n11ProductData.productId || n11ProductData.id,
-            },
+            sku: productSku,
           },
-          { transaction: t }
-        );
+          transaction: t,
+        });
+
+        if (mainProduct) {
+          // Product already exists, update it with latest data
+          await mainProduct.update(
+            {
+              name: n11ProductData.title || n11ProductData.name,
+              description: n11ProductData.description || "",
+              category:
+                n11ProductData.categoryId?.toString() || "uncategorized",
+              price: parseFloat(
+                n11ProductData.salePrice ||
+                  n11ProductData.displayPrice ||
+                  n11ProductData.price ||
+                  0
+              ),
+              stockQuantity: parseInt(
+                n11ProductData.quantity || n11ProductData.stockQuantity || 0,
+                10
+              ),
+              barcode: n11ProductData.barcode,
+              sourcePlatform: "n11",
+              attributes: n11ProductData.attributes,
+              lastSyncedAt: new Date(),
+            },
+            { transaction: t }
+          );
+        } else {
+          // Create main product record
+          mainProduct = await Product.create(
+            {
+              userId: userId,
+              name: n11ProductData.title || n11ProductData.name,
+              description: n11ProductData.description || "",
+              category:
+                n11ProductData.categoryId?.toString() || "uncategorized",
+              price: parseFloat(
+                n11ProductData.salePrice ||
+                  n11ProductData.displayPrice ||
+                  n11ProductData.price ||
+                  0
+              ),
+              sku: productSku,
+              stockQuantity: parseInt(
+                n11ProductData.quantity || n11ProductData.stockQuantity || 0,
+                10
+              ),
+              barcode: n11ProductData.barcode,
+              sourcePlatform: "n11",
+              attributes: n11ProductData.attributes,
+              hasVariants: false,
+            },
+            { transaction: t }
+          );
+        }
         // Create N11 product record
         await N11Product.create(
           {
             productId: mainProduct.id,
-            externalProductId: n11ProductData.productId || n11ProductData.id,
+            n11ProductId: n11ProductData.n11ProductId,
+            sellerId: n11ProductData.sellerId,
+            sellerNickname: n11ProductData.sellerNickname,
+            stockCode: n11ProductData.stockCode,
+            title: n11ProductData.title,
+            description: n11ProductData.description || "",
+            categoryId: n11ProductData.categoryId,
+            productMainId: n11ProductData.productMainId,
+            status: n11ProductData.status === "Active" ? "active" : "inactive",
+            saleStatus: n11ProductData.saleStatus || "Active",
+            preparingDay: n11ProductData.preparingDay,
+            shipmentTemplate: n11ProductData.shipmentTemplate,
+            maxPurchaseQuantity: n11ProductData.maxPurchaseQuantity,
+            catalogId: n11ProductData.catalogId,
+            barcode: n11ProductData.barcode,
+            groupId: n11ProductData.groupId,
+            currencyType: n11ProductData.currencyType || "TL",
+            salePrice: n11ProductData.salePrice,
+            listPrice: n11ProductData.listPrice,
+            quantity: n11ProductData.quantity,
+            attributes: n11ProductData.attributes,
+            imageUrls: n11ProductData.imageUrls,
+            vatRate: n11ProductData.vatRate,
+            commissionRate: n11ProductData.commissionRate,
+            lastSyncedAt: new Date(),
           },
           { transaction: t }
         );
@@ -703,16 +798,18 @@ class N11Service extends BasePlatformService {
    * @returns {Promise<Object>} Result containing order data for single page
    */
   async fetchSinglePage(params = {}) {
-    // Default parameters for N11 order list API
+    // Ensure service is initialized before making API calls
+    await this.initialize();
+
+    // Default parameters for N11 shipment packages API (based on investigation)
     const defaultParams = {
-      startDate: params.startDate || this.getDefaultStartDate(),
-      endDate: params.endDate || this.getDefaultEndDate(),
       page: params.page || 0,
       size: params.size || 100,
     };
 
-    // Only include valid API parameters to avoid sending extra data to N11
-    const validApiParams = ["startDate", "endDate", "page", "size", "status"];
+    // Only include valid API parameters for the delivery endpoint
+    // Based on investigation, startDate/endDate are not supported
+    const validApiParams = ["page", "size"];
     const filteredParams = {};
 
     validApiParams.forEach((key) => {
@@ -963,6 +1060,9 @@ class N11Service extends BasePlatformService {
             try {
               await existingOrder.update({
                 orderStatus: this.mapOrderStatus(order.shipmentPackageStatus),
+                trackingNumber: order.cargoTrackingNumber || null,
+                trackingUrl: order.cargoTrackingLink || null,
+                cargoCompany: order.cargoProviderName || null,
                 rawData: JSON.stringify(order),
                 lastSyncedAt: new Date(),
               });
@@ -1016,6 +1116,27 @@ class N11Service extends BasePlatformService {
                   shippingAddress.gsm ||
                   billingAddress.gsm ||
                   "",
+                customerInfo: {
+                  fullName:
+                    order.customerfullName ||
+                    shippingAddress.fullName ||
+                    billingAddress.fullName ||
+                    "",
+                  email: order.customerEmail || "",
+                  phone:
+                    phoneNumber ||
+                    shippingAddress.gsm ||
+                    billingAddress.gsm ||
+                    "",
+                  customerId: order.customerId?.toString() || "",
+                  identityNumber:
+                    order.tcIdentityNumber ||
+                    shippingAddress.tcId ||
+                    billingAddress.tcId ||
+                    "",
+                  taxId: order.taxId || billingAddress.taxId || null,
+                  taxOffice: order.taxOffice || billingAddress.taxHouse || null,
+                },
                 orderDate: new Date(
                   order.packageHistories?.[0]?.createdDate ||
                     order.lastModifiedDate ||
@@ -1024,7 +1145,16 @@ class N11Service extends BasePlatformService {
                 orderStatus: this.mapOrderStatus(order.shipmentPackageStatus),
                 totalAmount: parseFloat(order.totalAmount || 0),
                 currency: "TRY",
-                shippingAddress: JSON.stringify(shippingAddress),
+                shippingAddress: {
+                  fullName: shippingAddress.fullName || "",
+                  address: shippingAddress.address || "",
+                  city: shippingAddress.city || "",
+                  district: shippingAddress.district || "",
+                  neighborhood: shippingAddress.neighborhood || "",
+                  postalCode: shippingAddress.postalCode || "",
+                  phone: shippingAddress.gsm || "",
+                  tcId: shippingAddress.tcId || "",
+                },
                 // Cargo and tracking information
                 cargoTrackingNumber: order.cargoTrackingNumber
                   ? this.preserveCargoTrackingNumber(order.cargoTrackingNumber)
@@ -1107,7 +1237,19 @@ class N11Service extends BasePlatformService {
               const orderItemsData = order.lines.map((item) => {
                 const unitPrice = parseFloat(item.price || 0);
                 const quantity = parseInt(item.quantity || 1, 10);
-                const totalPrice = unitPrice * quantity;
+                const dueAmount = parseFloat(item.dueAmount || 0);
+                const totalPrice = dueAmount || unitPrice * quantity;
+
+                // Calculate total discount from multiple discount sources
+                const sellerDiscount = parseFloat(item.sellerDiscount || 0);
+                const mallDiscount = parseFloat(
+                  item.totalMallDiscountPrice || 0
+                );
+                const sellerCouponDiscount = parseFloat(
+                  item.sellerCouponDiscount || 0
+                );
+                const totalDiscount =
+                  sellerDiscount + mallDiscount + sellerCouponDiscount;
 
                 return {
                   orderId: normalizedOrder.id,
@@ -1115,46 +1257,61 @@ class N11Service extends BasePlatformService {
                   platformProductId: item.productId?.toString(),
                   barcode: item.barcode || null,
                   title: item.productName || item.title || "",
-                  sku: item.stockCode || item.sellerStockCode || "",
+                  sku: item.stockCode || "",
                   quantity: quantity,
                   price: unitPrice,
-                  totalPrice: totalPrice, // Required NOT NULL field
-                  // Calculate total discount (seller + mall discounts)
-                  discount: parseFloat(
-                    (item.sellerDiscount || 0) + (item.mallDiscount || 0)
+                  totalPrice: totalPrice,
+
+                  // Enhanced discount information
+                  discount: totalDiscount,
+                  platformDiscount: mallDiscount,
+                  merchantDiscount: sellerDiscount + sellerCouponDiscount,
+
+                  // N11-specific pricing fields
+                  invoiceTotal: parseFloat(
+                    item.sellerInvoiceAmount || dueAmount || totalPrice
                   ),
-                  platformDiscount: parseFloat(item.mallDiscount || 0),
-                  merchantDiscount: parseFloat(item.sellerDiscount || 0),
-                  invoiceTotal: parseFloat(item.sellerInvoiceAmount || 0),
                   currency: "TRY",
-                  // N11-specific fields
-                  vatBaseAmount: parseFloat(item.vatBaseAmount || 0),
-                  laborCost: parseFloat(item.totalLaborCostExcludingVAT || 0),
-                  lineItemStatus: item.orderItemLineItemStatusName || "Created",
-                  // Additional pricing fields
+
+                  // Tax and commission information
                   vatRate: parseFloat(item.vatRate || 20),
                   commissionRate: parseFloat(item.commissionRate || 0),
                   taxDeductionRate: parseFloat(item.taxDeductionRate || 0),
-                  // Marketing and marketplace fees
+
+                  // Labor and fees
+                  laborCost: parseFloat(item.totalLaborCostExcludingVAT || 0),
                   netMarketingFeeRate: parseFloat(
                     item.netMarketingFeeRate || 0
                   ),
                   netMarketplaceFeeRate: parseFloat(
                     item.netMarketplaceFeeRate || 0
                   ),
-                  // Installment information
+
+                  // Installment charges
                   installmentChargeWithVAT: parseFloat(
                     item.installmentChargeWithVAT || 0
                   ),
-                  // Coupon discounts
-                  sellerCouponDiscount: parseFloat(
-                    item.sellerCouponDiscount || 0
-                  ),
+
+                  // Individual discount components
+                  sellerCouponDiscount: sellerCouponDiscount,
+
+                  // Status information
+                  lineItemStatus: item.orderItemLineItemStatusName || "Created",
+                  orderLineId: item.orderLineId?.toString() || null,
+
                   // Variant information
                   variantInfo:
                     item.variantAttributes && item.variantAttributes.length > 0
                       ? JSON.stringify(item.variantAttributes)
                       : null,
+
+                  // Custom text options if any
+                  customTextOptions:
+                    item.customTextOptionValues &&
+                    item.customTextOptionValues.length > 0
+                      ? JSON.stringify(item.customTextOptionValues)
+                      : null,
+
                   // Store complete raw data for debugging
                   rawData: JSON.stringify(item),
                 };
@@ -1358,37 +1515,41 @@ class N11Service extends BasePlatformService {
           n11OrderId: n11OrderData.id?.toString(),
           orderNumber: n11OrderData.orderNumber,
           sellerId: n11OrderData.sellerId,
-          buyerId: n11OrderData.customerId?.toString(),
+          customerId: n11OrderData.customerId,
+          customerEmail: n11OrderData.customerEmail,
+          customerFullName:
+            n11OrderData.customerfullName || n11OrderData.customerName,
+          tcIdentityNumber:
+            n11OrderData.tcIdentityNumber ||
+            n11OrderData.billingAddress?.tcId ||
+            n11OrderData.shippingAddress?.tcId,
+          taxId: n11OrderData.taxId,
+          taxOffice: n11OrderData.taxOffice,
           orderStatus: this.mapOrderStatus(n11OrderData.shipmentPackageStatus),
-          shippingCompany: n11OrderData.cargoProviderName,
-          trackingNumber: n11OrderData.cargoTrackingNumber,
-          trackingUrl: "According to shippingCompany",
-          estimatedDeliveryDate: n11OrderData.agreedDeliveryDate
-            ? new Date(n11OrderData.agreedDeliveryDate)
-            : null,
-          actualDeliveryDate: n11OrderData.agreedDeliveryDate
-            ? new Date(n11OrderData.agreedDeliveryDate)
-            : null,
+          cargoSenderNumber: n11OrderData.cargoSenderNumber,
+          cargoTrackingNumber: n11OrderData.cargoTrackingNumber,
+          cargoTrackingLink: n11OrderData.cargoTrackingLink,
+          shipmentCompanyId: n11OrderData.shipmentCompanyId,
+          cargoProviderName: n11OrderData.cargoProviderName,
+          shipmentMethod: n11OrderData.shipmentMethod,
+          installmentChargeWithVATprice:
+            n11OrderData.installmentChargeWithVATprice || 0,
+          cancellationReason: n11OrderData.cancellationReason || null,
+          returnReason: n11OrderData.returnReason || null,
+          lastModifiedDate: n11OrderData.lastModifiedDate,
+          agreedDeliveryDate: n11OrderData.agreedDeliveryDate,
+          totalAmount: n11OrderData.totalAmount,
+          totalDiscountAmount: n11OrderData.totalDiscountAmount,
+          packageHistories: n11OrderData.packageHistories,
+          shipmentPackageStatus: n11OrderData.shipmentPackageStatus,
+          lines: n11OrderData.lines,
           shippingAddress: n11OrderData.shippingAddress,
           billingAddress: n11OrderData.billingAddress,
-          customerInfo: {
-            fullName:
-              n11OrderData.customerfullName || n11OrderData.customerName || "",
-            email: n11OrderData.customerEmail || "",
-            gsm:
-              n11OrderData.billingAddress?.gsm ||
-              n11OrderData.shippingAddress?.gsm ||
-              "",
-            citizenshipId: n11OrderData.tcIdentityNumber || "",
-          },
           n11OrderDate: n11OrderData.lastModifiedDate
             ? new Date(n11OrderData.lastModifiedDate)
             : new Date(),
           lastSyncAt: new Date(),
-          platformFees:
-            n11OrderData.platformFees || n11OrderData.commission || 0,
-          cancellationReason: n11OrderData.cancellationReason || null,
-          returnReason: n11OrderData.returnReason || null,
+          platformFees: this.calculatePlatformFees(n11OrderData),
           platformOrderData: n11OrderData,
         },
         { transaction }
@@ -1401,6 +1562,47 @@ class N11Service extends BasePlatformService {
       });
       throw error;
     }
+  }
+
+  /**
+   * Calculate platform fees from N11 order data
+   * @param {Object} n11OrderData - Raw order data from N11 API
+   * @returns {number} Total platform fees
+   */
+  calculatePlatformFees(n11OrderData) {
+    // Check for explicit platform fees first
+    if (n11OrderData.platformFees) {
+      return parseFloat(n11OrderData.platformFees);
+    }
+
+    // Check for top-level commission
+    if (n11OrderData.commission) {
+      return parseFloat(n11OrderData.commission);
+    }
+
+    // Calculate from line items if available
+    if (n11OrderData.lines && Array.isArray(n11OrderData.lines)) {
+      const totalCommission = n11OrderData.lines.reduce((total, line) => {
+        const lineTotal = parseFloat(line.dueAmount || line.price || 0);
+        const commissionRate = parseFloat(line.commissionRate || 0) / 100; // Convert percentage to decimal
+        const lineCommission = lineTotal * commissionRate;
+        return total + lineCommission;
+      }, 0);
+
+      if (totalCommission > 0) {
+        return totalCommission;
+      }
+    }
+
+    // Check for installment charges as fallback
+    if (
+      n11OrderData.installmentChargeWithVATprice &&
+      n11OrderData.installmentChargeWithVATprice > 0
+    ) {
+      return parseFloat(n11OrderData.installmentChargeWithVATprice);
+    }
+
+    return 0;
   }
 
   /**
@@ -1420,12 +1622,11 @@ class N11Service extends BasePlatformService {
   }
 
   /**
-   * Map N11 API status to internal order status enum
+   * Map N11 API status to standard order status enum
    * @param {string} apiStatus - Status from N11 API
-   * @returns {string} Internal order status compatible with Order model ENUM
+   * @returns {string} Standard order status compatible with n11_orders table enum
    */
   mapOrderStatus(apiStatus) {
-    // Use the shared enum validator utility to ensure database compatibility
     return mapOrderStatus(apiStatus, "n11");
   }
 
@@ -2633,13 +2834,13 @@ class N11Service extends BasePlatformService {
       );
 
       this.logger.info("Successfully fetched N11 categories", {
-        categoriesCount: response.data?.length || 0,
+        categoriesCount: response.data?.categories?.length || 0,
         status: response.status,
       });
 
       // Transform the response based on official N11 API documentation
-      // The API returns a hierarchical category tree
-      const categories = response.data || [];
+      // The API returns { categories: [...] } structure
+      const categories = response.data?.categories || [];
 
       // Flatten the category tree for easier use
       const flattenCategories = (cats, level = 0, parentId = null) => {

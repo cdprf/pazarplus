@@ -136,17 +136,18 @@ models.Order.belongsTo(models.User, {
   allowNull: false,
 });
 
-models.User.hasMany(models.Product, {
-  foreignKey: "userId",
-  as: "products",
-  onDelete: "CASCADE",
-  hooks: true,
-});
-models.Product.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
-});
+// models.User.hasMany(models.Product, {
+//   foreignKey: "userId",
+//   as: "products",
+//   onDelete: "CASCADE",
+//   hooks: true,
+// });
+// models.Product.belongsTo(models.User, {
+//   foreignKey: "userId",
+//   as: "user",
+//   allowNull: false,
+// });
+// NOTE: Product associations are now handled in Product.associate() function
 
 models.User.hasMany(models.PlatformConnection, {
   foreignKey: "userId",
@@ -428,46 +429,37 @@ models.Settings.belongsTo(models.User, {
 // === PLATFORM DATA ASSOCIATIONS ===
 
 // Product <-> PlatformData (One-to-Many)
-models.Product.hasMany(models.PlatformData, {
-  foreignKey: "entityId",
-  scope: { entityType: "product" },
-  as: "platformData",
-  onDelete: "CASCADE",
-  hooks: true,
-});
-models.PlatformData.belongsTo(models.Product, {
-  foreignKey: "entityId",
-  constraints: false,
-  as: "product",
-});
+// NOTE: Product-PlatformData associations are now handled in Product.associate() function
 
 // Order <-> PlatformData (One-to-Many)
-models.Order.hasMany(models.PlatformData, {
-  foreignKey: "entityId",
-  scope: { entityType: "order" },
-  as: "platformData",
-  onDelete: "CASCADE",
-  hooks: true,
-});
-models.PlatformData.belongsTo(models.Order, {
-  foreignKey: "entityId",
-  constraints: false,
-  as: "order",
-});
+// models.Order.hasMany(models.PlatformData, {
+//   foreignKey: "entityId",
+//   scope: { entityType: "order" },
+//   as: "platformData",
+//   onDelete: "CASCADE",
+//   hooks: true,
+// });
+// models.PlatformData.belongsTo(models.Order, {
+//   foreignKey: "entityId",
+//   constraints: false,
+//   as: "order",
+// });
+// NOTE: Order-PlatformData associations should be handled in PlatformData.associate() function if needed
 
 // ProductVariant <-> PlatformData (One-to-Many)
-models.ProductVariant.hasMany(models.PlatformData, {
-  foreignKey: "entityId",
-  scope: { entityType: "variant" },
-  as: "platformData",
-  onDelete: "CASCADE",
-  hooks: true,
-});
-models.PlatformData.belongsTo(models.ProductVariant, {
-  foreignKey: "entityId",
-  constraints: false,
-  as: "variant",
-});
+// models.ProductVariant.hasMany(models.PlatformData, {
+//   foreignKey: "entityId",
+//   scope: { entityType: "variant" },
+//   as: "platformData",
+//   onDelete: "CASCADE",
+//   hooks: true,
+// });
+// models.PlatformData.belongsTo(models.ProductVariant, {
+//   foreignKey: "entityId",
+//   constraints: false,
+//   as: "variant",
+// });
+// NOTE: ProductVariant-PlatformData associations are now handled in ProductVariant.associate() function
 
 // === CONFLICT MANAGEMENT ASSOCIATIONS ===
 
@@ -512,104 +504,112 @@ models.InventorySync.belongsTo(models.Product, {
 // === PRODUCT VARIANT AND INVENTORY ASSOCIATIONS ===
 
 // Product <-> ProductVariant (One-to-Many)
-models.Product.hasMany(models.ProductVariant, {
-  foreignKey: "productId",
-  as: "variants",
-  onDelete: "CASCADE",
-  hooks: true,
-});
-models.ProductVariant.belongsTo(models.Product, {
-  foreignKey: "productId",
-  as: "product",
-  allowNull: false,
-});
+// models.Product.hasMany(models.ProductVariant, {
+//   foreignKey: "productId",
+//   as: "variants",
+//   onDelete: "CASCADE",
+//   hooks: true,
+// });
+// models.ProductVariant.belongsTo(models.Product, {
+//   foreignKey: "productId",
+//   as: "product",
+//   allowNull: false,
+// });
+// NOTE: Product-ProductVariant associations are now handled in Product.associate() function
 
 // Product <-> InventoryMovement (One-to-Many)
-models.Product.hasMany(models.InventoryMovement, {
-  foreignKey: "productId",
-  as: "inventoryMovements",
-  onDelete: "CASCADE",
-  hooks: true,
-});
-models.InventoryMovement.belongsTo(models.Product, {
-  foreignKey: "productId",
-  as: "product",
-  allowNull: false,
-});
+// models.Product.hasMany(models.InventoryMovement, {
+//   foreignKey: "productId",
+//   as: "inventoryMovements",
+//   onDelete: "CASCADE",
+//   hooks: true,
+// });
+// models.InventoryMovement.belongsTo(models.Product, {
+//   foreignKey: "productId",
+//   as: "product",
+//   allowNull: false,
+// });
+// NOTE: Product-InventoryMovement associations are now handled in Product.associate() function
 
 // ProductVariant <-> InventoryMovement (One-to-Many)
-models.ProductVariant.hasMany(models.InventoryMovement, {
-  foreignKey: "variantId",
-  as: "inventoryMovements",
-  onDelete: "CASCADE",
-  hooks: true,
-});
-models.InventoryMovement.belongsTo(models.ProductVariant, {
-  foreignKey: "variantId",
-  as: "variant",
-});
+// models.ProductVariant.hasMany(models.InventoryMovement, {
+//   foreignKey: "variantId",
+//   as: "inventoryMovements",
+//   onDelete: "CASCADE",
+//   hooks: true,
+// });
+// models.InventoryMovement.belongsTo(models.ProductVariant, {
+//   foreignKey: "variantId",
+//   as: "variant",
+// });
+// NOTE: ProductVariant-InventoryMovement associations are now handled in ProductVariant.associate() function
 
 // Product <-> StockReservation (One-to-Many)
-models.Product.hasMany(models.StockReservation, {
-  foreignKey: "productId",
-  as: "stockReservations",
-  onDelete: "CASCADE",
-  hooks: true,
-});
-models.StockReservation.belongsTo(models.Product, {
-  foreignKey: "productId",
-  as: "product",
-  allowNull: false,
-});
+// models.Product.hasMany(models.StockReservation, {
+//   foreignKey: "productId",
+//   as: "stockReservations",
+//   onDelete: "CASCADE",
+//   hooks: true,
+// });
+// models.StockReservation.belongsTo(models.Product, {
+//   foreignKey: "productId",
+//   as: "product",
+//   allowNull: false,
+// });
+// NOTE: Product-StockReservation associations are now handled in Product.associate() function
 
 // ProductVariant <-> StockReservation (One-to-Many)
-models.ProductVariant.hasMany(models.StockReservation, {
-  foreignKey: "variantId",
-  as: "stockReservations",
-  onDelete: "CASCADE",
-  hooks: true,
-});
-models.StockReservation.belongsTo(models.ProductVariant, {
-  foreignKey: "variantId",
-  as: "variant",
-});
+// models.ProductVariant.hasMany(models.StockReservation, {
+//   foreignKey: "variantId",
+//   as: "stockReservations",
+//   onDelete: "CASCADE",
+//   hooks: true,
+// });
+// models.StockReservation.belongsTo(models.ProductVariant, {
+//   foreignKey: "variantId",
+//   as: "variant",
+// });
+// NOTE: ProductVariant-StockReservation associations are now handled in ProductVariant.associate() function
 
 // User <-> InventoryMovement (One-to-Many)
-models.User.hasMany(models.InventoryMovement, {
-  foreignKey: "userId",
-  as: "inventoryMovements",
-  onDelete: "CASCADE",
-  hooks: true,
-});
-models.InventoryMovement.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
-});
+// models.User.hasMany(models.InventoryMovement, {
+//   foreignKey: "userId",
+//   as: "inventoryMovements",
+//   onDelete: "CASCADE",
+//   hooks: true,
+// });
+// models.InventoryMovement.belongsTo(models.User, {
+//   foreignKey: "userId",
+//   as: "user",
+//   allowNull: false,
+// });
+// NOTE: User-InventoryMovement associations should be handled in InventoryMovement.associate() function if needed
 
 // User <-> StockReservation (One-to-Many)
-models.User.hasMany(models.StockReservation, {
-  foreignKey: "userId",
-  as: "stockReservations",
-  onDelete: "CASCADE",
-  hooks: true,
-});
-models.StockReservation.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
-});
+// models.User.hasMany(models.StockReservation, {
+//   foreignKey: "userId",
+//   as: "stockReservations",
+//   onDelete: "CASCADE",
+//   hooks: true,
+// });
+// models.StockReservation.belongsTo(models.User, {
+//   foreignKey: "userId",
+//   as: "user",
+//   allowNull: false,
+// });
+// NOTE: User-StockReservation associations should be handled in StockReservation.associate() function if needed
 
 // Order <-> StockReservation (One-to-Many)
-models.Order.hasMany(models.StockReservation, {
-  foreignKey: "orderId",
-  as: "stockReservations",
-  onDelete: "SET NULL",
-});
-models.StockReservation.belongsTo(models.Order, {
-  foreignKey: "orderId",
-  as: "order",
-});
+// models.Order.hasMany(models.StockReservation, {
+//   foreignKey: "orderId",
+//   as: "stockReservations",
+//   onDelete: "SET NULL",
+// });
+// models.StockReservation.belongsTo(models.Order, {
+//   foreignKey: "orderId",
+//   as: "order",
+// });
+// NOTE: Order-StockReservation associations should be handled in StockReservation.associate() function if needed
 
 // ========================================
 // === LEGACY PRODUCT MANAGEMENT SYSTEM ===
@@ -745,17 +745,7 @@ models.BackgroundTask.hasMany(models.BackgroundTask, {
 // === END LEGACY PRODUCT MANAGEMENT SYSTEM ===
 // ========================================
 
-// PlatformVariant <-> Product (One-to-Many optional)
-models.PlatformVariant.belongsTo(models.Product, {
-  foreignKey: "productId",
-  as: "product",
-  allowNull: true,
-});
-models.Product.hasMany(models.PlatformVariant, {
-  foreignKey: "productId",
-  as: "platformVariants",
-  onDelete: "SET NULL",
-});
+// PlatformVariant <-> Product associations are now defined in their respective model files
 
 // MainProduct <-> PlatformVariant (One-to-Many)
 // Note: Both MainProduct -> PlatformVariant and PlatformVariant -> MainProduct
@@ -827,6 +817,18 @@ models.CustomerReply.belongsTo(models.ReplyTemplate, {
 
 if (models.MainProduct.associate) {
   models.MainProduct.associate(models);
+}
+if (models.Product.associate) {
+  models.Product.associate(models);
+}
+if (models.ProductVariant.associate) {
+  models.ProductVariant.associate(models);
+}
+if (models.InventoryMovement.associate) {
+  models.InventoryMovement.associate(models);
+}
+if (models.StockReservation.associate) {
+  models.StockReservation.associate(models);
 }
 if (models.PlatformVariant.associate) {
   models.PlatformVariant.associate(models);

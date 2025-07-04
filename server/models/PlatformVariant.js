@@ -24,6 +24,17 @@ PlatformVariant.init(
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
     },
+    productId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "products",
+        key: "id",
+      },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
+      comment: "Reference to regular Product table for backward compatibility",
+    },
 
     // Platform Information
     platform: {
@@ -344,6 +355,11 @@ PlatformVariant.associate = function (models) {
   PlatformVariant.belongsTo(models.MainProduct, {
     foreignKey: "mainProductId",
     as: "mainProduct",
+  });
+
+  PlatformVariant.belongsTo(models.Product, {
+    foreignKey: "productId",
+    as: "product",
   });
 
   PlatformVariant.belongsTo(models.PlatformTemplate, {
