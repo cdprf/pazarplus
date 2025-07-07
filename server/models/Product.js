@@ -329,6 +329,14 @@ Product.associate = function (models) {
     as: "platformVariants",
     onDelete: "SET NULL",
   });
+
+  // Customer Questions association
+  Product.hasMany(models.CustomerQuestion, {
+    foreignKey: "product_main_id",
+    sourceKey: "sku", // Link from Product.sku to CustomerQuestion.product_main_id
+    as: "customerQuestions",
+    constraints: false,
+  });
 };
 
 module.exports = Product;

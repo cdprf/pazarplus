@@ -35,7 +35,12 @@ function getDateRange(timeframe) {
 /**
  * Get comprehensive product analytics for a specific product or all products
  */
-async function getProductAnalytics(userId, productId = null, dateRange) {
+async function getProductAnalytics(
+  userId,
+  productId = null,
+  dateRange,
+  limit = 20
+) {
   try {
     // Simplified approach for better SQLite compatibility
     console.log(
@@ -175,8 +180,10 @@ async function getProductAnalytics(userId, productId = null, dateRange) {
 
     return {
       summary,
-      topProducts: products.slice(0, 20), // Limit to top 20 products
-      products: products.slice(0, 20), // Keep both for compatibility
+      topProducts: limit > 0 ? products.slice(0, limit) : products, // Use limit parameter or return all
+      products: limit > 0 ? products.slice(0, limit) : products, // Keep both for compatibility
+      allProducts: products, // Always include all products for frontend pagination
+      totalProductsWithOrders: products.length, // Add count of all products with orders
       dailyTrends,
       platformBreakdown,
       charts: {

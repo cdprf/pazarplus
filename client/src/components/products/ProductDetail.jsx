@@ -17,6 +17,7 @@ import {
   Copy,
   ImageIcon,
   Tag,
+  MessageCircle,
 } from "lucide-react";
 import api from "../../services/api";
 import { useAlert } from "../../contexts/AlertContext";
@@ -250,6 +251,11 @@ const ProductDetail = () => {
             { id: "overview", label: "Overview", icon: Package },
             { id: "platforms", label: "Platform Links", icon: Globe },
             { id: "variants", label: "Variants", icon: Tag },
+            {
+              id: "questions",
+              label: "Customer Questions",
+              icon: MessageCircle,
+            },
             { id: "inventory", label: "Inventory", icon: BarChart3 },
             { id: "media", label: "Media", icon: ImageIcon },
             { id: "analytics", label: "Analytics", icon: TrendingUp },
@@ -465,6 +471,73 @@ const ProductDetail = () => {
             <ProductPlatformLinks product={product} />
           )}
           {activeTab === "variants" && <ProductVariants product={product} />}
+          {activeTab === "questions" && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <MessageCircle className="w-5 h-5 mr-2" />
+                Customer Questions ({product?.questionsCount || 0})
+              </h2>
+              {product?.customerQuestions &&
+              product.customerQuestions.length > 0 ? (
+                <div className="space-y-4">
+                  {product.customerQuestions.map((question, index) => (
+                    <div
+                      key={question.id || index}
+                      className="border border-gray-200 dark:border-gray-600 rounded-lg p-4"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-sm font-medium text-blue-600 capitalize">
+                          {question.platform}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {question.creation_date
+                            ? new Date(
+                                question.creation_date
+                              ).toLocaleDateString()
+                            : "N/A"}
+                        </span>
+                      </div>
+                      <p className="text-gray-900 dark:text-gray-100 mb-3">
+                        {question.question_text}
+                      </p>
+                      {question.answer_text && (
+                        <div className="bg-gray-50 dark:bg-gray-700 rounded p-3 mt-2">
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            <strong>Answer:</strong> {question.answer_text}
+                          </p>
+                          {question.answer_date && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Answered on:{" "}
+                              {new Date(
+                                question.answer_date
+                              ).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {question.status && (
+                        <span
+                          className={`inline-block mt-2 px-2 py-1 text-xs rounded-full ${
+                            question.status === "answered"
+                              ? "bg-green-100 text-green-800"
+                              : question.status === "pending"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {question.status}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">
+                  No customer questions for this product.
+                </p>
+              )}
+            </div>
+          )}
           {activeTab === "inventory" && <ProductInventory product={product} />}
           {activeTab === "media" && <ProductMedia product={product} />}
           {activeTab === "analytics" && (

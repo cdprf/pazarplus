@@ -207,6 +207,11 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
             href: "/products/pricing",
             ariaLabel: "Ürün fiyatlandırması",
           },
+          {
+            name: "Varyant Algılama",
+            href: "/products/variant-detection",
+            ariaLabel: "Varyant algılama ayarları",
+          },
         ],
       },
       {

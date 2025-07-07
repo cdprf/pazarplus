@@ -178,6 +178,7 @@ const ProductDisplay = ({
       },
       { id: "category", label: "Kategori", visible: true, sortable: true },
       { id: "brand", label: "Marka", visible: false, sortable: false },
+      { id: "questions", label: "Sorular", visible: true, sortable: true },
       {
         id: "actions",
         label: "İşlemler",

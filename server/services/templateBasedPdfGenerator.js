@@ -5,6 +5,7 @@ const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
 const bwipjs = require("bwip-js");
+const sharp = require("sharp");
 const logger = require("../utils/logger");
 const FontManager = require("../utils/FontManager");
 
@@ -122,15 +123,13 @@ class TemplateBasedPDFGenerator {
           Subject: "Shipping Label",
           Creator: "Pazar+ Order Management System",
         },
-        // Ensure proper Unicode support for Turkish characters
         compress: true,
         bufferPages: true,
-        // Add encoding options for better Unicode support
         autoFirstPage: true,
         pdfVersion: "1.4",
       });
 
-      // Register Unicode-compatible fonts using FontManager
+      // Register fonts using FontManager
       try {
         const fontRegistrationResult = await this.fontManager.registerFonts(
           doc
@@ -155,7 +154,9 @@ class TemplateBasedPDFGenerator {
           logger.warn(
             `Failed to register ${fontRegistrationResult.failed.length} fonts`,
             {
-              fonts: fontRegistrationResult.failed.map((f) => f.name),
+              fonts: fontRegistrationResult.failed.map(
+                (f) => f.file || f.name || "Unknown"
+              ),
             }
           );
         }
@@ -884,34 +885,10 @@ class TemplateBasedPDFGenerator {
 
     // Use FontManager to validate text and get best font
     let font, validatedContent;
-    try {
-      const fontValidation = this.fontManager.validateAndGetFont(
-        content,
-        this.getFontFamily(requestedFont),
-        fontWeight
-      );
 
-      font = fontValidation.font;
-      validatedContent = fontValidation.text;
-
-      // Log font recommendation if changed
-      if (font !== this.getFontFamily(requestedFont)) {
-        logger.info(`Font changed for better Unicode support`, {
-          requested: requestedFont,
-          recommended: font,
-          text: content.substring(0, 50),
-        });
-      }
-    } catch (fontError) {
-      logger.warn("FontManager validation failed, using fallback", {
-        error: fontError.message,
-      });
-
-      // Fallback to manual processing
-      validatedContent = content.toString().normalize("NFC");
-      validatedContent = Buffer.from(validatedContent, "utf8").toString("utf8");
-      font = this.getFontFamily(requestedFont) || "Helvetica";
-    }
+    // Simple font handling without Unicode detection
+    font = this.getFontFamily(requestedFont) || "Helvetica";
+    validatedContent = content.toString();
 
     // Apply bold font variant if needed
     if (fontWeight === "bold") {
@@ -1363,24 +1340,85 @@ class TemplateBasedPDFGenerator {
       // Since images can have different aspect ratios, we'll maintain aspect ratio
 
       // Calculate actual image dimensions maintaining aspect ratio
-      try {
-        const imageInfo = await sharp(imagePath).metadata();
-        if (imageInfo && imageInfo.width && imageInfo.height) {
-          const aspectRatio = imageInfo.width / imageInfo.height;
-          const containerAspectRatio = width / height;
+      // Only try to get metadata for local files with supported formats
+      const canUseSharp =
+        !imageSource.startsWith("http://") &&
+        !imageSource.startsWith("https://") &&
+        !imageSource.startsWith("data:") &&
+        require("fs").existsSync(imagePath);
 
-          if (aspectRatio > containerAspectRatio) {
-            // Image is wider - fit to width
-            imageWidth = width;
-            imageHeight = width / aspectRatio;
+      if (canUseSharp) {
+        try {
+          // Check if file extension is supported by Sharp
+          const supportedExtensions = [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp",
+            ".gif",
+            ".svg",
+            ".tiff",
+            ".tif",
+            ".bmp",
+          ];
+          const fileExtension = path.extname(imagePath).toLowerCase();
+
+          if (supportedExtensions.includes(fileExtension)) {
+            const imageInfo = await sharp(imagePath).metadata();
+            if (imageInfo && imageInfo.width && imageInfo.height) {
+              const aspectRatio = imageInfo.width / imageInfo.height;
+              const containerAspectRatio = width / height;
+
+              if (aspectRatio > containerAspectRatio) {
+                // Image is wider - fit to width
+                imageWidth = width;
+                imageHeight = width / aspectRatio;
+              } else {
+                // Image is taller - fit to height
+                imageHeight = height;
+                imageWidth = height * aspectRatio;
+              }
+
+              logger.debug("Successfully got image metadata with Sharp", {
+                originalDimensions: {
+                  width: imageInfo.width,
+                  height: imageInfo.height,
+                },
+                calculatedDimensions: {
+                  width: imageWidth,
+                  height: imageHeight,
+                },
+                aspectRatio: aspectRatio.toFixed(2),
+              });
+            }
           } else {
-            // Image is taller - fit to height
-            imageHeight = height;
-            imageWidth = height * aspectRatio;
+            logger.debug("Unsupported image format for Sharp metadata", {
+              extension: fileExtension,
+              supportedExtensions,
+            });
           }
+        } catch (err) {
+          logger.warn(
+            "Sharp metadata extraction failed, using container dimensions",
+            {
+              error: err.message,
+              imagePath: imagePath.substring(0, 100), // Truncate long paths
+            }
+          );
+          // If we can't get image info, use container dimensions
+          imageWidth = width;
+          imageHeight = height;
         }
-      } catch (err) {
-        // If we can't get image info, use container dimensions
+      } else {
+        logger.debug("Skipping Sharp metadata for non-local image", {
+          imageType: imageSource.startsWith("http")
+            ? "URL"
+            : imageSource.startsWith("data:")
+            ? "Data URL"
+            : "Other",
+          imagePath: imagePath.substring(0, 100), // Truncate long paths
+        });
+        // For URLs and data URLs, use container dimensions
         imageWidth = width;
         imageHeight = height;
       }
@@ -1545,9 +1583,8 @@ class TemplateBasedPDFGenerator {
   ensureProperEncoding(text) {
     if (!text || typeof text !== "string") return text;
 
-    // Use Unicode normalization - NFC is the most common form
-    // This ensures Turkish characters are properly represented
-    return text.normalize("NFC");
+    // Simple text processing without Unicode normalization
+    return text;
   }
 
   /**
@@ -1821,8 +1858,8 @@ class TemplateBasedPDFGenerator {
     const totalContentHeight =
       estimatedLines * lineHeightPx + (data.length - 1) * lineSpacing;
 
-    // Add a small padding buffer to prevent overlap
-    const padding = fontSize;
+    // Use more conservative padding to maximize content space
+    const padding = fontSize * 0.5; // Reduced from fontSize to fontSize * 0.5
 
     // Calculate vertical alignment offset - improved
     let startY = y + padding;
@@ -1833,29 +1870,42 @@ class TemplateBasedPDFGenerator {
       startY = y + Math.max(padding, height - totalContentHeight - padding);
     }
 
-    // Add a small buffer to prevent overlap with content above
-    const topBuffer = fontSize * 0.3;
-    let currentY = Math.max(startY, y + padding + topBuffer);
+    // Reduce the top buffer to allow more content
+    const topBuffer = fontSize * 0.1; // Reduced from fontSize * 0.3 to fontSize * 0.1
+    let currentY = Math.max(startY, y + topBuffer);
 
-    // Limit content to stay within borders
-    const maxY = y + height - padding; // Boundary check with padding buffer
+    // Use less restrictive boundary checking to allow more content
+    const maxY = y + height - padding * 0.5; // Reduced bottom padding
 
     for (const item of data) {
-      if (!item.value) continue;
+      // Skip items with truly empty values, but allow "0" and other falsy but meaningful values
+      // Also check for whitespace-only strings
+      if (
+        item.value === null ||
+        item.value === undefined ||
+        (typeof item.value === "string" && item.value.trim() === "")
+      ) {
+        logger.debug("Skipping empty item in renderLabelValuePairs", {
+          label: item.label,
+          value: item.value,
+          valueType: typeof item.value,
+        });
+        continue;
+      }
 
-      // Check if we have space for at least one line plus some padding
-      if (currentY + lineHeightPx + fontSize * 0.5 > maxY) {
-        logger.debug("Truncating recipient content - not enough space", {
+      // Check if we have space for at least one line (less restrictive boundary check)
+      if (currentY + lineHeightPx > maxY) {
+        logger.debug("Truncating content - not enough space", {
           currentY,
           maxY,
           remainingItems: data.length - data.indexOf(item),
         });
-        break; // Stop if we've exceeded the element height or are too close to border
+        break; // Stop if we've exceeded the element height
       }
 
       // Ensure text stays within vertical boundaries
       if (currentY < y) {
-        currentY = y + fontSize * 0.3; // Reset Y if it's above the top boundary
+        currentY = y + fontSize * 0.1; // Reduced from fontSize * 0.3 to fontSize * 0.1
       }
 
       try {
@@ -1867,6 +1917,8 @@ class TemplateBasedPDFGenerator {
           boldFont: boldFont,
           fontSize: fontSize,
           item: item.label,
+          value: item.value,
+          valueLength: item.value ? item.value.length : 0,
         });
 
         // Try to set the bold font, fall back to regular font if it fails
@@ -1905,7 +1957,18 @@ class TemplateBasedPDFGenerator {
         const labelText = `${normalizedLabel}:`;
 
         // Measure width with the normal text (with spaces) for calculations
-        const labelWidth = doc.widthOfString(labelText);
+        // Check if doc.widthOfString exists (PDFKit method)
+        let labelWidth = labelText.length * fontSize * 0.6; // Fallback calculation
+        if (typeof doc.widthOfString === "function") {
+          try {
+            labelWidth = doc.widthOfString(labelText);
+          } catch (error) {
+            logger.debug("Failed to calculate text width, using fallback", {
+              error: error.message,
+              text: labelText.substring(0, 30),
+            });
+          }
+        }
 
         // Ensure labels never wrap - they should be on a single line
         // If label is too long, we'll truncate with ellipsis
@@ -2027,8 +2090,8 @@ class TemplateBasedPDFGenerator {
             remainingHeight
           );
 
-          // Add proper spacing after multiline text but don't exceed container bounds
-          const nextLabelBuffer = fontSize * 0.5; // Add extra buffer between this value and next label
+          // Add more conservative spacing after multiline text
+          const nextLabelBuffer = fontSize * 0.2; // Reduced from fontSize * 0.5 to fontSize * 0.2
           currentY += textHeight + lineSpacing + nextLabelBuffer;
         } else {
           // Single line layout
@@ -2075,15 +2138,50 @@ class TemplateBasedPDFGenerator {
           }
 
           // Render normal value with spacing from label
-          doc.text(valueString, valueStartX, currentY, {
-            width: availableValueWidth,
-            align: textAlign || "left",
-            continued: false,
-            ellipsis: true,
+          logger.debug("Rendering value text", {
+            valueString: valueString,
+            valueStartX: valueStartX,
+            currentY: currentY,
+            availableValueWidth: availableValueWidth,
+            labelWidth: labelWidth,
+            actualLabelWidth: actualLabelWidth,
           });
 
-          // Move to next line with improved spacing to prevent label overlap
-          const nextLabelSpacing = fontSize * 0.7; // Give enough room for the next label
+          // Ensure we have a reasonable width for the value
+          const minValueWidth = 100; // Minimum 100 points for value
+          const safeValueWidth = Math.max(availableValueWidth, minValueWidth);
+          const safeValueStartX = Math.min(
+            valueStartX,
+            x + width - safeValueWidth
+          );
+
+          try {
+            doc.text(valueString, safeValueStartX, currentY, {
+              width: safeValueWidth,
+              align: textAlign || "left",
+              continued: false,
+              ellipsis: true,
+            });
+          } catch (textError) {
+            // Fallback: render on next line if positioning fails
+            logger.warn(
+              "Value text positioning failed, rendering on next line",
+              {
+                error: textError.message,
+                valueString: valueString,
+              }
+            );
+            currentY += lineHeightPx * 0.5;
+            doc.text(valueString, x + 10, currentY, {
+              width: width - 20,
+              align: textAlign || "left",
+              continued: false,
+              ellipsis: true,
+            });
+          }
+
+          // Move to next line with more conservative spacing
+          const nextLabelSpacing = fontSize * 0.3; // Reduced from fontSize * 0.7 to fontSize * 0.3
           currentY += lineHeightPx + lineSpacing + nextLabelSpacing;
         }
       } catch (error) {
@@ -2718,13 +2816,53 @@ class TemplateBasedPDFGenerator {
       const itemsData = [];
 
       orderData.items.forEach((item, index) => {
-        const itemName = item.product.name || `Ürün ${index + 1}`;
+        // Try multiple field combinations for product name with better fallbacks
+        const itemName =
+          item.product?.name ||
+          item.product?.title ||
+          item.name ||
+          item.title ||
+          item.productName ||
+          `Ürün ${index + 1}`;
+
+        // Handle quantity with multiple field names
         const quantity = item.quantity || item.qty || 1;
-        const sku = item.product.sku || item.sku || "Bilinmiyor";
+
+        // Try multiple field combinations for SKU with better fallbacks
+        const sku =
+          item.product?.sku ||
+          item.sku ||
+          item.productSku ||
+          item.platformProductId ||
+          item.barcode ||
+          "Bilinmiyor";
+
+        // Improve empty value handling
+        const cleanItemName =
+          itemName && itemName.trim() ? itemName.trim() : `Ürün ${index + 1}`;
+        const cleanSku = sku && sku.trim() ? sku.trim() : "Bilinmiyor";
+
+        // Create a more readable format that handles empty values better
+        let productDescription = cleanItemName;
+        if (cleanSku !== "Bilinmiyor") {
+          productDescription = `(${cleanSku}) ${cleanItemName}`;
+        }
 
         itemsData.push({
           label: `${index + 1}. Ürün`,
-          value: `${sku} - ${quantity} x ${itemName}`,
+          value: `${quantity} adet - ${productDescription}`,
+        });
+
+        // Debug logging for item construction
+        logger.debug("Order item constructed", {
+          index: index + 1,
+          itemName: itemName,
+          cleanItemName: cleanItemName,
+          sku: sku,
+          cleanSku: cleanSku,
+          quantity: quantity,
+          productDescription: productDescription,
+          finalValue: `${quantity} adet - ${productDescription}`,
         });
       });
 
@@ -2960,10 +3098,39 @@ class TemplateBasedPDFGenerator {
     }
 
     const products = orderData.items
-      .map(
-        (item, index) =>
-          `${index + 1}. ${item.name || item.title} (SKU: ${item.sku || "N/A"})`
-      )
+      .map((item, index) => {
+        // Try multiple field combinations for product name
+        const productName =
+          item.name ||
+          item.title ||
+          item.productName ||
+          item.product?.name ||
+          item.product?.title ||
+          `Product ${index + 1}`;
+
+        // Try multiple field combinations for SKU
+        const sku =
+          item.sku ||
+          item.productSku ||
+          item.product?.sku ||
+          item.platformProductId ||
+          item.barcode ||
+          "N/A";
+
+        // Clean up empty values
+        const cleanProductName =
+          productName && productName.trim()
+            ? productName.trim()
+            : `Product ${index + 1}`;
+        const cleanSku = sku && sku.trim() ? sku.trim() : "N/A";
+
+        // More readable format
+        if (cleanSku === "N/A") {
+          return `${index + 1}. ${cleanProductName}`;
+        } else {
+          return `${index + 1}. (${cleanSku}) - ${cleanProductName}`;
+        }
+      })
       .join("\n");
 
     await this.renderFormattedText(doc, element, products, x, y, width, height);
@@ -2995,16 +3162,44 @@ class TemplateBasedPDFGenerator {
     }
 
     const details = orderData.items
-      .map((item) =>
-        [
-          `Product: ${item.name || item.title}`,
-          `SKU: ${item.sku || "N/A"}`,
-          `Quantity: ${item.quantity}`,
-          `Price: ${this.formatCurrency(item.price)}`,
-          `Total: ${this.formatCurrency(item.quantity * item.price)}`,
+      .map((item) => {
+        // Try multiple field combinations for product name
+        const productName =
+          item.name ||
+          item.title ||
+          item.productName ||
+          item.product?.name ||
+          item.product?.title ||
+          "Unknown Product";
+
+        // Try multiple field combinations for SKU
+        const sku =
+          item.sku ||
+          item.productSku ||
+          item.product?.sku ||
+          item.platformProductId ||
+          item.barcode ||
+          "N/A";
+
+        // Handle different price field names
+        const unitPrice =
+          item.price || item.unitPrice || item.product?.price || 0;
+
+        // Handle quantity
+        const quantity = item.quantity || item.qty || 1;
+
+        // Calculate total
+        const totalPrice = item.totalPrice || quantity * unitPrice;
+
+        return [
+          `Product: ${productName}`,
+          `SKU: ${sku}`,
+          `Quantity: ${quantity}`,
+          `Price: ${this.formatCurrency(unitPrice)}`,
+          `Total: ${this.formatCurrency(totalPrice)}`,
           "---",
-        ].join("\n")
-      )
+        ].join("\n");
+      })
       .join("\n");
 
     await this.renderFormattedText(doc, element, details, x, y, width, height);

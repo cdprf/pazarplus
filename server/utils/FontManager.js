@@ -78,23 +78,10 @@ class FontManager {
    */
   getFallbackFonts() {
     return [
-      // Primary Unicode fonts
+      // Primary Unicode fonts (most likely to exist)
       { name: "DejaVuSans", files: ["DejaVuSans.ttf", "DejaVuSans-Bold.ttf"] },
-      {
-        name: "LiberationSans",
-        files: ["LiberationSans-Regular.ttf", "LiberationSans-Bold.ttf"],
-      },
-      {
-        name: "NotoSans",
-        files: ["NotoSans-Regular.ttf", "NotoSans-Bold.ttf"],
-      },
 
-      // System fonts with Unicode support
-      { name: "ArialUnicodeMS", files: ["ArialUnicodeMS.ttf"] },
-      { name: "SegoeUI", files: ["segoeui.ttf", "segoeuib.ttf"] },
-      { name: "Ubuntu", files: ["Ubuntu-R.ttf", "Ubuntu-B.ttf"] },
-
-      // Fallback to built-in PDFKit fonts (limited Unicode)
+      // Fallback to built-in PDFKit fonts
       { name: "Helvetica", builtin: true },
     ];
   }
@@ -161,7 +148,7 @@ class FontManager {
             registeredCount++;
             groupRegistered = true;
 
-            logger.info(`Font registered successfully: ${fontName}`, {
+            logger.debug(`Font registered successfully: ${fontName}`, {
               path: fontPath,
             });
           } catch (error) {
@@ -170,7 +157,7 @@ class FontManager {
               path: fontPath,
               error: error.message,
             });
-            logger.warn(`Failed to register font: ${fontFile}`, error);
+            logger.debug(`Failed to register font: ${fontFile}`, error);
           }
         } else {
           results.failed.push({ file: fontFile, error: "File not found" });

@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { SafeImage } from "../../../utils/imageUtils";
 import {
   SortAsc,
-  SortDesc,
   Image,
   Copy,
   Info,
@@ -19,10 +18,13 @@ import {
   Search,
   ChevronLeft,
   ChevronUp,
+  Crown,
+  Layers,
 } from "lucide-react";
 import { Button, Badge, Tooltip } from "../../ui";
 import CompletionScore from "./CompletionScore";
 import InlineEditor from "./InlineEditor";
+import { EnhancedPlatformBadges } from "../utils/enhancedPlatformBadges";
 
 // Import the table fixes CSS
 
@@ -97,13 +99,6 @@ const ProductTable = ({
   const handleSort = (field) => {
     onSort?.(field);
   };
-
-  // Get row height class from settings
-  const rowHeightClass = {
-    compact: "py-2",
-    normal: "py-3",
-    comfortable: "py-4",
-  }[tableSettings?.rowHeight || "normal"];
 
   // Helper function to check if column is visible
   const isColumnVisible = (columnId) => {
@@ -322,6 +317,13 @@ const ProductTable = ({
                 </th>
               )}
 
+              {/* Platform Column */}
+              {isColumnVisible("platform") && (
+                <th className="table-th" role="columnheader">
+                  Platform
+                </th>
+              )}
+
               {/* Actions Column */}
               {isColumnVisible("actions") && (
                 <th
@@ -424,18 +426,44 @@ const ProductTable = ({
                                 <Tooltip content={product.name}>
                                   <span
                                     className={`${
-                                      onProductNameClick
+                                      onProductNameClick || onView
                                         ? "cursor-pointer hover:text-blue-600 hover:underline"
                                         : ""
                                     }`}
-                                    onClick={() =>
-                                      onProductNameClick?.(product)
-                                    }
+                                    onClick={() => {
+                                      if (onProductNameClick) {
+                                        onProductNameClick(product);
+                                      } else if (onView) {
+                                        onView(product);
+                                      }
+                                    }}
                                   >
                                     {product.name}
                                   </span>
                                 </Tooltip>
                               </div>
+                              {/* Variant/Main Product Status Icons */}
+                              {(product.isVariant || product.isMainProduct) && (
+                                <div className="flex items-center space-x-2 mt-1">
+                                  {product.isVariant &&
+                                    !product.isMainProduct && (
+                                      <div className="flex items-center space-x-1 text-blue-600">
+                                        <Layers className="h-3 w-3" />
+                                        <span className="text-xs">
+                                          {product.variantValue ||
+                                            product.variantType ||
+                                            "Varyant"}
+                                        </span>
+                                      </div>
+                                    )}
+                                  {product.isMainProduct && (
+                                    <div className="flex items-center space-x-1 text-amber-600">
+                                      <Crown className="h-3 w-3" />
+                                      <span className="text-xs">Ana Ürün</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                               {hasVariants && (
                                 <Button
                                   onClick={() =>
@@ -513,9 +541,11 @@ const ProductTable = ({
                               )}
                               {product.variants &&
                                 product.variants.length > 0 && (
-                                  <div className="flex items-center space-x-2">
-                                    <span>Varyant:</span>
-                                    <span>{product.variants[0].name}</span>
+                                  <div className="flex items-center space-x-1">
+                                    <Layers className="h-3 w-3 text-blue-600" />
+                                    <span className="text-xs text-blue-600">
+                                      {product.variants[0].name}
+                                    </span>
                                   </div>
                                 )}
                             </div>
@@ -682,6 +712,13 @@ const ProductTable = ({
                       <td className="table-td">{product.brand || "-"}</td>
                     )}
 
+                    {/* Enhanced Platform Column */}
+                    {isColumnVisible("platform") && (
+                      <td className="table-td">
+                        <EnhancedPlatformBadges product={product} />
+                      </td>
+                    )}
+
                     {/* Actions */}
                     {isColumnVisible("actions") && (
                       <td className="table-td table-actions sticky right-0 z-20 border-l border-gray-200">
@@ -770,6 +807,7 @@ const ProductTable = ({
                             deliveryTime: isColumnVisible("deliveryTime"),
                             category: isColumnVisible("category"),
                             brand: isColumnVisible("brand"),
+                            platform: isColumnVisible("platform"),
                             actions: isColumnVisible("actions"),
                           }).filter(Boolean).length
                         }

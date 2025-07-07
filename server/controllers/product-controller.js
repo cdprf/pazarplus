@@ -5,12 +5,14 @@ const {
   MainProduct,
   PlatformVariant,
   PlatformTemplate,
+  CustomerQuestion,
+  sequelize,
 } = require("../models");
 const logger = require("../utils/logger");
 const ProductMergeService = require("../services/product-merge-service");
 const PlatformServiceFactory = require("../modules/order-management/services/platforms/platformServiceFactory");
 const { validationResult } = require("express-validator");
-const { Op, sequelize } = require("sequelize");
+const { Op } = require("sequelize");
 const AdvancedInventoryService = require("../services/advanced-inventory-service");
 const EnhancedProductManagementService = require("../services/enhanced-product-management-service");
 const EnhancedStockService = require("../services/enhanced-stock-service");
@@ -49,6 +51,9 @@ class ProductController {
         maxPrice,
         minStock,
         maxStock,
+        minQuestions,
+        maxQuestions,
+        hasQuestions,
         sortBy = "updatedAt",
         sortOrder = "DESC",
       } = req.query;
@@ -67,33 +72,42 @@ class ProductController {
 
       // Add search filter - Enhanced to include all relevant fields
       if (search && search.trim() !== "") {
-        whereClause[Op.or] = [
+        const searchConditions = [
           { name: { [Op.iLike]: `%${search}%` } },
           { sku: { [Op.iLike]: `%${search}%` } },
-          { barcode: { [Op.iLike]: `%${search}%` } },
-          { description: { [Op.iLike]: `%${search}%` } },
           { category: { [Op.iLike]: `%${search}%` } },
-          { brand: { [Op.iLike]: `%${search}%` } },
-          { modelCode: { [Op.iLike]: `%${search}%` } },
-          { productCode: { [Op.iLike]: `%${search}%` } },
-          // Search in JSON fields using PostgreSQL JSON operators
-          ...(sequelize.getDialect() === "postgres"
-            ? [
-                sequelize.where(sequelize.cast(sequelize.col("tags"), "TEXT"), {
-                  [Op.iLike]: `%${search}%`,
-                }),
-                sequelize.where(
-                  sequelize.cast(sequelize.col("attributes"), "TEXT"),
-                  { [Op.iLike]: `%${search}%` }
-                ),
-              ]
-            : []),
         ];
+
+        // Add nullable fields with proper null checks
+        searchConditions.push(
+          {
+            [Op.and]: [
+              { barcode: { [Op.ne]: null } },
+              { barcode: { [Op.iLike]: `%${search}%` } },
+            ],
+          },
+          {
+            [Op.and]: [
+              { description: { [Op.ne]: null } },
+              { description: { [Op.iLike]: `%${search}%` } },
+            ],
+          }
+        );
+
+        whereClause[Op.or] = searchConditions;
       }
 
       // Add category filter
       if (category && category.trim() !== "") {
         whereClause.category = { [Op.iLike]: `%${category}%` };
+      }
+
+      // Add platform filter
+      if (platform && platform !== "all" && platform.trim() !== "") {
+        const sanitizedPlatform = sanitizePlatformType(platform);
+        if (sanitizedPlatform) {
+          whereClause.sourcePlatform = sanitizedPlatform;
+        }
       }
 
       // Add price range filters
@@ -243,29 +257,112 @@ class ProductController {
         order: [["createdAt", "DESC"]],
       });
 
+      // Don't include CustomerQuestion directly since the association is complex
+      // Instead, we'll add questions count in post-processing
+
+      // Handle sorting - if sorting by questionsCount, we'll sort after getting the data
+      const isQuestionSort = sortBy === "questionsCount";
+      const dbSortBy = isQuestionSort ? "updatedAt" : sortBy;
+      const dbSortOrder = isQuestionSort ? "DESC" : sortOrder;
+
       const { count, rows: products } = await Product.findAndCountAll({
         where: whereClause,
         include: includeClause,
         limit: parseInt(limit),
         offset: offset,
-        order: [[sortBy, sortOrder]],
+        order: [[dbSortBy, dbSortOrder]],
         distinct: true,
       });
 
+      // Get products with questions count in a single query for better performance
+      const productIds = products.map((p) => `'${p.id}'`).join(",");
+
+      let questionsCountMap = {};
+      if (productIds) {
+        try {
+          const questionsCounts = await sequelize.query(
+            `
+            SELECT 
+              pd."entityId" as product_id,
+              COUNT(cq.id)::int as questions_count
+            FROM platform_data pd
+            LEFT JOIN customer_questions cq ON (
+              pd.data#>>'{source,stockCode}' = cq.product_main_id OR
+              pd.data#>>'{source,sku}' = cq.product_main_id
+            )
+            WHERE pd."entityId" IN (${productIds})
+            GROUP BY pd."entityId"
+          `,
+            {
+              type: sequelize.QueryTypes.SELECT,
+            }
+          );
+
+          // Create a map for quick lookup
+          questionsCountMap = questionsCounts.reduce((map, item) => {
+            map[item.product_id] = item.questions_count;
+            return map;
+          }, {});
+        } catch (error) {
+          logger.warn("Failed to get questions counts:", error.message);
+        }
+      }
+
+      // Add questions count to each product
+      products.forEach((product) => {
+        product.dataValues.questionsCount = questionsCountMap[product.id] || 0;
+      });
+
+      // If sorting by questions count, sort the results now
+      if (isQuestionSort) {
+        products.sort((a, b) => {
+          const aCount = a.dataValues.questionsCount || 0;
+          const bCount = b.dataValues.questionsCount || 0;
+          return sortOrder === "ASC" ? aCount - bCount : bCount - aCount;
+        });
+      }
+
+      // Apply questions filtering after calculating counts
+      let filteredProducts = products;
+      if (minQuestions || maxQuestions || hasQuestions) {
+        filteredProducts = products.filter((product) => {
+          const questionsCount = product.dataValues.questionsCount || 0;
+
+          if (minQuestions && questionsCount < parseInt(minQuestions)) {
+            return false;
+          }
+
+          if (maxQuestions && questionsCount > parseInt(maxQuestions)) {
+            return false;
+          }
+
+          if (hasQuestions === "true" && questionsCount === 0) {
+            return false;
+          }
+
+          if (hasQuestions === "false" && questionsCount > 0) {
+            return false;
+          }
+
+          return true;
+        });
+      }
+
       // Calculate pagination info (using 1-indexed page numbers for frontend)
       const currentPageNumber = parseInt(page);
-      const totalPages = Math.ceil(count / parseInt(limit));
+      const totalFilteredItems = filteredProducts.length;
+      const totalPages = Math.ceil(totalFilteredItems / parseInt(limit));
       const hasNextPage = currentPageNumber < totalPages;
       const hasPrevPage = currentPageNumber > 1;
 
       res.json({
         success: true,
         data: {
-          products,
+          products: filteredProducts,
           pagination: {
             currentPage: currentPageNumber,
             totalPages,
-            totalItems: count,
+            totalItems: totalFilteredItems,
             itemsPerPage: parseInt(limit),
             hasNextPage,
             hasPrevPage,
@@ -788,6 +885,28 @@ class ProductController {
           message: "Product not found",
         });
       }
+
+      // Get related customer questions via platform data
+      const relatedQuestions = await sequelize.query(
+        `
+        SELECT cq.*
+        FROM customer_questions cq
+        INNER JOIN platform_data pd ON (
+          pd.data#>>'{source,stockCode}' = cq.product_main_id OR
+          pd.data#>>'{source,sku}' = cq.product_main_id
+        )
+        WHERE pd."entityId" = :productId
+        ORDER BY cq.creation_date DESC
+      `,
+        {
+          replacements: { productId: product.id },
+          type: sequelize.QueryTypes.SELECT,
+        }
+      );
+
+      // Add questions to product data
+      product.dataValues.customerQuestions = relatedQuestions;
+      product.dataValues.questionsCount = relatedQuestions.length;
 
       res.json({
         success: true,
@@ -4181,10 +4300,38 @@ class ProductController {
   }
 
   /**
+   * Get background variant detection service configuration
+   */
+  async getBackgroundVariantDetectionConfig(req, res) {
+    try {
+      const config = backgroundVariantDetectionService.getConfig();
+      res.json({
+        success: true,
+        data: config,
+        message: "Background variant detection service configuration retrieved",
+      });
+    } catch (error) {
+      logger.error("Error getting background variant detection config:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get service configuration",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
    * Start background variant detection service
    */
   async startBackgroundVariantDetection(req, res) {
     try {
+      // Apply any configuration from the request body before starting
+      const config = req.body;
+      if (config && Object.keys(config).length > 0) {
+        backgroundVariantDetectionService.updateConfig(config);
+        logger.info("Configuration updated before starting service", config);
+      }
+
       backgroundVariantDetectionService.start();
       res.json({
         success: true,
@@ -4392,6 +4539,581 @@ class ProductController {
       res.status(500).json({
         success: false,
         message: "Failed to fetch product model structure",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Analyze existing products to suggest variant detection patterns
+   */
+  async analyzePatterns(req, res) {
+    try {
+      const userId = req.user.id;
+      const {
+        patternType,
+        sampleSize = 50,
+        includeNames = true,
+        includeSKUs = true,
+        includeDescriptions = false,
+      } = req.body;
+
+      logger.info("🔍 Analyzing products for pattern suggestions", {
+        userId,
+        patternType,
+        sampleSize,
+        includeNames,
+        includeSKUs,
+        includeDescriptions,
+      });
+
+      // Get recent products for the user
+      const products = await Product.findAll({
+        where: { userId },
+        limit: sampleSize,
+        order: [["createdAt", "DESC"]],
+        attributes: ["id", "name", "sku", "description"],
+      });
+
+      if (products.length === 0) {
+        return res.json({
+          success: true,
+          data: {
+            recordCount: 0,
+            error: "No products found in database",
+            examples: [],
+            suggestedPattern: null,
+            commonPatterns: [],
+          },
+        });
+      }
+
+      // Collect text data from products
+      const textData = [];
+      products.forEach((product) => {
+        if (includeNames && product.name) textData.push(product.name);
+        if (includeSKUs && product.sku) textData.push(product.sku);
+        if (includeDescriptions && product.description)
+          textData.push(product.description);
+      });
+
+      // Analyze patterns based on type
+      let suggestedPattern = null;
+      let commonPatterns = [];
+      let examples = textData.slice(0, 10); // First 10 examples for testing
+
+      if (patternType === "color") {
+        // Look for color patterns
+        const colorKeywords = [
+          "color",
+          "colour",
+          "renk",
+          "black",
+          "white",
+          "red",
+          "blue",
+          "green",
+          "yellow",
+          "pink",
+          "purple",
+          "orange",
+          "gray",
+          "grey",
+          "brown",
+          "siyah",
+          "beyaz",
+          "kırmızı",
+          "mavi",
+          "yeşil",
+          "sarı",
+        ];
+        const colorMatches = textData.filter((text) =>
+          colorKeywords.some((keyword) =>
+            text.toLowerCase().includes(keyword.toLowerCase())
+          )
+        );
+
+        if (colorMatches.length > 0) {
+          suggestedPattern =
+            "(?:color|colour|renk):\\s*([^,;\\s]+)|(?:^|\\s)(black|white|red|blue|green|yellow|pink|purple|orange|gray|grey|brown|siyah|beyaz|kırmızı|mavi|yeşil|sarı)(?:\\s|$)";
+          examples = colorMatches.slice(0, 10);
+        }
+      } else if (patternType === "size") {
+        // Look for size patterns
+        const sizeKeywords = [
+          "size",
+          "beden",
+          "xs",
+          "s",
+          "m",
+          "l",
+          "xl",
+          "xxl",
+          "xxxl",
+        ];
+        const sizeRegex = /\b(xs|s|m|l|xl|xxl|xxxl|\d{1,3})\b/gi;
+        const sizeMatches = textData.filter(
+          (text) =>
+            sizeKeywords.some((keyword) =>
+              text.toLowerCase().includes(keyword.toLowerCase())
+            ) || sizeRegex.test(text)
+        );
+
+        if (sizeMatches.length > 0) {
+          suggestedPattern =
+            "(?:size|beden):\\s*([^,;\\s]+)|(?:^|\\s)(xs|s|m|l|xl|xxl|xxxl|\\d{1,3})(?:\\s|$)";
+          examples = sizeMatches.slice(0, 10);
+        }
+      } else if (patternType === "model") {
+        // Look for model patterns
+        const modelKeywords = [
+          "model",
+          "tip",
+          "type",
+          "pro",
+          "plus",
+          "max",
+          "mini",
+        ];
+        const modelMatches = textData.filter((text) =>
+          modelKeywords.some((keyword) =>
+            text.toLowerCase().includes(keyword.toLowerCase())
+          )
+        );
+
+        if (modelMatches.length > 0) {
+          suggestedPattern =
+            "(?:model|tip|type):\\s*([^,;\\s]+)|(?:^|\\s)(pro|plus|max|mini|\\w+\\d+)(?:\\s|$)";
+          examples = modelMatches.slice(0, 10);
+        }
+      } else if (patternType === "structured") {
+        // Analyze structured patterns
+        const structuredMatches = textData.filter(
+          (text) =>
+            text.includes(":") || text.includes("-") || /\w+\d+/.test(text)
+        );
+
+        if (structuredMatches.length > 0) {
+          // Try to detect common structures
+          const patterns = structuredMatches.map((text) => {
+            // Replace alphanumeric sequences with placeholders
+            return text.replace(/[A-Za-z]{2,}/g, "TEXT").replace(/\d+/g, "NUM");
+          });
+
+          // Count pattern frequencies
+          const patternCounts = {};
+          patterns.forEach((pattern) => {
+            patternCounts[pattern] = (patternCounts[pattern] || 0) + 1;
+          });
+
+          // Sort by frequency
+          commonPatterns = Object.entries(patternCounts)
+            .map(([pattern, count]) => ({ pattern, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+
+          examples = structuredMatches.slice(0, 10);
+        }
+      }
+
+      // Find common patterns in all cases
+      if (commonPatterns.length === 0 && textData.length > 0) {
+        // Basic pattern analysis - find repeating structures
+        const basicPatterns = textData.map((text) => {
+          return text
+            .replace(/[A-Za-z]+/g, "WORD")
+            .replace(/\d+/g, "NUM")
+            .replace(/[^A-Za-z0-9]/g, "SEP");
+        });
+
+        const patternCounts = {};
+        basicPatterns.forEach((pattern) => {
+          patternCounts[pattern] = (patternCounts[pattern] || 0) + 1;
+        });
+
+        commonPatterns = Object.entries(patternCounts)
+          .map(([pattern, count]) => ({ pattern, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 3);
+      }
+
+      res.json({
+        success: true,
+        data: {
+          recordCount: products.length,
+          textDataCount: textData.length,
+          suggestedPattern,
+          commonPatterns,
+          examples,
+          patternType,
+        },
+      });
+    } catch (error) {
+      logger.error("❌ Error analyzing patterns:", {
+        error: error.message,
+        stack: error.stack,
+        userId: req.user?.id,
+      });
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to analyze patterns",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Search products by regex pattern
+   */
+  async searchByPattern(req, res) {
+    try {
+      const userId = req.user.id;
+      const {
+        pattern,
+        searchFields = { name: true, sku: true, description: false },
+        maxResults = 50,
+      } = req.body;
+
+      if (!pattern) {
+        return res.status(400).json({
+          success: false,
+          message: "Pattern is required",
+        });
+      }
+
+      logger.info("🔍 Searching products by pattern", {
+        userId,
+        pattern,
+        searchFields,
+        maxResults,
+      });
+
+      // First, get the total count of products for this user
+      const totalProductCount = await Product.count({
+        where: { userId },
+      });
+
+      if (totalProductCount === 0) {
+        return res.json({
+          success: true,
+          data: {
+            matches: [],
+            matchCount: 0,
+            totalProducts: 0,
+            totalSearched: 0,
+            pattern,
+            searchFields,
+          },
+        });
+      }
+
+      // Create regex from pattern
+      let regex;
+      try {
+        regex = new RegExp(pattern, "gi");
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid regex pattern: " + error.message,
+        });
+      }
+
+      // Use database-level search with SQL REGEXP for better performance
+      const { Op } = require("sequelize");
+      const sequelize = Product.sequelize;
+
+      // Build the where conditions for database-level regex search
+      const whereConditions = [];
+
+      if (searchFields.name) {
+        // For PostgreSQL, use ~ operator for regex, for MySQL use REGEXP
+        whereConditions.push(
+          sequelize.where(
+            sequelize.fn("LOWER", sequelize.col("name")),
+            Op.regexp,
+            pattern.toLowerCase()
+          )
+        );
+      }
+
+      if (searchFields.sku) {
+        whereConditions.push(
+          sequelize.where(
+            sequelize.fn("LOWER", sequelize.col("sku")),
+            Op.regexp,
+            pattern.toLowerCase()
+          )
+        );
+      }
+
+      if (searchFields.description) {
+        whereConditions.push(
+          sequelize.where(
+            sequelize.fn("LOWER", sequelize.col("description")),
+            Op.regexp,
+            pattern.toLowerCase()
+          )
+        );
+      }
+
+      // If no search fields selected, search all fields
+      if (whereConditions.length === 0) {
+        whereConditions.push(
+          sequelize.where(
+            sequelize.fn("LOWER", sequelize.col("name")),
+            Op.regexp,
+            pattern.toLowerCase()
+          )
+        );
+      }
+
+      // Search all products that match the pattern
+      const matchingProducts = await Product.findAll({
+        where: {
+          userId,
+          [Op.or]: whereConditions,
+        },
+        attributes: ["id", "name", "sku", "description"],
+        limit: maxResults * 3, // Get more than needed to have variety in results
+      });
+
+      const matches = [];
+      let totalMatches = 0;
+
+      // Process the matching products to extract specific matches
+      for (const product of matchingProducts) {
+        // Search in product name
+        if (searchFields.name && product.name) {
+          const nameMatches = product.name.match(regex);
+          if (nameMatches) {
+            nameMatches.forEach((match) => {
+              if (matches.length < maxResults) {
+                matches.push({
+                  productId: product.id,
+                  productName: product.name,
+                  field: "name",
+                  matchedText: match.trim(),
+                  fullText: product.name,
+                });
+              }
+              totalMatches++;
+            });
+          }
+        }
+
+        // Search in SKU
+        if (searchFields.sku && product.sku) {
+          const skuMatches = product.sku.match(regex);
+          if (skuMatches) {
+            skuMatches.forEach((match) => {
+              if (matches.length < maxResults) {
+                matches.push({
+                  productId: product.id,
+                  productName: product.name,
+                  field: "sku",
+                  matchedText: match.trim(),
+                  fullText: product.sku,
+                });
+              }
+              totalMatches++;
+            });
+          }
+        }
+
+        // Search in description
+        if (searchFields.description && product.description) {
+          const descMatches = product.description.match(regex);
+          if (descMatches) {
+            descMatches.forEach((match) => {
+              if (matches.length < maxResults) {
+                matches.push({
+                  productId: product.id,
+                  productName: product.name,
+                  field: "description",
+                  matchedText: match.trim(),
+                  fullText:
+                    product.description.substring(0, 100) +
+                    (product.description.length > 100 ? "..." : ""),
+                });
+              }
+              totalMatches++;
+            });
+          }
+        }
+
+        // Stop collecting matches if we have enough for display
+        if (matches.length >= maxResults) {
+          break;
+        }
+      }
+
+      // Get count of all products that would match (not just the limited results)
+      const totalMatchingCount = await Product.count({
+        where: {
+          userId,
+          [Op.or]: whereConditions,
+        },
+      });
+
+      res.json({
+        success: true,
+        data: {
+          matches: matches,
+          matchCount: totalMatches,
+          totalProducts: totalProductCount,
+          totalMatching: totalMatchingCount,
+          totalSearched: totalProductCount, // We searched through all products at DB level
+          pattern,
+          searchFields,
+          limitReached: matches.length >= maxResults,
+          hasMoreMatches: totalMatchingCount > matches.length,
+        },
+      });
+    } catch (error) {
+      logger.error("❌ Error searching by pattern:", {
+        error: error.message,
+        stack: error.stack,
+        userId: req.user?.id,
+      });
+
+      // Fallback to the original method if database regex fails
+      logger.warn(
+        "Database regex search failed, falling back to JavaScript regex"
+      );
+      return this.searchByPatternFallback(req, res);
+    }
+  }
+
+  /**
+   * Fallback method for pattern search using JavaScript regex when database regex fails
+   */
+  async searchByPatternFallback(req, res) {
+    try {
+      const userId = req.user.id;
+      const {
+        pattern,
+        searchFields = { name: true, sku: true, description: false },
+        maxResults = 50,
+      } = req.body;
+
+      logger.info("🔍 Using fallback pattern search", { userId, pattern });
+
+      // Get ALL products for the user (no limit)
+      const totalProductCount = await Product.count({ where: { userId } });
+
+      // Process products in batches to avoid memory issues
+      const batchSize = 1000;
+      const matches = [];
+      let totalMatches = 0;
+      let totalProcessed = 0;
+
+      // Create regex from pattern
+      const regex = new RegExp(pattern, "gi");
+
+      for (let offset = 0; offset < totalProductCount; offset += batchSize) {
+        const products = await Product.findAll({
+          where: { userId },
+          attributes: ["id", "name", "sku", "description"],
+          offset: offset,
+          limit: batchSize,
+        });
+
+        for (const product of products) {
+          totalProcessed++;
+
+          // Search in product name
+          if (searchFields.name && product.name) {
+            const nameMatches = product.name.match(regex);
+            if (nameMatches) {
+              nameMatches.forEach((match) => {
+                if (matches.length < maxResults) {
+                  matches.push({
+                    productId: product.id,
+                    productName: product.name,
+                    field: "name",
+                    matchedText: match.trim(),
+                    fullText: product.name,
+                  });
+                }
+                totalMatches++;
+              });
+            }
+          }
+
+          // Search in SKU
+          if (searchFields.sku && product.sku) {
+            const skuMatches = product.sku.match(regex);
+            if (skuMatches) {
+              skuMatches.forEach((match) => {
+                if (matches.length < maxResults) {
+                  matches.push({
+                    productId: product.id,
+                    productName: product.name,
+                    field: "sku",
+                    matchedText: match.trim(),
+                    fullText: product.sku,
+                  });
+                }
+                totalMatches++;
+              });
+            }
+          }
+
+          // Search in description
+          if (searchFields.description && product.description) {
+            const descMatches = product.description.match(regex);
+            if (descMatches) {
+              descMatches.forEach((match) => {
+                if (matches.length < maxResults) {
+                  matches.push({
+                    productId: product.id,
+                    productName: product.name,
+                    field: "description",
+                    matchedText: match.trim(),
+                    fullText:
+                      product.description.substring(0, 100) +
+                      (product.description.length > 100 ? "..." : ""),
+                  });
+                }
+                totalMatches++;
+              });
+            }
+          }
+        }
+
+        // Log progress for large datasets
+        if (totalProcessed % 5000 === 0) {
+          logger.info(
+            `Pattern search progress: ${totalProcessed}/${totalProductCount} products processed`
+          );
+        }
+      }
+
+      res.json({
+        success: true,
+        data: {
+          matches: matches,
+          matchCount: totalMatches,
+          totalProducts: totalProductCount,
+          totalSearched: totalProcessed,
+          pattern,
+          searchFields,
+          limitReached: matches.length >= maxResults,
+          hasMoreMatches: totalMatches > matches.length,
+          usedFallback: true,
+        },
+      });
+    } catch (error) {
+      logger.error("❌ Error in fallback pattern search:", {
+        error: error.message,
+        stack: error.stack,
+        userId: req.user?.id,
+      });
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to search by pattern",
         error: error.message,
       });
     }

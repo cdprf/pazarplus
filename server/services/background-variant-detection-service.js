@@ -9,6 +9,8 @@ const logger = require("../utils/logger");
 const { Product, PlatformData } = require("../models");
 const { Op } = require("sequelize");
 const EnhancedVariantDetector = require("./enhanced-variant-detector");
+const fs = require("fs");
+const path = require("path");
 
 class BackgroundVariantDetectionService {
   constructor() {
@@ -17,15 +19,92 @@ class BackgroundVariantDetectionService {
     this.batchSize = 10; // Process 10 products at a time
     this.maxProcessingTime = 2 * 60 * 1000; // 2 minutes max per batch
     this.intervalId = null;
+    this.startTime = null;
 
-    // Configuration
-    this.config = {
+    // Status tracking
+    this.lastRunTime = null;
+    this.totalProcessed = 0;
+    this.lastBatchSize = 0;
+    this.lastError = null;
+    this.processingErrors = 0;
+
+    // Configuration file path
+    this.configPath = path.join(
+      __dirname,
+      "../data/variant-detection-config.json"
+    );
+
+    // Load configuration from file or use defaults
+    this.config = this.loadConfigFromFile();
+  }
+
+  /**
+   * Load configuration from file
+   */
+  loadConfigFromFile() {
+    try {
+      // Ensure data directory exists
+      const dataDir = path.dirname(this.configPath);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+
+      if (fs.existsSync(this.configPath)) {
+        const configData = fs.readFileSync(this.configPath, "utf8");
+        const savedConfig = JSON.parse(configData);
+        logger.info(
+          "Loaded variant detection configuration from file",
+          savedConfig
+        );
+        return savedConfig;
+      }
+    } catch (error) {
+      logger.warn(
+        "Failed to load configuration from file, using defaults",
+        error
+      );
+    }
+
+    // Return default configuration
+    return {
       minConfidenceThreshold: 0.5, // Only update if confidence is above 50%
       maxRetries: 3,
       processOnCreate: true, // Auto-process new products
       processOnUpdate: true, // Auto-process updated products
       reprocessInterval: 24 * 60 * 60 * 1000, // Reprocess once per day
+      enableAutoDetection: true,
+      enableSKUAnalysis: true,
+      enablePlatformDataAnalysis: true,
+      enableTextAnalysis: true,
+      colorPatterns: [
+        "(?:color|colour|renk):\\s*([^,;]+)",
+        "(?:^|\\s)(black|white|red|blue|green|yellow|pink|purple|orange|gray|grey|brown)(?:\\s|$)",
+      ],
+      sizePatterns: [
+        "(?:size|beden):\\s*([^,;]+)",
+        "(?:^|\\s)(xs|s|m|l|xl|xxl|xxxl|\\d+)(?:\\s|$)",
+      ],
+      modelPatterns: ["(?:model|tip):\\s*([^,;]+)"],
+      structuredPatterns: [],
+      customPatterns: [],
     };
+  }
+
+  /**
+   * Save configuration to file
+   */
+  saveConfigToFile() {
+    try {
+      const dataDir = path.dirname(this.configPath);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+
+      fs.writeFileSync(this.configPath, JSON.stringify(this.config, null, 2));
+      logger.info("Saved variant detection configuration to file");
+    } catch (error) {
+      logger.error("Failed to save configuration to file", error);
+    }
   }
 
   /**
@@ -38,6 +117,9 @@ class BackgroundVariantDetectionService {
     }
 
     this.isRunning = true;
+    this.startTime = Date.now();
+    this.lastError = null;
+
     logger.info("Starting background variant detection service", {
       interval: this.processInterval,
       batchSize: this.batchSize,
@@ -48,6 +130,8 @@ class BackgroundVariantDetectionService {
     this.intervalId = setInterval(() => {
       this.processProductBatch().catch((error) => {
         logger.error("Error in background variant detection batch:", error);
+        this.lastError = error.message;
+        this.processingErrors++;
       });
     }, this.processInterval);
 
@@ -68,6 +152,8 @@ class BackgroundVariantDetectionService {
     }
 
     this.isRunning = false;
+    this.startTime = null;
+
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
@@ -139,6 +225,12 @@ class BackgroundVariantDetectionService {
       }
 
       const duration = Date.now() - startTime;
+
+      // Update tracking stats
+      this.lastRunTime = Date.now();
+      this.totalProcessed += results.processed;
+      this.lastBatchSize = results.processed;
+
       logger.info("Background variant detection batch completed", {
         duration: `${duration}ms`,
         ...results,
@@ -363,8 +455,24 @@ class BackgroundVariantDetectionService {
       processInterval: this.processInterval,
       batchSize: this.batchSize,
       config: this.config,
-      uptime: this.intervalId ? Date.now() - this.startTime : 0,
+      uptime: this.startTime ? Date.now() - this.startTime : 0,
+      lastRunTime: this.lastRunTime,
+      totalProcessed: this.totalProcessed,
+      lastBatchSize: this.lastBatchSize,
+      lastError: this.lastError,
+      processingErrors: this.processingErrors,
+      nextRunEstimate:
+        this.isRunning && this.lastRunTime
+          ? this.lastRunTime + this.processInterval
+          : null,
     };
+  }
+
+  /**
+   * Get current service configuration
+   */
+  getConfig() {
+    return { ...this.config };
   }
 
   /**
@@ -372,8 +480,9 @@ class BackgroundVariantDetectionService {
    */
   updateConfig(newConfig) {
     this.config = { ...this.config, ...newConfig };
+    this.saveConfigToFile(); // Save to file immediately
     logger.info(
-      "Background variant detection service configuration updated",
+      "Background variant detection service configuration updated and saved",
       this.config
     );
   }

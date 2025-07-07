@@ -1,5 +1,18 @@
 "use strict";
 
+/**
+ * Complete Database Schema Migration for Pazar+ Platform
+ *
+ * UPDATED: July 4, 2025
+ * - Updated ComplianceDocuments table to match current model (order-based documents)
+ * - Ensured TurkishCompliance table has all required fields including orderId
+ * - Fixed duplicate complianceStatus field definitions
+ * - Updated indexes to match new schema requirements
+ *
+ * This migration creates all tables and relationships needed for the N11 order
+ * processing system with Turkish compliance and document management.
+ */
+
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     // Helper function to determine JSON type based on dialect
@@ -3658,6 +3671,9 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false,
         unique: true,
+        validate: {
+          isEmail: true,
+        },
       },
       name: {
         type: Sequelize.STRING,
@@ -3667,6 +3683,7 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: true,
       },
+      // Customer Analytics
       totalOrders: {
         type: Sequelize.INTEGER,
         defaultValue: 0,
@@ -3682,11 +3699,75 @@ module.exports = {
       loyaltyScore: {
         type: Sequelize.INTEGER,
         defaultValue: 0,
+        validate: {
+          min: 0,
+          max: 100,
+        },
       },
       customerType: {
         type: Sequelize.ENUM("new", "loyal", "vip"),
         defaultValue: "new",
       },
+      riskLevel: {
+        type: Sequelize.ENUM("low", "medium", "high"),
+        defaultValue: "low",
+      },
+      // Dates
+      firstOrderDate: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      lastOrderDate: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      // Platform preferences
+      primaryPlatform: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      platformUsage: {
+        type: JsonType,
+        allowNull: true,
+        comment: "Platform usage statistics as JSON",
+      },
+      // Shipping information
+      shippingAddresses: {
+        type: JsonType,
+        allowNull: true,
+        comment: "Array of shipping addresses used by customer",
+      },
+      // Product preferences
+      favoriteProducts: {
+        type: JsonType,
+        allowNull: true,
+        comment: "Array of favorite products with purchase counts",
+      },
+      favoriteCategories: {
+        type: JsonType,
+        allowNull: true,
+        comment: "Array of favorite product categories",
+      },
+      // Additional metadata
+      notes: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      tags: {
+        type: JsonType,
+        allowNull: true,
+        comment: "Custom tags for customer classification",
+      },
+      // Status
+      isActive: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: true,
+      },
+      lastUpdated: {
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.NOW,
+      },
+      // Legacy fields (kept for backward compatibility)
       addressLine1: {
         type: Sequelize.STRING,
         allowNull: true,
@@ -4683,21 +4764,11 @@ module.exports = {
         defaultValue: Sequelize.UUIDV4,
         primaryKey: true,
       },
-      productId: {
+      orderId: {
         type: Sequelize.UUID,
-        allowNull: true,
+        allowNull: false,
         references: {
-          model: "products",
-          key: "id",
-        },
-        onUpdate: "CASCADE",
-        onDelete: "CASCADE",
-      },
-      mainProductId: {
-        type: Sequelize.UUID,
-        allowNull: true,
-        references: {
-          model: "main_products",
+          model: "orders",
           key: "id",
         },
         onUpdate: "CASCADE",
@@ -4705,56 +4776,79 @@ module.exports = {
       },
       documentType: {
         type: Sequelize.ENUM(
-          "ce_certificate",
-          "test_report",
-          "safety_datasheet",
-          "manual",
-          "warranty",
-          "other"
+          "e-invoice",
+          "e-archive",
+          "shipping-label",
+          "customs-declaration"
         ),
         allowNull: false,
       },
-      documentName: {
-        type: Sequelize.STRING,
-        allowNull: false,
-      },
-      documentUrl: {
-        type: Sequelize.STRING,
-        allowNull: false,
-      },
-      expiryDate: {
-        type: Sequelize.DATE,
-        allowNull: true,
-      },
-      issuedBy: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      issuedDate: {
-        type: Sequelize.DATE,
+      documentNumber: {
+        type: Sequelize.STRING(100),
+        unique: true,
         allowNull: true,
       },
       status: {
-        type: Sequelize.ENUM("valid", "expired", "pending", "rejected"),
-        defaultValue: "valid",
+        type: Sequelize.ENUM(
+          "draft",
+          "generated",
+          "sent",
+          "accepted",
+          "rejected"
+        ),
+        defaultValue: "draft",
       },
-      platforms: {
-        type: JsonType,
+      customerType: {
+        type: Sequelize.ENUM("INDIVIDUAL", "COMPANY"),
+        allowNull: false,
+        defaultValue: "INDIVIDUAL",
+      },
+      customerInfo: {
+        type: Sequelize.TEXT,
+        allowNull: false,
+        defaultValue: "{}",
+      },
+      orderData: {
+        type: Sequelize.TEXT,
+        allowNull: false,
+        defaultValue: "{}",
+      },
+      xmlContent: {
+        type: Sequelize.TEXT,
         allowNull: true,
+      },
+      pdfPath: {
+        type: Sequelize.STRING(255),
+        allowNull: true,
+      },
+      gibResponse: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      generatedAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      sentAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      processedAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      errorMessage: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      retryCount: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
+        allowNull: false,
       },
       metadata: {
         type: JsonType,
         allowNull: true,
-      },
-      userId: {
-        type: Sequelize.UUID,
-        allowNull: true,
-        references: {
-          model: "users",
-          key: "id",
-        },
-        onUpdate: "CASCADE",
-        onDelete: "SET NULL",
       },
       createdAt: {
         type: Sequelize.DATE,
@@ -4841,20 +4935,164 @@ module.exports = {
         type: Sequelize.ENUM("low", "medium", "high"),
         defaultValue: "low",
       },
-      complianceStatus: {
-        type: Sequelize.ENUM(
-          "compliant",
-          "non_compliant",
-          "pending",
-          "unknown"
-        ),
-        defaultValue: "unknown",
-      },
       notes: {
         type: Sequelize.TEXT,
         allowNull: true,
       },
       documents: {
+        type: JsonType,
+        allowNull: true,
+      },
+      // E-Fatura (Electronic Invoice) fields
+      eFaturaUuid: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        unique: true,
+      },
+      eFaturaNumber: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      eFaturaDate: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      eFaturaStatus: {
+        type: Sequelize.ENUM(
+          "DRAFT",
+          "SENT",
+          "DELIVERED",
+          "ACCEPTED",
+          "REJECTED",
+          "CANCELLED"
+        ),
+        allowNull: true,
+      },
+      eFaturaXml: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      eFaturaPdf: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      // E-Arşiv (Electronic Archive) fields
+      eArsivUuid: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      eArsivNumber: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      eArsivDate: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      eArsivStatus: {
+        type: Sequelize.ENUM(
+          "CREATED",
+          "SENT_TO_ARCHIVE",
+          "ARCHIVED",
+          "FAILED"
+        ),
+        allowNull: true,
+      },
+      // Tax and Legal Information
+      taxNumber: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      taxOffice: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      customerType: {
+        type: Sequelize.ENUM("INDIVIDUAL", "COMPANY"),
+        allowNull: false,
+        defaultValue: "INDIVIDUAL",
+      },
+      identityNumber: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      // KDV (VAT) Information
+      kdvTotal: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0,
+      },
+      kdvRate: {
+        type: Sequelize.DECIMAL(5, 2),
+        allowNull: false,
+        defaultValue: 18.0,
+      },
+      kdvExempt: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+      },
+      kdvExemptReason: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      // KVKK (Personal Data Protection) Compliance
+      kvkkConsent: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+      },
+      kvkkConsentDate: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      kvkkConsentMethod: {
+        type: Sequelize.ENUM(
+          "EXPLICIT",
+          "IMPLICIT",
+          "WEBSITE",
+          "PHONE",
+          "EMAIL"
+        ),
+        allowNull: true,
+      },
+      // İrsaliye (Delivery Note) Information
+      irsaliyeNumber: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      irsaliyeDate: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      // TEBLİĞ (Official Notifications)
+      gibNotifications: {
+        type: JsonType,
+        allowNull: true,
+      },
+      // Updated compliance status to match model
+      complianceStatus: {
+        type: Sequelize.ENUM(
+          "PENDING",
+          "COMPLIANT",
+          "NON_COMPLIANT",
+          "UNDER_REVIEW"
+        ),
+        allowNull: false,
+        defaultValue: "PENDING",
+      },
+      complianceNotes: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      lastComplianceCheck: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      // Integration Data
+      gibIntegrationData: {
+        type: JsonType,
+        allowNull: true,
+      },
+      errorMessages: {
         type: JsonType,
         allowNull: true,
       },
@@ -5422,12 +5660,17 @@ module.exports = {
       await queryInterface.addIndex("platform_templates", ["usageCount"]);
 
       // Compliance Documents table indexes
-      await queryInterface.addIndex("compliance_documents", ["productId"]);
-      await queryInterface.addIndex("compliance_documents", ["mainProductId"]);
+      await queryInterface.addIndex("compliance_documents", ["orderId"]);
       await queryInterface.addIndex("compliance_documents", ["documentType"]);
       await queryInterface.addIndex("compliance_documents", ["status"]);
-      await queryInterface.addIndex("compliance_documents", ["expiryDate"]);
-      await queryInterface.addIndex("compliance_documents", ["userId"]);
+      await queryInterface.addIndex("compliance_documents", ["customerType"]);
+      await queryInterface.addIndex("compliance_documents", ["createdAt"]);
+      // Add unique index for documentNumber (with null handling)
+      await queryInterface.sequelize.query(`
+        CREATE UNIQUE INDEX "compliance_documents_document_number_unique" 
+        ON compliance_documents ("documentNumber") 
+        WHERE "documentNumber" IS NOT NULL;
+      `);
 
       // Turkish Compliance table indexes
       await queryInterface.addIndex("turkish_compliance", ["productId"]);
@@ -5437,6 +5680,15 @@ module.exports = {
       await queryInterface.addIndex("turkish_compliance", ["complianceStatus"]);
       await queryInterface.addIndex("turkish_compliance", ["riskClass"]);
       await queryInterface.addIndex("turkish_compliance", ["userId"]);
+      // Additional indexes for E-Fatura and compliance fields
+      await queryInterface.addIndex("turkish_compliance", ["eFaturaUuid"], {
+        unique: true,
+      });
+      await queryInterface.addIndex("turkish_compliance", ["eFaturaNumber"]);
+      await queryInterface.addIndex("turkish_compliance", ["eFaturaStatus"]);
+      await queryInterface.addIndex("turkish_compliance", ["taxNumber"]);
+      await queryInterface.addIndex("turkish_compliance", ["customerType"]);
+      await queryInterface.addIndex("turkish_compliance", ["kvkkConsent"]);
     }
   },
 

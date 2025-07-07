@@ -48,6 +48,7 @@ import SimplePreviewModal from "./designer/components/SimplePreviewModal";
 import PropertyPanel from "./designer/components/PropertyPanel";
 import TemplateModal from "./designer/components/TemplateModal";
 import TemplateSettingsPanel from "./designer/components/TemplateSettingsPanel";
+import DesignerErrorBoundary from "./designer/components/DesignerErrorBoundary";
 
 // Import hooks and utilities
 import { useDesignerState } from "./designer/hooks/useDesignerState";
@@ -160,39 +161,73 @@ const EnhancedShippingSlipDesigner = ({
     },
   ];
 
-  // Handle drag operations (existing functionality)
-  const handleDragStart = useCallback((element, event) => {
-    if (event.button !== 0 || element.locked) return;
-    event.preventDefault();
-    event.stopPropagation();
+  // Enhanced drag operations with improved precision
+  const handleDragStart = useCallback(
+    (element, event) => {
+      if (event.button !== 0 || element.locked) return;
+      event.preventDefault();
+      event.stopPropagation();
 
-    setDragInfo({
-      elementId: element.id,
-      startX: event.clientX,
-      startY: event.clientY,
-      startPosition: { ...element.position },
-    });
-  }, []);
+      // Get accurate canvas dimensions including scale
+      const canvasRect = canvasRef.current?.getBoundingClientRect();
+      if (!canvasRect) return;
+
+      setDragInfo({
+        elementId: element.id,
+        startX: event.clientX,
+        startY: event.clientY,
+        startPosition: { ...element.position },
+        canvasRect: {
+          width: canvasRect.width,
+          height: canvasRect.height,
+          left: canvasRect.left,
+          top: canvasRect.top,
+        },
+        scale: scale,
+      });
+    },
+    [scale]
+  );
 
   const handleDragMove = useCallback(
     (event) => {
       if (!dragInfo || !canvasRef.current) return;
 
-      const canvasRect = canvasRef.current.getBoundingClientRect();
+      // Calculate precise movement with scaling consideration
       const deltaX = event.clientX - dragInfo.startX;
       const deltaY = event.clientY - dragInfo.startY;
 
-      const percentX = (deltaX / canvasRect.width) * 100;
-      const percentY = (deltaY / canvasRect.height) * 100;
+      // Convert to percentage with proper scaling
+      const scaledCanvasWidth = dragInfo.canvasRect.width / dragInfo.scale;
+      const scaledCanvasHeight = dragInfo.canvasRect.height / dragInfo.scale;
+
+      const percentX = (deltaX / scaledCanvasWidth) * 100;
+      const percentY = (deltaY / scaledCanvasHeight) * 100;
+
+      // Get element dimensions for boundary checking
+      const element = elements.find((el) => el.id === dragInfo.elementId);
+      const elementWidth = element?.size?.width || 10;
+      const elementHeight = element?.size?.height || 10;
+
+      // Calculate new position with proper boundaries
+      const maxX = 100 - elementWidth;
+      const maxY = 100 - elementHeight;
 
       const newPosition = {
-        x: Math.max(0, Math.min(95, dragInfo.startPosition.x + percentX)),
-        y: Math.max(0, Math.min(95, dragInfo.startPosition.y + percentY)),
+        x: Math.max(0, Math.min(maxX, dragInfo.startPosition.x + percentX)),
+        y: Math.max(0, Math.min(maxY, dragInfo.startPosition.y + percentY)),
       };
+
+      // Apply snap-to-grid if enabled
+      if (showSnapGuides && showGrid) {
+        const gridSize = 5; // 5% grid
+        newPosition.x = Math.round(newPosition.x / gridSize) * gridSize;
+        newPosition.y = Math.round(newPosition.y / gridSize) * gridSize;
+      }
 
       updateElement(dragInfo.elementId, { position: newPosition });
     },
-    [dragInfo, updateElement]
+    [dragInfo, updateElement, elements, showSnapGuides, showGrid]
   );
 
   const handleDragEnd = useCallback(() => {
@@ -545,53 +580,64 @@ const EnhancedShippingSlipDesigner = ({
   }, [templateConfig, elements, onSave, showAlert]);
 
   // Handle template configuration changes
-  const handleConfigChange = useCallback((newConfig) => {
-    console.log("🔧 DEBUG: handleConfigChange called", newConfig);
+  const handleConfigChange = useCallback(
+    (newConfig) => {
+      console.log("🔧 DEBUG: handleConfigChange called", newConfig);
 
-    // Check if we need to apply default font to all text elements
-    if (newConfig.applyDefaultFontToAll && newConfig.defaultFont) {
-      console.log(
-        "🔧 DEBUG: Applying default font to all text elements",
-        newConfig.defaultFont
-      );
+      // Check if we need to apply default font to all text elements
+      if (newConfig.applyDefaultFontToAll && newConfig.defaultFont) {
+        console.log(
+          "🔧 DEBUG: Applying default font to all text elements",
+          newConfig.defaultFont
+        );
 
-      // Find all text-based elements and update them
-      const updatedElements = elements.map((element) => {
-        // Check if this element has font properties (text-based elements)
-        if (element.style && (element.style.fontSize || element.type === "text")) {
-          const updatedStyle = {
-            ...element.style,
-            fontFamily:
-              newConfig.defaultFont.fontFamily || element.style.fontFamily,
-            fontSize: newConfig.defaultFont.fontSize || element.style.fontSize,
-            fontWeight:
-              newConfig.defaultFont.fontWeight || element.style.fontWeight,
-            fontStyle: newConfig.defaultFont.fontStyle || element.style.fontStyle,
-            color: newConfig.defaultFont.color || element.style.color,
-            lineHeight:
-              newConfig.defaultFont.lineHeight || element.style.lineHeight,
-          };
+        // Find all text-based elements and update them
+        const updatedElements = elements.map((element) => {
+          // Check if this element has font properties (text-based elements)
+          if (
+            element.style &&
+            (element.style.fontSize || element.type === "text")
+          ) {
+            const updatedStyle = {
+              ...element.style,
+              fontFamily:
+                newConfig.defaultFont.fontFamily || element.style.fontFamily,
+              fontSize:
+                newConfig.defaultFont.fontSize || element.style.fontSize,
+              fontWeight:
+                newConfig.defaultFont.fontWeight || element.style.fontWeight,
+              fontStyle:
+                newConfig.defaultFont.fontStyle || element.style.fontStyle,
+              color: newConfig.defaultFont.color || element.style.color,
+              lineHeight:
+                newConfig.defaultFont.lineHeight || element.style.lineHeight,
+            };
 
-          return {
-            ...element,
-            style: updatedStyle,
-          };
-        }
-        return element;
-      });
+            return {
+              ...element,
+              style: updatedStyle,
+            };
+          }
+          return element;
+        });
 
-      // Update elements and clear the apply flag
-      setElements(updatedElements);
-      const configWithoutApplyFlag = { ...newConfig };
-      delete configWithoutApplyFlag.applyDefaultFontToAll;
-      setTemplateConfig(configWithoutApplyFlag);
+        // Update elements and clear the apply flag
+        setElements(updatedElements);
+        const configWithoutApplyFlag = { ...newConfig };
+        delete configWithoutApplyFlag.applyDefaultFontToAll;
+        setTemplateConfig(configWithoutApplyFlag);
 
-      showAlert("Varsayılan font ayarları tüm metin öğelerine uygulandı", "success");
-    } else {
-      // Normal config change
-      setTemplateConfig(newConfig);
-    }
-  }, [elements, setElements, setTemplateConfig, showAlert]);
+        showAlert(
+          "Varsayılan font ayarları tüm metin öğelerine uygulandı",
+          "success"
+        );
+      } else {
+        // Normal config change
+        setTemplateConfig(newConfig);
+      }
+    },
+    [elements, setElements, setTemplateConfig, showAlert]
+  );
 
   // Event handlers for mouse events
   useEffect(() => {
@@ -752,784 +798,788 @@ const EnhancedShippingSlipDesigner = ({
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* Enhanced Header Toolbar */}
-      <Card className="h-16 rounded-none border-x-0 border-t-0 flex items-center justify-between px-4 bg-white dark:bg-gray-900 shadow-sm">
-        {/* Left section - Brand and Navigation */}
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <Sparkles className="h-6 w-6 text-blue-600" />
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Shipping Designer
-            </h1>
-            <Badge variant="secondary" className="text-xs">
-              Pro
-            </Badge>
-          </div>
-
-          <Separator orientation="vertical" className="h-6" />
-
-          {/* Quick Actions */}
-          <div className="flex items-center space-x-1">
-            {quickActions.slice(0, 4).map((action, index) => (
-              <Tooltip
-                key={index}
-                content={`${action.label} (${action.shortcut})`}
-              >
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={action.action}
-                  className="h-8 w-8 p-0"
-                >
-                  <action.icon className="h-4 w-4" />
-                </Button>
-              </Tooltip>
-            ))}
-          </div>
-
-          <Separator orientation="vertical" className="h-6" />
-
-          {/* Element Tools */}
-          <div className="flex items-center space-x-1">
-            <Tooltip content="Copy Element (Ctrl+C)">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleCopyElement}
-                disabled={!selectedElement}
-                className="h-8 w-8 p-0"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-
-            <Tooltip content="Move Tool">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleMoveElement("up")}
-                disabled={!selectedElement}
-                className="h-8 w-8 p-0"
-              >
-                <Move className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-
-            <Tooltip content="Rotate Left">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleRotateElement("counterclockwise")}
-                disabled={!selectedElement}
-                className="h-8 w-8 p-0"
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-
-            <Tooltip content="Rotate Right">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleRotateElement("clockwise")}
-                disabled={!selectedElement}
-                className="h-8 w-8 p-0"
-              >
-                <RotateCw className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-          </div>
-
-          <Separator orientation="vertical" className="h-6" />
-
-          {/* Alignment Tools */}
-          <div className="flex items-center space-x-1">
-            <Tooltip content="Align Left">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleAlignElements("left")}
-                disabled={!selectedElement}
-                className="h-8 w-8 p-0"
-              >
-                <AlignLeft className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-
-            <Tooltip content="Align Center">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleAlignElements("center")}
-                disabled={!selectedElement}
-                className="h-8 w-8 p-0"
-              >
-                <AlignCenter className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-
-            <Tooltip content="Align Right">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleAlignElements("right")}
-                disabled={!selectedElement}
-                className="h-8 w-8 p-0"
-              >
-                <AlignRight className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-          </div>
-
-          <Separator orientation="vertical" className="h-6" />
-
-          {/* Text Formatting Tools */}
-          <div className="flex items-center space-x-1">
-            <Tooltip content="Bold">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleTextFormat("bold")}
-                disabled={!selectedElement || selectedElement.type !== "text"}
-                className="h-8 w-8 p-0"
-              >
-                <Bold className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-
-            <Tooltip content="Italic">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleTextFormat("italic")}
-                disabled={!selectedElement || selectedElement.type !== "text"}
-                className="h-8 w-8 p-0"
-              >
-                <Italic className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-
-            <Tooltip content="Underline">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleTextFormat("underline")}
-                disabled={!selectedElement || selectedElement.type !== "text"}
-                className="h-8 w-8 p-0"
-              >
-                <Underline className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-          </div>
-        </div>
-
-        {/* Center section - Template Info */}
-        <div className="flex items-center space-x-4">
-          <div className="text-center">
-            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              {templateConfig?.name || "İsimsiz Şablon"}
+    <DesignerErrorBoundary>
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+        {/* Enhanced Header Toolbar */}
+        <Card className="h-16 rounded-none border-x-0 border-t-0 flex items-center justify-between px-4 bg-white dark:bg-gray-900 shadow-sm">
+          {/* Left section - Brand and Navigation */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Sparkles className="h-6 w-6 text-blue-600" />
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Shipping Designer
+              </h1>
+              <Badge variant="secondary" className="text-xs">
+                Pro
+              </Badge>
             </div>
-            <div className="text-xs text-gray-500">
-              {elements.length} öğe • Son kaydedilme:{" "}
-              {new Date().toLocaleTimeString("tr-TR")}
-            </div>
-          </div>
-        </div>
-
-        {/* Right section - Actions */}
-        <div className="flex items-center space-x-2">
-          {/* History Controls */}
-          <div className="flex items-center space-x-1 border-r border-gray-200 dark:border-gray-600 pr-3">
-            <Tooltip content="Geri Al (Ctrl+Z)">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={undo}
-                disabled={!canUndo}
-                className="h-8 w-8 p-0"
-              >
-                <Undo2 className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-            <Tooltip content="Yinele (Ctrl+Y)">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={redo}
-                disabled={!canRedo}
-                className="h-8 w-8 p-0"
-              >
-                <Redo2 className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-          </div>
-
-          {/* View Controls */}
-          <div className="flex items-center space-x-1 border-r border-gray-200 dark:border-gray-600 pr-3">
-            <Tooltip content="Uzaklaştır">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setScale(Math.max(0.25, scale - 0.25))}
-                disabled={scale <= 0.25}
-                className="h-8 w-8 p-0"
-              >
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[50px] text-center">
-              {Math.round(scale * 100)}%
-            </span>
-            <Tooltip content="Yakınlaştır">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setScale(Math.min(3, scale + 0.25))}
-                disabled={scale >= 3}
-                className="h-8 w-8 p-0"
-              >
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-          </div>
-
-          {/* Primary Actions */}
-          <div className="flex items-center space-x-2">
-            <Tooltip content="Toggle Grid">
-              <Button
-                size="sm"
-                variant={showGrid ? "default" : "ghost"}
-                onClick={() => setShowGrid(!showGrid)}
-                className="h-8 w-8 p-0"
-              >
-                <Grid className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-
-            <Tooltip content="Toggle Ruler">
-              <Button
-                size="sm"
-                variant={showRulers ? "default" : "ghost"}
-                onClick={() => setShowRulers(!showRulers)}
-                className="h-8 w-8 p-0"
-              >
-                <Ruler className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-
-            <Tooltip content="Maximize View">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleToggleMaximize}
-                className="h-8 w-8 p-0"
-              >
-                <Maximize2 className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-
-            <Tooltip content="Export Template">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleExportTemplate}
-                className="h-8 w-8 p-0"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-
-            <Tooltip content="Import Template">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => document.getElementById("import-input").click()}
-                className="h-8 w-8 p-0"
-              >
-                <Upload className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-
-            <Tooltip content="Open Templates">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setShowTemplateModal(true)}
-                className="h-8 w-8 p-0"
-              >
-                <FolderOpen className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-
-            <Tooltip content="History">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  /* Show history panel */
-                }}
-                className="h-8 w-8 p-0"
-              >
-                <History className="h-4 w-4" />
-              </Button>
-            </Tooltip>
 
             <Separator orientation="vertical" className="h-6" />
 
-            <Tooltip content="Önizleme (P)">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowPreviewModal(true)}
-                className="h-8"
-              >
-                <Eye className="h-4 w-4 mr-1" />
-                Önizleme
-              </Button>
-            </Tooltip>
+            {/* Quick Actions */}
+            <div className="flex items-center space-x-1">
+              {quickActions.slice(0, 4).map((action, index) => (
+                <Tooltip
+                  key={index}
+                  content={`${action.label} (${action.shortcut})`}
+                >
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={action.action}
+                    className="h-8 w-8 p-0"
+                  >
+                    <action.icon className="h-4 w-4" />
+                  </Button>
+                </Tooltip>
+              ))}
+            </div>
 
-            <Tooltip content="Kaydet (Ctrl+S)">
-              <Button
-                size="sm"
-                onClick={() => {
-                  console.log("Save button clicked!");
-                  alert("Save button clicked - debugging!");
-                  handleSaveTemplate();
-                }}
-                disabled={loading}
-                className="h-8"
-              >
-                {loading ? (
-                  <div className="h-4 w-4 mr-1 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                ) : (
-                  <Save className="h-4 w-4 mr-1" />
-                )}
-                Kaydet
-              </Button>
-            </Tooltip>
+            <Separator orientation="vertical" className="h-6" />
+
+            {/* Element Tools */}
+            <div className="flex items-center space-x-1">
+              <Tooltip content="Copy Element (Ctrl+C)">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCopyElement}
+                  disabled={!selectedElement}
+                  className="h-8 w-8 p-0"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Tooltip content="Move Tool">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleMoveElement("up")}
+                  disabled={!selectedElement}
+                  className="h-8 w-8 p-0"
+                >
+                  <Move className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Tooltip content="Rotate Left">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleRotateElement("counterclockwise")}
+                  disabled={!selectedElement}
+                  className="h-8 w-8 p-0"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Tooltip content="Rotate Right">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleRotateElement("clockwise")}
+                  disabled={!selectedElement}
+                  className="h-8 w-8 p-0"
+                >
+                  <RotateCw className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+            </div>
+
+            <Separator orientation="vertical" className="h-6" />
+
+            {/* Alignment Tools */}
+            <div className="flex items-center space-x-1">
+              <Tooltip content="Align Left">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleAlignElements("left")}
+                  disabled={!selectedElement}
+                  className="h-8 w-8 p-0"
+                >
+                  <AlignLeft className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Tooltip content="Align Center">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleAlignElements("center")}
+                  disabled={!selectedElement}
+                  className="h-8 w-8 p-0"
+                >
+                  <AlignCenter className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Tooltip content="Align Right">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleAlignElements("right")}
+                  disabled={!selectedElement}
+                  className="h-8 w-8 p-0"
+                >
+                  <AlignRight className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+            </div>
+
+            <Separator orientation="vertical" className="h-6" />
+
+            {/* Text Formatting Tools */}
+            <div className="flex items-center space-x-1">
+              <Tooltip content="Bold">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleTextFormat("bold")}
+                  disabled={!selectedElement || selectedElement.type !== "text"}
+                  className="h-8 w-8 p-0"
+                >
+                  <Bold className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Tooltip content="Italic">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleTextFormat("italic")}
+                  disabled={!selectedElement || selectedElement.type !== "text"}
+                  className="h-8 w-8 p-0"
+                >
+                  <Italic className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Tooltip content="Underline">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleTextFormat("underline")}
+                  disabled={!selectedElement || selectedElement.type !== "text"}
+                  className="h-8 w-8 p-0"
+                >
+                  <Underline className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+            </div>
           </div>
-        </div>
-      </Card>
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Enhanced Element Library */}
-        {leftPanelOpen && (
-          <Card className="w-80 rounded-none border-y-0 border-l-0 flex flex-col bg-white dark:bg-gray-800">
-            {/* Panel Header */}
-            <div className="h-12 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center space-x-2">
-                <Palette className="h-4 w-4 text-blue-600" />
-                <span className="font-medium text-gray-900 dark:text-gray-100">
-                  Öğeler & Katmanlar
-                </span>
+          {/* Center section - Template Info */}
+          <div className="flex items-center space-x-4">
+            <div className="text-center">
+              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                {templateConfig?.name || "İsimsiz Şablon"}
               </div>
+              <div className="text-xs text-gray-500">
+                {elements.length} öğe • Son kaydedilme:{" "}
+                {new Date().toLocaleTimeString("tr-TR")}
+              </div>
+            </div>
+          </div>
+
+          {/* Right section - Actions */}
+          <div className="flex items-center space-x-2">
+            {/* History Controls */}
+            <div className="flex items-center space-x-1 border-r border-gray-200 dark:border-gray-600 pr-3">
+              <Tooltip content="Geri Al (Ctrl+Z)">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={undo}
+                  disabled={!canUndo}
+                  className="h-8 w-8 p-0"
+                >
+                  <Undo2 className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+              <Tooltip content="Yinele (Ctrl+Y)">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={redo}
+                  disabled={!canRedo}
+                  className="h-8 w-8 p-0"
+                >
+                  <Redo2 className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+            </div>
+
+            {/* View Controls */}
+            <div className="flex items-center space-x-1 border-r border-gray-200 dark:border-gray-600 pr-3">
+              <Tooltip content="Uzaklaştır">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setScale(Math.max(0.25, scale - 0.25))}
+                  disabled={scale <= 0.25}
+                  className="h-8 w-8 p-0"
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[50px] text-center">
+                {Math.round(scale * 100)}%
+              </span>
+              <Tooltip content="Yakınlaştır">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setScale(Math.min(3, scale + 0.25))}
+                  disabled={scale >= 3}
+                  className="h-8 w-8 p-0"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+            </div>
+
+            {/* Primary Actions */}
+            <div className="flex items-center space-x-2">
+              <Tooltip content="Toggle Grid">
+                <Button
+                  size="sm"
+                  variant={showGrid ? "default" : "ghost"}
+                  onClick={() => setShowGrid(!showGrid)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Grid className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Tooltip content="Toggle Ruler">
+                <Button
+                  size="sm"
+                  variant={showRulers ? "default" : "ghost"}
+                  onClick={() => setShowRulers(!showRulers)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Ruler className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Tooltip content="Maximize View">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleToggleMaximize}
+                  className="h-8 w-8 p-0"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Tooltip content="Export Template">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleExportTemplate}
+                  className="h-8 w-8 p-0"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Tooltip content="Import Template">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    document.getElementById("import-input").click()
+                  }
+                  className="h-8 w-8 p-0"
+                >
+                  <Upload className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Tooltip content="Open Templates">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowTemplateModal(true)}
+                  className="h-8 w-8 p-0"
+                >
+                  <FolderOpen className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Tooltip content="History">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    /* Show history panel */
+                  }}
+                  className="h-8 w-8 p-0"
+                >
+                  <History className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+
+              <Separator orientation="vertical" className="h-6" />
+
+              <Tooltip content="Önizleme (P)">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowPreviewModal(true)}
+                  className="h-8"
+                >
+                  <Eye className="h-4 w-4 mr-1" />
+                  Önizleme
+                </Button>
+              </Tooltip>
+
+              <Tooltip content="Kaydet (Ctrl+S)">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    console.log("Save button clicked!");
+                    alert("Save button clicked - debugging!");
+                    handleSaveTemplate();
+                  }}
+                  disabled={loading}
+                  className="h-8"
+                >
+                  {loading ? (
+                    <div className="h-4 w-4 mr-1 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-1" />
+                  )}
+                  Kaydet
+                </Button>
+              </Tooltip>
+            </div>
+          </div>
+        </Card>
+
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Sidebar - Enhanced Element Library */}
+          {leftPanelOpen && (
+            <Card className="w-80 rounded-none border-y-0 border-l-0 flex flex-col bg-white dark:bg-gray-800">
+              {/* Panel Header */}
+              <div className="h-12 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center space-x-2">
+                  <Palette className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    Öğeler & Katmanlar
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setLeftPanelOpen(false)}
+                  className="h-6 w-6 p-0"
+                >
+                  <Minus className="h-3 w-3" />
+                </Button>
+              </div>
+
+              {/* Tab Navigation */}
+              <div className="flex border-b border-gray-200 dark:border-gray-700">
+                <button
+                  className={`flex-1 px-4 py-2 text-sm font-medium ${
+                    currentTab === "elements"
+                      ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 border-b-2 border-blue-600"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                  }`}
+                  onClick={() => setCurrentTab("elements")}
+                >
+                  Öğeler
+                </button>
+                <button
+                  className={`flex-1 px-4 py-2 text-sm font-medium ${
+                    currentTab === "layers"
+                      ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 border-b-2 border-blue-600"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                  }`}
+                  onClick={() => setCurrentTab("layers")}
+                >
+                  Katmanlar
+                </button>
+              </div>
+
+              {/* Tab Content */}
+              <div className="flex-1 overflow-auto">
+                {currentTab === "elements" && (
+                  <ElementLibrary
+                    onAddElement={addElement}
+                    selectedCategory={selectedCategory}
+                    onCategoryChange={setSelectedCategory}
+                  />
+                )}
+
+                {currentTab === "layers" && (
+                  <div className="p-4 space-y-2">
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+                      Katman Listesi ({elements.length})
+                    </div>
+                    {elements.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Layers className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Henüz öğe eklenmemiş</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {elements.map((element, index) => (
+                          <div
+                            key={element.id}
+                            className={`flex items-center justify-between p-2 rounded text-sm ${
+                              selectedElement?.id === element.id
+                                ? "bg-blue-100 dark:bg-blue-900/30"
+                                : "hover:bg-gray-100 dark:hover:bg-gray-700"
+                            }`}
+                            onClick={() => setSelectedElement(element)}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs text-gray-400">
+                                {elements.length - index}
+                              </span>
+                              <span className="capitalize">{element.type}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateElement(element.id, {
+                                    locked: !element.locked,
+                                  });
+                                }}
+                                className="h-6 w-6 p-0"
+                              >
+                                {element.locked ? (
+                                  <Lock className="h-3 w-3" />
+                                ) : (
+                                  <Unlock className="h-3 w-3" />
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeElement(element.id);
+                                }}
+                                className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Toggle button for left panel when closed */}
+          {!leftPanelOpen && (
+            <div className="w-8 flex flex-col">
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => setLeftPanelOpen(false)}
-                className="h-6 w-6 p-0"
+                onClick={() => setLeftPanelOpen(true)}
+                className="h-8 w-8 p-0 rounded-none"
               >
-                <Minus className="h-3 w-3" />
+                <Plus className="h-4 w-4" />
               </Button>
             </div>
+          )}
 
-            {/* Tab Navigation */}
-            <div className="flex border-b border-gray-200 dark:border-gray-700">
-              <button
-                className={`flex-1 px-4 py-2 text-sm font-medium ${
-                  currentTab === "elements"
-                    ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 border-b-2 border-blue-600"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
-                }`}
-                onClick={() => setCurrentTab("elements")}
-              >
-                Öğeler
-              </button>
-              <button
-                className={`flex-1 px-4 py-2 text-sm font-medium ${
-                  currentTab === "layers"
-                    ? "text-blue-600 bg-blue-50 dark:bg-blue-900/20 border-b-2 border-blue-600"
-                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
-                }`}
-                onClick={() => setCurrentTab("layers")}
-              >
-                Katmanlar
-              </button>
+          {/* Main Canvas Area */}
+          <div className="flex-1 flex flex-col bg-gray-100 dark:bg-gray-900">
+            {/* Canvas Toolbar */}
+            <div className="h-12 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={showGrid}
+                    onCheckedChange={setShowGrid}
+                    id="show-grid"
+                  />
+                  <label
+                    htmlFor="show-grid"
+                    className="text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    Izgara
+                  </label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={showRulers}
+                    onCheckedChange={setShowRulers}
+                    id="show-rulers"
+                  />
+                  <label
+                    htmlFor="show-rulers"
+                    className="text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    Cetvel
+                  </label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={showSnapGuides}
+                    onCheckedChange={setShowSnapGuides}
+                    id="show-snap"
+                  />
+                  <label
+                    htmlFor="show-snap"
+                    className="text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    Hizalama
+                  </label>
+                </div>
+              </div>
+
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                {paperDimensions.width} × {paperDimensions.height}px •{" "}
+                {templateConfig?.paperSize || "A4"}
+              </div>
             </div>
 
-            {/* Tab Content */}
-            <div className="flex-1 overflow-auto">
-              {currentTab === "elements" && (
-                <ElementLibrary
-                  onAddElement={addElement}
-                  selectedCategory={selectedCategory}
-                  onCategoryChange={setSelectedCategory}
-                />
-              )}
-
-              {currentTab === "layers" && (
-                <div className="p-4 space-y-2">
-                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
-                    Katman Listesi ({elements.length})
-                  </div>
-                  {elements.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <Layers className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Henüz öğe eklenmemiş</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {elements.map((element, index) => (
-                        <div
-                          key={element.id}
-                          className={`flex items-center justify-between p-2 rounded text-sm ${
-                            selectedElement?.id === element.id
-                              ? "bg-blue-100 dark:bg-blue-900/30"
-                              : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                          }`}
-                          onClick={() => setSelectedElement(element)}
-                        >
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs text-gray-400">
-                              {elements.length - index}
-                            </span>
-                            <span className="capitalize">{element.type}</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                updateElement(element.id, {
-                                  locked: !element.locked,
-                                });
+            {/* Canvas */}
+            <div className="flex-1 overflow-auto p-8">
+              <div className="flex items-center justify-center min-h-full">
+                {/* Ruler Container */}
+                <div className="relative">
+                  {/* Horizontal Ruler */}
+                  {showRulers && (
+                    <div
+                      className="absolute -top-6 bg-gray-100 border border-gray-300"
+                      style={{
+                        left: showRulers ? "24px" : "0px",
+                        width: `${paperDimensions.width * scale}px`,
+                        height: "24px",
+                        fontSize: "10px",
+                      }}
+                    >
+                      {Array.from(
+                        { length: Math.ceil(paperDimensions.width / 50) + 1 },
+                        (_, i) => {
+                          const position = i * 50;
+                          if (position > paperDimensions.width) return null;
+                          return (
+                            <div
+                              key={`h-${i}`}
+                              className="absolute flex flex-col items-center text-gray-600"
+                              style={{
+                                left: `${position * scale - 10}px`,
+                                height: "24px",
                               }}
-                              className="h-6 w-6 p-0"
                             >
-                              {element.locked ? (
-                                <Lock className="h-3 w-3" />
-                              ) : (
-                                <Unlock className="h-3 w-3" />
-                              )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeElement(element.id);
-                              }}
-                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                              <div className="w-px h-2 bg-gray-400"></div>
+                              <span className="text-xs leading-none mt-1">
+                                {position}
+                              </span>
+                            </div>
+                          );
+                        }
+                      )}
                     </div>
                   )}
-                </div>
-              )}
-            </div>
-          </Card>
-        )}
 
-        {/* Toggle button for left panel when closed */}
-        {!leftPanelOpen && (
-          <div className="w-8 flex flex-col">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setLeftPanelOpen(true)}
-              className="h-8 w-8 p-0 rounded-none"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {/* Main Canvas Area */}
-        <div className="flex-1 flex flex-col bg-gray-100 dark:bg-gray-900">
-          {/* Canvas Toolbar */}
-          <div className="h-12 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={showGrid}
-                  onCheckedChange={setShowGrid}
-                  id="show-grid"
-                />
-                <label
-                  htmlFor="show-grid"
-                  className="text-sm text-gray-700 dark:text-gray-300"
-                >
-                  Izgara
-                </label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={showRulers}
-                  onCheckedChange={setShowRulers}
-                  id="show-rulers"
-                />
-                <label
-                  htmlFor="show-rulers"
-                  className="text-sm text-gray-700 dark:text-gray-300"
-                >
-                  Cetvel
-                </label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={showSnapGuides}
-                  onCheckedChange={setShowSnapGuides}
-                  id="show-snap"
-                />
-                <label
-                  htmlFor="show-snap"
-                  className="text-sm text-gray-700 dark:text-gray-300"
-                >
-                  Hizalama
-                </label>
-              </div>
-            </div>
-
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              {paperDimensions.width} × {paperDimensions.height}px •{" "}
-              {templateConfig?.paperSize || "A4"}
-            </div>
-          </div>
-
-          {/* Canvas */}
-          <div className="flex-1 overflow-auto p-8">
-            <div className="flex items-center justify-center min-h-full">
-              {/* Ruler Container */}
-              <div className="relative">
-                {/* Horizontal Ruler */}
-                {showRulers && (
-                  <div
-                    className="absolute -top-6 bg-gray-100 border border-gray-300"
-                    style={{
-                      left: showRulers ? "24px" : "0px",
-                      width: `${paperDimensions.width * scale}px`,
-                      height: "24px",
-                      fontSize: "10px",
-                    }}
-                  >
-                    {Array.from(
-                      { length: Math.ceil(paperDimensions.width / 50) + 1 },
-                      (_, i) => {
-                        const position = i * 50;
-                        if (position > paperDimensions.width) return null;
-                        return (
-                          <div
-                            key={`h-${i}`}
-                            className="absolute flex flex-col items-center text-gray-600"
-                            style={{
-                              left: `${position * scale - 10}px`,
-                              height: "24px",
-                            }}
-                          >
-                            <div className="w-px h-2 bg-gray-400"></div>
-                            <span className="text-xs leading-none mt-1">
-                              {position}
-                            </span>
-                          </div>
-                        );
-                      }
-                    )}
-                  </div>
-                )}
-
-                {/* Vertical Ruler */}
-                {showRulers && (
-                  <div
-                    className="absolute -left-6 bg-gray-100 border border-gray-300"
-                    style={{
-                      top: showRulers ? "24px" : "0px",
-                      height: `${paperDimensions.height * scale}px`,
-                      width: "24px",
-                      fontSize: "10px",
-                    }}
-                  >
-                    {Array.from(
-                      { length: Math.ceil(paperDimensions.height / 50) + 1 },
-                      (_, i) => {
-                        const position = i * 50;
-                        if (position > paperDimensions.height) return null;
-                        return (
-                          <div
-                            key={`v-${i}`}
-                            className="absolute flex items-center justify-center text-gray-600"
-                            style={{
-                              top: `${position * scale - 6}px`,
-                              width: "24px",
-                              height: "12px",
-                              transform: "rotate(-90deg)",
-                              transformOrigin: "center",
-                            }}
-                          >
-                            <div className="w-px h-2 bg-gray-400 rotate-90"></div>
-                            <span className="text-xs leading-none ml-1">
-                              {position}
-                            </span>
-                          </div>
-                        );
-                      }
-                    )}
-                  </div>
-                )}
-
-                {/* Corner square for rulers */}
-                {showRulers && (
-                  <div
-                    className="absolute -top-6 -left-6 bg-gray-200 border border-gray-300"
-                    style={{ width: "24px", height: "24px" }}
-                  ></div>
-                )}
-
-                <div
-                  ref={canvasRef}
-                  className="relative bg-white shadow-xl border border-gray-300"
-                  style={{
-                    width: `${paperDimensions.width * scale}px`,
-                    height: `${paperDimensions.height * scale}px`,
-                    transform: `scale(${scale})`,
-                    transformOrigin: "center",
-                  }}
-                  onClick={() => setSelectedElement(null)}
-                  onDrop={handleCanvasDrop}
-                  onDragOver={handleCanvasDragOver}
-                >
-                  {/* Grid overlay */}
-                  {showGrid && (
+                  {/* Vertical Ruler */}
+                  {showRulers && (
                     <div
-                      className="absolute inset-0 opacity-20"
+                      className="absolute -left-6 bg-gray-100 border border-gray-300"
                       style={{
-                        backgroundImage: `
+                        top: showRulers ? "24px" : "0px",
+                        height: `${paperDimensions.height * scale}px`,
+                        width: "24px",
+                        fontSize: "10px",
+                      }}
+                    >
+                      {Array.from(
+                        { length: Math.ceil(paperDimensions.height / 50) + 1 },
+                        (_, i) => {
+                          const position = i * 50;
+                          if (position > paperDimensions.height) return null;
+                          return (
+                            <div
+                              key={`v-${i}`}
+                              className="absolute flex items-center justify-center text-gray-600"
+                              style={{
+                                top: `${position * scale - 6}px`,
+                                width: "24px",
+                                height: "12px",
+                                transform: "rotate(-90deg)",
+                                transformOrigin: "center",
+                              }}
+                            >
+                              <div className="w-px h-2 bg-gray-400 rotate-90"></div>
+                              <span className="text-xs leading-none ml-1">
+                                {position}
+                              </span>
+                            </div>
+                          );
+                        }
+                      )}
+                    </div>
+                  )}
+
+                  {/* Corner square for rulers */}
+                  {showRulers && (
+                    <div
+                      className="absolute -top-6 -left-6 bg-gray-200 border border-gray-300"
+                      style={{ width: "24px", height: "24px" }}
+                    ></div>
+                  )}
+
+                  <div
+                    ref={canvasRef}
+                    className="relative bg-white shadow-xl border border-gray-300"
+                    style={{
+                      width: `${paperDimensions.width * scale}px`,
+                      height: `${paperDimensions.height * scale}px`,
+                      transform: `scale(${scale})`,
+                      transformOrigin: "center",
+                    }}
+                    onClick={() => setSelectedElement(null)}
+                    onDrop={handleCanvasDrop}
+                    onDragOver={handleCanvasDragOver}
+                  >
+                    {/* Grid overlay */}
+                    {showGrid && (
+                      <div
+                        className="absolute inset-0 opacity-20"
+                        style={{
+                          backgroundImage: `
                           linear-gradient(to right, #e5e7eb 1px, transparent 1px),
                           linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)
                         `,
-                        backgroundSize: "20px 20px",
-                      }}
-                    />
-                  )}
+                          backgroundSize: "20px 20px",
+                        }}
+                      />
+                    )}
 
-                  {/* Render all elements */}
-                  {elements.map((element) => (
-                    <ElementRenderer
-                      key={element.id}
-                      element={element}
-                      isSelected={selectedElement?.id === element.id}
-                      onClick={setSelectedElement}
-                      onDragStart={(e) => handleDragStart(element, e)}
-                      onResizeStart={handleResizeStart}
-                      paperDimensions={paperDimensions}
-                      scale={scale}
-                      isDraggable={true}
-                      isResizable={true}
-                    />
-                  ))}
+                    {/* Render all elements */}
+                    {elements.map((element) => (
+                      <ElementRenderer
+                        key={element.id}
+                        element={element}
+                        isSelected={selectedElement?.id === element.id}
+                        onClick={setSelectedElement}
+                        onDragStart={(e) => handleDragStart(element, e)}
+                        onResizeStart={handleResizeStart}
+                        paperDimensions={paperDimensions}
+                        scale={scale}
+                        isDraggable={true}
+                        isResizable={true}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Right Sidebar - Properties and Settings */}
-        {rightPanelOpen && (
-          <Card className="w-80 rounded-none border-y-0 border-r-0 flex flex-col bg-white dark:bg-gray-800">
-            {/* Panel Header */}
-            <div className="h-12 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center space-x-2">
-                <Settings className="h-4 w-4 text-green-600" />
-                <span className="font-medium text-gray-900 dark:text-gray-100">
-                  {selectedElement ? "Öğe Özellikleri" : "Şablon Ayarları"}
-                </span>
+          {/* Right Sidebar - Properties and Settings */}
+          {rightPanelOpen && (
+            <Card className="w-80 rounded-none border-y-0 border-r-0 flex flex-col bg-white dark:bg-gray-800">
+              {/* Panel Header */}
+              <div className="h-12 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center space-x-2">
+                  <Settings className="h-4 w-4 text-green-600" />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    {selectedElement ? "Öğe Özellikleri" : "Şablon Ayarları"}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setRightPanelOpen(false)}
+                  className="h-6 w-6 p-0"
+                >
+                  <Minus className="h-3 w-3" />
+                </Button>
               </div>
+
+              {/* Properties Panel */}
+              <div className="flex-1 overflow-auto">
+                {selectedElement ? (
+                  <PropertyPanel
+                    element={selectedElement}
+                    onUpdate={updateElement}
+                    onRemove={removeElement}
+                    onDuplicate={duplicateElement}
+                  />
+                ) : (
+                  <TemplateSettingsPanel
+                    config={templateConfig}
+                    onConfigChange={handleConfigChange}
+                    onSave={handleSaveTemplate}
+                    onShowTemplates={() => setShowTemplateModal(true)}
+                    savedTemplates={savedTemplates}
+                  />
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Toggle button for right panel when closed */}
+          {!rightPanelOpen && (
+            <div className="w-8 flex flex-col">
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => setRightPanelOpen(false)}
-                className="h-6 w-6 p-0"
+                onClick={() => setRightPanelOpen(true)}
+                className="h-8 w-8 p-0 rounded-none"
               >
-                <Minus className="h-3 w-3" />
+                <Plus className="h-4 w-4" />
               </Button>
             </div>
+          )}
+        </div>
 
-            {/* Properties Panel */}
-            <div className="flex-1 overflow-auto">
-              {selectedElement ? (
-                <PropertyPanel
-                  element={selectedElement}
-                  onUpdate={updateElement}
-                  onRemove={removeElement}
-                  onDuplicate={duplicateElement}
-                />
-              ) : (
-                <TemplateSettingsPanel
-                  config={templateConfig}
-                  onConfigChange={handleConfigChange}
-                  onSave={handleSaveTemplate}
-                  onShowTemplates={() => setShowTemplateModal(true)}
-                  savedTemplates={savedTemplates}
-                />
-              )}
-            </div>
-          </Card>
-        )}
+        {/* Preview Modal */}
+        <SimplePreviewModal
+          isOpen={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          elements={elements}
+          paperDimensions={paperDimensions}
+          templateConfig={templateConfig}
+        />
 
-        {/* Toggle button for right panel when closed */}
-        {!rightPanelOpen && (
-          <div className="w-8 flex flex-col">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setRightPanelOpen(true)}
-              className="h-8 w-8 p-0 rounded-none"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+        {/* Template Library Modal */}
+        <TemplateModal
+          isOpen={showTemplateModal}
+          onClose={() => setShowTemplateModal(false)}
+          onLoad={(template) => {
+            setTemplateConfig(template.config);
+            setElements(template.elements);
+            setShowTemplateModal(false);
+            showAlert("Template loaded successfully!", "success");
+          }}
+          savedTemplates={savedTemplates}
+          setSavedTemplates={setSavedTemplates}
+        />
+
+        {/* Hidden file input for template import */}
+        <input
+          id="import-input"
+          type="file"
+          accept=".json"
+          style={{ display: "none" }}
+          onChange={handleImportTemplate}
+        />
       </div>
-
-      {/* Preview Modal */}
-      <SimplePreviewModal
-        isOpen={showPreviewModal}
-        onClose={() => setShowPreviewModal(false)}
-        elements={elements}
-        paperDimensions={paperDimensions}
-        templateConfig={templateConfig}
-      />
-
-      {/* Template Library Modal */}
-      <TemplateModal
-        isOpen={showTemplateModal}
-        onClose={() => setShowTemplateModal(false)}
-        onLoad={(template) => {
-          setTemplateConfig(template.config);
-          setElements(template.elements);
-          setShowTemplateModal(false);
-          showAlert("Template loaded successfully!", "success");
-        }}
-        savedTemplates={savedTemplates}
-        setSavedTemplates={setSavedTemplates}
-      />
-
-      {/* Hidden file input for template import */}
-      <input
-        id="import-input"
-        type="file"
-        accept=".json"
-        style={{ display: "none" }}
-        onChange={handleImportTemplate}
-      />
-    </div>
+    </DesignerErrorBoundary>
   );
 };
 

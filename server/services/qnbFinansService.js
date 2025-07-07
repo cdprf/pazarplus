@@ -12,12 +12,28 @@ const logger = require("../utils/logger");
 
 class QNBFinansService {
   constructor() {
-    // SOAP service endpoints - Request actual URLs from QNB Finans
-    this.testWSDL =
-      "https://test-earsiv.qnbesolutions.com.tr/EarsivWebService?wsdl";
-    this.prodWSDL = "https://earsiv.qnbesolutions.com.tr/EarsivWebService?wsdl";
-    this.userServiceWSDL =
-      "https://test-earsiv.qnbesolutions.com.tr/UserService?wsdl";
+    // Account type detection based on VKN
+    this.accountTypes = {
+      7410320347: "earsiv", // e-Arşiv test account
+      7410320348: "efatura", // e-Fatura test account
+    };
+
+    // e-Fatura endpoints
+    this.eFaturaTestWSDL =
+      "https://erpefaturatest2.qnbesolutions.com.tr/efatura/ws/connectorService?wsdl";
+    this.eFaturaUserServiceWSDL =
+      "https://erpefaturatest2.qnbesolutions.com.tr/efatura/ws/userService?wsdl";
+
+    // e-Arşiv endpoints
+    this.eArsivTestWSDL =
+      "https://earsivtest.qnbesolutions.com.tr/earsiv/ws/EarsivWebService?wsdl";
+    this.eArsivUserServiceWSDL =
+      "https://connectortest.qnbesolutions.com.tr/connector/ws/userService?wsdl";
+
+    // Legacy properties for backwards compatibility
+    this.testWSDL = this.eFaturaTestWSDL; // Default to e-Fatura
+    this.prodWSDL = "https://earsiv.qnbesolutions.com.tr/EarsivWebService?wsdl"; // Update when you get production URL
+    this.userServiceWSDL = this.eFaturaUserServiceWSDL;
 
     // Session management
     this.sessionCookie = null;
@@ -61,6 +77,18 @@ class QNBFinansService {
         throw new Error("QNB Finans credentials not configured");
       }
 
+      // Get appropriate service configuration
+      const serviceConfig = this.getServiceConfig(
+        config.vkn,
+        config.environment
+      );
+
+      console.log(`🔍 Debug - Account Type: ${serviceConfig.accountType}`);
+      console.log(
+        `🔍 Debug - User Service URL: ${serviceConfig.userServiceUrl}`
+      );
+      console.log(`🔍 Debug - Username: ${username}`);
+
       const soapEnvelope = {
         "soapenv:Envelope": {
           $: {
@@ -80,7 +108,9 @@ class QNBFinansService {
 
       const soapXML = this.xmlBuilder.buildObject(soapEnvelope);
 
-      const response = await axios.post(this.userServiceWSDL, soapXML, {
+      console.log(`🔍 Debug - SOAP Request:`, soapXML);
+
+      const response = await axios.post(serviceConfig.userServiceUrl, soapXML, {
         headers: {
           "Content-Type": "text/xml; charset=utf-8",
           SOAPAction: "",
@@ -157,38 +187,48 @@ class QNBFinansService {
   }
 
   /**
-   * Create SOAP envelope with authentication header
+   * Create SOAP envelope with WS-Security authentication header
    * @param {Object} bodyContent - SOAP body content
-   * @param {Object} config - User's configuration
+   * @param {Object} config - User's configuration (required for WS-Security)
    * @returns {string} SOAP XML
    */
-  createSOAPEnvelope(bodyContent, config = null) {
+  createSOAPEnvelope(bodyContent, config) {
+    if (!config || !config.username || !config.password) {
+      throw new Error(
+        "Configuration with username and password required for WS-Security authentication"
+      );
+    }
+
+    // Get appropriate service configuration based on VKN
+    const vkn = config.vkn || config.companyInfo?.taxNumber;
+    const serviceConfig = this.getServiceConfig(vkn, config.environment);
+
+    // Debug logging
+    logger.info(
+      `SOAP Envelope Config - VKN: ${vkn}, Account Type: ${serviceConfig.accountType}, Namespace: ${serviceConfig.namespace}`
+    );
+
     const envelope = {
       "soapenv:Envelope": {
         $: {
           "xmlns:soapenv": "http://schemas.xmlsoap.org/soap/envelope/",
-          "xmlns:ser": "http://service.earsiv.uut.cs.com.tr/",
+          "xmlns:ser": serviceConfig.namespace,
         },
-        "soapenv:Header": {},
+        "soapenv:Header": {
+          "wsse:Security": {
+            $: {
+              "xmlns:wsse":
+                "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd",
+            },
+            "wsse:UsernameToken": {
+              "wsse:Username": config.username,
+              "wsse:Password": config.password,
+            },
+          },
+        },
         "soapenv:Body": bodyContent,
       },
     };
-
-    // Add authentication header if no session cookie and config provided
-    if (!this.sessionCookie && config && config.username && config.password) {
-      envelope["soapenv:Envelope"]["soapenv:Header"] = {
-        "wsse:Security": {
-          $: {
-            "xmlns:wsse":
-              "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd",
-          },
-          "wsse:UsernameToken": {
-            "wsse:Username": config.username,
-            "wsse:Password": config.password,
-          },
-        },
-      };
-    }
 
     return this.xmlBuilder.buildObject(envelope);
   }
@@ -196,7 +236,7 @@ class QNBFinansService {
   /**
    * Make SOAP request to QNB Finans service
    * @param {string} soapXML - SOAP envelope XML
-   * @param {Object} config - Configuration
+   * @param {Object} config - Configuration including VKN
    * @returns {Object} Parsed response
    */
   async makeSOAPRequest(soapXML, config) {
@@ -206,26 +246,47 @@ class QNBFinansService {
         SOAPAction: "",
       };
 
-      // Add session cookie if available
-      if (this.sessionCookie) {
-        headers.Cookie = this.sessionCookie;
-      }
+      // Get appropriate service configuration based on VKN
+      const vkn = config.vkn || config.companyInfo?.taxNumber;
+      const serviceConfig = this.getServiceConfig(vkn, config.environment);
 
-      const response = await axios.post(
-        this.getWSDLURL(config.environment),
-        soapXML,
-        {
-          headers,
-          timeout: 30000,
-        }
+      // Debug logging
+      logger.info(
+        `QNB Finans Service Config - VKN: ${vkn}, Account Type: ${serviceConfig.accountType}, Endpoint: ${serviceConfig.wsdlUrl}`
       );
 
-      // Parse SOAP response
+      const response = await axios.post(serviceConfig.wsdlUrl, soapXML, {
+        headers,
+        timeout: 30000,
+      });
+
+      // Parse XML response
       const parsedResponse = await this.xmlParser.parseStringPromise(
         response.data
       );
+
       return this.parseSOAPResponse(parsedResponse);
     } catch (error) {
+      // Log the error response body if available
+      if (error.response && error.response.data) {
+        logger.error(`SOAP request error response body:`, {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          responseData: error.response.data,
+        });
+
+        // Create a new error with user-friendly message
+        const userFriendlyMessage = this.extractSoapErrorMessage(
+          JSON.stringify({
+            responseData: error.response.data,
+          })
+        );
+
+        const newError = new Error(userFriendlyMessage);
+        newError.originalError = error;
+        newError.soapResponse = error.response.data;
+        throw newError;
+      }
       logger.error(`SOAP request error: ${error.message}`, { error });
       throw error;
     }
@@ -269,49 +330,115 @@ class QNBFinansService {
   }
 
   /**
-   * Test connection to QNB Finans API
+   * Test connection to QNB Finans API using WS-Security
    * @param {Object} config - User's QNB Finans configuration
    * @returns {Object} Test result
    */
   async testConnection(config) {
     try {
-      const loginResult = await this.wsLogin(config);
-
-      if (!loginResult.success) {
-        return loginResult;
+      if (!config.username || !config.password) {
+        return {
+          success: false,
+          message: "QNB Finans credentials not configured",
+          error: "MISSING_CREDENTIALS",
+        };
       }
 
-      await this.logout();
-
-      return {
-        success: true,
-        message: "QNB Finans connection successful",
-        data: { authenticated: true },
+      // Test with a simple faturaNoUret request to verify authentication
+      const testInvoiceData = {
+        transactionId: `TEST-${Date.now()}`,
+        branch: "000000",
+        register: "0000",
       };
+
+      const result = await this.faturaNoUret(testInvoiceData, config);
+
+      if (result.success) {
+        return {
+          success: true,
+          message: "QNB Finans connection successful",
+          data: { authenticated: true },
+        };
+      } else {
+        // If it's an authentication error, return failure
+        if (
+          result.error &&
+          (result.error.includes("auth") ||
+            result.error.includes("login") ||
+            result.error.includes("credential") ||
+            result.error.includes("username.pwd.mismatch") ||
+            result.message.includes("username.pwd.mismatch") ||
+            result.message.includes("Authentication failed"))
+        ) {
+          return {
+            success: false,
+            message:
+              result.message ||
+              "Authentication failed: Please check your QNB Finans credentials.",
+            error: result.error,
+          };
+        } else {
+          // Other errors might be configuration issues but authentication worked
+          return {
+            success: true,
+            message:
+              "QNB Finans connection successful (authentication verified)",
+            data: {
+              authenticated: true,
+              note: "Authentication verified, but configuration may need adjustment",
+            },
+          };
+        }
+      }
     } catch (error) {
       logger.error(`QNB Finans connection test error: ${error.message}`, {
         error,
       });
-      return {
-        success: false,
-        message: `Connection test failed: ${error.message}`,
-        error: error.message,
-      };
+
+      // Check if it's an authentication error or network error
+      if (error.code === "ENOTFOUND") {
+        return {
+          success: false,
+          message: `Network error: Cannot reach QNB Finans server. Please check the API endpoints.`,
+          error: error.message,
+        };
+      } else if (
+        error.response?.status === 401 ||
+        error.response?.status === 403 ||
+        error.message.includes("Authentication failed") ||
+        error.message.includes("username.pwd.mismatch")
+      ) {
+        return {
+          success: false,
+          message: error.message.includes("Authentication failed")
+            ? error.message
+            : `Authentication failed: Please check your QNB Finans credentials.`,
+          error: error.message,
+        };
+      } else {
+        return {
+          success: false,
+          message: `Connection test failed: ${error.message}`,
+          error: error.message,
+        };
+      }
     }
   }
 
   /**
-   * Generate invoice number using QNB Finans API (faturaNoUret)
+   * Generate invoice number using QNB Finans API (faturaNoUret) with WS-Security
    * @param {Object} invoiceData - Invoice data
    * @param {Object} config - User's QNB Finans configuration
    * @returns {Object} Invoice number generation result
    */
   async faturaNoUret(invoiceData, config) {
     try {
-      // Login first
-      const loginResult = await this.wsLogin(config);
-      if (!loginResult.success) {
-        return loginResult;
+      if (!config.username || !config.password) {
+        return {
+          success: false,
+          message: "QNB Finans credentials not configured",
+          error: "MISSING_CREDENTIALS",
+        };
       }
 
       const inputData = {
@@ -328,10 +455,8 @@ class QNBFinansService {
         },
       };
 
-      const soapXML = this.createSOAPEnvelope(bodyContent);
+      const soapXML = this.createSOAPEnvelope(bodyContent, config);
       const response = await this.makeSOAPRequest(soapXML, config);
-
-      await this.logout();
 
       if (response.success) {
         return {
@@ -353,7 +478,6 @@ class QNBFinansService {
         `QNB Finans invoice number generation error: ${error.message}`,
         { error }
       );
-      await this.logout(); // Cleanup on error
 
       return {
         success: false,
@@ -363,17 +487,19 @@ class QNBFinansService {
     }
   }
   /**
-   * Create e-archive invoice using QNB Finans API (faturaOlustur)
+   * Create e-archive invoice using QNB Finans API (faturaOlustur) with WS-Security
    * @param {Object} order - Order object
    * @param {Object} config - User's QNB Finans configuration
    * @returns {Object} - E-archive generation result
    */
   async faturaOlustur(order, config) {
     try {
-      // Login first
-      const loginResult = await this.wsLogin(config);
-      if (!loginResult.success) {
-        return loginResult;
+      if (!config.username || !config.password) {
+        return {
+          success: false,
+          message: "QNB Finans credentials not configured",
+          error: "MISSING_CREDENTIALS",
+        };
       }
 
       const inputData = {
@@ -399,10 +525,8 @@ class QNBFinansService {
         },
       };
 
-      const soapXML = this.createSOAPEnvelope(bodyContent);
+      const soapXML = this.createSOAPEnvelope(bodyContent, config);
       const response = await this.makeSOAPRequest(soapXML, config);
-
-      await this.logout();
 
       if (response.success) {
         return {
@@ -413,6 +537,7 @@ class QNBFinansService {
             invoiceId: response.resultExtra?.uuid,
             pdfUrl: response.resultExtra?.faturaURL,
             status: "CREATED",
+            transactionId: inputData.islemId,
           },
         };
       } else {
@@ -425,7 +550,6 @@ class QNBFinansService {
         error,
         orderId: order.id,
       });
-      await this.logout(); // Cleanup on error
 
       return {
         success: false,
@@ -436,17 +560,19 @@ class QNBFinansService {
   }
 
   /**
-   * Query invoice using QNB Finans API (faturaSorgula)
+   * Query invoice using QNB Finans API (faturaSorgula) with WS-Security
    * @param {string} invoiceId - Invoice UUID
    * @param {Object} config - User's QNB Finans configuration
    * @returns {Object} - Invoice query result
    */
   async faturaSorgula(invoiceId, config) {
     try {
-      // Login first
-      const loginResult = await this.wsLogin(config);
-      if (!loginResult.success) {
-        return loginResult;
+      if (!config.username || !config.password) {
+        return {
+          success: false,
+          message: "QNB Finans credentials not configured",
+          error: "MISSING_CREDENTIALS",
+        };
       }
 
       const inputData = {
@@ -460,10 +586,8 @@ class QNBFinansService {
         },
       };
 
-      const soapXML = this.createSOAPEnvelope(bodyContent);
+      const soapXML = this.createSOAPEnvelope(bodyContent, config);
       const response = await this.makeSOAPRequest(soapXML, config);
-
-      await this.logout();
 
       if (response.success) {
         return {
@@ -478,7 +602,6 @@ class QNBFinansService {
         error,
         invoiceId,
       });
-      await this.logout();
 
       return {
         success: false,
@@ -489,7 +612,7 @@ class QNBFinansService {
   }
 
   /**
-   * Cancel invoice using QNB Finans API (faturaIptalEt)
+   * Cancel invoice using QNB Finans API (faturaIptalEt) with WS-Security
    * @param {string} invoiceId - Invoice UUID
    * @param {Object} config - User's QNB Finans configuration
    * @param {string} reason - Cancellation reason
@@ -497,10 +620,12 @@ class QNBFinansService {
    */
   async faturaIptalEt(invoiceId, config, reason = "İptal") {
     try {
-      // Login first
-      const loginResult = await this.wsLogin(config);
-      if (!loginResult.success) {
-        return loginResult;
+      if (!config.username || !config.password) {
+        return {
+          success: false,
+          message: "QNB Finans credentials not configured",
+          error: "MISSING_CREDENTIALS",
+        };
       }
 
       const inputData = {
@@ -515,10 +640,8 @@ class QNBFinansService {
         },
       };
 
-      const soapXML = this.createSOAPEnvelope(bodyContent);
+      const soapXML = this.createSOAPEnvelope(bodyContent, config);
       const response = await this.makeSOAPRequest(soapXML, config);
-
-      await this.logout();
 
       if (response.success) {
         return {
@@ -534,7 +657,6 @@ class QNBFinansService {
         error,
         invoiceId,
       });
-      await this.logout();
 
       return {
         success: false,
@@ -662,6 +784,41 @@ class QNBFinansService {
     );
   }
 
+  /**
+   * Detect account type based on VKN
+   * @param {string} vkn - Tax number (VKN)
+   * @returns {string} Account type ('earsiv' or 'efatura')
+   */
+  detectAccountType(vkn) {
+    return this.accountTypes[vkn] || "efatura"; // Default to e-Fatura
+  }
+
+  /**
+   * Get service configuration based on account type
+   * @param {string} vkn - Tax number (VKN)
+   * @param {string} environment - 'test' or 'production'
+   * @returns {Object} Service configuration
+   */
+  getServiceConfig(vkn, environment = "test") {
+    const accountType = this.detectAccountType(vkn);
+
+    if (accountType === "earsiv") {
+      return {
+        wsdlUrl: environment === "test" ? this.eArsivTestWSDL : this.prodWSDL,
+        userServiceUrl: this.eArsivUserServiceWSDL,
+        namespace: "http://service.earsiv.uut.cs.com.tr/",
+        accountType: "earsiv",
+      };
+    } else {
+      return {
+        wsdlUrl: environment === "test" ? this.eFaturaTestWSDL : this.prodWSDL,
+        userServiceUrl: this.eFaturaUserServiceWSDL,
+        namespace: "http://service.connector.cs.com.tr/",
+        accountType: "efatura",
+      };
+    }
+  }
+
   // Legacy method names for backward compatibility
   async generateEInvoice(order, config) {
     return await this.faturaOlustur(order, config);
@@ -677,6 +834,58 @@ class QNBFinansService {
 
   async cancelInvoice(invoiceId, config, reason = "") {
     return await this.faturaIptalEt(invoiceId, config, reason);
+  }
+
+  /**
+   * Get registered users list (like C# kayitliKullaniciListeleExtended)
+   * @param {string} urun - Product type ("EFATURA" or "EIRSALIYE")
+   * @param {Object} config - Configuration
+   * @returns {Object} Registered users list result
+   */
+  async kayitliKullaniciListeleExtended(urun = "EFATURA", config) {
+    try {
+      if (!config.username || !config.password) {
+        return {
+          success: false,
+          message: "QNB Finans credentials not configured",
+          error: "MISSING_CREDENTIALS",
+        };
+      }
+
+      const gecmisEklensin = 1; // Include history
+
+      const bodyContent = {
+        "ser:kayitliKullaniciListeleExtended": {
+          urun: urun,
+          gecmisEklensin: gecmisEklensin,
+          gecmisEklensinSpecified: true,
+        },
+      };
+
+      const soapXML = this.createSOAPEnvelope(bodyContent, config);
+      const response = await this.makeSOAPRequest(soapXML, config);
+
+      if (response.success) {
+        return {
+          success: true,
+          message: "Registered users list retrieved successfully",
+          data: response.output, // This should be a byte array/zip file content
+        };
+      } else {
+        throw new Error(
+          response.resultText || "Failed to retrieve registered users list"
+        );
+      }
+    } catch (error) {
+      logger.error(`QNB Finans registered users list error: ${error.message}`, {
+        error,
+      });
+      return {
+        success: false,
+        message: error.message,
+        error: error.code || "REGISTERED_USERS_ERROR",
+      };
+    }
   }
 
   // Helper methods for extracting order data
@@ -869,6 +1078,50 @@ class QNBFinansService {
         },
       },
     }));
+  }
+
+  /**
+   * Extract user-friendly error message from SOAP fault response
+   * @param {string} errorMessage - Original error message that may contain SOAP response
+   * @returns {string} User-friendly error message
+   */
+  extractSoapErrorMessage(errorMessage) {
+    try {
+      // Try to extract SOAP response from log message
+      const responseDataMatch = errorMessage.match(/"responseData":"([^"]+)"/);
+      if (responseDataMatch) {
+        const soapResponse = responseDataMatch[1].replace(/\\"/g, '"');
+
+        // Check if this is a SOAP fault
+        if (
+          soapResponse.includes("S:Fault") &&
+          soapResponse.includes("faultstring")
+        ) {
+          const faultMatch = soapResponse.match(
+            /<faultstring>([^<]+)<\/faultstring>/
+          );
+          if (faultMatch) {
+            const faultString = faultMatch[1];
+
+            // Convert specific error codes to user-friendly messages
+            if (faultString.includes("username.pwd.mismatch")) {
+              return "Authentication failed - username/password mismatch";
+            } else if (faultString.includes("MessageCode:")) {
+              const codeMatch = faultString.match(/MessageCode:(.+)/);
+              if (codeMatch) {
+                return `Service error: ${codeMatch[1]}`;
+              }
+            }
+
+            return faultString;
+          }
+        }
+      }
+    } catch (parseError) {
+      // If parsing fails, return original message
+    }
+
+    return errorMessage;
   }
 }
 

@@ -286,6 +286,199 @@ router.get("/sync-status", ProductController.getSyncStatus);
  */
 router.get("/stats", ProductController.getProductStats);
 
+// Background Variant Detection Routes
+/**
+ * @swagger
+ * /api/products/background-variant-detection/status:
+ *   get:
+ *     summary: Get background variant detection service status
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Service status retrieved successfully
+ */
+router.get(
+  "/background-variant-detection/status",
+  ProductController.getBackgroundVariantDetectionStatus
+);
+
+/**
+ * @swagger
+ * /api/products/background-variant-detection/start:
+ *   post:
+ *     summary: Start background variant detection service
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Service started successfully
+ */
+router.post(
+  "/background-variant-detection/start",
+  ProductController.startBackgroundVariantDetection
+);
+
+/**
+ * @swagger
+ * /api/products/background-variant-detection/stop:
+ *   post:
+ *     summary: Stop background variant detection service
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Service stopped successfully
+ */
+router.post(
+  "/background-variant-detection/stop",
+  ProductController.stopBackgroundVariantDetection
+);
+
+/**
+ * @swagger
+ * /api/products/background-variant-detection/config:
+ *   get:
+ *     summary: Get background variant detection configuration
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Configuration retrieved successfully
+ *   put:
+ *     summary: Update background variant detection configuration
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               config:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Configuration updated successfully
+ */
+router.get(
+  "/background-variant-detection/config",
+  ProductController.getBackgroundVariantDetectionConfig
+);
+router.put(
+  "/background-variant-detection/config",
+  ProductController.updateBackgroundVariantDetectionConfig
+);
+
+/**
+ * @swagger
+ * /api/products/batch-variant-detection:
+ *   post:
+ *     summary: Run batch variant detection on user's products
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 100
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Batch detection completed
+ */
+router.post(
+  "/batch-variant-detection",
+  ProductController.runBatchVariantDetection
+);
+
+/**
+ * @swagger
+ * /api/products/analyze-patterns:
+ *   post:
+ *     summary: Analyze existing products to suggest variant detection patterns
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               patternType:
+ *                 type: string
+ *                 enum: [color, size, model, structured, custom]
+ *               sampleSize:
+ *                 type: integer
+ *                 default: 50
+ *               includeNames:
+ *                 type: boolean
+ *                 default: true
+ *               includeSKUs:
+ *                 type: boolean
+ *                 default: true
+ *               includeDescriptions:
+ *                 type: boolean
+ *                 default: false
+ *     responses:
+ *       200:
+ *         description: Pattern analysis completed
+ */
+router.post("/analyze-patterns", ProductController.analyzePatterns);
+
+/**
+ * @swagger
+ * /api/products/search-by-pattern:
+ *   post:
+ *     summary: Search products by regex pattern
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               pattern:
+ *                 type: string
+ *                 description: Regex pattern to search for
+ *               searchFields:
+ *                 type: object
+ *                 properties:
+ *                   name:
+ *                     type: boolean
+ *                   sku:
+ *                     type: boolean
+ *                   description:
+ *                     type: boolean
+ *               limit:
+ *                 type: integer
+ *                 default: 50
+ *     responses:
+ *       200:
+ *         description: Search results
+ */
+router.post("/search-by-pattern", ProductController.searchByPattern);
+
 /**
  * @swagger
  * /api/products/{id}:
@@ -459,6 +652,10 @@ router.post(
 router.post(
   "/variant-detection/stop",
   ProductController.stopBackgroundVariantDetection
+);
+router.get(
+  "/variant-detection/config",
+  ProductController.getBackgroundVariantDetectionConfig
 );
 router.put(
   "/variant-detection/config",

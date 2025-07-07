@@ -865,8 +865,6 @@ class TaskExecution extends EventEmitter {
       }
       return executor;
     };
-
-    return executors[this.task.taskType];
   }
 
   pause() {

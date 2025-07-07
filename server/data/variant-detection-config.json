@@ -1,0 +1,24 @@
+{
+  "minConfidenceThreshold": 0.5,
+  "maxRetries": 3,
+  "processOnCreate": true,
+  "processOnUpdate": true,
+  "reprocessInterval": 86400000,
+  "enableAutoDetection": true,
+  "enableSKUAnalysis": true,
+  "enablePlatformDataAnalysis": true,
+  "enableTextAnalysis": true,
+  "colorPatterns": [
+    "(?:color|colour|renk):\\s*([^,;]+)",
+    "(?:^|\\s)(black|white|red|blue|green|yellow|pink|purple|orange|gray|grey|brown)(?:\\s|$)"
+  ],
+  "sizePatterns": [
+    "(?:size|beden):\\s*([^,;]+)",
+    "(?:^|\\s)(xs|s|m|l|xl|xxl|xxxl|\\d+)(?:\\s|$)"
+  ],
+  "modelPatterns": [
+    "(?:model|tip):\\s*([^,;]+)"
+  ],
+  "structuredPatterns": [],
+  "customPatterns": []
+}

@@ -184,6 +184,16 @@ const FilterPanel = ({
               >
                 Stok
               </button>
+              <button
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "questions"
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
+                onClick={() => setActiveTab("questions")}
+              >
+                Sorular
+              </button>
             </div>
 
             {/* Basic Filters Tab */}
@@ -374,6 +384,58 @@ const FilterPanel = ({
                     }
                     className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
+                </div>
+              </div>
+            )}
+
+            {/* Questions Filters Tab */}
+            {activeTab === "questions" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      Minimum Soru Sayısı
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Min Soru"
+                      value={filters.minQuestions || ""}
+                      onChange={(e) =>
+                        handleFilterChange("minQuestions", e.target.value)
+                      }
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      Maximum Soru Sayısı
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Max Soru"
+                      value={filters.maxQuestions || ""}
+                      onChange={(e) =>
+                        handleFilterChange("maxQuestions", e.target.value)
+                      }
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Soru Durumu
+                  </label>
+                  <select
+                    value={filters.hasQuestions || ""}
+                    onChange={(e) =>
+                      handleFilterChange("hasQuestions", e.target.value)
+                    }
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Tümü</option>
+                    <option value="true">Sorusu Olan Ürünler</option>
+                    <option value="false">Sorusu Olmayan Ürünler</option>
+                  </select>
                 </div>
               </div>
             )}

@@ -17,7 +17,8 @@ import {
 } from "lucide-react";
 import { Badge } from "../../ui/Badge";
 import { Button } from "../../ui/Button";
-import { PlatformIcons } from "../utils/constants";
+import { EnhancedPlatformBadges } from "../utils/enhancedPlatformBadges";
+import SafeImage from "../../ui/SafeImage";
 
 const SimpleProductTable = ({
   products = [],
@@ -86,61 +87,6 @@ const SimpleProductTable = ({
         icon: <AlertCircle className="h-3 w-3" />,
       };
     }
-  };
-  const getPlatformBadges = (product) => {
-    const platforms = [];
-
-    // Check if product has platform variants (new system)
-    if (product.platformVariants && product.platformVariants.length > 0) {
-      product.platformVariants.forEach((variant) => {
-        // Only show published or synced variants
-        if (variant.isPublished || variant.syncStatus === "success") {
-          platforms.push({
-            name: variant.platform,
-            icon: PlatformIcons[variant.platform] || PlatformIcons.local,
-            label:
-              variant.platform.charAt(0).toUpperCase() +
-              variant.platform.slice(1),
-            status: variant.syncStatus,
-            isPublished: variant.isPublished,
-            externalUrl: variant.externalUrl,
-          });
-        }
-      });
-    }
-
-    // Check if product has platform data (old system)
-    if (platforms.length === 0 && product.platforms) {
-      Object.entries(product.platforms).forEach(([platform, data]) => {
-        if (data.enabled || data.isActive) {
-          platforms.push({
-            name: platform,
-            icon: PlatformIcons[platform] || PlatformIcons.local,
-            label: platform.charAt(0).toUpperCase() + platform.slice(1),
-          });
-        }
-      });
-    }
-
-    // If no platforms specified, check for source platform
-    if (platforms.length === 0 && product.source) {
-      platforms.push({
-        name: product.source,
-        icon: PlatformIcons[product.source] || PlatformIcons.local,
-        label: product.source.charAt(0).toUpperCase() + product.source.slice(1),
-      });
-    }
-
-    // Default to local if no platforms found
-    if (platforms.length === 0) {
-      platforms.push({
-        name: "local",
-        icon: PlatformIcons.local,
-        label: "Yerel",
-      });
-    }
-
-    return platforms;
   };
 
   const formatPrice = (price) => {
@@ -235,6 +181,24 @@ const SimpleProductTable = ({
             </th>
             <th
               className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+              onClick={() => handleSort("questionsCount")}
+            >
+              <div className="flex items-center space-x-1">
+                <span>Sorular</span>
+                <ArrowUpDown
+                  className={`h-4 w-4 ${
+                    sortField === "questionsCount" ? "text-blue-600" : ""
+                  }`}
+                />
+                {sortField === "questionsCount" && (
+                  <span className="text-xs text-blue-600">
+                    {sortOrder === "asc" ? "↑" : "↓"}
+                  </span>
+                )}
+              </div>
+            </th>
+            <th
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
               onClick={() => handleSort("price")}
             >
               <div className="flex items-center space-x-1">
@@ -301,10 +265,11 @@ const SimpleProductTable = ({
                 <td className="px-6 py-4 whitespace-normal">
                   <div className="flex items-center">
                     {product.images?.[0] ? (
-                      <img
+                      <SafeImage
                         src={product.images[0]}
                         alt={product.name}
                         className="h-12 w-12 rounded-lg object-cover mr-3 cursor-pointer hover:opacity-75 transition-opacity"
+                        fallbackClassName="h-12 w-12 rounded-lg mr-3"
                         onClick={() =>
                           onImageClick?.(
                             product.images[0],
@@ -321,21 +286,29 @@ const SimpleProductTable = ({
                     <div className="flex-1 min-w-0">
                       <div
                         className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-                        onClick={() => onProductNameClick?.(product)}
+                        onClick={() => {
+                          if (onProductNameClick) {
+                            onProductNameClick(product);
+                          } else if (onView) {
+                            onView(product);
+                          }
+                        }}
                       >
                         {product.name}
                       </div>
-                      {/* Variant Status Badges */}
+                      {/* Variant Status Icons */}
                       {(product.isVariant || product.isMainProduct) && (
                         <div className="flex items-center space-x-2 mt-1">
-                          {product.isVariant && (
+                          {product.isVariant && !product.isMainProduct && (
                             <div className="flex items-center space-x-1">
-                              <Badge variant="info" size="xs">
-                                Variant:{" "}
-                                {product.variantValue ||
-                                  product.variantType ||
-                                  "Unknown"}
-                              </Badge>
+                              <div className="flex items-center space-x-1 text-blue-600 dark:text-blue-400">
+                                <Layers className="h-3 w-3" />
+                                <span className="text-xs font-medium">
+                                  {product.variantValue ||
+                                    product.variantType ||
+                                    "Varyant"}
+                                </span>
+                              </div>
                               {product.variantDetectionConfidence && (
                                 <span className="text-xs text-gray-400">
                                   (
@@ -363,9 +336,12 @@ const SimpleProductTable = ({
                           )}
                           {product.isMainProduct && (
                             <div className="flex items-center space-x-1">
-                              <Badge variant="primary" size="xs">
-                                Main Product
-                              </Badge>
+                              <div className="flex items-center space-x-1 text-amber-600 dark:text-amber-400">
+                                <Crown className="h-3 w-3" />
+                                <span className="text-xs font-medium">
+                                  Ana Ürün
+                                </span>
+                              </div>
                               {product.variantDetectionConfidence && (
                                 <span className="text-xs text-gray-400">
                                   (
@@ -415,65 +391,11 @@ const SimpleProductTable = ({
 
                 {/* Platform */}
                 <td className="px-6 py-4 whitespace-normal">
-                  <div className="flex flex-wrap gap-1">
-                    {getPlatformBadges(product).map((platform, index) => {
-                      // Determine badge variant based on platform status
-                      let badgeVariant = "outline";
-                      let statusIndicator = null;
-
-                      if (
-                        platform.status === "success" &&
-                        platform.isPublished
-                      ) {
-                        badgeVariant = "success";
-                        statusIndicator = (
-                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                        );
-                      } else if (platform.status === "syncing") {
-                        badgeVariant = "info";
-                        statusIndicator = (
-                          <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-                        );
-                      } else if (platform.status === "error") {
-                        badgeVariant = "danger";
-                        statusIndicator = (
-                          <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                        );
-                      }
-
-                      const badgeContent = (
-                        <Badge
-                          key={`${platform.name}-${index}`}
-                          variant={badgeVariant}
-                          className="flex items-center space-x-1 cursor-pointer hover:opacity-80 transition-opacity"
-                          title={`${platform.label}${
-                            platform.isPublished ? " (Yayında)" : ""
-                          }${platform.status ? ` - ${platform.status}` : ""}`}
-                        >
-                          {platform.icon}
-                          <span className="text-xs">{platform.label}</span>
-                          {statusIndicator}
-                        </Badge>
-                      );
-
-                      // If there's an external URL, make it clickable
-                      if (platform.externalUrl) {
-                        return (
-                          <a
-                            key={`${platform.name}-${index}`}
-                            href={platform.externalUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block"
-                          >
-                            {badgeContent}
-                          </a>
-                        );
-                      }
-
-                      return badgeContent;
-                    })}
-                  </div>
+                  <EnhancedPlatformBadges
+                    product={product}
+                    size="sm"
+                    maxVisible={2}
+                  />
                 </td>
 
                 {/* SKU */}
@@ -491,6 +413,16 @@ const SimpleProductTable = ({
                   <Badge variant="secondary" className="capitalize">
                     {product.category || "Belirtilmemiş"}
                   </Badge>
+                </td>
+
+                {/* Questions Count */}
+                <td className="px-6 py-4 whitespace-normal">
+                  <div className="flex items-center">
+                    <Package className="h-4 w-4 mr-1 text-gray-400" />
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                      {product.questionsCount || 0}
+                    </span>
+                  </div>
                 </td>
 
                 {/* Price */}

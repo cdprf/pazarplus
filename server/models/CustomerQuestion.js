@@ -49,14 +49,27 @@ const CustomerQuestion = sequelize.define(
       allowNull: false,
     },
 
+    // Use database column name instead
+    question_date: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: "question_date",
+    },
+
     status: {
-      type: DataTypes.STRING, // Trendyol: status, HepsiBurada: Status
+      type: DataTypes.ENUM(
+        "WAITING_FOR_ANSWER",
+        "ANSWERED",
+        "REJECTED",
+        "AUTO_CLOSED"
+      ),
       allowNull: false,
       index: true,
+      defaultValue: "WAITING_FOR_ANSWER",
       comment: "WAITING_FOR_ANSWER, ANSWERED, REJECTED, AUTO_CLOSED, etc.",
     },
 
-    // Product information
+    // Product information - adjust to match database
     product_name: {
       type: DataTypes.STRING, // Trendyol: productName, HepsiBurada: product.name
       allowNull: true,
@@ -243,5 +256,16 @@ const CustomerQuestion = sequelize.define(
     ],
   }
 );
+
+// Define associations
+CustomerQuestion.associate = function (models) {
+  // Associate with Product through product_main_id (which maps to Product.sku)
+  CustomerQuestion.belongsTo(models.Product, {
+    foreignKey: "product_main_id",
+    targetKey: "sku", // Link to Product.sku instead of id
+    as: "product",
+    constraints: false, // Since not all questions have products
+  });
+};
 
 module.exports = CustomerQuestion;

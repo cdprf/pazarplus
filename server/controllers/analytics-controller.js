@@ -489,14 +489,23 @@ class AnalyticsController {
    */
   async getProductAnalytics(req, res) {
     try {
-      const { timeframe = "30d", productId = null } = req.query;
+      const {
+        timeframe = "30d",
+        productId = null,
+        limit = "20",
+        all = false,
+      } = req.query;
       const userId = req.user.id;
       const dateRange = analyticsService.getDateRange(timeframe);
+
+      // If 'all' parameter is true, set limit to 0 (no limit)
+      const productLimit = all === "true" ? 0 : parseInt(limit);
 
       const productAnalytics = await analyticsService.getProductAnalytics(
         userId,
         productId,
-        dateRange
+        dateRange,
+        productLimit
       );
 
       res.json({
@@ -743,6 +752,72 @@ class AnalyticsController {
         success: false,
         message: "Failed to retrieve accurate analytics",
         error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get analytics alerts and notifications
+   */
+  async getAlerts(req, res) {
+    try {
+      const userId = req.user.id;
+      const { type = "all", severity = "all", limit = 50 } = req.query;
+
+      // Get different types of alerts
+      const alerts = [];
+
+      // Get inventory alerts
+      const inventoryAlerts = await this.getLiveInventoryAlerts(userId);
+      alerts.push(...inventoryAlerts);
+
+      // Filter by type if specified
+      let filteredAlerts = alerts;
+      if (type !== "all") {
+        filteredAlerts = alerts.filter((alert) => alert.type === type);
+      }
+
+      // Filter by severity if specified
+      if (severity !== "all") {
+        filteredAlerts = filteredAlerts.filter(
+          (alert) => alert.severity === severity
+        );
+      }
+
+      // Sort by severity (high -> medium -> low) and limit results
+      const severityOrder = { high: 3, medium: 2, low: 1 };
+      filteredAlerts.sort(
+        (a, b) =>
+          (severityOrder[b.severity] || 0) - (severityOrder[a.severity] || 0)
+      );
+
+      if (limit) {
+        filteredAlerts = filteredAlerts.slice(0, parseInt(limit));
+      }
+
+      res.json({
+        success: true,
+        data: {
+          alerts: filteredAlerts,
+          total: filteredAlerts.length,
+          summary: {
+            high: filteredAlerts.filter((a) => a.severity === "high").length,
+            medium: filteredAlerts.filter((a) => a.severity === "medium")
+              .length,
+            low: filteredAlerts.filter((a) => a.severity === "low").length,
+          },
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error("Analytics alerts error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Internal server error",
+        message:
+          process.env.NODE_ENV === "development"
+            ? error.message
+            : "Failed to fetch alerts",
       });
     }
   }

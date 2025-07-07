@@ -3,7 +3,7 @@ const { createProxyMiddleware } = require("http-proxy-middleware");
 module.exports = function (app) {
   // Get the server host from environment or use localhost as fallback
   const SERVER_HOST = process.env.REACT_APP_SERVER_HOST || "localhost";
-  const SERVER_PORT = 5001;
+  const SERVER_PORT = process.env.REACT_APP_SERVER_PORT || 5001;
 
   // Proxy API requests to the backend server
   app.use(

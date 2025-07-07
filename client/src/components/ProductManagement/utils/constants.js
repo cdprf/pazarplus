@@ -35,6 +35,8 @@ export const SORT_OPTIONS = [
   { value: "price-desc", label: "Fiyat (Yüksek-Düşük)" },
   { value: "stockQuantity-asc", label: "Stok (Az-Çok)" },
   { value: "stockQuantity-desc", label: "Stok (Çok-Az)" },
+  { value: "questionsCount-asc", label: "Soru Sayısı (Az-Çok)" },
+  { value: "questionsCount-desc", label: "Soru Sayısı (Çok-Az)" },
 ];
 
 // Platform Icons
@@ -103,6 +105,14 @@ export const STOCK_STATUS_OPTIONS = [
   { value: "in_stock", label: "Stokta Bulunan", variant: "success" },
   { value: "low_stock", label: "Stoku Azalan", variant: "warning" },
   { value: "out_of_stock", label: "Stokta Olmayan", variant: "danger" },
+];
+
+// Questions Filter Options
+export const QUESTIONS_FILTER_OPTIONS = [
+  { value: "all", label: "Tüm Ürünler" },
+  { value: "has_questions", label: "Sorusu Olanlar", variant: "info" },
+  { value: "no_questions", label: "Sorusu Olmayanlar", variant: "secondary" },
+  { value: "many_questions", label: "Çok Sorulu (5+)", variant: "warning" },
 ];
 
 // Product Type Options
@@ -194,4 +204,14 @@ export const STATUS_TAB_CONFIG = {
   main_products: { key: "main_products", label: "Ana Ürünler", icon: "Crown" },
   variants: { key: "variants", label: "Varyantlar", icon: "Layers" },
   unset: { key: "unset", label: "Tür Belirtilmemiş", icon: "AlertCircle" },
+  has_questions: {
+    key: "has_questions",
+    label: "Sorusu Olanlar",
+    icon: "MessageCircle",
+  },
+  no_questions: {
+    key: "no_questions",
+    label: "Sorusu Olmayanlar",
+    icon: "MessageCircle",
+  },
 };

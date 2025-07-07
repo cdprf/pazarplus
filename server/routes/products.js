@@ -30,6 +30,115 @@ router.get("/", auth, productController.getProducts);
  */
 router.get("/stats", auth, productController.getProductStats);
 
+// Background Variant Detection Routes
+/**
+ * @swagger
+ * /api/products/background-variant-detection/status:
+ *   get:
+ *     summary: Get background variant detection service status
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Service status retrieved successfully
+ */
+router.get(
+  "/background-variant-detection/status",
+  auth,
+  productController.getBackgroundVariantDetectionStatus
+);
+
+/**
+ * @swagger
+ * /api/products/background-variant-detection/start:
+ *   post:
+ *     summary: Start background variant detection service
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Service started successfully
+ */
+router.post(
+  "/background-variant-detection/start",
+  auth,
+  productController.startBackgroundVariantDetection
+);
+
+/**
+ * @swagger
+ * /api/products/background-variant-detection/stop:
+ *   post:
+ *     summary: Stop background variant detection service
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Service stopped successfully
+ */
+router.post(
+  "/background-variant-detection/stop",
+  auth,
+  productController.stopBackgroundVariantDetection
+);
+
+/**
+ * @swagger
+ * /api/products/background-variant-detection/config:
+ *   put:
+ *     summary: Update background variant detection configuration
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               config:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Configuration updated successfully
+ */
+router.put(
+  "/background-variant-detection/config",
+  auth,
+  productController.updateBackgroundVariantDetectionConfig
+);
+
+/**
+ * @swagger
+ * /api/products/batch-variant-detection:
+ *   post:
+ *     summary: Run batch variant detection on user's products
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 100
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Batch detection completed
+ */
+router.post(
+  "/batch-variant-detection",
+  auth,
+  productController.runBatchVariantDetection
+);
+
 /**
  * @swagger
  * /api/products/main-products:

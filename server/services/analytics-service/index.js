@@ -1758,7 +1758,7 @@ class AnalyticsService {
   /**
    * Get product analytics data
    */
-  async getProductAnalytics(userId, productId = null, dateRange) {
+  async getProductAnalytics(userId, productId = null, dateRange, limit = 20) {
     try {
       // Handle parameter order - if productId is actually dateRange (when called with 2 params)
       if (productId && typeof productId === "object" && productId.start) {
@@ -1778,11 +1778,16 @@ class AnalyticsService {
 
       const cacheKey = `${this.cachePrefix}products:${userId}:${
         productId || "all"
-      }:${dateRange.start}:${dateRange.end}`;
+      }:${dateRange.start}:${dateRange.end}:${limit}`;
       const cached = await cacheService.get(cacheKey);
       if (cached) return cached;
 
-      const result = await getProductAnalytics(userId, productId, dateRange);
+      const result = await getProductAnalytics(
+        userId,
+        productId,
+        dateRange,
+        limit
+      );
       await cacheService.set(cacheKey, result, this.defaultCacheTTL);
       return result;
     } catch (error) {

@@ -47,6 +47,7 @@ const DEFAULT_COLUMNS = [
   },
   { id: "category", label: "Kategori", visible: true, sortable: true },
   { id: "brand", label: "Marka", visible: true, sortable: false },
+  { id: "platform", label: "Platform", visible: true, sortable: false },
   {
     id: "actions",
     label: "İşlemler",

@@ -120,22 +120,6 @@ class SimplifiedCustomerQuestionService {
             limit,
             offset,
             order: orderClause,
-            include: [
-              {
-                model: CustomerReply,
-                as: "replies",
-                required: false, // LEFT JOIN to include questions without replies
-                attributes: [
-                  "id",
-                  "reply_text",
-                  "reply_type",
-                  "status",
-                  "creation_date",
-                  "sent_date",
-                ],
-                order: [["creation_date", "DESC"]], // Get latest reply first
-              },
-            ],
           });
 
         const totalPages = Math.ceil(count / limit);
@@ -152,29 +136,8 @@ class SimplifiedCustomerQuestionService {
           },
         };
       } catch (dbError) {
-        debug("Database query failed, returning mock data:", dbError.message);
-
-        // Fallback to mock data if database fails
-        const mockQuestions = [
-          {
-            id: 1,
-            platform: "trendyol",
-            status: "open",
-            customer_name: "Database Test Customer",
-            question_text: "Database fallback question",
-            creation_date: new Date(),
-          },
-        ];
-
-        return {
-          questions: mockQuestions,
-          pagination: {
-            page,
-            limit,
-            totalItems: mockQuestions.length,
-            totalPages: 1,
-          },
-        };
+        debug("Database query failed:", dbError.message);
+        throw dbError;
       }
     } catch (error) {
       debug("Error in getQuestions:", error.message);
@@ -238,29 +201,8 @@ class SimplifiedCustomerQuestionService {
           },
         };
       } catch (dbError) {
-        debug("Database query failed, returning mock data:", dbError.message);
-
-        // Fallback mock data
-        const mockQuestions = [
-          {
-            id: 1,
-            customer_email: email,
-            platform: "trendyol",
-            status: "open",
-            question_text: `Question from ${email}`,
-            creation_date: new Date(),
-          },
-        ];
-
-        return {
-          questions: mockQuestions,
-          pagination: {
-            page,
-            limit,
-            totalItems: mockQuestions.length,
-            totalPages: 1,
-          },
-        };
+        debug("Database query failed:", dbError.message);
+        throw dbError;
       }
     } catch (error) {
       debug("Error getting questions by customer:", error.message);
@@ -288,17 +230,8 @@ class SimplifiedCustomerQuestionService {
           return null;
         }
       } catch (dbError) {
-        debug("Database query failed, returning mock data:", dbError.message);
-
-        // Return mock question
-        return {
-          id: parseInt(id),
-          platform: "trendyol",
-          status: "open",
-          customer_name: "Mock Customer",
-          question_text: "Mock question from simplified service",
-          creation_date: new Date(),
-        };
+        debug("Database query failed:", dbError.message);
+        throw dbError;
       }
     } catch (error) {
       debug("Error getting question by ID:", error.message);
@@ -332,14 +265,8 @@ class SimplifiedCustomerQuestionService {
         debug(`Question ${id} status updated successfully`);
         return updatedQuestion;
       } catch (dbError) {
-        debug("Database update failed, returning mock data:", dbError.message);
-
-        // Return mock updated question
-        return {
-          id: parseInt(id),
-          status,
-          updated_at: new Date(),
-        };
+        debug("Database update failed:", dbError.message);
+        throw dbError;
       }
     } catch (error) {
       debug("Error updating question status:", error.message);
@@ -470,29 +397,8 @@ class SimplifiedCustomerQuestionService {
         debug("Database statistics calculated successfully");
         return stats;
       } catch (dbError) {
-        debug(
-          "Database stats query failed, returning mock data:",
-          dbError.message
-        );
-
-        // Return mock statistics
-        return {
-          timeframe,
-          totalQuestions: 20,
-          openQuestions: 8,
-          answeredQuestions: 12,
-          responseRate: "60.00",
-          platformDistribution: [
-            { platform: "trendyol", count: 10 },
-            { platform: "hepsiburada", count: 7 },
-            { platform: "n11", count: 3 },
-          ],
-          priorityDistribution: [
-            { priority: "high", count: 4 },
-            { priority: "medium", count: 10 },
-            { priority: "low", count: 6 },
-          ],
-        };
+        debug("Database stats query failed:", dbError.message);
+        throw dbError;
       }
     } catch (error) {
       debug("Error getting question statistics:", error.message);

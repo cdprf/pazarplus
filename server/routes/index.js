@@ -25,6 +25,9 @@ try {
   // Image proxy middleware for handling external images with SSL issues
   const imageProxyRoutes = require("../middleware/image-proxy");
 
+  // Image proxy routes for SSL certificate issues
+  const imageProxyApiRoutes = require("./image-proxy");
+
   // Network configuration routes
   const networkRoutes = require("./network");
 
@@ -99,6 +102,9 @@ try {
 
   // Month 5 Phase 1: Advanced Analytics & Business Intelligence routes
   router.use("/analytics", analyticsRoutes);
+
+  // Image proxy routes for handling SSL certificate issues
+  router.use("/image", imageProxyApiRoutes);
 
   // Month 5 Phase 2: Subscription Management & Multi-tenant SaaS routes
   router.use("/subscription", subscriptionRoutes);

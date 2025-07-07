@@ -654,6 +654,39 @@ router.post(
   analyticsController.generateCustomReport.bind(analyticsController)
 );
 
+/**
+ * @swagger
+ * /api/analytics/alerts:
+ *   get:
+ *     summary: Get analytics alerts and notifications
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *         description: Filter alerts by type
+ *       - in: query
+ *         name: priority
+ *         schema:
+ *           type: string
+ *         description: Filter alerts by priority
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Limit number of alerts returned
+ *     responses:
+ *       200:
+ *         description: Alerts retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get("/alerts", analyticsController.getAlerts.bind(analyticsController));
 
 /**
  * @swagger
@@ -667,6 +700,9 @@ router.post(
  *       500:
  *         description: System health issues detected
  */
-router.get("/health", analyticsController.healthCheck.bind(analyticsController));
+router.get(
+  "/health",
+  analyticsController.healthCheck.bind(analyticsController)
+);
 
 module.exports = router;

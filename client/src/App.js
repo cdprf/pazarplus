@@ -55,7 +55,6 @@ import PrintSettings from "./components/settings/PrintSettings";
 import DatabaseBusyModal from "./components/DatabaseBusyModal"; // Database transaction management modal
 import PlatformCategoriesManagement from "./components/PlatformCategoriesManagement.jsx";
 import ErrorPage from "./pages/ErrorPage"; // Error page component
-import ErrorHandlingDemo from "./components/demo/ErrorHandlingDemo"; // Error handling demo
 import BackgroundTaskManager from "./components/tasks/BackgroundTaskManager"; // Background task management
 import DeveloperPage from "./pages/DeveloperPage"; // Developer tools page
 
