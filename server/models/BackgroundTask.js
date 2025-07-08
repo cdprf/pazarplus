@@ -567,7 +567,7 @@ module.exports = (sequelize) => {
       this.logs.push(logEntry);
 
       // Mark the logs field as changed so Sequelize persists it
-      this.changed('logs', true);
+      this.changed("logs", true);
 
       // Implement log rotation to prevent memory issues
       const MAX_LOGS = parseInt(process.env.MAX_TASK_LOGS || "500", 10);
