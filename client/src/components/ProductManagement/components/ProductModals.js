@@ -11,7 +11,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Button, Badge, Modal } from "../../ui";
-import { Card, CardContent } from "../../ui/Card";
+import { Card, CardContent } from "../../ui";
 import EnhancedSKUInput from "../../common/EnhancedSKUInput";
 import ProductVariantManager from "./ProductVariantManager";
 import {
@@ -998,9 +998,7 @@ const ConfirmationModal = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
       <div className="space-y-4">
-        <p className="text-gray-600 dark:text-gray-400">
-          {message}
-        </p>
+        <p className="text-gray-600 dark:text-gray-400">{message}</p>
         <div className="flex justify-end space-x-3">
           <Button onClick={onClose} variant="outline">
             {cancelText}

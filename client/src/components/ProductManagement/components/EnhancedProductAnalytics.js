@@ -16,7 +16,7 @@ import {
   Eye,
   Activity,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../ui/Card";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui";
 import { Button, Badge } from "../../ui";
 import {
   LineChart,

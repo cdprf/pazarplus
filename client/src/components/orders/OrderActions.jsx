@@ -17,7 +17,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import CancelOrderDialog from "../dialogs/CancelOrderDialog";
-import { DropdownMenu } from "../ui/DropdownMenu";
+import { DropdownMenu } from "../ui";
 import api from "../../services/api";
 import enhancedPDFService from "../../services/enhancedPDFService";
 import qnbFinansService from "../../services/qnbFinansService";

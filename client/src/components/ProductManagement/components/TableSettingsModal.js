@@ -12,7 +12,7 @@ import {
   Save,
 } from "lucide-react";
 import { Button, Modal, Badge } from "../../ui";
-import { Card, CardContent } from "../../ui/Card";
+import { Card, CardContent } from "../../ui";
 
 // Default table columns configuration
 const DEFAULT_COLUMNS = [

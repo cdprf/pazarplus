@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { X, Download, Printer, ZoomIn, ZoomOut, RotateCw } from "lucide-react";
-import { Modal } from "../../../ui/Modal";
-import { Button } from "../../../ui/Button";
+import { Modal, Button } from "../../../ui";
 import ElementRenderer from "./ElementRenderer";
 import { getPaperDimensions } from "../utils/designerUtils";
 

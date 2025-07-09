@@ -10,7 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button, Badge, Tooltip } from "../../ui";
-import { Card, CardContent } from "../../ui/Card";
+import { Card, CardContent } from "../../ui";
 import CompletionScore from "./CompletionScore";
 import InlineEditor from "./InlineEditor";
 

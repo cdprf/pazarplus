@@ -19,7 +19,7 @@ import {
   Check,
 } from "lucide-react";
 import { Button, Badge, Tooltip } from "../../ui";
-import { Card, CardContent, CardHeader } from "../../ui/Card";
+import { Card, CardContent, CardHeader } from "../../ui";
 
 // Variant Suggestion Card Component
 export const VariantSuggestionCard = ({

@@ -15,8 +15,7 @@ import {
   Layers,
   AlertCircle,
 } from "lucide-react";
-import { Badge } from "../../ui/Badge";
-import { Button } from "../../ui/Button";
+import { Badge, Button } from "../../ui";
 import { EnhancedPlatformBadges } from "../utils/enhancedPlatformBadges";
 import SafeImage from "../../ui/SafeImage";
 

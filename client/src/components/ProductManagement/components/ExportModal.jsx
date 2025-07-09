@@ -5,10 +5,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "../../ui/Dialog";
-import { Button } from "../../ui/Button";
-import { Checkbox } from "../../ui/Checkbox";
-import { Label } from "../../ui/Label";
+  Button,
+  Checkbox,
+  Label,
+} from "../../ui";
 import { Download, FileSpreadsheet, FileText } from "lucide-react";
 
 const ExportModal = ({ isOpen, onClose, onExport, isExporting = false }) => {

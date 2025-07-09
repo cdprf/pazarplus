@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../utils/cn";
-import { Badge } from "../ui/Badge";
-import { Button } from "../ui/Button";
+import { Badge, Button } from "../ui";
 import {
   ChevronDownIcon,
   ChevronRightIcon,

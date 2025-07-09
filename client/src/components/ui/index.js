@@ -42,6 +42,7 @@ import {
 } from "./Select.jsx";
 import { Switch } from "./Switch.jsx";
 import { Slider } from "./Slider.jsx";
+import { Separator } from "./Separator.jsx";
 
 export {
   Button,
@@ -85,10 +86,12 @@ export {
   LegacySelect,
   Switch,
   Slider,
+  Separator,
 };
 
 export { Textarea } from "./Textarea";
 export { ScrollArea } from "./ScrollArea";
+export { Checkbox } from "./Checkbox";
 export {
   Dialog,
   DialogContent,

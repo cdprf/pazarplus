@@ -50,10 +50,10 @@ const validateReply = [
 ];
 
 const validateTemplate = [
-  body("name")
+  body("title")
     .notEmpty()
     .isLength({ min: 1, max: 255 })
-    .withMessage("Template name is required"),
+    .withMessage("Template title is required"),
   body("content")
     .notEmpty()
     .isLength({ min: 10, max: 5000 })

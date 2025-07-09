@@ -55,12 +55,7 @@ import { useDesignerState } from "./designer/hooks/useDesignerState";
 import { getPaperDimensions } from "./designer/utils/designerUtils";
 
 // UI Components and services
-import { Button } from "../ui/Button";
-import { Card } from "../ui/Card";
-import { Separator } from "../ui/Separator";
-import { Tooltip } from "../ui/Tooltip";
-import { Badge } from "../ui/Badge";
-import { Switch } from "../ui/Switch";
+import { Button, Card, Separator, Tooltip, Badge, Switch } from "../ui";
 import { useAlert } from "../../contexts/AlertContext";
 import TemplateManager from "../../services/TemplateManager";
 

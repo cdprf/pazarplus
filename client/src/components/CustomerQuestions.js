@@ -28,10 +28,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { tr } from "date-fns/locale";
 import api from "../services/api";
 import { useAlert } from "../contexts/AlertContext";
-import { Button } from "./ui/Button";
-import { Card, CardContent } from "./ui/Card";
-import { Badge } from "./ui/Badge";
-import { Modal } from "./ui/Modal";
+import { Button, Card, CardContent, Badge, Modal } from "./ui";
 
 const CustomerQuestions = () => {
   const { showAlert } = useAlert();
@@ -173,6 +170,34 @@ const CustomerQuestions = () => {
       console.error("Error loading templates:", err);
     }
   }, []);
+
+  const saveTemplate = useCallback(async () => {
+    if (!replyText.trim()) {
+      showAlert("Şablon olarak kaydetmek için yanıt metnini girin", "error");
+      return;
+    }
+
+    const title = prompt("Şablon adı giriniz:");
+    if (!title) return;
+
+    try {
+      const response = await api.post("/customer-questions/templates", {
+        title: title.trim(),
+        content: replyText.trim(),
+        category: "general",
+      });
+
+      if (response.data.success) {
+        showAlert("Şablon başarıyla kaydedildi", "success");
+        await loadTemplates();
+      } else {
+        throw new Error(response.data.message || "Template save failed");
+      }
+    } catch (err) {
+      console.error("Error saving template:", err);
+      showAlert("Şablon kaydedilirken hata oluştu", "error");
+    }
+  }, [replyText, showAlert, loadTemplates]);
 
   const syncQuestions = useCallback(async () => {
     try {
@@ -709,7 +734,20 @@ const CustomerQuestions = () => {
                         <td className="px-6 py-4">
                           <div className="max-w-xs">
                             <p className="text-sm font-medium text-gray-900 truncate">
-                              {question.product_name}
+                              {question.product_name &&
+                              question.product_web_url ? (
+                                <a
+                                  href={question.product_web_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                                >
+                                  {question.product_name}
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              ) : (
+                                question.product_name || "Ürün bilgisi yok"
+                              )}
                             </p>
                             <p
                               className="text-sm text-gray-500 truncate"
@@ -944,17 +982,27 @@ const CustomerQuestions = () => {
               </div>
             )}
 
-            <div className="flex justify-end space-x-3 pt-4">
-              <Button onClick={() => setReplyDialog(false)} variant="outline">
-                İptal
-              </Button>
+            <div className="flex justify-between items-center pt-4">
               <Button
-                onClick={handleReply}
-                variant="primary"
+                onClick={saveTemplate}
+                variant="outline"
                 disabled={!replyText.trim()}
+                className="text-green-600 border-green-300 hover:bg-green-50"
               >
-                Yanıt Gönder
+                Şablon Olarak Kaydet
               </Button>
+              <div className="flex space-x-3">
+                <Button onClick={() => setReplyDialog(false)} variant="outline">
+                  İptal
+                </Button>
+                <Button
+                  onClick={handleReply}
+                  variant="primary"
+                  disabled={!replyText.trim()}
+                >
+                  Yanıt Gönder
+                </Button>
+              </div>
             </div>
           </div>
         </Modal>
@@ -1003,7 +1051,20 @@ const CustomerQuestions = () => {
                 Ürün
               </label>
               <p className="mt-1 text-sm text-gray-900">
-                {selectedQuestion.product_name}
+                {selectedQuestion.product_name &&
+                selectedQuestion.product_web_url ? (
+                  <a
+                    href={selectedQuestion.product_web_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                  >
+                    {selectedQuestion.product_name}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : (
+                  selectedQuestion.product_name || "Ürün bilgisi yok"
+                )}
               </p>
             </div>
 

@@ -623,6 +623,53 @@ class ControlledCustomerQuestionController {
   }
 
   /**
+   * Save reply template
+   */
+  async saveReplyTemplate(req, res) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array(),
+      });
+    }
+
+    try {
+      debug("Saving reply template");
+
+      const { title, content, category = "general" } = req.body;
+
+      // For now, simulate saving (since we're using mock data)
+      // In a real implementation, this would save to a database
+      const newTemplate = {
+        id: Date.now(), // Simple ID generation for mock
+        title: title.trim(),
+        content: content.trim(),
+        category,
+        usage_count: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      debug("Template saved successfully:", newTemplate.id);
+
+      res.status(201).json({
+        success: true,
+        message: "Reply template saved successfully",
+        data: newTemplate,
+      });
+    } catch (error) {
+      debug("Error saving reply template:", error.message);
+      res.status(500).json({
+        success: false,
+        message: "Failed to save reply template",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
    * Sync questions from platforms
    */
   async syncQuestions(req, res) {

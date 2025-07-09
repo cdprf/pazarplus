@@ -4,7 +4,7 @@
  */
 
 import React, { memo, useCallback } from "react";
-import { Badge } from "../ui/Badge";
+import { Badge } from "../ui";
 import OrderItems from "./OrderItems";
 import OrderActions from "./OrderActions";
 import {

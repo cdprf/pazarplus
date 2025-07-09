@@ -11,10 +11,7 @@ import {
   CheckCircle,
   Clock,
 } from "lucide-react";
-import { Button } from "./ui/Button";
-import { Modal } from "./ui/Modal";
-import { Badge } from "./ui/Badge";
-import { Card, CardContent } from "./ui/Card";
+import { Button, Modal, Badge, Card, CardContent } from "./ui";
 import { useAlert } from "../contexts/AlertContext";
 
 /**
