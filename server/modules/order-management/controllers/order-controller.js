@@ -162,8 +162,8 @@ async function getAllOrders(req, res) {
       console.log("🔍 [OrderController] Search term received:", search.trim());
       const searchTerm = search.trim();
 
-      // Enhanced search including product fields
-      where[Op.or] = [
+      // Start with basic search conditions that always work
+      const basicSearchConditions = [
         // Order ID fields - search all possible order identifier fields
         { externalOrderId: { [Op.iLike]: `%${searchTerm}%` } },
         { orderNumber: { [Op.iLike]: `%${searchTerm}%` } },
@@ -172,20 +172,30 @@ async function getAllOrders(req, res) {
         // Customer fields
         { customerName: { [Op.iLike]: `%${searchTerm}%` } },
         { customerEmail: { [Op.iLike]: `%${searchTerm}%` } },
-        // Search in OrderItems - direct fields
-        { "$items.title$": { [Op.iLike]: `%${searchTerm}%` } },
-        { "$items.sku$": { [Op.iLike]: `%${searchTerm}%` } },
-        { "$items.barcode$": { [Op.iLike]: `%${searchTerm}%` } },
-        // Search in linked Products
-        { "$items.product.name$": { [Op.iLike]: `%${searchTerm}%` } },
-        { "$items.product.sku$": { [Op.iLike]: `%${searchTerm}%` } },
-        { "$items.product.barcode$": { [Op.iLike]: `%${searchTerm}%` } },
       ];
 
-      console.log(
-        "🔍 [OrderController] Enhanced search where clause:",
-        where[Op.or]
-      );
+      // Try to add product search conditions if possible
+      try {
+        const productSearchConditions = [
+          // Search in OrderItems - direct fields
+          { "$items.title$": { [Op.iLike]: `%${searchTerm}%` } },
+          { "$items.sku$": { [Op.iLike]: `%${searchTerm}%` } },
+          { "$items.barcode$": { [Op.iLike]: `%${searchTerm}%` } },
+          // Search in linked Products
+          { "$items.product.name$": { [Op.iLike]: `%${searchTerm}%` } },
+          { "$items.product.sku$": { [Op.iLike]: `%${searchTerm}%` } },
+          { "$items.product.barcode$": { [Op.iLike]: `%${searchTerm}%` } },
+        ];
+        
+        where[Op.or] = [...basicSearchConditions, ...productSearchConditions];
+        console.log("🔍 [OrderController] Enhanced search with product fields");
+      } catch (error) {
+        // Fallback to basic search if product search fails
+        where[Op.or] = basicSearchConditions;
+        console.log("🔍 [OrderController] Fallback to basic search due to error:", error.message);
+      }
+
+      console.log("🔍 [OrderController] Search conditions count:", where[Op.or].length);
     }
 
     // Apply date range filter if provided

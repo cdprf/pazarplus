@@ -1,4 +1,10 @@
-const Redis = require("redis");
+let Redis;
+try {
+  Redis = require("redis");
+} catch (error) {
+  console.warn("Redis module not available, using in-memory cache only");
+  Redis = null;
+}
 const logger = require("../utils/logger");
 
 /**
@@ -16,10 +22,17 @@ class CacheService {
     this.maxConnectionAttempts = 3;
     this.lastConnectionAttempt = 0;
     this.reconnectInterval = 30000; // 30 seconds between attempts
+    this.useRedis = Redis !== null;
   }
 
   async connect() {
     const now = Date.now();
+
+    // If Redis module is not available, skip connection
+    if (!this.useRedis) {
+      logger.warn("Redis module not available, using in-memory cache only");
+      return false;
+    }
 
     // Don't attempt connection if we've reached max attempts and haven't waited long enough
     if (
