@@ -793,6 +793,7 @@ const OrderManagement = React.memo(() => {
 
   const handleSearch = useCallback((value) => {
     console.log("🔍 [OrderManagement] handleSearch called with:", `"${value}"`);
+    alert(`Search triggered with: "${value}"`); // Temporary debug alert
     setSearchTerm(value);
     setCurrentPage(1);
   }, []);
