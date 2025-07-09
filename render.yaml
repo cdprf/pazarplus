@@ -5,7 +5,7 @@ services:
     runtime: node
     region: oregon
     plan: starter
-    buildCommand: chmod +x pre-install.sh && ./pre-install.sh && cd server && npm install
+    buildCommand: cd server && npm ci
     startCommand: cd server && npm start
     healthCheckPath: /health
     envVars:

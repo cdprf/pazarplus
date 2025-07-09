@@ -161,34 +161,20 @@ async function getAllOrders(req, res) {
     if (search && search.trim()) {
       console.log("🔍 [OrderController] Search term received:", search.trim());
       const searchTerm = search.trim();
+      
+      // First try a simple search on customer fields only (more reliable)
       where[Op.or] = [
-        // Order ID fields - search all possible order identifier fields with null checks
-        { externalOrderId: { [Op.and]: [{ [Op.ne]: null }, { [Op.iLike]: `%${searchTerm}%` }] } },
-        { orderNumber: { [Op.and]: [{ [Op.ne]: null }, { [Op.iLike]: `%${searchTerm}%` }] } },
-        { platformOrderId: { [Op.and]: [{ [Op.ne]: null }, { [Op.iLike]: `%${searchTerm}%` }] } },
-        { platformId: { [Op.and]: [{ [Op.ne]: null }, { [Op.iLike]: `%${searchTerm}%` }] } },
+        // Order ID fields - search all possible order identifier fields
+        { externalOrderId: { [Op.iLike]: `%${searchTerm}%` } },
+        { orderNumber: { [Op.iLike]: `%${searchTerm}%` } },
+        { platformOrderId: { [Op.iLike]: `%${searchTerm}%` } },
+        { platformId: { [Op.iLike]: `%${searchTerm}%` } },
         // Customer fields
-        { customerName: { [Op.and]: [{ [Op.ne]: null }, { [Op.iLike]: `%${searchTerm}%` }] } },
-        { customerEmail: { [Op.and]: [{ [Op.ne]: null }, { [Op.iLike]: `%${searchTerm}%` }] } },
-        // Search in OrderItems
-        {
-          "$items.title$": { [Op.iLike]: `%${searchTerm}%` }
-        },
-        {
-          "$items.sku$": { [Op.iLike]: `%${searchTerm}%` }
-        },
-        // Search in linked Products
-        {
-          "$items.product.name$": { [Op.iLike]: `%${searchTerm}%` }
-        },
-        {
-          "$items.product.sku$": { [Op.iLike]: `%${searchTerm}%` }
-        },
-        {
-          "$items.product.barcode$": { [Op.iLike]: `%${searchTerm}%` }
-        }
+        { customerName: { [Op.iLike]: `%${searchTerm}%` } },
+        { customerEmail: { [Op.iLike]: `%${searchTerm}%` } },
       ];
-      console.log("🔍 [OrderController] Enhanced search where clause:", where[Op.or]);
+      
+      console.log("🔍 [OrderController] Basic search where clause:", where[Op.or]);
     }
 
     // Apply date range filter if provided
