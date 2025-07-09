@@ -5,7 +5,7 @@ services:
     runtime: node
     region: oregon
     plan: starter
-    buildCommand: cd server && npm install
+    buildCommand: chmod +x pre-install.sh && ./pre-install.sh && cd server && npm install
     startCommand: cd server && npm start
     healthCheckPath: /health
     envVars:
@@ -17,7 +17,6 @@ services:
         value: 0.0.0.0
       - key: DISABLE_BACKGROUND_JOBS
         value: "true"
-
 # Note: For the frontend, create a separate Static Site service in Render dashboard
 # Build Command: cd client && npm install && npm run build
 # Publish Directory: client/build

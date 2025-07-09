@@ -3,7 +3,11 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const logger = require("./utils/logger");
+
+// Use simple logger in production to avoid winston-daily-rotate-file issues
+const logger = process.env.NODE_ENV === "production" 
+  ? require("./utils/logger-simple")
+  : require("./utils/logger");
 
 // Load configuration
 const config = require("./config/config");

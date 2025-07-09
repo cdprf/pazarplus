@@ -1,18 +1,40 @@
 const winston = require("winston");
-const DailyRotateFile = require("winston-daily-rotate-file");
 const path = require("path");
 const fs = require("fs");
+
+// Try to load winston-daily-rotate-file, fall back to basic file transport if not available
+let DailyRotateFile;
+let useDailyRotate = true;
+try {
+  DailyRotateFile = require("winston-daily-rotate-file");
+} catch (error) {
+  console.warn("winston-daily-rotate-file not available, using basic file transport");
+  useDailyRotate = false;
+}
 
 // Load environment configuration
 require("dotenv").config();
 
-// Create logs directory if it doesn't exist
+// Create logs directory if it doesn't exist (skip in production to avoid permission issues)
 const logsDir = path.resolve(
   __dirname,
   process.env.LOG_FILE_PATH || "../../logs"
 );
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
+
+// Only create logs directory in development or if we have write permissions
+let canWriteLogs = true;
+if (process.env.NODE_ENV !== "production") {
+  try {
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+  } catch (error) {
+    console.warn("Cannot create logs directory, file logging disabled:", error.message);
+    canWriteLogs = false;
+  }
+} else {
+  // In production, disable file logging to avoid permission issues
+  canWriteLogs = false;
 }
 
 // Define the custom format for structured logging
@@ -66,18 +88,36 @@ const createFileTransport = (
   maxSize = null,
   maxFiles = null
 ) => {
-  return new DailyRotateFile({
-    filename: path.join(logsDir, `${filename}-%DATE%.log`),
-    datePattern: "YYYY-MM-DD",
-    level: level,
-    maxSize: maxSize || process.env.LOG_MAX_SIZE || "20m",
-    maxFiles: maxFiles || process.env.LOG_MAX_FILES || "14d",
-    format: winston.format.combine(
-      winston.format.timestamp(),
-      winston.format.json()
-    ),
-    auditFile: path.join(logsDir, `.${filename}-audit.json`),
-  });
+  if (!canWriteLogs) {
+    return null; // Return null if we can't write logs
+  }
+
+  if (useDailyRotate && DailyRotateFile) {
+    return new DailyRotateFile({
+      filename: path.join(logsDir, `${filename}-%DATE%.log`),
+      datePattern: "YYYY-MM-DD",
+      level: level,
+      maxSize: maxSize || process.env.LOG_MAX_SIZE || "20m",
+      maxFiles: maxFiles || process.env.LOG_MAX_FILES || "14d",
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json()
+      ),
+      auditFile: path.join(logsDir, `.${filename}-audit.json`),
+    });
+  } else {
+    // Fallback to basic file transport
+    return new winston.transports.File({
+      filename: path.join(logsDir, `${filename}.log`),
+      level: level,
+      maxsize: 20971520, // 20MB
+      maxFiles: 5,
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json()
+      ),
+    });
+  }
 };
 
 // Create the logger instance with enhanced configuration
@@ -110,14 +150,25 @@ const logger = winston.createLogger({
             handleRejections: false, // Prevent rejection loops
           }),
         ]
-      : []),
-  ],
+      : [
+          // In production, always include console transport for Render logs
+          new winston.transports.Console({
+            format: winston.format.combine(
+              winston.format.timestamp(),
+              winston.format.json()
+            ),
+            level: "info",
+            handleExceptions: false,
+            handleRejections: false,
+          }),
+        ]),
+  ].filter(Boolean), // Filter out null transports
 
   // Handle uncaught exceptions and unhandled rejections
   // NOTE: Removed console transport from exception handlers to prevent EPIPE loops
-  exceptionHandlers: [createFileTransport("exceptions")],
+  exceptionHandlers: [createFileTransport("exceptions")].filter(Boolean),
 
-  rejectionHandlers: [createFileTransport("rejections")],
+  rejectionHandlers: [createFileTransport("rejections")].filter(Boolean),
 
   exitOnError: false,
 });
