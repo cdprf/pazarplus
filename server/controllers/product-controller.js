@@ -6,6 +6,7 @@ const {
   PlatformVariant,
   PlatformTemplate,
   CustomerQuestion,
+  User,
   sequelize,
 } = require("../models");
 const logger = require("../utils/logger");
@@ -5345,6 +5346,296 @@ class ProductController {
       res.status(500).json({
         success: false,
         message: "Failed to mark as main product",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Export products to CSV or JSON format
+   */
+  async exportProducts(req, res) {
+    try {
+      const {
+        category,
+        status,
+        stockStatus,
+        minPrice,
+        maxPrice,
+        minStock,
+        maxStock,
+        platform = "all",
+        format = "csv",
+        productIds,
+        columns,
+        exportType = "all",
+      } = req.query;
+
+      const userId = req.user.id;
+
+      // Build filter conditions
+      const whereConditions = { userId };
+
+      // Handle productIds filter if provided
+      if (productIds) {
+        try {
+          // Handle both string and array formats
+          let parsedIds;
+          if (typeof productIds === "string") {
+            // Try to parse as JSON array if it's a string
+            try {
+              parsedIds = JSON.parse(productIds);
+            } catch (e) {
+              // If not valid JSON, split by comma
+              parsedIds = productIds.split(",");
+            }
+          } else {
+            parsedIds = productIds;
+          }
+
+          if (Array.isArray(parsedIds) && parsedIds.length > 0) {
+            whereConditions.id = { [Op.in]: parsedIds };
+          }
+        } catch (error) {
+          logger.warn("Error parsing productIds for export", {
+            error: error.message,
+          });
+          // Continue without the productIds filter if parsing fails
+        }
+      }
+
+      // Apply filters - strict checking to avoid empty strings
+      if (category && category.trim() !== "") {
+        whereConditions.category = category.trim();
+      }
+
+      if (status && status.trim() !== "") {
+        whereConditions.status = status.trim();
+      }
+
+      // Handle price filters
+      if (
+        (minPrice && minPrice.trim() !== "") ||
+        (maxPrice && maxPrice.trim() !== "")
+      ) {
+        whereConditions.price = {};
+        if (minPrice && minPrice.trim() !== "") {
+          whereConditions.price[Op.gte] = parseFloat(minPrice);
+        }
+        if (maxPrice && maxPrice.trim() !== "") {
+          whereConditions.price[Op.lte] = parseFloat(maxPrice);
+        }
+      }
+
+      // Handle stock filters
+      if (
+        (minStock && minStock.trim() !== "") ||
+        (maxStock && maxStock.trim() !== "")
+      ) {
+        whereConditions.stockQuantity = {};
+        if (minStock && minStock.trim() !== "") {
+          whereConditions.stockQuantity[Op.gte] = parseInt(minStock);
+        }
+        if (maxStock && maxStock.trim() !== "") {
+          whereConditions.stockQuantity[Op.lte] = parseInt(maxStock);
+        }
+      }
+
+      // Handle stock status filter
+      if (stockStatus && stockStatus.trim() !== "") {
+        switch (stockStatus) {
+          case "in_stock":
+            whereConditions.stockQuantity = { [Op.gt]: 0 };
+            break;
+          case "out_of_stock":
+            whereConditions.stockQuantity = { [Op.eq]: 0 };
+            break;
+          case "low_stock":
+            // Use minStockLevel for low stock comparison
+            whereConditions[Op.and] = [
+              { stockQuantity: { [Op.gt]: 0 } },
+              sequelize.where(sequelize.col("stockQuantity"), {
+                [Op.lte]: sequelize.col("minStockLevel"),
+              }),
+            ];
+            break;
+        }
+      }
+
+      // Handle platform filter (special handling for JSON platforms field)
+      if (platform && platform.trim() !== "" && platform !== "all") {
+        // Need to check if the platform exists in the JSON platforms field
+        whereConditions.platforms = sequelize.literal(
+          `platforms->>'${platform}' IS NOT NULL AND platforms->'${platform}'->>'enabled' = 'true'`
+        );
+      }
+
+      // Fetch products
+      const products = await Product.findAll({
+        where: whereConditions,
+        order: [["createdAt", "DESC"]],
+      });
+
+      if (products.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "No products found matching the criteria",
+        });
+      }
+
+      // Transform products for export
+      const allProductData = products.map((product) => ({
+        id: product.id,
+        name: product.name,
+        sku: product.sku,
+        barcode: product.barcode || "",
+        description: product.description || "",
+        category: product.category || "",
+        price: product.price,
+        costPrice: product.costPrice || "",
+        currency: "TRY", // Default currency
+        stockQuantity: product.stockQuantity,
+        minStockLevel: product.minStockLevel,
+        status: product.status,
+        platforms: JSON.stringify(product.platforms || {}),
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt,
+      }));
+
+      // Filter data based on selected columns
+      let exportData = allProductData;
+      if (columns && columns.trim()) {
+        const selectedColumns = columns.split(",").map((col) => col.trim());
+        exportData = allProductData.map((product) => {
+          const filteredProduct = {};
+          selectedColumns.forEach((col) => {
+            if (product.hasOwnProperty(col)) {
+              filteredProduct[col] = product[col];
+            }
+          });
+          return filteredProduct;
+        });
+      }
+
+      // All available field definitions
+      const allFields = [
+        { label: "ID", value: "id" },
+        { label: "Name", value: "name" },
+        { label: "SKU", value: "sku" },
+        { label: "Barcode", value: "barcode" },
+        { label: "Description", value: "description" },
+        { label: "Category", value: "category" },
+        { label: "Price", value: "price" },
+        { label: "Cost Price", value: "costPrice" },
+        { label: "Currency", value: "currency" },
+        { label: "Stock Quantity", value: "stockQuantity" },
+        { label: "Min Stock Level", value: "minStockLevel" },
+        { label: "Status", value: "status" },
+        { label: "Platforms", value: "platforms" },
+        { label: "Created At", value: "createdAt" },
+        { label: "Updated At", value: "updatedAt" },
+      ];
+
+      // Filter fields based on selected columns
+      let fields = allFields;
+      if (columns && columns.trim()) {
+        const selectedColumns = columns.split(",").map((col) => col.trim());
+        fields = allFields.filter((field) =>
+          selectedColumns.includes(field.value)
+        );
+      }
+
+      // Handle different export formats
+      if (format === "csv") {
+        const { Parser } = require("json2csv");
+        const json2csvParser = new Parser({ fields });
+        const csv = json2csvParser.parse(exportData);
+
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename=products-${
+            new Date().toISOString().split("T")[0]
+          }.csv`
+        );
+        res.send(csv);
+      } else if (format === "xlsx") {
+        // Handle Excel export
+        const ExcelJS = require("exceljs");
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet("Products");
+
+        // Add headers
+        const headers = fields.map((field) => field.label);
+        worksheet.addRow(headers);
+
+        // Style the header row
+        worksheet.getRow(1).font = { bold: true };
+        worksheet.getRow(1).fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFE6E6FA" },
+        };
+
+        // Add data rows
+        exportData.forEach((product) => {
+          const row = fields.map((field) => {
+            const value = product[field.value];
+            // Format dates
+            if (field.value.includes("At") && value) {
+              return new Date(value).toLocaleDateString();
+            }
+            return value;
+          });
+          worksheet.addRow(row);
+        });
+
+        // Auto-fit columns
+        worksheet.columns.forEach((column) => {
+          column.width = Math.max(column.width || 0, 15);
+        });
+
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename=products-${
+            new Date().toISOString().split("T")[0]
+          }.xlsx`
+        );
+
+        await workbook.xlsx.write(res);
+        res.end();
+      } else if (format === "json") {
+        res.setHeader("Content-Type", "application/json");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename=products-${
+            new Date().toISOString().split("T")[0]
+          }.json`
+        );
+        res.json({
+          success: true,
+          message: `Successfully exported ${exportData.length} products`,
+          data: exportData,
+          exported_at: new Date().toISOString(),
+          columns: columns
+            ? columns.split(",")
+            : Object.keys(allProductData[0] || {}),
+        });
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid export format. Supported formats: csv, xlsx, json",
+        });
+      }
+    } catch (error) {
+      logger.error("Error exporting products:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to export products",
         error: error.message,
       });
     }

@@ -126,13 +126,26 @@ const ImportExport = () => {
 
       const response = await api.importExport.exportData(importType, format);
 
+      if (!response.data) {
+        throw new Error("No data received");
+      }
+
       // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
 
+      // Determine appropriate file extension
+      const contentType = response.headers["content-type"];
+      let extension = "csv";
+
+      if (format === "xlsx") {
+        extension = "xlsx";
+      } else if (contentType && contentType.includes("json")) {
+        extension = "json";
+      }
+
       const timestamp = new Date().toISOString().split("T")[0];
-      const extension = format === "xlsx" ? "xlsx" : "csv";
       link.setAttribute(
         "download",
         `${importType}-export-${timestamp}.${extension}`
@@ -147,7 +160,14 @@ const ImportExport = () => {
       showNotification(`${importType} exported successfully`, "success");
     } catch (error) {
       logger.error("Export error:", error);
-      showNotification("Export failed", "error");
+
+      // Provide more specific error information when available
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Export failed. Please check the server logs.";
+
+      showNotification(errorMessage, "error");
     } finally {
       setExporting(false);
     }

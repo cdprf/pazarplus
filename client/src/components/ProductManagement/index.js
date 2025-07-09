@@ -28,6 +28,7 @@ import EnhancedProductAnalytics from "./components/ProductAnalytics";
 import BulkEditModal from "./components/BulkEditModal";
 import SearchPanel from "./components/SearchPanel";
 import PlatformVariantModal from "./components/PlatformVariantModal";
+import ExportModal from "./components/ExportModal";
 import ProductManagementErrorBoundary, {
   ErrorDisplay,
   useErrorHandler,
@@ -547,16 +548,43 @@ const ProductManagement = () => {
 
   const handleBulkExport = useCallback(async () => {
     if (state.selectedProducts.length === 0) return;
+    actions.updateState({ showExportModal: true });
+  }, [state.selectedProducts, actions]);
 
-    try {
-      actions.setBulkState({ exporting: true });
-      await exportProducts({ productIds: state.selectedProducts });
-    } catch (error) {
-      handleError(error, " - Bulk export");
-    } finally {
-      actions.setBulkState({ exporting: false });
-    }
-  }, [state.selectedProducts, exportProducts, actions, handleError]);
+  // Handle export with options from modal
+  const handleExportWithOptions = useCallback(
+    async (exportOptions) => {
+      try {
+        actions.setBulkState({ exporting: true });
+        actions.updateState({ showExportModal: false });
+
+        let filters = { ...state.filters };
+
+        // If exporting selected products
+        if (
+          exportOptions.type === "selected" &&
+          state.selectedProducts.length > 0
+        ) {
+          filters = { productIds: state.selectedProducts };
+        }
+
+        await exportProducts(filters, exportOptions);
+        showAlert("Products exported successfully!", "success");
+      } catch (error) {
+        handleError(error, " - Export products");
+      } finally {
+        actions.setBulkState({ exporting: false });
+      }
+    },
+    [
+      exportProducts,
+      state.filters,
+      state.selectedProducts,
+      actions,
+      handleError,
+      showAlert,
+    ]
+  );
 
   // Import/Export handlers
   const handleImport = useCallback(
@@ -604,15 +632,8 @@ const ProductManagement = () => {
   );
 
   const handleExportAll = useCallback(async () => {
-    try {
-      actions.setBulkState({ exporting: true });
-      await exportProducts(state.filters);
-    } catch (error) {
-      handleError(error, " - Export all");
-    } finally {
-      actions.setBulkState({ exporting: false });
-    }
-  }, [exportProducts, state.filters, actions, handleError]);
+    actions.updateState({ showExportModal: true });
+  }, [actions]);
 
   // Tab change handler
   const handleTabChange = useCallback(
@@ -1223,6 +1244,14 @@ const ProductManagement = () => {
             { id: "2", platform: "hepsiburada" },
             { id: "3", platform: "n11" },
           ]}
+        />
+
+        {/* Export Modal */}
+        <ExportModal
+          isOpen={state.showExportModal}
+          onClose={() => actions.updateState({ showExportModal: false })}
+          onExport={handleExportWithOptions}
+          isExporting={state.exporting}
         />
       </div>
     </ProductManagementErrorBoundary>

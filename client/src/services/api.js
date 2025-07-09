@@ -1049,11 +1049,37 @@ const importExportAPI = {
   // Export data
   exportData: async (type, format = "csv") => {
     try {
+      // Make sure to add proper error handling for export
       const response = await api.get(`/export/${type}?format=${format}`, {
         responseType: "blob",
       });
+
+      // Check if response is valid
+      if (response.status !== 200) {
+        throw new Error(`Export failed with status ${response.status}`);
+      }
+
       return response;
     } catch (error) {
+      // Add logging for better debugging
+      console.error(`Export error for ${type}:`, error);
+
+      // Add better error handling with specific message
+      if (error.response) {
+        // Try to parse error blob to get message
+        try {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const errorData = JSON.parse(reader.result);
+            error.message = errorData.message || `Failed to export ${type}`;
+          };
+          reader.readAsText(error.response.data);
+        } catch (parseError) {
+          // If we can't parse, just use response status
+          error.message = `Export failed with status ${error.response.status}`;
+        }
+      }
+
       throw error;
     }
   },

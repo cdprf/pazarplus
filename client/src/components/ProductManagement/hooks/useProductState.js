@@ -84,6 +84,7 @@ const initialState = {
     currentIndex: 0,
   },
   showBulkEditModal: false,
+  showExportModal: false,
 
   // Other
   recentSearches: [],
@@ -280,6 +281,10 @@ export const useProductState = () => {
     }, []),
 
     updateMultiple: useCallback((updates) => {
+      dispatch({ type: ACTION_TYPES.UPDATE_MULTIPLE, payload: updates });
+    }, []),
+
+    updateState: useCallback((updates) => {
       dispatch({ type: ACTION_TYPES.UPDATE_MULTIPLE, payload: updates });
     }, []),
   };

@@ -4,17 +4,11 @@
     {
       "src": "client/package.json",
       "use": "@vercel/static-build",
-      "config": {
-        "distDir": "build",
-        "buildCommand": "npm install && npm run build"
-      }
+      "config": { "distDir": "build" }
     },
     {
       "src": "api/index.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxDuration": 30
-      }
+      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -23,21 +17,11 @@
       "dest": "/api/index.js"
     },
     {
-      "src": "/static/(.*)",
-      "dest": "/client/build/static/$1"
+      "handle": "filesystem"
     },
     {
-      "src": "/favicon.ico",
-      "dest": "/client/build/favicon.ico"
-    },
-    {
-      "src": "/(.*)",
+      "src": "(.*)",
       "dest": "/client/build/index.html"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production",
-    "DB_TYPE": "postgres"
-  },
-  "regions": ["iad1"]
+  ]
 }

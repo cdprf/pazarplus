@@ -699,4 +699,120 @@ router.put(
  */
 router.get("/model-structure", ProductController.getModelStructure);
 
+/**
+ * @swagger
+ * /api/products/export:
+ *   get:
+ *     summary: Export products to CSV or JSON format
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filter by category
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive, draft]
+ *         description: Filter by status
+ *       - in: query
+ *         name: stockStatus
+ *         schema:
+ *           type: string
+ *           enum: [in_stock, out_of_stock, low_stock]
+ *         description: Filter by stock status
+ *       - in: query
+ *         name: minPrice
+ *         schema:
+ *           type: number
+ *         description: Minimum price filter
+ *       - in: query
+ *         name: maxPrice
+ *         schema:
+ *           type: number
+ *         description: Maximum price filter
+ *       - in: query
+ *         name: minStock
+ *         schema:
+ *           type: number
+ *         description: Minimum stock filter
+ *       - in: query
+ *         name: maxStock
+ *         schema:
+ *           type: number
+ *         description: Maximum stock filter
+ *       - in: query
+ *         name: platform
+ *         schema:
+ *           type: string
+ *           enum: [trendyol, n11, hepsiburada, all]
+ *           default: all
+ *         description: Filter by platform
+ *       - in: query
+ *         name: format
+ *         schema:
+ *           type: string
+ *           enum: [csv, json]
+ *           default: csv
+ *         description: Export format
+ *     responses:
+ *       200:
+ *         description: Successfully exported products
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Invalid export parameters
+ */
+router.get(
+  "/export",
+  [
+    query("category").optional({ checkFalsy: true }).isString(),
+    query("status")
+      .optional({ checkFalsy: true })
+      .isIn(["active", "inactive", "draft"]),
+    query("stockStatus")
+      .optional({ checkFalsy: true })
+      .isIn(["in_stock", "out_of_stock", "low_stock"]),
+    query("minPrice")
+      .optional({ checkFalsy: true })
+      .custom((value) => {
+        if (value === "") return true;
+        return !isNaN(parseFloat(value)) && parseFloat(value) >= 0;
+      }),
+    query("maxPrice")
+      .optional({ checkFalsy: true })
+      .custom((value) => {
+        if (value === "") return true;
+        return !isNaN(parseFloat(value)) && parseFloat(value) >= 0;
+      }),
+    query("minStock")
+      .optional({ checkFalsy: true })
+      .custom((value) => {
+        if (value === "") return true;
+        return Number.isInteger(Number(value)) && Number(value) >= 0;
+      }),
+    query("maxStock")
+      .optional({ checkFalsy: true })
+      .custom((value) => {
+        if (value === "") return true;
+        return Number.isInteger(Number(value)) && Number(value) >= 0;
+      }),
+    query("platform").optional({ checkFalsy: true }).isString(),
+    query("format").optional({ checkFalsy: true }).isIn(["csv", "json"]),
+    // Allow productIds parameter for bulk export
+    query("productIds").optional({ checkFalsy: true }),
+    validationMiddleware,
+  ],
+  ProductController.exportProducts
+);
+
 module.exports = router;

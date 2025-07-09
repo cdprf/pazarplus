@@ -1,6 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const logger = require("../utils/logger");
+const { auth: authMiddleware } = require("../middleware/auth");
+
+// Apply authentication middleware to all routes
+router.use(authMiddleware);
 
 // Export data endpoint
 router.get("/export/:type", async (req, res) => {
@@ -8,7 +12,23 @@ router.get("/export/:type", async (req, res) => {
     const { type } = req.params;
     const { format = "csv" } = req.query;
 
-    logger.info("Export request received", { type, format });
+    logger.info("Export request received", { type, format, query: req.query });
+
+    // If products export is requested, delegate to ProductController
+    if (type === "products") {
+      // Forward to the product controller's exportProducts method
+      try {
+        const ProductController = require("../controllers/product-controller");
+        return await ProductController.exportProducts(req, res);
+      } catch (error) {
+        logger.error("Error in products export delegation:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to export products",
+          error: error.message,
+        });
+      }
+    }
 
     // Mock CSV data for customers
     if (type === "customers") {

@@ -576,13 +576,43 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
 
   // Export products
   const exportProducts = useCallback(
-    async (filters = {}) => {
+    async (filters = {}, exportOptions = {}) => {
       try {
         updateState({ exporting: true });
 
-        const queryParams = new URLSearchParams(filters);
+        // Extract export options
+        const { columns, format = "csv", type = "all" } = exportOptions;
+
+        // Clean up filters by removing empty values to avoid validation issues
+        const cleanedFilters = {};
+        Object.entries(filters).forEach(([key, value]) => {
+          // Only keep non-empty values
+          if (value !== "" && value !== null && value !== undefined) {
+            cleanedFilters[key] = value;
+          }
+        });
+
+        // Handle special case for productIds
+        if (
+          cleanedFilters.productIds &&
+          Array.isArray(cleanedFilters.productIds)
+        ) {
+          // Convert array to comma-separated string to avoid encoding issues
+          cleanedFilters.productIds = cleanedFilters.productIds.join(",");
+        }
+
+        // Add export options to the query params
+        const queryParams = new URLSearchParams(cleanedFilters);
+        queryParams.append("format", format);
+        queryParams.append("exportType", type);
+
+        // Add selected columns if specified
+        if (columns && columns.length > 0) {
+          queryParams.append("columns", columns.join(","));
+        }
+
         const response = await fetch(
-          `${API_BASE_URL}/products/export?${queryParams.toString()}`,
+          `${API_BASE_URL}/import-export/export/products?${queryParams.toString()}`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -595,19 +625,56 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
           const url = window.URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
+
+          // Get content type to determine file extension
+          const contentType = response.headers.get("content-type");
+          const extension =
+            contentType && contentType.includes("json") ? "json" : "csv";
+
           a.download = `products-${
             new Date().toISOString().split("T")[0]
-          }.xlsx`;
+          }.${extension}`;
+
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
           window.URL.revokeObjectURL(url);
 
           showAlert("Ürünler başarıyla dışa aktarıldı", "success");
+        } else {
+          // Handle non-OK responses
+          try {
+            const errorData = await response.json();
+
+            // Check for validation errors
+            if (errorData.errors && errorData.errors.length > 0) {
+              // Create a formatted validation error message
+              const errorFields = errorData.errors
+                .map((err) => `${err.field}: ${err.message}`)
+                .join(", ");
+              showAlert(`Validation error: ${errorFields}`, "error");
+            } else {
+              showAlert(
+                errorData.message ||
+                  "Ürünler dışa aktarılırken bir hata oluştu",
+                "error"
+              );
+            }
+          } catch (parseError) {
+            // If we can't parse JSON, show generic error
+            showAlert("Ürünler dışa aktarılırken bir hata oluştu", "error");
+          }
         }
       } catch (error) {
         handleError(error, " - exportProducts");
-        throw error;
+
+        // Check if error has response data we can use
+        if (error.response && error.response.data) {
+          const errorMsg = error.response.data.message || "Export failed";
+          showAlert(errorMsg, "error");
+        } else {
+          showAlert("Ürünler dışa aktarılırken bir hata oluştu", "error");
+        }
       } finally {
         updateState({ exporting: false });
       }
