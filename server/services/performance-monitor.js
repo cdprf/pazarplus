@@ -424,7 +424,7 @@ class PerformanceMonitor {
   createNoOpMetrics() {
     // Create no-op objects that have the same interface as prometheus metrics
     const noOpMetric = {
-      labels: () => ({ observe: () => {}, inc: () => {}, set: () => {} }),
+      labels: () => noOpMetric, // Return self to allow chaining
       observe: () => {},
       inc: () => {},
       set: () => {},

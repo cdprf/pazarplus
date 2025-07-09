@@ -442,31 +442,76 @@ if (process.env.NODE_ENV === "production") {
   logger.info("Setting up production static file serving");
   // Serve static files from the React app build directory
   const clientBuildPath = path.resolve(__dirname, "..", "client", "build");
-  logger.info(`Serving static files from: ${clientBuildPath}`);
-  app.use(express.static(clientBuildPath));
+  logger.info(`Checking for client build at: ${clientBuildPath}`);
+  
+  // Check if client build exists
+  const fs = require("fs");
+  if (fs.existsSync(clientBuildPath) && fs.existsSync(path.join(clientBuildPath, "index.html"))) {
+    logger.info(`Serving static files from: ${clientBuildPath}`);
+    app.use(express.static(clientBuildPath));
 
-  // For any other request, send back React's index.html file
-  app.get("*", (req, res, next) => {
-    // Skip API and known non-file routes, and WebSocket upgrade paths
-    if (
-      req.path.startsWith("/api") ||
-      req.path === "/health" ||
-      req.path.startsWith("/ws/")
-    ) {
-      return next();
-    }
-
-    logger.debug(`Serving React app for path: ${req.path}`);
-    res.sendFile(path.resolve(clientBuildPath, "index.html"), (err) => {
-      if (err) {
-        logger.error(`Error serving index.html: ${err.message}`, {
-          path: req.path,
-          error: err,
-        });
-        next(err);
+    // For any other request, send back React's index.html file
+    app.get("*", (req, res, next) => {
+      // Skip API and known non-file routes, and WebSocket upgrade paths
+      if (
+        req.path.startsWith("/api") ||
+        req.path === "/health" ||
+        req.path.startsWith("/ws/")
+      ) {
+        return next();
       }
+
+      logger.debug(`Serving React app for path: ${req.path}`);
+      res.sendFile(path.resolve(clientBuildPath, "index.html"), (err) => {
+        if (err) {
+          logger.error(`Error serving index.html: ${err.message}`, {
+            path: req.path,
+            error: err,
+          });
+          next(err);
+        }
+      });
     });
-  });
+  } else {
+    logger.warn("Client build not found, serving API-only mode");
+    
+    // Serve a simple API status page for root requests
+    app.get("/", (req, res) => {
+      res.json({
+        message: "Pazar+ API Server",
+        status: "running",
+        mode: "API-only",
+        version: "1.0.0",
+        timestamp: new Date().toISOString(),
+        endpoints: {
+          health: "/health",
+          api: "/api"
+        }
+      });
+    });
+    
+    // Handle all other non-API routes
+    app.get("*", (req, res, next) => {
+      // Skip API and known routes
+      if (
+        req.path.startsWith("/api") ||
+        req.path === "/health" ||
+        req.path.startsWith("/ws/")
+      ) {
+        return next();
+      }
+      
+      res.status(404).json({
+        error: "Frontend not available",
+        message: "This is an API-only deployment. Frontend is deployed separately.",
+        requested_path: req.path,
+        available_endpoints: {
+          health: "/health",
+          api: "/api"
+        }
+      });
+    });
+  }
 } else {
   logger.debug("Development mode - React dev server handles frontend");
   // In development mode, just serve a simple message for non-API routes

@@ -157,13 +157,38 @@ async function getAllOrders(req, res) {
     }
     if (customerId) where.customerId = customerId;
 
-    // Apply search filter
+    // Apply search filter - handle product search separately due to SQL complexity
+    let productOrderIds = [];
     if (search && search.trim()) {
       console.log("🔍 [OrderController] Search term received:", search.trim());
       const searchTerm = search.trim();
 
-      // Comprehensive search including product fields
-      where[Op.or] = [
+      // Try to find orders by product search first (separate query)
+      try {
+        const orderItemsWithProducts = await OrderItem.findAll({
+          where: {
+            [Op.or]: [
+              { title: { [Op.iLike]: `%${searchTerm}%` } },
+              { sku: { [Op.iLike]: `%${searchTerm}%` } },
+              { barcode: { [Op.iLike]: `%${searchTerm}%` } },
+            ]
+          },
+          attributes: ['orderId'],
+          raw: true
+        });
+
+        // Get unique order IDs from product search
+        productOrderIds = [...new Set(orderItemsWithProducts.map(item => item.orderId).filter(Boolean))];
+        
+        if (productOrderIds.length > 0) {
+          console.log(`🔍 [OrderController] Found ${productOrderIds.length} orders with matching products`);
+        }
+      } catch (productSearchError) {
+        console.log("🔍 [OrderController] Product search failed:", productSearchError.message);
+      }
+
+      // Basic search conditions
+      const searchConditions = [
         // Order ID fields - search all possible order identifier fields
         { externalOrderId: { [Op.iLike]: `%${searchTerm}%` } },
         { orderNumber: { [Op.iLike]: `%${searchTerm}%` } },
@@ -172,17 +197,15 @@ async function getAllOrders(req, res) {
         // Customer fields
         { customerName: { [Op.iLike]: `%${searchTerm}%` } },
         { customerEmail: { [Op.iLike]: `%${searchTerm}%` } },
-        // Search in OrderItems - direct fields
-        { "$items.title$": { [Op.iLike]: `%${searchTerm}%` } },
-        { "$items.sku$": { [Op.iLike]: `%${searchTerm}%` } },
-        { "$items.barcode$": { [Op.iLike]: `%${searchTerm}%` } },
-        // Search in linked Products
-        { "$items.product.name$": { [Op.iLike]: `%${searchTerm}%` } },
-        { "$items.product.sku$": { [Op.iLike]: `%${searchTerm}%` } },
-        { "$items.product.barcode$": { [Op.iLike]: `%${searchTerm}%` } },
       ];
 
-      console.log("🔍 [OrderController] Full search with product fields enabled");
+      // Add order IDs from product search if found
+      if (productOrderIds.length > 0) {
+        searchConditions.push({ id: { [Op.in]: productOrderIds } });
+      }
+
+      where[Op.or] = searchConditions;
+      console.log("🔍 [OrderController] Combined search conditions applied");
     }
 
     // Apply date range filter if provided

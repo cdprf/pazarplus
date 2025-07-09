@@ -26,7 +26,48 @@ const createProductionLogger = () => {
 };
 
 // Export the simple logger
-module.exports = createProductionLogger();
+const logger = createProductionLogger();
+
+// Add custom methods for compatibility
+logger.logRequest = (req, res, responseTime) => {
+  const logData = {
+    method: req.method,
+    url: req.originalUrl,
+    statusCode: res.statusCode,
+    responseTime: `${responseTime}ms`,
+    userAgent: req.get("User-Agent"),
+    ip: req.ip || req.connection.remoteAddress,
+    userId: req.user?.id || null,
+  };
+
+  if (res.statusCode >= 400) {
+    logger.warn("HTTP Request Error", logData);
+  } else {
+    logger.info("HTTP Request", logData);
+  }
+};
+
+logger.logError = (error, context = {}) => {
+  logger.error(error.message, {
+    error: {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+    },
+    context,
+  });
+};
+
+logger.logBusinessEvent = (event, data = {}) => {
+  logger.info(`Business Event: ${event}`, {
+    eventType: "business",
+    event,
+    ...data,
+  });
+};
+
+module.exports = logger;
 
 // Add initialization log
 module.exports.info("Simple production logger initialized", {

@@ -221,16 +221,27 @@ class BackgroundTaskService {
   static async getQueuedTasks(options = {}) {
     logger.debug("Getting queued tasks", { options });
 
-    const tasks = await BackgroundTask.getQueuedTasks(options);
+    try {
+      const tasks = await BackgroundTask.getQueuedTasks(options);
 
-    logger.info("Retrieved queued tasks", {
-      count: tasks.length,
-      taskIds: tasks.map((t) => t.id),
-      taskTypes: tasks.map((t) => t.taskType),
-      priorities: tasks.map((t) => t.priority),
-    });
+      logger.info("Retrieved queued tasks", {
+        count: tasks.length,
+        taskIds: tasks.map((t) => t.id),
+        taskTypes: tasks.map((t) => t.taskType),
+        priorities: tasks.map((t) => t.priority),
+      });
 
-    return tasks;
+      return tasks;
+    } catch (error) {
+      // Handle specific database errors gracefully
+      if (error.name === 'SequelizeDatabaseError' && error.original?.code === '42P01') {
+        logger.warn("Background tasks table not yet created, returning empty task list");
+        return [];
+      }
+      
+      logger.error("Error getting queued tasks:", error);
+      return [];
+    }
   }
 
   /**

@@ -32,6 +32,7 @@ const sequelize = require("./config/database");
 const config = require("./config/config");
 const ProductLinkingJobService = require("./services/product-linking-job-service");
 const backgroundServicesManager = require("./services/background-services-manager");
+const SequelizeMigrationRunner = require("./services/sequelize-migration-runner");
 
 // Initialize stability manager
 const stabilityManager = new ServerStabilityManager();
@@ -88,6 +89,48 @@ async function startServer() {
       logger.info("Database connection established successfully", {
         service: "pazar-plus",
       });
+
+      // Run database migrations to create all tables
+      logger.info("Running database migrations...", { service: "pazar-plus" });
+      
+      try {
+        const migrationRunner = new SequelizeMigrationRunner(sequelize);
+        
+        // First try to run the comprehensive migration if it exists
+        const comprehensiveResult = await migrationRunner.runComprehensiveMigration();
+        
+        // Then run any remaining pending migrations
+        const migrationResult = await migrationRunner.runMigrations();
+        
+        if (migrationResult) {
+          logger.info("Database migrations completed successfully", {
+            service: "pazar-plus",
+            comprehensive: comprehensiveResult ? "executed" : "not needed"
+          });
+        } else {
+          logger.warn("Database migrations failed, continuing without database", {
+            service: "pazar-plus",
+          });
+        }
+      } catch (migrationError) {
+        logger.error("Migration runner failed, falling back to table sync", {
+          service: "pazar-plus",
+          error: migrationError.message
+        });
+        
+        // Fallback: try basic table sync if migrations fail
+        try {
+          await sequelize.sync({ alter: false });
+          logger.info("Basic database sync completed as fallback", {
+            service: "pazar-plus"
+          });
+        } catch (syncError) {
+          logger.warn("Database sync also failed, continuing without database", {
+            service: "pazar-plus",
+            error: syncError.message
+          });
+        }
+      }
     } catch (error) {
       if (process.env.NODE_ENV === "production") {
         logger.warn("Database connection failed, continuing without database", {
