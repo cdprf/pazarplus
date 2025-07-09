@@ -40,7 +40,7 @@ import { Card, CardContent } from "../ui/Card";
 import { Badge } from "../ui/Badge";
 import { Modal } from "../ui/Modal";
 import CancelOrderDialog from "../dialogs/CancelOrderDialog";
-import NetworkDebugger from "../NetworkDebugger";
+// import NetworkDebugger from "../NetworkDebugger";
 
 const OrderManagement = React.memo(() => {
   const navigate = useNavigate();
@@ -1274,7 +1274,7 @@ const OrderManagement = React.memo(() => {
     <div className="min-h-screen bg-gray-50">
       {/* Temporary Network Debugger */}
       {/* Network Debugger - conditionally rendered based on developer settings */}
-      <NetworkDebugger />
+      {/* <NetworkDebugger /> */}
 
       {/* Header Section */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">

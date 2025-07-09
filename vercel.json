@@ -27,14 +27,17 @@
       "dest": "/client/build/static/$1"
     },
     {
+      "src": "/favicon.ico",
+      "dest": "/client/build/favicon.ico"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/client/build/$1"
+      "dest": "/client/build/index.html"
     }
   ],
   "env": {
     "NODE_ENV": "production",
     "DB_TYPE": "postgres"
   },
-  "regions": ["iad1"],
-  "outputDirectory": "client/build"
+  "regions": ["iad1"]
 }

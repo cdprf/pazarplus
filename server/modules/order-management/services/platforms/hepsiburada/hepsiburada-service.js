@@ -1693,12 +1693,45 @@ class HepsiburadaService extends BasePlatformService {
                     // Strategy 3: Find by title/product name if other strategies failed
                     if (
                       !existingOrderItem &&
-                      (item.productName || item.name || item.title)
+                      (item.productName ||
+                        item.name ||
+                        item.title ||
+                        item.itemName ||
+                        item.displayName ||
+                        item.product_name ||
+                        item.item_name ||
+                        item.display_name ||
+                        item.baslik ||
+                        item.urun_adi ||
+                        item.urunAdi ||
+                        item.urun_baslik ||
+                        item.urunBaslik ||
+                        item.product?.name ||
+                        item.product?.title ||
+                        item.listing?.displayName ||
+                        item.listing?.title)
                     ) {
                       existingOrderItem = await OrderItem.findOne({
                         where: {
                           orderId: existingOrder.id,
-                          title: item.productName || item.name || item.title,
+                          title:
+                            item.productName ||
+                            item.name ||
+                            item.title ||
+                            item.itemName ||
+                            item.displayName ||
+                            item.product_name ||
+                            item.item_name ||
+                            item.display_name ||
+                            item.baslik ||
+                            item.urun_adi ||
+                            item.urunAdi ||
+                            item.urun_baslik ||
+                            item.urunBaslik ||
+                            item.product?.name ||
+                            item.product?.title ||
+                            item.listing?.displayName ||
+                            item.listing?.title,
                         },
                       });
                     }
@@ -1721,12 +1754,59 @@ class HepsiburadaService extends BasePlatformService {
 
                       // Only update fields if new data is available and different
                       if (
-                        (item.productName || item.name || item.title) &&
-                        (item.productName || item.name || item.title) !==
-                          existingOrderItem.title
+                        (item.productName ||
+                          item.name ||
+                          item.title ||
+                          item.itemName ||
+                          item.displayName ||
+                          item.product_name ||
+                          item.item_name ||
+                          item.display_name ||
+                          item.baslik ||
+                          item.urun_adi ||
+                          item.urunAdi ||
+                          item.urun_baslik ||
+                          item.urunBaslik ||
+                          item.product?.name ||
+                          item.product?.title ||
+                          item.listing?.displayName ||
+                          item.listing?.title) &&
+                        (item.productName ||
+                          item.name ||
+                          item.title ||
+                          item.itemName ||
+                          item.displayName ||
+                          item.product_name ||
+                          item.item_name ||
+                          item.display_name ||
+                          item.baslik ||
+                          item.urun_adi ||
+                          item.urunAdi ||
+                          item.urun_baslik ||
+                          item.urunBaslik ||
+                          item.product?.name ||
+                          item.product?.title ||
+                          item.listing?.displayName ||
+                          item.listing?.title) !== existingOrderItem.title
                       ) {
                         updateData.title =
-                          item.productName || item.name || item.title;
+                          item.productName ||
+                          item.name ||
+                          item.title ||
+                          item.itemName ||
+                          item.displayName ||
+                          item.product_name ||
+                          item.item_name ||
+                          item.display_name ||
+                          item.baslik ||
+                          item.urun_adi ||
+                          item.urunAdi ||
+                          item.urun_baslik ||
+                          item.urunBaslik ||
+                          item.product?.name ||
+                          item.product?.title ||
+                          item.listing?.displayName ||
+                          item.listing?.title;
                       }
 
                       if (
@@ -1794,7 +1874,23 @@ class HepsiburadaService extends BasePlatformService {
                                   (item.merchantSKU || item.sku)
                                 ? "sku"
                                 : existingOrderItem.title ===
-                                  (item.productName || item.name || item.title)
+                                  (item.productName ||
+                                    item.name ||
+                                    item.title ||
+                                    item.itemName ||
+                                    item.displayName ||
+                                    item.product_name ||
+                                    item.item_name ||
+                                    item.display_name ||
+                                    item.baslik ||
+                                    item.urun_adi ||
+                                    item.urunAdi ||
+                                    item.urun_baslik ||
+                                    item.urunBaslik ||
+                                    item.product?.name ||
+                                    item.product?.title ||
+                                    item.listing?.displayName ||
+                                    item.listing?.title)
                                 ? "title"
                                 : "index",
                           }
@@ -1817,7 +1913,24 @@ class HepsiburadaService extends BasePlatformService {
                           itemData: {
                             platformProductId: itemPlatformProductId,
                             sku: item.merchantSKU || item.sku,
-                            title: item.productName || item.name || item.title,
+                            title:
+                              item.productName ||
+                              item.name ||
+                              item.title ||
+                              item.itemName ||
+                              item.displayName ||
+                              item.product_name ||
+                              item.item_name ||
+                              item.display_name ||
+                              item.baslik ||
+                              item.urun_adi ||
+                              item.urunAdi ||
+                              item.urun_baslik ||
+                              item.urunBaslik ||
+                              item.product?.name ||
+                              item.product?.title ||
+                              item.listing?.displayName ||
+                              item.listing?.title,
                           },
                         }
                       );
@@ -2084,6 +2197,20 @@ class HepsiburadaService extends BasePlatformService {
                       item.productName ||
                       item.name ||
                       item.title ||
+                      item.itemName ||
+                      item.displayName ||
+                      item.product_name ||
+                      item.item_name ||
+                      item.display_name ||
+                      item.baslik ||
+                      item.urun_adi ||
+                      item.urunAdi ||
+                      item.urun_baslik ||
+                      item.urunBaslik ||
+                      item.product?.name ||
+                      item.product?.title ||
+                      item.listing?.displayName ||
+                      item.listing?.title ||
                       "Unknown Product",
                     sku: item.merchantSKU || item.sku || "",
                     quantity: quantity,
@@ -2121,7 +2248,25 @@ class HepsiburadaService extends BasePlatformService {
                     platformProductId:
                       item.productBarcode || item.merchantSku || "",
                     productId: null, // Will be set by product linking
-                    title: item.productName || item.title || "Unknown Product",
+                    title:
+                      item.productName ||
+                      item.name ||
+                      item.title ||
+                      item.itemName ||
+                      item.displayName ||
+                      item.product_name ||
+                      item.item_name ||
+                      item.display_name ||
+                      item.baslik ||
+                      item.urun_adi ||
+                      item.urunAdi ||
+                      item.urun_baslik ||
+                      item.urunBaslik ||
+                      item.product?.name ||
+                      item.product?.title ||
+                      item.listing?.displayName ||
+                      item.listing?.title ||
+                      "Unknown Product",
                     sku: item.merchantSku || item.sku || "",
                     quantity: quantity,
                     price: unitPrice,
@@ -2479,7 +2624,15 @@ class HepsiburadaService extends BasePlatformService {
    */
   mapOrderStatus(hepsiburadaStatus) {
     // Use the shared utility with Hepsiburada-specific mappings
-    return mapOrderStatus(hepsiburadaStatus, "hepsiburada");
+    const mappedStatus = mapOrderStatus(hepsiburadaStatus, "hepsiburada");
+
+    // For Hepsiburada, pending orders should be treated as processing
+    // This is a business requirement for Hepsiburada platform
+    if (mappedStatus === "pending") {
+      return "processing";
+    }
+
+    return mappedStatus;
   }
 
   /**
@@ -3077,7 +3230,7 @@ class HepsiburadaService extends BasePlatformService {
           {
             model: OrderItem,
             as: "items",
-            attributes: ["id", "externalItemId", "productSku", "quantity"],
+            attributes: ["id", "platformProductId", "sku", "quantity"],
           },
         ],
       });
@@ -3186,7 +3339,7 @@ class HepsiburadaService extends BasePlatformService {
           {
             model: OrderItem,
             as: "items",
-            attributes: ["id", "externalItemId", "productSku", "quantity"],
+            attributes: ["id", "platformProductId", "sku", "quantity"],
           },
         ],
       });
@@ -3248,11 +3401,11 @@ class HepsiburadaService extends BasePlatformService {
 
       // Get order item IDs for package creation
       const orderItemIds = order.items
-        .filter((item) => item.externalItemId)
-        .map((item) => item.externalItemId);
+        .filter((item) => item.platformProductId)
+        .map((item) => item.platformProductId);
 
       if (orderItemIds.length === 0) {
-        throw new Error("No valid external item IDs found for packaging");
+        throw new Error("No valid platform product IDs found for packaging");
       }
 
       // Default shipping info for acceptance

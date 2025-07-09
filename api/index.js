@@ -1,4 +1,5 @@
-require("dotenv").config({ path: "../.env.unified" });
+// Don't configure dotenv here - let the server handle it
+// require("dotenv").config({ path: "../.env.unified" });
 
 // Import the main app from server directory
 const { app } = require("../server/app");
