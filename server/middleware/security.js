@@ -1,5 +1,12 @@
 const rateLimit = require("express-rate-limit");
-const slowDown = require("express-slow-down");
+let slowDown;
+try {
+  slowDown = require("express-slow-down");
+} catch (error) {
+  console.warn("express-slow-down not available, using rate limit only");
+  // Create a fallback that just returns a pass-through middleware
+  slowDown = () => (req, res, next) => next();
+}
 const helmet = require("helmet");
 const cacheService = require("../services/cache-service");
 const logger = require("../utils/logger");
