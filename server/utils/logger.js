@@ -1,13 +1,22 @@
 const winston = require("winston");
-const DailyRotateFile = require("winston-daily-rotate-file");
 const path = require("path");
 const fs = require("fs");
 
+// Try to load winston-daily-rotate-file, use basic file transport if not available
+let DailyRotateFile;
+let useDailyRotate = true;
+
+try {
+  DailyRotateFile = require("winston-daily-rotate-file");
+} catch (error) {
+  console.warn(
+    "winston-daily-rotate-file not available, using basic file transport"
+  );
+  useDailyRotate = false;
+}
+
 // Load environment configuration
 require("dotenv").config();
-
-// Flag to indicate we're using daily rotate (since we're requiring it directly)
-const useDailyRotate = true;
 
 // Create logs directory if it doesn't exist (skip in production to avoid permission issues)
 const logsDir = path.resolve(
