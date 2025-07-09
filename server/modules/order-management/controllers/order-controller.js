@@ -63,6 +63,10 @@ function safeSerialize(data) {
 // Controller functions
 async function getAllOrders(req, res) {
   try {
+    console.log("🔍 [OrderController] getAllOrders API called");
+    console.log("🔍 [OrderController] Query params:", req.query);
+    console.log("🔍 [OrderController] User ID:", req.user?.id);
+    
     const { id: userId } = req.user;
     const {
       page = 1,
@@ -156,17 +160,35 @@ async function getAllOrders(req, res) {
     // Apply search filter
     if (search && search.trim()) {
       console.log("🔍 [OrderController] Search term received:", search.trim());
+      const searchTerm = search.trim();
       where[Op.or] = [
-        // Order ID fields - search all possible order identifier fields
-        { externalOrderId: { [Op.iLike]: `%${search.trim()}%` } },
-        { orderNumber: { [Op.iLike]: `%${search.trim()}%` } },
-        { platformOrderId: { [Op.iLike]: `%${search.trim()}%` } },
-        { platformId: { [Op.iLike]: `%${search.trim()}%` } },
+        // Order ID fields - search all possible order identifier fields with null checks
+        { externalOrderId: { [Op.and]: [{ [Op.ne]: null }, { [Op.iLike]: `%${searchTerm}%` }] } },
+        { orderNumber: { [Op.and]: [{ [Op.ne]: null }, { [Op.iLike]: `%${searchTerm}%` }] } },
+        { platformOrderId: { [Op.and]: [{ [Op.ne]: null }, { [Op.iLike]: `%${searchTerm}%` }] } },
+        { platformId: { [Op.and]: [{ [Op.ne]: null }, { [Op.iLike]: `%${searchTerm}%` }] } },
         // Customer fields
-        { customerName: { [Op.iLike]: `%${search.trim()}%` } },
-        { customerEmail: { [Op.iLike]: `%${search.trim()}%` } },
+        { customerName: { [Op.and]: [{ [Op.ne]: null }, { [Op.iLike]: `%${searchTerm}%` }] } },
+        { customerEmail: { [Op.and]: [{ [Op.ne]: null }, { [Op.iLike]: `%${searchTerm}%` }] } },
+        // Search in OrderItems
+        {
+          "$items.title$": { [Op.iLike]: `%${searchTerm}%` }
+        },
+        {
+          "$items.sku$": { [Op.iLike]: `%${searchTerm}%` }
+        },
+        // Search in linked Products
+        {
+          "$items.product.name$": { [Op.iLike]: `%${searchTerm}%` }
+        },
+        {
+          "$items.product.sku$": { [Op.iLike]: `%${searchTerm}%` }
+        },
+        {
+          "$items.product.barcode$": { [Op.iLike]: `%${searchTerm}%` }
+        }
       ];
-      console.log("🔍 [OrderController] Search where clause:", where[Op.or]);
+      console.log("🔍 [OrderController] Enhanced search where clause:", where[Op.or]);
     }
 
     // Apply date range filter if provided

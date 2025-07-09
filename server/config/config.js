@@ -3,11 +3,12 @@ require("dotenv").config();
 const config = {
   // Server configuration
   server: {
-    port: process.env.PORT || 10000, // Render default port is 10000
+    port: process.env.PORT || 10000, // Render uses PORT environment variable
     env: process.env.NODE_ENV || "development",
     apiUrl:
       process.env.API_URL || `http://localhost:${process.env.PORT || 10000}`,
     clientUrl: process.env.CLIENT_URL || "http://localhost:3000",
+    host: process.env.HOST || "0.0.0.0", // Bind to all interfaces for Render
   },
 
   // Database configuration (PostgreSQL only)

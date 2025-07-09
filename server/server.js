@@ -3,16 +3,22 @@ require("dotenv").config({ path: "../.env.unified" });
 // Import auto network configuration
 const AutoNetworkConfig = require("./utils/auto-network-config");
 
-// Initialize auto network configuration
-const autoNetworkConfig = new AutoNetworkConfig();
-const detectedIP = autoNetworkConfig.initialize();
+// For production environments like Render, disable auto network config
+const isProduction = process.env.NODE_ENV === "production";
+let detectedIP = null;
+
+if (!isProduction) {
+  // Initialize auto network configuration only in development
+  const autoNetworkConfig = new AutoNetworkConfig();
+  detectedIP = autoNetworkConfig.initialize();
+}
 
 // Import network detection utility (legacy)
 const { setNetworkEnvironment } = require("./utils/networkDetection");
 const ServerStabilityManager = require("./utils/serverStabilityManager");
 
 // Set network environment variables for proper URL generation
-const networkIP = setNetworkEnvironment();
+const networkIP = isProduction ? "0.0.0.0" : setNetworkEnvironment();
 
 const { app, initializeWebSocketServer } = require("./app");
 const logger = require("./utils/logger");
@@ -66,10 +72,21 @@ async function startServer() {
     logger.info("Initializing application...", { service: "pazar-plus" });
 
     // Test database connection
-    await sequelize.authenticate();
-    logger.info("Database connection established successfully", {
-      service: "pazar-plus",
-    });
+    try {
+      await sequelize.authenticate();
+      logger.info("Database connection established successfully", {
+        service: "pazar-plus",
+      });
+    } catch (error) {
+      if (process.env.NODE_ENV === "production") {
+        logger.warn("Database connection failed, continuing without database", {
+          service: "pazar-plus",
+          error: error.message,
+        });
+      } else {
+        throw error;
+      }
+    }
 
     // Sync database tables (skip sync since migrations handle schema)
     // await sequelize.sync({
@@ -117,11 +134,14 @@ async function startServer() {
         const wsServer = initializeWebSocketServer(server);
         logger.info("WebSocket server initialized successfully");
 
-        // Start network monitoring for automatic IP detection
-        console.log(
-          "🔄 Starting network monitoring for automatic IP updates..."
-        );
-        autoNetworkConfig.watchNetworkChanges();
+        // Start network monitoring for automatic IP detection (development only)
+        if (!isProduction) {
+          console.log(
+            "🔄 Starting network monitoring for automatic IP updates..."
+          );
+          const autoNetworkConfig = new AutoNetworkConfig();
+          autoNetworkConfig.watchNetworkChanges();
+        }
 
         // Register WebSocket server cleanup
         stabilityManager.registerCleanupHandler(async () => {

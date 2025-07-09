@@ -59,6 +59,15 @@ if (process.env.DATABASE_URL) {
       },
     },
   });
+} else if (process.env.NODE_ENV === "production") {
+  // In production without DATABASE_URL, log warning but don't crash
+  logger.warn("DATABASE_URL not set in production environment. Database features will be limited.");
+  // Create a mock sequelize instance that won't actually connect
+  sequelize = new Sequelize({
+    dialect: 'sqlite',
+    storage: ':memory:',
+    logging: false,
+  });
 } else {
   sequelize = new Sequelize(dbConfig);
 }

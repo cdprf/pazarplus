@@ -148,7 +148,10 @@ const BasicFilters = ({
               placeholder="Sipariş numarası, müşteri adı veya ürün ara..."
               value={filters.search || ""}
               onChange={(e) => {
-                console.log("🔍 [OrderFilters] Search input changed:", e.target.value);
+                console.log(
+                  "🔍 [OrderFilters] Search input changed:",
+                  e.target.value
+                );
                 onFiltersChange({ search: e.target.value });
               }}
               onKeyPress={(e) => {
