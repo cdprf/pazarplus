@@ -66,7 +66,7 @@ async function getAllOrders(req, res) {
     console.log("🔍 [OrderController] getAllOrders API called");
     console.log("🔍 [OrderController] Query params:", req.query);
     console.log("🔍 [OrderController] User ID:", req.user?.id);
-    
+
     const { id: userId } = req.user;
     const {
       page = 1,
@@ -161,7 +161,7 @@ async function getAllOrders(req, res) {
     if (search && search.trim()) {
       console.log("🔍 [OrderController] Search term received:", search.trim());
       const searchTerm = search.trim();
-      
+
       // First try a simple search on customer fields only (more reliable)
       where[Op.or] = [
         // Order ID fields - search all possible order identifier fields
@@ -173,8 +173,11 @@ async function getAllOrders(req, res) {
         { customerName: { [Op.iLike]: `%${searchTerm}%` } },
         { customerEmail: { [Op.iLike]: `%${searchTerm}%` } },
       ];
-      
-      console.log("🔍 [OrderController] Basic search where clause:", where[Op.or]);
+
+      console.log(
+        "🔍 [OrderController] Basic search where clause:",
+        where[Op.or]
+      );
     }
 
     // Apply date range filter if provided
