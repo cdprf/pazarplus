@@ -40,7 +40,6 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
-
 # Optional: Database (uncomment if needed)
 # databases:
 #   - name: pazar-plus-db
@@ -49,7 +48,7 @@ services:
 #     region: oregon
 #     plan: starter
 
-# Optional: Redis (uncomment if needed)  
+# Optional: Redis (uncomment if needed)
 # - type: redis
 #   name: pazar-plus-redis
 #   region: oregon

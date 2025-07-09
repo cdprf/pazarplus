@@ -3,9 +3,10 @@ require("dotenv").config();
 const config = {
   // Server configuration
   server: {
-    port: process.env.PORT || 5001, // Fixed: Match the actual port used
+    port: process.env.PORT || 10000, // Render default port is 10000
     env: process.env.NODE_ENV || "development",
-    apiUrl: process.env.API_URL || "http://localhost:5001",
+    apiUrl:
+      process.env.API_URL || `http://localhost:${process.env.PORT || 10000}`,
     clientUrl: process.env.CLIENT_URL || "http://localhost:3000",
   },
 

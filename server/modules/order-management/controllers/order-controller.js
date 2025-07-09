@@ -157,7 +157,12 @@ async function getAllOrders(req, res) {
     if (search && search.trim()) {
       console.log("🔍 [OrderController] Search term received:", search.trim());
       where[Op.or] = [
+        // Order ID fields - search all possible order identifier fields
+        { externalOrderId: { [Op.iLike]: `%${search.trim()}%` } },
+        { orderNumber: { [Op.iLike]: `%${search.trim()}%` } },
         { platformOrderId: { [Op.iLike]: `%${search.trim()}%` } },
+        { platformId: { [Op.iLike]: `%${search.trim()}%` } },
+        // Customer fields
         { customerName: { [Op.iLike]: `%${search.trim()}%` } },
         { customerEmail: { [Op.iLike]: `%${search.trim()}%` } },
       ];
