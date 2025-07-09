@@ -171,20 +171,29 @@ async function getAllOrders(req, res) {
               { title: { [Op.iLike]: `%${searchTerm}%` } },
               { sku: { [Op.iLike]: `%${searchTerm}%` } },
               { barcode: { [Op.iLike]: `%${searchTerm}%` } },
-            ]
+            ],
           },
-          attributes: ['orderId'],
-          raw: true
+          attributes: ["orderId"],
+          raw: true,
         });
 
         // Get unique order IDs from product search
-        productOrderIds = [...new Set(orderItemsWithProducts.map(item => item.orderId).filter(Boolean))];
-        
+        productOrderIds = [
+          ...new Set(
+            orderItemsWithProducts.map((item) => item.orderId).filter(Boolean)
+          ),
+        ];
+
         if (productOrderIds.length > 0) {
-          console.log(`🔍 [OrderController] Found ${productOrderIds.length} orders with matching products`);
+          console.log(
+            `🔍 [OrderController] Found ${productOrderIds.length} orders with matching products`
+          );
         }
       } catch (productSearchError) {
-        console.log("🔍 [OrderController] Product search failed:", productSearchError.message);
+        console.log(
+          "🔍 [OrderController] Product search failed:",
+          productSearchError.message
+        );
       }
 
       // Basic search conditions

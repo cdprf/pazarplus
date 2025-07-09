@@ -306,6 +306,7 @@ class HepsiBuradaQuestionService {
       product_sku: question.product?.sku,
       product_stock_code: question.product?.stockCode,
       product_image_url: question.product?.imageUrl,
+      product_web_url: question.product?.webUrl || (question.product?.sku ? `https://www.hepsiburada.com/urun/${question.product.sku}` : null),
       order_number: question.orderNumber,
       line_item_id: question.lineItemId,
       public: true, // Default to public

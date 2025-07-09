@@ -35,7 +35,7 @@ services:
   # Frontend Service (Static Site)
   - type: static
     name: pazar-plus-frontend
-    buildCommand: cd client && npm install && CI=false npm run build
+    buildCommand: ./client-render-build.sh
     publishPath: ./client/build
     buildFilter:
       paths:
