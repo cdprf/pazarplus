@@ -5,9 +5,10 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
 // Use simple logger in production to avoid winston-daily-rotate-file issues
-const logger = process.env.NODE_ENV === "production" 
-  ? require("./utils/logger-simple")
-  : require("./utils/logger");
+const logger =
+  process.env.NODE_ENV === "production"
+    ? require("./utils/logger-simple")
+    : require("./utils/logger");
 
 // Load configuration
 const config = require("./config/config");

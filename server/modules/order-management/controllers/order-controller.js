@@ -162,7 +162,7 @@ async function getAllOrders(req, res) {
       console.log("🔍 [OrderController] Search term received:", search.trim());
       const searchTerm = search.trim();
 
-      // First try a simple search on customer fields only (more reliable)
+      // Enhanced search including product fields
       where[Op.or] = [
         // Order ID fields - search all possible order identifier fields
         { externalOrderId: { [Op.iLike]: `%${searchTerm}%` } },
@@ -172,10 +172,18 @@ async function getAllOrders(req, res) {
         // Customer fields
         { customerName: { [Op.iLike]: `%${searchTerm}%` } },
         { customerEmail: { [Op.iLike]: `%${searchTerm}%` } },
+        // Search in OrderItems - direct fields
+        { "$items.title$": { [Op.iLike]: `%${searchTerm}%` } },
+        { "$items.sku$": { [Op.iLike]: `%${searchTerm}%` } },
+        { "$items.barcode$": { [Op.iLike]: `%${searchTerm}%` } },
+        // Search in linked Products
+        { "$items.product.name$": { [Op.iLike]: `%${searchTerm}%` } },
+        { "$items.product.sku$": { [Op.iLike]: `%${searchTerm}%` } },
+        { "$items.product.barcode$": { [Op.iLike]: `%${searchTerm}%` } },
       ];
 
       console.log(
-        "🔍 [OrderController] Basic search where clause:",
+        "🔍 [OrderController] Enhanced search where clause:",
         where[Op.or]
       );
     }

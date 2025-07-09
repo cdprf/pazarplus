@@ -5,8 +5,8 @@ services:
     runtime: node
     region: oregon
     plan: starter
-    buildCommand: cd server && npm install --production=false
-    startCommand: cd server && npm start
+    buildCommand: ./render-build.sh
+    startCommand: cd server && NODE_ENV=production npm start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -17,6 +17,8 @@ services:
         value: 0.0.0.0
       - key: DISABLE_BACKGROUND_JOBS
         value: "true"
+      - key: LOG_LEVEL
+        value: "info"
 # Note: For the frontend, create a separate Static Site service in Render dashboard
 # Build Command: cd client && npm install && npm run build
 # Publish Directory: client/build

@@ -29,8 +29,8 @@ const createProductionLogger = () => {
 module.exports = createProductionLogger();
 
 // Add initialization log
-module.exports.info("Simple production logger initialized", { 
+module.exports.info("Simple production logger initialized", {
   service: "pazar-plus",
   logLevel: process.env.LOG_LEVEL || "info",
-  environment: process.env.NODE_ENV || "development"
+  environment: process.env.NODE_ENV || "development",
 });

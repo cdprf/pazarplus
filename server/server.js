@@ -23,9 +23,10 @@ const networkIP = isProduction ? "0.0.0.0" : setNetworkEnvironment();
 const { app, initializeWebSocketServer } = require("./app");
 
 // Use simple logger in production to avoid winston-daily-rotate-file issues
-const logger = process.env.NODE_ENV === "production" 
-  ? require("./utils/logger-simple")
-  : require("./utils/logger");
+const logger =
+  process.env.NODE_ENV === "production"
+    ? require("./utils/logger-simple")
+    : require("./utils/logger");
 
 const sequelize = require("./config/database");
 const config = require("./config/config");
