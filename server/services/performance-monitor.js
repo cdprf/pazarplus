@@ -1,4 +1,10 @@
-const prometheus = require("prom-client");
+let prometheus;
+try {
+  prometheus = require("prom-client");
+} catch (error) {
+  console.warn("prom-client module not available, performance monitoring disabled");
+  prometheus = null;
+}
 const logger = require("../utils/logger");
 const cacheService = require("./cache-service");
 
@@ -8,12 +14,21 @@ const cacheService = require("./cache-service");
  */
 class PerformanceMonitor {
   constructor() {
+    this.isEnabled = prometheus !== null;
+    
+    if (!this.isEnabled) {
+      logger.info("Performance monitoring disabled - prom-client not available");
+      return;
+    }
+    
     this.register = new prometheus.Registry();
     this.setupMetrics();
     this.setupDefaultMetrics();
   }
 
   setupDefaultMetrics() {
+    if (!this.isEnabled) return;
+    
     // Collect default Node.js metrics
     prometheus.collectDefaultMetrics({
       register: this.register,
@@ -23,6 +38,12 @@ class PerformanceMonitor {
   }
 
   setupMetrics() {
+    if (!this.isEnabled) {
+      // Create no-op metrics when prometheus is not available
+      this.createNoOpMetrics();
+      return;
+    }
+    
     // HTTP Request metrics
     this.httpRequestDuration = new prometheus.Histogram({
       name: "pazar_plus_http_request_duration_seconds",
@@ -156,6 +177,10 @@ class PerformanceMonitor {
   // Middleware for HTTP request monitoring
   createHttpMonitoringMiddleware() {
     return (req, res, next) => {
+      if (!this.isEnabled) {
+        return next();
+      }
+      
       const start = Date.now();
 
       res.on("finish", () => {
@@ -189,6 +214,8 @@ class PerformanceMonitor {
 
   // Database query monitoring
   trackDbQuery(operation, table, userId, duration) {
+    if (!this.isEnabled) return;
+    
     this.dbQueryDuration
       .labels(operation, table, userId || "system")
       .observe(duration);
@@ -196,6 +223,8 @@ class PerformanceMonitor {
 
   // Platform API monitoring
   trackPlatformApiCall(platform, endpoint, status, userId, duration) {
+    if (!this.isEnabled) return;
+    
     this.platformApiCalls.labels(platform, endpoint, status, userId).inc();
 
     this.platformApiDuration.labels(platform, endpoint).observe(duration);
@@ -386,7 +415,38 @@ class PerformanceMonitor {
 
   // Get metrics for Prometheus scraping
   async getMetrics() {
+    if (!this.isEnabled) {
+      return "";
+    }
     return await this.register.metrics();
+  }
+
+  createNoOpMetrics() {
+    // Create no-op objects that have the same interface as prometheus metrics
+    const noOpMetric = {
+      labels: () => ({ observe: () => {}, inc: () => {}, set: () => {} }),
+      observe: () => {},
+      inc: () => {},
+      set: () => {},
+    };
+
+    this.httpRequestDuration = noOpMetric;
+    this.httpRequestTotal = noOpMetric;
+    this.dbQueryDuration = noOpMetric;
+    this.dbConnectionPool = noOpMetric;
+    this.dbPoolSize = noOpMetric;
+    this.platformApiCalls = noOpMetric;
+    this.platformApiDuration = noOpMetric;
+    this.platformSyncSuccess = noOpMetric;
+    this.platformSyncErrors = noOpMetric;
+    this.ordersProcessed = noOpMetric;
+    this.orderValue = noOpMetric;
+    this.activeUsers = noOpMetric;
+    this.platformConnections = noOpMetric;
+    this.cacheHits = noOpMetric;
+    this.cacheMisses = noOpMetric;
+    this.rateLimitHits = noOpMetric;
+    this.errorCount = noOpMetric;
   }
 }
 

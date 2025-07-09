@@ -1,7 +1,30 @@
-const multer = require("multer");
+let multer, sharp;
+let mediaUploadEnabled = true;
+
+try {
+  multer = require("multer");
+  sharp = require("sharp");
+} catch (error) {
+  console.warn("Media upload dependencies not available:", error.message);
+  mediaUploadEnabled = false;
+  
+  // Create fallback implementations
+  multer = {
+    diskStorage: () => ({
+      destination: (req, file, cb) => cb(new Error("Media upload disabled")),
+      filename: (req, file, cb) => cb(new Error("Media upload disabled"))
+    }),
+    single: () => (req, res, next) => next(new Error("Media upload disabled")),
+    array: () => (req, res, next) => next(new Error("Media upload disabled"))
+  };
+  
+  sharp = {
+    resize: () => ({ toBuffer: () => Promise.reject(new Error("Image processing disabled")) })
+  };
+}
+
 const path = require("path");
 const fs = require("fs").promises;
-const sharp = require("sharp");
 const logger = require("../utils/logger");
 
 /**
@@ -10,6 +33,11 @@ const logger = require("../utils/logger");
  */
 class MediaUploadService {
   constructor() {
+    if (!mediaUploadEnabled) {
+      logger.warn("Media upload service disabled - dependencies not available");
+      return;
+    }
+    
     this.uploadPath = path.join(
       __dirname,
       "..",

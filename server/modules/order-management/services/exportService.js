@@ -1,7 +1,45 @@
 const fs = require("fs");
 const path = require("path");
-const { Parser } = require("json2csv");
-const ExcelJS = require("exceljs");
+
+let json2csv, ExcelJS;
+let exportEnabled = true;
+
+try {
+  const { Parser } = require("json2csv");
+  json2csv = { Parser };
+  ExcelJS = require("exceljs");
+} catch (error) {
+  console.warn("Export service dependencies not available:", error.message);
+  exportEnabled = false;
+  
+  // Create fallback implementations
+  json2csv = {
+    Parser: class {
+      constructor() {}
+      parse() { 
+        throw new Error("CSV export disabled - dependencies not available"); 
+      }
+    }
+  };
+  
+  ExcelJS = {
+    Workbook: class {
+      constructor() {
+        this.xlsx = {
+          writeFile: () => Promise.reject(new Error("Excel export disabled - dependencies not available"))
+        };
+      }
+      addWorksheet() { 
+        return { 
+          addRow: () => {},
+          getRow: () => ({ font: {}, fill: {} }),
+          columns: []
+        }; 
+      }
+    }
+  };
+}
+
 const logger = require("../../../utils/logger");
 const { Order, OrderItem, User, ShippingDetail } = require("../../../models");
 const { Op } = require("sequelize");

@@ -1,5 +1,26 @@
-const speakeasy = require('speakeasy');
-const QRCode = require('qrcode');
+let speakeasy, QRCode;
+let twoFactorEnabled = true;
+
+try {
+  speakeasy = require('speakeasy');
+  QRCode = require('qrcode');
+} catch (error) {
+  console.warn("Two-factor authentication dependencies not available:", error.message);
+  twoFactorEnabled = false;
+  
+  // Create fallback implementations
+  speakeasy = {
+    generateSecret: () => ({ base32: 'disabled', otpauth_url: 'disabled' }),
+    totp: {
+      verify: () => false
+    }
+  };
+  
+  QRCode = {
+    toDataURL: () => Promise.resolve('data:image/png;base64,disabled')
+  };
+}
+
 const logger = require('../../../utils/logger');
 const { User } = require('../../../models');
 
@@ -10,6 +31,10 @@ class TwoFactorService {
    * @returns {Object} - Secret and QR code URL
    */
   async generateSecret(email) {
+    if (!twoFactorEnabled) {
+      throw new Error("Two-factor authentication is disabled - dependencies not available");
+    }
+    
     try {
       const secret = speakeasy.generateSecret({
         name: `Pazar+ (${email})`

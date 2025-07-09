@@ -3,12 +3,39 @@
  * Generates UBL 2.1 compliant XML for Turkish e-archive standards
  */
 
-const xml2js = require("xml2js");
+let xml2js;
+let xmlEnabled = true;
+
+try {
+  xml2js = require("xml2js");
+} catch (error) {
+  console.warn("XML processing dependencies not available:", error.message);
+  xmlEnabled = false;
+  
+  // Create fallback XML implementation
+  xml2js = {
+    Builder: class {
+      constructor() {}
+      buildObject() {
+        throw new Error("XML generation disabled - dependencies not available");
+      }
+    },
+    parseString: () => {
+      throw new Error("XML parsing disabled - dependencies not available");
+    }
+  };
+}
+
 const config = require("../config/QNBConfig");
 const QNBHelpers = require("../utils/QNBHelpers");
 
 class UBLGenerator {
   constructor() {
+    if (!xmlEnabled) {
+      console.warn("UBL Generator disabled - XML dependencies not available");
+      return;
+    }
+    
     this.xmlBuilder = new xml2js.Builder({ headless: true });
   }
 

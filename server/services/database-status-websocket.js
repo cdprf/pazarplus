@@ -2,13 +2,37 @@
  * Database Status WebSocket Service
  * Provides real-time updates about database transaction status
  */
-const WebSocket = require("ws");
+let WebSocket;
+let websocketEnabled = true;
+
+try {
+  WebSocket = require("ws");
+} catch (error) {
+  console.warn("WebSocket dependencies not available:", error.message);
+  websocketEnabled = false;
+  
+  // Create fallback WebSocket implementation
+  WebSocket = {
+    Server: class {
+      constructor() {}
+      on() {}
+      close() {}
+    }
+  };
+}
+
 const jwt = require("jsonwebtoken");
 const logger = require("../utils/logger");
 const dbTransactionManager = require("./database-transaction-manager");
 
 class DatabaseStatusWebSocketService {
   constructor() {
+    if (!websocketEnabled) {
+      logger.warn("WebSocket service disabled - dependencies not available");
+      this.clients = new Set();
+      return;
+    }
+    
     this.clients = new Set();
     this.setupTransactionManagerListeners();
   }

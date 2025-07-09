@@ -1,4 +1,23 @@
-const cron = require("node-cron");
+let cron;
+let cronEnabled = true;
+
+try {
+  cron = require("node-cron");
+} catch (error) {
+  console.warn("Cron job dependencies not available:", error.message);
+  cronEnabled = false;
+  
+  // Create fallback cron implementation
+  cron = {
+    schedule: () => ({
+      start: () => {},
+      stop: () => {},
+      destroy: () => {}
+    }),
+    validate: () => true
+  };
+}
+
 const logger = require("../utils/logger");
 const ProductOrderLinkingService = require("../services/product-order-linking-service");
 const { OrderItem, Order } = require("../models");
@@ -16,6 +35,11 @@ class ProductLinkingJobService {
    * Initialize and start all scheduled jobs
    */
   start() {
+    if (!cronEnabled) {
+      logger.warn("Cron jobs disabled - dependencies not available");
+      return;
+    }
+    
     logger.info("Starting Product Linking Background Jobs");
 
     // Run every 30 minutes
