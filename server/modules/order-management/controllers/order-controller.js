@@ -155,11 +155,13 @@ async function getAllOrders(req, res) {
 
     // Apply search filter
     if (search && search.trim()) {
+      console.log("🔍 [OrderController] Search term received:", search.trim());
       where[Op.or] = [
-        { platformOrderId: { [Op.like]: `%${search.trim()}%` } },
-        { customerName: { [Op.like]: `%${search.trim()}%` } },
-        { customerEmail: { [Op.like]: `%${search.trim()}%` } },
+        { platformOrderId: { [Op.iLike]: `%${search.trim()}%` } },
+        { customerName: { [Op.iLike]: `%${search.trim()}%` } },
+        { customerEmail: { [Op.iLike]: `%${search.trim()}%` } },
       ];
+      console.log("🔍 [OrderController] Search where clause:", where[Op.or]);
     }
 
     // Apply date range filter if provided

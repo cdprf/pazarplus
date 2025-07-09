@@ -475,10 +475,11 @@ class OrderService {
    */
   static async fetchOrders(params = {}) {
     try {
-      console.log("Fetching orders with params:", params);
+      console.log("🔍 [OrderService] fetchOrders called with params:", params);
+      console.log("🔍 [OrderService] Search parameter:", params.search);
 
       const response = await api.orders.getOrders(params);
-      console.log("API Response:", response);
+      console.log("🔍 [OrderService] API Response:", response);
 
       if (response.success) {
         // Handle different response structures from the API

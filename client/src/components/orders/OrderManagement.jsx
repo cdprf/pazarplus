@@ -379,7 +379,9 @@ const OrderManagement = React.memo(() => {
         ...filters,
       };
 
-      console.log("Fetching orders with params:", params);
+      console.log("🔍 [OrderManagement] Fetching orders with params:", params);
+      console.log("🔍 [OrderManagement] Search term:", `"${searchTerm}"`);
+      console.log("🔍 [OrderManagement] Search term length:", searchTerm.length);
       const response = await api.orders.getOrders(params);
       console.log("API Response:", response);
 
@@ -523,12 +525,16 @@ const OrderManagement = React.memo(() => {
 
   // Debounced search effect
   useEffect(() => {
+    console.log("🔍 [OrderManagement] Search effect triggered, searchTerm:", `"${searchTerm}"`);
+    
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
+      console.log("🔍 [OrderManagement] Cleared previous debounce timeout");
     }
 
     debounceRef.current = setTimeout(
       () => {
+        console.log("🔍 [OrderManagement] Debounce timeout fired, calling fetchOrders");
         fetchOrders();
       },
       searchTerm ? 500 : 0
@@ -786,6 +792,7 @@ const OrderManagement = React.memo(() => {
   );
 
   const handleSearch = useCallback((value) => {
+    console.log("🔍 [OrderManagement] handleSearch called with:", `"${value}"`);
     setSearchTerm(value);
     setCurrentPage(1);
   }, []);
@@ -1461,7 +1468,10 @@ const OrderManagement = React.memo(() => {
                     placeholder="Sipariş numarası, müşteri adı veya ürün ara..."
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     value={searchTerm}
-                    onChange={(e) => handleSearch(e.target.value)}
+                    onChange={(e) => {
+                      console.log("🔍 [OrderManagement] Input onChange fired:", e.target.value);
+                      handleSearch(e.target.value);
+                    }}
                     onKeyPress={handleKeyPress}
                   />
                 </div>

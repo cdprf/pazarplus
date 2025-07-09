@@ -550,9 +550,10 @@ const OrderManagementRefactored = () => {
             <OrderFilters
               filters={filters}
               searchInputRef={searchInputRef}
-              onFiltersChange={(filters) =>
-                dispatch({ type: "SET_FILTERS", payload: filters })
-              }
+              onFiltersChange={(newFilters) => {
+                console.log("🔍 [OrderManagementRefactored] Filters changed:", newFilters);
+                dispatch({ type: "SET_FILTERS", payload: newFilters });
+              }}
               recordCount={pagination.recordCount}
               onRecordCountChange={(count) =>
                 dispatch({ type: "SET_RECORD_COUNT", payload: count })

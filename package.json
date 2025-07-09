@@ -11,9 +11,6 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "install:all": "npm install && cd client && npm install",
     "build": "cd client && npm run build",
-    "deploy:vercel": "npm run install:all && npm run build && npx vercel --prod",
-    "deploy:preview": "npm run install:all && npm run build && npx vercel",
-    "vercel-build": "npm run install:all && npm run build",
     "test": "jest --testPathPattern=server",
     "test:client": "cd client && npm test",
     "test:all": "npm run test && npm run test:client",
@@ -22,7 +19,10 @@
     "backup:db": "cp database.sqlite database.backup.sqlite",
     "setup": "npm run clean:duplicates && npm run clean:dev-files && npm install && cd client && npm install",
     "start:fresh": "npm run cleanup:all && npm install && npm run server",
-    "start:final": "npm run cleanup:all && npm run fix:imports && npm run fix:controllers && npm run fix:imports:final && npm run fix:all-imports && npm run fix:websocket && npm run fix:all-services && npm run server"
+    "start:final": "npm run cleanup:all && npm run fix:imports && npm run fix:controllers && npm run fix:imports:final && npm run fix:all-imports && npm run fix:websocket && npm run fix:all-services && npm run server",
+    "deploy:render": "git add . && git commit -m 'Deploy to Render' && git push origin main",
+    "render:build": "npm install",
+    "render:start": "npm start"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

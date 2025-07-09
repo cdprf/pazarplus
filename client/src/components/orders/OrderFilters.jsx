@@ -147,7 +147,10 @@ const BasicFilters = ({
               className="pazar-form-input pl-10"
               placeholder="Sipariş numarası, müşteri adı veya ürün ara..."
               value={filters.search || ""}
-              onChange={(e) => onFiltersChange({ search: e.target.value })}
+              onChange={(e) => {
+                console.log("🔍 [OrderFilters] Search input changed:", e.target.value);
+                onFiltersChange({ search: e.target.value });
+              }}
               onKeyPress={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
