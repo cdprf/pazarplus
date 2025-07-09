@@ -1,5 +1,7 @@
 import React from "react";
-import { cn } from "../../utils/cn";
+
+// Simple className utility fallback
+const cn = (...classes) => classes.filter(Boolean).join(" ");
 
 const Label = React.forwardRef(({ className, ...props }, ref) => (
   <label

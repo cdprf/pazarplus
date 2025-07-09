@@ -30,7 +30,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui";
+} from "../../ui";
 import {
   Zap,
   Settings,

@@ -234,11 +234,16 @@ class BackgroundTaskService {
       return tasks;
     } catch (error) {
       // Handle specific database errors gracefully
-      if (error.name === 'SequelizeDatabaseError' && error.original?.code === '42P01') {
-        logger.warn("Background tasks table not yet created, returning empty task list");
+      if (
+        error.name === "SequelizeDatabaseError" &&
+        error.original?.code === "42P01"
+      ) {
+        logger.warn(
+          "Background tasks table not yet created, returning empty task list"
+        );
         return [];
       }
-      
+
       logger.error("Error getting queued tasks:", error);
       return [];
     }

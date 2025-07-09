@@ -35,11 +35,11 @@ services:
   # Frontend Service (Static Site)
   - type: static
     name: pazar-plus-frontend
-    buildCommand: cd client && npm install && npm run build
+    buildCommand: cd client && npm install && CI=false npm run build
     publishPath: ./client/build
     buildFilter:
       paths:
-      - client/**
+        - client/**
     envVars:
       - key: REACT_APP_API_URL
         value: "https://pazar-plus-backend.onrender.com"
@@ -47,7 +47,8 @@ services:
         value: "false"
       - key: CI
         value: "false"
-
+      - key: SKIP_PREFLIGHT_CHECK
+        value: "true"
 # Optional: Database (uncomment if needed)
 # databases:
 #   - name: pazar-plus-db

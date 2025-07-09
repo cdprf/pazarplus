@@ -11,14 +11,14 @@ try {
 } catch (error) {
   console.warn("CSV import dependencies not available:", error.message);
   csvImportEnabled = false;
-  
+
   // Create fallback CSV parser
   csv = () => {
     const { Transform } = require("stream");
     return new Transform({
       transform(chunk, encoding, callback) {
         callback(new Error("CSV import disabled - dependencies not available"));
-      }
+      },
     });
   };
 }

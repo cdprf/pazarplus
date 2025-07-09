@@ -443,10 +443,13 @@ if (process.env.NODE_ENV === "production") {
   // Serve static files from the React app build directory
   const clientBuildPath = path.resolve(__dirname, "..", "client", "build");
   logger.info(`Checking for client build at: ${clientBuildPath}`);
-  
+
   // Check if client build exists
   const fs = require("fs");
-  if (fs.existsSync(clientBuildPath) && fs.existsSync(path.join(clientBuildPath, "index.html"))) {
+  if (
+    fs.existsSync(clientBuildPath) &&
+    fs.existsSync(path.join(clientBuildPath, "index.html"))
+  ) {
     logger.info(`Serving static files from: ${clientBuildPath}`);
     app.use(express.static(clientBuildPath));
 
@@ -474,7 +477,7 @@ if (process.env.NODE_ENV === "production") {
     });
   } else {
     logger.warn("Client build not found, serving API-only mode");
-    
+
     // Serve a simple API status page for root requests
     app.get("/", (req, res) => {
       res.json({
@@ -485,11 +488,11 @@ if (process.env.NODE_ENV === "production") {
         timestamp: new Date().toISOString(),
         endpoints: {
           health: "/health",
-          api: "/api"
-        }
+          api: "/api",
+        },
       });
     });
-    
+
     // Handle all other non-API routes
     app.get("*", (req, res, next) => {
       // Skip API and known routes
@@ -500,15 +503,16 @@ if (process.env.NODE_ENV === "production") {
       ) {
         return next();
       }
-      
+
       res.status(404).json({
         error: "Frontend not available",
-        message: "This is an API-only deployment. Frontend is deployed separately.",
+        message:
+          "This is an API-only deployment. Frontend is deployed separately.",
         requested_path: req.path,
         available_endpoints: {
           health: "/health",
-          api: "/api"
-        }
+          api: "/api",
+        },
       });
     });
   }

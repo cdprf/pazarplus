@@ -2,7 +2,9 @@ let prometheus;
 try {
   prometheus = require("prom-client");
 } catch (error) {
-  console.warn("prom-client module not available, performance monitoring disabled");
+  console.warn(
+    "prom-client module not available, performance monitoring disabled"
+  );
   prometheus = null;
 }
 const logger = require("../utils/logger");
@@ -15,12 +17,14 @@ const cacheService = require("./cache-service");
 class PerformanceMonitor {
   constructor() {
     this.isEnabled = prometheus !== null;
-    
+
     if (!this.isEnabled) {
-      logger.info("Performance monitoring disabled - prom-client not available");
+      logger.info(
+        "Performance monitoring disabled - prom-client not available"
+      );
       return;
     }
-    
+
     this.register = new prometheus.Registry();
     this.setupMetrics();
     this.setupDefaultMetrics();
@@ -28,7 +32,7 @@ class PerformanceMonitor {
 
   setupDefaultMetrics() {
     if (!this.isEnabled) return;
-    
+
     // Collect default Node.js metrics
     prometheus.collectDefaultMetrics({
       register: this.register,
@@ -43,7 +47,7 @@ class PerformanceMonitor {
       this.createNoOpMetrics();
       return;
     }
-    
+
     // HTTP Request metrics
     this.httpRequestDuration = new prometheus.Histogram({
       name: "pazar_plus_http_request_duration_seconds",
@@ -180,7 +184,7 @@ class PerformanceMonitor {
       if (!this.isEnabled) {
         return next();
       }
-      
+
       const start = Date.now();
 
       res.on("finish", () => {
@@ -215,7 +219,7 @@ class PerformanceMonitor {
   // Database query monitoring
   trackDbQuery(operation, table, userId, duration) {
     if (!this.isEnabled) return;
-    
+
     this.dbQueryDuration
       .labels(operation, table, userId || "system")
       .observe(duration);
@@ -224,7 +228,7 @@ class PerformanceMonitor {
   // Platform API monitoring
   trackPlatformApiCall(platform, endpoint, status, userId, duration) {
     if (!this.isEnabled) return;
-    
+
     this.platformApiCalls.labels(platform, endpoint, status, userId).inc();
 
     this.platformApiDuration.labels(platform, endpoint).observe(duration);

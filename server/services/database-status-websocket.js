@@ -10,14 +10,14 @@ try {
 } catch (error) {
   console.warn("WebSocket dependencies not available:", error.message);
   websocketEnabled = false;
-  
+
   // Create fallback WebSocket implementation
   WebSocket = {
     Server: class {
       constructor() {}
       on() {}
       close() {}
-    }
+    },
   };
 }
 
@@ -32,7 +32,7 @@ class DatabaseStatusWebSocketService {
       this.clients = new Set();
       return;
     }
-    
+
     this.clients = new Set();
     this.setupTransactionManagerListeners();
   }

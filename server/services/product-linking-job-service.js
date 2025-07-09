@@ -6,15 +6,15 @@ try {
 } catch (error) {
   console.warn("Cron job dependencies not available:", error.message);
   cronEnabled = false;
-  
+
   // Create fallback cron implementation
   cron = {
     schedule: () => ({
       start: () => {},
       stop: () => {},
-      destroy: () => {}
+      destroy: () => {},
     }),
-    validate: () => true
+    validate: () => true,
   };
 }
 
@@ -39,7 +39,7 @@ class ProductLinkingJobService {
       logger.warn("Cron jobs disabled - dependencies not available");
       return;
     }
-    
+
     logger.info("Starting Product Linking Background Jobs");
 
     // Run every 30 minutes

@@ -288,11 +288,16 @@ class BackgroundVariantDetectionService {
       return products;
     } catch (error) {
       // Handle specific database errors gracefully
-      if (error.name === 'SequelizeDatabaseError' && error.original?.code === '42P01') {
-        logger.warn("Database tables not yet created, skipping variant detection");
+      if (
+        error.name === "SequelizeDatabaseError" &&
+        error.original?.code === "42P01"
+      ) {
+        logger.warn(
+          "Database tables not yet created, skipping variant detection"
+        );
         return [];
       }
-      
+
       logger.error("Error finding products needing variant detection:", error);
       return [];
     }

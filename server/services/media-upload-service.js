@@ -7,19 +7,21 @@ try {
 } catch (error) {
   console.warn("Media upload dependencies not available:", error.message);
   mediaUploadEnabled = false;
-  
+
   // Create fallback implementations
   multer = {
     diskStorage: () => ({
       destination: (req, file, cb) => cb(new Error("Media upload disabled")),
-      filename: (req, file, cb) => cb(new Error("Media upload disabled"))
+      filename: (req, file, cb) => cb(new Error("Media upload disabled")),
     }),
     single: () => (req, res, next) => next(new Error("Media upload disabled")),
-    array: () => (req, res, next) => next(new Error("Media upload disabled"))
+    array: () => (req, res, next) => next(new Error("Media upload disabled")),
   };
-  
+
   sharp = {
-    resize: () => ({ toBuffer: () => Promise.reject(new Error("Image processing disabled")) })
+    resize: () => ({
+      toBuffer: () => Promise.reject(new Error("Image processing disabled")),
+    }),
   };
 }
 
@@ -37,7 +39,7 @@ class MediaUploadService {
       logger.warn("Media upload service disabled - dependencies not available");
       return;
     }
-    
+
     this.uploadPath = path.join(
       __dirname,
       "..",

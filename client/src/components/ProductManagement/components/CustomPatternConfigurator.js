@@ -32,7 +32,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@/components/ui";
+} from "../../ui";
 import {
   Plus,
   Trash2,
@@ -157,7 +157,10 @@ const CustomPatternConfigurator = ({
             // Only allow simple property/array access and concatenation
             // e.g., "match[1] + '-' + match[2]"
             // eslint-disable-next-line no-new-func
-            base = Function("match", `"use strict"; return (${currentPattern.extractBase});`)(match);
+            base = Function(
+              "match",
+              `"use strict"; return (${currentPattern.extractBase});`
+            )(match);
           } catch (error) {
             console.warn("Base extraction error:", error);
           }
@@ -166,7 +169,10 @@ const CustomPatternConfigurator = ({
         if (currentPattern.extractVariant) {
           try {
             // eslint-disable-next-line no-new-func
-            variant = Function("match", `"use strict"; return (${currentPattern.extractVariant});`)(match);
+            variant = Function(
+              "match",
+              `"use strict"; return (${currentPattern.extractVariant});`
+            )(match);
           } catch (error) {
             console.warn("Variant extraction error:", error);
           }

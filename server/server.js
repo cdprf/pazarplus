@@ -50,11 +50,11 @@ const validateEnvironment = () => {
   if (process.env.NODE_ENV === "production") {
     // For production, accept either DATABASE_URL (for cloud deployments) or individual DB variables
     const hasDatabase = process.env.DATABASE_URL || process.env.DB_HOST;
-    
+
     if (!hasDatabase) {
       requiredEnvVars.push("DATABASE_URL or DB_HOST");
     }
-    
+
     // These are still required for production
     if (!process.env.JWT_SECRET) requiredEnvVars.push("JWT_SECRET");
     if (!process.env.CLIENT_URL) requiredEnvVars.push("CLIENT_URL");
@@ -92,43 +92,50 @@ async function startServer() {
 
       // Run database migrations to create all tables
       logger.info("Running database migrations...", { service: "pazar-plus" });
-      
+
       try {
         const migrationRunner = new SequelizeMigrationRunner(sequelize);
-        
+
         // First try to run the comprehensive migration if it exists
-        const comprehensiveResult = await migrationRunner.runComprehensiveMigration();
-        
+        const comprehensiveResult =
+          await migrationRunner.runComprehensiveMigration();
+
         // Then run any remaining pending migrations
         const migrationResult = await migrationRunner.runMigrations();
-        
+
         if (migrationResult) {
           logger.info("Database migrations completed successfully", {
             service: "pazar-plus",
-            comprehensive: comprehensiveResult ? "executed" : "not needed"
+            comprehensive: comprehensiveResult ? "executed" : "not needed",
           });
         } else {
-          logger.warn("Database migrations failed, continuing without database", {
-            service: "pazar-plus",
-          });
+          logger.warn(
+            "Database migrations failed, continuing without database",
+            {
+              service: "pazar-plus",
+            }
+          );
         }
       } catch (migrationError) {
         logger.error("Migration runner failed, falling back to table sync", {
           service: "pazar-plus",
-          error: migrationError.message
+          error: migrationError.message,
         });
-        
+
         // Fallback: try basic table sync if migrations fail
         try {
           await sequelize.sync({ alter: false });
           logger.info("Basic database sync completed as fallback", {
-            service: "pazar-plus"
+            service: "pazar-plus",
           });
         } catch (syncError) {
-          logger.warn("Database sync also failed, continuing without database", {
-            service: "pazar-plus",
-            error: syncError.message
-          });
+          logger.warn(
+            "Database sync also failed, continuing without database",
+            {
+              service: "pazar-plus",
+              error: syncError.message,
+            }
+          );
         }
       }
     } catch (error) {

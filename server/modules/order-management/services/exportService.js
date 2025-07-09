@@ -11,32 +11,35 @@ try {
 } catch (error) {
   console.warn("Export service dependencies not available:", error.message);
   exportEnabled = false;
-  
+
   // Create fallback implementations
   json2csv = {
     Parser: class {
       constructor() {}
-      parse() { 
-        throw new Error("CSV export disabled - dependencies not available"); 
+      parse() {
+        throw new Error("CSV export disabled - dependencies not available");
       }
-    }
+    },
   };
-  
+
   ExcelJS = {
     Workbook: class {
       constructor() {
         this.xlsx = {
-          writeFile: () => Promise.reject(new Error("Excel export disabled - dependencies not available"))
+          writeFile: () =>
+            Promise.reject(
+              new Error("Excel export disabled - dependencies not available")
+            ),
         };
       }
-      addWorksheet() { 
-        return { 
+      addWorksheet() {
+        return {
           addRow: () => {},
           getRow: () => ({ font: {}, fill: {} }),
-          columns: []
-        }; 
+          columns: [],
+        };
       }
-    }
+    },
   };
 }
 
@@ -405,8 +408,8 @@ class ExportService {
     const orders = await Order.findAll({
       where: whereConditions,
       include: [
-        { model: OrderItem, as: "items" }, 
-        { model: ShippingDetail, as: "shippingDetail" }
+        { model: OrderItem, as: "items" },
+        { model: ShippingDetail, as: "shippingDetail" },
       ],
       order: [["orderDate", "DESC"]],
       // Use limit for large exports?

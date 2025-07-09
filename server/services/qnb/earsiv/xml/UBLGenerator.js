@@ -11,7 +11,7 @@ try {
 } catch (error) {
   console.warn("XML processing dependencies not available:", error.message);
   xmlEnabled = false;
-  
+
   // Create fallback XML implementation
   xml2js = {
     Builder: class {
@@ -22,7 +22,7 @@ try {
     },
     parseString: () => {
       throw new Error("XML parsing disabled - dependencies not available");
-    }
+    },
   };
 }
 
@@ -35,7 +35,7 @@ class UBLGenerator {
       console.warn("UBL Generator disabled - XML dependencies not available");
       return;
     }
-    
+
     this.xmlBuilder = new xml2js.Builder({ headless: true });
   }
 
