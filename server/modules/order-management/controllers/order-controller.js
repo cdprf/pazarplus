@@ -162,7 +162,7 @@ async function getAllOrders(req, res) {
       console.log("🔍 [OrderController] Search term received:", search.trim());
       const searchTerm = search.trim();
 
-      // Use only basic search conditions that don't rely on associations
+      // Comprehensive search including product fields
       where[Op.or] = [
         // Order ID fields - search all possible order identifier fields
         { externalOrderId: { [Op.iLike]: `%${searchTerm}%` } },
@@ -172,9 +172,17 @@ async function getAllOrders(req, res) {
         // Customer fields
         { customerName: { [Op.iLike]: `%${searchTerm}%` } },
         { customerEmail: { [Op.iLike]: `%${searchTerm}%` } },
+        // Search in OrderItems - direct fields
+        { "$items.title$": { [Op.iLike]: `%${searchTerm}%` } },
+        { "$items.sku$": { [Op.iLike]: `%${searchTerm}%` } },
+        { "$items.barcode$": { [Op.iLike]: `%${searchTerm}%` } },
+        // Search in linked Products
+        { "$items.product.name$": { [Op.iLike]: `%${searchTerm}%` } },
+        { "$items.product.sku$": { [Op.iLike]: `%${searchTerm}%` } },
+        { "$items.product.barcode$": { [Op.iLike]: `%${searchTerm}%` } },
       ];
 
-      console.log("🔍 [OrderController] Using basic search (no associations)");
+      console.log("🔍 [OrderController] Full search with product fields enabled");
     }
 
     // Apply date range filter if provided
@@ -198,36 +206,43 @@ async function getAllOrders(req, res) {
 
     // Get orders with pagination and include related models with enhanced error handling
     let orders;
+    let includeOptions = [
+      {
+        model: OrderItem,
+        as: "items",
+        include: [
+          {
+            model: Product,
+            as: "product",
+            required: false,
+          },
+        ],
+        required: false, // Make items optional in case of association issues
+      },
+      {
+        model: ShippingDetail,
+        as: "shippingDetail",
+        required: false, // Make shipping details optional
+      },
+      {
+        model: PlatformConnection,
+        as: "platformConnection",
+        attributes: ["platformType", "name", "isActive"],
+        required: false, // Make this optional to handle orders without platform connections
+      },
+    ];
+
+    // If we're searching by product fields, we need to require the associations
+    if (search && search.trim()) {
+      includeOptions[0].required = false; // Keep items optional but ensure proper joins
+    }
+
     try {
       orders = await Order.findAndCountAll({
         where,
         limit: validLimit,
         offset: offset,
-        include: [
-          {
-            model: OrderItem,
-            as: "items",
-            include: [
-              {
-                model: Product,
-                as: "product",
-                required: false,
-              },
-            ],
-            required: false, // Make items optional in case of association issues
-          },
-          {
-            model: ShippingDetail,
-            as: "shippingDetail",
-            required: false, // Make shipping details optional
-          },
-          {
-            model: PlatformConnection,
-            as: "platformConnection",
-            attributes: ["platformType", "name", "isActive"],
-            required: false, // Make this optional to handle orders without platform connections
-          },
-        ],
+        include: includeOptions,
         order: [[sortField, sortDirection]],
         distinct: true,
       });

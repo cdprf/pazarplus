@@ -6,7 +6,7 @@ services:
     region: oregon
     plan: starter
     buildCommand: ./render-build.sh
-    startCommand: cd server && NODE_ENV=production npm start
+    startCommand: source ./render-env-setup.sh && cd server && npm start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -19,6 +19,18 @@ services:
         value: "true"
       - key: LOG_LEVEL
         value: "info"
+      - key: DISABLE_REDIS
+        value: "true"
+      - key: DISABLE_FILE_LOGGING
+        value: "true"
+      - key: DISABLE_PERFORMANCE_MONITORING
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        value: "https://pazarplus-frontend.onrender.com"
 # Note: For the frontend, create a separate Static Site service in Render dashboard
 # Build Command: cd client && npm install && npm run build
 # Publish Directory: client/build

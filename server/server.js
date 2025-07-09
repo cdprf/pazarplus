@@ -47,19 +47,24 @@ const validateEnvironment = () => {
   const requiredEnvVars = [];
 
   if (process.env.NODE_ENV === "production") {
-    requiredEnvVars.push("JWT_SECRET", "DB_HOST", "CLIENT_URL");
+    // For production, accept either DATABASE_URL (for cloud deployments) or individual DB variables
+    const hasDatabase = process.env.DATABASE_URL || process.env.DB_HOST;
+    
+    if (!hasDatabase) {
+      requiredEnvVars.push("DATABASE_URL or DB_HOST");
+    }
+    
+    // These are still required for production
+    if (!process.env.JWT_SECRET) requiredEnvVars.push("JWT_SECRET");
+    if (!process.env.CLIENT_URL) requiredEnvVars.push("CLIENT_URL");
   }
 
-  const missingVars = requiredEnvVars.filter(
-    (varName) => !process.env[varName]
-  );
-
-  if (missingVars.length > 0) {
+  if (requiredEnvVars.length > 0) {
     logger.error(
-      `Missing required environment variables: ${missingVars.join(", ")}`
+      `Missing required environment variables: ${requiredEnvVars.join(", ")}`
     );
     throw new Error(
-      `Missing required environment variables: ${missingVars.join(", ")}`
+      `Missing required environment variables: ${requiredEnvVars.join(", ")}`
     );
   }
 

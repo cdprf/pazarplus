@@ -9,7 +9,13 @@ const QuestionStats = require("../models/QuestionStats");
 const Customer = require("../models/Customer");
 const PlatformConnection = require("../models/PlatformConnection");
 const { Op, Sequelize } = require("sequelize");
-const debug = require("debug")("pazar:customer:questions");
+
+let debug;
+try {
+  debug = require("debug")("pazar:customer:questions");
+} catch (error) {
+  debug = () => {}; // No-op function if debug is not available
+}
 
 class CustomerQuestionService {
   constructor() {
