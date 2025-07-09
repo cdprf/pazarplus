@@ -1,24 +1,440 @@
 const { ProductVariant, PlatformData } = require("../models");
 const logger = require("../utils/logger");
 
-// Import the enhanced detection service for SKU pattern parsing
-const EnhancedVariantDetectionService = require("./enhanced-variant-detection-service");
-
+/**
+ * Enhanced Variant Detection Service for SKU pattern analysis
+ * Merged from enhanced-variant-detection-service.js
+ */
 class VariantDetectionService {
-  /**
-   * Parse SKU using your structured format: NWK-APPL001-TR
-   */
-  static parseSKU(sku) {
-    const enhancedService = new EnhancedVariantDetectionService();
-    return enhancedService.parseSKU(sku);
+  constructor() {
+    // Brand configuration - add all your brands here
+    this.brandConfig = {
+      ownBrands: {
+        NW: "Noteware",
+      },
+
+      productTypes: {
+        K: "Klavye",
+        AD: "Adaptör",
+        DV: "Drive",
+        KASA: "Kasa",
+        KASSA: "Kasa",
+        M: "Mouse",
+        H: "Headset",
+        W: "Webcam",
+        T: "Tablet",
+      },
+
+      externalBrands: {
+        // Current brands from your database
+        IBM: "Lenovo/IBM",
+        HP: "HP",
+        DE: "Dell",
+        AS: "Asus",
+        AC: "Acer",
+        MSI: "MSI",
+        LN: "Lenovo",
+        MON: "Monster",
+
+        // Additional common brands
+        APPL: "Apple",
+        SAMS: "Samsung",
+        LOGI: "Logitech",
+        RAZE: "Razer",
+        MSFT: "Microsoft",
+        CORS: "Corsair",
+        STEE: "SteelSeries",
+        HYPR: "HyperX",
+        ROCS: "Roccat",
+      },
+
+      variantCodes: {
+        // Layout variants
+        TR: "Turkish Layout",
+        UK: "UK Layout",
+        ING: "English Layout",
+        US: "US Layout",
+
+        // Feature variants
+        ORJ: "Original",
+        LED: "LED Backlit",
+
+        // Inclusion variants
+        KASALI: "With Case",
+
+        // Color variants
+        SYH: "Black Color",
+        KIRMIZI: "Red Color",
+        BEYAZ: "White Color",
+
+        // Version variants
+        V1: "Version 1",
+        V2: "Version 2",
+        V3: "Version 3",
+
+        // Size variants
+        S: "Small",
+        M: "Medium",
+        L: "Large",
+
+        // Additional descriptive variants found in your SKUs
+        MC: "Menteşe Kapağı", // Hinge Cover
+        D: "Alt Kasa", // Bottom Case
+      },
+    };
   }
 
   /**
-   * Generate SKU using your structured format
+   * Parse SKU using structured format: NWK-APPL001-TR
+   */
+  static parseSKU(sku) {
+    const instance = new VariantDetectionService();
+    return instance.parseSKU(sku);
+  }
+
+  /**
+   * Parse your SKU format: NWK-IBM048-TR
+   */
+  parseSKU(sku) {
+    if (!sku || typeof sku !== "string") return null;
+
+    // Main pattern: {NW+ProductType}-{Brand+Number}-{Variant}
+    const mainPattern = /^(NW)([A-Z]+)-([A-Z]+)(\d+)-([A-Z0-9\-]+)$/;
+    const match = sku.match(mainPattern);
+
+    if (match) {
+      return {
+        ownBrand: match[1], // NW
+        productType: match[2], // K, AD, etc.
+        brandCode: match[3], // IBM, HP, etc.
+        sequence: parseInt(match[4]), // 048
+        variant: match[5], // TR, ORJ, etc.
+        isStructured: true,
+      };
+    }
+
+    // Handle complex case patterns like KASA-AC001-D-V3
+    const casePattern = /^(KASA|KASSA)-([A-Z]+)(\d+)-([A-Z0-9\-]+)$/;
+    const caseMatch = sku.match(casePattern);
+
+    if (caseMatch) {
+      return {
+        ownBrand: "NW",
+        productType: caseMatch[1],
+        brandCode: caseMatch[2],
+        sequence: parseInt(caseMatch[3]),
+        variant: caseMatch[4],
+        isStructured: true,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Generate SKU using structured format
    */
   static generateSKU(productInfo) {
-    const enhancedService = new EnhancedVariantDetectionService();
-    return enhancedService.generateSKU(productInfo);
+    const instance = new VariantDetectionService();
+    return instance.generateSKU(productInfo);
+  }
+
+  /**
+   * Generate SKU in your format
+   */
+  generateSKU(productInfo) {
+    const {
+      productType,
+      brand,
+      sequence,
+      variant = "ORJ",
+      isVariant = false,
+    } = productInfo;
+
+    // Get brand code
+    const brandCode = this.getBrandCode(brand);
+
+    // Generate sequence number if not provided
+    const sequenceNumber =
+      sequence || this.generateSequenceNumber(brandCode, productType);
+
+    // Format sequence with leading zeros
+    const sequenceStr = sequenceNumber.toString().padStart(3, "0");
+
+    // Build SKU: NW + ProductType - BrandCode + Sequence - Variant
+    return `NW${productType}-${brandCode}${sequenceStr}-${variant}`;
+  }
+
+  /**
+   * Generate a sequence number for a brand/product type combination
+   */
+  generateSequenceNumber(brandCode, productType) {
+    // For now, generate a random number between 1-999
+    // In production, this should query the database for the highest existing sequence
+    return Math.floor(Math.random() * 999) + 1;
+  }
+
+  /**
+   * Get brand code from configuration
+   */
+  getBrandCode(brandName) {
+    // First check exact matches
+    for (const [code, name] of Object.entries(
+      this.brandConfig.externalBrands
+    )) {
+      if (name.toLowerCase() === brandName.toLowerCase()) {
+        return code;
+      }
+    }
+
+    // Generate new code if not found
+    return this.generateBrandCode(brandName);
+  }
+
+  /**
+   * Generate brand code from name
+   */
+  generateBrandCode(brandName) {
+    if (brandName.length <= 3) {
+      return brandName.toUpperCase();
+    }
+
+    // For compound names, take initials
+    const words = brandName.split(/[\s\-_]+/);
+    if (words.length > 1) {
+      return words
+        .map((word) => word.charAt(0))
+        .join("")
+        .toUpperCase();
+    }
+
+    // For single words, take first 2-4 characters
+    return brandName.substring(0, Math.min(4, brandName.length)).toUpperCase();
+  }
+
+  /**
+   * Detect variants from similar SKUs
+   */
+  async detectVariantsFromSKUs(skus) {
+    const variants = [];
+    const grouped = new Map();
+
+    // Group SKUs by base pattern (without variant)
+    skus.forEach((sku) => {
+      const parsed = this.parseSKU(sku);
+      if (parsed && parsed.isStructured) {
+        const baseKey = `${parsed.ownBrand}${parsed.productType}-${
+          parsed.brandCode
+        }${parsed.sequence.toString().padStart(3, "0")}`;
+
+        if (!grouped.has(baseKey)) {
+          grouped.set(baseKey, []);
+        }
+
+        grouped.get(baseKey).push({
+          sku,
+          parsed,
+          variant: parsed.variant,
+        });
+      }
+    });
+
+    // Find groups with multiple variants
+    grouped.forEach((items, baseKey) => {
+      if (items.length > 1) {
+        const baseProduct = items[0];
+        const variantList = items.map((item) => ({
+          sku: item.sku,
+          variant: item.variant,
+          description:
+            this.brandConfig.variantCodes[item.variant] || item.variant,
+          attributes: this.parseVariantAttributes(item.variant),
+        }));
+
+        variants.push({
+          basePattern: baseKey,
+          productType:
+            this.brandConfig.productTypes[baseProduct.parsed.productType],
+          brand: this.brandConfig.externalBrands[baseProduct.parsed.brandCode],
+          variants: variantList,
+          confidence: 0.9, // High confidence for structured SKUs
+        });
+      }
+    });
+
+    return variants;
+  }
+
+  /**
+   * Parse variant attributes from variant code
+   */
+  parseVariantAttributes(variantCode) {
+    const attributes = {};
+
+    // Layout detection
+    if (["TR", "UK", "ING", "US"].includes(variantCode)) {
+      attributes.layout = variantCode;
+    }
+
+    // Feature detection
+    if (variantCode.includes("LED")) {
+      attributes.backlight = "LED";
+    }
+
+    if (variantCode.includes("KASALI")) {
+      attributes.casing = "included";
+    }
+
+    // Color detection
+    if (variantCode.includes("SYH")) {
+      attributes.color = "black";
+    } else if (variantCode.includes("KIRMIZI")) {
+      attributes.color = "red";
+    }
+
+    return attributes;
+  }
+
+  /**
+   * Detect variants for a product based on its information
+   */
+  async detectVariants(productInfo) {
+    const { name, description, category, sku } = productInfo;
+    const detectedVariants = [];
+
+    try {
+      // Parse SKU if provided
+      if (sku) {
+        const parsed = this.parseSKU(sku);
+        if (parsed && parsed.variant) {
+          detectedVariants.push({
+            type: "sku",
+            code: parsed.variant,
+            name:
+              this.brandConfig.variantCodes[parsed.variant] || parsed.variant,
+            source: "SKU parsing",
+          });
+        }
+      }
+
+      // Detect from product name
+      if (name) {
+        const nameVariants = this.detectVariantsFromText(name);
+        detectedVariants.push(...nameVariants);
+      }
+
+      // Detect from description
+      if (description) {
+        const descVariants = this.detectVariantsFromText(description);
+        detectedVariants.push(...descVariants);
+      }
+
+      // Remove duplicates
+      const uniqueVariants = detectedVariants.filter(
+        (variant, index, self) =>
+          index === self.findIndex((v) => v.code === variant.code)
+      );
+
+      return uniqueVariants;
+    } catch (error) {
+      logger.error("Error detecting variants:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Detect variants from text content
+   */
+  detectVariantsFromText(text) {
+    const detectedVariants = [];
+    const lowerText = text.toLowerCase();
+
+    // Check for layout variants
+    const layoutPatterns = {
+      TR: /\b(turkish|türkçe|tr|q klavye)\b/i,
+      UK: /\b(uk|british|english uk)\b/i,
+      US: /\b(us|american|english us)\b/i,
+      ING: /\b(english|ingilizce|ing)\b/i,
+    };
+
+    // Check for feature variants
+    const featurePatterns = {
+      LED: /\b(led|backlit|aydınlatmalı)\b/i,
+      RGB: /\b(rgb|multicolor|çok renkli)\b/i,
+      MECH: /\b(mechanical|mekanik)\b/i,
+      WLES: /\b(wireless|kablosuz)\b/i,
+      BT: /\b(bluetooth|bt)\b/i,
+    };
+
+    // Check for color variants
+    const colorPatterns = {
+      SYH: /\b(black|siyah|siyah renk)\b/i,
+      BEYAZ: /\b(white|beyaz|beyaz renk)\b/i,
+      KIRMIZI: /\b(red|kırmızı|kirmizi)\b/i,
+      MAVI: /\b(blue|mavi)\b/i,
+    };
+
+    // Detect all patterns
+    const allPatterns = {
+      ...layoutPatterns,
+      ...featurePatterns,
+      ...colorPatterns,
+    };
+
+    Object.entries(allPatterns).forEach(([code, pattern]) => {
+      if (pattern.test(lowerText)) {
+        detectedVariants.push({
+          type: "text",
+          code,
+          name: this.brandConfig.variantCodes[code] || code,
+          source: "Text analysis",
+        });
+      }
+    });
+
+    return detectedVariants;
+  }
+
+  /**
+   * Validate SKU format
+   */
+  validateSKU(sku) {
+    const parsed = this.parseSKU(sku);
+    return {
+      isValid: parsed !== null && parsed.isStructured,
+      parsed,
+      errors: parsed ? [] : ["Invalid SKU format"],
+    };
+  }
+
+  /**
+   * Add new brand to configuration
+   */
+  addBrand(brandName, brandCode = null) {
+    const code = brandCode || this.generateBrandCode(brandName);
+    this.brandConfig.externalBrands[code] = brandName;
+    return code;
+  }
+
+  /**
+   * Get available product types
+   */
+  getProductTypes() {
+    return this.brandConfig.productTypes;
+  }
+
+  /**
+   * Get available brands
+   */
+  getBrands() {
+    return this.brandConfig.externalBrands;
+  }
+
+  /**
+   * Get available variant codes
+   */
+  getVariantCodes() {
+    return this.brandConfig.variantCodes;
   }
 
   /**
@@ -30,8 +446,11 @@ class VariantDetectionService {
   static async classifyProductVariantStatus(product, detectionRules = {}) {
     try {
       // Run variant detection
-      const detectionResult = await this.detectVariants(product, detectionRules);
-      
+      const detectionResult = await this.detectVariants(
+        product,
+        detectionRules
+      );
+
       const classification = {
         isVariant: false,
         isMainProduct: false,
@@ -39,17 +458,21 @@ class VariantDetectionService {
         variantValue: null,
         variantGroupId: null,
         confidence: 0,
-        source: 'auto',
+        source: "auto",
         reasoning: [],
       };
 
       // Check if product has detected variants
       if (detectionResult.variants && detectionResult.variants.length > 0) {
         classification.isMainProduct = true;
-        classification.confidence = Math.max(...detectionResult.variants.map(v => v.confidence));
-        classification.source = 'variant_detection';
-        classification.reasoning.push(`Product has ${detectionResult.variants.length} detected variants`);
-        
+        classification.confidence = Math.max(
+          ...detectionResult.variants.map((v) => v.confidence)
+        );
+        classification.source = "variant_detection";
+        classification.reasoning.push(
+          `Product has ${detectionResult.variants.length} detected variants`
+        );
+
         // Generate variant group ID based on product SKU/name
         classification.variantGroupId = this.generateVariantGroupId(product);
       }
@@ -60,36 +483,60 @@ class VariantDetectionService {
         classification.isVariant = true;
         classification.variantType = skuAnalysis.variantType;
         classification.variantValue = skuAnalysis.variantValue;
-        classification.confidence = Math.max(classification.confidence, skuAnalysis.confidence);
-        classification.reasoning.push(`SKU pattern indicates variant: ${skuAnalysis.reasoning}`);
+        classification.confidence = Math.max(
+          classification.confidence,
+          skuAnalysis.confidence
+        );
+        classification.reasoning.push(
+          `SKU pattern indicates variant: ${skuAnalysis.reasoning}`
+        );
       }
 
       // Check platform data for variant indicators
       if (product.platformData && product.platformData.length > 0) {
-        const platformAnalysis = this.analyzePlatformDataForVariants(product.platformData);
+        const platformAnalysis = this.analyzePlatformDataForVariants(
+          product.platformData
+        );
         if (platformAnalysis.isVariant) {
           classification.isVariant = true;
-          classification.variantType = platformAnalysis.variantType || classification.variantType;
-          classification.variantValue = platformAnalysis.variantValue || classification.variantValue;
-          classification.confidence = Math.max(classification.confidence, platformAnalysis.confidence);
-          classification.reasoning.push(`Platform data indicates variant: ${platformAnalysis.reasoning}`);
+          classification.variantType =
+            platformAnalysis.variantType || classification.variantType;
+          classification.variantValue =
+            platformAnalysis.variantValue || classification.variantValue;
+          classification.confidence = Math.max(
+            classification.confidence,
+            platformAnalysis.confidence
+          );
+          classification.reasoning.push(
+            `Platform data indicates variant: ${platformAnalysis.reasoning}`
+          );
         }
       }
 
       // Check name/description for variant patterns
-      const textAnalysis = this.analyzeTextForVariantPattern(product.name, product.description);
+      const textAnalysis = this.analyzeTextForVariantPattern(
+        product.name,
+        product.description
+      );
       if (textAnalysis.isVariant) {
         classification.isVariant = true;
-        classification.variantType = textAnalysis.variantType || classification.variantType;
-        classification.variantValue = textAnalysis.variantValue || classification.variantValue;
-        classification.confidence = Math.max(classification.confidence, textAnalysis.confidence);
-        classification.reasoning.push(`Text analysis indicates variant: ${textAnalysis.reasoning}`);
+        classification.variantType =
+          textAnalysis.variantType || classification.variantType;
+        classification.variantValue =
+          textAnalysis.variantValue || classification.variantValue;
+        classification.confidence = Math.max(
+          classification.confidence,
+          textAnalysis.confidence
+        );
+        classification.reasoning.push(
+          `Text analysis indicates variant: ${textAnalysis.reasoning}`
+        );
       }
 
       // If neither variant nor main product, set appropriate confidence
       if (!classification.isVariant && !classification.isMainProduct) {
         classification.confidence = 0.1; // Low confidence for no variant status
-        classification.reasoning.push('No variant indicators found');
+        classification.reasoning.push("No variant indicators found");
       }
 
       return {
@@ -115,7 +562,7 @@ class VariantDetectionService {
       variantType: null,
       variantValue: null,
       confidence: 0,
-      reasoning: '',
+      reasoning: "",
     };
 
     // Parse SKU using enhanced service
@@ -124,23 +571,27 @@ class VariantDetectionService {
       result.isVariant = true;
       result.confidence = 0.8;
       result.reasoning = `SKU has variant code: ${parsed.variant}`;
-      
+
       // Determine variant type based on variant code
       const variantCode = parsed.variant.toUpperCase();
-      if (['SYH', 'BEYAZ', 'KIRMIZI', 'BLACK', 'WHITE', 'RED', 'BLUE'].some(color => variantCode.includes(color))) {
-        result.variantType = 'color';
+      if (
+        ["SYH", "BEYAZ", "KIRMIZI", "BLACK", "WHITE", "RED", "BLUE"].some(
+          (color) => variantCode.includes(color)
+        )
+      ) {
+        result.variantType = "color";
         result.variantValue = parsed.variant;
-      } else if (['S', 'M', 'L', 'XL', 'XXL'].includes(variantCode)) {
-        result.variantType = 'size';
+      } else if (["S", "M", "L", "XL", "XXL"].includes(variantCode)) {
+        result.variantType = "size";
         result.variantValue = parsed.variant;
-      } else if (['TR', 'UK', 'US', 'ING'].includes(variantCode)) {
-        result.variantType = 'feature';
+      } else if (["TR", "UK", "US", "ING"].includes(variantCode)) {
+        result.variantType = "feature";
         result.variantValue = parsed.variant;
-      } else if (['V1', 'V2', 'V3'].some(v => variantCode.includes(v))) {
-        result.variantType = 'model';
+      } else if (["V1", "V2", "V3"].some((v) => variantCode.includes(v))) {
+        result.variantType = "model";
         result.variantValue = parsed.variant;
       } else {
-        result.variantType = 'unknown';
+        result.variantType = "unknown";
         result.variantValue = parsed.variant;
       }
     }
@@ -157,12 +608,12 @@ class VariantDetectionService {
       variantType: null,
       variantValue: null,
       confidence: 0,
-      reasoning: '',
+      reasoning: "",
     };
 
     for (const platformData of platformDataArray) {
       const data = platformData.data;
-      
+
       // Check for explicit variant indicators
       if (data.isVariant || data.variant === true) {
         result.isVariant = true;
@@ -179,17 +630,17 @@ class VariantDetectionService {
       }
 
       // Check for variant attributes
-      if (data.color && data.color !== 'default') {
+      if (data.color && data.color !== "default") {
         result.isVariant = true;
-        result.variantType = 'color';
+        result.variantType = "color";
         result.variantValue = data.color;
         result.confidence = Math.max(result.confidence, 0.7);
         result.reasoning = `Platform data has color variant: ${data.color}`;
       }
 
-      if (data.size && data.size !== 'default') {
+      if (data.size && data.size !== "default") {
         result.isVariant = true;
-        result.variantType = 'size';
+        result.variantType = "size";
         result.variantValue = data.size;
         result.confidence = Math.max(result.confidence, 0.7);
         result.reasoning = `Platform data has size variant: ${data.size}`;
@@ -208,26 +659,26 @@ class VariantDetectionService {
       variantType: null,
       variantValue: null,
       confidence: 0,
-      reasoning: '',
+      reasoning: "",
     };
 
-    const text = `${name || ''} ${description || ''}`.toLowerCase();
+    const text = `${name || ""} ${description || ""}`.toLowerCase();
 
     // Color patterns
     const colorPatterns = [
-      { pattern: /\b(siyah|black)\b/i, value: 'Black', type: 'color' },
-      { pattern: /\b(beyaz|white)\b/i, value: 'White', type: 'color' },
-      { pattern: /\b(kırmızı|red)\b/i, value: 'Red', type: 'color' },
-      { pattern: /\b(mavi|blue)\b/i, value: 'Blue', type: 'color' },
-      { pattern: /\b(yeşil|green)\b/i, value: 'Green', type: 'color' },
+      { pattern: /\b(siyah|black)\b/i, value: "Black", type: "color" },
+      { pattern: /\b(beyaz|white)\b/i, value: "White", type: "color" },
+      { pattern: /\b(kırmızı|red)\b/i, value: "Red", type: "color" },
+      { pattern: /\b(mavi|blue)\b/i, value: "Blue", type: "color" },
+      { pattern: /\b(yeşil|green)\b/i, value: "Green", type: "color" },
     ];
 
     // Size patterns
     const sizePatterns = [
-      { pattern: /\b(small|küçük|s)\b/i, value: 'Small', type: 'size' },
-      { pattern: /\b(medium|orta|m)\b/i, value: 'Medium', type: 'size' },
-      { pattern: /\b(large|büyük|l)\b/i, value: 'Large', type: 'size' },
-      { pattern: /\b(extra large|xl)\b/i, value: 'Extra Large', type: 'size' },
+      { pattern: /\b(small|küçük|s)\b/i, value: "Small", type: "size" },
+      { pattern: /\b(medium|orta|m)\b/i, value: "Medium", type: "size" },
+      { pattern: /\b(large|büyük|l)\b/i, value: "Large", type: "size" },
+      { pattern: /\b(extra large|xl)\b/i, value: "Extra Large", type: "size" },
     ];
 
     // Check patterns
@@ -251,11 +702,16 @@ class VariantDetectionService {
    */
   static generateVariantGroupId(product) {
     // Use base SKU or name to generate consistent group ID
-    const baseSKU = product.sku ? product.sku.split('-')[0] : null;
-    const baseName = product.name ? product.name.replace(/\s+(siyah|beyaz|kırmızı|mavi|small|medium|large|s|m|l|xl).*$/i, '') : null;
-    
+    const baseSKU = product.sku ? product.sku.split("-")[0] : null;
+    const baseName = product.name
+      ? product.name.replace(
+          /\s+(siyah|beyaz|kırmızı|mavi|small|medium|large|s|m|l|xl).*$/i,
+          ""
+        )
+      : null;
+
     const base = baseSKU || baseName || product.id;
-    return `vg_${base.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}`;
+    return `vg_${base.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}`;
   }
 
   /**
@@ -263,8 +719,8 @@ class VariantDetectionService {
    */
   static async updateProductVariantStatus(productId, classification) {
     try {
-      const { Product } = require('../models');
-      
+      const { Product } = require("../models");
+
       const updateData = {
         isVariant: classification.isVariant,
         isMainProduct: classification.isMainProduct,
@@ -277,13 +733,19 @@ class VariantDetectionService {
       };
 
       await Product.update(updateData, {
-        where: { id: productId }
+        where: { id: productId },
       });
 
-      logger.info(`Updated variant status for product ${productId}:`, updateData);
+      logger.info(
+        `Updated variant status for product ${productId}:`,
+        updateData
+      );
       return { success: true, updated: updateData };
     } catch (error) {
-      logger.error(`Error updating variant status for product ${productId}:`, error);
+      logger.error(
+        `Error updating variant status for product ${productId}:`,
+        error
+      );
       throw error;
     }
   }
@@ -293,8 +755,8 @@ class VariantDetectionService {
    */
   static async removeVariantStatus(productId) {
     try {
-      const { Product } = require('../models');
-      
+      const { Product } = require("../models");
+
       const updateData = {
         isVariant: false,
         isMainProduct: false,
@@ -303,18 +765,21 @@ class VariantDetectionService {
         variantGroupId: null,
         parentProductId: null,
         variantDetectionConfidence: null,
-        variantDetectionSource: 'manual',
+        variantDetectionSource: "manual",
         lastVariantDetectionAt: new Date(),
       };
 
       await Product.update(updateData, {
-        where: { id: productId }
+        where: { id: productId },
       });
 
       logger.info(`Removed variant status from product ${productId}`);
-      return { success: true, message: 'Variant status removed successfully' };
+      return { success: true, message: "Variant status removed successfully" };
     } catch (error) {
-      logger.error(`Error removing variant status from product ${productId}:`, error);
+      logger.error(
+        `Error removing variant status from product ${productId}:`,
+        error
+      );
       throw error;
     }
   }
@@ -856,8 +1321,11 @@ class VariantDetectionService {
   static async classifyProductVariantStatus(product, detectionRules = {}) {
     try {
       // Run variant detection
-      const detectionResult = await this.detectVariants(product, detectionRules);
-      
+      const detectionResult = await this.detectVariants(
+        product,
+        detectionRules
+      );
+
       const classification = {
         isVariant: false,
         isMainProduct: false,
@@ -865,17 +1333,21 @@ class VariantDetectionService {
         variantValue: null,
         variantGroupId: null,
         confidence: 0,
-        source: 'auto',
+        source: "auto",
         reasoning: [],
       };
 
       // Check if product has detected variants
       if (detectionResult.variants && detectionResult.variants.length > 0) {
         classification.isMainProduct = true;
-        classification.confidence = Math.max(...detectionResult.variants.map(v => v.confidence));
-        classification.source = 'variant_detection';
-        classification.reasoning.push(`Product has ${detectionResult.variants.length} detected variants`);
-        
+        classification.confidence = Math.max(
+          ...detectionResult.variants.map((v) => v.confidence)
+        );
+        classification.source = "variant_detection";
+        classification.reasoning.push(
+          `Product has ${detectionResult.variants.length} detected variants`
+        );
+
         // Generate variant group ID based on product SKU/name
         classification.variantGroupId = this.generateVariantGroupId(product);
       }
@@ -886,36 +1358,60 @@ class VariantDetectionService {
         classification.isVariant = true;
         classification.variantType = skuAnalysis.variantType;
         classification.variantValue = skuAnalysis.variantValue;
-        classification.confidence = Math.max(classification.confidence, skuAnalysis.confidence);
-        classification.reasoning.push(`SKU pattern indicates variant: ${skuAnalysis.reasoning}`);
+        classification.confidence = Math.max(
+          classification.confidence,
+          skuAnalysis.confidence
+        );
+        classification.reasoning.push(
+          `SKU pattern indicates variant: ${skuAnalysis.reasoning}`
+        );
       }
 
       // Check platform data for variant indicators
       if (product.platformData && product.platformData.length > 0) {
-        const platformAnalysis = this.analyzePlatformDataForVariants(product.platformData);
+        const platformAnalysis = this.analyzePlatformDataForVariants(
+          product.platformData
+        );
         if (platformAnalysis.isVariant) {
           classification.isVariant = true;
-          classification.variantType = platformAnalysis.variantType || classification.variantType;
-          classification.variantValue = platformAnalysis.variantValue || classification.variantValue;
-          classification.confidence = Math.max(classification.confidence, platformAnalysis.confidence);
-          classification.reasoning.push(`Platform data indicates variant: ${platformAnalysis.reasoning}`);
+          classification.variantType =
+            platformAnalysis.variantType || classification.variantType;
+          classification.variantValue =
+            platformAnalysis.variantValue || classification.variantValue;
+          classification.confidence = Math.max(
+            classification.confidence,
+            platformAnalysis.confidence
+          );
+          classification.reasoning.push(
+            `Platform data indicates variant: ${platformAnalysis.reasoning}`
+          );
         }
       }
 
       // Check name/description for variant patterns
-      const textAnalysis = this.analyzeTextForVariantPattern(product.name, product.description);
+      const textAnalysis = this.analyzeTextForVariantPattern(
+        product.name,
+        product.description
+      );
       if (textAnalysis.isVariant) {
         classification.isVariant = true;
-        classification.variantType = textAnalysis.variantType || classification.variantType;
-        classification.variantValue = textAnalysis.variantValue || classification.variantValue;
-        classification.confidence = Math.max(classification.confidence, textAnalysis.confidence);
-        classification.reasoning.push(`Text analysis indicates variant: ${textAnalysis.reasoning}`);
+        classification.variantType =
+          textAnalysis.variantType || classification.variantType;
+        classification.variantValue =
+          textAnalysis.variantValue || classification.variantValue;
+        classification.confidence = Math.max(
+          classification.confidence,
+          textAnalysis.confidence
+        );
+        classification.reasoning.push(
+          `Text analysis indicates variant: ${textAnalysis.reasoning}`
+        );
       }
 
       // If neither variant nor main product, set appropriate confidence
       if (!classification.isVariant && !classification.isMainProduct) {
         classification.confidence = 0.1; // Low confidence for no variant status
-        classification.reasoning.push('No variant indicators found');
+        classification.reasoning.push("No variant indicators found");
       }
 
       return {
@@ -941,7 +1437,7 @@ class VariantDetectionService {
       variantType: null,
       variantValue: null,
       confidence: 0,
-      reasoning: '',
+      reasoning: "",
     };
 
     // Parse SKU using enhanced service
@@ -950,23 +1446,27 @@ class VariantDetectionService {
       result.isVariant = true;
       result.confidence = 0.8;
       result.reasoning = `SKU has variant code: ${parsed.variant}`;
-      
+
       // Determine variant type based on variant code
       const variantCode = parsed.variant.toUpperCase();
-      if (['SYH', 'BEYAZ', 'KIRMIZI', 'BLACK', 'WHITE', 'RED', 'BLUE'].some(color => variantCode.includes(color))) {
-        result.variantType = 'color';
+      if (
+        ["SYH", "BEYAZ", "KIRMIZI", "BLACK", "WHITE", "RED", "BLUE"].some(
+          (color) => variantCode.includes(color)
+        )
+      ) {
+        result.variantType = "color";
         result.variantValue = parsed.variant;
-      } else if (['S', 'M', 'L', 'XL', 'XXL'].includes(variantCode)) {
-        result.variantType = 'size';
+      } else if (["S", "M", "L", "XL", "XXL"].includes(variantCode)) {
+        result.variantType = "size";
         result.variantValue = parsed.variant;
-      } else if (['TR', 'UK', 'US', 'ING'].includes(variantCode)) {
-        result.variantType = 'feature';
+      } else if (["TR", "UK", "US", "ING"].includes(variantCode)) {
+        result.variantType = "feature";
         result.variantValue = parsed.variant;
-      } else if (['V1', 'V2', 'V3'].some(v => variantCode.includes(v))) {
-        result.variantType = 'model';
+      } else if (["V1", "V2", "V3"].some((v) => variantCode.includes(v))) {
+        result.variantType = "model";
         result.variantValue = parsed.variant;
       } else {
-        result.variantType = 'unknown';
+        result.variantType = "unknown";
         result.variantValue = parsed.variant;
       }
     }
@@ -983,12 +1483,12 @@ class VariantDetectionService {
       variantType: null,
       variantValue: null,
       confidence: 0,
-      reasoning: '',
+      reasoning: "",
     };
 
     for (const platformData of platformDataArray) {
       const data = platformData.data;
-      
+
       // Check for explicit variant indicators
       if (data.isVariant || data.variant === true) {
         result.isVariant = true;
@@ -1005,17 +1505,17 @@ class VariantDetectionService {
       }
 
       // Check for variant attributes
-      if (data.color && data.color !== 'default') {
+      if (data.color && data.color !== "default") {
         result.isVariant = true;
-        result.variantType = 'color';
+        result.variantType = "color";
         result.variantValue = data.color;
         result.confidence = Math.max(result.confidence, 0.7);
         result.reasoning = `Platform data has color variant: ${data.color}`;
       }
 
-      if (data.size && data.size !== 'default') {
+      if (data.size && data.size !== "default") {
         result.isVariant = true;
-        result.variantType = 'size';
+        result.variantType = "size";
         result.variantValue = data.size;
         result.confidence = Math.max(result.confidence, 0.7);
         result.reasoning = `Platform data has size variant: ${data.size}`;
@@ -1034,26 +1534,26 @@ class VariantDetectionService {
       variantType: null,
       variantValue: null,
       confidence: 0,
-      reasoning: '',
+      reasoning: "",
     };
 
-    const text = `${name || ''} ${description || ''}`.toLowerCase();
+    const text = `${name || ""} ${description || ""}`.toLowerCase();
 
     // Color patterns
     const colorPatterns = [
-      { pattern: /\b(siyah|black)\b/i, value: 'Black', type: 'color' },
-      { pattern: /\b(beyaz|white)\b/i, value: 'White', type: 'color' },
-      { pattern: /\b(kırmızı|red)\b/i, value: 'Red', type: 'color' },
-      { pattern: /\b(mavi|blue)\b/i, value: 'Blue', type: 'color' },
-      { pattern: /\b(yeşil|green)\b/i, value: 'Green', type: 'color' },
+      { pattern: /\b(siyah|black)\b/i, value: "Black", type: "color" },
+      { pattern: /\b(beyaz|white)\b/i, value: "White", type: "color" },
+      { pattern: /\b(kırmızı|red)\b/i, value: "Red", type: "color" },
+      { pattern: /\b(mavi|blue)\b/i, value: "Blue", type: "color" },
+      { pattern: /\b(yeşil|green)\b/i, value: "Green", type: "color" },
     ];
 
     // Size patterns
     const sizePatterns = [
-      { pattern: /\b(small|küçük|s)\b/i, value: 'Small', type: 'size' },
-      { pattern: /\b(medium|orta|m)\b/i, value: 'Medium', type: 'size' },
-      { pattern: /\b(large|büyük|l)\b/i, value: 'Large', type: 'size' },
-      { pattern: /\b(extra large|xl)\b/i, value: 'Extra Large', type: 'size' },
+      { pattern: /\b(small|küçük|s)\b/i, value: "Small", type: "size" },
+      { pattern: /\b(medium|orta|m)\b/i, value: "Medium", type: "size" },
+      { pattern: /\b(large|büyük|l)\b/i, value: "Large", type: "size" },
+      { pattern: /\b(extra large|xl)\b/i, value: "Extra Large", type: "size" },
     ];
 
     // Check patterns
@@ -1077,11 +1577,16 @@ class VariantDetectionService {
    */
   static generateVariantGroupId(product) {
     // Use base SKU or name to generate consistent group ID
-    const baseSKU = product.sku ? product.sku.split('-')[0] : null;
-    const baseName = product.name ? product.name.replace(/\s+(siyah|beyaz|kırmızı|mavi|small|medium|large|s|m|l|xl).*$/i, '') : null;
-    
+    const baseSKU = product.sku ? product.sku.split("-")[0] : null;
+    const baseName = product.name
+      ? product.name.replace(
+          /\s+(siyah|beyaz|kırmızı|mavi|small|medium|large|s|m|l|xl).*$/i,
+          ""
+        )
+      : null;
+
     const base = baseSKU || baseName || product.id;
-    return `vg_${base.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}`;
+    return `vg_${base.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}`;
   }
 
   /**
@@ -1089,8 +1594,8 @@ class VariantDetectionService {
    */
   static async updateProductVariantStatus(productId, classification) {
     try {
-      const { Product } = require('../models');
-      
+      const { Product } = require("../models");
+
       const updateData = {
         isVariant: classification.isVariant,
         isMainProduct: classification.isMainProduct,
@@ -1103,13 +1608,19 @@ class VariantDetectionService {
       };
 
       await Product.update(updateData, {
-        where: { id: productId }
+        where: { id: productId },
       });
 
-      logger.info(`Updated variant status for product ${productId}:`, updateData);
+      logger.info(
+        `Updated variant status for product ${productId}:`,
+        updateData
+      );
       return { success: true, updated: updateData };
     } catch (error) {
-      logger.error(`Error updating variant status for product ${productId}:`, error);
+      logger.error(
+        `Error updating variant status for product ${productId}:`,
+        error
+      );
       throw error;
     }
   }
@@ -1119,8 +1630,8 @@ class VariantDetectionService {
    */
   static async removeVariantStatus(productId) {
     try {
-      const { Product } = require('../models');
-      
+      const { Product } = require("../models");
+
       const updateData = {
         isVariant: false,
         isMainProduct: false,
@@ -1129,18 +1640,21 @@ class VariantDetectionService {
         variantGroupId: null,
         parentProductId: null,
         variantDetectionConfidence: null,
-        variantDetectionSource: 'manual',
+        variantDetectionSource: "manual",
         lastVariantDetectionAt: new Date(),
       };
 
       await Product.update(updateData, {
-        where: { id: productId }
+        where: { id: productId },
       });
 
       logger.info(`Removed variant status from product ${productId}`);
-      return { success: true, message: 'Variant status removed successfully' };
+      return { success: true, message: "Variant status removed successfully" };
     } catch (error) {
-      logger.error(`Error removing variant status from product ${productId}:`, error);
+      logger.error(
+        `Error removing variant status from product ${productId}:`,
+        error
+      );
       throw error;
     }
   }

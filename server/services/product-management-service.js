@@ -1,6 +1,7 @@
 /**
- * Enhanced Product Management Service
+ * Product Management Service
  * Handles main products, platform variants, and auto-learning capabilities
+ * Consolidated from enhanced-product-management-service.js
  */
 
 const logger = require("../utils/logger");
@@ -12,12 +13,12 @@ const {
   sequelize,
 } = require("../models");
 const { Op } = require("sequelize");
-const EnhancedStockService = require("./enhanced-stock-service");
-const SKUSystemManager = require("../../sku-system-manager");
+const StockService = require("./stock-service");
+// const SKUSystemManager = require("../../sku-system-manager"); // Temporarily disabled - missing module
 
-class EnhancedProductManagementService {
+class ProductManagementService {
   constructor() {
-    this.skuManager = new SKUSystemManager();
+    // this.skuManager = new SKUSystemManager(); // Temporarily disabled
   }
 
   /**
@@ -51,7 +52,7 @@ class EnhancedProductManagementService {
 
       // Create initial stock record if quantity provided
       if (productData.stockQuantity > 0) {
-        await EnhancedStockService.updateStock(
+        await StockService.updateStock(
           mainProduct.id,
           productData.stockQuantity,
           "Initial stock",
@@ -146,21 +147,36 @@ class EnhancedProductManagementService {
    */
   async generateBaseSKU(productData) {
     try {
-      // Use SKU manager to generate structured SKU
-      const skuData = await this.skuManager.generateSKU({
-        productType: productData.productType,
-        brand: productData.brand,
-        productName: productData.name,
-        category: productData.category,
-      });
+      // TODO: Re-enable SKU manager when available
+      // const skuData = await this.skuManager.generateSKU({
+      //   productType: productData.productType,
+      //   brand: productData.brand,
+      //   productName: productData.name,
+      //   category: productData.category,
+      // });
+      // return skuData;
 
-      return skuData;
+      // Temporary fallback to simple generation
+      const fallbackSKU = this.generateFallbackSKU(productData);
+      return { sku: fallbackSKU, isGenerated: true };
     } catch (error) {
       logger.error("Error generating base SKU:", error);
       // Fallback to simple generation
       const timestamp = Date.now().toString().slice(-6);
       return `PROD-${timestamp}`;
     }
+  }
+
+  /**
+   * Generate a simple fallback SKU when the SKU manager is not available
+   */
+  generateFallbackSKU(productData) {
+    const brand = (productData.brand || "UNK").substring(0, 3).toUpperCase();
+    const category = (productData.category || "CAT")
+      .substring(0, 3)
+      .toUpperCase();
+    const timestamp = Date.now().toString().slice(-6);
+    return `${brand}-${category}-${timestamp}`;
   }
 
   /**
@@ -386,7 +402,7 @@ class EnhancedProductManagementService {
       return {
         mainProduct,
         platformVariant,
-        isNewProduct: true,
+        isNew: true,
       };
     } catch (error) {
       logger.error("Error creating main product from sync:", error);
@@ -395,61 +411,14 @@ class EnhancedProductManagementService {
   }
 
   /**
-   * Learn from platform variant creation or sync
+   * Extract brand from SKU pattern
    */
-  async learnFromVariant(platformVariant, template, transaction = null) {
-    try {
-      // Update template usage statistics
-      if (template) {
-        await template.update(
-          {
-            usageCount: template.usageCount + 1,
-            lastLearningUpdate: new Date(),
-          },
-          { transaction }
-        );
-      }
-
-      // Extract patterns from variant data
-      const patterns = this.extractVariantPatterns(platformVariant);
-
-      // TODO: Store learned patterns for future use
-      logger.debug(
-        `Learned patterns from variant ${platformVariant.platformSku}:`,
-        patterns
-      );
-
-      return true;
-    } catch (error) {
-      logger.error("Error learning from variant:", error);
-      return false;
+  extractBrandFromSKU(sku) {
+    const patternInfo = this.analyzeStockCodePattern(sku);
+    if (patternInfo.components && patternInfo.components.brand) {
+      return patternInfo.components.brand.replace(/\d+$/, "");
     }
-  }
-
-  /**
-   * Learn from synced product data
-   */
-  async learnFromSyncedProduct(syncedProduct, platformInfo, userId) {
-    try {
-      // Learn template patterns
-      await PlatformTemplate.learnFromProduct(
-        platformInfo.platform,
-        syncedProduct.category,
-        syncedProduct,
-        userId
-      );
-
-      // Learn category mappings
-      await this.learnCategoryMappings(syncedProduct, platformInfo, userId);
-
-      // Learn field patterns
-      await this.learnFieldPatterns(syncedProduct, platformInfo, userId);
-
-      return true;
-    } catch (error) {
-      logger.error("Error learning from synced product:", error);
-      return false;
-    }
+    return "Unknown";
   }
 
   /**
@@ -458,22 +427,25 @@ class EnhancedProductManagementService {
   extractMediaFromSync(syncedProduct) {
     const media = [];
 
-    // Handle different media formats from platforms
-    if (syncedProduct.images) {
-      const images = Array.isArray(syncedProduct.images)
-        ? syncedProduct.images
-        : [syncedProduct.images];
+    if (syncedProduct.images && Array.isArray(syncedProduct.images)) {
+      syncedProduct.images.forEach((image, index) => {
+        media.push({
+          type: "image",
+          url: image.url || image,
+          alt: image.alt || `Product image ${index + 1}`,
+          isPrimary: index === 0,
+        });
+      });
+    }
 
-      images.forEach((imageUrl, index) => {
-        if (imageUrl) {
-          media.push({
-            type: "image",
-            url: imageUrl,
-            alt: `${syncedProduct.name} - Image ${index + 1}`,
-            isPrimary: index === 0,
-            platforms: [], // Will be populated later
-          });
-        }
+    if (syncedProduct.videos && Array.isArray(syncedProduct.videos)) {
+      syncedProduct.videos.forEach((video) => {
+        media.push({
+          type: "video",
+          url: video.url || video,
+          thumbnail: video.thumbnail,
+          isPrimary: false,
+        });
       });
     }
 
@@ -481,151 +453,241 @@ class EnhancedProductManagementService {
   }
 
   /**
-   * Extract brand from SKU pattern
+   * Learn from variant creation
    */
-  extractBrandFromSKU(sku) {
+  async learnFromVariant(platformVariant, template, transaction) {
     try {
-      const patternInfo = this.analyzeStockCodePattern(sku);
-      if (patternInfo.components && patternInfo.components.brand) {
-        return patternInfo.components.brand.replace(/\d+$/, ""); // Remove numbers
+      // Update template usage statistics
+      if (template) {
+        await template.increment("usageCount", { transaction });
+        await template.update({ lastUsedAt: new Date() }, { transaction });
       }
-      return null;
+
+      // Learn platform-specific patterns
+      const learningData = {
+        platform: platformVariant.platform,
+        category: platformVariant.platformCategory,
+        attributes: platformVariant.platformAttributes,
+        pricing: {
+          useMainPrice: platformVariant.useMainPrice,
+          priceMultiplier: platformVariant.priceMultiplier,
+        },
+        media: {
+          useMainMedia: platformVariant.useMainMedia,
+        },
+        success: true,
+      };
+
+      // Store learning data for future recommendations
+      await this.storeLearnedPattern(learningData, transaction);
+
+      logger.debug(
+        `Learned from variant creation: ${platformVariant.platformSku}`
+      );
     } catch (error) {
-      return null;
+      logger.error("Error learning from variant:", error);
+      // Don't throw - learning is optional
     }
   }
 
   /**
-   * Extract variant patterns for learning
+   * Learn from synced product
    */
-  extractVariantPatterns(platformVariant) {
+  async learnFromSyncedProduct(syncedProduct, platformInfo, userId) {
+    try {
+      const learningData = {
+        platform: platformInfo.platform,
+        category: syncedProduct.category,
+        brand: syncedProduct.brand,
+        skuPattern: this.analyzeStockCodePattern(syncedProduct.sku),
+        priceRange: {
+          min: parseFloat(syncedProduct.price) || 0,
+          max: parseFloat(syncedProduct.price) || 0,
+        },
+        success: true,
+        userId,
+      };
+
+      await this.storeLearnedPattern(learningData);
+
+      logger.debug(`Learned from synced product: ${syncedProduct.sku}`);
+    } catch (error) {
+      logger.error("Error learning from synced product:", error);
+      // Don't throw - learning is optional
+    }
+  }
+
+  /**
+   * Store learned pattern for future use
+   */
+  async storeLearnedPattern(learningData, transaction = null) {
+    try {
+      // For now, just log the pattern
+      // In future, this could be stored in a dedicated learning table
+      logger.debug("Stored learned pattern:", learningData);
+    } catch (error) {
+      logger.error("Error storing learned pattern:", error);
+    }
+  }
+
+  /**
+   * Get recommendations based on learned patterns
+   */
+  async getRecommendations(productData, userId) {
+    try {
+      // Analyze product to understand its characteristics
+      const analysis = {
+        category: productData.category,
+        brand: productData.brand,
+        skuPattern: this.analyzeStockCodePattern(productData.sku || ""),
+        priceRange: productData.price
+          ? {
+              min: productData.price * 0.8,
+              max: productData.price * 1.2,
+            }
+          : null,
+      };
+
+      // Find similar successful products
+      const similarProducts = await MainProduct.findAll({
+        where: {
+          userId,
+          [Op.or]: [{ category: analysis.category }, { brand: analysis.brand }],
+        },
+        include: [
+          {
+            model: PlatformVariant,
+            as: "variants",
+            where: { syncStatus: "success" },
+            required: false,
+          },
+        ],
+        limit: 5,
+      });
+
+      // Generate recommendations
+      const recommendations = {
+        platforms: this.recommendPlatforms(analysis, similarProducts),
+        templates: await this.recommendTemplates(analysis),
+        pricing: this.recommendPricing(analysis, similarProducts),
+      };
+
+      return recommendations;
+    } catch (error) {
+      logger.error("Error getting recommendations:", error);
+      return {
+        platforms: [],
+        templates: [],
+        pricing: null,
+      };
+    }
+  }
+
+  /**
+   * Recommend platforms based on similar products
+   */
+  recommendPlatforms(analysis, similarProducts) {
+    const platformCounts = {};
+
+    similarProducts.forEach((product) => {
+      if (product.variants) {
+        product.variants.forEach((variant) => {
+          platformCounts[variant.platform] =
+            (platformCounts[variant.platform] || 0) + 1;
+        });
+      }
+    });
+
+    return Object.entries(platformCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([platform, count]) => ({
+        platform,
+        confidence: Math.min(count / similarProducts.length, 1),
+        reason: `${count} similar products found on ${platform}`,
+      }));
+  }
+
+  /**
+   * Recommend templates based on analysis
+   */
+  async recommendTemplates(analysis) {
+    try {
+      const templates = await PlatformTemplate.findAll({
+        where: {
+          [Op.or]: [
+            { category: analysis.category },
+            { tags: { [Op.contains]: [analysis.category] } },
+          ],
+        },
+        order: [["usageCount", "DESC"]],
+        limit: 3,
+      });
+
+      return templates.map((template) => ({
+        id: template.id,
+        name: template.name,
+        platform: template.platform,
+        confidence: template.usageCount > 0 ? 0.8 : 0.5,
+        reason:
+          template.usageCount > 0
+            ? `Used ${template.usageCount} times successfully`
+            : "Matches category",
+      }));
+    } catch (error) {
+      logger.error("Error recommending templates:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Recommend pricing based on similar products
+   */
+  recommendPricing(analysis, similarProducts) {
+    if (!analysis.priceRange || similarProducts.length === 0) {
+      return null;
+    }
+
+    const prices = similarProducts
+      .filter((p) => p.basePrice > 0)
+      .map((p) => p.basePrice);
+
+    if (prices.length === 0) {
+      return null;
+    }
+
+    const avgPrice =
+      prices.reduce((sum, price) => sum + price, 0) / prices.length;
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+
     return {
-      platform: platformVariant.platform,
-      skuPattern: platformVariant.platformSku,
-      priceStrategy: platformVariant.useMainPrice ? "inherit" : "override",
-      mediaStrategy: platformVariant.useMainMedia ? "inherit" : "custom",
-      categoryMapping: platformVariant.platformCategory,
-      attributePatterns: Object.keys(platformVariant.platformAttributes || {}),
+      suggested: avgPrice,
+      range: { min: minPrice, max: maxPrice },
+      confidence: prices.length / similarProducts.length,
+      reason: `Based on ${prices.length} similar products`,
     };
   }
 
   /**
-   * Learn category mappings across platforms
+   * Bulk create products from array
    */
-  async learnCategoryMappings(syncedProduct, platformInfo, userId) {
-    // TODO: Implement category mapping learning
-    logger.debug(
-      `Learning category mapping: ${syncedProduct.category} -> ${platformInfo.platform}`
-    );
-    return true;
-  }
-
-  /**
-   * Learn field patterns from synced data
-   */
-  async learnFieldPatterns(syncedProduct, platformInfo, userId) {
-    // TODO: Implement field pattern learning
-    logger.debug(`Learning field patterns for ${platformInfo.platform}`);
-    return true;
-  }
-
-  /**
-   * Get comprehensive product information
-   */
-  async getProductWithVariants(mainProductId, userId) {
-    try {
-      const { EnhancedProductMedia } = require("../models");
-      const mainProduct = await MainProduct.findOne({
-        where: { id: mainProductId, userId },
-        include: [
-          {
-            model: PlatformVariant,
-            as: "platformVariants",
-            include: [
-              {
-                model: PlatformTemplate,
-                as: "template",
-                required: false,
-              },
-              {
-                model: EnhancedProductMedia,
-                as: "mediaAssets",
-                required: false,
-              },
-            ],
-          },
-          {
-            model: EnhancedProductMedia,
-            as: "mediaAssets",
-            required: false,
-          },
-        ],
-      });
-
-      if (!mainProduct) {
-        throw new Error("Main product not found");
-      }
-
-      // Get stock status
-      const stockStatus = await EnhancedStockService.getStockStatus(
-        mainProductId
-      );
-
-      return {
-        ...mainProduct.toJSON(),
-        stockStatus,
-        variantCount: mainProduct.platformVariants.length,
-        publishedVariants: mainProduct.platformVariants.filter(
-          (v) => v.isPublished
-        ).length,
-      };
-    } catch (error) {
-      logger.error("Error getting product with variants:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Bulk operations for multiple products
-   */
-  async bulkOperation(operation, productIds, operationData, userId) {
-    const results = [];
+  async bulkCreateProducts(productsData, userId) {
     const transaction = await sequelize.transaction();
+    const results = [];
 
     try {
-      for (const productId of productIds) {
+      for (const productData of productsData) {
         try {
-          let result;
-          switch (operation) {
-            case "publish":
-              result = await this.publishToPlatforms(
-                productId,
-                operationData.platforms,
-                transaction
-              );
-              break;
-            case "updatePrice":
-              result = await this.updateProductPrice(
-                productId,
-                operationData.price,
-                transaction
-              );
-              break;
-            case "updateStock":
-              result = await EnhancedStockService.updateStock(
-                productId,
-                operationData.stockQuantity,
-                "Bulk update",
-                userId
-              );
-              break;
-            default:
-              throw new Error(`Unknown operation: ${operation}`);
-          }
-
-          results.push({ productId, success: true, result });
+          const mainProduct = await this.createMainProduct(productData, userId);
+          results.push({ success: true, product: mainProduct });
         } catch (error) {
-          results.push({ productId, success: false, error: error.message });
+          logger.error(`Error creating product ${productData.name}:`, error);
+          results.push({
+            success: false,
+            error: error.message,
+            productData: productData.name,
+          });
         }
       }
 
@@ -733,4 +795,4 @@ class EnhancedProductManagementService {
   }
 }
 
-module.exports = new EnhancedProductManagementService();
+module.exports = new ProductManagementService();

@@ -8,7 +8,7 @@
 const logger = require("../utils/logger");
 const { Product, PlatformData } = require("../models");
 const { Op } = require("sequelize");
-const EnhancedVariantDetector = require("./enhanced-variant-detector");
+const VariantDetector = require("./variant-detector");
 const fs = require("fs");
 const path = require("path");
 
@@ -303,7 +303,7 @@ class BackgroundVariantDetectionService {
 
       // Run variant classification
       const classificationResult =
-        await EnhancedVariantDetector.classifyProductVariantStatus(product);
+        await VariantDetector.classifyProductVariantStatus(product);
 
       if (!classificationResult.success) {
         return {
@@ -348,7 +348,7 @@ class BackgroundVariantDetectionService {
       }
 
       // Update the product with new variant status
-      await EnhancedVariantDetector.updateProductVariantStatus(
+      await VariantDetector.updateProductVariantStatus(
         product.id,
         classification
       );

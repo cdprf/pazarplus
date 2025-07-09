@@ -365,6 +365,40 @@ const requireTenant = async (req, res, next) => {
   }
 };
 
+/**
+ * Role-based access control middleware
+ */
+const requireRole = (roles) => {
+  return (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+        });
+      }
+
+      const userRole = req.user.role;
+      const allowedRoles = Array.isArray(roles) ? roles : [roles];
+
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({
+          success: false,
+          message: "Insufficient permissions",
+        });
+      }
+
+      next();
+    } catch (error) {
+      logger.error("Role middleware error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Role validation error",
+      });
+    }
+  };
+};
+
 module.exports = {
   auth,
   adminAuth,
@@ -372,4 +406,5 @@ module.exports = {
   requireFeature,
   checkUsageLimit,
   requireTenant,
+  requireRole,
 };

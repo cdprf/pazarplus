@@ -93,3 +93,4 @@ NETWORK_ACCESS.md
 TRENDYOL_IMPROVEMENTS.md
 server/migrations/20250624-add-shipping-invoice-status.js
 server/migrations/20250623171147-add-platform-extras-to-main-products.js
+.vercel

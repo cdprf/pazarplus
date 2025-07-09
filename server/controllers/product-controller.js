@@ -14,13 +14,13 @@ const PlatformServiceFactory = require("../modules/order-management/services/pla
 const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
 const AdvancedInventoryService = require("../services/advanced-inventory-service");
-const EnhancedProductManagementService = require("../services/enhanced-product-management-service");
-const EnhancedStockService = require("../services/enhanced-stock-service");
+const ProductManagementService = require("../services/product-management-service");
+const StockService = require("../services/stock-service");
 const MediaUploadService = require("../services/media-upload-service");
 const PlatformScrapingService = require("../services/platform-scraping-service");
-const EnhancedVariantDetector = require("../services/enhanced-variant-detector");
+const VariantDetector = require("../services/variant-detector");
 const backgroundVariantDetectionService = require("../services/background-variant-detection-service");
-const SKUSystemManager = require("../../sku-system-manager");
+// const SKUSystemManager = require("../../sku-system-manager"); // TEMPORARILY COMMENTED OUT - MODULE MISSING
 const {
   ProductVariant,
   InventoryMovement,
@@ -30,7 +30,7 @@ const { sanitizePlatformType } = require("../utils/enum-validators");
 
 class ProductController {
   constructor() {
-    this.skuManager = new SKUSystemManager();
+    // this.skuManager = new SKUSystemManager(); // TEMPORARILY COMMENTED OUT - MODULE MISSING
     this.scrapingService = new PlatformScrapingService();
   }
   /**
@@ -3077,12 +3077,10 @@ class ProductController {
           let stockStatus = null;
           try {
             if (
-              EnhancedStockService &&
-              typeof EnhancedStockService.getStockStatus === "function"
+              StockService &&
+              typeof StockService.getStockStatus === "function"
             ) {
-              stockStatus = await EnhancedStockService.getStockStatus(
-                product.id
-              );
+              stockStatus = await StockService.getStockStatus(product.id);
             }
           } catch (error) {
             logger.debug("Enhanced stock service not available", error.message);
@@ -3405,15 +3403,13 @@ class ProductController {
       // Try enhanced service first
       try {
         if (
-          EnhancedProductManagementService &&
-          typeof EnhancedProductManagementService.getProductWithVariants ===
-            "function"
+          ProductManagementService &&
+          typeof ProductManagementService.getProductWithVariants === "function"
         ) {
-          product =
-            await EnhancedProductManagementService.getProductWithVariants(
-              id,
-              userId
-            );
+          product = await ProductManagementService.getProductWithVariants(
+            id,
+            userId
+          );
         }
       } catch (error) {
         logger.debug(
@@ -3479,16 +3475,14 @@ class ProductController {
       // Try enhanced service first
       try {
         if (
-          EnhancedProductManagementService &&
-          typeof EnhancedProductManagementService.createPlatformVariant ===
-            "function"
+          ProductManagementService &&
+          typeof ProductManagementService.createPlatformVariant === "function"
         ) {
-          variant =
-            await EnhancedProductManagementService.createPlatformVariant(
-              mainProductId,
-              variantData,
-              userId
-            );
+          variant = await ProductManagementService.createPlatformVariant(
+            mainProductId,
+            variantData,
+            userId
+          );
         }
       } catch (error) {
         logger.debug(
@@ -3628,11 +3622,8 @@ class ProductController {
 
       let stockStatus;
       try {
-        if (
-          EnhancedStockService &&
-          typeof EnhancedStockService.getStockStatus === "function"
-        ) {
-          stockStatus = await EnhancedStockService.getStockStatus(id);
+        if (StockService && typeof StockService.getStockStatus === "function") {
+          stockStatus = await StockService.getStockStatus(id);
         }
       } catch (error) {
         logger.debug("Enhanced stock service not available", error.message);
@@ -3682,11 +3673,8 @@ class ProductController {
 
       let stockStatus;
       try {
-        if (
-          EnhancedStockService &&
-          typeof EnhancedStockService.updateStock === "function"
-        ) {
-          stockStatus = await EnhancedStockService.updateStock(
+        if (StockService && typeof StockService.updateStock === "function") {
+          stockStatus = await StockService.updateStock(
             id,
             quantity,
             reason,
@@ -3756,11 +3744,10 @@ class ProductController {
       let results;
       try {
         if (
-          EnhancedProductManagementService &&
-          typeof EnhancedProductManagementService.publishToPlatforms ===
-            "function"
+          ProductManagementService &&
+          typeof ProductManagementService.publishToPlatforms === "function"
         ) {
-          results = await EnhancedProductManagementService.publishToPlatforms(
+          results = await ProductManagementService.publishToPlatforms(
             id,
             platforms
           );
@@ -3924,11 +3911,12 @@ class ProductController {
 
       // Generate SKU if not present
       if (!mappedData.baseSku && !mappedData.sku) {
-        mappedData.sku = await this.skuManager.generateSKU(
-          mappedData.name,
-          mappedData.category,
-          mappedData.brand
-        );
+        // TEMPORARY FALLBACK SKU GENERATION - REPLACE WHEN SKU SYSTEM IS AVAILABLE
+        const timestamp = Date.now().toString().slice(-6);
+        const nameSlug = (mappedData.name || "PRODUCT")
+          .substring(0, 3)
+          .toUpperCase();
+        mappedData.sku = `${nameSlug}-${timestamp}`;
         mappedData.baseSku = mappedData.sku;
       }
 
@@ -4133,7 +4121,7 @@ class ProductController {
       }
 
       // Run variant classification
-      const result = await EnhancedVariantDetector.classifyProductVariantStatus(
+      const result = await VariantDetector.classifyProductVariantStatus(
         product
       );
 
@@ -4174,7 +4162,7 @@ class ProductController {
       }
 
       // Update variant status
-      const result = await EnhancedVariantDetector.updateProductVariantStatus(
+      const result = await VariantDetector.updateProductVariantStatus(
         id,
         classification
       );
@@ -4214,7 +4202,7 @@ class ProductController {
         });
       }
       // Remove variant status
-      const result = await EnhancedVariantDetector.removeVariantStatus(id);
+      const result = await VariantDetector.removeVariantStatus(id);
 
       res.json({
         success: true,
@@ -4259,9 +4247,7 @@ class ProductController {
 
       // Import the enhanced variant detector
       // Run batch detection
-      const result = await EnhancedVariantDetector.runBatchVariantDetection(
-        products
-      );
+      const result = await VariantDetector.runBatchVariantDetection(products);
 
       res.json({
         success: true,
@@ -5117,6 +5103,255 @@ class ProductController {
         error: error.message,
       });
     }
+  }
+
+  /**
+   * Import products from CSV file
+   */
+  async importProductsFromCSV(req, res) {
+    try {
+      // TODO: Implement CSV import functionality
+      res.status(501).json({
+        success: false,
+        message: "CSV import functionality not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error importing products from CSV:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to import products from CSV",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get CSV template for product import
+   */
+  async getCSVTemplate(req, res) {
+    try {
+      // TODO: Implement CSV template generation
+      res.status(501).json({
+        success: false,
+        message: "CSV template functionality not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error getting CSV template:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get CSV template",
+        error: error.message,
+      });
+    }
+  }
+
+  // Additional methods for enhanced-products.js route compatibility
+  async releaseReservation(req, res) {
+    return this.releaseStockReservation(req, res);
+  }
+
+  async getStockHistory(req, res) {
+    return this.getInventoryMovements(req, res);
+  }
+
+  async uploadMainProductMedia(req, res) {
+    return this.uploadProductMedia(req, res);
+  }
+
+  async uploadVariantMedia(req, res) {
+    try {
+      res.status(501).json({
+        success: false,
+        message: "Variant media upload functionality not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error uploading variant media:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to upload variant media",
+        error: error.message,
+      });
+    }
+  }
+
+  async deleteMedia(req, res) {
+    try {
+      res.status(501).json({
+        success: false,
+        message: "Media deletion functionality not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error deleting media:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to delete media",
+        error: error.message,
+      });
+    }
+  }
+
+  async updateMediaMetadata(req, res) {
+    try {
+      res.status(501).json({
+        success: false,
+        message: "Media metadata update functionality not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error updating media metadata:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update media metadata",
+        error: error.message,
+      });
+    }
+  }
+
+  async bulkOperation(req, res) {
+    try {
+      res.status(501).json({
+        success: false,
+        message: "Bulk operation functionality not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error performing bulk operation:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to perform bulk operation",
+        error: error.message,
+      });
+    }
+  }
+
+  async bulkPublishVariants(req, res) {
+    try {
+      res.status(501).json({
+        success: false,
+        message: "Bulk publish variants functionality not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error bulk publishing variants:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to bulk publish variants",
+        error: error.message,
+      });
+    }
+  }
+
+  async bulkUpdatePrices(req, res) {
+    try {
+      res.status(501).json({
+        success: false,
+        message: "Bulk update prices functionality not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error bulk updating prices:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to bulk update prices",
+        error: error.message,
+      });
+    }
+  }
+
+  async bulkCreateVariants(req, res) {
+    try {
+      res.status(501).json({
+        success: false,
+        message: "Bulk create variants functionality not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error bulk creating variants:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to bulk create variants",
+        error: error.message,
+      });
+    }
+  }
+
+  async scrapeAndImportFromPlatform(req, res) {
+    try {
+      res.status(501).json({
+        success: false,
+        message: "Scrape and import functionality not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error scraping and importing from platform:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to scrape and import from platform",
+        error: error.message,
+      });
+    }
+  }
+
+  async getFieldMappings(req, res) {
+    try {
+      res.status(501).json({
+        success: false,
+        message: "Field mappings functionality not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error getting field mappings:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get field mappings",
+        error: error.message,
+      });
+    }
+  }
+
+  async saveFieldMapping(req, res) {
+    try {
+      res.status(501).json({
+        success: false,
+        message: "Field mapping save functionality not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error saving field mapping:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to save field mapping",
+        error: error.message,
+      });
+    }
+  }
+
+  async importFromJSON(req, res) {
+    try {
+      res.status(501).json({
+        success: false,
+        message: "JSON import functionality not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error importing from JSON:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to import from JSON",
+        error: error.message,
+      });
+    }
+  }
+
+  async markAsMainProduct(req, res) {
+    try {
+      res.status(501).json({
+        success: false,
+        message: "Mark as main product functionality not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error marking as main product:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to mark as main product",
+        error: error.message,
+      });
+    }
+  }
+
+  async importFromCSV(req, res) {
+    return this.importProductsFromCSV(req, res);
   }
 }
 

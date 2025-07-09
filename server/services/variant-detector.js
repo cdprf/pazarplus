@@ -2,24 +2,24 @@ const { ProductVariant, PlatformData } = require("../models");
 const logger = require("../utils/logger");
 const crypto = require("crypto");
 
-// Import the enhanced detection service for SKU pattern parsing
-const EnhancedVariantDetectionService = require("./enhanced-variant-detection-service");
+// Import the variant detection service for SKU pattern parsing
+const VariantDetectionService = require("./variant-detection-service");
 
-class EnhancedVariantDetector {
+class VariantDetector {
   /**
    * Parse SKU using your structured format: NWK-APPL001-TR
    */
   static parseSKU(sku) {
-    const enhancedService = new EnhancedVariantDetectionService();
-    return enhancedService.parseSKU(sku);
+    const variantService = new VariantDetectionService();
+    return variantService.parseSKU(sku);
   }
 
   /**
    * Generate SKU using your structured format
    */
   static generateSKU(productInfo) {
-    const enhancedService = new EnhancedVariantDetectionService();
-    return enhancedService.generateSKU(productInfo);
+    const variantService = new VariantDetectionService();
+    return variantService.generateSKU(productInfo);
   }
 
   /**
@@ -547,4 +547,4 @@ class EnhancedVariantDetector {
   }
 }
 
-module.exports = EnhancedVariantDetector;
+module.exports = VariantDetector;

@@ -1,0 +1,55 @@
+# Large directories and files to exclude from Vercel deployment
+logs/
+*.log
+*.sqlite
+*.sqlite-*
+*.db
+node_modules/
+server/node_modules/
+client/node_modules/
+
+# Test and debug files
+*test*
+*debug*
+*fix*
+test-*
+debug-*
+fix-*
+quick-*
+analyze-*
+cleanup-*
+diagnose-*
+validate-*
+setup-*
+*.sh
+*.pdf
+*.md
+docs/
+
+# Development files
+.DS_Store
+.vscode/
+.git/
+.chrome-debug/
+
+# Environment files (will be set in Vercel dashboard)
+.env*
+!.env.example
+
+# Large media files
+*.mp4
+*.mov
+*.avi
+*.zip
+*.tar.gz
+
+# Build artifacts that will be regenerated
+client/build/static/js/*.map
+client/build/static/css/*.map
+
+# Unused analysis files
+*summary*
+*report*
+*completion*
+*analysis*
+UNUSED_ANALYSIS_REPORT.md

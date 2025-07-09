@@ -33,7 +33,7 @@ const {
 } = require("./middleware");
 
 // Enhanced platform services
-const enhancedPlatformService = require("./services/enhanced-platform-service");
+const platformServiceManager = require("./services/platform-service-manager");
 const inventoryManagementService = require("./services/inventory-management-service");
 const notificationService = require("./services/notification-service");
 
@@ -533,7 +533,7 @@ async function initializeEnhancedServices() {
 // Setup event listeners for enhanced platform service
 function setupEnhancedPlatformEventListeners() {
   // Listen for sync completion events
-  enhancedPlatformService.on("syncCompleted", (data) => {
+  platformServiceManager.on("syncCompleted", (data) => {
     logger.info("Platform sync completed:", {
       totalProcessed: data.results.totalProcessed,
       duration: data.performance.duration,
@@ -550,19 +550,19 @@ function setupEnhancedPlatformEventListeners() {
   });
 
   // Listen for order conflicts
-  enhancedPlatformService.on("orderConflict", (data) => {
+  platformServiceManager.on("orderConflict", (data) => {
     logger.warn("Order conflict detected:", data);
     notificationService.notifyOrderConflict(data);
   });
 
   // Listen for manual review requirements
-  enhancedPlatformService.on("manualReviewRequired", (data) => {
+  platformServiceManager.on("manualReviewRequired", (data) => {
     logger.warn("Manual review required:", data);
     notificationService.notifyManualReviewRequired(data);
   });
 
   // Listen for manual review resolutions
-  enhancedPlatformService.on("manualReviewResolved", (data) => {
+  platformServiceManager.on("manualReviewResolved", (data) => {
     logger.info("Manual review resolved:", data);
   });
 

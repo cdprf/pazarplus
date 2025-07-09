@@ -1,13 +1,13 @@
-const EnhancedTrendyolService = require("./enhanced-trendyol-service");
+const EnhancedTrendyolService = require("./trendyol-service-enhanced");
 const logger = require("../utils/logger");
 const EventEmitter = require("events");
 
 /**
- * Enhanced Platform Service Factory
- * Manages creation and lifecycle of enhanced platform integrations
+ * Platform Service Factory
+ * Manages creation and lifecycle of platform integrations
  * with circuit breakers, rate limiting, and compliance automation
  */
-class EnhancedPlatformServiceFactory extends EventEmitter {
+class PlatformServiceFactory extends EventEmitter {
   constructor() {
     super();
 
@@ -43,11 +43,11 @@ class EnhancedPlatformServiceFactory extends EventEmitter {
       circuitBreakerTrips: 0,
     };
 
-    logger.info("Enhanced Platform Service Factory initialized");
+    logger.info("Platform Service Factory initialized");
   }
 
   /**
-   * Create or retrieve an enhanced platform service
+   * Create or retrieve a platform service
    */
   async createService(platformType, connectionData) {
     const serviceKey = `${platformType}-${connectionData.id}`;
@@ -369,9 +369,9 @@ class EnhancedPlatformServiceFactory extends EventEmitter {
 }
 
 // Create singleton instance
-const enhancedPlatformServiceFactory = new EnhancedPlatformServiceFactory();
+const platformServiceFactory = new PlatformServiceFactory();
 
 module.exports = {
-  EnhancedPlatformServiceFactory,
-  enhancedPlatformServiceFactory,
+  PlatformServiceFactory,
+  platformServiceFactory,
 };

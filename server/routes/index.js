@@ -19,9 +19,6 @@ try {
   const importExportRoutes = require("./importExportRoutes");
   const orderManagementRoutes = require("../modules/order-management/routes");
 
-  // Import enhanced platform integration routes
-  const enhancedPlatformRoutes = require("./enhanced-platforms");
-
   // Image proxy middleware for handling external images with SSL issues
   const imageProxyRoutes = require("../middleware/image-proxy");
 
@@ -49,8 +46,8 @@ try {
   // Import shipping related routes
   const shippingRoutes = require("./shipping");
 
-  // Import enhanced SKU system routes
-  // const skuRoutes = require("./sku-enhanced"); // Temporarily disabled for debugging
+  // Import SKU system routes
+  const skuRoutes = require("./sku");
 
   // Import font management routes
   const fontRoutes = require("./fonts");
@@ -73,8 +70,9 @@ try {
   // Mount centralized routes
   router.use("/auth", authRoutes);
   router.use("/platforms", platformRoutes);
+  router.use("/v1/enhanced-platforms", platformRoutes); // Enhanced platform routes compatibility
   router.use("/products", productRoutes);
-  // router.use("/sku", skuRoutes); // Temporarily disabled for debugging
+  router.use("/sku", skuRoutes);
   router.use("/customers", customerRoutes);
   router.use("/customer-questions", customerQuestionRoutes);
   router.use("/settings", settingsRoutes);
@@ -89,10 +87,16 @@ try {
   router.use("/orders", orderManagementRoutes);
 
   // Module-specific routes
-  router.use("/order-management", orderManagementRoutes);
-
-  // Enhanced platform integration routes (Week 5-6 features)
-  router.use("/v1/enhanced-platforms", enhancedPlatformRoutes);
+  router.use(
+    "/order-management",
+    (req, res, next) => {
+      console.log(
+        `Main routes - Order Management: ${req.method} ${req.originalUrl}`
+      );
+      next();
+    },
+    orderManagementRoutes
+  );
 
   // Image proxy for handling external images with SSL issues
   router.use("/", imageProxyRoutes);
@@ -155,7 +159,7 @@ router.get("/health", (req, res) => {
     routes: {
       auth: "/api/auth",
       platforms: "/api/platforms",
-      enhancedPlatforms: "/api/v1/enhanced-platforms",
+      enhancedPlatforms: "/api/v1/enhanced-platforms", // Enhanced platform routes compatibility
       products: "/api/products",
       sku: "/api/sku",
       customers: "/api/customers",
@@ -185,9 +189,6 @@ router.use("*", (req, res, next) => {
 // ========================================
 // Enhanced product functionality has been merged into the main product routes
 // at /api/products/main-products/* to avoid duplication and conflicts
-// ========================================
-// const enhancedProductRoutes = require("./enhanced-products");
-// router.use("/enhanced-products", enhancedProductRoutes);
 
 // Catch-all for debugging
 router.use("/*", (req, res) => {
@@ -200,14 +201,12 @@ router.use("/*", (req, res) => {
     availableRoutes: [
       "/api/auth",
       "/api/platforms",
-      "/api/v1/enhanced-platforms",
+      "/api/v1/enhanced-platforms", // Enhanced platform routes compatibility
       "/api/products",
       "/api/sku",
       "/api/customers",
       "/api/customer-questions",
-      "/api/enhanced-sku", // Enhanced SKU system
       "/api/product-intelligence", // Unified Product Intelligence System
-      "/api/enhanced-products", // Enhanced Product Management System
       "/api/settings",
       "/api/compliance",
       "/api/order-management",

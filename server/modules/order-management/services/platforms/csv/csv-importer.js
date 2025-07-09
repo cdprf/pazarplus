@@ -11,6 +11,7 @@ const {
   ShippingDetail,
 } = require("../../../../../models");
 const logger = require("../../../../../utils/logger");
+const shippingDetailService = require("../../../../../utils/shipping-detail-service");
 const {
   mapOrderStatus,
   sanitizePlatformType,
@@ -251,10 +252,26 @@ class CSVImporterService {
           let shippingDetail;
 
           if (existingOrder && existingOrder.shippingDetailId) {
-            shippingDetail = await ShippingDetail.findByPk(
-              existingOrder.shippingDetailId
+            // Use safe update for existing shipping details
+            const updateResult = await shippingDetailService.safeUpdate(
+              existingOrder.shippingDetailId,
+              orderData.shippingData
             );
-            await shippingDetail.update(orderData.shippingData);
+
+            if (updateResult.success) {
+              shippingDetail = updateResult.data;
+            } else {
+              logger.warn(
+                `Could not update existing shipping detail, creating new one: ${updateResult.message}`,
+                {
+                  shippingDetailId: existingOrder.shippingDetailId,
+                  error: updateResult.error,
+                }
+              );
+              shippingDetail = await ShippingDetail.create(
+                orderData.shippingData
+              );
+            }
           } else {
             shippingDetail = await ShippingDetail.create(
               orderData.shippingData

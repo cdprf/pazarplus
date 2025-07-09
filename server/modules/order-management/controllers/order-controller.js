@@ -8,11 +8,14 @@ const {
   Product,
   TrendyolOrder,
   HepsiburadaOrder,
+  N11Order,
 } = require("../../../models");
 const PlatformServiceFactory = require("../services/platforms/platformServiceFactory");
 const logger = require("../../../utils/logger");
+const shippingDetailService = require("../../../utils/shipping-detail-service");
 // const wsService = require('../services/websocketService'); // Comment out if websocketService doesn't exist
 const { Op } = require("sequelize");
+const sequelize = require("../../../config/database");
 const {
   mapOrderStatus,
   sanitizePlatformType,
@@ -1978,6 +1981,13 @@ module.exports = {
           id,
           userId: req.user.id,
         },
+        include: [
+          { model: OrderItem, as: "items" },
+          { model: ShippingDetail, as: "shippingDetail" },
+          { model: HepsiburadaOrder, as: "hepsiburadaOrder" },
+          { model: TrendyolOrder, as: "trendyolOrder" },
+          { model: N11Order, as: "n11Order" },
+        ],
       });
 
       if (!order) {
@@ -1987,7 +1997,77 @@ module.exports = {
         });
       }
 
-      await order.destroy();
+      // Delete order and related records in a transaction
+      await sequelize.transaction(async (t) => {
+        // Delete order items first
+        if (order.items && order.items.length > 0) {
+          await OrderItem.destroy({
+            where: { orderId: order.id },
+            transaction: t,
+          });
+        }
+
+        // Delete platform-specific records
+        if (order.hepsiburadaOrder) {
+          await HepsiburadaOrder.destroy({
+            where: { orderId: order.id },
+            transaction: t,
+          });
+        }
+
+        if (order.trendyolOrder) {
+          await TrendyolOrder.destroy({
+            where: { orderId: order.id },
+            transaction: t,
+          });
+        }
+
+        if (order.n11Order) {
+          await N11Order.destroy({
+            where: { orderId: order.id },
+            transaction: t,
+          });
+        }
+
+        // Delete shipping detail if it exists and is not shared with other orders
+        if (order.shippingDetail) {
+          const sharedShipping = await Order.findOne({
+            where: {
+              shippingDetailId: order.shippingDetailId,
+              id: { [Op.ne]: order.id },
+            },
+            transaction: t,
+          });
+
+          if (!sharedShipping) {
+            // Use the safe shipping detail service for deletion
+            const deleteResult = await shippingDetailService.safeDelete(
+              order.shippingDetailId,
+              { transaction: t }
+            );
+
+            if (!deleteResult.success) {
+              logger.warn(
+                `Could not delete shipping detail ${order.shippingDetailId}: ${deleteResult.message}`,
+                {
+                  orderId: order.id,
+                  shippingDetailId: order.shippingDetailId,
+                  error: deleteResult.error,
+                  referencingOrders: deleteResult.referencingOrders,
+                }
+              );
+            }
+          }
+        }
+
+        // Finally delete the main order
+        await Order.destroy({
+          where: { id: order.id },
+          transaction: t,
+        });
+      });
+
+      logger.info(`Order ${id} deleted successfully by user ${req.user.id}`);
 
       return res.status(200).json({
         success: true,

@@ -220,6 +220,14 @@ models.ShippingDetail.belongsTo(models.Order, {
   allowNull: false,
 });
 
+// Additional reference from Order to ShippingDetail via shippingDetailId
+// This allows orders to reference shipping details that may be shared
+models.Order.belongsTo(models.ShippingDetail, {
+  foreignKey: "shippingDetailId",
+  as: "shippingDetailRef",
+  onDelete: "SET NULL",
+});
+
 // Platform-specific order associations
 models.Order.hasOne(models.HepsiburadaOrder, {
   foreignKey: "orderId",
