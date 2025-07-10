@@ -93,7 +93,9 @@ class CustomerQuestionSyncJobService {
       }
     });
 
-    logger.info("All Customer Question Sync Background Jobs started successfully");
+    logger.info(
+      "All Customer Question Sync Background Jobs started successfully"
+    );
   }
 
   /**
@@ -131,6 +133,9 @@ class CustomerQuestionSyncJobService {
         startDate: last2Hours,
         scope: "frequent",
       });
+
+      // Also check status updates for existing unanswered questions
+      await this.syncExistingQuestionStatuses();
 
       const duration = Date.now() - startTime;
       logger.info("Frequent question sync completed", {
@@ -250,7 +255,7 @@ class CustomerQuestionSyncJobService {
       if (!this.questionService.initialized) {
         await this.questionService.loadPlatformConfigs();
         const platformConfigs = {};
-        
+
         for (const connection of connections) {
           const platformType = connection.platformType;
           if (!platformConfigs[platformType]) {
@@ -272,31 +277,42 @@ class CustomerQuestionSyncJobService {
       };
 
       // Sync from each platform
-      const availablePlatforms = Object.keys(this.questionService.platformServices);
-      
+      const availablePlatforms = Object.keys(
+        this.questionService.platformServices
+      );
+
       for (const platform of availablePlatforms) {
         try {
-          logger.info(`Syncing questions from ${platform}`, { scope, startDate });
+          logger.info(`Syncing questions from ${platform}`, {
+            scope,
+            startDate,
+          });
 
           const lastSyncTime = this.lastSyncTimes.get(platform) || startDate;
-          
-          const result = await this.questionService.syncPlatformQuestions(platform, {
-            startDate: comprehensive ? startDate : lastSyncTime,
-            endDate: new Date(),
-          });
+
+          const result = await this.questionService.syncPlatformQuestions(
+            platform,
+            {
+              startDate: comprehensive ? startDate : lastSyncTime,
+              endDate: new Date(),
+            }
+          );
 
           syncResults.platforms[platform] = {
             synced: result.synced || 0,
             lastSync: new Date(),
           };
-          
+
           syncResults.totalSynced += result.synced || 0;
           this.lastSyncTimes.set(platform, new Date());
 
-          logger.info(`Synced ${result.synced || 0} questions from ${platform}`, {
-            scope,
-            platform,
-          });
+          logger.info(
+            `Synced ${result.synced || 0} questions from ${platform}`,
+            {
+              scope,
+              platform,
+            }
+          );
 
           // Add delay between platforms to respect rate limits
           await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -306,7 +322,7 @@ class CustomerQuestionSyncJobService {
             scope,
             platform,
           });
-          
+
           syncResults.errors.push({
             platform,
             error: platformError.message,
@@ -341,9 +357,18 @@ class CustomerQuestionSyncJobService {
         attributes: [
           "platform",
           "status",
-          [CustomerQuestion.sequelize.fn("COUNT", CustomerQuestion.sequelize.col("id")), "count"],
           [
-            CustomerQuestion.sequelize.fn("MAX", CustomerQuestion.sequelize.col("creation_date")),
+            CustomerQuestion.sequelize.fn(
+              "COUNT",
+              CustomerQuestion.sequelize.col("id")
+            ),
+            "count",
+          ],
+          [
+            CustomerQuestion.sequelize.fn(
+              "MAX",
+              CustomerQuestion.sequelize.col("creation_date")
+            ),
             "latest_question",
           ],
         ],
@@ -388,12 +413,91 @@ class CustomerQuestionSyncJobService {
    */
   async forceSyncNow(options = {}) {
     logger.info("Force sync triggered", options);
-    
+
     return await this.syncQuestionsFromAllPlatforms({
       startDate: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
       scope: "manual",
       ...options,
     });
+  }
+
+  /**
+   * Check status updates for existing unanswered questions
+   * This ensures that questions answered on the platform get their status updated locally
+   */
+  async syncExistingQuestionStatuses() {
+    try {
+      logger.info("Starting status sync for existing unanswered questions");
+
+      // Get all unanswered questions from the last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const CustomerQuestion = require("../models/CustomerQuestion");
+
+      const unansweredQuestions = await CustomerQuestion.findAll({
+        where: {
+          status: "WAITING_FOR_ANSWER",
+          creation_date: {
+            [Op.gte]: thirtyDaysAgo,
+          },
+        },
+        order: [["creation_date", "DESC"]],
+      });
+
+      logger.info(
+        `Found ${unansweredQuestions.length} unanswered questions to check`
+      );
+
+      let statusUpdates = 0;
+
+      for (const question of unansweredQuestions) {
+        try {
+          const platform = question.platform;
+          const platformQuestionId = question.platform_question_id;
+
+          if (!this.questionService.platformServices[platform]) {
+            continue;
+          }
+
+          // Get the current status from the platform
+          const platformService =
+            this.questionService.platformServices[platform];
+          const updatedQuestion = await platformService.getQuestionByNumber(
+            platformQuestionId
+          );
+
+          if (updatedQuestion && updatedQuestion.status !== question.status) {
+            // Status has changed on the platform, update locally
+            await question.update({
+              status: updatedQuestion.status,
+              answered_date: updatedQuestion.answered_date,
+              last_modified_at: updatedQuestion.last_modified_at || new Date(),
+            });
+
+            statusUpdates++;
+            logger.info(
+              `Updated question ${question.id} status from ${question.status} to ${updatedQuestion.status}`,
+              {
+                platform,
+                platformQuestionId,
+              }
+            );
+          }
+        } catch (error) {
+          logger.warn(
+            `Failed to check status for question ${question.id}:`,
+            error.message
+          );
+        }
+      }
+
+      logger.info(`Status sync completed: ${statusUpdates} questions updated`);
+      return statusUpdates;
+    } catch (error) {
+      logger.error("Error in status sync for existing questions:", error);
+      return 0;
+    }
   }
 }
 

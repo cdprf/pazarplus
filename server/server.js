@@ -305,7 +305,11 @@ async function startServer() {
 
             logger.info("Background job services initialization queued", {
               service: "pazar-plus",
-              services: ["product-linking", "customer-question-sync", "variant-detection"],
+              services: [
+                "product-linking",
+                "customer-question-sync",
+                "variant-detection",
+              ],
             });
           }
         } catch (error) {

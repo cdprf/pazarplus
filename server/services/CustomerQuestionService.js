@@ -111,7 +111,7 @@ class CustomerQuestionService {
             ...platformConfigs.n11,
             secretKey: platformConfigs.n11.apiSecret, // Map apiSecret to secretKey
           };
-          
+
           this.platformServices.n11 = new N11QuestionService(n11Config);
           debug("N11 question service initialized");
 

@@ -173,7 +173,7 @@ class HepsiBuradaQuestionService {
         "Error answering question on HepsiBurada:",
         error.response?.data || error.message
       );
-      
+
       // Log more details for debugging
       debug("HepsiBurada API Error Details:", {
         status: error.response?.status,
@@ -182,12 +182,14 @@ class HepsiBuradaQuestionService {
         headers: error.response?.headers,
         url: error.config?.url,
         method: error.config?.method,
-        requestData: error.config?.data
+        requestData: error.config?.data,
       });
-      
+
       throw new Error(
         `HepsiBurada answer submission failed: ${
-          error.response?.data?.message || error.response?.data?.error || error.message
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message
         }`
       );
     }
@@ -318,7 +320,11 @@ class HepsiBuradaQuestionService {
       product_sku: question.product?.sku,
       product_stock_code: question.product?.stockCode,
       product_image_url: question.product?.imageUrl,
-      product_web_url: question.product?.webUrl || (question.product?.sku ? `https://www.hepsiburada.com/urun/${question.product.sku}` : null),
+      product_web_url:
+        question.product?.webUrl ||
+        (question.product?.sku
+          ? `https://www.hepsiburada.com/urun/${question.product.sku}`
+          : null),
       order_number: question.orderNumber,
       line_item_id: question.lineItemId,
       public: true, // Default to public
