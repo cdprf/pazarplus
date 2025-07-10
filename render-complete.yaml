@@ -43,6 +43,8 @@ services:
     envVars:
       - key: REACT_APP_API_URL
         value: "https://pazarplus.onrender.com/api"
+      - key: REACT_APP_SERVER_URL
+        value: "https://pazarplus.onrender.com"
       - key: GENERATE_SOURCEMAP
         value: "false"
       - key: CI
