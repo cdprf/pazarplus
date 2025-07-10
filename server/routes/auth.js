@@ -98,36 +98,4 @@ router.post(
 );
 router.get("/logout", auth, authController.logout);
 
-// Simple diagnostic route to test if auth router is working
-router.get("/test", (req, res) => {
-  res.json({
-    success: true,
-    message: "Auth router is working",
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    availableRoutes: router.stack.map((layer) => ({
-      path: layer.route?.path || "middleware",
-      methods: layer.route?.methods ? Object.keys(layer.route.methods) : "N/A",
-    })),
-  });
-});
-
-// Simplified register route for debugging
-router.post("/register-simple", async (req, res) => {
-  try {
-    res.json({
-      success: true,
-      message: "Simple register route is working",
-      body: req.body,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error in simple register route",
-      error: error.message,
-    });
-  }
-});
-
 module.exports = router;

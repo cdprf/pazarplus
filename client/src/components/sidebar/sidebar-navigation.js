@@ -222,9 +222,34 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
         ariaLabel: "Müşteri yönetimi",
         subItems: [
           {
+            name: "Customer List",
+            href: "/customers",
+            ariaLabel: "Müşteri listesi",
+          },
+          {
+            name: "Customer Profiles",
+            href: "/customers/profiles",
+            ariaLabel: "Müşteri profilleri",
+          },
+          {
             name: "Customer Questions",
             href: "/customer-questions",
             ariaLabel: "Müşteri soruları ve cevapları",
+          },
+          {
+            name: "Customer Analytics",
+            href: "/customers/analytics",
+            ariaLabel: "Müşteri analitikleri",
+          },
+          {
+            name: "Customer Orders",
+            href: "/customers/orders",
+            ariaLabel: "Müşteri siparişleri",
+          },
+          {
+            name: "Customer Segments",
+            href: "/customers/segments",
+            ariaLabel: "Müşteri segmentleri",
           },
         ],
       },

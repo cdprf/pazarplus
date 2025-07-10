@@ -164,8 +164,10 @@ router.get("/health", (req, res) => {
       sku: "/api/sku",
       customers: "/api/customers",
       customerQuestions: "/api/customer-questions",
-      settings: "/api/settings",
+      settings: "/api/settings", // Includes shipping templates at /api/settings/shipping/templates
       compliance: "/api/compliance",
+      shipping: "/api/shipping", // Coming Soon - Q3 2025
+      payments: "/api/payments", // Coming Soon - Q4 2025
       orderManagement: "/api/order-management",
       analytics: "/api/analytics", // Month 5 Phase 1
       subscription: "/api/subscription", // Month 5 Phase 2 - NEW
@@ -174,6 +176,18 @@ router.get("/health", (req, res) => {
       platformOperations: "/api/platform-operations", // Background tasks and platform operations
       platformProducts: "/api/platform-products", // Platform product creation and management
       backgroundTasks: "/api/background-tasks", // Background task management
+    },
+    comingSoon: {
+      shipping: {
+        status: "development",
+        expectedRelease: "Q3 2025",
+        note: "PDF Template Designer moved to /api/settings/shipping/templates",
+      },
+      payments: {
+        status: "development",
+        expectedRelease: "Q4 2025",
+        note: "Turkish payment gateway integration",
+      },
     },
   });
 });

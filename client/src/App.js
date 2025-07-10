@@ -37,6 +37,7 @@ import ProductManagement from "./components/ProductManagement/index.js"; // Mode
 import EnhancedProductManagement from "./components/ProductManagement/components/EnhancedProductManagement"; // Enhanced product management system
 import VariantDetectionConfigurationPage from "./components/ProductManagement/VariantDetectionConfig/VariantDetectionConfigurationPage"; // Variant detection configuration
 import CustomerManagement from "./components/customers/CustomerManagement";
+import EnhancedCustomerManagement from "./components/customers/EnhancedCustomerManagement";
 import CustomerProfile from "./components/customers/CustomerProfile";
 import ShippingManagement from "./components/shipping/ShippingManagement";
 import EnhancedShippingSlipDesigner from "./components/shipping/EnhancedShippingSlipDesigner";
@@ -209,11 +210,27 @@ function App() {
                             {/* Customer Management */}
                             <Route
                               path="customers"
-                              element={<CustomerManagement />}
+                              element={<EnhancedCustomerManagement />}
                             />
                             <Route
                               path="customers/:email"
                               element={<CustomerProfile />}
+                            />
+                            <Route
+                              path="customers/profiles"
+                              element={<EnhancedCustomerManagement />}
+                            />
+                            <Route
+                              path="customers/analytics"
+                              element={<EnhancedCustomerManagement />}
+                            />
+                            <Route
+                              path="customers/orders"
+                              element={<EnhancedCustomerManagement />}
+                            />
+                            <Route
+                              path="customers/segments"
+                              element={<EnhancedCustomerManagement />}
                             />
                             {/* Customer Questions Management */}
                             <Route
