@@ -147,7 +147,7 @@ class CustomerQuestionController {
 
       const { id } = req.params;
       const { text, type = "answer", template_id, attachments } = req.body;
-      const userId = req.user.id;
+      const userId = req.user?.id || null; // Handle case where user is not authenticated
 
       const replyData = {
         text,

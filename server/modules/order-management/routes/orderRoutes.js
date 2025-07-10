@@ -218,6 +218,36 @@ router.get("/trends", orderController.getOrderTrends);
 
 /**
  * @swagger
+ * /api/order-management/orders/date-range/{platformConnectionId}:
+ *   get:
+ *     summary: Get the oldest order date for a platform connection
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: platformConnectionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Platform connection ID
+ *     responses:
+ *       200:
+ *         description: Oldest order date retrieved successfully
+ *       404:
+ *         description: Platform connection not found
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get(
+  "/date-range/:platformConnectionId",
+  orderController.getOldestOrderDate
+);
+
+/**
+ * @swagger
  * /api/order-management/orders/export:
  *   get:
  *     summary: Export orders to CSV or JSON

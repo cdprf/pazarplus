@@ -1920,6 +1920,86 @@ async function acceptOrder(req, res) {
   }
 }
 
+/**
+ * Get the oldest order date for a specific platform connection
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ */
+async function getOldestOrderDate(req, res) {
+  try {
+    const { id: userId } = req.user;
+    const { platformConnectionId } = req.params;
+
+    logger.info(
+      `Getting oldest order date for platform connection ${platformConnectionId}`,
+      {
+        userId,
+        platformConnectionId,
+      }
+    );
+
+    // Validate platform connection belongs to user
+    const connection = await PlatformConnection.findOne({
+      where: { id: platformConnectionId, userId },
+      attributes: ["id", "platformType", "name"],
+    });
+
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: "Platform connection not found",
+      });
+    }
+
+    // Find the oldest order for this connection
+    const oldestOrder = await Order.findOne({
+      where: {
+        userId,
+        connectionId: platformConnectionId,
+      },
+      order: [["orderDate", "ASC"]],
+      attributes: ["orderDate", "orderNumber", "id"],
+    });
+
+    if (!oldestOrder) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          oldestOrderDate: null,
+          hasOrders: false,
+          message: "No orders found for this platform connection",
+        },
+      });
+    }
+
+    logger.info(
+      `Found oldest order for platform connection ${platformConnectionId}`,
+      {
+        orderId: oldestOrder.id,
+        orderNumber: oldestOrder.orderNumber,
+        orderDate: oldestOrder.orderDate,
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        oldestOrderDate: oldestOrder.orderDate,
+        hasOrders: true,
+        orderNumber: oldestOrder.orderNumber,
+        orderId: oldestOrder.id,
+      },
+    });
+  } catch (error) {
+    logger.error("Error getting oldest order date:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get oldest order date",
+      error: error.message,
+    });
+  }
+}
+
 module.exports = {
   getAllOrders,
   getOrders: getAllOrders, // Alias for route compatibility
@@ -2205,6 +2285,86 @@ module.exports = {
       return res.status(500).json({
         success: false,
         message: "Error generating e-invoice",
+        error: error.message,
+      });
+    }
+  },
+
+  /**
+   * Get the oldest order date for a specific platform connection
+   * @param {Request} req - Express request object
+   * @param {Response} res - Express response object
+   */
+  getOldestOrderDate: async (req, res) => {
+    try {
+      const { id: userId } = req.user;
+      const { platformConnectionId } = req.params;
+
+      logger.info(
+        `Getting oldest order date for platform connection ${platformConnectionId}`,
+        {
+          userId,
+          platformConnectionId,
+        }
+      );
+
+      // Validate platform connection belongs to user
+      const connection = await PlatformConnection.findOne({
+        where: { id: platformConnectionId, userId },
+        attributes: ["id", "platformType", "name"],
+      });
+
+      if (!connection) {
+        return res.status(404).json({
+          success: false,
+          message: "Platform connection not found",
+        });
+      }
+
+      // Find the oldest order for this connection
+      const oldestOrder = await Order.findOne({
+        where: {
+          userId,
+          connectionId: platformConnectionId,
+        },
+        order: [["orderDate", "ASC"]],
+        attributes: ["orderDate", "orderNumber", "id"],
+      });
+
+      if (!oldestOrder) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            oldestOrderDate: null,
+            hasOrders: false,
+            message: "No orders found for this platform connection",
+          },
+        });
+      }
+
+      logger.info(
+        `Found oldest order for platform connection ${platformConnectionId}`,
+        {
+          orderId: oldestOrder.id,
+          orderNumber: oldestOrder.orderNumber,
+          orderDate: oldestOrder.orderDate,
+        }
+      );
+
+      res.status(200).json({
+        success: true,
+        data: {
+          oldestOrderDate: oldestOrder.orderDate,
+          hasOrders: true,
+          orderNumber: oldestOrder.orderNumber,
+          orderId: oldestOrder.id,
+        },
+      });
+    } catch (error) {
+      logger.error("Error getting oldest order date:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get oldest order date",
         error: error.message,
       });
     }

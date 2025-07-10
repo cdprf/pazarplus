@@ -364,6 +364,13 @@ const PlatformOperations = () => {
         maxRetries: taskForm.maxRetries,
         config: {
           ...taskForm.config,
+          // Set mode to auto when interval mode is selected for order fetching
+          ...(taskForm.taskType === "order_fetching" &&
+            taskForm.dateRangeMode === "interval" && {
+              mode: "auto",
+              intervalPeriod: taskForm.intervalPeriod,
+              customDays: taskForm.customDays,
+            }),
           // Add date range configuration for order fetching
           ...(taskForm.dateRangeMode === "interval" && {
             dateRangeMode: taskForm.dateRangeMode,
@@ -376,6 +383,7 @@ const PlatformOperations = () => {
             dateRangeMode: taskForm.dateRangeMode,
             fromDate: taskForm.fromDate,
             toDate: taskForm.toDate,
+            mode: "duration", // Use duration mode for manual date ranges
           }),
         },
         ...(taskForm.scheduledFor && { scheduledFor: taskForm.scheduledFor }),
@@ -1335,19 +1343,22 @@ const PlatformOperations = () => {
 
                   <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                     <p className="text-sm text-blue-700 dark:text-blue-300">
-                      <strong>How it works:</strong> This will find the oldest
-                      order date for the selected platform, set it as the end
-                      date, and calculate the start date by going back{" "}
+                      <strong>Auto-Fetch Mode:</strong> This will start by
+                      finding the oldest order date for the selected platform
+                      and begin fetching orders in{" "}
                       {taskForm.intervalPeriod === "custom"
-                        ? `${taskForm.customDays} days`
+                        ? `${taskForm.customDays} day`
                         : taskForm.intervalPeriod === "week"
                         ? "1 week"
                         : taskForm.intervalPeriod === "month"
                         ? "1 month"
                         : taskForm.intervalPeriod === "quarter"
-                        ? "3 months"
-                        : "1 year"}
-                      .
+                        ? "3 month"
+                        : "1 year"}{" "}
+                      periods going backwards in time. The system will
+                      automatically continue fetching older orders until no more
+                      orders are found, ensuring complete historical data
+                      retrieval.
                     </p>
                   </div>
                 </div>

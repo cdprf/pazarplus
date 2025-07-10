@@ -126,7 +126,7 @@ class OrderFetchingExecutor {
         }
       }
 
-      const {
+      let {
         startDate = new Date(
           Date.now() - 30 * 24 * 60 * 60 * 1000
         ).toISOString(), // Default: 30 days ago
@@ -136,7 +136,33 @@ class OrderFetchingExecutor {
         mode: configMode = "duration",
         duration = 30,
         stopAtFirst = false,
+        intervalPeriod = "month", // week, month, quarter, year, custom
+        customDays = 30,
       } = normalizedConfig;
+
+      // Enhanced Auto Mode: Calculate date range based on oldest order
+      if (configMode === "auto") {
+        const autoDateRange = await this.calculateAutoDateRange(
+          task,
+          platformConnection,
+          normalizedConfig
+        );
+
+        if (autoDateRange) {
+          startDate = autoDateRange.startDate;
+          endDate = autoDateRange.endDate;
+
+          structuredLog("info", "Auto mode: Calculated date range", {
+            originalStartDate: normalizedConfig.startDate || "default",
+            originalEndDate: normalizedConfig.endDate || "default",
+            calculatedStartDate: startDate,
+            calculatedEndDate: endDate,
+            oldestOrderDate: autoDateRange.oldestOrderDate,
+            isInitialRun: autoDateRange.isInitialRun,
+            phase: "auto_date_calculation",
+          });
+        }
+      }
 
       structuredLog("info", "Starting order fetching task execution", {
         phase: "initialization",
@@ -504,87 +530,99 @@ class OrderFetchingExecutor {
         onLog("info", resultMessage);
 
         // Check if we should continue in automatic mode
-        if (configMode === "auto" && processedOrders > 0) {
-          onLog(
-            "info",
-            "Automatic mode: Found new orders, scheduling next fetch in 30 seconds..."
-          );
+        if (configMode === "auto") {
+          if (processedOrders > 0) {
+            onLog(
+              "info",
+              `Automatic mode: Found ${processedOrders} new orders, scheduling next fetch in 30 seconds...`
+            );
 
-          // Schedule next automatic fetch
-          setTimeout(async () => {
-            try {
-              const BackgroundTaskService = require("../services/BackgroundTaskService");
-              await BackgroundTaskService.createTask({
-                userId: task.userId,
-                taskType: "order_fetching",
-                priority: "normal",
-                config: {
-                  ...config,
-                  mode: "auto", // Ensure continuation
-                },
-                platformConnectionId: task.platformConnectionId,
-                metadata: {
-                  source: "automatic_continuation",
-                  parentTaskId: task.id,
-                },
-              });
-              onLog("info", "Next automatic fetch task scheduled successfully");
-            } catch (error) {
-              onLog(
-                "error",
-                `Failed to schedule next automatic fetch: ${error.message}`
-              );
+            // Find the oldest order date from this fetch to use for next iteration
+            let oldestOrderInThisFetch = new Date();
+            if (orders.length > 0) {
+              oldestOrderInThisFetch = orders.reduce((oldest, order) => {
+                const orderDate = new Date(order.orderDate || order.createdAt);
+                const currentOldest = new Date(oldest);
+                return orderDate < currentOldest ? orderDate : currentOldest;
+              }, new Date());
             }
-          }, 30000); // 30 second delay
-        } else if (configMode === "auto" && processedOrders === 0) {
-          onLog(
-            "info",
-            "Automatic mode: Found new orders, scheduling next fetch",
-            {
-              processedOrders,
-              mode: configMode,
-              phase: "auto_scheduling",
-            }
-          );
 
-          // Schedule next automatic fetch
-          setTimeout(async () => {
-            try {
-              const BackgroundTaskService = require("../services/BackgroundTaskService");
-              await BackgroundTaskService.createTask({
-                userId: task.userId,
-                taskType: "order_fetching",
-                priority: "normal",
-                config: {
-                  ...config,
-                  mode: "auto", // Ensure continuation
-                },
-                platformConnectionId: task.platformConnectionId,
-                metadata: {
-                  source: "automatic_continuation",
-                  parentTaskId: task.id,
-                },
-              });
-              structuredLog(
-                "info",
-                "Next automatic fetch task scheduled successfully",
-                {
-                  parentTaskId: task.id,
-                  phase: "auto_scheduled",
-                }
-              );
-            } catch (error) {
-              structuredLog(
-                "error",
-                "Failed to schedule next automatic fetch",
-                {
-                  error: error.message,
-                  parentTaskId: task.id,
-                  phase: "auto_schedule_failed",
-                }
-              );
-            }
-          }, 30000); // 30 second delay
+            structuredLog(
+              "info",
+              "Auto mode: Calculated oldest order date for next iteration",
+              {
+                ordersInCurrentFetch: orders.length,
+                oldestOrderInThisFetch: oldestOrderInThisFetch.toISOString(),
+                currentDateRange: { startDate, endDate },
+                phase: "auto_next_iteration_calculation",
+              }
+            );
+
+            // Schedule next automatic fetch with updated oldest date
+            setTimeout(async () => {
+              try {
+                const BackgroundTaskService = require("../services/BackgroundTaskService");
+                await BackgroundTaskService.createTask({
+                  userId: task.userId,
+                  taskType: "order_fetching",
+                  priority: "normal",
+                  config: {
+                    ...config,
+                    mode: "auto", // Ensure continuation
+                    // Update the oldest date for next iteration
+                    oldestOrderDate: oldestOrderInThisFetch.toISOString(),
+                  },
+                  platformConnectionId: task.platformConnectionId,
+                  metadata: {
+                    source: "automatic_continuation",
+                    parentTaskId: task.id,
+                    iterationCount: (task.metadata?.iterationCount || 0) + 1,
+                    oldestOrderDate: oldestOrderInThisFetch.toISOString(),
+                  },
+                });
+                onLog(
+                  "info",
+                  "Next automatic fetch task scheduled successfully"
+                );
+
+                structuredLog("info", "Auto-fetch continuation scheduled", {
+                  nextOldestDate: oldestOrderInThisFetch.toISOString(),
+                  iterationCount: (task.metadata?.iterationCount || 0) + 1,
+                  phase: "auto_scheduled_next",
+                });
+              } catch (error) {
+                onLog(
+                  "error",
+                  `Failed to schedule next automatic fetch: ${error.message}`
+                );
+
+                structuredLog(
+                  "error",
+                  "Failed to schedule auto-fetch continuation",
+                  {
+                    error: error.message,
+                    parentTaskId: task.id,
+                    phase: "auto_schedule_failed",
+                  }
+                );
+              }
+            }, 30000); // 30 second delay
+          } else {
+            onLog(
+              "info",
+              "Automatic mode: No new orders found, stopping auto-fetch sequence"
+            );
+
+            structuredLog(
+              "info",
+              "Auto-fetch sequence completed - no more orders available",
+              {
+                totalIterations: (task.metadata?.iterationCount || 0) + 1,
+                finalDateRange: { startDate, endDate },
+                phase: "auto_sequence_complete",
+              }
+            );
+          }
         }
 
         // Commit transaction
@@ -674,6 +712,105 @@ class OrderFetchingExecutor {
         totalAvailable: actualTotal,
         phase: "finalization",
       });
+    }
+  }
+
+  static async calculateAutoDateRange(task, platformConnection, config) {
+    try {
+      const {
+        intervalPeriod = "month",
+        customDays = 30,
+        oldestOrderDate, // This comes from previous iterations
+      } = config;
+
+      const isInitialRun = !task.metadata?.source?.includes("continuation");
+
+      if (isInitialRun) {
+        // First run: use the original date range from config
+        return {
+          startDate:
+            config.startDate ||
+            new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          endDate: config.endDate || new Date().toISOString(),
+          oldestOrderDate: null,
+          isInitialRun: true,
+        };
+      }
+
+      // Continuation run: calculate new date range based on oldest order from previous fetch
+      if (!oldestOrderDate) {
+        // If no oldest date is provided, find the oldest order from the database
+        const { Order } = require("../models");
+        const oldestOrder = await Order.findOne({
+          where: {
+            userId: task.userId,
+            connectionId: platformConnection.id,
+          },
+          order: [["orderDate", "ASC"]],
+          attributes: ["orderDate"],
+        });
+
+        if (!oldestOrder) {
+          // No orders exist yet, use default range
+          return {
+            startDate: new Date(
+              Date.now() - 30 * 24 * 60 * 60 * 1000
+            ).toISOString(),
+            endDate: new Date().toISOString(),
+            oldestOrderDate: null,
+            isInitialRun: false,
+          };
+        }
+
+        oldestOrderDate = oldestOrder.orderDate;
+      }
+
+      // Calculate the period duration in days
+      let periodDays = 30; // default
+      switch (intervalPeriod) {
+        case "week":
+          periodDays = 7;
+          break;
+        case "month":
+          periodDays = 30;
+          break;
+        case "quarter":
+          periodDays = 90;
+          break;
+        case "year":
+          periodDays = 365;
+          break;
+        case "custom":
+          periodDays = customDays || 30;
+          break;
+      }
+
+      // Calculate new date range going backwards from the oldest order date
+      const endDate = new Date(oldestOrderDate);
+      const startDate = new Date(
+        endDate.getTime() - periodDays * 24 * 60 * 60 * 1000
+      );
+
+      return {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        oldestOrderDate: oldestOrderDate,
+        isInitialRun: false,
+        periodDays,
+        calculatedFromOldest: true,
+      };
+    } catch (error) {
+      logger.error("Error calculating auto date range:", error);
+      // Fallback to default range
+      return {
+        startDate: new Date(
+          Date.now() - 30 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+        endDate: new Date().toISOString(),
+        oldestOrderDate: null,
+        isInitialRun: false,
+        error: error.message,
+      };
     }
   }
 

@@ -3,14 +3,14 @@ const { body, query, param } = require("express-validator");
 // Re-enable auth middleware now that we have the reply method implemented
 const auth = require("../middleware/auth");
 
-// Import simplified controller class
-const ControlledCustomerQuestionController = require("../controllers/ControlledCustomerQuestionController");
+// Import the proper controller class
+const CustomerQuestionController = require("../controllers/CustomerQuestionController");
 
 // Create controller instance lazily
 let controllerInstance = null;
 const getController = () => {
   if (!controllerInstance) {
-    controllerInstance = new ControlledCustomerQuestionController();
+    controllerInstance = new CustomerQuestionController();
   }
   return controllerInstance;
 };

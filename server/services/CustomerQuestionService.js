@@ -106,9 +106,13 @@ class CustomerQuestionService {
       // Initialize N11 service with timeout protection
       if (platformConfigs.n11 && platformConfigs.n11.enabled) {
         try {
-          this.platformServices.n11 = new N11QuestionService(
-            platformConfigs.n11
-          );
+          // Map credentials for N11 service
+          const n11Config = {
+            ...platformConfigs.n11,
+            secretKey: platformConfigs.n11.apiSecret, // Map apiSecret to secretKey
+          };
+          
+          this.platformServices.n11 = new N11QuestionService(n11Config);
           debug("N11 question service initialized");
 
           // Add a small delay to prevent immediate hanging

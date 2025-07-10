@@ -1,0 +1,22 @@
+services:
+  # Frontend Static Site Service
+  - type: static
+    name: pazar-plus-frontend
+    buildCommand: ./render-frontend-build.sh
+    publishPath: ./build
+    buildFilter:
+      paths:
+        - client/**
+        - render-frontend-build.sh
+        - package.json
+    envVars:
+      - key: REACT_APP_API_URL
+        value: "https://pazarplus.onrender.com/api"
+      - key: REACT_APP_SERVER_URL
+        value: "https://pazarplus.onrender.com"
+      - key: GENERATE_SOURCEMAP
+        value: "false"
+      - key: CI
+        value: "false"
+      - key: SKIP_PREFLIGHT_CHECK
+        value: "true"

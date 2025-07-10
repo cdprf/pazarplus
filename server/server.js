@@ -31,6 +31,7 @@ const logger =
 const sequelize = require("./config/database");
 const config = require("./config/config");
 const ProductLinkingJobService = require("./services/product-linking-job-service");
+const CustomerQuestionSyncJobService = require("./services/customer-question-sync-job-service");
 const backgroundServicesManager = require("./services/background-services-manager");
 const SequelizeMigrationRunner = require("./services/sequelize-migration-runner");
 
@@ -39,9 +40,11 @@ const stabilityManager = new ServerStabilityManager();
 
 // Initialize background job service
 const productLinkingJobs = new ProductLinkingJobService();
+const customerQuestionSyncJobs = new CustomerQuestionSyncJobService();
 
 // Register background job with stability manager
 stabilityManager.registerBackgroundJob(productLinkingJobs);
+stabilityManager.registerBackgroundJob(customerQuestionSyncJobs);
 
 // Validate critical environment variables
 const validateEnvironment = () => {
@@ -246,6 +249,15 @@ async function startServer() {
               service: "pazar-plus",
             });
 
+            // Start customer question sync jobs
+            logger.info("Starting customer question sync jobs", {
+              service: "pazar-plus",
+            });
+            customerQuestionSyncJobs.start();
+            logger.info("Customer question sync jobs started successfully", {
+              service: "pazar-plus",
+            });
+
             // Initialize background services in separate setTimeout to avoid blocking
             logger.info(
               "Setting up background services initialization - debug point 3",
@@ -293,7 +305,7 @@ async function startServer() {
 
             logger.info("Background job services initialization queued", {
               service: "pazar-plus",
-              services: ["product-linking", "variant-detection"],
+              services: ["product-linking", "customer-question-sync", "variant-detection"],
             });
           }
         } catch (error) {
@@ -307,6 +319,22 @@ async function startServer() {
     );
 
     // Register database cleanup with stability manager
+    stabilityManager.registerCleanupHandler(async () => {
+      logger.info("Stopping background jobs...", { service: "pazar-plus" });
+      try {
+        productLinkingJobs.stop();
+        customerQuestionSyncJobs.stop();
+        logger.info("Background jobs stopped successfully", {
+          service: "pazar-plus",
+        });
+      } catch (error) {
+        logger.error("Error stopping background jobs", {
+          service: "pazar-plus",
+          error: error.message,
+        });
+      }
+    });
+
     stabilityManager.registerCleanupHandler(async () => {
       logger.info("Closing database connections...", { service: "pazar-plus" });
       try {

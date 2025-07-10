@@ -173,9 +173,21 @@ class HepsiBuradaQuestionService {
         "Error answering question on HepsiBurada:",
         error.response?.data || error.message
       );
+      
+      // Log more details for debugging
+      debug("HepsiBurada API Error Details:", {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers,
+        url: error.config?.url,
+        method: error.config?.method,
+        requestData: error.config?.data
+      });
+      
       throw new Error(
         `HepsiBurada answer submission failed: ${
-          error.response?.data?.message || error.message
+          error.response?.data?.message || error.response?.data?.error || error.message
         }`
       );
     }
