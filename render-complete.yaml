@@ -35,8 +35,8 @@ services:
   # Frontend Service (Static Site)
   - type: static
     name: pazar-plus-frontend
-    buildCommand: ./client-render-build.sh
-    publishPath: ./client/build
+    buildCommand: ./render-frontend-build.sh
+    publishPath: ./build
     buildFilter:
       paths:
         - client/**
