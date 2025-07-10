@@ -1,6 +1,54 @@
-const CircuitBreaker = require("opossum");
-const pRetry = require("p-retry");
-const Bottleneck = require("bottleneck");
+// Safe import with fallback for missing dependencies
+let CircuitBreaker;
+try {
+  CircuitBreaker = require("opossum");
+} catch (error) {
+  console.warn("opossum not available, circuit breaker disabled");
+  // Fallback circuit breaker that just passes through
+  CircuitBreaker = function(fn) {
+    const breaker = {
+      fire: fn,
+      on: () => {},
+      open: false,
+      stats: { fires: 0, failures: 0 }
+    };
+    return breaker;
+  };
+}
+// Safe import with fallback for missing dependencies
+let pRetry;
+try {
+  pRetry = require("p-retry");
+} catch (error) {
+  console.warn("p-retry not available, using simple retry");
+  // Simple fallback retry function
+  pRetry = async function(fn, options = {}) {
+    const maxRetries = options.retries || 3;
+    for (let i = 0; i <= maxRetries; i++) {
+      try {
+        return await fn();
+      } catch (error) {
+        if (i === maxRetries) throw error;
+        await new Promise(resolve => setTimeout(resolve, 1000 * i));
+      }
+    }
+  };
+}
+// Safe import with fallback for missing dependencies  
+let Bottleneck;
+try {
+  Bottleneck = require("bottleneck");
+} catch (error) {
+  console.warn("bottleneck not available, rate limiting disabled");
+  // Simple fallback that doesn't rate limit
+  Bottleneck = function(options) {
+    return {
+      schedule: (fn, ...args) => fn(...args),
+      stop: () => {},
+      chain: () => this
+    };
+  };
+}
 const axios = require("axios");
 const EventEmitter = require("events");
 const logger = require("../utils/logger");
