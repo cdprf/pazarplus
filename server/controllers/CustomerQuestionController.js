@@ -134,6 +134,8 @@ class CustomerQuestionController {
    */
   async replyToQuestion(req, res) {
     try {
+      await this.ensureInitialized();
+
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({
