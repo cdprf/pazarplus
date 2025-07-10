@@ -30,7 +30,7 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: CLIENT_URL
-        value: "https://pazar-plus-frontend.onrender.com"
+        value: "https://pazar-lf10.onrender.com"
 
   # Frontend Service (Static Site)
   - type: static
@@ -42,7 +42,7 @@ services:
         - client/**
     envVars:
       - key: REACT_APP_API_URL
-        value: "https://pazar-plus-backend.onrender.com"
+        value: "https://pazarplus.onrender.com/api"
       - key: GENERATE_SOURCEMAP
         value: "false"
       - key: CI
