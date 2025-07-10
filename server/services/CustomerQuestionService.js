@@ -599,13 +599,13 @@ class CustomerQuestionService {
    * Get reply templates
    */
   async getReplyTemplates(category = null) {
-    const whereClause = { is_active: true };
+    const whereClause = { isActive: true };
     if (category) whereClause.category = category;
 
     return await ReplyTemplate.findAll({
       where: whereClause,
       order: [
-        ["usage_count", "DESC"],
+        ["usageCount", "DESC"],
         ["name", "ASC"],
       ],
     });
@@ -622,12 +622,12 @@ class CustomerQuestionService {
       }
       return await template.update({
         ...templateData,
-        updated_by: userId,
+        userId,
       });
     } else {
       return await ReplyTemplate.create({
         ...templateData,
-        created_by: userId,
+        userId,
       });
     }
   }
@@ -640,8 +640,8 @@ class CustomerQuestionService {
       const template = await ReplyTemplate.findByPk(templateId);
       if (template) {
         await template.update({
-          usage_count: template.usage_count + 1,
-          last_used: new Date(),
+          usageCount: template.usageCount + 1,
+          lastUsed: new Date(),
         });
       }
     } catch (error) {
@@ -669,7 +669,7 @@ class CustomerQuestionService {
 
     const templates = await ReplyTemplate.findAll({
       where: whereClause,
-      order: [["usage_count", "DESC"]],
+      order: [["usageCount", "DESC"]],
     });
 
     // Score templates based on keyword matches

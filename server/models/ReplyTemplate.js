@@ -53,47 +53,35 @@ const ReplyTemplate = sequelize.define(
     },
 
     // Usage tracking
-    usage_count: {
+    usageCount: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
       comment: "How many times this template has been used",
     },
 
-    last_used: {
+    lastUsed: {
       type: DataTypes.DATE,
       allowNull: true,
       comment: "When this template was last used",
     },
 
     // Template metadata
-    is_active: {
+    isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
 
-    is_auto_suggest: {
+    isAutoSuggest: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       comment: "Whether to auto-suggest this template based on keywords",
     },
 
     // Creator information
-    created_by: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: "users",
-        key: "id",
-      },
-    },
-
-    updated_by: {
-      type: DataTypes.INTEGER,
+    userId: {
+      type: DataTypes.UUID,
       allowNull: true,
-      references: {
-        model: "users",
-        key: "id",
-      },
+      comment: "User who created this template",
     },
 
     // Template rating
@@ -103,7 +91,7 @@ const ReplyTemplate = sequelize.define(
       comment: "Average rating of this template effectiveness",
     },
 
-    rating_count: {
+    ratingCount: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
     },
@@ -116,16 +104,16 @@ const ReplyTemplate = sequelize.define(
         fields: ["category"],
       },
       {
-        fields: ["is_active"],
+        fields: ["isActive"],
       },
       {
-        fields: ["is_auto_suggest"],
+        fields: ["isAutoSuggest"],
       },
       {
-        fields: ["created_by"],
+        fields: ["userId"],
       },
       {
-        fields: ["usage_count"],
+        fields: ["usageCount"],
       },
     ],
   }
