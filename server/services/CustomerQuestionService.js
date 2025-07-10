@@ -1,18 +1,18 @@
 // Platform service imports
-const TrendyolQuestionService = require("./TrendyolQuestionService");
-const HepsiBuradaQuestionService = require("./HepsiBuradaQuestionService");
-const N11QuestionService = require("./N11QuestionService");
-const CustomerQuestion = require("../models/CustomerQuestion");
-const CustomerReply = require("../models/CustomerReply");
-const ReplyTemplate = require("../models/ReplyTemplate");
-const QuestionStats = require("../models/QuestionStats");
-const Customer = require("../models/Customer");
-const PlatformConnection = require("../models/PlatformConnection");
-const { Op, Sequelize } = require("sequelize");
+const TrendyolQuestionService = require('./TrendyolQuestionService');
+const HepsiBuradaQuestionService = require('./HepsiBuradaQuestionService');
+const N11QuestionService = require('./N11QuestionService');
+const CustomerQuestion = require('../models/CustomerQuestion');
+const CustomerReply = require('../models/CustomerReply');
+const ReplyTemplate = require('../models/ReplyTemplate');
+const QuestionStats = require('../models/QuestionStats');
+const Customer = require('../models/Customer');
+const PlatformConnection = require('../models/PlatformConnection');
+const { Op, Sequelize } = require('sequelize');
 
 let debug;
 try {
-  debug = require("debug")("pazar:customer:questions");
+  debug = require('debug')('pazar:customer:questions');
 } catch (error) {
   debug = () => {}; // No-op function if debug is not available
 }
@@ -29,11 +29,11 @@ class CustomerQuestionService {
   async loadPlatformConfigs(userId = null) {
     try {
       const whereClause = {
-        status: "active",
+        status: 'active',
         isActive: true,
         platformType: {
-          [Op.in]: ["trendyol", "hepsiburada", "n11"],
-        },
+          [Op.in]: ['trendyol', 'hepsiburada', 'n11']
+        }
       };
 
       if (userId) {
@@ -43,9 +43,9 @@ class CustomerQuestionService {
       const connections = await PlatformConnection.findAll({
         where: whereClause,
         order: [
-          ["isDefault", "DESC"],
-          ["createdAt", "DESC"],
-        ],
+          ['isDefault', 'DESC'],
+          ['createdAt', 'DESC']
+        ]
       });
 
       const platformConfigs = {};
@@ -56,27 +56,27 @@ class CustomerQuestionService {
           // Use the first (default or most recent) connection for each platform
           platformConfigs[platformType] = {
             enabled: true,
-            isTest: connection.environment !== "production",
-            ...connection.credentials,
+            isTest: connection.environment !== 'production',
+            ...connection.credentials
           };
         }
       }
 
       debug(
-        "Loaded platform configs from database:",
+        'Loaded platform configs from database:',
         Object.keys(platformConfigs)
       );
 
       // Check if no configurations were found
       if (Object.keys(platformConfigs).length === 0) {
         debug(
-          "No platform connections found in database. System may need configuration."
+          'No platform connections found in database. System may need configuration.'
         );
       }
 
       return platformConfigs;
     } catch (error) {
-      debug("Error loading platform configs from database:", error.message);
+      debug('Error loading platform configs from database:', error.message);
       // Fallback to empty configs if database fails
       return {};
     }
@@ -92,7 +92,7 @@ class CustomerQuestionService {
         this.platformServices.trendyol = new TrendyolQuestionService(
           platformConfigs.trendyol
         );
-        debug("Trendyol question service initialized");
+        debug('Trendyol question service initialized');
       }
 
       // Initialize HepsiBurada service
@@ -100,7 +100,7 @@ class CustomerQuestionService {
         this.platformServices.hepsiburada = new HepsiBuradaQuestionService(
           platformConfigs.hepsiburada
         );
-        debug("HepsiBurada question service initialized");
+        debug('HepsiBurada question service initialized');
       }
 
       // Initialize N11 service with timeout protection
@@ -109,35 +109,35 @@ class CustomerQuestionService {
           // Map credentials for N11 service
           const n11Config = {
             ...platformConfigs.n11,
-            secretKey: platformConfigs.n11.apiSecret, // Map apiSecret to secretKey
+            secretKey: platformConfigs.n11.apiSecret // Map apiSecret to secretKey
           };
 
           this.platformServices.n11 = new N11QuestionService(n11Config);
-          debug("N11 question service initialized");
+          debug('N11 question service initialized');
 
           // Add a small delay to prevent immediate hanging
           await new Promise((resolve) => setTimeout(resolve, 100));
-          debug("N11 question service post-initialization delay completed");
+          debug('N11 question service post-initialization delay completed');
         } catch (error) {
-          debug("Error initializing N11 question service:", error.message);
+          debug('Error initializing N11 question service:', error.message);
           // Continue without N11 service if it fails
         }
       }
 
       this.initialized = true;
       debug(
-        "Customer question service initialized for platforms:",
+        'Customer question service initialized for platforms:',
         Object.keys(this.platformServices)
       );
 
       // Warn if no platforms were initialized
       if (Object.keys(this.platformServices).length === 0) {
         debug(
-          "Warning: No platform services initialized. Check platform connections in database."
+          'Warning: No platform services initialized. Check platform connections in database.'
         );
       }
     } catch (error) {
-      debug("Error initializing customer question service:", error.message);
+      debug('Error initializing customer question service:', error.message);
       throw error;
     }
   }
@@ -147,26 +147,26 @@ class CustomerQuestionService {
    */
   async syncAllQuestions(options = {}) {
     if (!this.initialized) {
-      throw new Error("Service not initialized. Call initialize() first.");
+      throw new Error('Service not initialized. Call initialize() first.');
     }
 
     const {
       startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
       endDate = new Date(),
-      platforms = Object.keys(this.platformServices),
+      platforms = Object.keys(this.platformServices)
     } = options;
 
     const results = {
       success: true,
       platforms: {},
       totalSynced: 0,
-      errors: [],
+      errors: []
     };
 
     // Check if any platforms are available
     if (platforms.length === 0) {
       const errorMsg =
-        "No platform services available. Please configure platform connections first.";
+        'No platform services available. Please configure platform connections first.';
       results.errors.push(errorMsg);
       results.success = false;
       debug(errorMsg);
@@ -185,7 +185,7 @@ class CustomerQuestionService {
         debug(`Syncing questions from ${platform}...`);
         const syncResult = await this.syncPlatformQuestions(platform, {
           startDate,
-          endDate,
+          endDate
         });
         results.platforms[platform] = syncResult;
         results.totalSynced += syncResult.synced;
@@ -213,7 +213,7 @@ class CustomerQuestionService {
 
     const { startDate, endDate } = options;
     // HepsiBurada uses 1-based pagination, others use 0-based
-    let page = platform === "hepsiburada" ? 1 : 0;
+    let page = platform === 'hepsiburada' ? 1 : 0;
     let hasMore = true;
     let totalSynced = 0;
 
@@ -223,12 +223,12 @@ class CustomerQuestionService {
           startDate,
           endDate,
           page,
-          size: 50,
+          size: 50
         });
 
         // Handle different response formats
         let questions = [];
-        if (platform === "trendyol") {
+        if (platform === 'trendyol') {
           // Trendyol returns {content: [...], page, size, totalElements, totalPages}
           questions = response.content || [];
         } else {
@@ -246,7 +246,7 @@ class CustomerQuestionService {
           try {
             // For Trendyol, we need to normalize the data before saving
             const normalizedData =
-              platform === "trendyol"
+              platform === 'trendyol'
                 ? service.normalizeQuestionData(questionData)
                 : questionData;
 
@@ -266,13 +266,13 @@ class CustomerQuestionService {
         }
 
         // Check if there are more pages
-        if (platform === "trendyol") {
+        if (platform === 'trendyol') {
           // Trendyol format: {page, totalPages, ...}
           hasMore = page < response.totalPages - 1;
           page++;
         } else if (response.pagination) {
           // HepsiBurada and other platforms: {pagination: {currentPage, totalPages, hasNext, ...}}
-          if (platform === "hepsiburada") {
+          if (platform === 'hepsiburada') {
             hasMore = response.pagination.hasNext;
             page = response.pagination.currentPage + 1;
           } else {
@@ -304,8 +304,8 @@ class CustomerQuestionService {
       let question = await CustomerQuestion.findOne({
         where: {
           platform: questionData.platform,
-          platform_question_id: questionData.platform_question_id,
-        },
+          platform_question_id: questionData.platform_question_id
+        }
       });
 
       if (question) {
@@ -330,7 +330,7 @@ class CustomerQuestionService {
 
       return question;
     } catch (error) {
-      debug("Error saving question:", error.message);
+      debug('Error saving question:', error.message);
       throw error;
     }
   }
@@ -340,18 +340,18 @@ class CustomerQuestionService {
    */
   async updateSimilarQuestionsCount(question) {
     try {
-      if (!question.question_hash) return;
+      if (!question.question_hash) {return;}
 
       const similarCount = await CustomerQuestion.count({
         where: {
           question_hash: question.question_hash,
-          id: { [Op.ne]: question.id },
-        },
+          id: { [Op.ne]: question.id }
+        }
       });
 
       await question.update({ similar_questions_count: similarCount });
     } catch (error) {
-      debug("Error updating similar questions count:", error.message);
+      debug('Error updating similar questions count:', error.message);
     }
   }
 
@@ -360,27 +360,27 @@ class CustomerQuestionService {
    */
   async linkToCustomer(question) {
     try {
-      if (!question.customer_name) return;
+      if (!question.customer_name) {return;}
 
       const customer = await Customer.findOne({
         where: {
           [Op.or]: [
             { name: question.customer_name },
             { email: question.customer_name },
-            { phone: question.customer_name },
-          ],
-        },
+            { phone: question.customer_name }
+          ]
+        }
       });
 
       if (customer) {
         await question.update({
           customer_id: customer.id,
-          customer_name: customer.name,
+          customer_name: customer.name
         });
         debug(`Linked question ${question.id} to customer ${customer.id}`);
       }
     } catch (error) {
-      debug("Error linking to customer:", error.message);
+      debug('Error linking to customer:', error.message);
     }
   }
 
@@ -399,15 +399,15 @@ class CustomerQuestionService {
       endDate,
       page = 1,
       limit = 20,
-      sortBy = "creation_date",
-      sortOrder = "DESC",
+      sortBy = 'creation_date',
+      sortOrder = 'DESC'
     } = options;
 
     const whereClause = {};
-    if (platform) whereClause.platform = platform;
-    if (status) whereClause.status = status;
-    if (assigned_to) whereClause.assigned_to = assigned_to;
-    if (priority) whereClause.priority = priority;
+    if (platform) {whereClause.platform = platform;}
+    if (status) {whereClause.status = status;}
+    if (assigned_to) {whereClause.assigned_to = assigned_to;}
+    if (priority) {whereClause.priority = priority;}
     if (customer_name) {
       whereClause.customer_name = { [Op.iLike]: `%${customer_name}%` };
     }
@@ -416,8 +416,8 @@ class CustomerQuestionService {
     }
     if (startDate || endDate) {
       whereClause.creation_date = {};
-      if (startDate) whereClause.creation_date[Op.gte] = startDate;
-      if (endDate) whereClause.creation_date[Op.lte] = endDate;
+      if (startDate) {whereClause.creation_date[Op.gte] = startDate;}
+      if (endDate) {whereClause.creation_date[Op.lte] = endDate;}
     }
 
     const result = await CustomerQuestion.findAndCountAll({
@@ -425,13 +425,13 @@ class CustomerQuestionService {
       include: [
         {
           model: CustomerReply,
-          as: "replies",
-          order: [["creation_date", "ASC"]],
-        },
+          as: 'replies',
+          order: [['creation_date', 'ASC']]
+        }
       ],
       order: [[sortBy, sortOrder]],
       limit,
-      offset: (page - 1) * limit,
+      offset: (page - 1) * limit
     });
 
     return {
@@ -440,8 +440,8 @@ class CustomerQuestionService {
         page,
         limit,
         totalItems: result.count,
-        totalPages: Math.ceil(result.count / limit),
-      },
+        totalPages: Math.ceil(result.count / limit)
+      }
     };
   }
 
@@ -453,14 +453,14 @@ class CustomerQuestionService {
       include: [
         {
           model: CustomerReply,
-          as: "replies",
-          order: [["creation_date", "ASC"]],
-        },
-      ],
+          as: 'replies',
+          order: [['creation_date', 'ASC']]
+        }
+      ]
     });
 
     if (!question) {
-      throw new Error("Question not found");
+      throw new Error('Question not found');
     }
 
     return question;
@@ -478,13 +478,13 @@ class CustomerQuestionService {
         question_id: questionId,
         platform: question.platform,
         reply_text: replyData.text,
-        reply_type: replyData.type || "answer",
-        from_type: "merchant",
+        reply_type: replyData.type || 'answer',
+        from_type: 'merchant',
         created_by: userId,
         creation_date: new Date(),
-        status: "draft",
+        status: 'draft',
         template_id: replyData.template_id,
-        attachments: replyData.attachments || [],
+        attachments: replyData.attachments || []
       });
 
       // Send reply to platform
@@ -494,13 +494,13 @@ class CustomerQuestionService {
       }
 
       let platformResponse;
-      if (replyData.type === "reject") {
+      if (replyData.type === 'reject') {
         platformResponse = await platformService.reportQuestion(
           question.platform_question_id,
           replyData.text
         );
       } else {
-        if (question.platform === "hepsiburada") {
+        if (question.platform === 'hepsiburada') {
           platformResponse = await platformService.answerQuestion(
             question.platform_question_id,
             replyData.text,
@@ -517,15 +517,15 @@ class CustomerQuestionService {
       // Update reply status
       if (platformResponse.success) {
         await reply.update({
-          status: "sent",
+          status: 'sent',
           sent_date: new Date(),
-          platform_reply_id: platformResponse.response?.id?.toString(),
+          platform_reply_id: platformResponse.response?.id?.toString()
         });
 
         // Update question status
         await question.update({
-          status: replyData.type === "reject" ? "REJECTED" : "ANSWERED",
-          answered_date: new Date(),
+          status: replyData.type === 'reject' ? 'REJECTED' : 'ANSWERED',
+          answered_date: new Date()
         });
 
         // Update template usage if used
@@ -534,14 +534,14 @@ class CustomerQuestionService {
         }
       } else {
         await reply.update({
-          status: "failed",
-          error_message: platformResponse.error || "Platform request failed",
+          status: 'failed',
+          error_message: platformResponse.error || 'Platform request failed'
         });
       }
 
       return reply;
     } catch (error) {
-      debug("Error replying to question:", error.message);
+      debug('Error replying to question:', error.message);
       throw error;
     }
   }
@@ -553,47 +553,47 @@ class CustomerQuestionService {
     const {
       platform,
       startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      endDate = new Date(),
+      endDate = new Date()
     } = options;
 
     const whereClause = {
       creation_date: {
-        [Op.between]: [startDate, endDate],
-      },
+        [Op.between]: [startDate, endDate]
+      }
     };
-    if (platform) whereClause.platform = platform;
+    if (platform) {whereClause.platform = platform;}
 
     const stats = await CustomerQuestion.findAll({
       attributes: [
-        "platform",
-        "status",
-        [Sequelize.fn("COUNT", Sequelize.col("id")), "count"],
+        'platform',
+        'status',
+        [Sequelize.fn('COUNT', Sequelize.col('id')), 'count'],
         [
           Sequelize.fn(
-            "AVG",
+            'AVG',
             Sequelize.literal(
-              "EXTRACT(EPOCH FROM (answered_date - creation_date))/3600"
+              'EXTRACT(EPOCH FROM (answered_date - creation_date))/3600'
             )
           ),
-          "avg_response_time_hours",
-        ],
+          'avg_response_time_hours'
+        ]
       ],
       where: whereClause,
-      group: ["platform", "status"],
+      group: ['platform', 'status']
     });
 
     // Get frequent questions
     const frequentQuestions = await CustomerQuestion.findAll({
       attributes: [
-        "question_hash",
-        "question_text",
-        [Sequelize.fn("COUNT", Sequelize.col("id")), "count"],
+        'question_hash',
+        'question_text',
+        [Sequelize.fn('COUNT', Sequelize.col('id')), 'count']
       ],
       where: whereClause,
-      group: ["question_hash", "question_text"],
-      having: Sequelize.literal("COUNT(id) > 1"),
-      order: [[Sequelize.literal("count"), "DESC"]],
-      limit: 10,
+      group: ['question_hash', 'question_text'],
+      having: Sequelize.literal('COUNT(id) > 1'),
+      order: [[Sequelize.literal('count'), 'DESC']],
+      limit: 10
     });
 
     return {
@@ -601,9 +601,9 @@ class CustomerQuestionService {
       frequentQuestions: frequentQuestions.map((q) => ({
         hash: q.question_hash,
         text: q.question_text,
-        count: parseInt(q.getDataValue("count")),
+        count: parseInt(q.getDataValue('count'))
       })),
-      totalQuestions: await CustomerQuestion.count({ where: whereClause }),
+      totalQuestions: await CustomerQuestion.count({ where: whereClause })
     };
   }
 
@@ -612,14 +612,14 @@ class CustomerQuestionService {
    */
   async getReplyTemplates(category = null) {
     const whereClause = { isActive: true };
-    if (category) whereClause.category = category;
+    if (category) {whereClause.category = category;}
 
     return await ReplyTemplate.findAll({
       where: whereClause,
       order: [
-        ["usageCount", "DESC"],
-        ["name", "ASC"],
-      ],
+        ['usageCount', 'DESC'],
+        ['name', 'ASC']
+      ]
     });
   }
 
@@ -630,16 +630,16 @@ class CustomerQuestionService {
     if (templateData.id) {
       const template = await ReplyTemplate.findByPk(templateData.id);
       if (!template) {
-        throw new Error("Template not found");
+        throw new Error('Template not found');
       }
       return await template.update({
         ...templateData,
-        userId,
+        userId
       });
     } else {
       return await ReplyTemplate.create({
         ...templateData,
-        userId,
+        userId
       });
     }
   }
@@ -653,11 +653,11 @@ class CustomerQuestionService {
       if (template) {
         await template.update({
           usageCount: template.usageCount + 1,
-          lastUsed: new Date(),
+          lastUsed: new Date()
         });
       }
     } catch (error) {
-      debug("Error updating template usage:", error.message);
+      debug('Error updating template usage:', error.message);
     }
   }
 
@@ -669,19 +669,19 @@ class CustomerQuestionService {
 
     const whereClause = {
       is_active: true,
-      is_auto_suggest: true,
+      is_auto_suggest: true
     };
 
     if (platform) {
       whereClause[Op.or] = [
         { platforms: { [Op.contains]: [platform] } },
-        { platforms: { [Op.contains]: ["all"] } },
+        { platforms: { [Op.contains]: ['all'] } }
       ];
     }
 
     const templates = await ReplyTemplate.findAll({
       where: whereClause,
-      order: [["usageCount", "DESC"]],
+      order: [['usageCount', 'DESC']]
     });
 
     // Score templates based on keyword matches
@@ -713,7 +713,7 @@ class CustomerQuestionService {
   extractKeywords(text) {
     return text
       .toLowerCase()
-      .replace(/[^\w\s]/g, " ")
+      .replace(/[^\w\s]/g, ' ')
       .split(/\s+/)
       .filter((word) => word.length > 3)
       .slice(0, 10); // Take first 10 meaningful words
@@ -729,26 +729,26 @@ class CustomerQuestionService {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const platforms = ["trendyol", "hepsiburada", "n11", "all"];
+    const platforms = ['trendyol', 'hepsiburada', 'n11', 'all'];
 
     for (const platform of platforms) {
       const whereClause = {
         creation_date: {
-          [Op.between]: [startOfDay, endOfDay],
-        },
+          [Op.between]: [startOfDay, endOfDay]
+        }
       };
 
-      if (platform !== "all") {
+      if (platform !== 'all') {
         whereClause.platform = platform;
       }
 
       const stats = await CustomerQuestion.findAll({
         attributes: [
-          "status",
-          [Sequelize.fn("COUNT", Sequelize.col("id")), "count"],
+          'status',
+          [Sequelize.fn('COUNT', Sequelize.col('id')), 'count']
         ],
         where: whereClause,
-        group: ["status"],
+        group: ['status']
       });
 
       // Calculate response time metrics
@@ -756,66 +756,66 @@ class CustomerQuestionService {
         attributes: [
           [
             Sequelize.fn(
-              "AVG",
+              'AVG',
               Sequelize.literal(
-                "EXTRACT(EPOCH FROM (answered_date - creation_date))/3600"
+                'EXTRACT(EPOCH FROM (answered_date - creation_date))/3600'
               )
             ),
-            "avg_hours",
+            'avg_hours'
           ],
           [
             Sequelize.fn(
-              "MAX",
+              'MAX',
               Sequelize.literal(
-                "EXTRACT(EPOCH FROM (answered_date - creation_date))/3600"
+                'EXTRACT(EPOCH FROM (answered_date - creation_date))/3600'
               )
             ),
-            "max_hours",
+            'max_hours'
           ],
           [
             Sequelize.fn(
-              "MIN",
+              'MIN',
               Sequelize.literal(
-                "EXTRACT(EPOCH FROM (answered_date - creation_date))/3600"
+                'EXTRACT(EPOCH FROM (answered_date - creation_date))/3600'
               )
             ),
-            "min_hours",
-          ],
+            'min_hours'
+          ]
         ],
         where: {
           ...whereClause,
-          answered_date: { [Op.not]: null },
-        },
+          answered_date: { [Op.not]: null }
+        }
       });
 
       const statsData = {
-        date: startOfDay.toISOString().split("T")[0],
+        date: startOfDay.toISOString().split('T')[0],
         platform,
         total_questions: 0,
         waiting_for_answer: 0,
         answered: 0,
         rejected: 0,
-        auto_closed: 0,
+        auto_closed: 0
       };
 
       // Populate status counts
       stats.forEach((stat) => {
-        const count = parseInt(stat.getDataValue("count"));
+        const count = parseInt(stat.getDataValue('count'));
         statsData.total_questions += count;
 
         switch (stat.status) {
-          case "WAITING_FOR_ANSWER":
-            statsData.waiting_for_answer = count;
-            break;
-          case "ANSWERED":
-            statsData.answered = count;
-            break;
-          case "REJECTED":
-            statsData.rejected = count;
-            break;
-          case "AUTO_CLOSED":
-            statsData.auto_closed = count;
-            break;
+        case 'WAITING_FOR_ANSWER':
+          statsData.waiting_for_answer = count;
+          break;
+        case 'ANSWERED':
+          statsData.answered = count;
+          break;
+        case 'REJECTED':
+          statsData.rejected = count;
+          break;
+        case 'AUTO_CLOSED':
+          statsData.auto_closed = count;
+          break;
         }
       });
 
@@ -823,16 +823,16 @@ class CustomerQuestionService {
       if (responseTimeStats.length > 0) {
         const rtStats = responseTimeStats[0];
         statsData.avg_response_time_hours =
-          parseFloat(rtStats.getDataValue("avg_hours")) || null;
+          parseFloat(rtStats.getDataValue('avg_hours')) || null;
         statsData.max_response_time_hours =
-          parseFloat(rtStats.getDataValue("max_hours")) || null;
+          parseFloat(rtStats.getDataValue('max_hours')) || null;
         statsData.min_response_time_hours =
-          parseFloat(rtStats.getDataValue("min_hours")) || null;
+          parseFloat(rtStats.getDataValue('min_hours')) || null;
       }
 
       // Save or update stats
       await QuestionStats.upsert(statsData, {
-        conflictFields: ["date", "platform"],
+        conflictFields: ['date', 'platform']
       });
     }
   }

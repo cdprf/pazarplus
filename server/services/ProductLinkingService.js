@@ -3,9 +3,9 @@
  * Matches order items with products in the database using multiple strategies
  */
 
-const sequelize = require("../config/database");
-const { Product, OrderItem } = require("../models");
-const { Op } = require("sequelize");
+const sequelize = require('../config/database');
+const { Product, OrderItem } = require('../models');
+const { Op } = require('sequelize');
 
 class ProductLinkingService {
   /**
@@ -21,15 +21,15 @@ class ProductLinkingService {
         const skuMatches = await Product.findAll({
           where: {
             sku: sku,
-            status: "active",
-          },
+            status: 'active'
+          }
         });
 
         matchingProducts.push(
           ...skuMatches.map((p) => ({
             ...p.dataValues,
-            matchType: "sku",
-            confidence: 100,
+            matchType: 'sku',
+            confidence: 100
           }))
         );
       }
@@ -39,15 +39,15 @@ class ProductLinkingService {
         const barcodeMatches = await Product.findAll({
           where: {
             barcode: barcode,
-            status: "active",
-          },
+            status: 'active'
+          }
         });
 
         matchingProducts.push(
           ...barcodeMatches.map((p) => ({
             ...p.dataValues,
-            matchType: "barcode",
-            confidence: 95,
+            matchType: 'barcode',
+            confidence: 95
           }))
         );
       }
@@ -60,20 +60,20 @@ class ProductLinkingService {
           where: {
             [Op.and]: [
               sequelize.where(
-                sequelize.fn("JSON_EXTRACT", sequelize.col("platforms"), "$.*"),
-                "LIKE",
+                sequelize.fn('JSON_EXTRACT', sequelize.col('platforms'), '$.*'),
+                'LIKE',
                 `%${platformProductId}%`
               ),
-              { status: "active" },
-            ],
-          },
+              { status: 'active' }
+            ]
+          }
         });
 
         matchingProducts.push(
           ...platformMatches.map((p) => ({
             ...p.dataValues,
-            matchType: "platformProductId",
-            confidence: 80,
+            matchType: 'platformProductId',
+            confidence: 80
           }))
         );
       }
@@ -83,16 +83,16 @@ class ProductLinkingService {
         const titleMatches = await Product.findAll({
           where: {
             name: { [Op.like]: `%${title.substring(0, 50)}%` },
-            status: "active",
+            status: 'active'
           },
-          limit: 5,
+          limit: 5
         });
 
         matchingProducts.push(
           ...titleMatches.map((p) => ({
             ...p.dataValues,
-            matchType: "title",
-            confidence: 60,
+            matchType: 'title',
+            confidence: 60
           }))
         );
       }
@@ -107,7 +107,7 @@ class ProductLinkingService {
 
       return uniqueProducts;
     } catch (error) {
-      console.error("Error finding matching products:", error);
+      console.error('Error finding matching products:', error);
       return [];
     }
   }
@@ -120,9 +120,9 @@ class ProductLinkingService {
       // Get order items using Sequelize
       const orderItems = await OrderItem.findAll({
         where: {
-          orderId: orderId,
+          orderId: orderId
         },
-        order: [["createdAt", "ASC"]],
+        order: [['createdAt', 'ASC']]
       });
 
       // For each order item, find matching products
@@ -134,14 +134,14 @@ class ProductLinkingService {
           return {
             ...item.dataValues,
             matchingProducts,
-            bestMatch: matchingProducts.length > 0 ? matchingProducts[0] : null,
+            bestMatch: matchingProducts.length > 0 ? matchingProducts[0] : null
           };
         })
       );
 
       return itemsWithProducts;
     } catch (error) {
-      console.error("Error getting order items with products:", error);
+      console.error('Error getting order items with products:', error);
       throw error;
     }
   }
@@ -158,7 +158,7 @@ class ProductLinkingService {
 
       return { success: true };
     } catch (error) {
-      console.error("Error linking order item with product:", error);
+      console.error('Error linking order item with product:', error);
       throw error;
     }
   }
@@ -175,7 +175,7 @@ class ProductLinkingService {
 
       return { success: true };
     } catch (error) {
-      console.error("Error unlinking order item from product:", error);
+      console.error('Error unlinking order item from product:', error);
       throw error;
     }
   }
@@ -190,29 +190,29 @@ class ProductLinkingService {
           [Op.or]: [
             { name: { [Op.like]: `%${query}%` } },
             { sku: { [Op.like]: `%${query}%` } },
-            { barcode: { [Op.like]: `%${query}%` } },
+            { barcode: { [Op.like]: `%${query}%` } }
           ],
-          status: "active",
+          status: 'active'
         },
         attributes: [
-          "id",
-          "name",
-          "sku",
-          "barcode",
-          "price",
-          "images",
-          "stockQuantity",
+          'id',
+          'name',
+          'sku',
+          'barcode',
+          'price',
+          'images',
+          'stockQuantity'
         ],
-        order: [["name", "ASC"]],
-        limit: limit,
+        order: [['name', 'ASC']],
+        limit: limit
       });
 
       return products.map((product) => ({
         ...product.dataValues,
-        images: product.images ? JSON.parse(product.images) : [],
+        images: product.images ? JSON.parse(product.images) : []
       }));
     } catch (error) {
-      console.error("Error searching products:", error);
+      console.error('Error searching products:', error);
       throw error;
     }
   }

@@ -1,10 +1,10 @@
-require("dotenv").config({ path: "../.env.unified" });
+require('dotenv').config({ path: '../.env.unified' });
 
 // Import auto network configuration
-const AutoNetworkConfig = require("./utils/auto-network-config");
+const AutoNetworkConfig = require('./utils/auto-network-config');
 
 // For production environments like Render, disable auto network config
-const isProduction = process.env.NODE_ENV === "production";
+const isProduction = process.env.NODE_ENV === 'production';
 let detectedIP = null;
 
 if (!isProduction) {
@@ -14,26 +14,26 @@ if (!isProduction) {
 }
 
 // Import network detection utility (legacy)
-const { setNetworkEnvironment } = require("./utils/networkDetection");
-const ServerStabilityManager = require("./utils/serverStabilityManager");
+const { setNetworkEnvironment } = require('./utils/networkDetection');
+const ServerStabilityManager = require('./utils/serverStabilityManager');
 
 // Set network environment variables for proper URL generation
-const networkIP = isProduction ? "0.0.0.0" : setNetworkEnvironment();
+const networkIP = isProduction ? '0.0.0.0' : setNetworkEnvironment();
 
-const { app, initializeWebSocketServer } = require("./app");
+const { app, initializeWebSocketServer } = require('./app');
 
 // Use simple logger in production to avoid winston-daily-rotate-file issues
 const logger =
-  process.env.NODE_ENV === "production"
-    ? require("./utils/logger-simple")
-    : require("./utils/logger");
+  process.env.NODE_ENV === 'production'
+    ? require('./utils/logger-simple')
+    : require('./utils/logger');
 
-const sequelize = require("./config/database");
-const config = require("./config/config");
-const ProductLinkingJobService = require("./services/product-linking-job-service");
-const CustomerQuestionSyncJobService = require("./services/customer-question-sync-job-service");
-const backgroundServicesManager = require("./services/background-services-manager");
-const SequelizeMigrationRunner = require("./services/sequelize-migration-runner");
+const sequelize = require('./config/database');
+const config = require('./config/config');
+const ProductLinkingJobService = require('./services/product-linking-job-service');
+const CustomerQuestionSyncJobService = require('./services/customer-question-sync-job-service');
+const backgroundServicesManager = require('./services/background-services-manager');
+const SequelizeMigrationRunner = require('./services/sequelize-migration-runner');
 
 // Initialize stability manager
 const stabilityManager = new ServerStabilityManager();
@@ -50,51 +50,51 @@ stabilityManager.registerBackgroundJob(customerQuestionSyncJobs);
 const validateEnvironment = () => {
   const requiredEnvVars = [];
 
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === 'production') {
     // For production, accept either DATABASE_URL (for cloud deployments) or individual DB variables
     const hasDatabase = process.env.DATABASE_URL || process.env.DB_HOST;
 
     if (!hasDatabase) {
-      requiredEnvVars.push("DATABASE_URL or DB_HOST");
+      requiredEnvVars.push('DATABASE_URL or DB_HOST');
     }
 
     // These are still required for production
-    if (!process.env.JWT_SECRET) requiredEnvVars.push("JWT_SECRET");
-    if (!process.env.CLIENT_URL) requiredEnvVars.push("CLIENT_URL");
+    if (!process.env.JWT_SECRET) {requiredEnvVars.push('JWT_SECRET');}
+    if (!process.env.CLIENT_URL) {requiredEnvVars.push('CLIENT_URL');}
   }
 
   if (requiredEnvVars.length > 0) {
     logger.error(
-      `Missing required environment variables: ${requiredEnvVars.join(", ")}`
+      `Missing required environment variables: ${requiredEnvVars.join(', ')}`
     );
     throw new Error(
-      `Missing required environment variables: ${requiredEnvVars.join(", ")}`
+      `Missing required environment variables: ${requiredEnvVars.join(', ')}`
     );
   }
 
-  logger.info("Environment validation passed", { service: "pazar-plus" });
+  logger.info('Environment validation passed', { service: 'pazar-plus' });
 };
 
 const PORT = config.server.port; // Use centralized config
 
-logger.info(`Using port: ${PORT}`, { service: "pazar-plus", port: PORT });
+logger.info(`Using port: ${PORT}`, { service: 'pazar-plus', port: PORT });
 
 async function startServer() {
   try {
     // Validate environment first
     validateEnvironment();
 
-    logger.info("Initializing application...", { service: "pazar-plus" });
+    logger.info('Initializing application...', { service: 'pazar-plus' });
 
     // Test database connection
     try {
       await sequelize.authenticate();
-      logger.info("Database connection established successfully", {
-        service: "pazar-plus",
+      logger.info('Database connection established successfully', {
+        service: 'pazar-plus'
       });
 
       // Run database migrations to create all tables
-      logger.info("Running database migrations...", { service: "pazar-plus" });
+      logger.info('Running database migrations...', { service: 'pazar-plus' });
 
       try {
         const migrationRunner = new SequelizeMigrationRunner(sequelize);
@@ -107,45 +107,45 @@ async function startServer() {
         const migrationResult = await migrationRunner.runMigrations();
 
         if (migrationResult) {
-          logger.info("Database migrations completed successfully", {
-            service: "pazar-plus",
-            comprehensive: comprehensiveResult ? "executed" : "not needed",
+          logger.info('Database migrations completed successfully', {
+            service: 'pazar-plus',
+            comprehensive: comprehensiveResult ? 'executed' : 'not needed'
           });
         } else {
           logger.warn(
-            "Database migrations failed, continuing without database",
+            'Database migrations failed, continuing without database',
             {
-              service: "pazar-plus",
+              service: 'pazar-plus'
             }
           );
         }
       } catch (migrationError) {
-        logger.error("Migration runner failed, falling back to table sync", {
-          service: "pazar-plus",
-          error: migrationError.message,
+        logger.error('Migration runner failed, falling back to table sync', {
+          service: 'pazar-plus',
+          error: migrationError.message
         });
 
         // Fallback: try basic table sync if migrations fail
         try {
           await sequelize.sync({ alter: false });
-          logger.info("Basic database sync completed as fallback", {
-            service: "pazar-plus",
+          logger.info('Basic database sync completed as fallback', {
+            service: 'pazar-plus'
           });
         } catch (syncError) {
           logger.warn(
-            "Database sync also failed, continuing without database",
+            'Database sync also failed, continuing without database',
             {
-              service: "pazar-plus",
-              error: syncError.message,
+              service: 'pazar-plus',
+              error: syncError.message
             }
           );
         }
       }
     } catch (error) {
-      if (process.env.NODE_ENV === "production") {
-        logger.warn("Database connection failed, continuing without database", {
-          service: "pazar-plus",
-          error: error.message,
+      if (process.env.NODE_ENV === 'production') {
+        logger.warn('Database connection failed, continuing without database', {
+          service: 'pazar-plus',
+          error: error.message
         });
       } else {
         throw error;
@@ -157,51 +157,51 @@ async function startServer() {
     //   force: false, // Changed back to false to preserve data
     //   logging: false, // Disable SQL logging for cleaner output
     // });
-    logger.info("Database synchronized successfully", {
-      service: "pazar-plus",
+    logger.info('Database synchronized successfully', {
+      service: 'pazar-plus'
     });
 
-    logger.info("Application initialized successfully", {
-      service: "pazar-plus",
+    logger.info('Application initialized successfully', {
+      service: 'pazar-plus'
     });
 
     // Start server with error handling - bind to all interfaces for network access
     const server = stabilityManager.wrapServer(
-      app.listen(PORT, "0.0.0.0", () => {
-        logger.info("Pazar+ server started successfully", {
+      app.listen(PORT, '0.0.0.0', () => {
+        logger.info('Pazar+ server started successfully', {
           port: PORT,
-          host: "0.0.0.0",
+          host: '0.0.0.0',
           networkIP: networkIP,
-          environment: process.env.NODE_ENV,
+          environment: process.env.NODE_ENV
         });
         console.log(
-          "🔍 AGGRESSIVE DEBUG: Inside server listen callback - server is ACTUALLY running now"
+          '🔍 AGGRESSIVE DEBUG: Inside server listen callback - server is ACTUALLY running now'
         );
 
         logger.info(
           `Server running on port ${PORT} (accessible from network)`,
           {
-            service: "pazar-plus",
+            service: 'pazar-plus',
             port: PORT,
-            environment: process.env.NODE_ENV || "development",
-            host: "0.0.0.0",
+            environment: process.env.NODE_ENV || 'development',
+            host: '0.0.0.0',
             networkIP: networkIP,
             accessUrls: {
               local: `http://localhost:${PORT}`,
-              network: `http://${networkIP}:${PORT}`,
-            },
+              network: `http://${networkIP}:${PORT}`
+            }
           }
         );
 
         // Initialize WebSocket server for real-time notifications
-        logger.debug("Initializing WebSocket server");
+        logger.debug('Initializing WebSocket server');
         const wsServer = initializeWebSocketServer(server);
-        logger.info("WebSocket server initialized successfully");
+        logger.info('WebSocket server initialized successfully');
 
         // Start network monitoring for automatic IP detection (development only)
         if (!isProduction) {
           console.log(
-            "🔄 Starting network monitoring for automatic IP updates..."
+            '🔄 Starting network monitoring for automatic IP updates...'
           );
           const autoNetworkConfig = new AutoNetworkConfig();
           autoNetworkConfig.watchNetworkChanges();
@@ -209,114 +209,114 @@ async function startServer() {
 
         // Register WebSocket server cleanup
         stabilityManager.registerCleanupHandler(async () => {
-          if (wsServer && typeof wsServer.close === "function") {
+          if (wsServer && typeof wsServer.close === 'function') {
             wsServer.close();
           }
         });
 
-        logger.info("Enhanced platform integration services ready", {
-          service: "pazar-plus",
+        logger.info('Enhanced platform integration services ready', {
+          service: 'pazar-plus',
           features: [
-            "Enhanced Platform Synchronization",
-            "Conflict Resolution System",
-            "Real-time Inventory Management",
-            "WebSocket Notifications",
-            "Stock Reservation System",
-            "Turkish Marketplace Compliance",
-            "Automated Product-Order Linking",
-          ],
+            'Enhanced Platform Synchronization',
+            'Conflict Resolution System',
+            'Real-time Inventory Management',
+            'WebSocket Notifications',
+            'Stock Reservation System',
+            'Turkish Marketplace Compliance',
+            'Automated Product-Order Linking'
+          ]
         });
 
         // Start background jobs
-        logger.info("Starting background jobs", {
-          service: "pazar-plus",
+        logger.info('Starting background jobs', {
+          service: 'pazar-plus'
         });
 
         try {
           // Check if background jobs should be disabled for faster startup
-          if (process.env.DISABLE_BACKGROUND_JOBS === "true") {
+          if (process.env.DISABLE_BACKGROUND_JOBS === 'true') {
             logger.info(
-              "Background jobs disabled via DISABLE_BACKGROUND_JOBS environment variable",
-              { service: "pazar-plus" }
+              'Background jobs disabled via DISABLE_BACKGROUND_JOBS environment variable',
+              { service: 'pazar-plus' }
             );
           } else {
             // Start product linking jobs with error handling
-            logger.info("Starting product linking jobs - debug point 2", {
-              service: "pazar-plus",
+            logger.info('Starting product linking jobs - debug point 2', {
+              service: 'pazar-plus'
             });
             productLinkingJobs.start();
-            logger.info("Product linking jobs started successfully", {
-              service: "pazar-plus",
+            logger.info('Product linking jobs started successfully', {
+              service: 'pazar-plus'
             });
 
             // Start customer question sync jobs
-            logger.info("Starting customer question sync jobs", {
-              service: "pazar-plus",
+            logger.info('Starting customer question sync jobs', {
+              service: 'pazar-plus'
             });
             customerQuestionSyncJobs.start();
-            logger.info("Customer question sync jobs started successfully", {
-              service: "pazar-plus",
+            logger.info('Customer question sync jobs started successfully', {
+              service: 'pazar-plus'
             });
 
             // Initialize background services in separate setTimeout to avoid blocking
             logger.info(
-              "Setting up background services initialization - debug point 3",
-              { service: "pazar-plus" }
+              'Setting up background services initialization - debug point 3',
+              { service: 'pazar-plus' }
             );
             // Initialize TaskQueueManager immediately to avoid race conditions with task creation
-            const { taskQueueManager } = require("./services/TaskQueueManager");
+            const { taskQueueManager } = require('./services/TaskQueueManager');
 
             if (!taskQueueManager.getStatus().isProcessing) {
               logger.info(
-                "Starting TaskQueueManager immediately to handle incoming tasks",
+                'Starting TaskQueueManager immediately to handle incoming tasks',
                 {
-                  service: "pazar-plus",
+                  service: 'pazar-plus'
                 }
               );
               taskQueueManager.start();
-              logger.info("TaskQueueManager started successfully", {
-                status: taskQueueManager.getStatus(),
+              logger.info('TaskQueueManager started successfully', {
+                status: taskQueueManager.getStatus()
               });
             }
 
             // Initialize other background services with delay
             setTimeout(() => {
               logger.info(
-                "Initializing remaining background services - debug point 4",
+                'Initializing remaining background services - debug point 4',
                 {
-                  service: "pazar-plus",
+                  service: 'pazar-plus'
                 }
               );
               backgroundServicesManager
                 .initialize()
                 .then(() => {
-                  logger.info("Background services initialized successfully", {
-                    service: "pazar-plus",
+                  logger.info('Background services initialized successfully', {
+                    service: 'pazar-plus'
                   });
                 })
                 .catch((error) => {
-                  logger.error("Failed to initialize background services", {
-                    service: "pazar-plus",
+                  logger.error('Failed to initialize background services', {
+                    service: 'pazar-plus',
                     error: error.message,
-                    stack: error.stack,
+                    stack: error.stack
                   });
                 });
             }, 10000); // Reduced delay since TaskQueueManager is already running
 
-            logger.info("Background job services initialization queued", {
-              service: "pazar-plus",
+            logger.info('Background job services initialization queued', {
+              service: 'pazar-plus',
               services: [
-                "product-linking",
-                "customer-question-sync",
-                "variant-detection",
-              ],
+                'product-linking',
+                'customer-question-sync',
+                'variant-detection'
+              ]
             });
           }
         } catch (error) {
-          logger.error("Failed to start background jobs", {
-            service: "pazar-plus",
+          logger.error('Failed to start background jobs', {
+            service: 'pazar-plus',
             error: error.message,
-            stack: error.stack,
+            stack: error.stack
           });
         }
       })
@@ -324,37 +324,37 @@ async function startServer() {
 
     // Register database cleanup with stability manager
     stabilityManager.registerCleanupHandler(async () => {
-      logger.info("Stopping background jobs...", { service: "pazar-plus" });
+      logger.info('Stopping background jobs...', { service: 'pazar-plus' });
       try {
         productLinkingJobs.stop();
         customerQuestionSyncJobs.stop();
-        logger.info("Background jobs stopped successfully", {
-          service: "pazar-plus",
+        logger.info('Background jobs stopped successfully', {
+          service: 'pazar-plus'
         });
       } catch (error) {
-        logger.error("Error stopping background jobs", {
-          service: "pazar-plus",
-          error: error.message,
+        logger.error('Error stopping background jobs', {
+          service: 'pazar-plus',
+          error: error.message
         });
       }
     });
 
     stabilityManager.registerCleanupHandler(async () => {
-      logger.info("Closing database connections...", { service: "pazar-plus" });
+      logger.info('Closing database connections...', { service: 'pazar-plus' });
       try {
         await sequelize.close();
-        logger.info("Database connections closed successfully", {
-          service: "pazar-plus",
+        logger.info('Database connections closed successfully', {
+          service: 'pazar-plus'
         });
       } catch (error) {
-        logger.error("Error closing database connections", {
-          service: "pazar-plus",
-          error: error.message,
+        logger.error('Error closing database connections', {
+          service: 'pazar-plus',
+          error: error.message
         });
       }
     });
   } catch (error) {
-    logger.error("Failed to start server:", error, { service: "pazar-plus" });
+    logger.error('Failed to start server:', error, { service: 'pazar-plus' });
     process.exit(1);
   }
 }

@@ -1,15 +1,15 @@
-const fs = require("fs");
-const path = require("path");
+const fs = require('fs');
+const path = require('path');
 
 let json2csv, ExcelJS;
 let exportEnabled = true;
 
 try {
-  const { Parser } = require("json2csv");
+  const { Parser } = require('json2csv');
   json2csv = { Parser };
-  ExcelJS = require("exceljs");
+  ExcelJS = require('exceljs');
 } catch (error) {
-  console.warn("Export service dependencies not available:", error.message);
+  console.warn('Export service dependencies not available:', error.message);
   exportEnabled = false;
 
   // Create fallback implementations
@@ -17,9 +17,9 @@ try {
     Parser: class {
       constructor() {}
       parse() {
-        throw new Error("CSV export disabled - dependencies not available");
+        throw new Error('CSV export disabled - dependencies not available');
       }
-    },
+    }
   };
 
   ExcelJS = {
@@ -28,28 +28,28 @@ try {
         this.xlsx = {
           writeFile: () =>
             Promise.reject(
-              new Error("Excel export disabled - dependencies not available")
-            ),
+              new Error('Excel export disabled - dependencies not available')
+            )
         };
       }
       addWorksheet() {
         return {
           addRow: () => {},
           getRow: () => ({ font: {}, fill: {} }),
-          columns: [],
+          columns: []
         };
       }
-    },
+    }
   };
 }
 
-const logger = require("../../../utils/logger");
-const { Order, OrderItem, User, ShippingDetail } = require("../../../models");
-const { Op } = require("sequelize");
+const logger = require('../../../utils/logger');
+const { Order, OrderItem, User, ShippingDetail } = require('../../../models');
+const { Op } = require('sequelize');
 
 class ExportService {
   constructor() {
-    this.exportDir = path.join(__dirname, "../../public/exports");
+    this.exportDir = path.join(__dirname, '../../public/exports');
 
     // Create export directory if it doesn't exist
     if (!fs.existsSync(this.exportDir)) {
@@ -70,7 +70,7 @@ class ExportService {
       if (orders.length === 0) {
         return {
           success: false,
-          message: "No orders found matching the filters",
+          message: 'No orders found matching the filters'
         };
       }
 
@@ -81,28 +81,28 @@ class ExportService {
 
       // Define CSV fields
       const fields = [
-        { label: "Order ID", value: "orderId" },
-        { label: "Platform Order ID", value: "platformOrderId" },
-        { label: "Platform", value: "platformId" },
-        { label: "Order Date", value: "orderDate" },
-        { label: "Status", value: "orderStatus" },
-        { label: "Customer Name", value: "customerName" },
-        { label: "Customer Email", value: "customerEmail" },
-        { label: "Customer Phone", value: "customerPhone" },
-        { label: "Total Amount", value: "totalAmount" },
-        { label: "Currency", value: "currency" },
-        { label: "Recipient Name", value: "recipientName" },
-        { label: "Address", value: "address" },
-        { label: "City", value: "city" },
-        { label: "State", value: "state" },
-        { label: "Postal Code", value: "postalCode" },
-        { label: "Country", value: "country" },
-        { label: "Phone", value: "phone" },
-        { label: "Shipping Method", value: "shippingMethod" },
-        { label: "Tracking Number", value: "trackingNumber" },
-        { label: "Carrier", value: "carrier" },
-        { label: "Items", value: "itemCount" },
-        { label: "Notes", value: "notes" },
+        { label: 'Order ID', value: 'orderId' },
+        { label: 'Platform Order ID', value: 'platformOrderId' },
+        { label: 'Platform', value: 'platformId' },
+        { label: 'Order Date', value: 'orderDate' },
+        { label: 'Status', value: 'orderStatus' },
+        { label: 'Customer Name', value: 'customerName' },
+        { label: 'Customer Email', value: 'customerEmail' },
+        { label: 'Customer Phone', value: 'customerPhone' },
+        { label: 'Total Amount', value: 'totalAmount' },
+        { label: 'Currency', value: 'currency' },
+        { label: 'Recipient Name', value: 'recipientName' },
+        { label: 'Address', value: 'address' },
+        { label: 'City', value: 'city' },
+        { label: 'State', value: 'state' },
+        { label: 'Postal Code', value: 'postalCode' },
+        { label: 'Country', value: 'country' },
+        { label: 'Phone', value: 'phone' },
+        { label: 'Shipping Method', value: 'shippingMethod' },
+        { label: 'Tracking Number', value: 'trackingNumber' },
+        { label: 'Carrier', value: 'carrier' },
+        { label: 'Items', value: 'itemCount' },
+        { label: 'Notes', value: 'notes' }
       ];
 
       // Create parser and generate CSV
@@ -123,18 +123,18 @@ class ExportService {
           filename,
           url: `/exports/${filename}`,
           filePath,
-          totalOrders: orders.length,
-        },
+          totalOrders: orders.length
+        }
       };
     } catch (error) {
       logger.error(`Failed to export orders to CSV: ${error.message}`, {
-        error,
+        error
       });
 
       return {
         success: false,
         message: `Failed to export orders to CSV: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -152,7 +152,7 @@ class ExportService {
       if (orders.length === 0) {
         return {
           success: false,
-          message: "No orders found matching the filters",
+          message: 'No orders found matching the filters'
         };
       }
 
@@ -163,43 +163,43 @@ class ExportService {
 
       // Create workbook and worksheet
       const workbook = new ExcelJS.Workbook();
-      workbook.creator = "Pazar+ Order Management";
+      workbook.creator = 'Pazar+ Order Management';
       workbook.created = new Date();
 
-      const worksheet = workbook.addWorksheet("Orders");
+      const worksheet = workbook.addWorksheet('Orders');
 
       // Define columns
       worksheet.columns = [
-        { header: "Order ID", key: "orderId", width: 10 },
-        { header: "Platform Order ID", key: "platformOrderId", width: 20 },
-        { header: "Platform", key: "platformId", width: 15 },
-        { header: "Order Date", key: "orderDate", width: 20 },
-        { header: "Status", key: "orderStatus", width: 15 },
-        { header: "Customer Name", key: "customerName", width: 25 },
-        { header: "Customer Email", key: "customerEmail", width: 30 },
-        { header: "Customer Phone", key: "customerPhone", width: 20 },
-        { header: "Total Amount", key: "totalAmount", width: 15 },
-        { header: "Currency", key: "currency", width: 10 },
-        { header: "Recipient Name", key: "recipientName", width: 25 },
-        { header: "Address", key: "address", width: 40 },
-        { header: "City", key: "city", width: 20 },
-        { header: "State", key: "state", width: 20 },
-        { header: "Postal Code", key: "postalCode", width: 15 },
-        { header: "Country", key: "country", width: 15 },
-        { header: "Phone", key: "phone", width: 20 },
-        { header: "Shipping Method", key: "shippingMethod", width: 20 },
-        { header: "Tracking Number", key: "trackingNumber", width: 25 },
-        { header: "Carrier", key: "carrier", width: 15 },
-        { header: "Items", key: "itemCount", width: 10 },
-        { header: "Notes", key: "notes", width: 40 },
+        { header: 'Order ID', key: 'orderId', width: 10 },
+        { header: 'Platform Order ID', key: 'platformOrderId', width: 20 },
+        { header: 'Platform', key: 'platformId', width: 15 },
+        { header: 'Order Date', key: 'orderDate', width: 20 },
+        { header: 'Status', key: 'orderStatus', width: 15 },
+        { header: 'Customer Name', key: 'customerName', width: 25 },
+        { header: 'Customer Email', key: 'customerEmail', width: 30 },
+        { header: 'Customer Phone', key: 'customerPhone', width: 20 },
+        { header: 'Total Amount', key: 'totalAmount', width: 15 },
+        { header: 'Currency', key: 'currency', width: 10 },
+        { header: 'Recipient Name', key: 'recipientName', width: 25 },
+        { header: 'Address', key: 'address', width: 40 },
+        { header: 'City', key: 'city', width: 20 },
+        { header: 'State', key: 'state', width: 20 },
+        { header: 'Postal Code', key: 'postalCode', width: 15 },
+        { header: 'Country', key: 'country', width: 15 },
+        { header: 'Phone', key: 'phone', width: 20 },
+        { header: 'Shipping Method', key: 'shippingMethod', width: 20 },
+        { header: 'Tracking Number', key: 'trackingNumber', width: 25 },
+        { header: 'Carrier', key: 'carrier', width: 15 },
+        { header: 'Items', key: 'itemCount', width: 10 },
+        { header: 'Notes', key: 'notes', width: 40 }
       ];
 
       // Add header row with styling
       worksheet.getRow(1).font = { bold: true };
       worksheet.getRow(1).fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFE0E0E0" },
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
       };
 
       // Add data rows
@@ -210,14 +210,14 @@ class ExportService {
       // Add autofilter
       worksheet.autoFilter = {
         from: { row: 1, column: 1 },
-        to: { row: 1, column: 22 },
+        to: { row: 1, column: 22 }
       };
 
       // Format date columns
-      worksheet.getColumn("orderDate").numFmt = "yyyy-mm-dd hh:mm:ss";
+      worksheet.getColumn('orderDate').numFmt = 'yyyy-mm-dd hh:mm:ss';
 
       // Format number columns
-      worksheet.getColumn("totalAmount").numFmt = "#,##0.00";
+      worksheet.getColumn('totalAmount').numFmt = '#,##0.00';
 
       // Generate filename and save Excel file
       const timestamp = Date.now();
@@ -233,18 +233,18 @@ class ExportService {
           filename,
           url: `/exports/${filename}`,
           filePath,
-          totalOrders: orders.length,
-        },
+          totalOrders: orders.length
+        }
       };
     } catch (error) {
       logger.error(`Failed to export orders to Excel: ${error.message}`, {
-        error,
+        error
       });
 
       return {
         success: false,
         message: `Failed to export orders to Excel: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -262,7 +262,7 @@ class ExportService {
       if (orders.length === 0) {
         return {
           success: false,
-          message: "No orders found matching the filters",
+          message: 'No orders found matching the filters'
         };
       }
 
@@ -289,8 +289,8 @@ class ExportService {
               currency: item.currency || order.currency,
               variantInfo: item.variantInfo
                 ? JSON.stringify(item.variantInfo)
-                : "",
-              total: (item.quantity * item.price).toFixed(2),
+                : '',
+              total: (item.quantity * item.price).toFixed(2)
             });
           });
         }
@@ -299,28 +299,28 @@ class ExportService {
       if (orderItems.length === 0) {
         return {
           success: false,
-          message: "No order items found matching the filters",
+          message: 'No order items found matching the filters'
         };
       }
 
       // Define CSV fields
       const fields = [
-        { label: "Order ID", value: "orderId" },
-        { label: "Platform Order ID", value: "platformOrderId" },
-        { label: "Platform", value: "platformId" },
-        { label: "Order Date", value: "orderDate" },
-        { label: "Order Status", value: "orderStatus" },
-        { label: "Customer Name", value: "customerName" },
-        { label: "Item ID", value: "itemId" },
-        { label: "Product ID", value: "platformProductId" },
-        { label: "SKU", value: "sku" },
-        { label: "Barcode", value: "barcode" },
-        { label: "Title", value: "title" },
-        { label: "Quantity", value: "quantity" },
-        { label: "Price", value: "price" },
-        { label: "Currency", value: "currency" },
-        { label: "Variant", value: "variantInfo" },
-        { label: "Total", value: "total" },
+        { label: 'Order ID', value: 'orderId' },
+        { label: 'Platform Order ID', value: 'platformOrderId' },
+        { label: 'Platform', value: 'platformId' },
+        { label: 'Order Date', value: 'orderDate' },
+        { label: 'Order Status', value: 'orderStatus' },
+        { label: 'Customer Name', value: 'customerName' },
+        { label: 'Item ID', value: 'itemId' },
+        { label: 'Product ID', value: 'platformProductId' },
+        { label: 'SKU', value: 'sku' },
+        { label: 'Barcode', value: 'barcode' },
+        { label: 'Title', value: 'title' },
+        { label: 'Quantity', value: 'quantity' },
+        { label: 'Price', value: 'price' },
+        { label: 'Currency', value: 'currency' },
+        { label: 'Variant', value: 'variantInfo' },
+        { label: 'Total', value: 'total' }
       ];
 
       // Create parser and generate CSV
@@ -341,18 +341,18 @@ class ExportService {
           filename,
           url: `/exports/${filename}`,
           filePath,
-          totalItems: orderItems.length,
-        },
+          totalItems: orderItems.length
+        }
       };
     } catch (error) {
       logger.error(`Failed to export order items to CSV: ${error.message}`, {
-        error,
+        error
       });
 
       return {
         success: false,
         message: `Failed to export order items to CSV: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -378,15 +378,15 @@ class ExportService {
 
     if (startDate && endDate) {
       whereConditions.orderDate = {
-        [Op.between]: [new Date(startDate), new Date(endDate)],
+        [Op.between]: [new Date(startDate), new Date(endDate)]
       };
     } else if (startDate) {
       whereConditions.orderDate = {
-        [Op.gte]: new Date(startDate),
+        [Op.gte]: new Date(startDate)
       };
     } else if (endDate) {
       whereConditions.orderDate = {
-        [Op.lte]: new Date(endDate),
+        [Op.lte]: new Date(endDate)
       };
     }
 
@@ -394,13 +394,13 @@ class ExportService {
       whereConditions[Op.or] = [
         { platformOrderId: { [Op.like]: `%${search}%` } },
         { customerName: { [Op.like]: `%${search}%` } },
-        { customerEmail: { [Op.like]: `%${search}%` } },
+        { customerEmail: { [Op.like]: `%${search}%` } }
       ];
     }
 
     if (orderIds && orderIds.length > 0) {
       whereConditions.id = {
-        [Op.in]: orderIds,
+        [Op.in]: orderIds
       };
     }
 
@@ -408,10 +408,10 @@ class ExportService {
     const orders = await Order.findAll({
       where: whereConditions,
       include: [
-        { model: OrderItem, as: "items" },
-        { model: ShippingDetail, as: "shippingDetail" },
+        { model: OrderItem, as: 'items' },
+        { model: ShippingDetail, as: 'shippingDetail' }
       ],
-      order: [["orderDate", "DESC"]],
+      order: [['orderDate', 'DESC']]
       // Use limit for large exports?
       // limit: 1000
     });
@@ -449,7 +449,7 @@ class ExportService {
       trackingNumber: order.trackingNumber || shippingDetail.trackingNumber,
       carrier: order.carrier || shippingDetail.carrier,
       itemCount: order.OrderItems ? order.OrderItems.length : 0,
-      notes: order.notes,
+      notes: order.notes
     };
   }
 }

@@ -6,22 +6,22 @@
  * causing "Ürün bilgisi mevcut değil" to appear in PDFs and order displays.
  */
 
-const { Order, OrderItem, sequelize } = require("../models");
-const logger = require("../utils/logger");
+const { Order, OrderItem, sequelize } = require('../models');
+const logger = require('../utils/logger');
 
 async function backfillOrderItems() {
   try {
-    console.log("Starting order items backfill process...");
+    console.log('Starting order items backfill process...');
 
     // Find all orders that have no order items
     const ordersWithoutItems = await Order.findAll({
       include: [
         {
           model: OrderItem,
-          as: "items",
-          required: false,
-        },
-      ],
+          as: 'items',
+          required: false
+        }
+      ]
     });
 
     // Filter to only orders that actually have no items
@@ -32,7 +32,7 @@ async function backfillOrderItems() {
     console.log(`Found ${ordersNeedingItems.length} orders without items`);
 
     if (ordersNeedingItems.length === 0) {
-      console.log("No orders need backfilling. Exiting.");
+      console.log('No orders need backfilling. Exiting.');
       return;
     }
 
@@ -50,7 +50,7 @@ async function backfillOrderItems() {
         let rawData;
         try {
           rawData =
-            typeof order.rawData === "string"
+            typeof order.rawData === 'string'
               ? JSON.parse(order.rawData)
               : order.rawData;
         } catch (parseError) {
@@ -70,11 +70,11 @@ async function backfillOrderItems() {
         // Extract items based on platform
         let items = [];
 
-        if (order.platform === "trendyol") {
+        if (order.platform === 'trendyol') {
           items = rawData.lines || [];
-        } else if (order.platform === "hepsiburada") {
+        } else if (order.platform === 'hepsiburada') {
           items = rawData.items || [];
-        } else if (order.platform === "n11") {
+        } else if (order.platform === 'n11') {
           items = rawData.orderItemList || [];
         }
 
@@ -87,11 +87,11 @@ async function backfillOrderItems() {
           await sequelize.transaction(async (t) => {
             const fallbackItem = {
               orderId: order.id,
-              platformProductId: "",
+              platformProductId: '',
               productId: null,
-              title: order.orderNumber || "Unknown Product",
-              sku: "",
-              barcode: "",
+              title: order.orderNumber || 'Unknown Product',
+              sku: '',
+              barcode: '',
               quantity: 1,
               price: order.totalAmount || 0,
               totalPrice: order.totalAmount || 0,
@@ -101,7 +101,7 @@ async function backfillOrderItems() {
               platformDiscount: 0,
               merchantDiscount: 0,
               invoiceTotal: order.totalAmount || 0,
-              currency: order.currency || "TRY",
+              currency: order.currency || 'TRY',
               productSize: null,
               productColor: null,
               productCategoryId: null,
@@ -115,8 +115,8 @@ async function backfillOrderItems() {
               variantInfo: null,
               rawData: JSON.stringify({
                 fallback: true,
-                orderNumber: order.orderNumber,
-              }),
+                orderNumber: order.orderNumber
+              })
             };
 
             await OrderItem.create(fallbackItem, { transaction: t });
@@ -132,16 +132,16 @@ async function backfillOrderItems() {
           for (const item of items) {
             let orderItemData;
 
-            if (order.platform === "trendyol") {
+            if (order.platform === 'trendyol') {
               const unitPrice = item.price || item.amount || 0;
               const quantity = item.quantity || 1;
 
               orderItemData = {
                 orderId: order.id,
-                platformProductId: item.merchantSku || item.sku || "",
+                platformProductId: item.merchantSku || item.sku || '',
                 productId: null, // Will be linked later if needed
-                title: item.productName || "Unknown Product",
-                sku: item.merchantSku || item.sku || "",
+                title: item.productName || 'Unknown Product',
+                sku: item.merchantSku || item.sku || '',
                 quantity: quantity,
                 price: unitPrice,
                 totalPrice: unitPrice * quantity,
@@ -149,8 +149,8 @@ async function backfillOrderItems() {
                 platformDiscount: item.tyDiscount || 0,
                 merchantDiscount: item.discount || 0,
                 invoiceTotal: item.amount || unitPrice * quantity,
-                currency: item.currencyCode || order.currency || "TRY",
-                barcode: item.barcode || "",
+                currency: item.currencyCode || order.currency || 'TRY',
+                barcode: item.barcode || '',
                 productSize: item.productSize || null,
                 productCategoryId: item.productCategoryId || null,
                 salesCampaignId: item.salesCampaignId || null,
@@ -160,19 +160,19 @@ async function backfillOrderItems() {
                 variantInfo: item.productSize
                   ? JSON.stringify({ size: item.productSize })
                   : null,
-                rawData: JSON.stringify(item),
+                rawData: JSON.stringify(item)
               };
-            } else if (order.platform === "hepsiburada") {
+            } else if (order.platform === 'hepsiburada') {
               const unitPrice = item.price?.amount || 0;
               const quantity = item.quantity || 1;
 
               orderItemData = {
                 orderId: order.id,
                 platformProductId:
-                  item.productBarcode || item.merchantSku || "",
+                  item.productBarcode || item.merchantSku || '',
                 productId: null,
-                title: item.productName || item.title || "Unknown Product",
-                sku: item.merchantSku || item.sku || "",
+                title: item.productName || item.title || 'Unknown Product',
+                sku: item.merchantSku || item.sku || '',
                 quantity: quantity,
                 price: unitPrice,
                 totalPrice: unitPrice * quantity,
@@ -183,25 +183,25 @@ async function backfillOrderItems() {
                 platformDiscount: item.totalHBDiscount?.amount || 0,
                 merchantDiscount: item.totalMerchantDiscount?.amount || 0,
                 invoiceTotal: item.totalPrice?.amount || unitPrice * quantity,
-                currency: item.totalPrice?.currency || "TRY",
-                barcode: item.productBarcode || "",
+                currency: item.totalPrice?.currency || 'TRY',
+                barcode: item.productBarcode || '',
                 vatBaseAmount: 0,
                 laborCost: 0,
                 variantInfo: item.properties
                   ? JSON.stringify(item.properties)
                   : null,
-                rawData: JSON.stringify(item),
+                rawData: JSON.stringify(item)
               };
-            } else if (order.platform === "n11") {
+            } else if (order.platform === 'n11') {
               const unitPrice = item.price || 0;
               const quantity = item.quantity || 1;
 
               orderItemData = {
                 orderId: order.id,
-                platformProductId: item.productSellerCode || "",
+                platformProductId: item.productSellerCode || '',
                 productId: null,
-                title: item.productName || "Unknown Product",
-                sku: item.productSellerCode || "",
+                title: item.productName || 'Unknown Product',
+                sku: item.productSellerCode || '',
                 quantity: quantity,
                 price: unitPrice,
                 totalPrice: unitPrice * quantity,
@@ -209,12 +209,12 @@ async function backfillOrderItems() {
                 platformDiscount: 0,
                 merchantDiscount: 0,
                 invoiceTotal: unitPrice * quantity,
-                currency: "TRY",
-                barcode: "",
+                currency: 'TRY',
+                barcode: '',
                 vatBaseAmount: 0,
                 laborCost: 0,
                 variantInfo: null,
-                rawData: JSON.stringify(item),
+                rawData: JSON.stringify(item)
               };
             }
 
@@ -236,13 +236,13 @@ async function backfillOrderItems() {
       }
     }
 
-    console.log("\n=== Backfill Summary ===");
+    console.log('\n=== Backfill Summary ===');
     console.log(`Processed: ${processedCount} orders`);
     console.log(`Skipped: ${skippedCount} orders`);
     console.log(`Errors: ${errorCount} orders`);
     console.log(`Total: ${ordersNeedingItems.length} orders`);
   } catch (error) {
-    console.error("Backfill process failed:", error);
+    console.error('Backfill process failed:', error);
     process.exit(1);
   }
 }
@@ -251,11 +251,11 @@ async function backfillOrderItems() {
 if (require.main === module) {
   backfillOrderItems()
     .then(() => {
-      console.log("Backfill process completed");
+      console.log('Backfill process completed');
       process.exit(0);
     })
     .catch((error) => {
-      console.error("Backfill process failed:", error);
+      console.error('Backfill process failed:', error);
       process.exit(1);
     });
 }

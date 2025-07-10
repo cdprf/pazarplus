@@ -3,12 +3,12 @@
  * Integration with N11 Faturam API for e-invoice generation
  */
 
-const axios = require("axios");
-const logger = require("../utils/logger");
+const axios = require('axios');
+const logger = require('../utils/logger');
 
 class N11FaturamService {
   constructor() {
-    this.baseURL = "https://api.n11faturam.com/v1";
+    this.baseURL = 'https://api.n11faturam.com/v1';
   }
 
   /**
@@ -22,47 +22,47 @@ class N11FaturamService {
       const { apiKey, username, password, companyInfo } = config;
 
       if (!apiKey || !username || !password) {
-        throw new Error("N11 Faturam credentials not configured");
+        throw new Error('N11 Faturam credentials not configured');
       }
 
       // Prepare invoice data
       const invoiceData = {
         // Company information
         sender: {
-          vkn: companyInfo?.taxNumber || "",
-          unvan: companyInfo?.companyName || "",
-          adres: companyInfo?.address || "",
-          il: companyInfo?.city || "",
-          ilce: companyInfo?.district || "",
-          postaKodu: companyInfo?.postalCode || "",
-          telefon: companyInfo?.phone || "",
-          email: companyInfo?.email || "",
+          vkn: companyInfo?.taxNumber || '',
+          unvan: companyInfo?.companyName || '',
+          adres: companyInfo?.address || '',
+          il: companyInfo?.city || '',
+          ilce: companyInfo?.district || '',
+          postaKodu: companyInfo?.postalCode || '',
+          telefon: companyInfo?.phone || '',
+          email: companyInfo?.email || ''
         },
 
         // Customer information from order
         receiver: {
-          ad: order.customerName || "",
-          vkn: order.customerTaxNumber || "",
+          ad: order.customerName || '',
+          vkn: order.customerTaxNumber || '',
           adres: this.getShippingAddress(order),
           il: this.getShippingCity(order),
           ilce: this.getShippingDistrict(order),
-          telefon: order.customerPhone || "",
-          email: order.customerEmail || "",
+          telefon: order.customerPhone || '',
+          email: order.customerEmail || ''
         },
 
         // Invoice details
         invoice: {
-          faturaTipi: "SATIS",
+          faturaTipi: 'SATIS',
           belgeNumarasi: `INV-${order.id}-${Date.now()}`,
-          belgeTarihi: new Date().toISOString().split("T")[0],
-          paraBirimi: order.currency || "TRY",
+          belgeTarihi: new Date().toISOString().split('T')[0],
+          paraBirimi: order.currency || 'TRY',
           toplamTutar: order.totalAmount || 0,
           kdvToplamTutar: this.calculateTotalTax(order),
-          genelToplamTutar: order.totalAmount || 0,
+          genelToplamTutar: order.totalAmount || 0
         },
 
         // Invoice lines
-        lines: this.prepareInvoiceLines(order),
+        lines: this.prepareInvoiceLines(order)
       };
 
       // Make API request to N11 Faturam
@@ -72,42 +72,42 @@ class N11FaturamService {
         {
           headers: {
             Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json'
           },
           auth: {
             username,
-            password,
-          },
+            password
+          }
         }
       );
 
       if (response.data.success) {
         return {
           success: true,
-          message: "E-invoice generated successfully",
+          message: 'E-invoice generated successfully',
           data: {
             invoiceNumber: response.data.data.invoiceNumber,
             invoiceId: response.data.data.invoiceId,
             pdfUrl: response.data.data.pdfUrl,
             uuid: response.data.data.uuid,
-            status: "CREATED",
-          },
+            status: 'CREATED'
+          }
         };
       } else {
         throw new Error(
-          response.data.message || "Failed to generate e-invoice"
+          response.data.message || 'Failed to generate e-invoice'
         );
       }
     } catch (error) {
       logger.error(`N11 Faturam API error: ${error.message}`, {
         error,
-        orderId: order.id,
+        orderId: order.id
       });
 
       return {
         success: false,
         message: `Failed to generate e-invoice: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -127,29 +127,29 @@ class N11FaturamService {
         {
           headers: {
             Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json'
           },
           auth: {
             username,
-            password,
-          },
+            password
+          }
         }
       );
 
       return {
         success: true,
-        data: response.data.data,
+        data: response.data.data
       };
     } catch (error) {
       logger.error(`N11 Faturam status check error: ${error.message}`, {
         error,
-        invoiceId,
+        invoiceId
       });
 
       return {
         success: false,
         message: `Failed to get invoice status: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -170,30 +170,30 @@ class N11FaturamService {
         {
           headers: {
             Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json'
           },
           auth: {
             username,
-            password,
-          },
+            password
+          }
         }
       );
 
       return {
         success: true,
-        message: "Invoice cancelled successfully",
-        data: response.data.data,
+        message: 'Invoice cancelled successfully',
+        data: response.data.data
       };
     } catch (error) {
       logger.error(`N11 Faturam cancellation error: ${error.message}`, {
         error,
-        invoiceId,
+        invoiceId
       });
 
       return {
         success: false,
         message: `Failed to cancel invoice: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -202,36 +202,36 @@ class N11FaturamService {
   getShippingAddress(order) {
     try {
       const shippingAddress =
-        typeof order.shippingAddress === "string"
+        typeof order.shippingAddress === 'string'
           ? JSON.parse(order.shippingAddress)
           : order.shippingAddress;
-      return shippingAddress?.address || "";
+      return shippingAddress?.address || '';
     } catch (error) {
-      return "";
+      return '';
     }
   }
 
   getShippingCity(order) {
     try {
       const shippingAddress =
-        typeof order.shippingAddress === "string"
+        typeof order.shippingAddress === 'string'
           ? JSON.parse(order.shippingAddress)
           : order.shippingAddress;
-      return shippingAddress?.city || "";
+      return shippingAddress?.city || '';
     } catch (error) {
-      return "";
+      return '';
     }
   }
 
   getShippingDistrict(order) {
     try {
       const shippingAddress =
-        typeof order.shippingAddress === "string"
+        typeof order.shippingAddress === 'string'
           ? JSON.parse(order.shippingAddress)
           : order.shippingAddress;
-      return shippingAddress?.district || "";
+      return shippingAddress?.district || '';
     } catch (error) {
-      return "";
+      return '';
     }
   }
 
@@ -249,9 +249,9 @@ class N11FaturamService {
 
     return items.map((item, index) => ({
       siraNo: index + 1,
-      malHizmet: item.productName || "Product",
+      malHizmet: item.productName || 'Product',
       miktar: item.quantity || 1,
-      birim: "Adet",
+      birim: 'Adet',
       birimFiyat: item.unitPrice || 0,
       malHizmetTutari: (item.unitPrice || 0) * (item.quantity || 1),
       kdvOrani: (item.taxRate || 0.18) * 100, // Convert to percentage
@@ -260,7 +260,7 @@ class N11FaturamService {
       toplamTutar:
         (item.unitPrice || 0) *
         (item.quantity || 1) *
-        (1 + (item.taxRate || 0.18)),
+        (1 + (item.taxRate || 0.18))
     }));
   }
 }

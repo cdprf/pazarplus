@@ -8,9 +8,9 @@
  * @version 1.0.0
  */
 
-const logger = require("../utils/logger");
-const { Product, ProductVariant, PlatformData } = require("../models");
-const UnifiedProductIntelligenceService = require("../services/unified-product-intelligence-service");
+const logger = require('../utils/logger');
+const { Product, ProductVariant, PlatformData } = require('../models');
+const UnifiedProductIntelligenceService = require('../services/unified-product-intelligence-service');
 
 class ProductIntelligenceController {
   constructor() {
@@ -33,7 +33,7 @@ class ProductIntelligenceController {
 
       const results = await this.intelligenceService.analyzeProducts(products, {
         ...options,
-        userId,
+        userId
       });
 
       const processingTime = Date.now() - startTime;
@@ -47,27 +47,27 @@ class ProductIntelligenceController {
           success: true,
           data: {
             ...results,
-            processingTime,
+            processingTime
           },
           message: `Successfully analyzed ${products.length} products`,
-          timestamp: new Date().toISOString(),
+          timestamp: new Date().toISOString()
         });
       } else {
-        logger.error("Product intelligence analysis failed:", results.error);
+        logger.error('Product intelligence analysis failed:', results.error);
 
         res.status(500).json({
           success: false,
-          message: "Analysis failed",
-          error: results.error,
+          message: 'Analysis failed',
+          error: results.error
         });
       }
     } catch (error) {
-      logger.error("Product intelligence analysis error:", error);
+      logger.error('Product intelligence analysis error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Internal server error during analysis",
-        error: error.message,
+        message: 'Internal server error during analysis',
+        error: error.message
       });
     }
   }
@@ -79,8 +79,8 @@ class ProductIntelligenceController {
     try {
       const userId = req.user.id;
       const limit = parseInt(req.query.limit) || 100;
-      const includeVariants = req.query.includeVariants !== "false";
-      const includePlatformData = req.query.includePlatformData !== "false";
+      const includeVariants = req.query.includeVariants !== 'false';
+      const includePlatformData = req.query.includePlatformData !== 'false';
 
       logger.info(
         `Fetching products for intelligence analysis (User: ${userId})`
@@ -92,16 +92,16 @@ class ProductIntelligenceController {
       if (includeVariants) {
         include.push({
           model: ProductVariant,
-          as: "variants",
-          required: false,
+          as: 'variants',
+          required: false
         });
       }
 
       if (includePlatformData) {
         include.push({
           model: PlatformData,
-          as: "platformData",
-          required: false,
+          as: 'platformData',
+          required: false
         });
       }
 
@@ -110,7 +110,7 @@ class ProductIntelligenceController {
         where: { userId },
         include,
         limit,
-        order: [["updatedAt", "DESC"]],
+        order: [['updatedAt', 'DESC']]
       });
 
       // Transform products to intelligence service format
@@ -129,16 +129,16 @@ class ProductIntelligenceController {
             sku: variant.sku,
             barcode: variant.barcode,
             attributes: variant.attributes,
-            price: variant.price,
+            price: variant.price
           })) || [],
         platformData:
           product.platformData?.map((pd) => ({
             platformType: pd.platformType,
             data: pd.data,
-            externalId: pd.externalId,
+            externalId: pd.externalId
           })) || [],
         createdAt: product.createdAt,
-        updatedAt: product.updatedAt,
+        updatedAt: product.updatedAt
       }));
 
       res.json({
@@ -149,18 +149,18 @@ class ProductIntelligenceController {
             totalProducts: formattedProducts.length,
             includeVariants,
             includePlatformData,
-            limit,
-          },
+            limit
+          }
         },
-        message: `Retrieved ${formattedProducts.length} products for analysis`,
+        message: `Retrieved ${formattedProducts.length} products for analysis`
       });
     } catch (error) {
-      logger.error("User products retrieval error:", error);
+      logger.error('User products retrieval error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve user products",
-        error: error.message,
+        message: 'Failed to retrieve user products',
+        error: error.message
       });
     }
   }
@@ -171,7 +171,7 @@ class ProductIntelligenceController {
   async batchAnalyze(req, res) {
     try {
       const userId = req.user.id;
-      const { filters = {}, analysisTypes = ["all"], options = {} } = req.body;
+      const { filters = {}, analysisTypes = ['all'], options = {} } = req.body;
 
       logger.info(
         `Starting batch analysis for user products (User: ${userId})`
@@ -191,7 +191,7 @@ class ProductIntelligenceController {
         whereClause[Op.or] = [
           { name: { [Op.iLike]: `%${filters.search}%` } },
           { sku: { [Op.iLike]: `%${filters.search}%` } },
-          { barcode: { [Op.iLike]: `%${filters.search}%` } },
+          { barcode: { [Op.iLike]: `%${filters.search}%` } }
         ];
       }
 
@@ -200,27 +200,27 @@ class ProductIntelligenceController {
         include: [
           {
             model: ProductVariant,
-            as: "variants",
-            required: false,
+            as: 'variants',
+            required: false
           },
           {
             model: PlatformData,
-            as: "platformData",
-            required: false,
-          },
+            as: 'platformData',
+            required: false
+          }
         ],
         limit: filters.limit || 1000,
-        order: [["updatedAt", "DESC"]],
+        order: [['updatedAt', 'DESC']]
       });
 
       if (products.length === 0) {
         return res.json({
           success: true,
           data: {
-            message: "No products found matching criteria",
-            analysisResults: null,
+            message: 'No products found matching criteria',
+            analysisResults: null
           },
-          message: "No products to analyze",
+          message: 'No products to analyze'
         });
       }
 
@@ -240,8 +240,8 @@ class ProductIntelligenceController {
             sku: v.sku,
             barcode: v.barcode,
             attributes: v.attributes,
-            price: v.price,
-          })) || [],
+            price: v.price
+          })) || []
       }));
 
       // Perform comprehensive analysis
@@ -249,14 +249,14 @@ class ProductIntelligenceController {
         totalProducts: formattedProducts.length,
         analysisTypes,
         results: {},
-        processingTime: 0,
+        processingTime: 0
       };
 
       const startTime = Date.now();
 
       // Run different types of analysis based on request
-      if (analysisTypes.includes("all") || analysisTypes.includes("variants")) {
-        logger.info("Running variant pattern detection...");
+      if (analysisTypes.includes('all') || analysisTypes.includes('variants')) {
+        logger.info('Running variant pattern detection...');
         batchResults.results.variants =
           await this.intelligenceService.detectVariantPatterns(
             formattedProducts,
@@ -264,8 +264,8 @@ class ProductIntelligenceController {
           );
       }
 
-      if (analysisTypes.includes("all") || analysisTypes.includes("naming")) {
-        logger.info("Running naming pattern detection...");
+      if (analysisTypes.includes('all') || analysisTypes.includes('naming')) {
+        logger.info('Running naming pattern detection...');
         batchResults.results.naming =
           await this.intelligenceService.detectNamingPatterns(
             formattedProducts,
@@ -274,10 +274,10 @@ class ProductIntelligenceController {
       }
 
       if (
-        analysisTypes.includes("all") ||
-        analysisTypes.includes("classification")
+        analysisTypes.includes('all') ||
+        analysisTypes.includes('classification')
       ) {
-        logger.info("Running classification pattern detection...");
+        logger.info('Running classification pattern detection...');
         batchResults.results.classification =
           await this.intelligenceService.detectClassificationPatterns(
             formattedProducts,
@@ -286,17 +286,17 @@ class ProductIntelligenceController {
       }
 
       if (
-        analysisTypes.includes("all") ||
-        analysisTypes.includes("suggestions")
+        analysisTypes.includes('all') ||
+        analysisTypes.includes('suggestions')
       ) {
-        logger.info("Generating intelligent suggestions...");
+        logger.info('Generating intelligent suggestions...');
 
         // Generate suggestions based on analysis results
         const analysisResults = {
           products: formattedProducts,
           variants: batchResults.results.variants,
           naming: batchResults.results.naming,
-          classification: batchResults.results.classification,
+          classification: batchResults.results.classification
         };
 
         batchResults.results.suggestions = {
@@ -317,7 +317,7 @@ class ProductIntelligenceController {
             await this.intelligenceService.generateOptimizationSuggestions(
               analysisResults,
               { ...options, userId }
-            ),
+            )
         };
       }
 
@@ -331,15 +331,15 @@ class ProductIntelligenceController {
         success: true,
         data: batchResults,
         message: `Successfully analyzed ${formattedProducts.length} products`,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Batch analysis error:", error);
+      logger.error('Batch analysis error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Batch analysis failed",
-        error: error.message,
+        message: 'Batch analysis failed',
+        error: error.message
       });
     }
   }
@@ -359,7 +359,7 @@ class ProductIntelligenceController {
       const variantResults =
         await this.intelligenceService.detectVariantPatterns(products, {
           ...options,
-          userId,
+          userId
         });
 
       res.json({
@@ -368,15 +368,15 @@ class ProductIntelligenceController {
         message: `Detected ${
           variantResults.detected_groups?.length || 0
         } variant groups`,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Variant pattern detection error:", error);
+      logger.error('Variant pattern detection error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Variant pattern detection failed",
-        error: error.message,
+        message: 'Variant pattern detection failed',
+        error: error.message
       });
     }
   }
@@ -402,15 +402,15 @@ class ProductIntelligenceController {
         success: true,
         data: namingResults,
         message: `Analyzed naming patterns for ${products.length} products`,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Naming pattern detection error:", error);
+      logger.error('Naming pattern detection error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Naming pattern detection failed",
-        error: error.message,
+        message: 'Naming pattern detection failed',
+        error: error.message
       });
     }
   }
@@ -429,71 +429,71 @@ class ProductIntelligenceController {
       let message;
 
       switch (suggestionType) {
-        case "merging":
-          suggestions =
+      case 'merging':
+        suggestions =
             await this.intelligenceService.generateMergingSuggestions(
               analysisResults,
               { ...options, userId }
             );
-          message = `Generated ${
-            suggestions.suggestions?.length || 0
-          } merging suggestions`;
-          break;
+        message = `Generated ${
+          suggestions.suggestions?.length || 0
+        } merging suggestions`;
+        break;
 
-        case "classification":
-          suggestions =
+      case 'classification':
+        suggestions =
             await this.intelligenceService.generateClassificationSuggestions(
               analysisResults,
               { ...options, userId }
             );
-          message = `Generated ${
-            suggestions.suggestions?.length || 0
-          } classification suggestions`;
-          break;
+        message = `Generated ${
+          suggestions.suggestions?.length || 0
+        } classification suggestions`;
+        break;
 
-        case "patterns":
-          suggestions =
+      case 'patterns':
+        suggestions =
             await this.intelligenceService.generatePatternSuggestions(
               analysisResults,
               { ...options, userId }
             );
-          message = `Generated ${
-            suggestions.suggestions?.length || 0
-          } pattern suggestions`;
-          break;
+        message = `Generated ${
+          suggestions.suggestions?.length || 0
+        } pattern suggestions`;
+        break;
 
-        case "optimization":
-          suggestions =
+      case 'optimization':
+        suggestions =
             await this.intelligenceService.generateOptimizationSuggestions(
               analysisResults,
               { ...options, userId }
             );
-          message = `Generated ${
-            suggestions.suggestions?.length || 0
-          } optimization suggestions`;
-          break;
+        message = `Generated ${
+          suggestions.suggestions?.length || 0
+        } optimization suggestions`;
+        break;
 
-        default:
-          return res.status(400).json({
-            success: false,
-            message:
-              "Invalid suggestion type. Must be one of: merging, classification, patterns, optimization",
-          });
+      default:
+        return res.status(400).json({
+          success: false,
+          message:
+              'Invalid suggestion type. Must be one of: merging, classification, patterns, optimization'
+        });
       }
 
       res.json({
         success: true,
         data: suggestions,
         message,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Suggestions generation error:", error);
+      logger.error('Suggestions generation error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Suggestions generation failed",
-        error: error.message,
+        message: 'Suggestions generation failed',
+        error: error.message
       });
     }
   }
@@ -511,34 +511,34 @@ class ProductIntelligenceController {
           statistics: this.intelligenceService.statistics,
           config: this.intelligenceService.config,
           service_info: {
-            version: "1.0.0",
-            name: "Unified Product Intelligence Service",
+            version: '1.0.0',
+            name: 'Unified Product Intelligence Service',
             features: [
-              "Enhanced SKU Classification",
-              "Intelligent Product Merging",
-              "Variant Pattern Detection",
-              "Naming Pattern Analysis",
-              "Classification Pattern Analysis",
-              "Intelligent Suggestions Generation",
-              "Optimization Recommendations",
-              "Similarity Matching",
-              "Confidence Scoring",
-              "Batch Processing",
-            ],
+              'Enhanced SKU Classification',
+              'Intelligent Product Merging',
+              'Variant Pattern Detection',
+              'Naming Pattern Analysis',
+              'Classification Pattern Analysis',
+              'Intelligent Suggestions Generation',
+              'Optimization Recommendations',
+              'Similarity Matching',
+              'Confidence Scoring',
+              'Batch Processing'
+            ]
           },
           user_info: {
-            userId: userId,
-          },
+            userId: userId
+          }
         },
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Statistics retrieval error:", error);
+      logger.error('Statistics retrieval error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve statistics",
-        error: error.message,
+        message: 'Failed to retrieve statistics',
+        error: error.message
       });
     }
   }
@@ -549,20 +549,20 @@ class ProductIntelligenceController {
   async healthCheck(req, res) {
     res.json({
       success: true,
-      service: "Unified Product Intelligence Service",
-      status: "healthy",
+      service: 'Unified Product Intelligence Service',
+      status: 'healthy',
       timestamp: new Date().toISOString(),
-      version: "1.0.0",
+      version: '1.0.0',
       capabilities: [
-        "Enhanced SKU Classification",
-        "Variant Pattern Detection",
-        "Naming Pattern Analysis",
-        "Classification Pattern Analysis",
-        "Intelligent Suggestions",
-        "Optimization Recommendations",
-        "Batch Processing",
-        "User Learning",
-      ],
+        'Enhanced SKU Classification',
+        'Variant Pattern Detection',
+        'Naming Pattern Analysis',
+        'Classification Pattern Analysis',
+        'Intelligent Suggestions',
+        'Optimization Recommendations',
+        'Batch Processing',
+        'User Learning'
+      ]
     });
   }
 
@@ -581,7 +581,7 @@ class ProductIntelligenceController {
           type: correctClassification,
           confidence: 1.0, // User feedback is considered high confidence
           feedback: userFeedback,
-          userId: userId,
+          userId: userId
         }
       );
 
@@ -593,21 +593,21 @@ class ProductIntelligenceController {
 
       res.json({
         success: true,
-        message: "Learning update applied successfully",
+        message: 'Learning update applied successfully',
         data: {
           identifier,
           learned_classification: correctClassification,
-          user_feedback: userFeedback,
+          user_feedback: userFeedback
         },
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Learning update error:", error);
+      logger.error('Learning update error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Learning update failed",
-        error: error.message,
+        message: 'Learning update failed',
+        error: error.message
       });
     }
   }

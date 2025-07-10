@@ -2,32 +2,32 @@ let multer, sharp;
 let mediaUploadEnabled = true;
 
 try {
-  multer = require("multer");
-  sharp = require("sharp");
+  multer = require('multer');
+  sharp = require('sharp');
 } catch (error) {
-  console.warn("Media upload dependencies not available:", error.message);
+  console.warn('Media upload dependencies not available:', error.message);
   mediaUploadEnabled = false;
 
   // Create fallback implementations
   multer = {
     diskStorage: () => ({
-      destination: (req, file, cb) => cb(new Error("Media upload disabled")),
-      filename: (req, file, cb) => cb(new Error("Media upload disabled")),
+      destination: (req, file, cb) => cb(new Error('Media upload disabled')),
+      filename: (req, file, cb) => cb(new Error('Media upload disabled'))
     }),
-    single: () => (req, res, next) => next(new Error("Media upload disabled")),
-    array: () => (req, res, next) => next(new Error("Media upload disabled")),
+    single: () => (req, res, next) => next(new Error('Media upload disabled')),
+    array: () => (req, res, next) => next(new Error('Media upload disabled'))
   };
 
   sharp = {
     resize: () => ({
-      toBuffer: () => Promise.reject(new Error("Image processing disabled")),
-    }),
+      toBuffer: () => Promise.reject(new Error('Image processing disabled'))
+    })
   };
 }
 
-const path = require("path");
-const fs = require("fs").promises;
-const logger = require("../utils/logger");
+const path = require('path');
+const fs = require('fs').promises;
+const logger = require('../utils/logger');
 
 /**
  * Enhanced Media Upload Service
@@ -36,26 +36,26 @@ const logger = require("../utils/logger");
 class MediaUploadService {
   constructor() {
     if (!mediaUploadEnabled) {
-      logger.warn("Media upload service disabled - dependencies not available");
+      logger.warn('Media upload service disabled - dependencies not available');
       return;
     }
 
     this.uploadPath = path.join(
       __dirname,
-      "..",
-      "public",
-      "uploads",
-      "products"
+      '..',
+      'public',
+      'uploads',
+      'products'
     );
     this.maxFileSize = 10 * 1024 * 1024; // 10MB
     this.allowedImageTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/gif",
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif'
     ];
-    this.allowedVideoTypes = ["video/mp4", "video/webm", "video/ogg"];
-    this.allowedDocumentTypes = ["application/pdf", "text/plain"];
+    this.allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg'];
+    this.allowedDocumentTypes = ['application/pdf', 'text/plain'];
 
     this.initializeUploadDirectory();
     this.setupMulter();
@@ -66,7 +66,7 @@ class MediaUploadService {
       await fs.mkdir(this.uploadPath, { recursive: true });
       logger.info(`Media upload directory initialized: ${this.uploadPath}`);
     } catch (error) {
-      logger.error("Failed to initialize upload directory:", error);
+      logger.error('Failed to initialize upload directory:', error);
       throw error;
     }
   }
@@ -83,19 +83,19 @@ class MediaUploadService {
           .catch((err) => cb(err));
       },
       filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
         const ext = path.extname(file.originalname);
         const baseName = path.basename(file.originalname, ext);
-        const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9]/g, "_");
+        const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9]/g, '_');
         cb(null, `${sanitizedBaseName}_${uniqueSuffix}${ext}`);
-      },
+      }
     });
 
     const fileFilter = (req, file, cb) => {
       const allowedTypes = [
         ...this.allowedImageTypes,
         ...this.allowedVideoTypes,
-        ...this.allowedDocumentTypes,
+        ...this.allowedDocumentTypes
       ];
 
       if (allowedTypes.includes(file.mimetype)) {
@@ -110,45 +110,45 @@ class MediaUploadService {
       fileFilter,
       limits: {
         fileSize: this.maxFileSize,
-        files: 10, // Maximum 10 files per upload
-      },
+        files: 10 // Maximum 10 files per upload
+      }
     });
   }
 
   getSubfolder(mimetype) {
     if (this.allowedImageTypes.includes(mimetype)) {
-      return "images";
+      return 'images';
     } else if (this.allowedVideoTypes.includes(mimetype)) {
-      return "videos";
+      return 'videos';
     } else if (this.allowedDocumentTypes.includes(mimetype)) {
-      return "documents";
+      return 'documents';
     }
-    return "other";
+    return 'other';
   }
 
   getMediaType(mimetype) {
     if (this.allowedImageTypes.includes(mimetype)) {
-      return "image";
+      return 'image';
     } else if (this.allowedVideoTypes.includes(mimetype)) {
-      return "video";
+      return 'video';
     } else if (this.allowedDocumentTypes.includes(mimetype)) {
-      return "document";
+      return 'document';
     }
-    return "other";
+    return 'other';
   }
 
   /**
    * Process uploaded files and generate metadata
    */
   async processUploadedFiles(files, mainProductId, variantId = null, userId) {
-    const { EnhancedProductMedia } = require("../models");
+    const { EnhancedProductMedia } = require('../models');
     const processedFiles = [];
 
     for (const file of files) {
       try {
         const mediaType = this.getMediaType(file.mimetype);
         const relativePath = path.relative(
-          path.join(__dirname, "..", "public"),
+          path.join(__dirname, '..', 'public'),
           file.path
         );
 
@@ -165,47 +165,47 @@ class MediaUploadService {
           mainProductId,
           variantId,
           userId,
-          status: "processing",
-          metadata: {},
+          status: 'processing',
+          metadata: {}
         };
 
         // Process images to generate thumbnails and metadata
-        if (mediaType === "image" && file.mimetype !== "image/gif") {
+        if (mediaType === 'image' && file.mimetype !== 'image/gif') {
           await this.processImage(file.path, mediaData);
         }
 
         // Process videos to extract metadata
-        if (mediaType === "video") {
+        if (mediaType === 'video') {
           await this.processVideo(file.path, mediaData);
         }
 
         // Mark as ready after processing
-        mediaData.status = "ready";
+        mediaData.status = 'ready';
         mediaData.processedAt = new Date();
 
         // Save to database
         const mediaRecord = await EnhancedProductMedia.create(mediaData);
         processedFiles.push(mediaRecord);
 
-        logger.info("File processed and saved successfully:", {
+        logger.info('File processed and saved successfully:', {
           id: mediaRecord.id,
           filename: file.filename,
           type: mediaType,
           size: file.size,
           mainProductId,
-          variantId,
+          variantId
         });
       } catch (error) {
-        logger.error("Error processing file:", {
+        logger.error('Error processing file:', {
           filename: file?.filename,
-          error: error.message,
+          error: error.message
         });
 
         // Clean up failed file
         try {
           await fs.unlink(file.path);
         } catch (unlinkError) {
-          logger.error("Failed to clean up file:", unlinkError);
+          logger.error('Failed to clean up file:', unlinkError);
         }
       }
     }
@@ -228,31 +228,31 @@ class MediaUploadService {
         format: imageMetadata.format,
         space: imageMetadata.space,
         channels: imageMetadata.channels,
-        density: imageMetadata.density,
+        density: imageMetadata.density
       };
 
       // Generate thumbnail
-      const thumbnailPath = imagePath.replace(/(\.[^.]+)$/, "_thumb$1");
+      const thumbnailPath = imagePath.replace(/(\.[^.]+)$/, '_thumb$1');
       await image
         .resize(300, 300, {
-          fit: "inside",
-          withoutEnlargement: true,
+          fit: 'inside',
+          withoutEnlargement: true
         })
         .jpeg({ quality: 80 })
         .toFile(thumbnailPath);
 
       const thumbnailRelativePath = path.relative(
-        path.join(__dirname, "..", "public"),
+        path.join(__dirname, '..', 'public'),
         thumbnailPath
       );
 
       metadata.thumbnail = {
         path: thumbnailRelativePath,
-        url: thumbnailRelativePath.replace(/\\/g, "/"),
-        size: (await fs.stat(thumbnailPath)).size,
+        url: thumbnailRelativePath.replace(/\\/g, '/'),
+        size: (await fs.stat(thumbnailPath)).size
       };
     } catch (error) {
-      logger.error("Error processing image:", error);
+      logger.error('Error processing image:', error);
       throw error;
     }
   }
@@ -270,10 +270,10 @@ class MediaUploadService {
         // This is a basic implementation
         duration: null,
         codec: null,
-        resolution: null,
+        resolution: null
       };
     } catch (error) {
-      logger.error("Error processing video:", error);
+      logger.error('Error processing video:', error);
       throw error;
     }
   }
@@ -287,34 +287,34 @@ class MediaUploadService {
 
     for (const asset of mediaAssets) {
       try {
-        const fullPath = path.join(__dirname, "..", "public", asset.path);
+        const fullPath = path.join(__dirname, '..', 'public', asset.path);
         await fs.unlink(fullPath);
 
         // Delete thumbnail if exists
         if (asset.thumbnail) {
           const thumbnailPath = path.join(
             __dirname,
-            "..",
-            "public",
+            '..',
+            'public',
             asset.thumbnail.path
           );
           try {
             await fs.unlink(thumbnailPath);
           } catch (thumbError) {
-            logger.warn("Failed to delete thumbnail:", thumbError);
+            logger.warn('Failed to delete thumbnail:', thumbError);
           }
         }
 
         deletedFiles.push(asset.id);
       } catch (error) {
-        logger.error("Failed to delete media file:", {
+        logger.error('Failed to delete media file:', {
           assetId: asset.id,
           path: asset.path,
-          error: error.message,
+          error: error.message
         });
         errors.push({
           assetId: asset.id,
-          error: error.message,
+          error: error.message
         });
       }
     }
@@ -326,7 +326,7 @@ class MediaUploadService {
    * Get multer middleware for file uploads
    */
   getUploadMiddleware() {
-    return this.upload.array("files", 10);
+    return this.upload.array('files', 10);
   }
 
   /**
@@ -336,7 +336,7 @@ class MediaUploadService {
     const errors = [];
 
     if (!files || files.length === 0) {
-      errors.push("No files provided");
+      errors.push('No files provided');
       return errors;
     }
 
@@ -350,7 +350,7 @@ class MediaUploadService {
       const allowedTypes = [
         ...this.allowedImageTypes,
         ...this.allowedVideoTypes,
-        ...this.allowedDocumentTypes,
+        ...this.allowedDocumentTypes
       ];
 
       if (!allowedTypes.includes(file.mimetype)) {

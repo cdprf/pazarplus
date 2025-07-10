@@ -1,54 +1,54 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const logger = require("../utils/logger");
-const { auth: authMiddleware } = require("../middleware/auth");
+const logger = require('../utils/logger');
+const { auth: authMiddleware } = require('../middleware/auth');
 
 // Apply authentication middleware to all routes
 router.use(authMiddleware);
 
 // Export data endpoint
-router.get("/export/:type", async (req, res) => {
+router.get('/export/:type', async (req, res) => {
   try {
     const { type } = req.params;
-    const { format = "csv" } = req.query;
+    const { format = 'csv' } = req.query;
 
-    logger.info("Export request received", { type, format, query: req.query });
+    logger.info('Export request received', { type, format, query: req.query });
 
     // If products export is requested, delegate to ProductController
-    if (type === "products") {
+    if (type === 'products') {
       // Forward to the product controller's exportProducts method
       try {
-        const ProductController = require("../controllers/product-controller");
+        const ProductController = require('../controllers/product-controller');
         return await ProductController.exportProducts(req, res);
       } catch (error) {
-        logger.error("Error in products export delegation:", error);
+        logger.error('Error in products export delegation:', error);
         return res.status(500).json({
           success: false,
-          message: "Failed to export products",
-          error: error.message,
+          message: 'Failed to export products',
+          error: error.message
         });
       }
     }
 
     // Mock CSV data for customers
-    if (type === "customers") {
+    if (type === 'customers') {
       const csvData = `Name,Email,Phone,City,Country,Status,Order Count
 Ahmet Yılmaz,ahmet@example.com,+90 532 123 4567,Istanbul,Turkey,active,12
 Fatma Kaya,fatma@example.com,+90 533 987 6543,Ankara,Turkey,active,8
 Mehmet Demir,mehmet@example.com,+90 534 555 7890,Izmir,Turkey,inactive,3`;
 
-      res.setHeader("Content-Type", "text/csv");
+      res.setHeader('Content-Type', 'text/csv');
       res.setHeader(
-        "Content-Disposition",
+        'Content-Disposition',
         `attachment; filename="${type}-${
-          new Date().toISOString().split("T")[0]
+          new Date().toISOString().split('T')[0]
         }.csv"`
       );
       return res.send(csvData);
     }
 
     // Mock data for orders
-    if (type === "orders") {
+    if (type === 'orders') {
       const csvData = `Order Number,Customer Name,Platform,Status,Total Amount,Currency,Date,Items
 ORD-001,Ahmet Yılmaz,Trendyol,completed,150.00,TRY,2025-06-20,Tişört x 2
 ORD-002,Fatma Kaya,Hepsiburada,pending,89.99,TRY,2025-06-20,Pantolon x 1
@@ -56,11 +56,11 @@ ORD-003,Mehmet Demir,N11,shipped,234.50,TRY,2025-06-19,Ayakkabı x 1 + Çorap x 
 ORD-004,Zeynep Özkan,Trendyol,cancelled,45.00,TRY,2025-06-19,Şapka x 1
 ORD-005,Ali Koç,Hepsiburada,completed,312.75,TRY,2025-06-18,Ceket x 1 + Atkı x 1`;
 
-      res.setHeader("Content-Type", "text/csv");
+      res.setHeader('Content-Type', 'text/csv');
       res.setHeader(
-        "Content-Disposition",
+        'Content-Disposition',
         `attachment; filename="${type}-${
-          new Date().toISOString().split("T")[0]
+          new Date().toISOString().split('T')[0]
         }.csv"`
       );
       return res.send(csvData);
@@ -70,67 +70,67 @@ ORD-005,Ali Koç,Hepsiburada,completed,312.75,TRY,2025-06-18,Ceket x 1 + Atkı x
     const mockData = `Type,Data,Export Date
 ${type},Sample Data,${new Date().toISOString()}`;
 
-    res.setHeader("Content-Type", "text/csv");
+    res.setHeader('Content-Type', 'text/csv');
     res.setHeader(
-      "Content-Disposition",
+      'Content-Disposition',
       `attachment; filename="${type}-export.csv"`
     );
     res.send(mockData);
   } catch (error) {
-    logger.error("Export error:", error);
+    logger.error('Export error:', error);
     res.status(500).json({
       success: false,
-      message: "Export failed",
-      error: error.message,
+      message: 'Export failed',
+      error: error.message
     });
   }
 });
 
 // Import data endpoint
-router.post("/import", async (req, res) => {
+router.post('/import', async (req, res) => {
   try {
-    logger.info("Import request received");
+    logger.info('Import request received');
 
     // Mock import response
     res.json({
       success: true,
-      message: "Import completed successfully",
+      message: 'Import completed successfully',
       imported: 0,
-      errors: [],
+      errors: []
     });
   } catch (error) {
-    logger.error("Import error:", error);
+    logger.error('Import error:', error);
     res.status(500).json({
       success: false,
-      message: "Import failed",
-      error: error.message,
+      message: 'Import failed',
+      error: error.message
     });
   }
 });
 
 // Download template endpoint
-router.get("/templates/:type", async (req, res) => {
+router.get('/templates/:type', async (req, res) => {
   try {
     const { type } = req.params;
 
-    logger.info("Template download request", { type });
+    logger.info('Template download request', { type });
 
     // Mock CSV template
     const templateData = `Name,Email,Phone,Address,City,Country,Status
 Sample Name,sample@email.com,+90 xxx xxx xxxx,Sample Address,Sample City,Turkey,active`;
 
-    res.setHeader("Content-Type", "text/csv");
+    res.setHeader('Content-Type', 'text/csv');
     res.setHeader(
-      "Content-Disposition",
+      'Content-Disposition',
       `attachment; filename="${type}-template.csv"`
     );
     res.send(templateData);
   } catch (error) {
-    logger.error("Template download error:", error);
+    logger.error('Template download error:', error);
     res.status(500).json({
       success: false,
-      message: "Template download failed",
-      error: error.message,
+      message: 'Template download failed',
+      error: error.message
     });
   }
 });

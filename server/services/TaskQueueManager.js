@@ -1,24 +1,24 @@
-const EventEmitter = require("events");
-const BackgroundTaskService = require("../services/BackgroundTaskService");
-const logger = require("../utils/logger");
+const EventEmitter = require('events');
+const BackgroundTaskService = require('../services/BackgroundTaskService');
+const logger = require('../utils/logger');
 
 class TaskQueueManager extends EventEmitter {
   constructor() {
     super();
     this.isProcessing = false;
     this.maxConcurrentTasks = parseInt(
-      process.env.MAX_CONCURRENT_TASKS || "3",
+      process.env.MAX_CONCURRENT_TASKS || '3',
       10
     ); // Reduced default
     this.runningTasks = new Map();
     this.processingInterval = null;
     this.timeoutCheckInterval = null;
     this.retryInterval = parseInt(
-      process.env.TASK_RETRY_INTERVAL || "30000",
+      process.env.TASK_RETRY_INTERVAL || '30000',
       10
     ); // 30 seconds
     this.timeoutCheckInterval = parseInt(
-      process.env.TIMEOUT_CHECK_INTERVAL || "60000",
+      process.env.TIMEOUT_CHECK_INTERVAL || '60000',
       10
     ); // 1 minute
     this.connectionMonitorInterval = null;
@@ -34,7 +34,7 @@ class TaskQueueManager extends EventEmitter {
       averageProcessingTime: 0,
       peakConcurrentTasks: 0,
       startTime: Date.now(),
-      lastMetricsReset: Date.now(),
+      lastMetricsReset: Date.now()
     };
 
     // Performance monitoring
@@ -42,7 +42,7 @@ class TaskQueueManager extends EventEmitter {
       queueProcessingTimes: [],
       taskExecutionTimes: new Map(),
       memoryUsage: [],
-      connectionPoolStats: [],
+      connectionPoolStats: []
     };
   }
 
@@ -51,19 +51,19 @@ class TaskQueueManager extends EventEmitter {
    */
   start() {
     if (this.isProcessing) {
-      logger.warn("Task queue manager is already running");
+      logger.warn('Task queue manager is already running');
       return;
     }
 
     this.isProcessing = true;
     this.metrics.startTime = Date.now();
 
-    logger.info("Starting task queue manager with enhanced monitoring...", {
+    logger.info('Starting task queue manager with enhanced monitoring...', {
       maxConcurrentTasks: this.maxConcurrentTasks,
       retryInterval: this.retryInterval,
       timeoutCheckInterval: this.timeoutCheckInterval,
       metricsEnabled: true,
-      performanceMonitoringEnabled: true,
+      performanceMonitoringEnabled: true
     });
 
     // Start processing queue
@@ -71,9 +71,9 @@ class TaskQueueManager extends EventEmitter {
       const queueStartTime = Date.now();
       this.processQueue()
         .catch((error) => {
-          logger.error("Error in task queue processing:", {
+          logger.error('Error in task queue processing:', {
             error: error.message,
-            stack: error.stack,
+            stack: error.stack
           });
         })
         .finally(() => {
@@ -91,20 +91,20 @@ class TaskQueueManager extends EventEmitter {
     // Start timeout checker
     this.timeoutCheckInterval = setInterval(() => {
       this.checkTimeouts().catch((error) => {
-        logger.error("Error checking timeouts:", {
+        logger.error('Error checking timeouts:', {
           error: error.message,
-          stack: error.stack,
+          stack: error.stack
         });
       });
     }, this.timeoutCheckInterval);
 
     // Start connection pool monitoring
-    if (process.env.DEBUG_DB_POOL === "true") {
+    if (process.env.DEBUG_DB_POOL === 'true') {
       this.connectionMonitorInterval = setInterval(() => {
         this.monitorConnectionPool().catch((error) => {
-          logger.error("Error monitoring connection pool:", {
+          logger.error('Error monitoring connection pool:', {
             error: error.message,
-            stack: error.stack,
+            stack: error.stack
           });
         });
       }, 120000); // Every 2 minutes
@@ -112,9 +112,9 @@ class TaskQueueManager extends EventEmitter {
 
     // Process immediately
     this.processQueue().catch((error) => {
-      logger.error("Error in initial queue processing:", {
+      logger.error('Error in initial queue processing:', {
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
     });
 
@@ -128,12 +128,12 @@ class TaskQueueManager extends EventEmitter {
    */
   stop() {
     if (!this.isProcessing) {
-      logger.warn("Task queue manager is not running");
+      logger.warn('Task queue manager is not running');
       return;
     }
 
     this.isProcessing = false;
-    logger.info("Stopping task queue manager...");
+    logger.info('Stopping task queue manager...');
 
     // Clear intervals
     if (this.processingInterval) {
@@ -167,7 +167,7 @@ class TaskQueueManager extends EventEmitter {
     }
 
     this.runningTasks.clear();
-    logger.info("Task queue manager stopped");
+    logger.info('Task queue manager stopped');
   }
 
   /**
@@ -180,7 +180,7 @@ class TaskQueueManager extends EventEmitter {
       if (availableSlots <= 0) {
         logger.debug(`No available slots for new tasks`, {
           runningTasks: this.runningTasks.size,
-          maxConcurrentTasks: this.maxConcurrentTasks,
+          maxConcurrentTasks: this.maxConcurrentTasks
         });
         return;
       }
@@ -189,18 +189,18 @@ class TaskQueueManager extends EventEmitter {
 
       // Get queued tasks
       const queuedTasks = await BackgroundTaskService.getQueuedTasks({
-        limit: availableSlots,
+        limit: availableSlots
       });
 
       if (queuedTasks.length === 0) {
-        logger.debug("No queued tasks found");
+        logger.debug('No queued tasks found');
         return;
       }
 
       logger.info(`Processing ${queuedTasks.length} queued tasks`, {
         taskIds: queuedTasks.map((t) => t.id),
         taskTypes: queuedTasks.map((t) => t.taskType),
-        availableSlots,
+        availableSlots
       });
 
       // Process each task
@@ -210,7 +210,7 @@ class TaskQueueManager extends EventEmitter {
             taskId: task.id,
             taskType: task.taskType,
             priority: task.priority,
-            userId: task.userId,
+            userId: task.userId
           });
           await this.executeTask(task);
         } catch (error) {
@@ -218,15 +218,15 @@ class TaskQueueManager extends EventEmitter {
             taskId: task.id,
             taskType: task.taskType,
             error: error.message,
-            stack: error.stack,
+            stack: error.stack
           });
           await BackgroundTaskService.failTask(task.id, error);
         }
       }
     } catch (error) {
-      logger.error("Error processing task queue:", {
+      logger.error('Error processing task queue:', {
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
     }
   }
@@ -242,7 +242,7 @@ class TaskQueueManager extends EventEmitter {
         taskId,
         taskType: task.taskType,
         priority: task.priority,
-        config: task.config,
+        config: task.config
       });
 
       // Mark task as started
@@ -251,7 +251,7 @@ class TaskQueueManager extends EventEmitter {
       // Load the complete task with all associations (especially platform connection)
       logger.info(`Loading task with associations`, {
         taskId,
-        platformConnectionId: task.platformConnectionId,
+        platformConnectionId: task.platformConnectionId
       });
 
       const completeTask = await BackgroundTaskService.getTaskById(taskId);
@@ -266,8 +266,8 @@ class TaskQueueManager extends EventEmitter {
         platformType: completeTask.platformConnection?.platformType,
         platformConnectionId: completeTask.platformConnectionId,
         credentials: completeTask.platformConnection?.credentials
-          ? "Present"
-          : "Missing",
+          ? 'Present'
+          : 'Missing'
       });
 
       // Create task execution
@@ -281,91 +281,91 @@ class TaskQueueManager extends EventEmitter {
         taskId,
         runningTasksCount: this.runningTasks.size,
         peakConcurrentTasks: this.metrics.peakConcurrentTasks,
-        totalTasksProcessed: this.metrics.tasksProcessed,
+        totalTasksProcessed: this.metrics.tasksProcessed
       });
 
       // Set up event listeners with metrics tracking
-      taskExecution.on("progress", (progress) => {
+      taskExecution.on('progress', (progress) => {
         logger.debug(`Task progress update`, { taskId, progress });
-        this.emit("taskProgress", taskId, progress);
+        this.emit('taskProgress', taskId, progress);
       });
 
-      taskExecution.on("log", (log) => {
+      taskExecution.on('log', (log) => {
         logger.debug(`Task log`, { taskId, log });
-        this.emit("taskLog", taskId, log);
+        this.emit('taskLog', taskId, log);
       });
 
-      taskExecution.on("completed", async (result) => {
+      taskExecution.on('completed', async (result) => {
         try {
           logger.info(`Task execution completed`, { taskId, result });
           await BackgroundTaskService.completeTask(taskId, result);
           this.runningTasks.delete(taskId);
 
           // Update metrics for task completion
-          this.updateTaskCompleteMetrics(taskId, "completed");
+          this.updateTaskCompleteMetrics(taskId, 'completed');
 
-          this.emit("taskCompleted", taskId, result);
+          this.emit('taskCompleted', taskId, result);
           logger.info(`Task completed and cleaned up: ${taskId}`, {
             totalCompleted: this.metrics.tasksCompleted,
             averageProcessingTime: Math.round(
               this.metrics.averageProcessingTime
-            ),
+            )
           });
         } catch (error) {
           logger.error(`Error marking task as completed: ${taskId}`, {
             error: error.message,
-            stack: error.stack,
+            stack: error.stack
           });
         }
       });
 
-      taskExecution.on("failed", async (error) => {
+      taskExecution.on('failed', async (error) => {
         try {
           logger.error(`Task execution failed`, {
             taskId,
-            error: error.message,
+            error: error.message
           });
           await BackgroundTaskService.failTask(taskId, error);
           this.runningTasks.delete(taskId);
 
           // Update metrics for task failure
-          this.updateTaskCompleteMetrics(taskId, "failed");
+          this.updateTaskCompleteMetrics(taskId, 'failed');
 
-          this.emit("taskFailed", taskId, error);
+          this.emit('taskFailed', taskId, error);
           logger.error(`Task failed and cleaned up: ${taskId}`, {
             error: error.message,
-            totalFailed: this.metrics.tasksFailed,
+            totalFailed: this.metrics.tasksFailed
           });
         } catch (err) {
           logger.error(`Error marking task as failed: ${taskId}`, {
             error: err.message,
-            stack: err.stack,
+            stack: err.stack
           });
         }
       });
 
-      taskExecution.on("cancelled", async () => {
+      taskExecution.on('cancelled', async () => {
         try {
           logger.info(`Task execution cancelled`, { taskId });
-          await BackgroundTaskService.cancelTask(taskId, "Execution cancelled");
+          await BackgroundTaskService.cancelTask(taskId, 'Execution cancelled');
           this.runningTasks.delete(taskId);
 
           // Update metrics for task cancellation
-          this.updateTaskCompleteMetrics(taskId, "cancelled");
+          this.updateTaskCompleteMetrics(taskId, 'cancelled');
 
-          this.emit("taskCancelled", taskId);
+          this.emit('taskCancelled', taskId);
           logger.info(`Task cancelled and cleaned up: ${taskId}`, {
-            totalCancelled: this.metrics.tasksCancelled,
+            totalCancelled: this.metrics.tasksCancelled
           });
         } catch (error) {
           logger.error(`Error marking task as cancelled: ${taskId}`, {
             error: error.message,
-            stack: error.stack,
+            stack: error.stack
           });
         }
       });
 
-      taskExecution.on("progress", async (progressData) => {
+      taskExecution.on('progress', async (progressData) => {
         try {
           logger.debug(`Task progress update`, { taskId, progressData });
           await BackgroundTaskService.updateProgress(
@@ -375,16 +375,16 @@ class TaskQueueManager extends EventEmitter {
             progressData.message,
             progressData.phase
           );
-          this.emit("taskProgress", taskId, progressData);
+          this.emit('taskProgress', taskId, progressData);
         } catch (error) {
           logger.error(`Error updating task progress: ${taskId}`, {
             error: error.message,
-            stack: error.stack,
+            stack: error.stack
           });
         }
       });
 
-      taskExecution.on("log", async (logData) => {
+      taskExecution.on('log', async (logData) => {
         try {
           logger.debug(`Task log entry`, { taskId, logData });
           await BackgroundTaskService.addLog(
@@ -393,17 +393,17 @@ class TaskQueueManager extends EventEmitter {
             logData.message,
             logData.data
           );
-          this.emit("taskLog", taskId, logData);
+          this.emit('taskLog', taskId, logData);
         } catch (error) {
           logger.error(`Error adding task log: ${taskId}`, {
             error: error.message,
-            stack: error.stack,
+            stack: error.stack
           });
         }
       });
 
       // Add missing log event handler to persist logs to database
-      taskExecution.on("log", async (logData) => {
+      taskExecution.on('log', async (logData) => {
         try {
           logger.debug(`Task log entry`, { taskId, logData });
           await BackgroundTaskService.addLog(
@@ -412,11 +412,11 @@ class TaskQueueManager extends EventEmitter {
             logData.message,
             logData.data
           );
-          this.emit("taskLog", taskId, logData);
+          this.emit('taskLog', taskId, logData);
         } catch (error) {
           logger.error(`Error adding task log: ${taskId}`, {
             error: error.message,
-            stack: error.stack,
+            stack: error.stack
           });
         }
       });
@@ -428,7 +428,7 @@ class TaskQueueManager extends EventEmitter {
     } catch (error) {
       logger.error(`Error in executeTask for ${taskId}`, {
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       this.runningTasks.delete(taskId);
       throw error;
@@ -454,7 +454,7 @@ class TaskQueueManager extends EventEmitter {
         logger.warn(`Handled ${timeoutTasks.length} timed out tasks`);
       }
     } catch (error) {
-      logger.error("Error checking timeouts:", error);
+      logger.error('Error checking timeouts:', error);
     }
   }
 
@@ -466,7 +466,7 @@ class TaskQueueManager extends EventEmitter {
       isProcessing: this.isProcessing,
       runningTasks: this.runningTasks.size,
       maxConcurrentTasks: this.maxConcurrentTasks,
-      runningTaskIds: Array.from(this.runningTasks.keys()),
+      runningTaskIds: Array.from(this.runningTasks.keys())
     };
   }
 
@@ -500,7 +500,7 @@ class TaskQueueManager extends EventEmitter {
     if (taskExecution) {
       taskExecution.cancel();
     } else {
-      await BackgroundTaskService.cancelTask(taskId, "Cancelled by user");
+      await BackgroundTaskService.cancelTask(taskId, 'Cancelled by user');
     }
   }
 
@@ -509,7 +509,7 @@ class TaskQueueManager extends EventEmitter {
    */
   async monitorConnectionPool() {
     try {
-      const sequelize = require("../config/database");
+      const sequelize = require('../config/database');
       const pool = sequelize.connectionManager.pool;
 
       if (pool) {
@@ -519,31 +519,31 @@ class TaskQueueManager extends EventEmitter {
           using: pool.using || 0,
           pending: pool.pending || 0,
           max: pool.max || 0,
-          runningTasks: this.runningTasks.size,
+          runningTasks: this.runningTasks.size
         };
 
-        logger.info("Database connection pool status", poolStats);
+        logger.info('Database connection pool status', poolStats);
 
         // Warning if pool usage is high
         if (poolStats.using / poolStats.max > 0.8) {
-          logger.warn("High database connection pool usage", {
+          logger.warn('High database connection pool usage', {
             usage: `${poolStats.using}/${poolStats.max}`,
             percentage: Math.round((poolStats.using / poolStats.max) * 100),
-            runningTasks: poolStats.runningTasks,
+            runningTasks: poolStats.runningTasks
           });
         }
 
         // Error if pool is exhausted
         if (poolStats.using >= poolStats.max && poolStats.pending > 0) {
-          logger.error("Database connection pool exhausted", {
+          logger.error('Database connection pool exhausted', {
             usage: `${poolStats.using}/${poolStats.max}`,
             pending: poolStats.pending,
-            runningTasks: poolStats.runningTasks,
+            runningTasks: poolStats.runningTasks
           });
         }
       }
     } catch (error) {
-      logger.error("Error monitoring connection pool:", error);
+      logger.error('Error monitoring connection pool:', error);
     }
   }
 
@@ -575,15 +575,15 @@ class TaskQueueManager extends EventEmitter {
     }
 
     switch (status) {
-      case "completed":
-        this.metrics.tasksCompleted++;
-        break;
-      case "failed":
-        this.metrics.tasksFailed++;
-        break;
-      case "cancelled":
-        this.metrics.tasksCancelled++;
-        break;
+    case 'completed':
+      this.metrics.tasksCompleted++;
+      break;
+    case 'failed':
+      this.metrics.tasksFailed++;
+      break;
+    case 'cancelled':
+      this.metrics.tasksCancelled++;
+      break;
     }
 
     // Update average processing time
@@ -603,11 +603,11 @@ class TaskQueueManager extends EventEmitter {
   async updateQueueDepth() {
     try {
       const queuedTasks = await BackgroundTaskService.getQueuedTasks({
-        limit: 1000,
+        limit: 1000
       });
       this.metrics.queueDepth = queuedTasks.length;
     } catch (error) {
-      logger.warn("Failed to update queue depth metrics:", error.message);
+      logger.warn('Failed to update queue depth metrics:', error.message);
     }
   }
 
@@ -619,9 +619,9 @@ class TaskQueueManager extends EventEmitter {
     const avgQueueProcessingTime =
       this.performanceMonitor.queueProcessingTimes.length > 0
         ? this.performanceMonitor.queueProcessingTimes.reduce(
-            (a, b) => a + b,
-            0
-          ) / this.performanceMonitor.queueProcessingTimes.length
+          (a, b) => a + b,
+          0
+        ) / this.performanceMonitor.queueProcessingTimes.length
         : 0;
 
     return {
@@ -636,8 +636,8 @@ class TaskQueueManager extends EventEmitter {
         tasksPerMinute:
           this.metrics.tasksProcessed > 0
             ? Math.round((this.metrics.tasksProcessed / uptime) * 60000)
-            : 0,
-      },
+            : 0
+      }
     };
   }
 
@@ -656,14 +656,14 @@ class TaskQueueManager extends EventEmitter {
       averageProcessingTime: 0,
       peakConcurrentTasks: 0,
       startTime: currentTime,
-      lastMetricsReset: currentTime,
+      lastMetricsReset: currentTime
     };
 
     this.performanceMonitor.queueProcessingTimes = [];
     this.performanceMonitor.taskExecutionTimes.clear();
 
-    logger.info("TaskQueueManager metrics reset", {
-      resetAt: new Date(currentTime),
+    logger.info('TaskQueueManager metrics reset', {
+      resetAt: new Date(currentTime)
     });
   }
 }
@@ -683,7 +683,7 @@ class TaskExecution extends EventEmitter {
 
   async start() {
     if (this.isRunning) {
-      throw new Error("Task is already running");
+      throw new Error('Task is already running');
     }
 
     this.isRunning = true;
@@ -693,7 +693,7 @@ class TaskExecution extends EventEmitter {
       await this.executionPromise;
     } catch (error) {
       if (!this.isCancelled) {
-        this.emit("failed", error);
+        this.emit('failed', error);
       }
     }
   }
@@ -703,13 +703,13 @@ class TaskExecution extends EventEmitter {
       logger.info(`Task execution starting`, {
         taskId: this.task.id,
         taskType: this.task.taskType,
-        config: this.task.config,
+        config: this.task.config
       });
 
-      this.emit("log", {
-        level: "info",
-        message: "Task execution started",
-        data: { taskId: this.task.id },
+      this.emit('log', {
+        level: 'info',
+        message: 'Task execution started',
+        data: { taskId: this.task.id }
       });
 
       // Get the appropriate task executor
@@ -720,7 +720,7 @@ class TaskExecution extends EventEmitter {
         const error = `No executor found for task type: ${this.task.taskType}`;
         logger.error(error, {
           taskId: this.task.id,
-          taskType: this.task.taskType,
+          taskType: this.task.taskType
         });
         throw new Error(error);
       }
@@ -728,7 +728,7 @@ class TaskExecution extends EventEmitter {
       logger.info(`Task executor found`, {
         taskId: this.task.id,
         taskType: this.task.taskType,
-        executor: executor.constructor.name || "Unknown",
+        executor: executor.constructor.name || 'Unknown'
       });
 
       // Execute the task with enhanced logging callbacks
@@ -740,20 +740,20 @@ class TaskExecution extends EventEmitter {
             total,
             percentage: total > 0 ? Math.floor((current / total) * 100) : 0,
             message,
-            phase,
+            phase
           });
-          this.emit("progress", { current, total, message, phase });
+          this.emit('progress', { current, total, message, phase });
         },
         onLog: async (level, message, data) => {
           // Validate level
-          const validLevels = ["info", "error", "warn", "debug"];
-          const logLevel = validLevels.includes(level) ? level : "info";
+          const validLevels = ['info', 'error', 'warn', 'debug'];
+          const logLevel = validLevels.includes(level) ? level : 'info';
 
           // Log to application logger
           logger[logLevel](`Task log [${logLevel}]: ${message}`, {
             taskId: this.task.id,
             data,
-            source: this.task.metadata?.source || "unknown",
+            source: this.task.metadata?.source || 'unknown'
           });
 
           try {
@@ -767,27 +767,27 @@ class TaskExecution extends EventEmitter {
             );
 
             // Emit log event after successful save
-            this.emit("log", { level: logLevel, message, data });
+            this.emit('log', { level: logLevel, message, data });
           } catch (error) {
             logger.error(`Failed to save task log to database`, {
               taskId: this.task.id,
               error: error.message,
               logLevel,
-              logMessage: message,
+              logMessage: message
             });
 
             // Try one more time with a simpler message
             try {
               await BackgroundTaskService.addLog(
                 this.task.id,
-                "error",
+                'error',
                 `Failed to save log: ${message.substring(0, 50)}...`,
                 null
               );
             } catch (retryError) {
               logger.error(`Failed to save log after retry`, {
                 taskId: this.task.id,
-                error: retryError.message,
+                error: retryError.message
               });
             }
           }
@@ -795,15 +795,15 @@ class TaskExecution extends EventEmitter {
         checkCancellation: () => {
           if (this.isCancelled) {
             logger.info(`Task cancellation check - task is cancelled`, {
-              taskId: this.task.id,
+              taskId: this.task.id
             });
-            throw new Error("Task was cancelled");
+            throw new Error('Task was cancelled');
           }
         },
         waitForResume: async () => {
           if (this.isPaused) {
             logger.info(`Task is paused, waiting for resume`, {
-              taskId: this.task.id,
+              taskId: this.task.id
             });
           }
           while (this.isPaused && !this.isCancelled) {
@@ -811,42 +811,42 @@ class TaskExecution extends EventEmitter {
           }
           if (this.isCancelled) {
             logger.info(`Task was cancelled while paused`, {
-              taskId: this.task.id,
+              taskId: this.task.id
             });
-            throw new Error("Task was cancelled while paused");
+            throw new Error('Task was cancelled while paused');
           }
           if (this.isPaused === false) {
             logger.info(`Task resumed from pause`, { taskId: this.task.id });
           }
-        },
+        }
       });
 
       logger.info(`Task execution completed successfully`, {
         taskId: this.task.id,
         taskType: this.task.taskType,
-        result: result ? Object.keys(result) : null,
+        result: result ? Object.keys(result) : null
       });
 
-      this.emit("completed", result);
+      this.emit('completed', result);
     } catch (error) {
       logger.error(`Task execution error`, {
         taskId: this.task.id,
         taskType: this.task.taskType,
         error: error.message,
         stack: error.stack,
-        isCancelled: this.isCancelled,
+        isCancelled: this.isCancelled
       });
 
       if (this.isCancelled) {
-        this.emit("cancelled");
+        this.emit('cancelled');
       } else {
-        this.emit("failed", error);
+        this.emit('failed', error);
       }
     } finally {
       this.isRunning = false;
       logger.info(`Task execution finished`, {
         taskId: this.task.id,
-        isRunning: this.isRunning,
+        isRunning: this.isRunning
       });
     }
   }
@@ -854,7 +854,7 @@ class TaskExecution extends EventEmitter {
   getTaskExecutor() {
     // Dynamic import of task executors based on task type
     const executors = {
-      order_fetching: require("../executors/OrderFetchingExecutor"),
+      order_fetching: require('../executors/OrderFetchingExecutor')
       // Note: Other executors can be added as they are implemented
     };
 
@@ -873,7 +873,7 @@ class TaskExecution extends EventEmitter {
     }
 
     this.isPaused = true;
-    this.emit("log", { level: "info", message: "Task execution paused" });
+    this.emit('log', { level: 'info', message: 'Task execution paused' });
   }
 
   resume() {
@@ -882,13 +882,13 @@ class TaskExecution extends EventEmitter {
     }
 
     this.isPaused = false;
-    this.emit("log", { level: "info", message: "Task execution resumed" });
+    this.emit('log', { level: 'info', message: 'Task execution resumed' });
   }
 
   cancel() {
     this.isCancelled = true;
     this.isPaused = false;
-    this.emit("log", { level: "info", message: "Task execution cancelled" });
+    this.emit('log', { level: 'info', message: 'Task execution cancelled' });
   }
 }
 
@@ -897,5 +897,5 @@ const taskQueueManager = new TaskQueueManager();
 
 module.exports = {
   TaskQueueManager,
-  taskQueueManager,
+  taskQueueManager
 };

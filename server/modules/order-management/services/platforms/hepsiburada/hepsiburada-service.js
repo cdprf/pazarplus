@@ -1,4 +1,4 @@
-const axios = require("axios");
+const axios = require('axios');
 const {
   Order,
   OrderItem,
@@ -6,14 +6,14 @@ const {
   PlatformConnection,
   ShippingDetail,
   HepsiburadaOrder,
-  HepsiburadaProduct,
-} = require("../../../../../models");
-const { Op } = require("sequelize");
-const sequelize = require("../../../../../config/database");
-const logger = require("../../../../../utils/logger");
-const BasePlatformService = require("../BasePlatformService"); // Fixed import path
-const ProductOrderLinkingService = require("../../../../../services/product-order-linking-service");
-const { mapOrderStatus } = require("../../../../../utils/enum-validators");
+  HepsiburadaProduct
+} = require('../../../../../models');
+const { Op } = require('sequelize');
+const sequelize = require('../../../../../config/database');
+const logger = require('../../../../../utils/logger');
+const BasePlatformService = require('../BasePlatformService'); // Fixed import path
+const ProductOrderLinkingService = require('../../../../../services/product-order-linking-service');
+const { mapOrderStatus } = require('../../../../../utils/enum-validators');
 
 class HepsiburadaService extends BasePlatformService {
   constructor(connectionId, directCredentials = null, options = {}) {
@@ -21,15 +21,15 @@ class HepsiburadaService extends BasePlatformService {
 
     // Support different base URLs for different API types
     this.ordersApiUrl =
-      options.ordersApiUrl || "https://oms-external.hepsiburada.com";
+      options.ordersApiUrl || 'https://oms-external.hepsiburada.com';
     this.productsApiUrl =
-      options.productsApiUrl || "https://mpop.hepsiburada.com";
+      options.productsApiUrl || 'https://mpop.hepsiburada.com';
 
     // Default API URL for general operations (orders)
     this.apiUrl = options.apiUrl || this.ordersApiUrl;
 
     this.merchantId = null;
-    this.isTestEnvironment = options.environment === "test" || true;
+    this.isTestEnvironment = options.environment === 'test' || true;
     this.logger = this.getLogger();
 
     // Store auth string for reuse across different API calls
@@ -41,7 +41,7 @@ class HepsiburadaService extends BasePlatformService {
    * @returns {string} Platform type identifier
    */
   getPlatformType() {
-    return "hepsiburada";
+    return 'hepsiburada';
   }
 
   /**
@@ -49,10 +49,10 @@ class HepsiburadaService extends BasePlatformService {
    * Implementation of abstract method from BasePlatformService
    */
   async setupAxiosInstance() {
-    this.logger.info("🔍 Hepsiburada service initialization started", {
+    this.logger.info('🔍 Hepsiburada service initialization started', {
       connectionId: this.connectionId,
       hasDirectCredentials: !!this.directCredentials,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
 
     try {
@@ -61,41 +61,41 @@ class HepsiburadaService extends BasePlatformService {
 
       // Enhanced validation with detailed logging
       const missingFields = [];
-      if (!username) missingFields.push("username");
-      if (!apiKey) missingFields.push("apiKey");
-      if (!merchantId) missingFields.push("merchantId");
+      if (!username) {missingFields.push('username');}
+      if (!apiKey) {missingFields.push('apiKey');}
+      if (!merchantId) {missingFields.push('merchantId');}
 
       if (missingFields.length > 0) {
-        this.logger.error("Missing required Hepsiburada credentials", {
+        this.logger.error('Missing required Hepsiburada credentials', {
           missingFields,
           connectionId: this.connectionId,
           hasUsername: !!username,
           hasApiKey: !!apiKey,
           hasMerchantId: !!merchantId,
-          environment: environment || "not specified",
+          environment: environment || 'not specified'
         });
         throw new Error(
           `Missing required Hepsiburada credentials: ${missingFields.join(
-            ", "
+            ', '
           )}. Username, Merchant ID, and API Key are required.`
         );
       }
 
       // Set the correct API URLs based on environment
       this.isTestEnvironment =
-        environment === "test" || environment === "sandbox" || !environment;
+        environment === 'test' || environment === 'sandbox' || !environment;
 
       if (this.isTestEnvironment) {
-        this.ordersApiUrl = "https://oms-external-sit.hepsiburada.com";
-        this.productsApiUrl = "https://mpop-sit.hepsiburada.com"; // Assuming test URL pattern
+        this.ordersApiUrl = 'https://oms-external-sit.hepsiburada.com';
+        this.productsApiUrl = 'https://mpop-sit.hepsiburada.com'; // Assuming test URL pattern
       } else {
-        this.ordersApiUrl = "https://oms-external.hepsiburada.com";
-        this.productsApiUrl = "https://mpop.hepsiburada.com";
+        this.ordersApiUrl = 'https://oms-external.hepsiburada.com';
+        this.productsApiUrl = 'https://mpop.hepsiburada.com';
       }
 
       // Create Basic auth header with merchantId:apiKey (not username:apiKey)
       this.authString = Buffer.from(`${merchantId}:${apiKey}`).toString(
-        "base64"
+        'base64'
       );
 
       // Set up default axios instance for orders API
@@ -103,11 +103,11 @@ class HepsiburadaService extends BasePlatformService {
         baseURL: this.ordersApiUrl,
         headers: {
           Authorization: `Basic ${this.authString}`,
-          "User-Agent": username,
-          "Content-Type": "application/json",
-          Accept: "application/json",
+          'User-Agent': username,
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
         },
-        timeout: 30000,
+        timeout: 30000
       });
 
       // Test the connection with a simple request
@@ -116,25 +116,25 @@ class HepsiburadaService extends BasePlatformService {
         this.merchantId = merchantId;
 
         this.logger.info(
-          "🎉 Hepsiburada service initialization completed successfully",
+          '🎉 Hepsiburada service initialization completed successfully',
           {
             connectionId: this.connectionId,
             merchantId: merchantId
               ? `${merchantId.substring(0, 3)}***`
-              : "missing",
-            environment: this.isTestEnvironment ? "test" : "production",
+              : 'missing',
+            environment: this.isTestEnvironment ? 'test' : 'production'
           }
         );
 
         return true;
       } catch (connectionTestError) {
         this.logger.warn(
-          "⚠️ Hepsiburada API connectivity test failed (setup completed but connection untested)",
+          '⚠️ Hepsiburada API connectivity test failed (setup completed but connection untested)',
           {
             connectionId: this.connectionId,
             error: connectionTestError.message,
             statusCode: connectionTestError.response?.status,
-            baseURL: this.ordersApiUrl,
+            baseURL: this.ordersApiUrl
           }
         );
 
@@ -143,11 +143,11 @@ class HepsiburadaService extends BasePlatformService {
         return true;
       }
     } catch (setupError) {
-      this.logger.error("Hepsiburada service initialization failed", {
+      this.logger.error('Hepsiburada service initialization failed', {
         connectionId: this.connectionId,
         error: setupError.message,
         stack: setupError.stack,
-        errorType: setupError.constructor.name,
+        errorType: setupError.constructor.name
       });
       throw setupError;
     }
@@ -159,13 +159,13 @@ class HepsiburadaService extends BasePlatformService {
    * @returns {object} Decrypted credentials
    */
   decryptCredentials(encryptedCredentials) {
-    this.logger.info("🔐 Starting Hepsiburada credentials decryption", {
+    this.logger.info('🔐 Starting Hepsiburada credentials decryption', {
       connectionId: this.connectionId,
       credentialsType: typeof encryptedCredentials,
       credentialsExists: !!encryptedCredentials,
-      isString: typeof encryptedCredentials === "string",
-      isObject: typeof encryptedCredentials === "object",
-      timestamp: new Date().toISOString(),
+      isString: typeof encryptedCredentials === 'string',
+      isObject: typeof encryptedCredentials === 'object',
+      timestamp: new Date().toISOString()
     });
 
     try {
@@ -180,33 +180,33 @@ class HepsiburadaService extends BasePlatformService {
         !credentials.apiKey
       ) {
         const missing = [];
-        if (!credentials) missing.push("credentials object is null/undefined");
-        if (!credentials?.username) missing.push("username");
-        if (!credentials?.merchantId) missing.push("merchantId");
-        if (!credentials?.apiKey) missing.push("apiKey");
+        if (!credentials) {missing.push('credentials object is null/undefined');}
+        if (!credentials?.username) {missing.push('username');}
+        if (!credentials?.merchantId) {missing.push('merchantId');}
+        if (!credentials?.apiKey) {missing.push('apiKey');}
 
-        this.logger.error("Hepsiburada credentials validation failed", {
+        this.logger.error('Hepsiburada credentials validation failed', {
           connectionId: this.connectionId,
           missingFields: missing,
           receivedCredentials: credentials
             ? {
-                hasUsername: !!credentials.username,
-                hasMerchantId: !!credentials.merchantId,
-                hasApiKey: !!credentials.apiKey,
-                keys: Object.keys(credentials),
-              }
+              hasUsername: !!credentials.username,
+              hasMerchantId: !!credentials.merchantId,
+              hasApiKey: !!credentials.apiKey,
+              keys: Object.keys(credentials)
+            }
             : null,
-          originalCredentialsType: typeof encryptedCredentials,
+          originalCredentialsType: typeof encryptedCredentials
         });
 
-        throw new Error(`Missing required credentials: ${missing.join(", ")}`);
+        throw new Error(`Missing required credentials: ${missing.join(', ')}`);
       }
 
       return {
         username: credentials.username,
         merchantId: credentials.merchantId,
         apiKey: credentials.apiKey,
-        environment: credentials.environment || "test",
+        environment: credentials.environment || 'test'
       };
     } catch (error) {
       logger.error(
@@ -215,17 +215,17 @@ class HepsiburadaService extends BasePlatformService {
           error: {
             message: error.message,
             stack: error.stack,
-            name: error.name,
+            name: error.name
           },
           connectionId: this.connectionId,
           credentialsType: typeof encryptedCredentials,
           credentialsExists: !!encryptedCredentials,
-          isEncryptionError: error.message.includes("decrypt"),
+          isEncryptionError: error.message.includes('decrypt'),
           isValidationError:
-            error.message.includes("validation") ||
-            error.message.includes("Missing"),
+            error.message.includes('validation') ||
+            error.message.includes('Missing'),
           isParsingError:
-            error.message.includes("parse") || error.message.includes("JSON"),
+            error.message.includes('parse') || error.message.includes('JSON')
         }
       );
       throw new Error(`Failed to decrypt credentials: ${error.message}`);
@@ -255,7 +255,7 @@ class HepsiburadaService extends BasePlatformService {
 
       const defaultParams = {
         offset: 0,
-        limit: 50, // Updated to match API documentation
+        limit: 50 // Updated to match API documentation
       };
 
       const queryParams = { ...defaultParams, ...params };
@@ -271,12 +271,12 @@ class HepsiburadaService extends BasePlatformService {
       // Build API parameters - MINIMAL approach based on official documentation
       const apiParams = {
         limit: queryParams.limit,
-        offset: queryParams.offset,
+        offset: queryParams.offset
       };
 
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
-          params: apiParams,
+          params: apiParams
         })
       );
 
@@ -288,16 +288,16 @@ class HepsiburadaService extends BasePlatformService {
         return {
           success: true,
           message:
-            "Successfully connected to Hepsiburada API - no delivered orders found",
-          data: [],
+            'Successfully connected to Hepsiburada API - no delivered orders found',
+          data: []
         };
       }
 
       if (!Array.isArray(response.data.items)) {
         return {
           success: false,
-          message: "Invalid response format from Hepsiburada API",
-          data: [],
+          message: 'Invalid response format from Hepsiburada API',
+          data: []
         };
       }
 
@@ -308,15 +308,15 @@ class HepsiburadaService extends BasePlatformService {
         pagination: {
           offset: queryParams.offset,
           limit: queryParams.limit,
-          totalCount: response.data.items.length,
-        },
+          totalCount: response.data.items.length
+        }
       };
     } catch (error) {
       logger.error(
         `Failed to fetch delivered orders from Hepsiburada: ${error.message}`,
         {
           error,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
@@ -324,7 +324,7 @@ class HepsiburadaService extends BasePlatformService {
         success: false,
         message: `Failed to fetch delivered orders: ${error.message}`,
         error: error.response?.data || error.message,
-        data: [],
+        data: []
       };
     }
   }
@@ -339,7 +339,7 @@ class HepsiburadaService extends BasePlatformService {
 
       const defaultParams = {
         offset: 0,
-        limit: 100, // Updated to match API documentation
+        limit: 100 // Updated to match API documentation
       };
 
       const queryParams = { ...defaultParams, ...params };
@@ -354,14 +354,14 @@ class HepsiburadaService extends BasePlatformService {
       // Build API parameters - MINIMAL approach (this endpoint may not support date filtering)
       const apiParams = {
         limit: queryParams.limit,
-        offset: queryParams.offset,
+        offset: queryParams.offset
       };
 
       // Skip date filtering for this endpoint as it's not clearly documented as supported
 
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
-          params: apiParams,
+          params: apiParams
         })
       );
 
@@ -374,16 +374,16 @@ class HepsiburadaService extends BasePlatformService {
         return {
           success: true,
           message:
-            "Successfully connected to Hepsiburada API - no pending payment orders found",
-          data: [],
+            'Successfully connected to Hepsiburada API - no pending payment orders found',
+          data: []
         };
       }
 
       if (!Array.isArray(response.data.items)) {
         return {
           success: false,
-          message: "Invalid response format from Hepsiburada API",
-          data: [],
+          message: 'Invalid response format from Hepsiburada API',
+          data: []
         };
       }
 
@@ -394,15 +394,15 @@ class HepsiburadaService extends BasePlatformService {
         pagination: {
           offset: queryParams.offset,
           limit: queryParams.limit,
-          totalCount: response.data.items.length,
-        },
+          totalCount: response.data.items.length
+        }
       };
     } catch (error) {
       logger.error(
         `Failed to fetch pending payment orders from Hepsiburada: ${error.message}`,
         {
           error,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
@@ -410,7 +410,7 @@ class HepsiburadaService extends BasePlatformService {
         success: false,
         message: `Failed to fetch pending payment orders: ${error.message}`,
         error: error.response?.data || error.message,
-        data: [],
+        data: []
       };
     }
   }
@@ -425,7 +425,7 @@ class HepsiburadaService extends BasePlatformService {
 
       const defaultParams = {
         offset: 0,
-        limit: 50,
+        limit: 50
       };
 
       const queryParams = { ...defaultParams, ...params };
@@ -435,17 +435,17 @@ class HepsiburadaService extends BasePlatformService {
       }
 
       // Support both date range and offset/limit pagination
-      let url = `/packages/merchantid/${this.merchantId}`;
+      const url = `/packages/merchantid/${this.merchantId}`;
 
       // Build query parameters - MINIMAL approach based on official documentation
       const apiParams = {
         limit: queryParams.limit,
-        offset: queryParams.offset,
+        offset: queryParams.offset
       };
 
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
-          params: apiParams,
+          params: apiParams
         })
       );
 
@@ -463,7 +463,7 @@ class HepsiburadaService extends BasePlatformService {
         return {
           success: true, // Changed to true - no orders in date range is valid
           message: `No package data found for Hepsiburada merchant ID ${this.merchantId}`,
-          data: [],
+          data: []
         };
       }
 
@@ -478,15 +478,15 @@ class HepsiburadaService extends BasePlatformService {
         pagination: {
           offset: queryParams.offset,
           limit: queryParams.limit,
-          totalCount: responseData.length,
-        },
+          totalCount: responseData.length
+        }
       };
     } catch (error) {
       logger.error(
         `Failed to fetch packages from Hepsiburada: ${error.message}`,
         {
           error,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
@@ -494,7 +494,7 @@ class HepsiburadaService extends BasePlatformService {
         success: false,
         message: `Failed to fetch packages: ${error.message}`,
         error: error.response?.data || error.message,
-        data: [],
+        data: []
       };
     }
   }
@@ -509,7 +509,7 @@ class HepsiburadaService extends BasePlatformService {
 
       const defaultParams = {
         offset: 0,
-        limit: 50, // Updated to match API documentation
+        limit: 50 // Updated to match API documentation
       };
 
       const queryParams = { ...defaultParams, ...params };
@@ -524,12 +524,12 @@ class HepsiburadaService extends BasePlatformService {
       // Build API parameters - MINIMAL approach based on official documentation
       const apiParams = {
         limit: queryParams.limit,
-        offset: queryParams.offset,
+        offset: queryParams.offset
       };
 
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
-          params: apiParams,
+          params: apiParams
         })
       );
 
@@ -542,16 +542,16 @@ class HepsiburadaService extends BasePlatformService {
         return {
           success: true,
           message:
-            "Successfully connected to Hepsiburada API - no shipped orders found",
-          data: [],
+            'Successfully connected to Hepsiburada API - no shipped orders found',
+          data: []
         };
       }
 
       if (!Array.isArray(response.data.items)) {
         return {
           success: false,
-          message: "Invalid response format from Hepsiburada API",
-          data: [],
+          message: 'Invalid response format from Hepsiburada API',
+          data: []
         };
       }
 
@@ -562,15 +562,15 @@ class HepsiburadaService extends BasePlatformService {
         pagination: {
           offset: queryParams.offset,
           limit: queryParams.limit,
-          totalCount: response.data.items.length,
-        },
+          totalCount: response.data.items.length
+        }
       };
     } catch (error) {
       logger.error(
         `Failed to fetch shipped orders from Hepsiburada: ${error.message}`,
         {
           error,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
@@ -578,7 +578,7 @@ class HepsiburadaService extends BasePlatformService {
         success: false,
         message: `Failed to fetch shipped orders: ${error.message}`,
         error: error.response?.data || error.message,
-        data: [],
+        data: []
       };
     }
   }
@@ -593,7 +593,7 @@ class HepsiburadaService extends BasePlatformService {
 
       const defaultParams = {
         offset: 0,
-        limit: 50, // Updated to match API documentation
+        limit: 50 // Updated to match API documentation
       };
 
       const queryParams = { ...defaultParams, ...params };
@@ -608,12 +608,12 @@ class HepsiburadaService extends BasePlatformService {
       // Build API parameters - MINIMAL approach based on official documentation
       const apiParams = {
         limit: queryParams.limit,
-        offset: queryParams.offset,
+        offset: queryParams.offset
       };
 
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
-          params: apiParams,
+          params: apiParams
         })
       );
 
@@ -625,16 +625,16 @@ class HepsiburadaService extends BasePlatformService {
         return {
           success: true,
           message:
-            "Successfully connected to Hepsiburada API - no unpacked orders found",
-          data: [],
+            'Successfully connected to Hepsiburada API - no unpacked orders found',
+          data: []
         };
       }
 
       if (!Array.isArray(response.data.items)) {
         return {
           success: false,
-          message: "Invalid response format from Hepsiburada API",
-          data: [],
+          message: 'Invalid response format from Hepsiburada API',
+          data: []
         };
       }
 
@@ -645,15 +645,15 @@ class HepsiburadaService extends BasePlatformService {
         pagination: {
           offset: queryParams.offset,
           limit: queryParams.limit,
-          totalCount: response.data.items.length,
-        },
+          totalCount: response.data.items.length
+        }
       };
     } catch (error) {
       logger.error(
         `Failed to fetch unpacked orders from Hepsiburada: ${error.message}`,
         {
           error,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
@@ -661,7 +661,7 @@ class HepsiburadaService extends BasePlatformService {
         success: false,
         message: `Failed to fetch unpacked orders: ${error.message}`,
         error: error.response?.data || error.message,
-        data: [],
+        data: []
       };
     }
   }
@@ -676,7 +676,7 @@ class HepsiburadaService extends BasePlatformService {
 
       const defaultParams = {
         offset: 0,
-        limit: 50, // Updated to match API documentation
+        limit: 50 // Updated to match API documentation
       };
 
       const queryParams = { ...defaultParams, ...params };
@@ -691,12 +691,12 @@ class HepsiburadaService extends BasePlatformService {
       // Build API parameters - MINIMAL approach based on official documentation
       const apiParams = {
         limit: queryParams.limit,
-        offset: queryParams.offset,
+        offset: queryParams.offset
       };
 
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
-          params: apiParams,
+          params: apiParams
         })
       );
 
@@ -709,16 +709,16 @@ class HepsiburadaService extends BasePlatformService {
         return {
           success: true,
           message:
-            "Successfully connected to Hepsiburada API - no undelivered orders found",
-          data: [],
+            'Successfully connected to Hepsiburada API - no undelivered orders found',
+          data: []
         };
       }
 
       if (!Array.isArray(response.data.items)) {
         return {
           success: false,
-          message: "Invalid response format from Hepsiburada API",
-          data: [],
+          message: 'Invalid response format from Hepsiburada API',
+          data: []
         };
       }
 
@@ -729,15 +729,15 @@ class HepsiburadaService extends BasePlatformService {
         pagination: {
           offset: queryParams.offset,
           limit: queryParams.limit,
-          totalCount: response.data.items.length,
-        },
+          totalCount: response.data.items.length
+        }
       };
     } catch (error) {
       logger.error(
         `Failed to fetch undelivered orders from Hepsiburada: ${error.message}`,
         {
           error,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
@@ -745,7 +745,7 @@ class HepsiburadaService extends BasePlatformService {
         success: false,
         message: `Failed to fetch undelivered orders: ${error.message}`,
         error: error.response?.data || error.message,
-        data: [],
+        data: []
       };
     }
   }
@@ -760,7 +760,7 @@ class HepsiburadaService extends BasePlatformService {
 
       const defaultParams = {
         offset: 0,
-        limit: 50, // Updated to match API documentation
+        limit: 50 // Updated to match API documentation
       };
 
       const queryParams = { ...defaultParams, ...params };
@@ -775,12 +775,12 @@ class HepsiburadaService extends BasePlatformService {
       // Build API parameters - MINIMAL approach based on official documentation
       const apiParams = {
         limit: queryParams.limit,
-        offset: queryParams.offset,
+        offset: queryParams.offset
       };
 
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
-          params: apiParams,
+          params: apiParams
         })
       );
 
@@ -792,16 +792,16 @@ class HepsiburadaService extends BasePlatformService {
         return {
           success: true,
           message:
-            "Successfully connected to Hepsiburada API - no cancelled orders found",
-          data: [],
+            'Successfully connected to Hepsiburada API - no cancelled orders found',
+          data: []
         };
       }
 
       if (!Array.isArray(response.data.items)) {
         return {
           success: false,
-          message: "Invalid response format from Hepsiburada API",
-          data: [],
+          message: 'Invalid response format from Hepsiburada API',
+          data: []
         };
       }
 
@@ -812,15 +812,15 @@ class HepsiburadaService extends BasePlatformService {
         pagination: {
           offset: queryParams.offset,
           limit: queryParams.limit,
-          totalCount: response.data.items.length,
-        },
+          totalCount: response.data.items.length
+        }
       };
     } catch (error) {
       logger.error(
         `Failed to fetch cancelled orders from Hepsiburada: ${error.message}`,
         {
           error,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
@@ -828,7 +828,7 @@ class HepsiburadaService extends BasePlatformService {
         success: false,
         message: `Failed to fetch cancelled orders: ${error.message}`,
         error: error.response?.data || error.message,
-        data: [],
+        data: []
       };
     }
   }
@@ -843,7 +843,7 @@ class HepsiburadaService extends BasePlatformService {
 
       const defaultParams = {
         offset: 0,
-        limit: 50,
+        limit: 50
       };
 
       const queryParams = { ...defaultParams, ...params };
@@ -853,7 +853,7 @@ class HepsiburadaService extends BasePlatformService {
       }
 
       this.logger.info(`Fetching Hepsiburada orders from all endpoints`, {
-        connectionId: this.connectionId,
+        connectionId: this.connectionId
       });
 
       // Fetch from all relevant endpoints and combine results
@@ -864,7 +864,7 @@ class HepsiburadaService extends BasePlatformService {
         this.fetchShippedOrders(queryParams),
         this.fetchUnpackedOrders(queryParams),
         this.fetchUndeliveredOrders(queryParams),
-        this.fetchCancelledOrders(queryParams),
+        this.fetchCancelledOrders(queryParams)
       ];
 
       // Run all fetches in parallel for better performance
@@ -883,23 +883,23 @@ class HepsiburadaService extends BasePlatformService {
             successfulCount: successfulResults.length,
             totalCount: results.length,
             failures: failedResults.map((r) => ({
-              message: r?.message || "Unknown error",
-              error: r?.error || "No error details",
-            })),
+              message: r?.message || 'Unknown error',
+              error: r?.error || 'No error details'
+            }))
           }
         );
       }
 
       // Only throw if all endpoints failed
       if (successfulResults.length === 0) {
-        this.logger.error("All order fetching endpoints failed", {
+        this.logger.error('All order fetching endpoints failed', {
           connectionId: this.connectionId,
           failures: failedResults.map((r) => ({
-            message: r?.message || "Unknown error",
-            error: r?.error || "No error details",
-          })),
+            message: r?.message || 'Unknown error',
+            error: r?.error || 'No error details'
+          }))
         });
-        throw new Error("Order fetching failed: all endpoints failed");
+        throw new Error('Order fetching failed: all endpoints failed');
       }
 
       // Log success rate
@@ -910,7 +910,7 @@ class HepsiburadaService extends BasePlatformService {
           successRate: `${(
             (successfulResults.length / results.length) *
             100
-          ).toFixed(1)}%`,
+          ).toFixed(1)}%`
         }
       );
 
@@ -921,7 +921,7 @@ class HepsiburadaService extends BasePlatformService {
       const seen = new Set();
       const uniqueOrders = allOrders.filter((order) => {
         const key = order.orderNumber || order.OrderNumber || order.id;
-        if (!key || seen.has(key)) return false;
+        if (!key || seen.has(key)) {return false;}
         seen.add(key);
         return true;
       });
@@ -946,7 +946,7 @@ class HepsiburadaService extends BasePlatformService {
               {
                 batchSize: params.detailsBatchSize || 5,
                 delayBetweenBatches: params.detailsDelay || 1000,
-                continueOnError: true,
+                continueOnError: true
               }
             );
 
@@ -970,7 +970,7 @@ class HepsiburadaService extends BasePlatformService {
                 return {
                   ...order,
                   details: details || null,
-                  detailsFetched: !!details,
+                  detailsFetched: !!details
                 };
               });
 
@@ -995,7 +995,7 @@ class HepsiburadaService extends BasePlatformService {
               {
                 error,
                 connectionId: this.connectionId,
-                orderCount: orderNumbers.length,
+                orderCount: orderNumbers.length
               }
             );
             // Log failure and re-throw error instead of fallback
@@ -1010,7 +1010,7 @@ class HepsiburadaService extends BasePlatformService {
           connectionId: this.connectionId,
           totalOrders: allOrders.length,
           uniqueOrders: uniqueOrders.length,
-          duplicatesRemoved: allOrders.length - uniqueOrders.length,
+          duplicatesRemoved: allOrders.length - uniqueOrders.length
         }
       );
 
@@ -1026,20 +1026,20 @@ class HepsiburadaService extends BasePlatformService {
           totalFetched: allOrders.length,
           uniqueOrders: uniqueOrders.length,
           duplicatesRemoved: allOrders.length - uniqueOrders.length,
-          endpointsUsed: results.length, // All endpoints were successful if we reach here
+          endpointsUsed: results.length // All endpoints were successful if we reach here
         },
         pagination: {
           offset: queryParams.offset,
           limit: queryParams.limit,
-          totalCount: uniqueOrders.length,
-        },
+          totalCount: uniqueOrders.length
+        }
       };
     } catch (error) {
       this.logger.error(
         `Failed to fetch orders from Hepsiburada: ${error.message}`,
         {
           error,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
@@ -1047,7 +1047,7 @@ class HepsiburadaService extends BasePlatformService {
         success: false,
         message: `Failed to fetch orders: ${error.message}`,
         error: error.response?.data || error.message,
-        data: [],
+        data: []
       };
     }
   }
@@ -1065,8 +1065,8 @@ class HepsiburadaService extends BasePlatformService {
       if (!orderNumber) {
         return {
           success: false,
-          message: "Order number is required",
-          data: null,
+          message: 'Order number is required',
+          data: null
         };
       }
 
@@ -1075,7 +1075,7 @@ class HepsiburadaService extends BasePlatformService {
 
       logger.info(`Fetching order details from Hepsiburada: ${orderNumber}`, {
         connectionId: this.connectionId,
-        options,
+        options
       });
 
       const response = await this.retryRequest(() =>
@@ -1086,8 +1086,8 @@ class HepsiburadaService extends BasePlatformService {
       if (!response.data) {
         return {
           success: false,
-          message: "No data returned from Hepsiburada API",
-          data: null,
+          message: 'No data returned from Hepsiburada API',
+          data: null
         };
       }
 
@@ -1101,45 +1101,45 @@ class HepsiburadaService extends BasePlatformService {
       if (!hasValidOrderData) {
         return {
           success: false,
-          message: "Invalid or empty order data returned from Hepsiburada",
-          data: response.data,
+          message: 'Invalid or empty order data returned from Hepsiburada',
+          data: response.data
         };
       }
 
       return {
         success: true,
-        message: "Successfully fetched order details",
+        message: 'Successfully fetched order details',
         data: response.data,
         orderNumber: orderNumber,
-        fetchedAt: new Date().toISOString(),
+        fetchedAt: new Date().toISOString()
       };
     } catch (error) {
       // Handle specific HTTP errors
       if (error.response?.status === 404) {
         logger.warn(`Order not found: ${orderNumber}`, {
           connectionId: this.connectionId,
-          orderNumber,
+          orderNumber
         });
 
         return {
           success: false,
           message: `Order not found: ${orderNumber}`,
-          error: "ORDER_NOT_FOUND",
-          data: null,
+          error: 'ORDER_NOT_FOUND',
+          data: null
         };
       }
 
       if (error.response?.status === 403) {
         logger.warn(`Access denied for order: ${orderNumber}`, {
           connectionId: this.connectionId,
-          orderNumber,
+          orderNumber
         });
 
         return {
           success: false,
           message: `Access denied for order: ${orderNumber}`,
-          error: "ACCESS_DENIED",
-          data: null,
+          error: 'ACCESS_DENIED',
+          data: null
         };
       }
 
@@ -1150,7 +1150,7 @@ class HepsiburadaService extends BasePlatformService {
           connectionId: this.connectionId,
           orderNumber,
           statusCode: error.response?.status,
-          responseData: error.response?.data,
+          responseData: error.response?.data
         }
       );
 
@@ -1159,7 +1159,7 @@ class HepsiburadaService extends BasePlatformService {
         message: `Failed to fetch order details: ${error.message}`,
         error: error.response?.data || error.message,
         data: null,
-        orderNumber: orderNumber,
+        orderNumber: orderNumber
       };
     }
   }
@@ -1177,15 +1177,15 @@ class HepsiburadaService extends BasePlatformService {
       if (!Array.isArray(orderNumbers) || orderNumbers.length === 0) {
         return {
           success: false,
-          message: "Order numbers array is required and cannot be empty",
-          data: [],
+          message: 'Order numbers array is required and cannot be empty',
+          data: []
         };
       }
 
       const {
         batchSize = 10, // Process orders in batches to avoid overwhelming the API
         delayBetweenBatches = 1000, // 1 second delay between batches
-        continueOnError = true, // Continue processing even if some orders fail
+        continueOnError = true // Continue processing even if some orders fail
       } = options;
 
       logger.info(
@@ -1193,7 +1193,7 @@ class HepsiburadaService extends BasePlatformService {
         {
           connectionId: this.connectionId,
           totalOrders: orderNumbers.length,
-          batchSize,
+          batchSize
         }
       );
 
@@ -1227,7 +1227,7 @@ class HepsiburadaService extends BasePlatformService {
             error,
             connectionId: this.connectionId,
             batchIndex: batchIndex + 1,
-            batchSize: batch.length,
+            batchSize: batch.length
           });
 
           if (continueOnError) {
@@ -1262,21 +1262,21 @@ class HepsiburadaService extends BasePlatformService {
           successful: successful.length,
           failed: failed.length,
           batches: batches.length,
-          batchSize,
-        },
+          batchSize
+        }
       };
     } catch (error) {
       logger.error(`Bulk order details fetch failed: ${error.message}`, {
         error,
         connectionId: this.connectionId,
-        orderCount: orderNumbers?.length,
+        orderCount: orderNumbers?.length
       });
 
       return {
         success: false,
         message: `Bulk order details fetch failed: ${error.message}`,
         error: error.response?.data || error.message,
-        data: [],
+        data: []
       };
     }
   }
@@ -1295,10 +1295,10 @@ class HepsiburadaService extends BasePlatformService {
 
       const packageData = {
         items: orderItemIds.map((itemId) => ({ id: itemId })),
-        cargoCompany: shippingInfo.cargoCompany || "",
+        cargoCompany: shippingInfo.cargoCompany || '',
         desi: shippingInfo.desi || 1,
-        packageNumber: shippingInfo.packageNumber || "",
-        ...shippingInfo,
+        packageNumber: shippingInfo.packageNumber || '',
+        ...shippingInfo
       };
 
       const response = await this.retryRequest(() =>
@@ -1307,8 +1307,8 @@ class HepsiburadaService extends BasePlatformService {
 
       return {
         success: true,
-        message: "Package created successfully",
-        data: response.data,
+        message: 'Package created successfully',
+        data: response.data
       };
     } catch (error) {
       logger.error(
@@ -1316,14 +1316,14 @@ class HepsiburadaService extends BasePlatformService {
         {
           error,
           connectionId: this.connectionId,
-          orderItemIds,
+          orderItemIds
         }
       );
 
       return {
         success: false,
         message: `Failed to create package: ${error.message}`,
-        error: error.response?.data || error.message,
+        error: error.response?.data || error.message
       };
     }
   }
@@ -1346,8 +1346,8 @@ class HepsiburadaService extends BasePlatformService {
 
       return {
         success: true,
-        message: "Package shipping information updated successfully",
-        data: response.data,
+        message: 'Package shipping information updated successfully',
+        data: response.data
       };
     } catch (error) {
       logger.error(
@@ -1355,14 +1355,14 @@ class HepsiburadaService extends BasePlatformService {
         {
           error,
           connectionId: this.connectionId,
-          packageNumber,
+          packageNumber
         }
       );
 
       return {
         success: false,
         message: `Failed to update package shipping: ${error.message}`,
-        error: error.response?.data || error.message,
+        error: error.response?.data || error.message
       };
     }
   }
@@ -1374,7 +1374,7 @@ class HepsiburadaService extends BasePlatformService {
    * @param {string} reason - Cancellation reason
    * @returns {Object} - Result of cancellation
    */
-  async cancelOrder(orderItemId, reason = "MerchantCancel") {
+  async cancelOrder(orderItemId, reason = 'MerchantCancel') {
     try {
       await this.initialize();
 
@@ -1382,7 +1382,7 @@ class HepsiburadaService extends BasePlatformService {
       const url = `/packages/merchantid/${this.merchantId}/items/${orderItemId}/cancel`;
 
       const cancellationData = {
-        reason: reason,
+        reason: reason
       };
 
       const response = await this.retryRequest(() =>
@@ -1391,21 +1391,21 @@ class HepsiburadaService extends BasePlatformService {
 
       return {
         success: true,
-        message: "Order cancelled successfully",
-        data: response.data,
+        message: 'Order cancelled successfully',
+        data: response.data
       };
     } catch (error) {
       logger.error(`Failed to cancel order on Hepsiburada: ${error.message}`, {
         error,
         connectionId: this.connectionId,
         orderItemId,
-        reason,
+        reason
       });
 
       return {
         success: false,
         message: `Failed to cancel order: ${error.message}`,
-        error: error.response?.data || error.message,
+        error: error.response?.data || error.message
       };
     }
   }
@@ -1417,7 +1417,7 @@ class HepsiburadaService extends BasePlatformService {
    * @param {string} format - Output format (zpl, base64zpl, pdf, png, jpg)
    * @returns {Object} - Barcode data
    */
-  async generateShippingBarcode(packageNumber, format = "pdf") {
+  async generateShippingBarcode(packageNumber, format = 'pdf') {
     try {
       await this.initialize();
 
@@ -1426,15 +1426,15 @@ class HepsiburadaService extends BasePlatformService {
       const response = await this.retryRequest(() =>
         this.axiosInstance.get(url, {
           params: { format },
-          responseType: format === "pdf" ? "arraybuffer" : "json",
+          responseType: format === 'pdf' ? 'arraybuffer' : 'json'
         })
       );
 
       return {
         success: true,
-        message: "Barcode generated successfully",
+        message: 'Barcode generated successfully',
         data: response.data,
-        format: format,
+        format: format
       };
     } catch (error) {
       logger.error(
@@ -1443,14 +1443,14 @@ class HepsiburadaService extends BasePlatformService {
           error,
           connectionId: this.connectionId,
           packageNumber,
-          format,
+          format
         }
       );
 
       return {
         success: false,
         message: `Failed to generate barcode: ${error.message}`,
-        error: error.response?.data || error.message,
+        error: error.response?.data || error.message
       };
     }
   }
@@ -1465,7 +1465,7 @@ class HepsiburadaService extends BasePlatformService {
     try {
       if (!this.isTestEnvironment) {
         throw new Error(
-          "Test order creation is only available in test environment"
+          'Test order creation is only available in test environment'
         );
       }
 
@@ -1480,8 +1480,8 @@ class HepsiburadaService extends BasePlatformService {
 
       return {
         success: true,
-        message: "Test order created successfully",
-        data: response.data,
+        message: 'Test order created successfully',
+        data: response.data
       };
     } catch (error) {
       logger.error(
@@ -1489,14 +1489,14 @@ class HepsiburadaService extends BasePlatformService {
         {
           error,
           connectionId: this.connectionId,
-          testOrderData,
+          testOrderData
         }
       );
 
       return {
         success: false,
         message: `Failed to create test order: ${error.message}`,
-        error: error.response?.data || error.message,
+        error: error.response?.data || error.message
       };
     }
   }
@@ -1531,8 +1531,8 @@ class HepsiburadaService extends BasePlatformService {
           summary: {
             successCount: 0,
             skippedCount: hepsiburadaOrders.length,
-            updatedCount: 0,
-          },
+            updatedCount: 0
+          }
         };
       }
 
@@ -1541,35 +1541,35 @@ class HepsiburadaService extends BasePlatformService {
         where: {
           connectionId: this.connectionId,
           externalOrderId: {
-            [Op.in]: orderNumbers,
-          },
+            [Op.in]: orderNumbers
+          }
         },
         attributes: [
-          "id",
-          "externalOrderId",
-          "orderNumber",
-          "orderStatus",
-          "cargoTrackingLink",
-          "cargoTrackingNumber",
-          "cargoCompany",
-          "orderDate",
-          "customerName",
-          "customerEmail",
-          "customerPhone",
+          'id',
+          'externalOrderId',
+          'orderNumber',
+          'orderStatus',
+          'cargoTrackingLink',
+          'cargoTrackingNumber',
+          'cargoCompany',
+          'orderDate',
+          'customerName',
+          'customerEmail',
+          'customerPhone'
         ], // Limit fields fetched
 
         include: [
           {
             model: ShippingDetail,
-            as: "shippingDetail",
-            attributes: ["id", "recipientName", "address", "city"], // Limit fields fetched
+            as: 'shippingDetail',
+            attributes: ['id', 'recipientName', 'address', 'city'] // Limit fields fetched
           },
           {
             model: OrderItem,
-            as: "items",
-            attributes: ["id", "title", "sku", "quantity", "price"], // Limit fields fetched
-          },
-        ],
+            as: 'items',
+            attributes: ['id', 'title', 'sku', 'quantity', 'price'] // Limit fields fetched
+          }
+        ]
       });
 
       // Map for fast lookups
@@ -1601,7 +1601,7 @@ class HepsiburadaService extends BasePlatformService {
 
           if (existingOrder) {
             // Order exists - update it with the latest data
-            if (String(orderNumber) == "4548385896") {
+            if (String(orderNumber) == '4548385896') {
               console.log(
                 `Updating existing order ${orderNumber} with new data`
               );
@@ -1617,40 +1617,40 @@ class HepsiburadaService extends BasePlatformService {
                 cargoTrackingLink:
                   (order.details &&
                     order.details.items[0].cargoCompanyModel.trackingUrl) ||
-                  "",
-                cargoTrackingNumber: order.barcode || order.Barcode || "",
+                  '',
+                cargoTrackingNumber: order.barcode || order.Barcode || '',
                 cargoCompany:
                   order.cargoCompany ||
                   (order.details && order.details.items[0].cargoCompany) ||
                   (order.items && order.items[0]?.cargoCompany) ||
-                  "",
+                  '',
                 orderDate: order.details?.createdDate
                   ? new Date(order.details.createdDate)
                   : null || order.createdDate
-                  ? new Date(order.createdDate)
-                  : null || order.orderDate
-                  ? new Date(order.orderDate)
-                  : null,
+                    ? new Date(order.createdDate)
+                    : null || order.orderDate
+                      ? new Date(order.orderDate)
+                      : null,
                 customerName:
                   order.customerName ||
                   (order.details &&
                     order.details.customer &&
                     order.details.customer.name) ||
-                  "",
+                  '',
                 customerEmail:
                   order.email ||
                   (order.details &&
                     order.details.deliveryAddress &&
                     order.details.deliveryAddress.email) ||
-                  "",
+                  '',
                 customerPhone:
                   order.phoneNumber ||
                   (order.details &&
                     order.details.deliveryAddress &&
                     order.details.deliveryAddress.phoneNumber) ||
-                  "",
+                  '',
                 rawData: JSON.stringify(order),
-                lastSyncedAt: new Date(),
+                lastSyncedAt: new Date()
               });
 
               // Also update the OrderItem records with new product names and SKUs
@@ -1670,13 +1670,13 @@ class HepsiburadaService extends BasePlatformService {
 
                     // Strategy 1: Find by platformProductId (most reliable)
                     const itemPlatformProductId =
-                      item.productBarcode || item.sku || item.merchantSKU || "";
+                      item.productBarcode || item.sku || item.merchantSKU || '';
                     if (itemPlatformProductId) {
                       existingOrderItem = await OrderItem.findOne({
                         where: {
                           orderId: existingOrder.id,
-                          platformProductId: itemPlatformProductId,
-                        },
+                          platformProductId: itemPlatformProductId
+                        }
                       });
                     }
 
@@ -1685,8 +1685,8 @@ class HepsiburadaService extends BasePlatformService {
                       existingOrderItem = await OrderItem.findOne({
                         where: {
                           orderId: existingOrder.id,
-                          sku: item.merchantSKU || item.sku,
-                        },
+                          sku: item.merchantSKU || item.sku
+                        }
                       });
                     }
 
@@ -1731,8 +1731,8 @@ class HepsiburadaService extends BasePlatformService {
                             item.product?.name ||
                             item.product?.title ||
                             item.listing?.displayName ||
-                            item.listing?.title,
-                        },
+                            item.listing?.title
+                        }
                       });
                     }
 
@@ -1740,7 +1740,7 @@ class HepsiburadaService extends BasePlatformService {
                     if (!existingOrderItem) {
                       const existingItems = await OrderItem.findAll({
                         where: { orderId: existingOrder.id },
-                        order: [["createdAt", "ASC"]],
+                        order: [['createdAt', 'ASC']]
                       });
 
                       if (existingItems.length > index) {
@@ -1869,11 +1869,11 @@ class HepsiburadaService extends BasePlatformService {
                             matchStrategy:
                               existingOrderItem.platformProductId ===
                               itemPlatformProductId
-                                ? "platformProductId"
+                                ? 'platformProductId'
                                 : existingOrderItem.sku ===
                                   (item.merchantSKU || item.sku)
-                                ? "sku"
-                                : existingOrderItem.title ===
+                                  ? 'sku'
+                                  : existingOrderItem.title ===
                                   (item.productName ||
                                     item.name ||
                                     item.title ||
@@ -1891,8 +1891,8 @@ class HepsiburadaService extends BasePlatformService {
                                     item.product?.title ||
                                     item.listing?.displayName ||
                                     item.listing?.title)
-                                ? "title"
-                                : "index",
+                                    ? 'title'
+                                    : 'index'
                           }
                         );
                       } else {
@@ -1900,7 +1900,7 @@ class HepsiburadaService extends BasePlatformService {
                           `No changes needed for OrderItem ${existingOrderItem.id} in order ${orderNumber}`,
                           {
                             orderNumber,
-                            itemId: existingOrderItem.id,
+                            itemId: existingOrderItem.id
                           }
                         );
                       }
@@ -1930,8 +1930,8 @@ class HepsiburadaService extends BasePlatformService {
                               item.product?.name ||
                               item.product?.title ||
                               item.listing?.displayName ||
-                              item.listing?.title,
-                          },
+                              item.listing?.title
+                          }
                         }
                       );
                     }
@@ -1941,7 +1941,7 @@ class HepsiburadaService extends BasePlatformService {
                       {
                         error: itemUpdateError.message,
                         itemIndex: index,
-                        orderNumber,
+                        orderNumber
                       }
                     );
                     // Continue with other items if one fails
@@ -1960,7 +1960,7 @@ class HepsiburadaService extends BasePlatformService {
                     message: updateError.message,
                     stack: updateError.stack,
                     name: updateError.name,
-                    code: updateError.code,
+                    code: updateError.code
                   },
                   orderNumber: orderNumber,
                   connectionId: this.connectionId,
@@ -1970,14 +1970,14 @@ class HepsiburadaService extends BasePlatformService {
                       (order.items && order.items[0]?.status)
                     ),
                     hasItems: !!order.items,
-                    orderStructure: Object.keys(order || {}),
+                    orderStructure: Object.keys(order || {})
                   },
-                  isDatabaseError: updateError.name?.includes("Sequelize"),
+                  isDatabaseError: updateError.name?.includes('Sequelize'),
                   isConstraintError:
-                    updateError.name === "SequelizeUniqueConstraintError",
+                    updateError.name === 'SequelizeUniqueConstraintError',
                   isConnectionError:
-                    updateError.message?.includes("connection") ||
-                    updateError.code === "ECONNREFUSED",
+                    updateError.message?.includes('connection') ||
+                    updateError.code === 'ECONNREFUSED'
                 }
               );
               // Re-throw error instead of continuing with fallback
@@ -1995,7 +1995,7 @@ class HepsiburadaService extends BasePlatformService {
               hasDetails: !!order.details,
               hasItems: !!order.items,
               detailsStructure: order.details ? Object.keys(order.details) : [],
-              itemsCount: order.items ? order.items.length : 0,
+              itemsCount: order.items ? order.items.length : 0
             });
 
             const result = await sequelize.transaction(async (t) => {
@@ -2005,14 +2005,14 @@ class HepsiburadaService extends BasePlatformService {
                 order.details?.items?.[0]?.customerName ||
                 order.customerName ||
                 order.recipientName ||
-                "";
+                '';
 
               const customerEmail =
                 order.details?.invoice?.address?.email ||
                 order.details?.deliveryAddress?.email ||
                 order.details?.items?.[0]?.shippingAddress?.email ||
                 order.email ||
-                "";
+                '';
 
               // Extract phone number from order data
               const phoneNumber = this.extractPhoneNumber(order);
@@ -2039,7 +2039,7 @@ class HepsiburadaService extends BasePlatformService {
                 order.details?.items?.[0]?.status ||
                 order.items?.[0]?.status ||
                 order.status ||
-                "new";
+                'new';
 
               // Extract cargo tracking info
               const cargoTrackingNumber = order.Barcode || null;
@@ -2048,16 +2048,16 @@ class HepsiburadaService extends BasePlatformService {
               const orderDate = order.details?.createdDate
                 ? new Date(order.details.orderDate)
                 : order.details?.orderDate
-                ? new Date(order.details.orderDate)
-                : order.orderDate
-                ? new Date(order.orderDate)
-                : new Date();
+                  ? new Date(order.details.orderDate)
+                  : order.orderDate
+                    ? new Date(order.orderDate)
+                    : new Date();
 
               // Create the main order record with findOrCreate for atomicity
               const [normalizedOrder, created] = await Order.findOrCreate({
                 where: {
                   externalOrderId: orderNumber,
-                  connectionId: this.connectionId,
+                  connectionId: this.connectionId
                 },
                 defaults: {
                   externalOrderId: orderNumber,
@@ -2070,22 +2070,22 @@ class HepsiburadaService extends BasePlatformService {
                     (order.details && order.details.Id) ||
                     (order.items && order.items[0] && order.items[0].orderId) ||
                     (order.items && order.items[0] && order.items[0].Id),
-                  platformId: "hepsiburada",
+                  platformId: 'hepsiburada',
                   connectionId: this.connectionId,
                   userId: this.connection.userId,
                   customerName: customerName,
                   customerEmail: customerEmail,
-                  customerPhone: phoneNumber || "",
+                  customerPhone: phoneNumber || '',
                   cargoTrackingNumber: cargoTrackingNumber,
 
                   // Required JSON fields for database
                   customerInfo: this.safeJsonStringify({
-                    firstName: customerName.split(" ")[0] || "",
-                    lastName: customerName.split(" ").slice(1).join(" ") || "",
+                    firstName: customerName.split(' ')[0] || '',
+                    lastName: customerName.split(' ').slice(1).join(' ') || '',
                     email: customerEmail,
-                    phone: phoneNumber || "",
+                    phone: phoneNumber || '',
                     fullName: customerName,
-                    customerId: order.details?.customer?.customerId || null,
+                    customerId: order.details?.customer?.customerId || null
                   }),
                   shippingAddress: this.safeJsonStringify(
                     order.details?.deliveryAddress ||
@@ -2099,17 +2099,17 @@ class HepsiburadaService extends BasePlatformService {
                   orderStatus: this.mapOrderStatus(orderStatus),
                   totalAmount: totalAmount.toString(),
                   currency:
-                    order.details?.items?.[0]?.totalPrice?.currency || "TRY",
-                  notes: "",
+                    order.details?.items?.[0]?.totalPrice?.currency || 'TRY',
+                  notes: '',
                   paymentStatus: order.details?.paymentStatus
                     ? this.mapPaymentStatus(order.details.paymentStatus)
-                    : "pending",
+                    : 'pending',
                   platformStatus: orderStatus,
-                  platform: "hepsiburada",
+                  platform: 'hepsiburada',
                   rawData: JSON.stringify(order),
-                  lastSyncedAt: new Date(),
+                  lastSyncedAt: new Date()
                 },
-                transaction: t,
+                transaction: t
               });
 
               if (created) {
@@ -2136,29 +2136,29 @@ class HepsiburadaService extends BasePlatformService {
                     shippingAddress.address ||
                     order.shippingAddressDetail ||
                     order.billingAddress ||
-                    "",
+                    '',
                   city:
                     shippingAddress.city ||
                     order.shippingCity ||
                     order.billingCity ||
-                    "",
+                    '',
                   state:
                     shippingAddress.district ||
                     order.shippingDistrict ||
                     order.billingDistrict ||
-                    "",
+                    '',
                   postalCode:
                     shippingAddress.postalCode ||
                     order.shippingPostalCode ||
                     order.billingPostalCode ||
-                    "",
+                    '',
                   country:
                     shippingAddress.countryCode ||
                     order.shippingCountryCode ||
                     order.billingCountryCode ||
-                    "TR",
-                  phone: phoneNumber || "",
-                  email: customerEmail,
+                    'TR',
+                  phone: phoneNumber || '',
+                  email: customerEmail
                 },
                 { transaction: t }
               );
@@ -2191,7 +2191,7 @@ class HepsiburadaService extends BasePlatformService {
                   return {
                     orderId: normalizedOrder.id,
                     platformProductId:
-                      item.productBarcode || item.sku || item.merchantSKU || "",
+                      item.productBarcode || item.sku || item.merchantSKU || '',
                     productId: null, // Will be set by product linking
                     title:
                       item.productName ||
@@ -2211,8 +2211,8 @@ class HepsiburadaService extends BasePlatformService {
                       item.product?.title ||
                       item.listing?.displayName ||
                       item.listing?.title ||
-                      "Unknown Product",
-                    sku: item.merchantSKU || item.sku || "",
+                      'Unknown Product',
+                    sku: item.merchantSKU || item.sku || '',
                     quantity: quantity,
                     price: unitPrice,
                     totalPrice: totalItemPrice, // Required NOT NULL field
@@ -2226,14 +2226,14 @@ class HepsiburadaService extends BasePlatformService {
                     currency:
                       item.totalPrice?.currency ||
                       item.unitPrice?.currency ||
-                      "TRY",
-                    barcode: item.productBarcode || item.barcode || "",
-                    lineItemStatus: item.status || "new",
+                      'TRY',
+                    barcode: item.productBarcode || item.barcode || '',
+                    lineItemStatus: item.status || 'new',
                     vatBaseAmount: item.vat || 0,
                     variantInfo: item.properties
                       ? JSON.stringify(item.properties)
                       : null,
-                    rawData: JSON.stringify(item),
+                    rawData: JSON.stringify(item)
                   };
                 });
               } else if (order.items && Array.isArray(order.items)) {
@@ -2246,7 +2246,7 @@ class HepsiburadaService extends BasePlatformService {
                   return {
                     orderId: normalizedOrder.id,
                     platformProductId:
-                      item.productBarcode || item.merchantSku || "",
+                      item.productBarcode || item.merchantSku || '',
                     productId: null, // Will be set by product linking
                     title:
                       item.productName ||
@@ -2266,8 +2266,8 @@ class HepsiburadaService extends BasePlatformService {
                       item.product?.title ||
                       item.listing?.displayName ||
                       item.listing?.title ||
-                      "Unknown Product",
-                    sku: item.merchantSku || item.sku || "",
+                      'Unknown Product',
+                    sku: item.merchantSku || item.sku || '',
                     quantity: quantity,
                     price: unitPrice,
                     totalPrice: totalPrice, // Required NOT NULL field
@@ -2276,12 +2276,12 @@ class HepsiburadaService extends BasePlatformService {
                       item.totalHBDiscount?.amount ||
                       0,
                     invoiceTotal: item.totalPrice?.amount || totalPrice,
-                    currency: item.totalPrice?.currency || "TRY",
-                    barcode: item.productBarcode || "",
+                    currency: item.totalPrice?.currency || 'TRY',
+                    barcode: item.productBarcode || '',
                     variantInfo: item.properties
                       ? JSON.stringify(item.properties)
                       : null,
-                    rawData: JSON.stringify(item),
+                    rawData: JSON.stringify(item)
                   };
                 });
               }
@@ -2306,7 +2306,7 @@ class HepsiburadaService extends BasePlatformService {
                       {
                         orderNumber,
                         connectionId: this.connectionId,
-                        linkingStats: linkingResult.stats,
+                        linkingStats: linkingResult.stats
                       }
                     );
                   } else {
@@ -2315,7 +2315,7 @@ class HepsiburadaService extends BasePlatformService {
                       {
                         orderNumber,
                         connectionId: this.connectionId,
-                        error: linkingResult.error,
+                        error: linkingResult.error
                       }
                     );
 
@@ -2330,7 +2330,7 @@ class HepsiburadaService extends BasePlatformService {
                     {
                       error: linkingError,
                       orderNumber,
-                      connectionId: this.connectionId,
+                      connectionId: this.connectionId
                     }
                   );
 
@@ -2348,19 +2348,19 @@ class HepsiburadaService extends BasePlatformService {
 
             this.logger.debug(
               `Successfully created new order for ${
-                order.orderNumber || order.OrderNumber || "unknown"
+                order.orderNumber || order.OrderNumber || 'unknown'
               }`
             );
           } catch (error) {
             this.logger.error(
               `Failed to create new order for ${
-                order.orderNumber || order.OrderNumber || "unknown"
+                order.orderNumber || order.OrderNumber || 'unknown'
               }: ${error.message}`,
               {
                 error,
                 orderNumber:
-                  order.orderNumber || order.OrderNumber || "unknown",
-                connectionId: this.connectionId,
+                  order.orderNumber || order.OrderNumber || 'unknown',
+                connectionId: this.connectionId
               }
             );
             // Re-throw error instead of continuing
@@ -2368,27 +2368,27 @@ class HepsiburadaService extends BasePlatformService {
           }
         } catch (error) {
           // Log unique constraint violations and other errors, then re-throw
-          if (error.name === "SequelizeUniqueConstraintError") {
+          if (error.name === 'SequelizeUniqueConstraintError') {
             this.logger.error(
               `Unique constraint violation for order ${order.orderNumber}, cannot continue`,
               {
-                orderNumber: order.orderNumber || "unknown",
+                orderNumber: order.orderNumber || 'unknown',
                 connectionId: this.connectionId,
                 errorName: error.name,
                 constraintCode: error.original?.code,
-                errno: error.original?.errno,
+                errno: error.original?.errno
               }
             );
           } else {
             this.logger.error(
               `Failed to process order ${
-                order.orderNumber || order.OrderNumber || "unknown"
+                order.orderNumber || order.OrderNumber || 'unknown'
               }: ${error.message}`,
               {
                 error,
                 orderNumber:
-                  order.orderNumber || order.OrderNumber || "unknown",
-                connectionId: this.connectionId,
+                  order.orderNumber || order.OrderNumber || 'unknown',
+                connectionId: this.connectionId
               }
             );
           }
@@ -2406,8 +2406,8 @@ class HepsiburadaService extends BasePlatformService {
           total: hepsiburadaOrders.length,
           success: successCount,
           updated: updatedCount,
-          skipped: skippedCount,
-        },
+          skipped: skippedCount
+        }
       };
     } catch (error) {
       this.logger.error(`Failed to normalize orders: ${error.message}`, {
@@ -2415,28 +2415,28 @@ class HepsiburadaService extends BasePlatformService {
           message: error.message,
           stack: error.stack,
           name: error.name,
-          code: error.code,
+          code: error.code
         },
         connectionId: this.connectionId,
         orderProcessingStats: {
           totalOrders: hepsiburadaOrders?.length || 0,
           successCount,
           updatedCount,
-          skippedCount,
+          skippedCount
         },
         errorContext: {
-          isDatabaseError: error.name?.includes("Sequelize"),
-          isConstraintError: error.name === "SequelizeUniqueConstraintError",
+          isDatabaseError: error.name?.includes('Sequelize'),
+          isConstraintError: error.name === 'SequelizeUniqueConstraintError',
           isConnectionError:
-            error.message?.includes("connection") ||
-            error.code === "ECONNREFUSED",
+            error.message?.includes('connection') ||
+            error.code === 'ECONNREFUSED',
           isTimeoutError:
-            error.code === "ETIMEDOUT" || error.message?.includes("timeout"),
-          isValidationError: error.name === "SequelizeValidationError",
-          isTransactionError: error.message?.includes("transaction"),
+            error.code === 'ETIMEDOUT' || error.message?.includes('timeout'),
+          isValidationError: error.name === 'SequelizeValidationError',
+          isTransactionError: error.message?.includes('transaction')
         },
         lastProcessedOrder:
-          normalizedOrders[normalizedOrders.length - 1]?.orderNumber || "none",
+          normalizedOrders[normalizedOrders.length - 1]?.orderNumber || 'none'
       });
       throw error;
     }
@@ -2482,7 +2482,7 @@ class HepsiburadaService extends BasePlatformService {
             district: hepsiburadaOrderData.shippingDistrict,
             town: hepsiburadaOrderData.shippingTown,
             countryCode: hepsiburadaOrderData.shippingCountryCode,
-            postalCode: hepsiburadaOrderData.shippingPostalCode,
+            postalCode: hepsiburadaOrderData.shippingPostalCode
           },
           billingAddressJson: {
             companyName: hepsiburadaOrderData.companyName,
@@ -2494,7 +2494,7 @@ class HepsiburadaService extends BasePlatformService {
             postalCode: hepsiburadaOrderData.billingPostalCode,
             taxOffice: hepsiburadaOrderData.taxOffice,
             taxNumber: hepsiburadaOrderData.taxNumber,
-            identityNo: hepsiburadaOrderData.identityNo,
+            identityNo: hepsiburadaOrderData.identityNo
           },
           deliveryAddressJson: hepsiburadaOrderData.deliveryAddress,
           invoiceDetailsJson:
@@ -2502,7 +2502,7 @@ class HepsiburadaService extends BasePlatformService {
           customerJson: {
             name: hepsiburadaOrderData.customerName,
             email: hepsiburadaOrderData.email,
-            phone: hepsiburadaOrderData.phoneNumber,
+            phone: hepsiburadaOrderData.phoneNumber
           },
           createdDate: hepsiburadaOrderData.createdDate
             ? new Date(hepsiburadaOrderData.createdDate)
@@ -2549,7 +2549,7 @@ class HepsiburadaService extends BasePlatformService {
           invoice: hepsiburadaOrderData.invoice,
           deliveryAddress: hepsiburadaOrderData.deliveryAddress,
           orderNote: hepsiburadaOrderData.orderNote,
-          rawData: hepsiburadaOrderData,
+          rawData: hepsiburadaOrderData
         },
         { transaction }
       );
@@ -2560,7 +2560,7 @@ class HepsiburadaService extends BasePlatformService {
           error,
           orderId,
           orderNumber:
-            hepsiburadaOrderData.orderNumber || hepsiburadaOrderData.id,
+            hepsiburadaOrderData.orderNumber || hepsiburadaOrderData.id
         }
       );
       throw error;
@@ -2574,15 +2574,15 @@ class HepsiburadaService extends BasePlatformService {
    */
   mapPaymentStatus(hepsiburadaPaymentStatus) {
     const paymentStatusMap = {
-      Paid: "paid",
-      UnPaid: "pending",
-      Pending: "pending",
-      Failed: "failed",
-      Refunded: "refunded",
-      PartiallyRefunded: "partially_refunded",
+      Paid: 'paid',
+      UnPaid: 'pending',
+      Pending: 'pending',
+      Failed: 'failed',
+      Refunded: 'refunded',
+      PartiallyRefunded: 'partially_refunded'
     };
 
-    return paymentStatusMap[hepsiburadaPaymentStatus] || "pending";
+    return paymentStatusMap[hepsiburadaPaymentStatus] || 'pending';
   }
 
   /**
@@ -2624,12 +2624,12 @@ class HepsiburadaService extends BasePlatformService {
    */
   mapOrderStatus(hepsiburadaStatus) {
     // Use the shared utility with Hepsiburada-specific mappings
-    const mappedStatus = mapOrderStatus(hepsiburadaStatus, "hepsiburada");
+    const mappedStatus = mapOrderStatus(hepsiburadaStatus, 'hepsiburada');
 
     // For Hepsiburada, pending orders should be treated as processing
     // This is a business requirement for Hepsiburada platform
-    if (mappedStatus === "pending") {
-      return "processing";
+    if (mappedStatus === 'pending') {
+      return 'processing';
     }
 
     return mappedStatus;
@@ -2648,8 +2648,8 @@ class HepsiburadaService extends BasePlatformService {
       if (!credentials.merchantId) {
         return {
           success: false,
-          message: "Connection failed: Merchant ID is missing from credentials",
-          error: "Missing required parameter: merchantId",
+          message: 'Connection failed: Merchant ID is missing from credentials',
+          error: 'Missing required parameter: merchantId'
         };
       }
 
@@ -2664,9 +2664,9 @@ class HepsiburadaService extends BasePlatformService {
           {
             params: {
               offset: 0,
-              limit: 1,
+              limit: 1
             },
-            timeout: 10000,
+            timeout: 10000
           }
         );
 
@@ -2674,20 +2674,20 @@ class HepsiburadaService extends BasePlatformService {
 
         return {
           success: true,
-          message: "Connection successful",
+          message: 'Connection successful',
           data: {
-            platform: "hepsiburada",
+            platform: 'hepsiburada',
             connectionId: this.connectionId,
-            status: "active",
+            status: 'active',
             merchantId: credentials.merchantId,
-            environment: this.isTestEnvironment ? "test" : "production",
-          },
+            environment: this.isTestEnvironment ? 'test' : 'production'
+          }
         };
       } catch (requestError) {
-        this.logger.error("Hepsiburada API request failed", {
+        this.logger.error('Hepsiburada API request failed', {
           error: requestError.message,
           status: requestError.response?.status,
-          data: requestError.response?.data,
+          data: requestError.response?.data
         });
 
         let errorMessage = requestError.message;
@@ -2698,7 +2698,7 @@ class HepsiburadaService extends BasePlatformService {
             errorMessage = errorData.message;
           } else if (errorData.error_description) {
             errorMessage = errorData.error_description;
-          } else if (typeof errorData === "string") {
+          } else if (typeof errorData === 'string') {
             errorMessage = errorData;
           }
         }
@@ -2706,15 +2706,15 @@ class HepsiburadaService extends BasePlatformService {
         // Map common HTTP status codes to user-friendly messages
         if (requestError.response?.status === 401) {
           errorMessage =
-            "Authentication failed - please check your API credentials";
+            'Authentication failed - please check your API credentials';
         } else if (requestError.response?.status === 403) {
           errorMessage =
-            "Access denied - your account may not have the required permissions";
+            'Access denied - your account may not have the required permissions';
         } else if (requestError.response?.status === 404) {
           errorMessage =
-            "API endpoint not found - please verify your merchant ID";
+            'API endpoint not found - please verify your merchant ID';
         } else if (requestError.response?.status >= 500) {
-          errorMessage = "Hepsiburada server error - please try again later";
+          errorMessage = 'Hepsiburada server error - please try again later';
         }
 
         throw new Error(errorMessage);
@@ -2724,14 +2724,14 @@ class HepsiburadaService extends BasePlatformService {
         `Hepsiburada connection test failed: ${error.message}`,
         {
           error,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
       return {
         success: false,
         message: `Connection failed: ${error.message}`,
-        error: error.response?.data || error.message,
+        error: error.response?.data || error.message
       };
     }
   }
@@ -2747,7 +2747,7 @@ class HepsiburadaService extends BasePlatformService {
 
       const defaultParams = {
         page: params.page || 0,
-        size: 100,
+        size: 100
       };
 
       const queryParams = { ...defaultParams, ...params };
@@ -2764,7 +2764,7 @@ class HepsiburadaService extends BasePlatformService {
       );
 
       // Use the working products endpoint from our testing
-      let url = `/product/api/products/all-products-of-merchant/${this.merchantId}`;
+      const url = `/product/api/products/all-products-of-merchant/${this.merchantId}`;
 
       this.logger.debug(`Attempting to fetch products from: ${url}`);
 
@@ -2787,25 +2787,25 @@ class HepsiburadaService extends BasePlatformService {
             hasCode: response.data?.code !== undefined,
             hasPagination: !!(
               response.data?.totalElements || response.data?.totalPages
-            ),
+            )
           },
           dataArrayLength: Array.isArray(response.data?.data)
             ? response.data.data.length
-            : "N/A",
+            : 'N/A'
         });
 
         // Check if response indicates success
         if (response.data?.code !== 0 && !response.data?.success) {
-          this.logger.warn("Hepsiburada API returned unsuccessful response:", {
+          this.logger.warn('Hepsiburada API returned unsuccessful response:', {
             code: response.data?.code,
             success: response.data?.success,
-            message: response.data?.message,
+            message: response.data?.message
           });
           return {
             success: false,
             message:
-              response.data?.message || "API returned unsuccessful response",
-            data: [],
+              response.data?.message || 'API returned unsuccessful response',
+            data: []
           };
         }
 
@@ -2819,7 +2819,7 @@ class HepsiburadaService extends BasePlatformService {
         ) {
           return {
             success: true,
-            message: "No products found in Hepsiburada account",
+            message: 'No products found in Hepsiburada account',
             data: [],
             pagination: {
               page: queryParams.page,
@@ -2827,8 +2827,8 @@ class HepsiburadaService extends BasePlatformService {
               total: response.data?.totalElements || 0,
               totalPages: response.data?.totalPages || 0,
               isFirst: response.data?.first || true,
-              isLast: response.data?.last || true,
-            },
+              isLast: response.data?.last || true
+            }
           };
         }
 
@@ -2840,8 +2840,8 @@ class HepsiburadaService extends BasePlatformService {
           return {
             success: false,
             message:
-              "Invalid response format from Hepsiburada API - expected array of products",
-            data: [],
+              'Invalid response format from Hepsiburada API - expected array of products',
+            data: []
           };
         }
 
@@ -2849,7 +2849,7 @@ class HepsiburadaService extends BasePlatformService {
           `Successfully fetched ${
             productsData.length
           } products from Hepsiburada (page ${queryParams.page + 1}/${
-            response.data?.totalPages || "unknown"
+            response.data?.totalPages || 'unknown'
           })`
         );
 
@@ -2867,8 +2867,8 @@ class HepsiburadaService extends BasePlatformService {
             isFirst: response.data?.first || queryParams.page === 0,
             isLast: response.data?.last || false,
             hasNext: !response.data?.last,
-            hasPrevious: !response.data?.first,
-          },
+            hasPrevious: !response.data?.first
+          }
         };
       } catch (endpointError) {
         this.logger.error(
@@ -2877,7 +2877,7 @@ class HepsiburadaService extends BasePlatformService {
             error: endpointError,
             url,
             status: endpointError.response?.status,
-            responseData: endpointError.response?.data,
+            responseData: endpointError.response?.data
           }
         );
 
@@ -2890,9 +2890,9 @@ class HepsiburadaService extends BasePlatformService {
           debugInfo: {
             endpoint: url,
             status: endpointError.response?.status,
-            method: "GET",
-            baseURL: this.apiUrl,
-          },
+            method: 'GET',
+            baseURL: this.apiUrl
+          }
         };
       }
     } catch (error) {
@@ -2900,7 +2900,7 @@ class HepsiburadaService extends BasePlatformService {
         `Failed to fetch products from Hepsiburada: ${error.message}`,
         {
           error,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
@@ -2908,7 +2908,7 @@ class HepsiburadaService extends BasePlatformService {
         success: false,
         message: `Failed to fetch products: ${error.message}`,
         error: error.response?.data || error.message,
-        data: [],
+        data: []
       };
     }
   }
@@ -2928,16 +2928,16 @@ class HepsiburadaService extends BasePlatformService {
       let hasMorePages = true;
 
       const defaultParams = {
-        size: params.size || params.limit || 1000,
+        size: params.size || params.limit || 1000
       };
 
-      this.logger.info("Starting to fetch all products from Hepsiburada...");
+      this.logger.info('Starting to fetch all products from Hepsiburada...');
 
       while (hasMorePages) {
         const pageParams = {
           ...defaultParams,
           ...params,
-          page: currentPage,
+          page: currentPage
         };
 
         this.logger.debug(
@@ -2974,7 +2974,7 @@ class HepsiburadaService extends BasePlatformService {
 
         // Safety check to prevent infinite loops
         if (currentPage > 1000) {
-          this.logger.warn("Reached maximum page limit (1000), stopping");
+          this.logger.warn('Reached maximum page limit (1000), stopping');
           break;
         }
 
@@ -2995,15 +2995,15 @@ class HepsiburadaService extends BasePlatformService {
         pagination: {
           totalPages: currentPage,
           totalProducts: allProducts.length,
-          pagesProcessed: currentPage,
-        },
+          pagesProcessed: currentPage
+        }
       };
     } catch (error) {
       this.logger.error(
         `Failed to fetch all products from Hepsiburada: ${error.message}`,
         {
           error,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
@@ -3011,7 +3011,7 @@ class HepsiburadaService extends BasePlatformService {
         success: false,
         message: `Failed to fetch all products: ${error.message}`,
         error: error.response?.data || error.message,
-        data: [],
+        data: []
       };
     }
   }
@@ -3028,7 +3028,7 @@ class HepsiburadaService extends BasePlatformService {
 
       const defaultParams = {
         page: params.page || 0,
-        size: params.size || params.limit || 1000,
+        size: params.size || params.limit || 1000
       };
 
       const queryParams = { ...defaultParams, ...params };
@@ -3040,7 +3040,7 @@ class HepsiburadaService extends BasePlatformService {
       );
 
       // Use the working products endpoint from our testing
-      let url = `/product/api/products/all-products-of-merchant/${this.merchantId}`;
+      const url = `/product/api/products/all-products-of-merchant/${this.merchantId}`;
 
       this.logger.debug(`Attempting to fetch products from: ${url}`);
 
@@ -3063,25 +3063,25 @@ class HepsiburadaService extends BasePlatformService {
             hasCode: response.data?.code !== undefined,
             hasPagination: !!(
               response.data?.totalElements || response.data?.totalPages
-            ),
+            )
           },
           dataArrayLength: Array.isArray(response.data?.data)
             ? response.data.data.length
-            : "N/A",
+            : 'N/A'
         });
 
         // Check if response indicates success
         if (response.data?.code !== 0 && !response.data?.success) {
-          this.logger.warn("Hepsiburada API returned unsuccessful response:", {
+          this.logger.warn('Hepsiburada API returned unsuccessful response:', {
             code: response.data?.code,
             success: response.data?.success,
-            message: response.data?.message,
+            message: response.data?.message
           });
           return {
             success: false,
             message:
-              response.data?.message || "API returned unsuccessful response",
-            data: [],
+              response.data?.message || 'API returned unsuccessful response',
+            data: []
           };
         }
 
@@ -3095,7 +3095,7 @@ class HepsiburadaService extends BasePlatformService {
         ) {
           return {
             success: true,
-            message: "No products found in Hepsiburada account",
+            message: 'No products found in Hepsiburada account',
             data: [],
             pagination: {
               page: queryParams.page,
@@ -3103,8 +3103,8 @@ class HepsiburadaService extends BasePlatformService {
               total: response.data?.totalElements || 0,
               totalPages: response.data?.totalPages || 0,
               isFirst: response.data?.first || true,
-              isLast: response.data?.last || true,
-            },
+              isLast: response.data?.last || true
+            }
           };
         }
 
@@ -3116,8 +3116,8 @@ class HepsiburadaService extends BasePlatformService {
           return {
             success: false,
             message:
-              "Invalid response format from Hepsiburada API - expected array of products",
-            data: [],
+              'Invalid response format from Hepsiburada API - expected array of products',
+            data: []
           };
         }
 
@@ -3125,7 +3125,7 @@ class HepsiburadaService extends BasePlatformService {
           `Successfully fetched ${
             productsData.length
           } products from Hepsiburada (page ${queryParams.page + 1}/${
-            response.data?.totalPages || "unknown"
+            response.data?.totalPages || 'unknown'
           })`
         );
 
@@ -3143,8 +3143,8 @@ class HepsiburadaService extends BasePlatformService {
             isFirst: response.data?.first || queryParams.page === 0,
             isLast: response.data?.last || false,
             hasNext: !response.data?.last,
-            hasPrevious: !response.data?.first,
-          },
+            hasPrevious: !response.data?.first
+          }
         };
       } catch (endpointError) {
         this.logger.error(
@@ -3153,7 +3153,7 @@ class HepsiburadaService extends BasePlatformService {
             error: endpointError,
             url,
             status: endpointError.response?.status,
-            responseData: endpointError.response?.data,
+            responseData: endpointError.response?.data
           }
         );
 
@@ -3166,9 +3166,9 @@ class HepsiburadaService extends BasePlatformService {
           debugInfo: {
             endpoint: url,
             status: endpointError.response?.status,
-            method: "GET",
-            baseURL: this.apiUrl,
-          },
+            method: 'GET',
+            baseURL: this.apiUrl
+          }
         };
       }
     } catch (error) {
@@ -3176,7 +3176,7 @@ class HepsiburadaService extends BasePlatformService {
         `Failed to fetch products from Hepsiburada: ${error.message}`,
         {
           error,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
@@ -3184,7 +3184,7 @@ class HepsiburadaService extends BasePlatformService {
         success: false,
         message: `Failed to fetch products: ${error.message}`,
         error: error.response?.data || error.message,
-        data: [],
+        data: []
       };
     }
   }
@@ -3196,7 +3196,7 @@ class HepsiburadaService extends BasePlatformService {
   createProductsAxiosInstance() {
     if (!this.authString) {
       throw new Error(
-        "Authentication not initialized. Call setupAxiosInstance first."
+        'Authentication not initialized. Call setupAxiosInstance first.'
       );
     }
 
@@ -3207,11 +3207,11 @@ class HepsiburadaService extends BasePlatformService {
       baseURL: this.productsApiUrl,
       headers: {
         Authorization: `Basic ${this.authString}`,
-        "User-Agent": username,
-        "Content-Type": "application/json",
-        Accept: "application/json",
+        'User-Agent': username,
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
       },
-      timeout: 30000,
+      timeout: 30000
     });
   }
 
@@ -3229,10 +3229,10 @@ class HepsiburadaService extends BasePlatformService {
         include: [
           {
             model: OrderItem,
-            as: "items",
-            attributes: ["id", "platformProductId", "sku", "quantity"],
-          },
-        ],
+            as: 'items',
+            attributes: ['id', 'platformProductId', 'sku', 'quantity']
+          }
+        ]
       });
 
       if (!order) {
@@ -3252,12 +3252,12 @@ class HepsiburadaService extends BasePlatformService {
         internalStatus: newStatus,
         mappedStatus: hepsiburadaStatus,
         externalOrderId: order.externalOrderId,
-        hasItems: order.items?.length > 0,
+        hasItems: order.items?.length > 0
       });
 
       // For Hepsiburada, acceptance typically means creating a package
       // This moves the order from "unpacked" status to "packaged" status
-      if (newStatus === "processing" && order.items?.length > 0) {
+      if (newStatus === 'processing' && order.items?.length > 0) {
         try {
           // Try to create a package for order acceptance
           const packageResult = await this.createPackageForOrder(order);
@@ -3265,14 +3265,14 @@ class HepsiburadaService extends BasePlatformService {
           if (packageResult.success) {
             this.logger.info(`Package created for order acceptance`, {
               orderId,
-              packageData: packageResult.data,
+              packageData: packageResult.data
             });
           } else {
             this.logger.warn(
               `Package creation failed, updating local status only`,
               {
                 orderId,
-                error: packageResult.message,
+                error: packageResult.message
               }
             );
           }
@@ -3281,7 +3281,7 @@ class HepsiburadaService extends BasePlatformService {
             `Package creation error, continuing with local update`,
             {
               orderId,
-              error: packageError.message,
+              error: packageError.message
             }
           );
         }
@@ -3290,7 +3290,7 @@ class HepsiburadaService extends BasePlatformService {
       // Update local order status
       await order.update({
         orderStatus: newStatus,
-        lastSyncedAt: new Date(),
+        lastSyncedAt: new Date()
       });
 
       return {
@@ -3298,7 +3298,7 @@ class HepsiburadaService extends BasePlatformService {
         message: `Order status updated to ${newStatus}`,
         data: order,
         platformNote:
-          "Hepsiburada status updates are handled through package operations when applicable",
+          'Hepsiburada status updates are handled through package operations when applicable'
       };
     } catch (error) {
       this.logger.error(
@@ -3309,7 +3309,7 @@ class HepsiburadaService extends BasePlatformService {
       return {
         success: false,
         message: `Failed to update order status: ${error.message}`,
-        error: error.response?.data || error.message,
+        error: error.response?.data || error.message
       };
     }
   }
@@ -3326,22 +3326,22 @@ class HepsiburadaService extends BasePlatformService {
 
       this.logger.info(`Hepsiburada order acceptance requested`, {
         externalOrderId,
-        connectionId: this.connectionId,
+        connectionId: this.connectionId
       });
 
       // Find the order by external ID
       const order = await Order.findOne({
         where: {
           externalOrderId: externalOrderId,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         },
         include: [
           {
             model: OrderItem,
-            as: "items",
-            attributes: ["id", "platformProductId", "sku", "quantity"],
-          },
-        ],
+            as: 'items',
+            attributes: ['id', 'platformProductId', 'sku', 'quantity']
+          }
+        ]
       });
 
       if (!order) {
@@ -3354,23 +3354,23 @@ class HepsiburadaService extends BasePlatformService {
       if (packageResult.success) {
         return {
           success: true,
-          message: "Order accepted successfully through package creation",
+          message: 'Order accepted successfully through package creation',
           data: {
             externalOrderId,
             packageInfo: packageResult.data,
-            status: "processing",
-          },
+            status: 'processing'
+          }
         };
       } else {
         // If package creation fails, still mark as accepted locally
         return {
           success: true,
-          message: "Order accepted locally (package creation pending)",
+          message: 'Order accepted locally (package creation pending)',
           data: {
             externalOrderId,
-            status: "processing",
-            note: `Package creation deferred: ${packageResult.message}`,
-          },
+            status: 'processing',
+            note: `Package creation deferred: ${packageResult.message}`
+          }
         };
       }
     } catch (error) {
@@ -3382,7 +3382,7 @@ class HepsiburadaService extends BasePlatformService {
       return {
         success: false,
         message: `Failed to accept order: ${error.message}`,
-        error: error.response?.data || error.message,
+        error: error.response?.data || error.message
       };
     }
   }
@@ -3396,7 +3396,7 @@ class HepsiburadaService extends BasePlatformService {
   async createPackageForOrder(order) {
     try {
       if (!order.items || order.items.length === 0) {
-        throw new Error("Order has no items to package");
+        throw new Error('Order has no items to package');
       }
 
       // Get order item IDs for package creation
@@ -3405,20 +3405,20 @@ class HepsiburadaService extends BasePlatformService {
         .map((item) => item.platformProductId);
 
       if (orderItemIds.length === 0) {
-        throw new Error("No valid platform product IDs found for packaging");
+        throw new Error('No valid platform product IDs found for packaging');
       }
 
       // Default shipping info for acceptance
       const shippingInfo = {
-        cargoCompany: order.cargoCompany || "MNG", // Default cargo company
+        cargoCompany: order.cargoCompany || 'MNG', // Default cargo company
         desi: 1, // Default weight
-        packageNumber: `PKG-${order.id}-${Date.now()}`, // Generate package number
+        packageNumber: `PKG-${order.id}-${Date.now()}` // Generate package number
       };
 
       this.logger.info(`Creating package for order acceptance`, {
         orderId: order.id,
         itemCount: orderItemIds.length,
-        shippingInfo,
+        shippingInfo
       });
 
       // Use existing createPackage method
@@ -3428,14 +3428,14 @@ class HepsiburadaService extends BasePlatformService {
         `Failed to create package for order: ${error.message}`,
         {
           orderId: order.id,
-          error,
+          error
         }
       );
 
       return {
         success: false,
         message: `Package creation failed: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -3449,7 +3449,7 @@ class HepsiburadaService extends BasePlatformService {
   safeJsonStringify(data, fallback = {}) {
     try {
       const result = JSON.stringify(data || fallback);
-      return result === "null" || result === null
+      return result === 'null' || result === null
         ? JSON.stringify(fallback)
         : result;
     } catch (error) {
@@ -3467,8 +3467,8 @@ class HepsiburadaService extends BasePlatformService {
    */
   async syncProducts(params = {}) {
     try {
-      const { Product } = require("../../../../../models");
-      const defaultUserId = process.env.DEFAULT_USER_ID || "1";
+      const { Product } = require('../../../../../models');
+      const defaultUserId = process.env.DEFAULT_USER_ID || '1';
 
       // Fetch products from HepsiBurada
       const result = await this.fetchProducts(params);
@@ -3477,7 +3477,7 @@ class HepsiburadaService extends BasePlatformService {
         return {
           success: false,
           message: `Failed to fetch products from HepsiBurada: ${result.message}`,
-          error: result.error,
+          error: result.error
         };
       }
 
@@ -3489,7 +3489,7 @@ class HepsiburadaService extends BasePlatformService {
         new: 0,
         updated: 0,
         skipped: 0,
-        failed: 0,
+        failed: 0
       };
 
       // Process each product
@@ -3498,14 +3498,14 @@ class HepsiburadaService extends BasePlatformService {
           // Check if product exists (by merchantSku)
           const existingHepsiburadaProduct = await HepsiburadaProduct.findOne({
             where: {
-              merchantSku: hepsiburadaProduct.merchantSku,
+              merchantSku: hepsiburadaProduct.merchantSku
             },
             include: [
               {
                 model: Product,
-                as: "Product",
-              },
-            ],
+                as: 'Product'
+              }
+            ]
           });
 
           if (existingHepsiburadaProduct) {
@@ -3527,8 +3527,8 @@ class HepsiburadaService extends BasePlatformService {
               error: productError,
               product: {
                 merchantSku: hepsiburadaProduct.merchantSku,
-                productName: hepsiburadaProduct.productName,
-              },
+                productName: hepsiburadaProduct.productName
+              }
             }
           );
           stats.failed++;
@@ -3538,21 +3538,21 @@ class HepsiburadaService extends BasePlatformService {
       return {
         success: true,
         message: `Synced ${stats.total} products from HepsiBurada: ${stats.new} new, ${stats.updated} updated, ${stats.failed} failed`,
-        data: stats,
+        data: stats
       };
     } catch (error) {
       this.logger.error(
         `Failed to sync products from HepsiBurada: ${error.message}`,
         {
           error,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
       return {
         success: false,
         message: `Failed to sync products: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -3568,12 +3568,12 @@ class HepsiburadaService extends BasePlatformService {
     hepsiburadaProductData
   ) {
     try {
-      const { Product } = require("../../../../../models");
+      const { Product } = require('../../../../../models');
       const mainProduct = existingHepsiburadaProduct.Product;
 
       // Extract stock quantity from baseAttributes
       const stockAttribute = hepsiburadaProductData.baseAttributes?.find(
-        (attr) => attr.name === "stock"
+        (attr) => attr.name === 'stock'
       );
       const stockQuantity = stockAttribute?.value
         ? parseInt(stockAttribute.value, 10)
@@ -3581,7 +3581,7 @@ class HepsiburadaService extends BasePlatformService {
 
       // Extract guarantee period from baseAttributes
       const guaranteeAttribute = hepsiburadaProductData.baseAttributes?.find(
-        (attr) => attr.name === "GarantiSuresi"
+        (attr) => attr.name === 'GarantiSuresi'
       );
       const guaranteeMonths = guaranteeAttribute?.value
         ? parseInt(guaranteeAttribute.value, 10)
@@ -3589,7 +3589,7 @@ class HepsiburadaService extends BasePlatformService {
 
       // Extract weight from baseAttributes
       const weightAttribute = hepsiburadaProductData.baseAttributes?.find(
-        (attr) => attr.name === "kg"
+        (attr) => attr.name === 'kg'
       );
       const weight = weightAttribute?.value
         ? parseFloat(weightAttribute.value)
@@ -3606,7 +3606,7 @@ class HepsiburadaService extends BasePlatformService {
               price: hepsiburadaProductData.price
                 ? parseFloat(hepsiburadaProductData.price)
                 : 0,
-              currency: "TRY",
+              currency: 'TRY',
               barcode: hepsiburadaProductData.barcode,
               mainImageUrl:
                 hepsiburadaProductData.images &&
@@ -3621,13 +3621,13 @@ class HepsiburadaService extends BasePlatformService {
               attributes: hepsiburadaProductData.productAttributes,
               hasVariants: false, // HepsiBurada doesn't seem to have variants in this API
               metadata: {
-                source: "hepsiburada",
+                source: 'hepsiburada',
                 hbSku: hepsiburadaProductData.hbSku,
                 categoryId: hepsiburadaProductData.categoryId,
                 categoryName: hepsiburadaProductData.categoryName,
                 qualityScore: hepsiburadaProductData.qualityScore,
-                qualityStatus: hepsiburadaProductData.qualityStatus,
-              },
+                qualityStatus: hepsiburadaProductData.qualityStatus
+              }
             },
             { transaction: t }
           );
@@ -3650,7 +3650,7 @@ class HepsiburadaService extends BasePlatformService {
             vatRate: hepsiburadaProductData.tax
               ? parseInt(hepsiburadaProductData.tax, 10)
               : 18,
-            status: hepsiburadaProductData.status || "pending",
+            status: hepsiburadaProductData.status || 'pending',
             lastSyncedAt: new Date(),
             // New fields from API response
             hbSku: hepsiburadaProductData.hbSku,
@@ -3670,7 +3670,7 @@ class HepsiburadaService extends BasePlatformService {
             platformStatus: hepsiburadaProductData.status,
             weight: weight,
             guaranteeMonths: guaranteeMonths,
-            rawData: hepsiburadaProductData,
+            rawData: hepsiburadaProductData
           },
           { transaction: t }
         );
@@ -3683,7 +3683,7 @@ class HepsiburadaService extends BasePlatformService {
     } catch (error) {
       this.logger.error(`Failed to update product: ${error.message}`, {
         error,
-        merchantSku: existingHepsiburadaProduct.merchantSku,
+        merchantSku: existingHepsiburadaProduct.merchantSku
       });
       throw error;
     }
@@ -3697,11 +3697,11 @@ class HepsiburadaService extends BasePlatformService {
    */
   async createNewProduct(hepsiburadaProductData, userId) {
     try {
-      const { Product } = require("../../../../../models");
+      const { Product } = require('../../../../../models');
 
       // Extract stock quantity from baseAttributes
       const stockAttribute = hepsiburadaProductData.baseAttributes?.find(
-        (attr) => attr.name === "stock"
+        (attr) => attr.name === 'stock'
       );
       const stockQuantity = stockAttribute?.value
         ? parseInt(stockAttribute.value, 10)
@@ -3709,7 +3709,7 @@ class HepsiburadaService extends BasePlatformService {
 
       // Extract guarantee period from baseAttributes
       const guaranteeAttribute = hepsiburadaProductData.baseAttributes?.find(
-        (attr) => attr.name === "GarantiSuresi"
+        (attr) => attr.name === 'GarantiSuresi'
       );
       const guaranteeMonths = guaranteeAttribute?.value
         ? parseInt(guaranteeAttribute.value, 10)
@@ -3717,7 +3717,7 @@ class HepsiburadaService extends BasePlatformService {
 
       // Extract weight from baseAttributes
       const weightAttribute = hepsiburadaProductData.baseAttributes?.find(
-        (attr) => attr.name === "kg"
+        (attr) => attr.name === 'kg'
       );
       const weight = weightAttribute?.value
         ? parseFloat(weightAttribute.value)
@@ -3735,9 +3735,9 @@ class HepsiburadaService extends BasePlatformService {
             price: hepsiburadaProductData.price
               ? parseFloat(hepsiburadaProductData.price)
               : 0,
-            currency: "TRY",
+            currency: 'TRY',
             barcode: hepsiburadaProductData.barcode,
-            sourcePlatform: "hepsiburada",
+            sourcePlatform: 'hepsiburada',
             mainImageUrl:
               hepsiburadaProductData.images &&
               hepsiburadaProductData.images.length > 0
@@ -3751,13 +3751,13 @@ class HepsiburadaService extends BasePlatformService {
             attributes: hepsiburadaProductData.productAttributes,
             hasVariants: false, // HepsiBurada doesn't seem to have variants in this API
             metadata: {
-              source: "hepsiburada",
+              source: 'hepsiburada',
               hbSku: hepsiburadaProductData.hbSku,
               categoryId: hepsiburadaProductData.categoryId,
               categoryName: hepsiburadaProductData.categoryName,
               qualityScore: hepsiburadaProductData.qualityScore,
-              qualityStatus: hepsiburadaProductData.qualityStatus,
-            },
+              qualityStatus: hepsiburadaProductData.qualityStatus
+            }
           },
           { transaction: t }
         );
@@ -3781,7 +3781,7 @@ class HepsiburadaService extends BasePlatformService {
             vatRate: hepsiburadaProductData.tax
               ? parseInt(hepsiburadaProductData.tax, 10)
               : 18,
-            status: hepsiburadaProductData.status || "pending",
+            status: hepsiburadaProductData.status || 'pending',
             lastSyncedAt: new Date(),
             // New fields from API response
             hbSku: hepsiburadaProductData.hbSku,
@@ -3801,7 +3801,7 @@ class HepsiburadaService extends BasePlatformService {
             platformStatus: hepsiburadaProductData.status,
             weight: weight,
             guaranteeMonths: guaranteeMonths,
-            rawData: hepsiburadaProductData,
+            rawData: hepsiburadaProductData
           },
           { transaction: t }
         );
@@ -3819,8 +3819,8 @@ class HepsiburadaService extends BasePlatformService {
         productData: {
           productName: hepsiburadaProductData.productName,
           merchantSku: hepsiburadaProductData.merchantSku,
-          hbSku: hepsiburadaProductData.hbSku,
-        },
+          hbSku: hepsiburadaProductData.hbSku
+        }
       });
       throw error;
     }
@@ -3841,7 +3841,7 @@ class HepsiburadaService extends BasePlatformService {
     try {
       // Extract stock quantity from baseAttributes
       const stockAttribute = hepsiburadaProductData.baseAttributes?.find(
-        (attr) => attr.name === "stock"
+        (attr) => attr.name === 'stock'
       );
       const stockQuantity = stockAttribute?.value
         ? parseInt(stockAttribute.value, 10)
@@ -3849,7 +3849,7 @@ class HepsiburadaService extends BasePlatformService {
 
       // Extract guarantee period from baseAttributes
       const guaranteeAttribute = hepsiburadaProductData.baseAttributes?.find(
-        (attr) => attr.name === "GarantiSuresi"
+        (attr) => attr.name === 'GarantiSuresi'
       );
       const guaranteeMonths = guaranteeAttribute?.value
         ? parseInt(guaranteeAttribute.value, 10)
@@ -3857,7 +3857,7 @@ class HepsiburadaService extends BasePlatformService {
 
       // Extract weight from baseAttributes
       const weightAttribute = hepsiburadaProductData.baseAttributes?.find(
-        (attr) => attr.name === "kg"
+        (attr) => attr.name === 'kg'
       );
       const weight = weightAttribute?.value
         ? parseFloat(weightAttribute.value)
@@ -3883,7 +3883,7 @@ class HepsiburadaService extends BasePlatformService {
             vatRate: hepsiburadaProductData.tax
               ? parseInt(hepsiburadaProductData.tax, 10)
               : 18,
-            status: hepsiburadaProductData.status || "pending",
+            status: hepsiburadaProductData.status || 'pending',
             lastSyncedAt: new Date(),
             // New fields from API response
             hbSku: hepsiburadaProductData.hbSku,
@@ -3903,7 +3903,7 @@ class HepsiburadaService extends BasePlatformService {
             platformStatus: hepsiburadaProductData.status,
             weight: weight,
             guaranteeMonths: guaranteeMonths,
-            rawData: hepsiburadaProductData,
+            rawData: hepsiburadaProductData
           },
           { transaction }
         );
@@ -3925,7 +3925,7 @@ class HepsiburadaService extends BasePlatformService {
           vatRate: hepsiburadaProductData.tax
             ? parseInt(hepsiburadaProductData.tax, 10)
             : 18,
-          status: hepsiburadaProductData.status || "pending",
+          status: hepsiburadaProductData.status || 'pending',
           lastSyncedAt: new Date(),
           // New fields from API response
           hbSku: hepsiburadaProductData.hbSku,
@@ -3945,7 +3945,7 @@ class HepsiburadaService extends BasePlatformService {
           platformStatus: hepsiburadaProductData.status,
           weight: weight,
           guaranteeMonths: guaranteeMonths,
-          rawData: hepsiburadaProductData,
+          rawData: hepsiburadaProductData
         });
       }
     } catch (error) {
@@ -3954,7 +3954,7 @@ class HepsiburadaService extends BasePlatformService {
         {
           error,
           productId,
-          merchantSku: hepsiburadaProductData.merchantSku,
+          merchantSku: hepsiburadaProductData.merchantSku
         }
       );
       throw error;
@@ -3973,16 +3973,16 @@ class HepsiburadaService extends BasePlatformService {
 
       // Validate required fields for Hepsiburada
       const requiredFields = [
-        "merchantSku",
-        "barcode",
-        "title",
-        "brand",
-        "categoryId",
-        "description",
-        "price",
-        "tax",
-        "stock",
-        "images",
+        'merchantSku',
+        'barcode',
+        'title',
+        'brand',
+        'categoryId',
+        'description',
+        'price',
+        'tax',
+        'stock',
+        'images'
       ];
 
       for (const field of requiredFields) {
@@ -3997,7 +3997,7 @@ class HepsiburadaService extends BasePlatformService {
         productData.images.length === 0
       ) {
         throw new Error(
-          "Images array is required and must contain at least one image"
+          'Images array is required and must contain at least one image'
         );
       }
 
@@ -4013,42 +4013,42 @@ class HepsiburadaService extends BasePlatformService {
         tax: parseInt(productData.tax, 10),
         baseAttributes: [
           {
-            name: "stock",
-            value: productData.stock.toString(),
-          },
+            name: 'stock',
+            value: productData.stock.toString()
+          }
         ],
         images: Array.isArray(productData.images)
           ? productData.images
           : [productData.images],
         productAttributes: productData.attributes || [],
         variantGroupId: productData.variantGroupId || null,
-        status: productData.status || "pending",
+        status: productData.status || 'pending'
       };
 
       // Add optional fields if provided
       if (productData.weight) {
         hepsiburadaProductData.baseAttributes.push({
-          name: "kg",
-          value: productData.weight.toString(),
+          name: 'kg',
+          value: productData.weight.toString()
         });
       }
 
       if (productData.guaranteeMonths) {
         hepsiburadaProductData.baseAttributes.push({
-          name: "GarantiSuresi",
-          value: productData.guaranteeMonths.toString(),
+          name: 'GarantiSuresi',
+          value: productData.guaranteeMonths.toString()
         });
       }
 
       this.logger.info(`Creating product on Hepsiburada`, {
         merchantSku: productData.merchantSku,
         barcode: productData.barcode,
-        title: productData.title,
+        title: productData.title
       });
 
       // Note: This endpoint needs to be verified with official Hepsiburada MPOP documentation
       // Current implementation is based on reverse engineering from existing product fetching code
-      const endpoint = "/products"; // This may need to be adjusted based on official docs
+      const endpoint = '/products'; // This may need to be adjusted based on official docs
 
       const response = await productsAxios.post(
         endpoint,
@@ -4057,14 +4057,14 @@ class HepsiburadaService extends BasePlatformService {
 
       this.logger.info(`Product created successfully on Hepsiburada`, {
         merchantSku: productData.merchantSku,
-        response: response.data,
+        response: response.data
       });
 
       return {
         success: true,
-        message: "Product created successfully on Hepsiburada",
+        message: 'Product created successfully on Hepsiburada',
         data: response.data,
-        platformProductId: response.data?.id || response.data?.merchantSku,
+        platformProductId: response.data?.id || response.data?.merchantSku
       };
     } catch (error) {
       this.logger.error(
@@ -4072,14 +4072,14 @@ class HepsiburadaService extends BasePlatformService {
         {
           error,
           merchantSku: productData?.merchantSku,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
       return {
         success: false,
         message: `Failed to create product on Hepsiburada: ${error.message}`,
-        error: error.response?.data || error.message,
+        error: error.response?.data || error.message
       };
     }
   }
@@ -4094,13 +4094,13 @@ class HepsiburadaService extends BasePlatformService {
       await this.initialize();
 
       if (!Array.isArray(productsData) || productsData.length === 0) {
-        throw new Error("Products data must be a non-empty array");
+        throw new Error('Products data must be a non-empty array');
       }
 
       this.logger.info(
         `Creating ${productsData.length} products on Hepsiburada`,
         {
-          productCount: productsData.length,
+          productCount: productsData.length
         }
       );
 
@@ -4116,7 +4116,7 @@ class HepsiburadaService extends BasePlatformService {
           results.push({
             index: i,
             merchantSku: productData.merchantSku,
-            result: result,
+            result: result
           });
 
           // Add a small delay between requests to be respectful to the API
@@ -4127,7 +4127,7 @@ class HepsiburadaService extends BasePlatformService {
           errors.push({
             index: i,
             merchantSku: productData.merchantSku,
-            error: error.message,
+            error: error.message
           });
         }
       }
@@ -4139,7 +4139,7 @@ class HepsiburadaService extends BasePlatformService {
       this.logger.info(`Bulk product creation completed on Hepsiburada`, {
         total: productsData.length,
         success: successCount,
-        failed: failureCount,
+        failed: failureCount
       });
 
       return {
@@ -4151,9 +4151,9 @@ class HepsiburadaService extends BasePlatformService {
           summary: {
             total: productsData.length,
             successful: successCount,
-            failed: failureCount,
-          },
-        },
+            failed: failureCount
+          }
+        }
       };
     } catch (error) {
       this.logger.error(
@@ -4161,14 +4161,14 @@ class HepsiburadaService extends BasePlatformService {
         {
           error,
           productCount: productsData?.length,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
       return {
         success: false,
         message: `Failed to create products bulk: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -4185,7 +4185,7 @@ class HepsiburadaService extends BasePlatformService {
       const productsAxios = this.createProductsAxiosInstance();
 
       if (!merchantSku) {
-        throw new Error("Merchant SKU is required for product update");
+        throw new Error('Merchant SKU is required for product update');
       }
 
       // Format update data according to Hepsiburada requirements
@@ -4199,8 +4199,8 @@ class HepsiburadaService extends BasePlatformService {
         hepsiburadaUpdateData.baseAttributes =
           hepsiburadaUpdateData.baseAttributes || [];
         hepsiburadaUpdateData.baseAttributes.push({
-          name: "stock",
-          value: updateData.stock.toString(),
+          name: 'stock',
+          value: updateData.stock.toString()
         });
       }
 
@@ -4218,7 +4218,7 @@ class HepsiburadaService extends BasePlatformService {
 
       this.logger.info(`Updating product on Hepsiburada`, {
         merchantSku,
-        updateFields: Object.keys(updateData),
+        updateFields: Object.keys(updateData)
       });
 
       // Note: This endpoint needs to be verified with official documentation
@@ -4228,13 +4228,13 @@ class HepsiburadaService extends BasePlatformService {
 
       this.logger.info(`Product updated successfully on Hepsiburada`, {
         merchantSku,
-        response: response.data,
+        response: response.data
       });
 
       return {
         success: true,
-        message: "Product updated successfully on Hepsiburada",
-        data: response.data,
+        message: 'Product updated successfully on Hepsiburada',
+        data: response.data
       };
     } catch (error) {
       this.logger.error(
@@ -4242,14 +4242,14 @@ class HepsiburadaService extends BasePlatformService {
         {
           error,
           merchantSku,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         }
       );
 
       return {
         success: false,
         message: `Failed to update product: ${error.message}`,
-        error: error.response?.data || error.message,
+        error: error.response?.data || error.message
       };
     }
   }
@@ -4265,15 +4265,15 @@ class HepsiburadaService extends BasePlatformService {
 
     // Required field validation for Hepsiburada
     const requiredFields = {
-      merchantSku: { type: "string", maxLength: 100 },
-      barcode: { type: "string", maxLength: 50 },
-      title: { type: "string", maxLength: 200 },
-      brand: { type: "string", maxLength: 100 },
-      categoryId: { type: ["string", "number"] },
-      description: { type: "string", maxLength: 5000 },
-      price: { type: "number", min: 0 },
-      tax: { type: "number", values: [0, 1, 8, 18, 20] },
-      stock: { type: "number", min: 0 },
+      merchantSku: { type: 'string', maxLength: 100 },
+      barcode: { type: 'string', maxLength: 50 },
+      title: { type: 'string', maxLength: 200 },
+      brand: { type: 'string', maxLength: 100 },
+      categoryId: { type: ['string', 'number'] },
+      description: { type: 'string', maxLength: 5000 },
+      price: { type: 'number', min: 0 },
+      tax: { type: 'number', values: [0, 1, 8, 18, 20] },
+      stock: { type: 'number', min: 0 }
     };
 
     // Validate required fields
@@ -4289,19 +4289,19 @@ class HepsiburadaService extends BasePlatformService {
       if (Array.isArray(rules.type)) {
         if (!rules.type.some((type) => typeof value === type)) {
           errors.push(
-            `Field ${field} must be one of types: ${rules.type.join(", ")}`
+            `Field ${field} must be one of types: ${rules.type.join(', ')}`
           );
         }
-      } else if (rules.type === "string" && typeof value !== "string") {
+      } else if (rules.type === 'string' && typeof value !== 'string') {
         errors.push(`Field ${field} must be a string`);
-      } else if (rules.type === "number" && typeof value !== "number") {
+      } else if (rules.type === 'number' && typeof value !== 'number') {
         errors.push(`Field ${field} must be a number`);
       }
 
       // Length validation
       if (
         rules.maxLength &&
-        typeof value === "string" &&
+        typeof value === 'string' &&
         value.length > rules.maxLength
       ) {
         errors.push(
@@ -4312,7 +4312,7 @@ class HepsiburadaService extends BasePlatformService {
       // Min value validation
       if (
         rules.min !== undefined &&
-        typeof value === "number" &&
+        typeof value === 'number' &&
         value < rules.min
       ) {
         errors.push(`Field ${field} must be at least ${rules.min}`);
@@ -4321,27 +4321,27 @@ class HepsiburadaService extends BasePlatformService {
       // Allowed values validation
       if (rules.values && !rules.values.includes(value)) {
         errors.push(
-          `Field ${field} must be one of: ${rules.values.join(", ")}`
+          `Field ${field} must be one of: ${rules.values.join(', ')}`
         );
       }
     }
 
     // Images validation
     if (!productData.images || !Array.isArray(productData.images)) {
-      errors.push("Images field is required and must be an array");
+      errors.push('Images field is required and must be an array');
     } else {
       if (productData.images.length === 0) {
-        errors.push("At least one image is required");
+        errors.push('At least one image is required');
       }
 
       productData.images.forEach((imageUrl, index) => {
-        if (!imageUrl || typeof imageUrl !== "string") {
+        if (!imageUrl || typeof imageUrl !== 'string') {
           errors.push(
             `Image ${index + 1}: URL is required and must be a string`
           );
         } else if (
-          !imageUrl.startsWith("http://") &&
-          !imageUrl.startsWith("https://")
+          !imageUrl.startsWith('http://') &&
+          !imageUrl.startsWith('https://')
         ) {
           warnings.push(
             `Image ${index + 1}: HTTPS URLs are recommended for better security`
@@ -4356,18 +4356,18 @@ class HepsiburadaService extends BasePlatformService {
       !/^[a-zA-Z0-9._-]+$/.test(productData.merchantSku)
     ) {
       warnings.push(
-        "Merchant SKU should only contain alphanumeric characters, dots, underscores, and hyphens"
+        'Merchant SKU should only contain alphanumeric characters, dots, underscores, and hyphens'
       );
     }
 
     if (productData.barcode && productData.barcode.length < 8) {
-      warnings.push("Barcode should be at least 8 characters long");
+      warnings.push('Barcode should be at least 8 characters long');
     }
 
     return {
       isValid: errors.length === 0,
       errors,
-      warnings,
+      warnings
     };
   }
 
@@ -4388,7 +4388,7 @@ class HepsiburadaService extends BasePlatformService {
       const productsAxios = this.createProductsAxiosInstance();
 
       if (!merchantSku) {
-        throw new Error("Merchant SKU is required");
+        throw new Error('Merchant SKU is required');
       }
 
       // Note: Endpoint needs verification with official documentation
@@ -4399,19 +4399,19 @@ class HepsiburadaService extends BasePlatformService {
       return {
         success: true,
         data: response.data,
-        message: "Product status retrieved successfully",
+        message: 'Product status retrieved successfully'
       };
     } catch (error) {
       this.logger.error(`Failed to get product status: ${error.message}`, {
         error,
         merchantSku,
-        connectionId: this.connectionId,
+        connectionId: this.connectionId
       });
 
       return {
         success: false,
         message: `Failed to get product status: ${error.message}`,
-        error: error.response?.data || error.message,
+        error: error.response?.data || error.message
       };
     }
   }
@@ -4431,7 +4431,7 @@ class HepsiburadaService extends BasePlatformService {
 
       const defaultParams = {
         page: 0,
-        size: 2000, // Maximum allowed by Hepsiburada API
+        size: 2000 // Maximum allowed by Hepsiburada API
         // Only get active, available, leaf categories for product creation
         // leaf: true,
         // status: 'active',
@@ -4440,16 +4440,16 @@ class HepsiburadaService extends BasePlatformService {
 
       const queryParams = { ...defaultParams, ...params };
 
-      this.logger.info("Fetching categories from Hepsiburada MPOP API", {
+      this.logger.info('Fetching categories from Hepsiburada MPOP API', {
         url: `${this.productsApiUrl}/product/api/categories/get-all-categories`,
-        params: queryParams,
+        params: queryParams
       });
 
       const response = await mpopAxios.get(
-        "/product/api/categories/get-all-categories",
+        '/product/api/categories/get-all-categories',
         {
           params: queryParams,
-          timeout: 30000,
+          timeout: 30000
         }
       );
 
@@ -4459,7 +4459,7 @@ class HepsiburadaService extends BasePlatformService {
           {
             total: response.data.totalElements,
             pages: response.data.totalPages,
-            currentPage: response.data.number,
+            currentPage: response.data.number
           }
         );
 
@@ -4478,164 +4478,164 @@ class HepsiburadaService extends BasePlatformService {
           status: cat.status,
           available: cat.available,
           platformCategoryId: cat.categoryId.toString(),
-          level: this.calculateCategoryLevel(cat.paths),
+          level: this.calculateCategoryLevel(cat.paths)
         }));
       } else {
         this.logger.warn(
-          "Hepsiburada categories API returned unsuccessful response",
+          'Hepsiburada categories API returned unsuccessful response',
           {
             success: response.data?.success,
-            message: response.data?.message,
+            message: response.data?.message
           }
         );
         throw new Error(
           response.data?.message ||
-            "Invalid response format from Hepsiburada categories API"
+            'Invalid response format from Hepsiburada categories API'
         );
       }
     } catch (error) {
-      this.logger.error("Failed to fetch categories from Hepsiburada", {
+      this.logger.error('Failed to fetch categories from Hepsiburada', {
         error: error.message,
         status: error.response?.status,
         data: error.response?.data,
-        url: error.config?.url,
+        url: error.config?.url
       });
 
       // Provide meaningful fallback categories instead of empty array
       this.logger.warn(
-        "Falling back to basic Hepsiburada categories due to API error"
+        'Falling back to basic Hepsiburada categories due to API error'
       );
       return [
         // Main categories
         {
           id: 18026,
           categoryId: 18026,
-          name: "Elektronik",
-          categoryName: "Elektronik",
+          name: 'Elektronik',
+          categoryName: 'Elektronik',
           parentId: null,
           parentCategoryId: null,
-          path: "Elektronik",
-          paths: "Elektronik",
+          path: 'Elektronik',
+          paths: 'Elektronik',
           isLeaf: false,
           leaf: false,
-          status: "ACTIVE",
+          status: 'ACTIVE',
           available: true,
-          platformCategoryId: "18026",
-          level: 1,
+          platformCategoryId: '18026',
+          level: 1
         },
         {
           id: 1000,
           categoryId: 1000,
-          name: "Giyim & Aksesuar",
-          categoryName: "Giyim & Aksesuar",
+          name: 'Giyim & Aksesuar',
+          categoryName: 'Giyim & Aksesuar',
           parentId: null,
           parentCategoryId: null,
-          path: "Giyim & Aksesuar",
-          paths: "Giyim & Aksesuar",
+          path: 'Giyim & Aksesuar',
+          paths: 'Giyim & Aksesuar',
           isLeaf: false,
           leaf: false,
-          status: "ACTIVE",
+          status: 'ACTIVE',
           available: true,
-          platformCategoryId: "1000",
-          level: 1,
+          platformCategoryId: '1000',
+          level: 1
         },
         {
           id: 2000,
           categoryId: 2000,
-          name: "Ev & Bahçe",
-          categoryName: "Ev & Bahçe",
+          name: 'Ev & Bahçe',
+          categoryName: 'Ev & Bahçe',
           parentId: null,
           parentCategoryId: null,
-          path: "Ev & Bahçe",
-          paths: "Ev & Bahçe",
+          path: 'Ev & Bahçe',
+          paths: 'Ev & Bahçe',
           isLeaf: false,
           leaf: false,
-          status: "ACTIVE",
+          status: 'ACTIVE',
           available: true,
-          platformCategoryId: "2000",
-          level: 1,
+          platformCategoryId: '2000',
+          level: 1
         },
         {
           id: 3000,
           categoryId: 3000,
-          name: "Kozmetik & Kişisel Bakım",
-          categoryName: "Kozmetik & Kişisel Bakım",
+          name: 'Kozmetik & Kişisel Bakım',
+          categoryName: 'Kozmetik & Kişisel Bakım',
           parentId: null,
           parentCategoryId: null,
-          path: "Kozmetik & Kişisel Bakım",
-          paths: "Kozmetik & Kişisel Bakım",
+          path: 'Kozmetik & Kişisel Bakım',
+          paths: 'Kozmetik & Kişisel Bakım',
           isLeaf: false,
           leaf: false,
-          status: "ACTIVE",
+          status: 'ACTIVE',
           available: true,
-          platformCategoryId: "3000",
-          level: 1,
+          platformCategoryId: '3000',
+          level: 1
         },
         // Sub-categories with parent relationships
         {
           id: 18027,
           categoryId: 18027,
-          name: "Telefon & Tablet",
-          categoryName: "Telefon & Tablet",
+          name: 'Telefon & Tablet',
+          categoryName: 'Telefon & Tablet',
           parentId: 18026,
           parentCategoryId: 18026,
-          path: "Elektronik > Telefon & Tablet",
-          paths: "Elektronik > Telefon & Tablet",
+          path: 'Elektronik > Telefon & Tablet',
+          paths: 'Elektronik > Telefon & Tablet',
           isLeaf: false,
           leaf: false,
-          status: "ACTIVE",
+          status: 'ACTIVE',
           available: true,
-          platformCategoryId: "18027",
-          level: 2,
+          platformCategoryId: '18027',
+          level: 2
         },
         {
           id: 18028,
           categoryId: 18028,
-          name: "Bilgisayar",
-          categoryName: "Bilgisayar",
+          name: 'Bilgisayar',
+          categoryName: 'Bilgisayar',
           parentId: 18026,
           parentCategoryId: 18026,
-          path: "Elektronik > Bilgisayar",
-          paths: "Elektronik > Bilgisayar",
+          path: 'Elektronik > Bilgisayar',
+          paths: 'Elektronik > Bilgisayar',
           isLeaf: false,
           leaf: false,
-          status: "ACTIVE",
+          status: 'ACTIVE',
           available: true,
-          platformCategoryId: "18028",
-          level: 2,
+          platformCategoryId: '18028',
+          level: 2
         },
         {
           id: 1001,
           categoryId: 1001,
-          name: "Kadın Giyim",
-          categoryName: "Kadın Giyim",
+          name: 'Kadın Giyim',
+          categoryName: 'Kadın Giyim',
           parentId: 1000,
           parentCategoryId: 1000,
-          path: "Giyim & Aksesuar > Kadın Giyim",
-          paths: "Giyim & Aksesuar > Kadın Giyim",
+          path: 'Giyim & Aksesuar > Kadın Giyim',
+          paths: 'Giyim & Aksesuar > Kadın Giyim',
           isLeaf: true,
           leaf: true,
-          status: "ACTIVE",
+          status: 'ACTIVE',
           available: true,
-          platformCategoryId: "1001",
-          level: 2,
+          platformCategoryId: '1001',
+          level: 2
         },
         {
           id: 1002,
           categoryId: 1002,
-          name: "Erkek Giyim",
-          categoryName: "Erkek Giyim",
+          name: 'Erkek Giyim',
+          categoryName: 'Erkek Giyim',
           parentId: 1000,
           parentCategoryId: 1000,
-          path: "Giyim & Aksesuar > Erkek Giyim",
-          paths: "Giyim & Aksesuar > Erkek Giyim",
+          path: 'Giyim & Aksesuar > Erkek Giyim',
+          paths: 'Giyim & Aksesuar > Erkek Giyim',
           isLeaf: true,
           leaf: true,
-          status: "ACTIVE",
+          status: 'ACTIVE',
           available: true,
-          platformCategoryId: "1002",
-          level: 2,
-        },
+          platformCategoryId: '1002',
+          level: 2
+        }
       ];
     }
   }
@@ -4646,8 +4646,8 @@ class HepsiburadaService extends BasePlatformService {
    * @returns {number} Category level
    */
   calculateCategoryLevel(paths) {
-    if (!paths || typeof paths !== "string") return 1;
-    return paths.split(" > ").length;
+    if (!paths || typeof paths !== 'string') {return 1;}
+    return paths.split(' > ').length;
   }
 
   /**
@@ -4661,23 +4661,23 @@ class HepsiburadaService extends BasePlatformService {
       await this.initialize();
 
       if (!categoryId) {
-        throw new Error("Category ID is required");
+        throw new Error('Category ID is required');
       }
 
       const mpopAxios = this.createProductsAxiosInstance();
 
       this.logger.info(
-        "Fetching category attributes from Hepsiburada MPOP API",
+        'Fetching category attributes from Hepsiburada MPOP API',
         {
           categoryId,
-          url: `${this.productsApiUrl}/product/api/categories/${categoryId}/attributes`,
+          url: `${this.productsApiUrl}/product/api/categories/${categoryId}/attributes`
         }
       );
 
       const response = await mpopAxios.get(
         `/product/api/categories/${categoryId}/attributes`,
         {
-          timeout: 10000,
+          timeout: 10000
         }
       );
 
@@ -4686,7 +4686,7 @@ class HepsiburadaService extends BasePlatformService {
           `Successfully fetched ${response.data.data.length} attributes for category ${categoryId}`,
           {
             categoryId,
-            attributesCount: response.data.data.length,
+            attributesCount: response.data.data.length
           }
         );
 
@@ -4700,84 +4700,84 @@ class HepsiburadaService extends BasePlatformService {
           attributeType: attr.type, // Keep both for compatibility
           mandatory: attr.mandatory,
           required: attr.mandatory, // Keep both for compatibility
-          multiValue: attr.multiValue,
+          multiValue: attr.multiValue
         }));
       } else {
         this.logger.warn(
-          "Hepsiburada category attributes API returned unsuccessful response",
+          'Hepsiburada category attributes API returned unsuccessful response',
           {
             categoryId,
             success: response.data?.success,
-            message: response.data?.message,
+            message: response.data?.message
           }
         );
         throw new Error(
-          response.data?.message || "Failed to fetch category attributes"
+          response.data?.message || 'Failed to fetch category attributes'
         );
       }
     } catch (error) {
       this.logger.error(
-        "Failed to fetch category attributes from Hepsiburada",
+        'Failed to fetch category attributes from Hepsiburada',
         {
           categoryId,
           error: error.message,
           status: error.response?.status,
-          data: error.response?.data,
+          data: error.response?.data
         }
       );
 
       // Provide meaningful fallback attributes instead of empty array
       this.logger.warn(
-        "Falling back to basic Hepsiburada category attributes due to API error",
+        'Falling back to basic Hepsiburada category attributes due to API error',
         {
-          categoryId,
+          categoryId
         }
       );
       return [
         {
-          id: "brand",
-          attributeId: "brand",
-          name: "Marka",
-          attributeName: "Marka",
-          type: "TEXT",
-          attributeType: "TEXT",
+          id: 'brand',
+          attributeId: 'brand',
+          name: 'Marka',
+          attributeName: 'Marka',
+          type: 'TEXT',
+          attributeType: 'TEXT',
           mandatory: true,
           required: true,
-          multiValue: false,
+          multiValue: false
         },
         {
-          id: "model",
-          attributeId: "model",
-          name: "Model",
-          attributeName: "Model",
-          type: "TEXT",
-          attributeType: "TEXT",
+          id: 'model',
+          attributeId: 'model',
+          name: 'Model',
+          attributeName: 'Model',
+          type: 'TEXT',
+          attributeType: 'TEXT',
           mandatory: false,
           required: false,
-          multiValue: false,
+          multiValue: false
         },
         {
-          id: "color",
-          attributeId: "color",
-          name: "Renk",
-          attributeName: "Renk",
-          type: "TEXT",
-          attributeType: "TEXT",
+          id: 'color',
+          attributeId: 'color',
+          name: 'Renk',
+          attributeName: 'Renk',
+          type: 'TEXT',
+          attributeType: 'TEXT',
           mandatory: false,
           required: false,
-          multiValue: false,
+          multiValue: false
         },
         {
-          id: "size",
-          attributeId: "size",
-          name: "Beden",
-          attributeName: "Beden",
-          type: "TEXT",
-          attributeType: "TEXT",
+          id: 'size',
+          attributeId: 'size',
+          name: 'Beden',
+          attributeName: 'Beden',
+          type: 'TEXT',
+          attributeType: 'TEXT',
           mandatory: false,
           required: false,
-          multiValue: false,
-        },
+          multiValue: false
+        }
       ];
     }
   }
@@ -4791,27 +4791,27 @@ class HepsiburadaService extends BasePlatformService {
       : [];
 
     return {
-      platform: "hepsiburada",
+      platform: 'hepsiburada',
       requiredFields: [
         {
-          name: "productName",
-          label: "Product Name",
-          type: "text",
-          required: true,
+          name: 'productName',
+          label: 'Product Name',
+          type: 'text',
+          required: true
         },
-        { name: "barcode", label: "Barcode", type: "text", required: true },
+        { name: 'barcode', label: 'Barcode', type: 'text', required: true },
         {
-          name: "categoryId",
-          label: "Category",
-          type: "select",
-          required: true,
+          name: 'categoryId',
+          label: 'Category',
+          type: 'select',
+          required: true
         },
-        { name: "price", label: "Price", type: "number", required: true },
+        { name: 'price', label: 'Price', type: 'number', required: true }
       ],
       optionalFields: [
-        { name: "productDescription", label: "Description", type: "textarea" },
+        { name: 'productDescription', label: 'Description', type: 'textarea' }
       ],
-      categoryAttributes: attributes,
+      categoryAttributes: attributes
     };
   }
 }

@@ -1,30 +1,30 @@
-"use strict";
+'use strict';
 
 module.exports = {
   async up(queryInterface, Sequelize) {
     const transaction = await queryInterface.sequelize.transaction();
 
     try {
-      console.log("🔄 Updating customer_questions status enum values...");
+      console.log('🔄 Updating customer_questions status enum values...');
 
       // First, add the new enum values to the existing enum type
       await queryInterface.sequelize.query(
-        "ALTER TYPE enum_customer_questions_status ADD VALUE IF NOT EXISTS 'WAITING_FOR_ANSWER';",
+        'ALTER TYPE enum_customer_questions_status ADD VALUE IF NOT EXISTS \'WAITING_FOR_ANSWER\';',
         { transaction }
       );
 
       await queryInterface.sequelize.query(
-        "ALTER TYPE enum_customer_questions_status ADD VALUE IF NOT EXISTS 'ANSWERED';",
+        'ALTER TYPE enum_customer_questions_status ADD VALUE IF NOT EXISTS \'ANSWERED\';',
         { transaction }
       );
 
       await queryInterface.sequelize.query(
-        "ALTER TYPE enum_customer_questions_status ADD VALUE IF NOT EXISTS 'REJECTED';",
+        'ALTER TYPE enum_customer_questions_status ADD VALUE IF NOT EXISTS \'REJECTED\';',
         { transaction }
       );
 
       await queryInterface.sequelize.query(
-        "ALTER TYPE enum_customer_questions_status ADD VALUE IF NOT EXISTS 'AUTO_CLOSED';",
+        'ALTER TYPE enum_customer_questions_status ADD VALUE IF NOT EXISTS \'AUTO_CLOSED\';',
         { transaction }
       );
 
@@ -46,11 +46,11 @@ module.exports = {
 
       await transaction.commit();
       console.log(
-        "✅ Successfully updated customer_questions status enum values"
+        '✅ Successfully updated customer_questions status enum values'
       );
     } catch (error) {
       await transaction.rollback();
-      console.error("❌ Error updating status enum values:", error);
+      console.error('❌ Error updating status enum values:', error);
       throw error;
     }
   },
@@ -59,7 +59,7 @@ module.exports = {
     const transaction = await queryInterface.sequelize.transaction();
 
     try {
-      console.log("🔄 Reverting customer_questions status enum values...");
+      console.log('🔄 Reverting customer_questions status enum values...');
 
       // Revert data mappings
       await queryInterface.sequelize.query(
@@ -81,12 +81,12 @@ module.exports = {
 
       await transaction.commit();
       console.log(
-        "✅ Successfully reverted customer_questions status mappings"
+        '✅ Successfully reverted customer_questions status mappings'
       );
     } catch (error) {
       await transaction.rollback();
-      console.error("❌ Error reverting status enum values:", error);
+      console.error('❌ Error reverting status enum values:', error);
       throw error;
     }
-  },
+  }
 };

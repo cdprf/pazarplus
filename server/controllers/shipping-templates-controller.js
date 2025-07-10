@@ -3,9 +3,9 @@
  * Handles CRUD operations for shipping slip templates
  */
 
-const { User } = require("../models");
-const logger = require("../utils/logger");
-const templateBasedPdfGenerator = require("../services/templateBasedPdfGenerator");
+const { User } = require('../models');
+const logger = require('../utils/logger');
+const templateBasedPdfGenerator = require('../services/templateBasedPdfGenerator');
 
 class ShippingTemplatesController {
   /**
@@ -23,17 +23,17 @@ class ShippingTemplatesController {
       res.json({
         success: true,
         data: templates,
-        message: "Shipping templates retrieved successfully",
+        message: 'Shipping templates retrieved successfully'
       });
     } catch (error) {
       logger.error(`Failed to get shipping templates: ${error.message}`, {
         error,
-        userId: req.user?.id,
+        userId: req.user?.id
       });
       res.status(500).json({
         success: false,
-        message: "Failed to get shipping templates",
-        error: error.message,
+        message: 'Failed to get shipping templates',
+        error: error.message
       });
     }
   }
@@ -55,24 +55,24 @@ class ShippingTemplatesController {
       if (!template) {
         return res.status(404).json({
           success: false,
-          message: "Template not found",
+          message: 'Template not found'
         });
       }
 
       res.json({
         success: true,
         data: template,
-        message: "Template retrieved successfully",
+        message: 'Template retrieved successfully'
       });
     } catch (error) {
       logger.error(`Failed to get shipping template: ${error.message}`, {
         error,
-        userId: req.user?.id,
+        userId: req.user?.id
       });
       res.status(500).json({
         success: false,
-        message: "Failed to get template",
-        error: error.message,
+        message: 'Failed to get template',
+        error: error.message
       });
     }
   }
@@ -89,7 +89,7 @@ class ShippingTemplatesController {
       if (!templateData.name) {
         return res.status(400).json({
           success: false,
-          message: "Template name is required",
+          message: 'Template name is required'
         });
       }
 
@@ -120,23 +120,23 @@ class ShippingTemplatesController {
       // Update user settings
       settings.shippingTemplates = templates;
       await user.update({
-        settings: JSON.stringify(settings),
+        settings: JSON.stringify(settings)
       });
 
       res.json({
         success: true,
         data: templateData,
-        message: "Template saved successfully",
+        message: 'Template saved successfully'
       });
     } catch (error) {
       logger.error(`Failed to save shipping template: ${error.message}`, {
         error,
-        userId: req.user?.id,
+        userId: req.user?.id
       });
       res.status(500).json({
         success: false,
-        message: "Failed to save template",
-        error: error.message,
+        message: 'Failed to save template',
+        error: error.message
       });
     }
   }
@@ -158,7 +158,7 @@ class ShippingTemplatesController {
       if (templateIndex === -1) {
         return res.status(404).json({
           success: false,
-          message: "Template not found",
+          message: 'Template not found'
         });
       }
 
@@ -168,22 +168,22 @@ class ShippingTemplatesController {
       // Update user settings
       settings.shippingTemplates = templates;
       await user.update({
-        settings: JSON.stringify(settings),
+        settings: JSON.stringify(settings)
       });
 
       res.json({
         success: true,
-        message: "Template deleted successfully",
+        message: 'Template deleted successfully'
       });
     } catch (error) {
       logger.error(`Failed to delete shipping template: ${error.message}`, {
         error,
-        userId: req.user?.id,
+        userId: req.user?.id
       });
       res.status(500).json({
         success: false,
-        message: "Failed to delete template",
-        error: error.message,
+        message: 'Failed to delete template',
+        error: error.message
       });
     }
   }
@@ -210,19 +210,19 @@ class ShippingTemplatesController {
         data: {
           defaultTemplateId,
           defaultTemplate,
-          availableTemplates: templates,
+          availableTemplates: templates
         },
-        message: "Default template settings retrieved successfully",
+        message: 'Default template settings retrieved successfully'
       });
     } catch (error) {
       logger.error(`Failed to get default template: ${error.message}`, {
         error,
-        userId: req.user?.id,
+        userId: req.user?.id
       });
       res.status(500).json({
         success: false,
-        message: "Failed to get default template",
-        error: error.message,
+        message: 'Failed to get default template',
+        error: error.message
       });
     }
   }
@@ -243,32 +243,32 @@ class ShippingTemplatesController {
       if (templateId && !templates.find((t) => t.id === templateId)) {
         return res.status(404).json({
           success: false,
-          message: "Template not found",
+          message: 'Template not found'
         });
       }
 
       // Update default template setting
       settings.defaultShippingTemplateId = templateId;
       await user.update({
-        settings: JSON.stringify(settings),
+        settings: JSON.stringify(settings)
       });
 
       res.json({
         success: true,
         data: { defaultTemplateId: templateId },
         message: templateId
-          ? "Default template set successfully"
-          : "Default template cleared successfully",
+          ? 'Default template set successfully'
+          : 'Default template cleared successfully'
       });
     } catch (error) {
       logger.error(`Failed to set default template: ${error.message}`, {
         error,
-        userId: req.user?.id,
+        userId: req.user?.id
       });
       res.status(500).json({
         success: false,
-        message: "Failed to set default template",
-        error: error.message,
+        message: 'Failed to set default template',
+        error: error.message
       });
     }
   }
@@ -284,7 +284,7 @@ class ShippingTemplatesController {
       if (!orderId) {
         return res.status(400).json({
           success: false,
-          message: "Order ID is required",
+          message: 'Order ID is required'
         });
       }
 
@@ -298,8 +298,8 @@ class ShippingTemplatesController {
       // Handle null/undefined templateId values more explicitly
       if (
         (!useTemplateId ||
-          useTemplateId === "null" ||
-          useTemplateId === "undefined") &&
+          useTemplateId === 'null' ||
+          useTemplateId === 'undefined') &&
         templates.length > 0
       ) {
         useTemplateId = templates[0].id;
@@ -307,14 +307,14 @@ class ShippingTemplatesController {
 
       if (
         (!useTemplateId ||
-          useTemplateId === "null" ||
-          useTemplateId === "undefined") &&
+          useTemplateId === 'null' ||
+          useTemplateId === 'undefined') &&
         templates.length === 0
       ) {
         return res.status(404).json({
           success: false,
           message:
-            "No shipping templates found. Please create a template first.",
+            'No shipping templates found. Please create a template first.'
         });
       }
 
@@ -329,23 +329,23 @@ class ShippingTemplatesController {
         return res.status(404).json({
           success: false,
           message:
-            "Specified template not found and no fallback templates available",
+            'Specified template not found and no fallback templates available'
         });
       }
 
       // Get order data
-      const { Order, OrderItem, ShippingDetail } = require("../models");
+      const { Order, OrderItem, ShippingDetail } = require('../models');
       const order = await Order.findByPk(orderId, {
         include: [
-          { model: OrderItem, as: "items" },
-          { model: ShippingDetail, as: "shippingDetail" },
-        ],
+          { model: OrderItem, as: 'items' },
+          { model: ShippingDetail, as: 'shippingDetail' }
+        ]
       });
 
       if (!order) {
         return res.status(404).json({
           success: false,
-          message: "Order not found",
+          message: 'Order not found'
         });
       }
 
@@ -353,7 +353,7 @@ class ShippingTemplatesController {
       const orderData = this.mapOrderDataForTemplate(order);
 
       // Generate PDF using template-based generator
-      const TemplateBasedPDFGenerator = require("../services/templateBasedPdfGenerator");
+      const TemplateBasedPDFGenerator = require('../services/templateBasedPdfGenerator');
       const pdfGenerator = new TemplateBasedPDFGenerator();
 
       const result = await pdfGenerator.generateFromTemplate(
@@ -367,7 +367,7 @@ class ShippingTemplatesController {
           labelUrl: result.data.labelUrl,
           shippingTemplateId: template.id,
           shippingLabelPrinted: true,
-          shippingLabelPrintedAt: new Date(),
+          shippingLabelPrintedAt: new Date()
         });
 
         res.json({
@@ -376,30 +376,30 @@ class ShippingTemplatesController {
             orderId: order.id,
             templateId: template.id,
             templateName:
-              template.config?.name || template.name || "Untitled Template",
+              template.config?.name || template.name || 'Untitled Template',
             labelUrl: result.data.labelUrl,
             filePath: result.data.filePath,
-            generatedAt: new Date().toISOString(),
+            generatedAt: new Date().toISOString()
           },
-          message: "Shipping slip PDF generated successfully",
+          message: 'Shipping slip PDF generated successfully'
         });
       } else {
         res.status(500).json({
           success: false,
-          message: result.message || "Failed to generate PDF",
-          error: result.error,
+          message: result.message || 'Failed to generate PDF',
+          error: result.error
         });
       }
     } catch (error) {
       console.error(`GeneratePDF ERROR: ${error.message}`, error);
       logger.error(`Failed to generate PDF: ${error.message}`, {
         error,
-        userId: req.user?.id,
+        userId: req.user?.id
       });
       res.status(500).json({
         success: false,
-        message: "Failed to generate shipping slip PDF",
-        error: error.message,
+        message: 'Failed to generate shipping slip PDF',
+        error: error.message
       });
     }
   }
@@ -413,21 +413,21 @@ class ShippingTemplatesController {
       const { orderId, templateId, autoMap = true } = req.body;
 
       // Get Order model
-      const { Order, OrderItem, ShippingDetail } = require("../models");
+      const { Order, OrderItem, ShippingDetail } = require('../models');
 
       // Verify order exists and belongs to user
       const order = await Order.findOne({
         where: { id: orderId, userId: userId },
         include: [
-          { model: OrderItem, as: "items" },
-          { model: ShippingDetail, as: "shippingDetail" },
-        ],
+          { model: OrderItem, as: 'items' },
+          { model: ShippingDetail, as: 'shippingDetail' }
+        ]
       });
 
       if (!order) {
         return res.status(404).json({
           success: false,
-          message: "Order not found or access denied",
+          message: 'Order not found or access denied'
         });
       }
 
@@ -440,7 +440,7 @@ class ShippingTemplatesController {
       if (!template) {
         return res.status(404).json({
           success: false,
-          message: "Template not found",
+          message: 'Template not found'
         });
       }
 
@@ -460,19 +460,19 @@ class ShippingTemplatesController {
           templateId: template.id,
           templateName: template.name,
           autoMapped: autoMap,
-          mappedData: mappedData,
+          mappedData: mappedData
         },
-        message: `Order successfully linked to template "${template.name}"`,
+        message: `Order successfully linked to template "${template.name}"`
       });
     } catch (error) {
       logger.error(`Failed to link order to template: ${error.message}`, {
         error,
-        userId: req.user?.id,
+        userId: req.user?.id
       });
       res.status(500).json({
         success: false,
-        message: "Failed to link order to template",
-        error: error.message,
+        message: 'Failed to link order to template',
+        error: error.message
       });
     }
   }
@@ -481,7 +481,7 @@ class ShippingTemplatesController {
    * Helper method to get user by ID
    */
   async getUser(userId) {
-    const { User } = require("../models");
+    const { User } = require('../models');
     return await User.findByPk(userId);
   }
 
@@ -499,61 +499,61 @@ class ShippingTemplatesController {
       status: order.orderStatus || order.orderStatus,
       platform: order.platform || order.platformType,
       totalAmount: order.totalAmount,
-      currency: order.currency || "TRY",
+      currency: order.currency || 'TRY',
       customer: {
         name: order.customerName,
         phone: order.customerPhone,
-        email: order.customerEmail,
+        email: order.customerEmail
       },
       shippingAddress: shippingDetail
         ? {
-            name: shippingDetail.recipientName || order.customerName,
-            street: shippingDetail.address,
-            city: shippingDetail.city,
-            district: shippingDetail.district,
-            neighborhood: shippingDetail.neighborhood,
-            postalCode: shippingDetail.postalCode,
-            country: shippingDetail.country || "Turkey",
-            phone: shippingDetail.phone || order.customerPhone,
-          }
+          name: shippingDetail.recipientName || order.customerName,
+          street: shippingDetail.address,
+          city: shippingDetail.city,
+          district: shippingDetail.district,
+          neighborhood: shippingDetail.neighborhood,
+          postalCode: shippingDetail.postalCode,
+          country: shippingDetail.country || 'Turkey',
+          phone: shippingDetail.phone || order.customerPhone
+        }
         : null,
       // Add recipient object for template compatibility
       recipient: shippingDetail
         ? {
-            name: shippingDetail.recipientName || order.customerName,
-            address: shippingDetail.address,
-            city: shippingDetail.city,
-            district: shippingDetail.district,
-            neighborhood: shippingDetail.neighborhood,
-            postalCode: shippingDetail.postalCode,
-            country: shippingDetail.country || "Turkey",
-            phone: shippingDetail.phone || order.customerPhone,
-          }
+          name: shippingDetail.recipientName || order.customerName,
+          address: shippingDetail.address,
+          city: shippingDetail.city,
+          district: shippingDetail.district,
+          neighborhood: shippingDetail.neighborhood,
+          postalCode: shippingDetail.postalCode,
+          country: shippingDetail.country || 'Turkey',
+          phone: shippingDetail.phone || order.customerPhone
+        }
         : null,
       items: items.map((item) => ({
         product: {
           name: item.title,
           sku: item.sku,
-          barcode: item.barcode,
+          barcode: item.barcode
         },
         quantity: item.quantity,
         unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice || item.amount,
+        totalPrice: item.totalPrice || item.amount
       })),
       sender: {
-        company: "Pazar+",
-        address: "Merkez Mahallesi, İş Merkezi No:45",
-        city: "İstanbul",
-        postalCode: "34000",
-        phone: "+90 212 123 45 67",
-        email: "info@pazarplus.com",
-        website: "www.pazarplus.com",
+        company: 'Pazar+',
+        address: 'Merkez Mahallesi, İş Merkezi No:45',
+        city: 'İstanbul',
+        postalCode: '34000',
+        phone: '+90 212 123 45 67',
+        email: 'info@pazarplus.com',
+        website: 'www.pazarplus.com'
       },
       tracking: {
         number: order.cargoTrackingNumber,
         carrier: order.carrier,
-        url: order.trackingUrl,
-      },
+        url: order.trackingUrl
+      }
     };
   }
 }

@@ -5,8 +5,8 @@
  * Based on QNB Finans e-Arşiv Entegrasyon Kılavuzu
  */
 
-const crypto = require("crypto");
-const QNBConfig = require("../config/QNBConfig");
+const crypto = require('crypto');
+const QNBConfig = require('../config/QNBConfig');
 
 class QNBHelpers {
   /**
@@ -28,11 +28,11 @@ class QNBHelpers {
     }
 
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    const seconds = String(date.getSeconds()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
 
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
@@ -48,8 +48,8 @@ class QNBHelpers {
     }
 
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
 
     return `${year}-${month}-${day}`;
   }
@@ -64,9 +64,9 @@ class QNBHelpers {
       date = new Date();
     }
 
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    const seconds = String(date.getSeconds()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
 
     return `${hours}:${minutes}:${seconds}`;
   }
@@ -77,7 +77,7 @@ class QNBHelpers {
    * @returns {string} Formatted amount
    */
   static formatCurrency(amount) {
-    if (typeof amount !== "number") {
+    if (typeof amount !== 'number') {
       amount = parseFloat(amount) || 0;
     }
     return amount.toFixed(2);
@@ -90,10 +90,10 @@ class QNBHelpers {
    * @returns {Object} VAT calculation result
    */
   static calculateVAT(totalAmount, vatRate) {
-    if (typeof totalAmount !== "number") {
+    if (typeof totalAmount !== 'number') {
       totalAmount = parseFloat(totalAmount) || 0;
     }
-    if (typeof vatRate !== "number") {
+    if (typeof vatRate !== 'number') {
       vatRate = parseFloat(vatRate) || 0;
     }
 
@@ -105,7 +105,7 @@ class QNBHelpers {
       baseAmount: parseFloat(baseAmount.toFixed(2)),
       vatAmount: parseFloat(vatAmount.toFixed(2)),
       totalAmount: parseFloat(totalAmount.toFixed(2)),
-      vatRate: vatRate,
+      vatRate: vatRate
     };
   }
 
@@ -115,12 +115,12 @@ class QNBHelpers {
    * @returns {boolean} Is valid
    */
   static validateTurkishTaxNumber(taxNumber) {
-    if (!taxNumber || typeof taxNumber !== "string") {
+    if (!taxNumber || typeof taxNumber !== 'string') {
       return false;
     }
 
     // Remove spaces and convert to string
-    taxNumber = taxNumber.replace(/\s/g, "");
+    taxNumber = taxNumber.replace(/\s/g, '');
 
     // Check if it's 10 digits (VKN) or 11 digits (TCKN)
     if (!/^\d{10}$/.test(taxNumber) && !/^\d{11}$/.test(taxNumber)) {
@@ -146,7 +146,7 @@ class QNBHelpers {
       return false;
     }
 
-    const digits = tckn.split("").map(Number);
+    const digits = tckn.split('').map(Number);
 
     // First digit cannot be 0
     if (digits[0] === 0) {
@@ -169,7 +169,7 @@ class QNBHelpers {
    * @returns {boolean} Is valid
    */
   static validateEmail(email) {
-    if (!email || typeof email !== "string") {
+    if (!email || typeof email !== 'string') {
       return false;
     }
 
@@ -186,34 +186,34 @@ class QNBHelpers {
     const errors = [];
 
     if (!config) {
-      errors.push("Configuration is required");
+      errors.push('Configuration is required');
       return { isValid: false, errors };
     }
 
     // Required fields
     if (!config.username) {
-      errors.push("Username is required");
+      errors.push('Username is required');
     }
 
     if (!config.password) {
-      errors.push("Password is required");
+      errors.push('Password is required');
     }
 
     if (!config.companyInfo) {
-      errors.push("Company information is required");
+      errors.push('Company information is required');
     } else {
       if (!config.companyInfo.taxNumber) {
-        errors.push("Company tax number is required");
+        errors.push('Company tax number is required');
       } else if (!this.validateTurkishTaxNumber(config.companyInfo.taxNumber)) {
-        errors.push("Invalid Turkish tax number format");
+        errors.push('Invalid Turkish tax number format');
       }
 
       if (!config.companyInfo.name) {
-        errors.push("Company name is required");
+        errors.push('Company name is required');
       }
 
       if (!config.companyInfo.address) {
-        errors.push("Company address is required");
+        errors.push('Company address is required');
       }
     }
 
@@ -224,7 +224,7 @@ class QNBHelpers {
 
     return {
       isValid: errors.length === 0,
-      errors,
+      errors
     };
   }
 
@@ -237,24 +237,24 @@ class QNBHelpers {
     const errors = [];
 
     if (!order) {
-      errors.push("Order data is required");
+      errors.push('Order data is required');
       return { isValid: false, errors };
     }
 
     // Required order fields
     if (!order.id) {
-      errors.push("Order ID is required");
+      errors.push('Order ID is required');
     }
 
     if (!order.customer) {
-      errors.push("Customer information is required");
+      errors.push('Customer information is required');
     } else {
       if (!order.customer.name) {
-        errors.push("Customer name is required");
+        errors.push('Customer name is required');
       }
 
       if (!order.customer.address) {
-        errors.push("Customer address is required");
+        errors.push('Customer address is required');
       }
 
       // Validate customer tax number if corporate customer
@@ -262,12 +262,12 @@ class QNBHelpers {
         order.customer.taxNumber &&
         !this.validateTurkishTaxNumber(order.customer.taxNumber)
       ) {
-        errors.push("Invalid customer tax number format");
+        errors.push('Invalid customer tax number format');
       }
 
       // Validate customer email if provided
       if (order.customer.email && !this.validateEmail(order.customer.email)) {
-        errors.push("Invalid customer email format");
+        errors.push('Invalid customer email format');
       }
     }
 
@@ -276,7 +276,7 @@ class QNBHelpers {
       !Array.isArray(order.items) ||
       order.items.length === 0
     ) {
-      errors.push("Order items are required");
+      errors.push('Order items are required');
     } else {
       order.items.forEach((item, index) => {
         if (!item.name) {
@@ -301,12 +301,12 @@ class QNBHelpers {
     }
 
     if (!order.total || order.total <= 0) {
-      errors.push("Valid order total is required");
+      errors.push('Valid order total is required');
     }
 
     return {
       isValid: errors.length === 0,
-      errors,
+      errors
     };
   }
 
@@ -316,16 +316,16 @@ class QNBHelpers {
    * @returns {string} Sanitized string
    */
   static sanitizeForXML(str) {
-    if (!str || typeof str !== "string") {
-      return "";
+    if (!str || typeof str !== 'string') {
+      return '';
     }
 
     return str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&apos;")
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;')
       .trim();
   }
 
@@ -335,13 +335,13 @@ class QNBHelpers {
    * @param {number} number - Sequential number
    * @returns {string} Formatted sequence
    */
-  static generateInvoiceSequence(prefix = "INV", number) {
-    if (typeof number !== "number") {
+  static generateInvoiceSequence(prefix = 'INV', number) {
+    if (typeof number !== 'number') {
       number = parseInt(number) || 1;
     }
 
     const year = new Date().getFullYear();
-    const paddedNumber = String(number).padStart(8, "0");
+    const paddedNumber = String(number).padStart(8, '0');
 
     return `${prefix}${year}${paddedNumber}`;
   }
@@ -352,19 +352,19 @@ class QNBHelpers {
    * @returns {number} Parsed number
    */
   static parseTurkishNumber(turkishNumber) {
-    if (typeof turkishNumber === "number") {
+    if (typeof turkishNumber === 'number') {
       return turkishNumber;
     }
 
-    if (!turkishNumber || typeof turkishNumber !== "string") {
+    if (!turkishNumber || typeof turkishNumber !== 'string') {
       return 0;
     }
 
     // Replace Turkish decimal separator (comma) with dot
     // Remove thousand separators (dots in Turkish format)
     const normalized = turkishNumber
-      .replace(/\./g, "") // Remove thousand separators
-      .replace(/,/g, "."); // Replace decimal separator
+      .replace(/\./g, '') // Remove thousand separators
+      .replace(/,/g, '.'); // Replace decimal separator
 
     return parseFloat(normalized) || 0;
   }
@@ -376,13 +376,13 @@ class QNBHelpers {
    * @returns {string} Formatted number
    */
   static formatTurkishNumber(number, decimals = 2) {
-    if (typeof number !== "number") {
+    if (typeof number !== 'number') {
       number = parseFloat(number) || 0;
     }
 
-    return number.toLocaleString("tr-TR", {
+    return number.toLocaleString('tr-TR', {
       minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
+      maximumFractionDigits: decimals
     });
   }
 
@@ -400,8 +400,8 @@ class QNBHelpers {
    * @param {string} algorithm - Hash algorithm (default: sha256)
    * @returns {string} Hash
    */
-  static createHash(data, algorithm = "sha256") {
-    return crypto.createHash(algorithm).update(data).digest("hex");
+  static createHash(data, algorithm = 'sha256') {
+    return crypto.createHash(algorithm).update(data).digest('hex');
   }
 
   /**
@@ -425,103 +425,103 @@ class QNBHelpers {
    */
   static getTurkishProvinceCode(provinceName) {
     const provinces = {
-      adana: "01",
-      adıyaman: "02",
-      afyonkarahisar: "03",
-      ağrı: "04",
-      amasya: "05",
-      ankara: "06",
-      antalya: "07",
-      artvin: "08",
-      aydın: "09",
-      balıkesir: "10",
-      bilecik: "11",
-      bingöl: "12",
-      bitlis: "13",
-      bolu: "14",
-      burdur: "15",
-      bursa: "16",
-      çanakkale: "17",
-      çankırı: "18",
-      çorum: "19",
-      denizli: "20",
-      diyarbakır: "21",
-      edirne: "22",
-      elazığ: "23",
-      erzincan: "24",
-      erzurum: "25",
-      eskişehir: "26",
-      gaziantep: "27",
-      giresun: "28",
-      gümüşhane: "29",
-      hakkari: "30",
-      hatay: "31",
-      isparta: "32",
-      mersin: "33",
-      istanbul: "34",
-      izmir: "35",
-      kars: "36",
-      kastamonu: "37",
-      kayseri: "38",
-      kırklareli: "39",
-      kırşehir: "40",
-      kocaeli: "41",
-      konya: "42",
-      kütahya: "43",
-      malatya: "44",
-      manisa: "45",
-      kahramanmaraş: "46",
-      mardin: "47",
-      muğla: "48",
-      muş: "49",
-      nevşehir: "50",
-      niğde: "51",
-      ordu: "52",
-      rize: "53",
-      sakarya: "54",
-      samsun: "55",
-      siirt: "56",
-      sinop: "57",
-      sivas: "58",
-      tekirdağ: "59",
-      tokat: "60",
-      trabzon: "61",
-      tunceli: "62",
-      şanlıurfa: "63",
-      uşak: "64",
-      van: "65",
-      yozgat: "66",
-      zonguldak: "67",
-      aksaray: "68",
-      bayburt: "69",
-      karaman: "70",
-      kırıkkale: "71",
-      batman: "72",
-      şırnak: "73",
-      bartın: "74",
-      ardahan: "75",
-      iğdır: "76",
-      yalova: "77",
-      karabük: "78",
-      kilis: "79",
-      osmaniye: "80",
-      düzce: "81",
+      adana: '01',
+      adıyaman: '02',
+      afyonkarahisar: '03',
+      ağrı: '04',
+      amasya: '05',
+      ankara: '06',
+      antalya: '07',
+      artvin: '08',
+      aydın: '09',
+      balıkesir: '10',
+      bilecik: '11',
+      bingöl: '12',
+      bitlis: '13',
+      bolu: '14',
+      burdur: '15',
+      bursa: '16',
+      çanakkale: '17',
+      çankırı: '18',
+      çorum: '19',
+      denizli: '20',
+      diyarbakır: '21',
+      edirne: '22',
+      elazığ: '23',
+      erzincan: '24',
+      erzurum: '25',
+      eskişehir: '26',
+      gaziantep: '27',
+      giresun: '28',
+      gümüşhane: '29',
+      hakkari: '30',
+      hatay: '31',
+      isparta: '32',
+      mersin: '33',
+      istanbul: '34',
+      izmir: '35',
+      kars: '36',
+      kastamonu: '37',
+      kayseri: '38',
+      kırklareli: '39',
+      kırşehir: '40',
+      kocaeli: '41',
+      konya: '42',
+      kütahya: '43',
+      malatya: '44',
+      manisa: '45',
+      kahramanmaraş: '46',
+      mardin: '47',
+      muğla: '48',
+      muş: '49',
+      nevşehir: '50',
+      niğde: '51',
+      ordu: '52',
+      rize: '53',
+      sakarya: '54',
+      samsun: '55',
+      siirt: '56',
+      sinop: '57',
+      sivas: '58',
+      tekirdağ: '59',
+      tokat: '60',
+      trabzon: '61',
+      tunceli: '62',
+      şanlıurfa: '63',
+      uşak: '64',
+      van: '65',
+      yozgat: '66',
+      zonguldak: '67',
+      aksaray: '68',
+      bayburt: '69',
+      karaman: '70',
+      kırıkkale: '71',
+      batman: '72',
+      şırnak: '73',
+      bartın: '74',
+      ardahan: '75',
+      iğdır: '76',
+      yalova: '77',
+      karabük: '78',
+      kilis: '79',
+      osmaniye: '80',
+      düzce: '81'
     };
 
-    if (!provinceName || typeof provinceName !== "string") {
-      return "34"; // Default to Istanbul
+    if (!provinceName || typeof provinceName !== 'string') {
+      return '34'; // Default to Istanbul
     }
 
     const normalized = provinceName
       .toLowerCase()
-      .replace(/ı/g, "i")
-      .replace(/ğ/g, "g")
-      .replace(/ü/g, "u")
-      .replace(/ş/g, "s")
-      .replace(/ö/g, "o")
-      .replace(/ç/g, "c");
+      .replace(/ı/g, 'i')
+      .replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/ş/g, 's')
+      .replace(/ö/g, 'o')
+      .replace(/ç/g, 'c');
 
-    return provinces[normalized] || "34";
+    return provinces[normalized] || '34';
   }
 
   /**
@@ -531,13 +531,13 @@ class QNBHelpers {
    * @returns {string} Masked data
    */
   static maskSensitiveData(data, visibleChars = 2) {
-    if (!data || typeof data !== "string" || data.length <= visibleChars * 2) {
-      return "***";
+    if (!data || typeof data !== 'string' || data.length <= visibleChars * 2) {
+      return '***';
     }
 
     const start = data.substring(0, visibleChars);
     const end = data.substring(data.length - visibleChars);
-    const middle = "*".repeat(Math.max(3, data.length - visibleChars * 2));
+    const middle = '*'.repeat(Math.max(3, data.length - visibleChars * 2));
 
     return `${start}${middle}${end}`;
   }
@@ -556,7 +556,7 @@ class QNBHelpers {
    * @returns {boolean} Is valid UUID
    */
   static isValidUUID(uuid) {
-    if (!uuid || typeof uuid !== "string") {
+    if (!uuid || typeof uuid !== 'string') {
       return false;
     }
 

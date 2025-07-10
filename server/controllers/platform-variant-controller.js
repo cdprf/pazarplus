@@ -1,12 +1,12 @@
-const { validationResult } = require("express-validator");
+const { validationResult } = require('express-validator');
 const {
   PlatformVariant,
   MainProduct,
   PlatformCategory,
-  Product,
-} = require("../models");
-const PlatformFieldService = require("../services/platform-field-service");
-const logger = require("../utils/logger");
+  Product
+} = require('../models');
+const PlatformFieldService = require('../services/platform-field-service');
+const logger = require('../utils/logger');
 
 class PlatformVariantController {
   /**
@@ -18,8 +18,8 @@ class PlatformVariantController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation failed",
-          errors: errors.array(),
+          message: 'Validation failed',
+          errors: errors.array()
         });
       }
 
@@ -38,15 +38,15 @@ class PlatformVariantController {
           categoryId,
           fields: fields.all,
           baseFields: fields.base,
-          platformFields: fields.platform,
-        },
+          platformFields: fields.platform
+        }
       });
     } catch (error) {
-      logger.error("Get platform fields error:", error);
+      logger.error('Get platform fields error:', error);
       res.status(500).json({
         success: false,
-        message: "Platform alanları getirilemedi",
-        error: error.message,
+        message: 'Platform alanları getirilemedi',
+        error: error.message
       });
     }
   }
@@ -60,8 +60,8 @@ class PlatformVariantController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation failed",
-          errors: errors.array(),
+          message: 'Validation failed',
+          errors: errors.array()
         });
       }
 
@@ -71,10 +71,10 @@ class PlatformVariantController {
       const categories = await PlatformCategory.findAll({
         where: {
           platformType: platform,
-          isActive: true,
+          isActive: true
         },
-        order: [["name", "ASC"]],
-        attributes: ["id", "platformCategoryId", "name", "path", "isLeaf"],
+        order: [['name', 'ASC']],
+        attributes: ['id', 'platformCategoryId', 'name', 'path', 'isLeaf']
       });
 
       res.json({
@@ -85,16 +85,16 @@ class PlatformVariantController {
             id: cat.platformCategoryId,
             name: cat.name,
             path: cat.path,
-            hasChildren: !cat.isLeaf, // Convert isLeaf to hasChildren
-          })),
-        },
+            hasChildren: !cat.isLeaf // Convert isLeaf to hasChildren
+          }))
+        }
       });
     } catch (error) {
-      logger.error("Get platform categories error:", error);
+      logger.error('Get platform categories error:', error);
       res.status(500).json({
         success: false,
-        message: "Platform kategorileri getirilemedi",
-        error: error.message,
+        message: 'Platform kategorileri getirilemedi',
+        error: error.message
       });
     }
   }
@@ -108,8 +108,8 @@ class PlatformVariantController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation failed",
-          errors: errors.array(),
+          message: 'Validation failed',
+          errors: errors.array()
         });
       }
 
@@ -118,19 +118,19 @@ class PlatformVariantController {
 
       // First try to find the product in MainProduct table
       let product = await MainProduct.findOne({
-        where: { id: productId, userId },
+        where: { id: productId, userId }
       });
 
       // If not found in MainProduct, check in Product table (for backwards compatibility)
       if (!product) {
         const regularProduct = await Product.findOne({
-          where: { id: productId, userId, isMainProduct: true },
+          where: { id: productId, userId, isMainProduct: true }
         });
 
         if (!regularProduct) {
           return res.status(404).json({
             success: false,
-            message: "Ürün bulunamadı",
+            message: 'Ürün bulunamadı'
           });
         }
 
@@ -141,7 +141,7 @@ class PlatformVariantController {
       // Get all variants for this product
       const variants = await PlatformVariant.findAll({
         where: { mainProductId: productId },
-        order: [["createdAt", "DESC"]],
+        order: [['createdAt', 'DESC']]
       });
 
       res.json({
@@ -163,16 +163,16 @@ class PlatformVariantController {
             externalUrl: variant.externalUrl,
             platformAttributes: variant.platformAttributes,
             createdAt: variant.createdAt,
-            updatedAt: variant.updatedAt,
-          })),
-        },
+            updatedAt: variant.updatedAt
+          }))
+        }
       });
     } catch (error) {
-      logger.error("Get product variants error:", error);
+      logger.error('Get product variants error:', error);
       res.status(500).json({
         success: false,
-        message: "Ürün varyantları getirilemedi",
-        error: error.message,
+        message: 'Ürün varyantları getirilemedi',
+        error: error.message
       });
     }
   }
@@ -186,8 +186,8 @@ class PlatformVariantController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation failed",
-          errors: errors.array(),
+          message: 'Validation failed',
+          errors: errors.array()
         });
       }
 
@@ -196,19 +196,19 @@ class PlatformVariantController {
         platform,
         platformSku,
         platformFields,
-        autoPublish = false,
+        autoPublish = false
       } = req.body;
       const userId = req.user.id;
 
       // Verify product belongs to user
       const product = await MainProduct.findOne({
-        where: { id: productId, userId },
+        where: { id: productId, userId }
       });
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: "Ürün bulunamadı",
+          message: 'Ürün bulunamadı'
         });
       }
 
@@ -217,14 +217,14 @@ class PlatformVariantController {
         where: {
           mainProductId: productId,
           platform,
-          platformSku,
-        },
+          platformSku
+        }
       });
 
       if (existingVariant) {
         return res.status(400).json({
           success: false,
-          message: "Bu platform ve SKU ile zaten bir varyant mevcut",
+          message: 'Bu platform ve SKU ile zaten bir varyant mevcut'
         });
       }
 
@@ -238,8 +238,8 @@ class PlatformVariantController {
       if (!validation.isValid) {
         return res.status(400).json({
           success: false,
-          message: "Platform alanları geçersiz",
-          errors: validation.errors,
+          message: 'Platform alanları geçersiz',
+          errors: validation.errors
         });
       }
 
@@ -257,7 +257,7 @@ class PlatformVariantController {
         useMainPrice: !platformFields.platformPrice,
         useMainMedia: true,
         isPublished: false,
-        syncStatus: "pending",
+        syncStatus: 'pending'
       });
 
       // Auto-publish if requested
@@ -268,7 +268,7 @@ class PlatformVariantController {
 
       res.status(201).json({
         success: true,
-        message: "Platform varyantı başarıyla oluşturuldu",
+        message: 'Platform varyantı başarıyla oluşturuldu',
         data: {
           id: variant.id,
           platform: variant.platform,
@@ -277,15 +277,15 @@ class PlatformVariantController {
           platformPrice: variant.platformPrice,
           isPublished: variant.isPublished,
           syncStatus: variant.syncStatus,
-          createdAt: variant.createdAt,
-        },
+          createdAt: variant.createdAt
+        }
       });
     } catch (error) {
-      logger.error("Create platform variant error:", error);
+      logger.error('Create platform variant error:', error);
       res.status(500).json({
         success: false,
-        message: "Platform varyantı oluşturulamadı",
-        error: error.message,
+        message: 'Platform varyantı oluşturulamadı',
+        error: error.message
       });
     }
   }
@@ -299,8 +299,8 @@ class PlatformVariantController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation failed",
-          errors: errors.array(),
+          message: 'Validation failed',
+          errors: errors.array()
         });
       }
 
@@ -315,15 +315,15 @@ class PlatformVariantController {
           {
             model: MainProduct,
             where: { userId },
-            attributes: ["id", "userId"],
-          },
-        ],
+            attributes: ['id', 'userId']
+          }
+        ]
       });
 
       if (!variant) {
         return res.status(404).json({
           success: false,
-          message: "Varyant bulunamadı",
+          message: 'Varyant bulunamadı'
         });
       }
 
@@ -340,8 +340,8 @@ class PlatformVariantController {
         if (!validation.isValid) {
           return res.status(400).json({
             success: false,
-            message: "Platform alanları geçersiz",
-            errors: validation.errors,
+            message: 'Platform alanları geçersiz',
+            errors: validation.errors
           });
         }
 
@@ -353,7 +353,7 @@ class PlatformVariantController {
       }
 
       // Update publish status if provided
-      if (typeof isPublished === "boolean") {
+      if (typeof isPublished === 'boolean') {
         updateData.isPublished = isPublished;
         if (isPublished && !variant.publishedAt) {
           updateData.publishedAt = new Date();
@@ -364,7 +364,7 @@ class PlatformVariantController {
 
       res.json({
         success: true,
-        message: "Platform varyantı başarıyla güncellendi",
+        message: 'Platform varyantı başarıyla güncellendi',
         data: {
           id: variant.id,
           platform: variant.platform,
@@ -373,15 +373,15 @@ class PlatformVariantController {
           platformPrice: variant.platformPrice,
           isPublished: variant.isPublished,
           syncStatus: variant.syncStatus,
-          updatedAt: new Date(),
-        },
+          updatedAt: new Date()
+        }
       });
     } catch (error) {
-      logger.error("Update platform variant error:", error);
+      logger.error('Update platform variant error:', error);
       res.status(500).json({
         success: false,
-        message: "Platform varyantı güncellenemedi",
-        error: error.message,
+        message: 'Platform varyantı güncellenemedi',
+        error: error.message
       });
     }
   }
@@ -395,8 +395,8 @@ class PlatformVariantController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation failed",
-          errors: errors.array(),
+          message: 'Validation failed',
+          errors: errors.array()
         });
       }
 
@@ -410,15 +410,15 @@ class PlatformVariantController {
           {
             model: MainProduct,
             where: { userId },
-            attributes: ["id", "userId"],
-          },
-        ],
+            attributes: ['id', 'userId']
+          }
+        ]
       });
 
       if (!variant) {
         return res.status(404).json({
           success: false,
-          message: "Varyant bulunamadı",
+          message: 'Varyant bulunamadı'
         });
       }
 
@@ -426,14 +426,14 @@ class PlatformVariantController {
 
       res.json({
         success: true,
-        message: "Platform varyantı başarıyla silindi",
+        message: 'Platform varyantı başarıyla silindi'
       });
     } catch (error) {
-      logger.error("Delete platform variant error:", error);
+      logger.error('Delete platform variant error:', error);
       res.status(500).json({
         success: false,
-        message: "Platform varyantı silinemedi",
-        error: error.message,
+        message: 'Platform varyantı silinemedi',
+        error: error.message
       });
     }
   }
@@ -447,8 +447,8 @@ class PlatformVariantController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation failed",
-          errors: errors.array(),
+          message: 'Validation failed',
+          errors: errors.array()
         });
       }
 
@@ -462,22 +462,22 @@ class PlatformVariantController {
           {
             model: MainProduct,
             where: { userId },
-            attributes: ["id", "userId"],
-          },
-        ],
+            attributes: ['id', 'userId']
+          }
+        ]
       });
 
       if (!variant) {
         return res.status(404).json({
           success: false,
-          message: "Varyant bulunamadı",
+          message: 'Varyant bulunamadı'
         });
       }
 
       // TODO: Implement actual platform publishing logic
       await variant.update({
-        syncStatus: "syncing",
-        lastSyncAt: new Date(),
+        syncStatus: 'syncing',
+        lastSyncAt: new Date()
       });
 
       // Simulate publishing process
@@ -486,33 +486,33 @@ class PlatformVariantController {
           await variant.update({
             isPublished: true,
             publishedAt: new Date(),
-            syncStatus: "success",
+            syncStatus: 'success',
             externalId: `${variant.platform}_${Date.now()}`,
-            externalUrl: `https://${variant.platform}.com/product/${variant.platformSku}`,
+            externalUrl: `https://${variant.platform}.com/product/${variant.platformSku}`
           });
         } catch (error) {
-          logger.error("Publish variant update error:", error);
+          logger.error('Publish variant update error:', error);
           await variant.update({
-            syncStatus: "error",
-            syncError: error.message,
+            syncStatus: 'error',
+            syncError: error.message
           });
         }
       }, 2000);
 
       res.json({
         success: true,
-        message: "Varyant yayınlanıyor...",
+        message: 'Varyant yayınlanıyor...',
         data: {
           id: variant.id,
-          syncStatus: "syncing",
-        },
+          syncStatus: 'syncing'
+        }
       });
     } catch (error) {
-      logger.error("Publish variant error:", error);
+      logger.error('Publish variant error:', error);
       res.status(500).json({
         success: false,
-        message: "Varyant yayınlanamadı",
-        error: error.message,
+        message: 'Varyant yayınlanamadı',
+        error: error.message
       });
     }
   }
@@ -526,8 +526,8 @@ class PlatformVariantController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation failed",
-          errors: errors.array(),
+          message: 'Validation failed',
+          errors: errors.array()
         });
       }
 
@@ -541,45 +541,45 @@ class PlatformVariantController {
           {
             model: MainProduct,
             where: { userId },
-            attributes: ["id", "userId"],
-          },
-        ],
+            attributes: ['id', 'userId']
+          }
+        ]
       });
 
       if (!variant) {
         return res.status(404).json({
           success: false,
-          message: "Varyant bulunamadı",
+          message: 'Varyant bulunamadı'
         });
       }
 
       if (!variant.isPublished) {
         return res.status(400).json({
           success: false,
-          message: "Yayınlanmamış varyant senkronize edilemez",
+          message: 'Yayınlanmamış varyant senkronize edilemez'
         });
       }
 
       // TODO: Implement actual platform sync logic
       await variant.update({
-        syncStatus: "syncing",
-        lastSyncAt: new Date(),
+        syncStatus: 'syncing',
+        lastSyncAt: new Date()
       });
 
       res.json({
         success: true,
-        message: "Varyant senkronize ediliyor...",
+        message: 'Varyant senkronize ediliyor...',
         data: {
           id: variant.id,
-          syncStatus: "syncing",
-        },
+          syncStatus: 'syncing'
+        }
       });
     } catch (error) {
-      logger.error("Sync variant error:", error);
+      logger.error('Sync variant error:', error);
       res.status(500).json({
         success: false,
-        message: "Varyant senkronize edilemedi",
-        error: error.message,
+        message: 'Varyant senkronize edilemedi',
+        error: error.message
       });
     }
   }
@@ -593,8 +593,8 @@ class PlatformVariantController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation failed",
-          errors: errors.array(),
+          message: 'Validation failed',
+          errors: errors.array()
         });
       }
 
@@ -608,26 +608,26 @@ class PlatformVariantController {
           {
             model: MainProduct,
             where: { userId },
-            attributes: ["id", "userId"],
-          },
-        ],
+            attributes: ['id', 'userId']
+          }
+        ]
       });
 
       if (variants.length !== variantIds.length) {
         return res.status(400).json({
           success: false,
-          message: "Bazı varyantlar bulunamadı veya erişim yetkiniz yok",
+          message: 'Bazı varyantlar bulunamadı veya erişim yetkiniz yok'
         });
       }
 
       // Update all variants to syncing status
       await PlatformVariant.update(
         {
-          syncStatus: "syncing",
-          lastSyncAt: new Date(),
+          syncStatus: 'syncing',
+          lastSyncAt: new Date()
         },
         {
-          where: { id: variantIds },
+          where: { id: variantIds }
         }
       );
 
@@ -636,15 +636,15 @@ class PlatformVariantController {
         message: `${variants.length} varyant toplu olarak yayınlanıyor...`,
         data: {
           variantCount: variants.length,
-          variantIds,
-        },
+          variantIds
+        }
       });
     } catch (error) {
-      logger.error("Bulk publish variants error:", error);
+      logger.error('Bulk publish variants error:', error);
       res.status(500).json({
         success: false,
-        message: "Varyantlar toplu olarak yayınlanamadı",
-        error: error.message,
+        message: 'Varyantlar toplu olarak yayınlanamadı',
+        error: error.message
       });
     }
   }
@@ -658,8 +658,8 @@ class PlatformVariantController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation failed",
-          errors: errors.array(),
+          message: 'Validation failed',
+          errors: errors.array()
         });
       }
 
@@ -670,32 +670,32 @@ class PlatformVariantController {
       const variants = await PlatformVariant.findAll({
         where: {
           id: variantIds,
-          isPublished: true,
+          isPublished: true
         },
         include: [
           {
             model: MainProduct,
             where: { userId },
-            attributes: ["id", "userId"],
-          },
-        ],
+            attributes: ['id', 'userId']
+          }
+        ]
       });
 
       if (variants.length === 0) {
         return res.status(400).json({
           success: false,
-          message: "Senkronize edilebilecek yayınlı varyant bulunamadı",
+          message: 'Senkronize edilebilecek yayınlı varyant bulunamadı'
         });
       }
 
       // Update all variants to syncing status
       await PlatformVariant.update(
         {
-          syncStatus: "syncing",
-          lastSyncAt: new Date(),
+          syncStatus: 'syncing',
+          lastSyncAt: new Date()
         },
         {
-          where: { id: variants.map((v) => v.id) },
+          where: { id: variants.map((v) => v.id) }
         }
       );
 
@@ -704,15 +704,15 @@ class PlatformVariantController {
         message: `${variants.length} varyant toplu olarak senkronize ediliyor...`,
         data: {
           variantCount: variants.length,
-          variantIds: variants.map((v) => v.id),
-        },
+          variantIds: variants.map((v) => v.id)
+        }
       });
     } catch (error) {
-      logger.error("Bulk sync variants error:", error);
+      logger.error('Bulk sync variants error:', error);
       res.status(500).json({
         success: false,
-        message: "Varyantlar toplu olarak senkronize edilemedi",
-        error: error.message,
+        message: 'Varyantlar toplu olarak senkronize edilemedi',
+        error: error.message
       });
     }
   }

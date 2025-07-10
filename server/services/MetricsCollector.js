@@ -3,7 +3,7 @@
  * Collects and aggregates application metrics for monitoring and analytics
  */
 
-const logger = require("../utils/logger");
+const logger = require('../utils/logger');
 
 class MetricsCollector {
   constructor() {
@@ -22,7 +22,7 @@ class MetricsCollector {
     this.timers.set(key, {
       start: Date.now(),
       name,
-      labels,
+      labels
     });
     return key;
   }
@@ -65,7 +65,7 @@ class MetricsCollector {
         count: 0,
         sum: 0,
         min: null,
-        max: null,
+        max: null
       });
     }
 
@@ -94,7 +94,7 @@ class MetricsCollector {
       labels,
       value,
       timestamp: Date.now(),
-      type: "gauge",
+      type: 'gauge'
     });
   }
 
@@ -107,7 +107,7 @@ class MetricsCollector {
       uptime: Date.now() - this.startTime,
       counters: this.serializeCounters(),
       histograms: this.serializeHistograms(),
-      gauges: this.serializeGauges(),
+      gauges: this.serializeGauges()
     };
 
     return snapshot;
@@ -121,17 +121,17 @@ class MetricsCollector {
 
     // Check counters
     if (this.counters.has(key)) {
-      return { type: "counter", value: this.counters.get(key) };
+      return { type: 'counter', value: this.counters.get(key) };
     }
 
     // Check histograms
     if (this.histograms.has(key)) {
-      return { type: "histogram", ...this.histograms.get(key) };
+      return { type: 'histogram', ...this.histograms.get(key) };
     }
 
     // Check gauges
     if (this.metrics.has(key)) {
-      return { type: "gauge", ...this.metrics.get(key) };
+      return { type: 'gauge', ...this.metrics.get(key) };
     }
 
     return null;
@@ -152,32 +152,32 @@ class MetricsCollector {
    * Get system metrics
    */
   getSystemMetrics() {
-    const process = require("process");
-    const os = require("os");
+    const process = require('process');
+    const os = require('os');
 
     return {
       memory: {
         used: process.memoryUsage().heapUsed,
         total: process.memoryUsage().heapTotal,
         rss: process.memoryUsage().rss,
-        external: process.memoryUsage().external,
+        external: process.memoryUsage().external
       },
       cpu: {
         usage: process.cpuUsage(),
-        loadAverage: os.loadavg(),
+        loadAverage: os.loadavg()
       },
       system: {
         uptime: os.uptime(),
         freeMem: os.freemem(),
         totalMem: os.totalmem(),
         platform: os.platform(),
-        arch: os.arch(),
+        arch: os.arch()
       },
       process: {
         pid: process.pid,
         uptime: process.uptime(),
-        version: process.version,
-      },
+        version: process.version
+      }
     };
   }
 
@@ -185,7 +185,7 @@ class MetricsCollector {
    * Export metrics in Prometheus format
    */
   exportPrometheus() {
-    let output = "";
+    let output = '';
 
     // Export counters
     for (const [key, value] of this.counters) {
@@ -213,7 +213,7 @@ class MetricsCollector {
 
     // Export gauges
     for (const [key, metric] of this.metrics) {
-      if (metric.type === "gauge") {
+      if (metric.type === 'gauge') {
         const labelsStr = this.formatLabels(metric.labels);
         output += `# TYPE ${metric.name} gauge\n`;
         output += `${metric.name}${labelsStr} ${metric.value}\n`;
@@ -228,22 +228,22 @@ class MetricsCollector {
     const labelStr = Object.keys(labels)
       .sort()
       .map((key) => `${key}="${labels[key]}"`)
-      .join(",");
+      .join(',');
     return labelStr ? `${name}{${labelStr}}` : name;
   }
 
   parseKey(key) {
     const match = key.match(/^([^{]+)(?:\{(.+)\})?$/);
-    if (!match) return { name: key, labels: {} };
+    if (!match) {return { name: key, labels: {} };}
 
     const name = match[1];
     const labelsStr = match[2];
     const labels = {};
 
     if (labelsStr) {
-      labelsStr.split(",").forEach((pair) => {
-        const [key, value] = pair.split("=");
-        labels[key] = value.replace(/"/g, "");
+      labelsStr.split(',').forEach((pair) => {
+        const [key, value] = pair.split('=');
+        labels[key] = value.replace(/"/g, '');
       });
     }
 
@@ -254,15 +254,15 @@ class MetricsCollector {
     const labelPairs = Object.keys(labels)
       .sort()
       .map((key) => `${key}="${labels[key]}"`)
-      .join(",");
-    return labelPairs ? `{${labelPairs}}` : "";
+      .join(',');
+    return labelPairs ? `{${labelPairs}}` : '';
   }
 
   serializeCounters() {
     const result = {};
     for (const [key, value] of this.counters) {
       const { name, labels } = this.parseKey(key);
-      if (!result[name]) result[name] = [];
+      if (!result[name]) {result[name] = [];}
       result[name].push({ labels, value });
     }
     return result;
@@ -271,7 +271,7 @@ class MetricsCollector {
   serializeHistograms() {
     const result = {};
     for (const [key, histogram] of this.histograms) {
-      if (!result[histogram.name]) result[histogram.name] = [];
+      if (!result[histogram.name]) {result[histogram.name] = [];}
 
       const summary = {
         labels: histogram.labels,
@@ -282,7 +282,7 @@ class MetricsCollector {
         avg: histogram.count > 0 ? histogram.sum / histogram.count : 0,
         percentiles: this.calculatePercentiles(
           histogram.values.map((v) => v.value)
-        ),
+        )
       };
 
       result[histogram.name].push(summary);
@@ -293,12 +293,12 @@ class MetricsCollector {
   serializeGauges() {
     const result = {};
     for (const [key, metric] of this.metrics) {
-      if (metric.type === "gauge") {
-        if (!result[metric.name]) result[metric.name] = [];
+      if (metric.type === 'gauge') {
+        if (!result[metric.name]) {result[metric.name] = [];}
         result[metric.name].push({
           labels: metric.labels,
           value: metric.value,
-          timestamp: metric.timestamp,
+          timestamp: metric.timestamp
         });
       }
     }
@@ -306,7 +306,7 @@ class MetricsCollector {
   }
 
   calculatePercentiles(values) {
-    if (values.length === 0) return {};
+    if (values.length === 0) {return {};}
 
     const sorted = [...values].sort((a, b) => a - b);
     const percentiles = [50, 90, 95, 99];

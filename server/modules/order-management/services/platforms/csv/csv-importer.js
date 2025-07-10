@@ -1,24 +1,24 @@
 // src/services/platforms/csv/csv-importer.js
 
-const fs = require("fs");
-const path = require("path");
+const fs = require('fs');
+const path = require('path');
 
 let csv;
 let csvImportEnabled = true;
 
 try {
-  csv = require("csv-parser");
+  csv = require('csv-parser');
 } catch (error) {
-  console.warn("CSV import dependencies not available:", error.message);
+  console.warn('CSV import dependencies not available:', error.message);
   csvImportEnabled = false;
 
   // Create fallback CSV parser
   csv = () => {
-    const { Transform } = require("stream");
+    const { Transform } = require('stream');
     return new Transform({
       transform(chunk, encoding, callback) {
-        callback(new Error("CSV import disabled - dependencies not available"));
-      },
+        callback(new Error('CSV import disabled - dependencies not available'));
+      }
     });
   };
 }
@@ -28,20 +28,20 @@ const {
   OrderItem,
   User,
   PlatformConnection,
-  ShippingDetail,
-} = require("../../../../../models");
-const logger = require("../../../../../utils/logger");
-const shippingDetailService = require("../../../../../utils/shipping-detail-service");
+  ShippingDetail
+} = require('../../../../../models');
+const logger = require('../../../../../utils/logger');
+const shippingDetailService = require('../../../../../utils/shipping-detail-service');
 const {
   mapOrderStatus,
-  sanitizePlatformType,
-} = require("../../../../../utils/enum-validators");
+  sanitizePlatformType
+} = require('../../../../../utils/enum-validators');
 
 class CSVImporterService {
   constructor(connectionId) {
     this.connectionId = connectionId;
     this.connection = null;
-    this.uploadDir = path.join(__dirname, "../../../uploads");
+    this.uploadDir = path.join(__dirname, '../../../uploads');
 
     // Create upload directory if it doesn't exist
     if (!fs.existsSync(this.uploadDir)) {
@@ -63,7 +63,7 @@ class CSVImporterService {
     } catch (error) {
       logger.error(`Failed to initialize CSV importer: ${error.message}`, {
         error,
-        connectionId: this.connectionId,
+        connectionId: this.connectionId
       });
       throw new Error(`Failed to initialize CSV importer: ${error.message}`);
     }
@@ -75,23 +75,23 @@ class CSVImporterService {
 
       return {
         success: true,
-        message: "Connection successful",
+        message: 'Connection successful',
         data: {
-          platform: "csv",
+          platform: 'csv',
           connectionId: this.connectionId,
-          status: "active",
-        },
+          status: 'active'
+        }
       };
     } catch (error) {
       logger.error(`CSV importer connection test failed: ${error.message}`, {
         error,
-        connectionId: this.connectionId,
+        connectionId: this.connectionId
       });
 
       return {
         success: false,
         message: `Connection failed: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -119,8 +119,8 @@ class CSVImporterService {
         const writeStream = fs.createWriteStream(filePath);
         writeStream.write(file.buffer);
         writeStream.end();
-        writeStream.on("finish", resolve);
-        writeStream.on("error", reject);
+        writeStream.on('finish', resolve);
+        writeStream.on('error', reject);
       });
 
       // Parse CSV file
@@ -132,13 +132,13 @@ class CSVImporterService {
             csv({
               skipLines: options.skipHeader ? 1 : 0,
               headers: options.hasHeaders,
-              separator: options.delimiter || ",",
-              trim: true,
+              separator: options.delimiter || ',',
+              trim: true
             })
           )
-          .on("data", (data) => results.push(data))
-          .on("end", resolve)
-          .on("error", reject);
+          .on('data', (data) => results.push(data))
+          .on('end', resolve)
+          .on('error', reject);
       });
 
       // Group rows by order ID to handle multiple items per order
@@ -148,7 +148,7 @@ class CSVImporterService {
         const orderId = this.getValueFromMapping(row, columnMap.orderId);
 
         if (!orderId) {
-          logger.warn("Skipping row with no order ID", { row });
+          logger.warn('Skipping row with no order ID', { row });
           continue;
         }
 
@@ -156,19 +156,19 @@ class CSVImporterService {
           orderMap.set(orderId, {
             orderData: {
               platformOrderId: orderId,
-              platformId: "csv",
+              platformId: 'csv',
               connectionId: this.connectionId,
               orderDate: this.parseDate(
                 this.getValueFromMapping(row, columnMap.orderDate)
               ),
               orderStatus:
-                this.getValueFromMapping(row, columnMap.orderStatus) || "new",
+                this.getValueFromMapping(row, columnMap.orderStatus) || 'new',
               totalAmount:
                 parseFloat(
                   this.getValueFromMapping(row, columnMap.totalAmount)
                 ) || 0,
               currency:
-                this.getValueFromMapping(row, columnMap.currency) || "TRY",
+                this.getValueFromMapping(row, columnMap.currency) || 'TRY',
               customerName: this.getValueFromMapping(
                 row,
                 columnMap.customerName
@@ -182,7 +182,7 @@ class CSVImporterService {
                 columnMap.customerPhone
               ),
               notes: this.getValueFromMapping(row, columnMap.notes),
-              rawData: JSON.stringify(row),
+              rawData: JSON.stringify(row)
             },
             shippingData: {
               recipientName:
@@ -193,7 +193,7 @@ class CSVImporterService {
               state: this.getValueFromMapping(row, columnMap.state),
               postalCode: this.getValueFromMapping(row, columnMap.postalCode),
               country:
-                this.getValueFromMapping(row, columnMap.country) || "Turkey",
+                this.getValueFromMapping(row, columnMap.country) || 'Turkey',
               phone:
                 this.getValueFromMapping(row, columnMap.phone) ||
                 this.getValueFromMapping(row, columnMap.customerPhone),
@@ -203,9 +203,9 @@ class CSVImporterService {
               shippingMethod: this.getValueFromMapping(
                 row,
                 columnMap.shippingMethod
-              ),
+              )
             },
-            items: [],
+            items: []
           });
         }
 
@@ -219,9 +219,9 @@ class CSVImporterService {
             parseInt(this.getValueFromMapping(row, columnMap.quantity)) || 1,
           price:
             parseFloat(this.getValueFromMapping(row, columnMap.price)) || 0,
-          currency: this.getValueFromMapping(row, columnMap.currency) || "TRY",
+          currency: this.getValueFromMapping(row, columnMap.currency) || 'TRY',
           variantInfo: this.getValueFromMapping(row, columnMap.variantInfo),
-          rawData: JSON.stringify(row),
+          rawData: JSON.stringify(row)
         });
       }
 
@@ -238,7 +238,7 @@ class CSVImporterService {
           if (sanitizedOrderData.orderStatus) {
             sanitizedOrderData.orderStatus = mapOrderStatus(
               sanitizedOrderData.orderStatus,
-              "csv"
+              'csv'
             );
           }
 
@@ -258,9 +258,9 @@ class CSVImporterService {
           const existingOrder = await Order.findOne({
             where: {
               platformOrderId: orderId,
-              platformId: "csv",
-              connectionId: this.connectionId,
-            },
+              platformId: 'csv',
+              connectionId: this.connectionId
+            }
           });
 
           if (existingOrder && !options.overwriteExisting) {
@@ -285,7 +285,7 @@ class CSVImporterService {
                 `Could not update existing shipping detail, creating new one: ${updateResult.message}`,
                 {
                   shippingDetailId: existingOrder.shippingDetailId,
-                  error: updateResult.error,
+                  error: updateResult.error
                 }
               );
               shippingDetail = await ShippingDetail.create(
@@ -308,7 +308,7 @@ class CSVImporterService {
 
             // Delete existing items
             await OrderItem.destroy({
-              where: { orderId: order.id },
+              where: { orderId: order.id }
             });
           } else {
             orderData.orderData.shippingDetailId = shippingDetail.id;
@@ -319,7 +319,7 @@ class CSVImporterService {
           for (const item of orderData.items) {
             await OrderItem.create({
               orderId: order.id,
-              ...item,
+              ...item
             });
           }
 
@@ -327,7 +327,7 @@ class CSVImporterService {
         } catch (error) {
           logger.error(`Failed to import order ${orderId}: ${error.message}`, {
             error,
-            orderId,
+            orderId
           });
           failedOrders++;
         }
@@ -342,19 +342,19 @@ class CSVImporterService {
         data: {
           importedCount: importedOrders.length,
           failedCount: failedOrders,
-          totalRowsProcessed: results.length,
-        },
+          totalRowsProcessed: results.length
+        }
       };
     } catch (error) {
       logger.error(`Failed to import orders from CSV: ${error.message}`, {
         error,
-        connectionId: this.connectionId,
+        connectionId: this.connectionId
       });
 
       return {
         success: false,
         message: `Failed to import orders from CSV: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -366,7 +366,7 @@ class CSVImporterService {
    * @returns {String} - Value from row
    */
   getValueFromMapping(row, mapping) {
-    if (!mapping) return null;
+    if (!mapping) {return null;}
     return row[mapping];
   }
 
@@ -376,7 +376,7 @@ class CSVImporterService {
    * @returns {Date} - Parsed date
    */
   parseDate(dateString) {
-    if (!dateString) return new Date();
+    if (!dateString) {return new Date();}
 
     try {
       // Try to parse as ISO date
@@ -389,16 +389,16 @@ class CSVImporterService {
         const formats = [
           {
             regex: /^(\d{2})\/(\d{2})\/(\d{4})$/,
-            fn: (m) => new Date(m[3], m[2] - 1, m[1]),
+            fn: (m) => new Date(m[3], m[2] - 1, m[1])
           }, // DD/MM/YYYY
           {
             regex: /^(\d{2})\/(\d{2})\/(\d{4})$/,
-            fn: (m) => new Date(m[3], m[1] - 1, m[2]),
+            fn: (m) => new Date(m[3], m[1] - 1, m[2])
           }, // MM/DD/YYYY
           {
             regex: /^(\d{4})-(\d{2})-(\d{2})$/,
-            fn: (m) => new Date(m[1], m[2] - 1, m[3]),
-          }, // YYYY-MM-DD
+            fn: (m) => new Date(m[1], m[2] - 1, m[3])
+          } // YYYY-MM-DD
         ];
 
         for (const format of formats) {
@@ -430,35 +430,35 @@ class CSVImporterService {
   getDefaultColumnMap() {
     return {
       // Order fields
-      orderId: "order_id",
-      orderDate: "order_date",
-      orderStatus: "status",
-      totalAmount: "total_amount",
-      currency: "currency",
-      customerName: "customer_name",
-      customerEmail: "customer_email",
-      customerPhone: "customer_phone",
-      notes: "notes",
+      orderId: 'order_id',
+      orderDate: 'order_date',
+      orderStatus: 'status',
+      totalAmount: 'total_amount',
+      currency: 'currency',
+      customerName: 'customer_name',
+      customerEmail: 'customer_email',
+      customerPhone: 'customer_phone',
+      notes: 'notes',
 
       // Shipping fields
-      recipientName: "recipient_name",
-      address: "shipping_address",
-      city: "city",
-      state: "state",
-      postalCode: "postal_code",
-      country: "country",
-      phone: "phone",
-      email: "email",
-      shippingMethod: "shipping_method",
+      recipientName: 'recipient_name',
+      address: 'shipping_address',
+      city: 'city',
+      state: 'state',
+      postalCode: 'postal_code',
+      country: 'country',
+      phone: 'phone',
+      email: 'email',
+      shippingMethod: 'shipping_method',
 
       // Product fields
-      productId: "product_id",
-      sku: "sku",
-      barcode: "barcode",
-      productTitle: "product_title",
-      quantity: "quantity",
-      price: "price",
-      variantInfo: "variant_info",
+      productId: 'product_id',
+      sku: 'sku',
+      barcode: 'barcode',
+      productTitle: 'product_title',
+      quantity: 'quantity',
+      price: 'price',
+      variantInfo: 'variant_info'
     };
   }
 
@@ -470,77 +470,77 @@ class CSVImporterService {
     return {
       generic: this.getDefaultColumnMap(),
       trendyol: {
-        orderId: "OrderNumber",
-        orderDate: "OrderDate",
-        orderStatus: "Status",
-        totalAmount: "TotalPrice",
-        currency: "Currency",
-        customerName: "CustomerFullName",
-        customerEmail: "CustomerEmail",
-        customerPhone: "ShipmentAddress.PhoneNumber",
-        notes: "Note",
+        orderId: 'OrderNumber',
+        orderDate: 'OrderDate',
+        orderStatus: 'Status',
+        totalAmount: 'TotalPrice',
+        currency: 'Currency',
+        customerName: 'CustomerFullName',
+        customerEmail: 'CustomerEmail',
+        customerPhone: 'ShipmentAddress.PhoneNumber',
+        notes: 'Note',
 
-        recipientName: "ShipmentAddress.FullName",
-        address: "ShipmentAddress.Address",
-        city: "ShipmentAddress.City",
-        state: "ShipmentAddress.District",
-        postalCode: "ShipmentAddress.PostalCode",
-        country: "Country",
-        phone: "ShipmentAddress.PhoneNumber",
+        recipientName: 'ShipmentAddress.FullName',
+        address: 'ShipmentAddress.Address',
+        city: 'ShipmentAddress.City',
+        state: 'ShipmentAddress.District',
+        postalCode: 'ShipmentAddress.PostalCode',
+        country: 'Country',
+        phone: 'ShipmentAddress.PhoneNumber',
 
-        productId: "ProductId",
-        sku: "MerchantSku",
-        barcode: "Barcode",
-        productTitle: "ProductName",
-        quantity: "Quantity",
-        price: "Price",
-        variantInfo: "VariantFeatures",
+        productId: 'ProductId',
+        sku: 'MerchantSku',
+        barcode: 'Barcode',
+        productTitle: 'ProductName',
+        quantity: 'Quantity',
+        price: 'Price',
+        variantInfo: 'VariantFeatures'
       },
       hepsiburada: {
-        orderId: "OrderId",
-        orderDate: "OrderDate",
-        orderStatus: "Status",
-        totalAmount: "TotalPrice",
-        currency: "Currency",
-        customerName: "CustomerName",
-        customerEmail: "CustomerEmail",
+        orderId: 'OrderId',
+        orderDate: 'OrderDate',
+        orderStatus: 'Status',
+        totalAmount: 'TotalPrice',
+        currency: 'Currency',
+        customerName: 'CustomerName',
+        customerEmail: 'CustomerEmail',
 
-        recipientName: "ShippingAddress.FullName",
-        address: "ShippingAddress.Address",
-        city: "ShippingAddress.City",
-        state: "ShippingAddress.District",
-        postalCode: "ShippingAddress.PostalCode",
-        phone: "ShippingAddress.Phone",
+        recipientName: 'ShippingAddress.FullName',
+        address: 'ShippingAddress.Address',
+        city: 'ShippingAddress.City',
+        state: 'ShippingAddress.District',
+        postalCode: 'ShippingAddress.PostalCode',
+        phone: 'ShippingAddress.Phone',
 
-        productId: "ProductId",
-        sku: "MerchantSku",
-        barcode: "Barcode",
-        productTitle: "ProductName",
-        quantity: "Quantity",
-        price: "Price",
-        variantInfo: "Properties",
+        productId: 'ProductId',
+        sku: 'MerchantSku',
+        barcode: 'Barcode',
+        productTitle: 'ProductName',
+        quantity: 'Quantity',
+        price: 'Price',
+        variantInfo: 'Properties'
       },
       n11: {
-        orderId: "orderNumber",
-        orderDate: "orderDate",
-        orderStatus: "status",
-        totalAmount: "totalAmount",
-        currency: "currency",
-        customerName: "buyer.fullName",
+        orderId: 'orderNumber',
+        orderDate: 'orderDate',
+        orderStatus: 'status',
+        totalAmount: 'totalAmount',
+        currency: 'currency',
+        customerName: 'buyer.fullName',
 
-        recipientName: "shippingAddress.fullName",
-        address: "shippingAddress.address",
-        city: "shippingAddress.city",
-        state: "shippingAddress.district",
-        postalCode: "shippingAddress.postalCode",
-        phone: "shippingAddress.phoneNumber",
+        recipientName: 'shippingAddress.fullName',
+        address: 'shippingAddress.address',
+        city: 'shippingAddress.city',
+        state: 'shippingAddress.district',
+        postalCode: 'shippingAddress.postalCode',
+        phone: 'shippingAddress.phoneNumber',
 
-        productId: "productId",
-        sku: "sellerSku",
-        productTitle: "productTitle",
-        quantity: "quantity",
-        price: "price",
-      },
+        productId: 'productId',
+        sku: 'sellerSku',
+        productTitle: 'productTitle',
+        quantity: 'quantity',
+        price: 'price'
+      }
     };
   }
 
@@ -562,8 +562,8 @@ class CSVImporterService {
         const writeStream = fs.createWriteStream(filePath);
         writeStream.write(file.buffer);
         writeStream.end();
-        writeStream.on("finish", resolve);
-        writeStream.on("error", reject);
+        writeStream.on('finish', resolve);
+        writeStream.on('error', reject);
       });
 
       // Parse CSV file (just headers and a few rows for validation)
@@ -577,18 +577,18 @@ class CSVImporterService {
             csv({
               skipLines: options.skipHeader ? 1 : 0,
               headers: options.hasHeaders,
-              separator: options.delimiter || ",",
-              trim: true,
+              separator: options.delimiter || ',',
+              trim: true
             })
           )
-          .on("data", (data) => {
+          .on('data', (data) => {
             if (rowCount < maxRowsToValidate) {
               results.push(data);
               rowCount++;
             }
           })
-          .on("end", resolve)
-          .on("error", reject);
+          .on('end', resolve)
+          .on('error', reject);
       });
 
       // Clean up temporary file
@@ -601,17 +601,17 @@ class CSVImporterService {
       if (results.length === 0) {
         return {
           success: false,
-          message: "CSV file contains no data",
+          message: 'CSV file contains no data',
           data: {
             headers: [],
-            sampleRows: [],
-          },
+            sampleRows: []
+          }
         };
       }
 
       // Check for required fields based on column mapping
       const columnMap = options.columnMap || this.getDefaultColumnMap();
-      const requiredFields = ["orderId", "productTitle", "quantity"];
+      const requiredFields = ['orderId', 'productTitle', 'quantity'];
       const missingFields = [];
 
       for (const field of requiredFields) {
@@ -625,16 +625,16 @@ class CSVImporterService {
         success: missingFields.length === 0,
         message:
           missingFields.length === 0
-            ? "CSV file is valid"
+            ? 'CSV file is valid'
             : `CSV file is missing required fields: ${missingFields.join(
-                ", "
-              )}`,
+              ', '
+            )}`,
         data: {
           headers,
           sampleRows: results,
           missingFields,
-          rowCount,
-        },
+          rowCount
+        }
       };
     } catch (error) {
       logger.error(`Failed to validate CSV file: ${error.message}`, { error });
@@ -642,7 +642,7 @@ class CSVImporterService {
       return {
         success: false,
         message: `Failed to validate CSV file: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -654,7 +654,7 @@ class CSVImporterService {
     // CSV platform does not support order status updates
     return {
       success: false,
-      message: "Order status updates are not supported for CSV platform",
+      message: 'Order status updates are not supported for CSV platform'
     };
   }
 
@@ -665,7 +665,7 @@ class CSVImporterService {
     return {
       success: false,
       message:
-        "Order sync is not supported for CSV platform. Please upload a new CSV file to import orders.",
+        'Order sync is not supported for CSV platform. Please upload a new CSV file to import orders.'
     };
   }
 
@@ -676,8 +676,8 @@ class CSVImporterService {
     return {
       success: false,
       message:
-        "Fetching orders is not supported for CSV platform. Please upload a new CSV file to import orders.",
-      data: [],
+        'Fetching orders is not supported for CSV platform. Please upload a new CSV file to import orders.',
+      data: []
     };
   }
 }

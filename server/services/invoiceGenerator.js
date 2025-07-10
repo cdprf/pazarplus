@@ -3,15 +3,15 @@
  * Local PDF invoice generation with Turkish localization
  */
 
-const PDFDocument = require("pdfkit");
-const fs = require("fs");
-const path = require("path");
-const logger = require("../utils/logger");
+const PDFDocument = require('pdfkit');
+const fs = require('fs');
+const path = require('path');
+const logger = require('../utils/logger');
 
 class InvoiceGenerator {
   constructor() {
-    this.logoPath = path.join(__dirname, "../uploads/company-logo.png");
-    this.outputDir = path.join(__dirname, "../uploads/invoices");
+    this.logoPath = path.join(__dirname, '../uploads/company-logo.png');
+    this.outputDir = path.join(__dirname, '../uploads/invoices');
 
     // Ensure output directory exists
     if (!fs.existsSync(this.outputDir)) {
@@ -25,11 +25,11 @@ class InvoiceGenerator {
    * @returns {String} - Properly encoded content
    */
   encodeTextContent(content) {
-    if (!content) return content;
+    if (!content) {return content;}
 
     // Normalize Unicode and ensure proper UTF-8 encoding
-    content = content.toString().normalize("NFC");
-    content = Buffer.from(content, "utf8").toString("utf8");
+    content = content.toString().normalize('NFC');
+    content = Buffer.from(content, 'utf8').toString('utf8');
 
     return content;
   }
@@ -43,16 +43,16 @@ class InvoiceGenerator {
   async generateInvoice(order, config = {}) {
     try {
       const doc = new PDFDocument({
-        size: "A4",
+        size: 'A4',
         margin: 40,
         bufferPages: true,
-        pdfVersion: "1.4",
+        pdfVersion: '1.4',
         info: {
           Title: `Fatura ${order.id}`,
-          Author: config.company?.name || "Pazar+",
-          Subject: "Satış Faturası",
-          Creator: "Pazar+ Sistem",
-        },
+          Author: config.company?.name || 'Pazar+',
+          Subject: 'Satış Faturası',
+          Creator: 'Pazar+ Sistem'
+        }
       });
 
       const filename = `invoice-${order.id}-${Date.now()}.pdf`;
@@ -74,28 +74,28 @@ class InvoiceGenerator {
 
       // Wait for file to be written
       await new Promise((resolve) => {
-        doc.on("end", resolve);
+        doc.on('end', resolve);
       });
 
       return {
         success: true,
-        message: "Invoice generated successfully",
+        message: 'Invoice generated successfully',
         data: {
           pdfPath: filepath,
           pdfUrl: `/uploads/invoices/${filename}`,
-          filename,
-        },
+          filename
+        }
       };
     } catch (error) {
       logger.error(`Invoice generation error: ${error.message}`, {
         error,
-        orderId: order.id,
+        orderId: order.id
       });
 
       return {
         success: false,
         message: `Failed to generate invoice: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -106,43 +106,43 @@ class InvoiceGenerator {
       try {
         doc.image(this.logoPath, 40, 40, { width: 100 });
       } catch (error) {
-        logger.warn("Failed to load company logo", { error: error.message });
+        logger.warn('Failed to load company logo', { error: error.message });
       }
     }
 
     // Company information
     const companyY = 40;
     doc
-      .font("Helvetica-Bold")
+      .font('Helvetica-Bold')
       .fontSize(16)
       .text(
-        this.encodeTextContent(config.company?.name || "Şirket Adı"),
+        this.encodeTextContent(config.company?.name || 'Şirket Adı'),
         160,
         companyY
       );
 
     doc
-      .font("Helvetica")
+      .font('Helvetica')
       .fontSize(10)
       .text(
-        this.encodeTextContent(config.company?.address || ""),
+        this.encodeTextContent(config.company?.address || ''),
         160,
         companyY + 20
       )
       .text(
         this.encodeTextContent(
-          `${config.company?.district || ""} ${config.company?.city || ""}`
+          `${config.company?.district || ''} ${config.company?.city || ''}`
         ),
         160,
         companyY + 35
       )
       .text(
-        this.encodeTextContent(`Tel: ${config.company?.phone || ""}`),
+        this.encodeTextContent(`Tel: ${config.company?.phone || ''}`),
         160,
         companyY + 50
       )
       .text(
-        this.encodeTextContent(`E-posta: ${config.company?.email || ""}`),
+        this.encodeTextContent(`E-posta: ${config.company?.email || ''}`),
         160,
         companyY + 65
       );
@@ -157,10 +157,10 @@ class InvoiceGenerator {
 
     // Invoice title
     doc
-      .font("Helvetica-Bold")
+      .font('Helvetica-Bold')
       .fontSize(20)
-      .text(this.encodeTextContent("SATIŞ FATURASI"), 400, companyY, {
-        align: "right",
+      .text(this.encodeTextContent('SATIŞ FATURASI'), 400, companyY, {
+        align: 'right'
       });
 
     // Draw line
@@ -173,12 +173,12 @@ class InvoiceGenerator {
     const startY = 160;
 
     doc
-      .font("Helvetica-Bold")
+      .font('Helvetica-Bold')
       .fontSize(10)
-      .text(this.encodeTextContent("FATURA BİLGİLERİ"), 40, startY);
+      .text(this.encodeTextContent('FATURA BİLGİLERİ'), 40, startY);
 
     doc
-      .font("Helvetica")
+      .font('Helvetica')
       .fontSize(9)
       .text(
         this.encodeTextContent(`Fatura No: INV-${order.id}`),
@@ -187,7 +187,7 @@ class InvoiceGenerator {
       )
       .text(
         this.encodeTextContent(
-          `Tarih: ${new Date().toLocaleDateString("tr-TR")}`
+          `Tarih: ${new Date().toLocaleDateString('tr-TR')}`
         ),
         40,
         startY + 35
@@ -198,7 +198,7 @@ class InvoiceGenerator {
         startY + 50
       )
       .text(
-        this.encodeTextContent(`Para Birimi: ${order.currency || "TRY"}`),
+        this.encodeTextContent(`Para Birimi: ${order.currency || 'TRY'}`),
         40,
         startY + 65
       );
@@ -210,15 +210,15 @@ class InvoiceGenerator {
     const startY = 160;
 
     doc
-      .font("Helvetica-Bold")
+      .font('Helvetica-Bold')
       .fontSize(10)
-      .text(this.encodeTextContent("MÜŞTERİ BİLGİLERİ"), 300, startY);
+      .text(this.encodeTextContent('MÜŞTERİ BİLGİLERİ'), 300, startY);
 
     // Parse shipping address
     let shippingAddress = {};
     try {
       shippingAddress =
-        typeof order.shippingAddress === "string"
+        typeof order.shippingAddress === 'string'
           ? JSON.parse(order.shippingAddress)
           : order.shippingAddress || {};
     } catch (error) {
@@ -226,27 +226,27 @@ class InvoiceGenerator {
     }
 
     doc
-      .font("Helvetica")
+      .font('Helvetica')
       .fontSize(9)
       .text(
-        this.encodeTextContent(order.customerName || "Müşteri Adı"),
+        this.encodeTextContent(order.customerName || 'Müşteri Adı'),
         300,
         startY + 20
       )
       .text(
-        this.encodeTextContent(shippingAddress.address || ""),
+        this.encodeTextContent(shippingAddress.address || ''),
         300,
         startY + 35
       )
       .text(
         this.encodeTextContent(
-          `${shippingAddress.district || ""} ${shippingAddress.city || ""}`
+          `${shippingAddress.district || ''} ${shippingAddress.city || ''}`
         ),
         300,
         startY + 50
       )
       .text(
-        this.encodeTextContent(`Tel: ${order.customerPhone || ""}`),
+        this.encodeTextContent(`Tel: ${order.customerPhone || ''}`),
         300,
         startY + 65
       );
@@ -267,22 +267,22 @@ class InvoiceGenerator {
     const items = order.items || [];
 
     // Table header
-    doc.font("Helvetica-Bold").fontSize(9).fillColor("#333333");
+    doc.font('Helvetica-Bold').fontSize(9).fillColor('#333333');
 
     // Header background
-    doc.rect(40, startY, 515, 20).fill("#f0f0f0").stroke();
+    doc.rect(40, startY, 515, 20).fill('#f0f0f0').stroke();
 
     // Header text
     doc
-      .fillColor("#000000")
-      .text(this.encodeTextContent("Ürün Adı"), 45, startY + 6)
-      .text(this.encodeTextContent("Miktar"), 300, startY + 6)
-      .text(this.encodeTextContent("Birim Fiyat"), 360, startY + 6)
-      .text(this.encodeTextContent("KDV %"), 430, startY + 6)
-      .text(this.encodeTextContent("Toplam"), 480, startY + 6);
+      .fillColor('#000000')
+      .text(this.encodeTextContent('Ürün Adı'), 45, startY + 6)
+      .text(this.encodeTextContent('Miktar'), 300, startY + 6)
+      .text(this.encodeTextContent('Birim Fiyat'), 360, startY + 6)
+      .text(this.encodeTextContent('KDV %'), 430, startY + 6)
+      .text(this.encodeTextContent('Toplam'), 480, startY + 6);
 
     // Table rows
-    doc.font("Helvetica").fontSize(8);
+    doc.font('Helvetica').fontSize(8);
     let currentY = startY + 25;
 
     items.forEach((item, index) => {
@@ -295,14 +295,14 @@ class InvoiceGenerator {
       if (index % 2 === 1) {
         doc
           .rect(40, currentY - 3, 515, 18)
-          .fill("#f9f9f9")
+          .fill('#f9f9f9')
           .stroke();
       }
 
       doc
-        .fillColor("#000000")
+        .fillColor('#000000')
         .text(
-          this.encodeTextContent(item.productName || "Ürün"),
+          this.encodeTextContent(item.productName || 'Ürün'),
           45,
           currentY,
           { width: 240 }
@@ -310,7 +310,7 @@ class InvoiceGenerator {
         .text(quantity.toString(), 300, currentY)
         .text(
           this.encodeTextContent(
-            `${unitPrice.toFixed(2)} ${order.currency || "TRY"}`
+            `${unitPrice.toFixed(2)} ${order.currency || 'TRY'}`
           ),
           360,
           currentY
@@ -318,7 +318,7 @@ class InvoiceGenerator {
         .text(`${taxRate.toFixed(0)}`, 430, currentY)
         .text(
           this.encodeTextContent(
-            `${lineTotal.toFixed(2)} ${order.currency || "TRY"}`
+            `${lineTotal.toFixed(2)} ${order.currency || 'TRY'}`
           ),
           480,
           currentY
@@ -357,14 +357,14 @@ class InvoiceGenerator {
 
     // Totals section
     const totalsX = 350;
-    doc.font("Helvetica").fontSize(10);
+    doc.font('Helvetica').fontSize(10);
 
     // Subtotal
     doc
-      .text(this.encodeTextContent("Ara Toplam:"), totalsX, currentY)
+      .text(this.encodeTextContent('Ara Toplam:'), totalsX, currentY)
       .text(
         this.encodeTextContent(
-          `${subtotal.toFixed(2)} ${order.currency || "TRY"}`
+          `${subtotal.toFixed(2)} ${order.currency || 'TRY'}`
         ),
         totalsX + 100,
         currentY
@@ -375,10 +375,10 @@ class InvoiceGenerator {
     // Tax
     if (config.invoice?.includeTax) {
       doc
-        .text(this.encodeTextContent("KDV:"), totalsX, currentY)
+        .text(this.encodeTextContent('KDV:'), totalsX, currentY)
         .text(
           this.encodeTextContent(
-            `${totalTax.toFixed(2)} ${order.currency || "TRY"}`
+            `${totalTax.toFixed(2)} ${order.currency || 'TRY'}`
           ),
           totalsX + 100,
           currentY
@@ -388,12 +388,12 @@ class InvoiceGenerator {
 
     // Grand total
     doc
-      .font("Helvetica-Bold")
+      .font('Helvetica-Bold')
       .fontSize(12)
-      .text(this.encodeTextContent("GENEL TOPLAM:"), totalsX, currentY)
+      .text(this.encodeTextContent('GENEL TOPLAM:'), totalsX, currentY)
       .text(
         this.encodeTextContent(
-          `${grandTotal.toFixed(2)} ${order.currency || "TRY"}`
+          `${grandTotal.toFixed(2)} ${order.currency || 'TRY'}`
         ),
         totalsX + 100,
         currentY
@@ -409,17 +409,17 @@ class InvoiceGenerator {
     const footerY = 750;
 
     doc
-      .font("Helvetica")
+      .font('Helvetica')
       .fontSize(8)
-      .fillColor("#666666")
+      .fillColor('#666666')
       .text(
-        this.encodeTextContent("Bu fatura elektronik ortamda oluşturulmuştur."),
+        this.encodeTextContent('Bu fatura elektronik ortamda oluşturulmuştur.'),
         40,
         footerY
       )
       .text(
         this.encodeTextContent(
-          `Oluşturma Tarihi: ${new Date().toLocaleString("tr-TR")}`
+          `Oluşturma Tarihi: ${new Date().toLocaleString('tr-TR')}`
         ),
         40,
         footerY + 15
@@ -447,19 +447,19 @@ class InvoiceGenerator {
         return {
           success: true,
           stream: fs.createReadStream(filePath),
-          filename: path.basename(filePath),
+          filename: path.basename(filePath)
         };
       } else {
         return {
           success: false,
-          message: "Invoice file not found",
+          message: 'Invoice file not found'
         };
       }
     } catch (error) {
       logger.error(`Get invoice error: ${error.message}`, { error, filePath });
       return {
         success: false,
-        message: "Failed to retrieve invoice",
+        message: 'Failed to retrieve invoice'
       };
     }
   }
@@ -475,22 +475,22 @@ class InvoiceGenerator {
         fs.unlinkSync(filePath);
         return {
           success: true,
-          message: "Invoice deleted successfully",
+          message: 'Invoice deleted successfully'
         };
       } else {
         return {
           success: false,
-          message: "Invoice file not found",
+          message: 'Invoice file not found'
         };
       }
     } catch (error) {
       logger.error(`Delete invoice error: ${error.message}`, {
         error,
-        filePath,
+        filePath
       });
       return {
         success: false,
-        message: "Failed to delete invoice",
+        message: 'Failed to delete invoice'
       };
     }
   }

@@ -42,17 +42,17 @@ class ShippingServiceFactory {
     // Create new service instance
     let service;
     switch (normalizedCode) {
-      case 'aras':
-        service = new ArasKargoService(credentials);
-        break;
-      case 'yurtici':
-        service = new YurticiKargoService(credentials);
-        break;
-      case 'ptt':
-        service = new PTTKargoService(credentials);
-        break;
-      default:
-        throw new Error(`Service implementation not found for carrier: ${carrierCode}`);
+    case 'aras':
+      service = new ArasKargoService(credentials);
+      break;
+    case 'yurtici':
+      service = new YurticiKargoService(credentials);
+      break;
+    case 'ptt':
+      service = new PTTKargoService(credentials);
+      break;
+    default:
+      throw new Error(`Service implementation not found for carrier: ${carrierCode}`);
     }
 
     // Cache the service instance

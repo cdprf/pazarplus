@@ -1,8 +1,8 @@
-const express = require("express");
-const { body, param, query } = require("express-validator");
+const express = require('express');
+const { body, param, query } = require('express-validator');
 const router = express.Router();
-const productController = require("../controllers/product-controller");
-const { auth } = require("../middleware/auth");
+const productController = require('../controllers/product-controller');
+const { auth } = require('../middleware/auth');
 
 /**
  * @swagger
@@ -15,7 +15,7 @@ const { auth } = require("../middleware/auth");
  *       200:
  *         description: A list of products
  */
-router.get("/", auth, productController.getProducts);
+router.get('/', auth, productController.getProducts);
 
 /**
  * @swagger
@@ -28,7 +28,7 @@ router.get("/", auth, productController.getProducts);
  *       200:
  *         description: Product statistics
  */
-router.get("/stats", auth, productController.getProductStats);
+router.get('/stats', auth, productController.getProductStats);
 
 // Background Variant Detection Routes
 /**
@@ -43,7 +43,7 @@ router.get("/stats", auth, productController.getProductStats);
  *         description: Service status retrieved successfully
  */
 router.get(
-  "/background-variant-detection/status",
+  '/background-variant-detection/status',
   auth,
   productController.getBackgroundVariantDetectionStatus
 );
@@ -60,7 +60,7 @@ router.get(
  *         description: Service started successfully
  */
 router.post(
-  "/background-variant-detection/start",
+  '/background-variant-detection/start',
   auth,
   productController.startBackgroundVariantDetection
 );
@@ -77,7 +77,7 @@ router.post(
  *         description: Service stopped successfully
  */
 router.post(
-  "/background-variant-detection/stop",
+  '/background-variant-detection/stop',
   auth,
   productController.stopBackgroundVariantDetection
 );
@@ -103,7 +103,7 @@ router.post(
  *         description: Configuration updated successfully
  */
 router.put(
-  "/background-variant-detection/config",
+  '/background-variant-detection/config',
   auth,
   productController.updateBackgroundVariantDetectionConfig
 );
@@ -134,7 +134,7 @@ router.put(
  *         description: Batch detection completed
  */
 router.post(
-  "/batch-variant-detection",
+  '/batch-variant-detection',
   auth,
   productController.runBatchVariantDetection
 );
@@ -181,28 +181,28 @@ router.post(
  *         description: List of main products with pagination
  */
 router.get(
-  "/main-products",
+  '/main-products',
   [
-    query("page").optional().isInt({ min: 1 }),
-    query("limit").optional().isInt({ min: 1, max: 100 }),
-    query("search").optional().isString(),
-    query("category").optional().isString(),
-    query("status")
+    query('page').optional().isInt({ min: 1 }),
+    query('limit').optional().isInt({ min: 1, max: 100 }),
+    query('search').optional().isString(),
+    query('category').optional().isString(),
+    query('status')
       .optional()
-      .isIn(["active", "inactive", "draft", "archived"]),
-    query("hasVariants").optional().isBoolean(),
-    query("sortBy")
+      .isIn(['active', 'inactive', 'draft', 'archived']),
+    query('hasVariants').optional().isBoolean(),
+    query('sortBy')
       .optional()
       .isIn([
-        "name",
-        "baseSku",
-        "category",
-        "basePrice",
-        "stockQuantity",
-        "createdAt",
-        "updatedAt",
+        'name',
+        'baseSku',
+        'category',
+        'basePrice',
+        'stockQuantity',
+        'createdAt',
+        'updatedAt'
       ]),
-    query("sortOrder").optional().isIn(["ASC", "DESC"]),
+    query('sortOrder').optional().isIn(['ASC', 'DESC'])
   ],
   auth,
   productController.getMainProducts
@@ -227,7 +227,7 @@ router.get(
  *       404:
  *         description: Product not found
  */
-router.get("/:id", auth, productController.getProductById);
+router.get('/:id', auth, productController.getProductById);
 
 /**
  * @swagger
@@ -256,7 +256,7 @@ router.get("/:id", auth, productController.getProductById);
  *       400:
  *         description: Invalid data
  */
-router.post("/", auth, productController.createProduct);
+router.post('/', auth, productController.createProduct);
 
 /**
  * @swagger
@@ -283,7 +283,7 @@ router.post("/", auth, productController.createProduct);
  *       404:
  *         description: Product not found
  */
-router.put("/:id", auth, productController.updateProduct);
+router.put('/:id', auth, productController.updateProduct);
 
 /**
  * @swagger
@@ -304,7 +304,7 @@ router.put("/:id", auth, productController.updateProduct);
  *       404:
  *         description: Product not found
  */
-router.delete("/:id", auth, productController.deleteProduct);
+router.delete('/:id', auth, productController.deleteProduct);
 
 /**
  * @swagger
@@ -330,7 +330,7 @@ router.delete("/:id", auth, productController.deleteProduct);
  *       200:
  *         description: Products deleted successfully
  */
-router.delete("/bulk", auth, productController.bulkDeleteProducts);
+router.delete('/bulk', auth, productController.bulkDeleteProducts);
 
 /**
  * @swagger
@@ -360,7 +360,7 @@ router.delete("/bulk", auth, productController.bulkDeleteProducts);
  *       200:
  *         description: Products status updated successfully
  */
-router.put("/bulk/status", auth, productController.bulkUpdateStatus);
+router.put('/bulk/status', auth, productController.bulkUpdateStatus);
 
 /**
  * @swagger
@@ -373,7 +373,7 @@ router.put("/bulk/status", auth, productController.bulkUpdateStatus);
  *       200:
  *         description: Products synced successfully
  */
-router.post("/sync", auth, productController.syncProducts);
+router.post('/sync', auth, productController.syncProducts);
 
 /**
  * @swagger
@@ -398,7 +398,7 @@ router.post("/sync", auth, productController.syncProducts);
  *       200:
  *         description: Products imported successfully
  */
-router.post("/import/csv", auth, productController.importProductsFromCSV);
+router.post('/import/csv', auth, productController.importProductsFromCSV);
 
 /**
  * @swagger
@@ -415,7 +415,7 @@ router.post("/import/csv", auth, productController.importProductsFromCSV);
  *             schema:
  *               type: string
  */
-router.get("/import/template", auth, productController.getCSVTemplate);
+router.get('/import/template', auth, productController.getCSVTemplate);
 
 // === NEW PRODUCT MANAGEMENT ROUTES ===
 
@@ -436,7 +436,7 @@ router.get("/import/template", auth, productController.getCSVTemplate);
  *       200:
  *         description: Product dashboard data
  */
-router.get("/:id/dashboard", auth, productController.getProductDashboard);
+router.get('/:id/dashboard', auth, productController.getProductDashboard);
 
 /**
  * @swagger
@@ -469,7 +469,7 @@ router.get("/:id/dashboard", auth, productController.getProductDashboard);
  *       200:
  *         description: Bulk publishing operation started
  */
-router.post("/bulk/publish", auth, productController.bulkPublishProducts);
+router.post('/bulk/publish', auth, productController.bulkPublishProducts);
 
 /**
  * @swagger
@@ -489,7 +489,7 @@ router.post("/bulk/publish", auth, productController.bulkPublishProducts);
  *         description: Bulk operation status
  */
 router.get(
-  "/bulk/operations/:operationId",
+  '/bulk/operations/:operationId',
   auth,
   productController.getBulkOperationStatus
 );
@@ -538,7 +538,7 @@ router.get(
  *       200:
  *         description: Media uploaded successfully
  */
-router.post("/:id/media", auth, productController.uploadProductMedia);
+router.post('/:id/media', auth, productController.uploadProductMedia);
 
 /**
  * @swagger
@@ -565,7 +565,7 @@ router.post("/:id/media", auth, productController.uploadProductMedia);
  *       200:
  *         description: Variants detected successfully
  */
-router.post("/:id/variants/detect", auth, productController.autoDetectVariants);
+router.post('/:id/variants/detect', auth, productController.autoDetectVariants);
 
 /**
  * @swagger
@@ -586,7 +586,7 @@ router.post("/:id/variants/detect", auth, productController.autoDetectVariants);
  *         description: Category sync started
  */
 router.post(
-  "/categories/sync/:platformType",
+  '/categories/sync/:platformType',
   auth,
   productController.syncPlatformCategories
 );
@@ -650,70 +650,70 @@ router.post(
  *         description: Validation error
  */
 router.post(
-  "/main-products",
+  '/main-products',
   [
-    body("name")
+    body('name')
       .notEmpty()
       .isLength({ min: 1, max: 255 })
-      .withMessage("Name is required and must be 1-255 characters"),
-    body("baseSku").optional().isString().isLength({ min: 1, max: 100 }),
-    body("description").optional().isString(),
-    body("category").notEmpty().withMessage("Category is required"),
-    body("brand").optional().isString(),
-    body("productType").optional().isString(),
-    body("basePrice")
+      .withMessage('Name is required and must be 1-255 characters'),
+    body('baseSku').optional().isString().isLength({ min: 1, max: 100 }),
+    body('description').optional().isString(),
+    body('category').notEmpty().withMessage('Category is required'),
+    body('brand').optional().isString(),
+    body('productType').optional().isString(),
+    body('basePrice')
       .custom((value) => {
         const num = parseFloat(value);
         if (isNaN(num) || num < 0) {
-          throw new Error("Base price must be a positive number");
+          throw new Error('Base price must be a positive number');
         }
         return true;
       })
-      .withMessage("Base price must be a positive number"),
-    body("baseCostPrice")
+      .withMessage('Base price must be a positive number'),
+    body('baseCostPrice')
       .optional()
       .custom((value) => {
-        if (value === "" || value === null || value === undefined) return true;
+        if (value === '' || value === null || value === undefined) {return true;}
         const num = parseFloat(value);
         if (isNaN(num) || num < 0) {
-          throw new Error("Base cost price must be a positive number");
+          throw new Error('Base cost price must be a positive number');
         }
         return true;
       }),
-    body("stockQuantity")
+    body('stockQuantity')
       .optional()
       .custom((value) => {
-        if (value === "" || value === null || value === undefined) return true;
+        if (value === '' || value === null || value === undefined) {return true;}
         const num = parseInt(value, 10);
         if (isNaN(num) || num < 0) {
-          throw new Error("Stock quantity must be a positive integer");
+          throw new Error('Stock quantity must be a positive integer');
         }
         return true;
       }),
-    body("minStockLevel")
+    body('minStockLevel')
       .optional()
       .custom((value) => {
-        if (value === "" || value === null || value === undefined) return true;
+        if (value === '' || value === null || value === undefined) {return true;}
         const num = parseInt(value, 10);
         if (isNaN(num) || num < 0) {
-          throw new Error("Minimum stock level must be a positive integer");
+          throw new Error('Minimum stock level must be a positive integer');
         }
         return true;
       }),
-    body("weight")
+    body('weight')
       .optional()
       .custom((value) => {
-        if (value === "" || value === null || value === undefined) return true;
+        if (value === '' || value === null || value === undefined) {return true;}
         const num = parseFloat(value);
         if (isNaN(num) || num < 0) {
-          throw new Error("Weight must be a positive number");
+          throw new Error('Weight must be a positive number');
         }
         return true;
       }),
-    body("attributes").optional().isObject(),
-    body("tags").optional().isArray(),
-    body("media").optional().isArray(),
-    body("status").optional().isIn(["active", "inactive", "draft", "archived"]),
+    body('attributes').optional().isObject(),
+    body('tags').optional().isArray(),
+    body('media').optional().isArray(),
+    body('status').optional().isIn(['active', 'inactive', 'draft', 'archived'])
   ],
   auth,
   productController.createMainProduct
@@ -763,15 +763,15 @@ router.post(
  *         description: Product not found
  */
 router.put(
-  "/main-products/:id",
+  '/main-products/:id',
   [
-    param("id").isUUID().withMessage("Invalid product ID"),
-    body("name").optional().isLength({ min: 1, max: 255 }),
-    body("description").optional().isString(),
-    body("category").optional().notEmpty(),
-    body("brand").optional().isString(),
-    body("basePrice").optional().isFloat({ min: 0 }),
-    body("status").optional().isIn(["active", "inactive", "draft", "archived"]),
+    param('id').isUUID().withMessage('Invalid product ID'),
+    body('name').optional().isLength({ min: 1, max: 255 }),
+    body('description').optional().isString(),
+    body('category').optional().notEmpty(),
+    body('brand').optional().isString(),
+    body('basePrice').optional().isFloat({ min: 0 }),
+    body('status').optional().isIn(['active', 'inactive', 'draft', 'archived'])
   ],
   auth,
   productController.updateMainProduct
@@ -798,8 +798,8 @@ router.put(
  *         description: Product not found
  */
 router.delete(
-  "/main-products/:id",
-  [param("id").isUUID().withMessage("Invalid product ID")],
+  '/main-products/:id',
+  [param('id').isUUID().withMessage('Invalid product ID')],
   auth,
   productController.deleteMainProduct
 );
@@ -832,12 +832,12 @@ router.delete(
  *         description: Validation error
  */
 router.post(
-  "/bulk/mark-as-main",
+  '/bulk/mark-as-main',
   [
-    body("productIds")
+    body('productIds')
       .isArray({ min: 1 })
-      .withMessage("At least one product ID is required"),
-    body("productIds.*").isUUID().withMessage("Invalid product ID format"),
+      .withMessage('At least one product ID is required'),
+    body('productIds.*').isUUID().withMessage('Invalid product ID format')
   ],
   auth,
   productController.bulkMarkAsMainProducts
@@ -847,389 +847,389 @@ router.post(
 
 // Main Product Routes
 router.get(
-  "/main-products",
+  '/main-products',
   [
-    query("page").optional().isInt({ min: 1 }),
-    query("limit").optional().isInt({ min: 1, max: 100 }),
-    query("search").optional().isString(),
-    query("category").optional().isString(),
-    query("status")
+    query('page').optional().isInt({ min: 1 }),
+    query('limit').optional().isInt({ min: 1, max: 100 }),
+    query('search').optional().isString(),
+    query('category').optional().isString(),
+    query('status')
       .optional()
-      .isIn(["active", "inactive", "draft", "archived"]),
-    query("hasVariants").optional().isBoolean(),
-    query("sortBy")
+      .isIn(['active', 'inactive', 'draft', 'archived']),
+    query('hasVariants').optional().isBoolean(),
+    query('sortBy')
       .optional()
       .isIn([
-        "name",
-        "baseSku",
-        "category",
-        "basePrice",
-        "stockQuantity",
-        "createdAt",
-        "updatedAt",
+        'name',
+        'baseSku',
+        'category',
+        'basePrice',
+        'stockQuantity',
+        'createdAt',
+        'updatedAt'
       ]),
-    query("sortOrder").optional().isIn(["ASC", "DESC"]),
+    query('sortOrder').optional().isIn(['ASC', 'DESC'])
   ],
   productController.getMainProducts
 );
 
 router.get(
-  "/main-products/:id",
-  [param("id").isUUID().withMessage("Invalid product ID")],
+  '/main-products/:id',
+  [param('id').isUUID().withMessage('Invalid product ID')],
   productController.getMainProduct
 );
 
 router.post(
-  "/main-products",
+  '/main-products',
   [
-    body("name")
+    body('name')
       .notEmpty()
       .isLength({ min: 1, max: 255 })
-      .withMessage("Name is required and must be 1-255 characters"),
-    body("baseSku").optional().isString().isLength({ min: 1, max: 100 }),
-    body("description").optional().isString(),
-    body("category").notEmpty().withMessage("Category is required"),
-    body("brand").optional().isString(),
-    body("productType").optional().isString(),
-    body("basePrice")
+      .withMessage('Name is required and must be 1-255 characters'),
+    body('baseSku').optional().isString().isLength({ min: 1, max: 100 }),
+    body('description').optional().isString(),
+    body('category').notEmpty().withMessage('Category is required'),
+    body('brand').optional().isString(),
+    body('productType').optional().isString(),
+    body('basePrice')
       .isFloat({ min: 0 })
-      .withMessage("Base price must be a positive number"),
-    body("baseCostPrice").optional().isFloat({ min: 0 }),
-    body("stockQuantity").optional().isInt({ min: 0 }),
-    body("minStockLevel").optional().isInt({ min: 0 }),
-    body("weight").optional().isFloat({ min: 0 }),
-    body("dimensions").optional().isObject(),
-    body("media").optional().isArray(),
-    body("attributes").optional().isObject(),
-    body("tags").optional().isArray(),
-    body("status").optional().isIn(["active", "inactive", "draft", "archived"]),
+      .withMessage('Base price must be a positive number'),
+    body('baseCostPrice').optional().isFloat({ min: 0 }),
+    body('stockQuantity').optional().isInt({ min: 0 }),
+    body('minStockLevel').optional().isInt({ min: 0 }),
+    body('weight').optional().isFloat({ min: 0 }),
+    body('dimensions').optional().isObject(),
+    body('media').optional().isArray(),
+    body('attributes').optional().isObject(),
+    body('tags').optional().isArray(),
+    body('status').optional().isIn(['active', 'inactive', 'draft', 'archived'])
   ],
   productController.createMainProduct
 );
 
 router.put(
-  "/main-products/:id",
+  '/main-products/:id',
   [
-    param("id").isUUID().withMessage("Invalid product ID"),
-    body("name").optional().isLength({ min: 1, max: 255 }),
-    body("description").optional().isString(),
-    body("category").optional().notEmpty(),
-    body("brand").optional().isString(),
-    body("productType").optional().isString(),
-    body("basePrice").optional().isFloat({ min: 0 }),
-    body("baseCostPrice").optional().isFloat({ min: 0 }),
-    body("minStockLevel").optional().isInt({ min: 0 }),
-    body("weight").optional().isFloat({ min: 0 }),
-    body("dimensions").optional().isObject(),
-    body("media").optional().isArray(),
-    body("attributes").optional().isObject(),
-    body("tags").optional().isArray(),
-    body("status").optional().isIn(["active", "inactive", "draft", "archived"]),
+    param('id').isUUID().withMessage('Invalid product ID'),
+    body('name').optional().isLength({ min: 1, max: 255 }),
+    body('description').optional().isString(),
+    body('category').optional().notEmpty(),
+    body('brand').optional().isString(),
+    body('productType').optional().isString(),
+    body('basePrice').optional().isFloat({ min: 0 }),
+    body('baseCostPrice').optional().isFloat({ min: 0 }),
+    body('minStockLevel').optional().isInt({ min: 0 }),
+    body('weight').optional().isFloat({ min: 0 }),
+    body('dimensions').optional().isObject(),
+    body('media').optional().isArray(),
+    body('attributes').optional().isObject(),
+    body('tags').optional().isArray(),
+    body('status').optional().isIn(['active', 'inactive', 'draft', 'archived'])
   ],
   productController.updateMainProduct
 );
 
 router.delete(
-  "/main-products/:id",
-  [param("id").isUUID().withMessage("Invalid product ID")],
+  '/main-products/:id',
+  [param('id').isUUID().withMessage('Invalid product ID')],
   productController.deleteMainProduct
 );
 
 // Platform Variant Routes
 router.post(
-  "/main-products/:mainProductId/variants",
+  '/main-products/:mainProductId/variants',
   [
-    param("mainProductId").isUUID().withMessage("Invalid main product ID"),
-    body("platform")
+    param('mainProductId').isUUID().withMessage('Invalid main product ID'),
+    body('platform')
       .isIn([
-        "trendyol",
-        "hepsiburada",
-        "n11",
-        "amazon",
-        "gittigidiyor",
-        "custom",
+        'trendyol',
+        'hepsiburada',
+        'n11',
+        'amazon',
+        'gittigidiyor',
+        'custom'
       ])
-      .withMessage("Invalid platform"),
-    body("platformSku").optional().isString().isLength({ min: 1, max: 100 }),
-    body("platformBarcode").optional().isString().isLength({ max: 100 }),
-    body("variantSuffix").optional().isString().isLength({ max: 20 }),
-    body("useMainPrice").optional().isBoolean(),
-    body("platformPrice").optional().isFloat({ min: 0 }),
-    body("platformCostPrice").optional().isFloat({ min: 0 }),
-    body("priceMarkup").optional().isFloat(),
-    body("platformAttributes").optional().isObject(),
-    body("platformCategory").optional().isString(),
-    body("platformTitle").optional().isString().isLength({ max: 500 }),
-    body("platformDescription").optional().isString(),
-    body("useMainMedia").optional().isBoolean(),
-    body("platformMedia").optional().isArray(),
-    body("templateId").optional().isUUID(),
-    body("templateFields").optional().isObject(),
-    body("status").optional().isIn(["active", "inactive", "draft", "error"]),
+      .withMessage('Invalid platform'),
+    body('platformSku').optional().isString().isLength({ min: 1, max: 100 }),
+    body('platformBarcode').optional().isString().isLength({ max: 100 }),
+    body('variantSuffix').optional().isString().isLength({ max: 20 }),
+    body('useMainPrice').optional().isBoolean(),
+    body('platformPrice').optional().isFloat({ min: 0 }),
+    body('platformCostPrice').optional().isFloat({ min: 0 }),
+    body('priceMarkup').optional().isFloat(),
+    body('platformAttributes').optional().isObject(),
+    body('platformCategory').optional().isString(),
+    body('platformTitle').optional().isString().isLength({ max: 500 }),
+    body('platformDescription').optional().isString(),
+    body('useMainMedia').optional().isBoolean(),
+    body('platformMedia').optional().isArray(),
+    body('templateId').optional().isUUID(),
+    body('templateFields').optional().isObject(),
+    body('status').optional().isIn(['active', 'inactive', 'draft', 'error'])
   ],
   productController.createPlatformVariant
 );
 
 router.put(
-  "/variants/:variantId",
+  '/variants/:variantId',
   [
-    param("variantId").isUUID().withMessage("Invalid variant ID"),
-    body("platformSku").optional().isString().isLength({ min: 1, max: 100 }),
-    body("platformBarcode").optional().isString().isLength({ max: 100 }),
-    body("variantSuffix").optional().isString().isLength({ max: 20 }),
-    body("useMainPrice").optional().isBoolean(),
-    body("platformPrice").optional().isFloat({ min: 0 }),
-    body("platformCostPrice").optional().isFloat({ min: 0 }),
-    body("priceMarkup").optional().isFloat(),
-    body("platformAttributes").optional().isObject(),
-    body("platformCategory").optional().isString(),
-    body("platformTitle").optional().isString().isLength({ max: 500 }),
-    body("platformDescription").optional().isString(),
-    body("useMainMedia").optional().isBoolean(),
-    body("platformMedia").optional().isArray(),
-    body("templateId").optional().isUUID(),
-    body("templateFields").optional().isObject(),
-    body("status").optional().isIn(["active", "inactive", "draft", "error"]),
+    param('variantId').isUUID().withMessage('Invalid variant ID'),
+    body('platformSku').optional().isString().isLength({ min: 1, max: 100 }),
+    body('platformBarcode').optional().isString().isLength({ max: 100 }),
+    body('variantSuffix').optional().isString().isLength({ max: 20 }),
+    body('useMainPrice').optional().isBoolean(),
+    body('platformPrice').optional().isFloat({ min: 0 }),
+    body('platformCostPrice').optional().isFloat({ min: 0 }),
+    body('priceMarkup').optional().isFloat(),
+    body('platformAttributes').optional().isObject(),
+    body('platformCategory').optional().isString(),
+    body('platformTitle').optional().isString().isLength({ max: 500 }),
+    body('platformDescription').optional().isString(),
+    body('useMainMedia').optional().isBoolean(),
+    body('platformMedia').optional().isArray(),
+    body('templateId').optional().isUUID(),
+    body('templateFields').optional().isObject(),
+    body('status').optional().isIn(['active', 'inactive', 'draft', 'error'])
   ],
   productController.updatePlatformVariant
 );
 
 router.delete(
-  "/variants/:variantId",
-  [param("variantId").isUUID().withMessage("Invalid variant ID")],
+  '/variants/:variantId',
+  [param('variantId').isUUID().withMessage('Invalid variant ID')],
   productController.deletePlatformVariant
 );
 
 // Stock Management Routes
 router.get(
-  "/main-products/:id/stock",
-  [param("id").isUUID().withMessage("Invalid product ID")],
+  '/main-products/:id/stock',
+  [param('id').isUUID().withMessage('Invalid product ID')],
   productController.getStockStatus
 );
 
 router.put(
-  "/main-products/:id/stock",
+  '/main-products/:id/stock',
   [
-    param("id").isUUID().withMessage("Invalid product ID"),
-    body("quantity")
+    param('id').isUUID().withMessage('Invalid product ID'),
+    body('quantity')
       .isInt({ min: 0 })
-      .withMessage("Quantity must be a non-negative integer"),
-    body("reason").optional().isString(),
+      .withMessage('Quantity must be a non-negative integer'),
+    body('reason').optional().isString()
   ],
   productController.updateStock
 );
 
 router.post(
-  "/main-products/:id/stock/reserve",
+  '/main-products/:id/stock/reserve',
   [
-    param("id").isUUID().withMessage("Invalid product ID"),
-    body("quantity")
+    param('id').isUUID().withMessage('Invalid product ID'),
+    body('quantity')
       .isInt({ min: 1 })
-      .withMessage("Quantity must be a positive integer"),
-    body("reason").optional().isString(),
-    body("expiresAt").optional().isISO8601(),
+      .withMessage('Quantity must be a positive integer'),
+    body('reason').optional().isString(),
+    body('expiresAt').optional().isISO8601()
   ],
   productController.reserveStock
 );
 
 router.delete(
-  "/stock/reservations/:reservationId",
+  '/stock/reservations/:reservationId',
   [
-    param("reservationId").isUUID().withMessage("Invalid reservation ID"),
-    body("reason").optional().isString(),
+    param('reservationId').isUUID().withMessage('Invalid reservation ID'),
+    body('reason').optional().isString()
   ],
   productController.releaseReservation
 );
 
 router.get(
-  "/main-products/:id/stock/history",
+  '/main-products/:id/stock/history',
   [
-    param("id").isUUID().withMessage("Invalid product ID"),
-    query("page").optional().isInt({ min: 1 }),
-    query("limit").optional().isInt({ min: 1, max: 100 }),
+    param('id').isUUID().withMessage('Invalid product ID'),
+    query('page').optional().isInt({ min: 1 }),
+    query('limit').optional().isInt({ min: 1, max: 100 })
   ],
   productController.getStockHistory
 );
 
 // Platform Publishing Routes
 router.post(
-  "/main-products/:id/publish",
+  '/main-products/:id/publish',
   [
-    param("id").isUUID().withMessage("Invalid product ID"),
-    body("platforms")
+    param('id').isUUID().withMessage('Invalid product ID'),
+    body('platforms')
       .isArray({ min: 1 })
-      .withMessage("Platforms array is required"),
-    body("platforms.*.platform").isIn([
-      "trendyol",
-      "hepsiburada",
-      "n11",
-      "amazon",
-      "gittigidiyor",
-      "custom",
+      .withMessage('Platforms array is required'),
+    body('platforms.*.platform').isIn([
+      'trendyol',
+      'hepsiburada',
+      'n11',
+      'amazon',
+      'gittigidiyor',
+      'custom'
     ]),
-    body("platforms.*.platformCategory").optional().isString(),
-    body("platforms.*.platformAttributes").optional().isObject(),
-    body("platforms.*.templateId").optional().isUUID(),
+    body('platforms.*.platformCategory').optional().isString(),
+    body('platforms.*.platformAttributes').optional().isObject(),
+    body('platforms.*.templateId').optional().isUUID()
   ],
   productController.publishToPlatforms
 );
 
 // Enhanced Media Upload Routes
 router.post(
-  "/main-products/:mainProductId/media",
-  [param("mainProductId").isUUID().withMessage("Invalid main product ID")],
+  '/main-products/:mainProductId/media',
+  [param('mainProductId').isUUID().withMessage('Invalid main product ID')],
   productController.uploadMainProductMedia
 );
 
 router.post(
-  "/main-products/:mainProductId/variants/:variantId/media",
+  '/main-products/:mainProductId/variants/:variantId/media',
   [
-    param("mainProductId").isUUID().withMessage("Invalid main product ID"),
-    param("variantId").isUUID().withMessage("Invalid variant ID"),
+    param('mainProductId').isUUID().withMessage('Invalid main product ID'),
+    param('variantId').isUUID().withMessage('Invalid variant ID')
   ],
   productController.uploadVariantMedia
 );
 
 router.delete(
-  "/media/:mediaId",
-  [param("mediaId").isString().withMessage("Invalid media ID")],
+  '/media/:mediaId',
+  [param('mediaId').isString().withMessage('Invalid media ID')],
   productController.deleteMedia
 );
 
 router.put(
-  "/media/:mediaId",
+  '/media/:mediaId',
   [
-    param("mediaId").isString().withMessage("Invalid media ID"),
-    body("altText").optional().isString(),
-    body("isPrimary").optional().isBoolean(),
-    body("sortOrder").optional().isInt({ min: 0 }),
+    param('mediaId').isString().withMessage('Invalid media ID'),
+    body('altText').optional().isString(),
+    body('isPrimary').optional().isBoolean(),
+    body('sortOrder').optional().isInt({ min: 0 })
   ],
   productController.updateMediaMetadata
 );
 
 // Bulk Operations Routes
 router.post(
-  "/bulk",
+  '/bulk',
   [
-    body("operation")
-      .isIn(["publish", "updatePrice", "updateStock"])
-      .withMessage("Invalid operation"),
-    body("productIds")
+    body('operation')
+      .isIn(['publish', 'updatePrice', 'updateStock'])
+      .withMessage('Invalid operation'),
+    body('productIds')
       .isArray({ min: 1 })
-      .withMessage("Product IDs array is required"),
-    body("productIds.*").isUUID().withMessage("Invalid product ID in array"),
-    body("operationData").isObject().withMessage("Operation data is required"),
+      .withMessage('Product IDs array is required'),
+    body('productIds.*').isUUID().withMessage('Invalid product ID in array'),
+    body('operationData').isObject().withMessage('Operation data is required')
   ],
   productController.bulkOperation
 );
 
 router.post(
-  "/bulk/publish-variants",
+  '/bulk/publish-variants',
   [
-    body("mainProductIds")
+    body('mainProductIds')
       .isArray()
-      .withMessage("Product IDs array is required"),
-    body("platforms").isArray().withMessage("Platforms array is required"),
-    body("publishingSettings").optional().isObject(),
+      .withMessage('Product IDs array is required'),
+    body('platforms').isArray().withMessage('Platforms array is required'),
+    body('publishingSettings').optional().isObject()
   ],
   productController.bulkPublishVariants
 );
 
 router.post(
-  "/bulk/update-prices",
+  '/bulk/update-prices',
   [
-    body("updates").isArray().withMessage("Updates array is required"),
-    body("updates.*.variantId").isUUID().withMessage("Invalid variant ID"),
-    body("updates.*.price").isFloat({ min: 0 }).withMessage("Invalid price"),
+    body('updates').isArray().withMessage('Updates array is required'),
+    body('updates.*.variantId').isUUID().withMessage('Invalid variant ID'),
+    body('updates.*.price').isFloat({ min: 0 }).withMessage('Invalid price')
   ],
   productController.bulkUpdatePrices
 );
 
 router.post(
-  "/bulk/create-variants",
+  '/bulk/create-variants',
   [
-    body("mainProductId").isUUID().withMessage("Invalid main product ID"),
-    body("variants")
+    body('mainProductId').isUUID().withMessage('Invalid main product ID'),
+    body('variants')
       .isArray({ min: 1 })
-      .withMessage("At least one variant is required"),
-    body("variants.*.name").notEmpty().withMessage("Variant name is required"),
-    body("variants.*.price")
+      .withMessage('At least one variant is required'),
+    body('variants.*.name').notEmpty().withMessage('Variant name is required'),
+    body('variants.*.price')
       .isFloat({ min: 0 })
-      .withMessage("Valid price is required"),
+      .withMessage('Valid price is required')
   ],
   productController.bulkCreateVariants
 );
 
 // Platform Integration Routes
 router.post(
-  "/scrape-platform",
+  '/scrape-platform',
   [
-    body("url").isURL().withMessage("Valid URL is required"),
-    body("platform").optional().isString(),
+    body('url').isURL().withMessage('Valid URL is required'),
+    body('platform').optional().isString()
   ],
   productController.scrapePlatformData
 );
 
 router.post(
-  "/import-from-platform",
+  '/import-from-platform',
   [
-    body("platformData").optional().isObject(),
-    body("url").optional().isURL(),
-    body("fieldMapping").optional().isObject(),
-    body("targetPlatform").optional().isString(),
+    body('platformData').optional().isObject(),
+    body('url').optional().isURL(),
+    body('fieldMapping').optional().isObject(),
+    body('targetPlatform').optional().isString()
   ],
   productController.importFromPlatform
 );
 
 router.post(
-  "/scrape-and-import",
+  '/scrape-and-import',
   [
-    body("url").isURL().withMessage("Valid URL is required"),
-    body("platform").optional().isString(),
-    body("fieldMapping").optional().isObject(),
+    body('url').isURL().withMessage('Valid URL is required'),
+    body('platform').optional().isString(),
+    body('fieldMapping').optional().isObject()
   ],
   productController.scrapeAndImportFromPlatform
 );
 
 // Field Mapping Routes
 router.get(
-  "/field-mappings",
+  '/field-mappings',
   [
-    query("sourcePlatform").optional().isString(),
-    query("targetPlatform").optional().isString(),
+    query('sourcePlatform').optional().isString(),
+    query('targetPlatform').optional().isString()
   ],
   productController.getFieldMappings
 );
 
 router.post(
-  "/field-mappings",
+  '/field-mappings',
   [
-    body("name").notEmpty().withMessage("Mapping name is required"),
-    body("sourcePlatform")
+    body('name').notEmpty().withMessage('Mapping name is required'),
+    body('sourcePlatform')
       .notEmpty()
-      .withMessage("Source platform is required"),
-    body("targetPlatform")
+      .withMessage('Source platform is required'),
+    body('targetPlatform')
       .notEmpty()
-      .withMessage("Target platform is required"),
-    body("fieldMapping").isObject().withMessage("Field mapping is required"),
+      .withMessage('Target platform is required'),
+    body('fieldMapping').isObject().withMessage('Field mapping is required')
   ],
   productController.saveFieldMapping
 );
 
 // Enhanced Import Routes
 router.post(
-  "/import/json",
+  '/import/json',
   [
-    body("jsonData").isArray().withMessage("JSON data must be an array"),
-    body("fieldMapping").isObject().withMessage("Field mapping is required"),
+    body('jsonData').isArray().withMessage('JSON data must be an array'),
+    body('fieldMapping').isObject().withMessage('Field mapping is required')
   ],
   productController.importFromJSON
 );
 
 // Mark product as main product
 router.post(
-  "/mark-as-main/:id",
-  [param("id").isUUID().withMessage("Invalid product ID")],
+  '/mark-as-main/:id',
+  [param('id').isUUID().withMessage('Invalid product ID')],
   productController.markAsMainProduct
 );
 

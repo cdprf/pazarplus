@@ -1,6 +1,6 @@
-const { Op } = require("sequelize");
-const { Order, OrderItem, Product } = require("../../models");
-const logger = require("../../utils/logger");
+const { Op } = require('sequelize');
+const { Order, OrderItem, Product } = require('../../models');
+const logger = require('../../utils/logger');
 
 /**
  * Get product performance breakdown by platform
@@ -10,42 +10,42 @@ async function getProductPlatformBreakdown(userId, productId, dateRange) {
     include: [
       {
         model: Order,
-        as: "order",
+        as: 'order',
         where: {
           userId,
-          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
         },
-        attributes: ["platform"],
-      },
+        attributes: ['platform']
+      }
     ],
     attributes: [
-      [OrderItem.sequelize.col("order.platform"), "platform"],
+      [OrderItem.sequelize.col('order.platform'), 'platform'],
       [
-        OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
-        "totalSold",
+        OrderItem.sequelize.fn('SUM', OrderItem.sequelize.col('quantity')),
+        'totalSold'
       ],
       [
         OrderItem.sequelize.fn(
-          "SUM",
+          'SUM',
           OrderItem.sequelize.literal('"quantity" * "OrderItem"."price"')
         ),
-        "totalRevenue",
+        'totalRevenue'
       ],
       [
-        OrderItem.sequelize.fn("COUNT", OrderItem.sequelize.col("order.id")),
-        "totalOrders",
-      ],
+        OrderItem.sequelize.fn('COUNT', OrderItem.sequelize.col('order.id')),
+        'totalOrders'
+      ]
     ],
-    group: ["order.platform"],
+    group: ['order.platform'],
     order: [
       [
         OrderItem.sequelize.fn(
-          "SUM",
+          'SUM',
           OrderItem.sequelize.literal('"quantity" * "OrderItem"."price"')
         ),
-        "DESC",
-      ],
-    ],
+        'DESC'
+      ]
+    ]
   };
 
   if (productId) {
@@ -55,12 +55,12 @@ async function getProductPlatformBreakdown(userId, productId, dateRange) {
   const breakdown = await OrderItem.findAll(whereClause);
 
   return breakdown.map((item) => ({
-    platform: item.get("platform"),
-    totalSold: parseInt(item.get("totalSold")),
-    totalRevenue: parseFloat(item.get("totalRevenue")),
-    totalOrders: parseInt(item.get("totalOrders")),
+    platform: item.get('platform'),
+    totalSold: parseInt(item.get('totalSold')),
+    totalRevenue: parseFloat(item.get('totalRevenue')),
+    totalOrders: parseInt(item.get('totalOrders')),
     averageOrderValue:
-      parseFloat(item.get("totalRevenue")) / parseInt(item.get("totalOrders")),
+      parseFloat(item.get('totalRevenue')) / parseInt(item.get('totalOrders'))
   }));
 }
 
@@ -117,16 +117,16 @@ async function getProductPerformanceMetrics(userId, productId, dateRange) {
         userId,
         productId,
         dateRange
-      ),
+      )
     };
 
     return {
       current: currentPeriodData,
       previous: previousPeriodData,
-      metrics,
+      metrics
     };
   } catch (error) {
-    logger.error("Product performance metrics error:", error);
+    logger.error('Product performance metrics error:', error);
     return null;
   }
 }
@@ -139,53 +139,53 @@ async function getCategoryPerformance(userId, dateRange) {
     include: [
       {
         model: Order,
-        as: "order",
+        as: 'order',
         where: {
           userId,
-          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
         },
-        attributes: [],
+        attributes: []
       },
       {
         model: Product,
-        as: "product",
-        attributes: ["category"],
-      },
+        as: 'product',
+        attributes: ['category']
+      }
     ],
     attributes: [
-      [OrderItem.sequelize.col("product.category"), "category"],
+      [OrderItem.sequelize.col('product.category'), 'category'],
       [
-        OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
-        "totalSold",
+        OrderItem.sequelize.fn('SUM', OrderItem.sequelize.col('quantity')),
+        'totalSold'
       ],
       [
         OrderItem.sequelize.fn(
-          "SUM",
+          'SUM',
           OrderItem.sequelize.literal(
             '"OrderItem"."quantity" * "OrderItem"."price"'
           )
         ),
-        "revenue",
+        'revenue'
       ],
       [
         OrderItem.sequelize.fn(
-          "COUNT",
+          'COUNT',
           OrderItem.sequelize.literal('DISTINCT "OrderItem"."productId"')
         ),
-        "productCount",
-      ],
+        'productCount'
+      ]
     ],
-    group: ["product.category", "product.id"],
-    order: [[OrderItem.sequelize.literal("revenue"), "DESC"]],
+    group: ['product.category', 'product.id'],
+    order: [[OrderItem.sequelize.literal('revenue'), 'DESC']]
   });
 
   return categoryData.map((item) => ({
-    category: item.get("category") || "Uncategorized",
-    totalSold: parseInt(item.get("totalSold")),
-    revenue: parseFloat(item.get("revenue")),
-    productCount: parseInt(item.get("productCount")),
+    category: item.get('category') || 'Uncategorized',
+    totalSold: parseInt(item.get('totalSold')),
+    revenue: parseFloat(item.get('revenue')),
+    productCount: parseInt(item.get('productCount')),
     avgRevenuePerProduct:
-      parseFloat(item.get("revenue")) / parseInt(item.get("productCount")),
+      parseFloat(item.get('revenue')) / parseInt(item.get('productCount'))
   }));
 }
 
@@ -196,24 +196,24 @@ async function getPerformanceMetrics(userId, dateRange) {
   const whereClause = {
     userId,
     createdAt: {
-      [Op.between]: [dateRange.start, dateRange.end],
-    },
+      [Op.between]: [dateRange.start, dateRange.end]
+    }
   };
 
   // Order fulfillment times - simplified since shippedAt column doesn't exist
   const fulfillmentTimes = await Order.findAll({
     where: {
       ...whereClause,
-      orderStatus: "delivered",
+      orderStatus: 'delivered'
     },
     attributes: [
       [
         Order.sequelize.literal(
-          "AVG(JULIANDAY(updatedAt) - JULIANDAY(createdAt))"
+          'AVG(JULIANDAY(updatedAt) - JULIANDAY(createdAt))'
         ),
-        "avgFulfillmentDays",
-      ],
-    ],
+        'avgFulfillmentDays'
+      ]
+    ]
   });
 
   // Return rate
@@ -230,12 +230,12 @@ async function getPerformanceMetrics(userId, dateRange) {
 
   return {
     avgFulfillmentTime: parseFloat(
-      fulfillmentTimes[0]?.get("avgFulfillmentDays") || 0
+      fulfillmentTimes[0]?.get('avgFulfillmentDays') || 0
     ),
     returnRate,
     satisfaction: satisfactionMetrics,
     ...customerMetrics, // Spread customer metrics into performance
-    updatedAt: new Date(),
+    updatedAt: new Date()
   };
 }
 
@@ -251,5 +251,5 @@ module.exports = {
   getPerformanceMetrics,
   getCategoryPerformance,
   getProductPerformanceMetrics,
-  getProductPlatformBreakdown,
+  getProductPlatformBreakdown
 };

@@ -32,7 +32,7 @@ class AccountLockoutService {
   // Check if account is locked
   isLocked(identifier) {
     const attempts = this.failedAttempts.get(identifier);
-    if (!attempts) return false;
+    if (!attempts) {return false;}
 
     const now = Date.now();
     // Clean up old attempts
@@ -46,7 +46,7 @@ class AccountLockoutService {
   // Get remaining lockout time in milliseconds
   getRemainingLockoutTime(identifier) {
     const attempts = this.failedAttempts.get(identifier);
-    if (!attempts || attempts.timestamps.length === 0) return 0;
+    if (!attempts || attempts.timestamps.length === 0) {return 0;}
 
     const now = Date.now();
     const oldestAttempt = Math.min(...attempts.timestamps);

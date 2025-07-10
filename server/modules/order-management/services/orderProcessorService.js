@@ -9,12 +9,12 @@ const {
   PlatformConnection,
   ShippingDetail,
   Product,
-  FinancialTransaction,
-} = require("../../../models");
-const { Op } = require("sequelize");
-const logger = require("../../../utils/logger");
-const sequelize = require("../../../config/database");
-const { mapOrderStatus } = require("../../../utils/enum-validators");
+  FinancialTransaction
+} = require('../../../models');
+const { Op } = require('sequelize');
+const logger = require('../../../utils/logger');
+const sequelize = require('../../../config/database');
+const { mapOrderStatus } = require('../../../utils/enum-validators');
 
 /**
  * Order Processor Service
@@ -34,26 +34,26 @@ class OrderProcessorService {
     try {
       const {
         userId,
-        statuses = ["new", "processing"],
+        statuses = ['new', 'processing'],
         maxDaysDifference = 3,
-        sameAddressOnly = true,
+        sameAddressOnly = true
       } = options;
 
       // Find all eligible orders
       const orders = await Order.findAll({
         where: {
           userId,
-          orderStatus: statuses,
+          orderStatus: statuses
         },
         include: [
-          { model: ShippingDetail, as: "shippingDetail" },
+          { model: ShippingDetail, as: 'shippingDetail' },
           {
             model: OrderItem,
-            as: "items",
-            include: [{ model: Product, as: "product" }],
-          },
+            as: 'items',
+            include: [{ model: Product, as: 'product' }]
+          }
         ],
-        order: [["orderDate", "ASC"]],
+        order: [['orderDate', 'ASC']]
       });
 
       // Group orders by customer email or name for potential consolidation
@@ -61,10 +61,10 @@ class OrderProcessorService {
 
       orders.forEach((order) => {
         // Skip orders without shipping details if sameAddressOnly is true
-        if (sameAddressOnly && !order.shippingDetail) return;
+        if (sameAddressOnly && !order.shippingDetail) {return;}
 
         const customerKey = order.customerEmail || order.customerName;
-        if (!customerKey) return;
+        if (!customerKey) {return;}
 
         if (!customerGroups[customerKey]) {
           customerGroups[customerKey] = [];
@@ -80,7 +80,7 @@ class OrderProcessorService {
         const customerOrders = customerGroups[customerKey];
 
         // Only process customers with multiple orders
-        if (customerOrders.length <= 1) return;
+        if (customerOrders.length <= 1) {return;}
 
         // Sort orders by date
         customerOrders.sort(
@@ -140,7 +140,7 @@ class OrderProcessorService {
                 (sum, order) => sum + order.OrderItems.length,
                 0
               ),
-              platforms: [...new Set(group.map((order) => order.platformId))],
+              platforms: [...new Set(group.map((order) => order.platformId))]
             });
           }
         });
@@ -148,7 +148,7 @@ class OrderProcessorService {
 
       return consolidationGroups;
     } catch (error) {
-      logger.error("Error finding consolidation candidates:", error);
+      logger.error('Error finding consolidation candidates:', error);
       throw error;
     }
   }
@@ -161,7 +161,7 @@ class OrderProcessorService {
   async consolidateOrders(orderIds) {
     try {
       if (!orderIds || !Array.isArray(orderIds) || orderIds.length <= 1) {
-        throw new Error("At least two orders are required for consolidation");
+        throw new Error('At least two orders are required for consolidation');
       }
 
       // Find all orders to consolidate
@@ -170,15 +170,15 @@ class OrderProcessorService {
         include: [
           {
             model: OrderItem,
-            as: "items",
-            include: [{ model: Product, as: "product" }],
+            as: 'items',
+            include: [{ model: Product, as: 'product' }]
           },
-          { model: ShippingDetail, as: "shippingDetail" },
-        ],
+          { model: ShippingDetail, as: 'shippingDetail' }
+        ]
       });
 
       if (orders.length !== orderIds.length) {
-        throw new Error("One or more orders not found");
+        throw new Error('One or more orders not found');
       }
 
       // Ensure all orders can be consolidated (same customer, valid status)
@@ -186,18 +186,18 @@ class OrderProcessorService {
       const customerNames = [...new Set(orders.map((o) => o.customerName))];
 
       if (customerEmails.length > 1 && customerNames.length > 1) {
-        throw new Error("Cannot consolidate orders from different customers");
+        throw new Error('Cannot consolidate orders from different customers');
       }
 
       const invalidStatusOrders = orders.filter(
-        (o) => !["new", "processing"].includes(o.orderStatus)
+        (o) => !['new', 'processing'].includes(o.orderStatus)
       );
 
       if (invalidStatusOrders.length > 0) {
         throw new Error(
           `Orders with IDs ${invalidStatusOrders
             .map((o) => o.id)
-            .join(", ")} have invalid status for consolidation`
+            .join(', ')} have invalid status for consolidation`
         );
       }
 
@@ -214,14 +214,14 @@ class OrderProcessorService {
           .substring(2, 10)}`,
         customerName: primaryOrder.customerName,
         customerEmail: primaryOrder.customerEmail,
-        orderStatus: "consolidated", // Use proper field name and validate enum
+        orderStatus: 'consolidated', // Use proper field name and validate enum
         orderDate: new Date(),
         totalAmount: totals.totalAmount,
         subtotal: totals.subtotal,
         taxAmount: totals.taxTotal,
         shippingAmount: totals.shippingTotal,
         currency: totals.currency,
-        notes: `Consolidated from orders: ${orderIds.join(", ")}`,
+        notes: `Consolidated from orders: ${orderIds.join(', ')}`,
         isConsolidated: true,
         consolidatedOrderIds: JSON.stringify(orderIds),
         metadata: {
@@ -229,15 +229,15 @@ class OrderProcessorService {
           consolidation: {
             date: new Date(),
             orderIds,
-            reason: "customer_consolidation",
-          },
-        },
+            reason: 'customer_consolidation'
+          }
+        }
       };
 
       // Create the consolidated order
       const consolidatedOrder = await sequelize.transaction(async (t) => {
         const newOrder = await Order.create(consolidatedOrderData, {
-          transaction: t,
+          transaction: t
         });
 
         // Copy shipping details from primary order
@@ -282,8 +282,8 @@ class OrderProcessorService {
                   metadata: {
                     originalCurrency: order.currency,
                     originalUnitPrice: item.unitPrice,
-                    originalTotalPrice: item.totalPrice,
-                  },
+                    originalTotalPrice: item.totalPrice
+                  }
                 },
                 { transaction: t }
               );
@@ -293,15 +293,15 @@ class OrderProcessorService {
           // Update original order
           await order.update(
             {
-              orderStatus: mapOrderStatus("consolidated", "system"),
+              orderStatus: mapOrderStatus('consolidated', 'system'),
               consolidatedToOrderId: newOrder.id,
               metadata: {
                 ...order.metadata,
                 consolidation: {
                   date: new Date(),
-                  consolidatedOrderId: newOrder.id,
-                },
-              },
+                  consolidatedOrderId: newOrder.id
+                }
+              }
             },
             { transaction: t }
           );
@@ -315,14 +315,14 @@ class OrderProcessorService {
         include: [
           {
             model: OrderItem,
-            as: "items",
-            include: [{ model: Product, as: "product" }],
+            as: 'items',
+            include: [{ model: Product, as: 'product' }]
           },
-          { model: ShippingDetail, as: "shippingDetail" },
-        ],
+          { model: ShippingDetail, as: 'shippingDetail' }
+        ]
       });
     } catch (error) {
-      logger.error("Error consolidating orders:", error);
+      logger.error('Error consolidating orders:', error);
       throw error;
     }
   }
@@ -339,8 +339,8 @@ class OrderProcessorService {
     try {
       const {
         userId,
-        statuses = ["new", "processing"],
-        groupBy = "destination", // 'customer', 'platform', 'destination'
+        statuses = ['new', 'processing'],
+        groupBy = 'destination' // 'customer', 'platform', 'destination'
       } = options;
 
       // Find eligible orders
@@ -349,13 +349,13 @@ class OrderProcessorService {
           userId,
           orderStatus: statuses,
           isConsolidated: {
-            [Op.or]: [false, null], // Only include non-consolidated orders
-          },
+            [Op.or]: [false, null] // Only include non-consolidated orders
+          }
         },
         include: [
-          { model: ShippingDetail, as: "shippingDetail" },
-          { model: OrderItem, as: "items" },
-        ],
+          { model: ShippingDetail, as: 'shippingDetail' },
+          { model: OrderItem, as: 'items' }
+        ]
       });
 
       if (orders.length === 0) {
@@ -365,13 +365,13 @@ class OrderProcessorService {
       // Group orders based on criteria
       const batches = [];
 
-      if (groupBy === "customer") {
+      if (groupBy === 'customer') {
         // Group by customer
         const customerGroups = {};
 
         orders.forEach((order) => {
           const key = order.customerEmail || order.customerName;
-          if (!key) return;
+          if (!key) {return;}
 
           if (!customerGroups[key]) {
             customerGroups[key] = [];
@@ -384,23 +384,23 @@ class OrderProcessorService {
           if (customerGroups[key].length > 0) {
             batches.push({
               batchKey: `CUSTOMER-${key}`,
-              batchType: "customer",
+              batchType: 'customer',
               orders: customerGroups[key],
               totalOrders: customerGroups[key].length,
               totalItems: customerGroups[key].reduce(
                 (sum, order) => sum + order.OrderItems.length,
                 0
-              ),
+              )
             });
           }
         });
-      } else if (groupBy === "platform") {
+      } else if (groupBy === 'platform') {
         // Group by platform
         const platformGroups = {};
 
         orders.forEach((order) => {
           const key = order.platformId;
-          if (!key) return;
+          if (!key) {return;}
 
           if (!platformGroups[key]) {
             platformGroups[key] = [];
@@ -413,13 +413,13 @@ class OrderProcessorService {
           if (platformGroups[key].length > 0) {
             batches.push({
               batchKey: `PLATFORM-${key}`,
-              batchType: "platform",
+              batchType: 'platform',
               orders: platformGroups[key],
               totalOrders: platformGroups[key].length,
               totalItems: platformGroups[key].reduce(
                 (sum, order) => sum + order.OrderItems.length,
                 0
-              ),
+              )
             });
           }
         });
@@ -428,7 +428,7 @@ class OrderProcessorService {
         const destinationGroups = {};
 
         orders.forEach((order) => {
-          if (!order.shippingDetail) return;
+          if (!order.shippingDetail) {return;}
 
           const shipping = order.shippingDetail;
           const key =
@@ -446,18 +446,18 @@ class OrderProcessorService {
             const sample = destinationGroups[key][0].shippingDetail;
             batches.push({
               batchKey: `DEST-${sample.city}-${sample.state}-${sample.country}`,
-              batchType: "destination",
+              batchType: 'destination',
               destination: {
                 city: sample.city,
                 state: sample.state,
-                country: sample.country,
+                country: sample.country
               },
               orders: destinationGroups[key],
               totalOrders: destinationGroups[key].length,
               totalItems: destinationGroups[key].reduce(
                 (sum, order) => sum + order.OrderItems.length,
                 0
-              ),
+              )
             });
           }
         });
@@ -465,7 +465,7 @@ class OrderProcessorService {
 
       return batches;
     } catch (error) {
-      logger.error("Error creating batch shipments:", error);
+      logger.error('Error creating batch shipments:', error);
       throw error;
     }
   }
@@ -487,14 +487,14 @@ class OrderProcessorService {
           {
             batchKey: batch.batchKey,
             batchType: batch.batchType,
-            status: "PENDING",
+            status: 'PENDING',
             userId: options.userId,
             totalOrders: batch.totalOrders,
             totalItems: batch.totalItems,
             metadata: {
               destination: batch.destination,
-              platforms: batch.orders.map((o) => o.platformId).filter(Boolean),
-            },
+              platforms: batch.orders.map((o) => o.platformId).filter(Boolean)
+            }
           },
           { transaction }
         ); // Link orders to batch
@@ -503,7 +503,7 @@ class OrderProcessorService {
             order.update(
               {
                 batchId: batchRecord.id,
-                orderStatus: mapOrderStatus("in_batch", "system"),
+                orderStatus: mapOrderStatus('in_batch', 'system')
               },
               { transaction }
             )
@@ -515,7 +515,7 @@ class OrderProcessorService {
       return batches;
     } catch (error) {
       await transaction.rollback();
-      logger.error("Error in batch shipment creation:", error);
+      logger.error('Error in batch shipment creation:', error);
       throw error;
     }
   }
@@ -553,10 +553,10 @@ class OrderProcessorService {
                 from: oldPaymentStatus,
                 to: paymentStatus,
                 date: new Date(),
-                reason: paymentData.reason || "",
-              },
-            ],
-          },
+                reason: paymentData.reason || ''
+              }
+            ]
+          }
         },
         { transaction }
       );
@@ -569,16 +569,16 @@ class OrderProcessorService {
           amount: paymentData.amount || order.totalAmount,
           currency: paymentData.currency || order.currency,
           status: this._mapPaymentToTransactionStatus(paymentStatus),
-          metadata: paymentData,
+          metadata: paymentData
         },
         { transaction }
       );
 
       // If payment is completed, update order status if needed
-      if (paymentStatus === "completed" && order.orderStatus === "pending") {
+      if (paymentStatus === 'completed' && order.orderStatus === 'pending') {
         await order.update(
           {
-            orderStatus: mapOrderStatus("processing", "system"),
+            orderStatus: mapOrderStatus('processing', 'system')
           },
           { transaction }
         );
@@ -589,7 +589,7 @@ class OrderProcessorService {
       return {
         success: true,
         order,
-        message: `Payment status updated to ${paymentStatus}`,
+        message: `Payment status updated to ${paymentStatus}`
       };
     } catch (error) {
       await transaction.rollback();
@@ -607,14 +607,14 @@ class OrderProcessorService {
    */
   _mapPaymentToTransactionStatus(paymentStatus) {
     const statusMap = {
-      pending: "pending",
-      completed: "completed",
-      failed: "failed",
-      refunded: "completed",
-      partially_refunded: "completed",
-      cancelled: "cancelled",
+      pending: 'pending',
+      completed: 'completed',
+      failed: 'failed',
+      refunded: 'completed',
+      partially_refunded: 'completed',
+      cancelled: 'cancelled'
     };
-    return statusMap[paymentStatus] || "pending";
+    return statusMap[paymentStatus] || 'pending';
   }
 
   /**
@@ -623,12 +623,12 @@ class OrderProcessorService {
    */
   _getTransactionType(paymentStatus) {
     const typeMap = {
-      completed: "payment",
-      refunded: "refund",
-      partially_refunded: "partial_refund",
-      cancelled: "cancellation",
+      completed: 'payment',
+      refunded: 'refund',
+      partially_refunded: 'partial_refund',
+      cancelled: 'cancellation'
     };
-    return typeMap[paymentStatus] || "payment";
+    return typeMap[paymentStatus] || 'payment';
   }
 
   /**
@@ -640,30 +640,30 @@ class OrderProcessorService {
   async processWebhookNotification(data, platformType) {
     try {
       if (!data || !platformType) {
-        throw new Error("Missing webhook data or platform type");
+        throw new Error('Missing webhook data or platform type');
       }
 
       // Handle different webhook types based on platform
       let result = { success: false };
 
       switch (platformType.toLowerCase()) {
-        case "trendyol":
-          result = await this._processTrendyolWebhook(data);
-          break;
-        case "hepsiburada":
-          result = await this._processHepsiburadaWebhook(data);
-          break;
-        case "n11":
-          result = await this._processN11Webhook(data);
-          break;
+      case 'trendyol':
+        result = await this._processTrendyolWebhook(data);
+        break;
+      case 'hepsiburada':
+        result = await this._processHepsiburadaWebhook(data);
+        break;
+      case 'n11':
+        result = await this._processN11Webhook(data);
+        break;
         // Add more platform handlers as needed
-        default:
-          throw new Error(`Unsupported platform type: ${platformType}`);
+      default:
+        throw new Error(`Unsupported platform type: ${platformType}`);
       }
 
       return result;
     } catch (error) {
-      logger.error("Error processing webhook notification:", error);
+      logger.error('Error processing webhook notification:', error);
       throw error;
     }
   }
@@ -690,22 +690,22 @@ class OrderProcessorService {
    */
   _compareAddresses(address1, address2) {
     // Normalize and compare postal codes
-    const postalCode1 = (address1.postalCode || "").trim().replace(/\s+/g, "");
-    const postalCode2 = (address2.postalCode || "").trim().replace(/\s+/g, "");
+    const postalCode1 = (address1.postalCode || '').trim().replace(/\s+/g, '');
+    const postalCode2 = (address2.postalCode || '').trim().replace(/\s+/g, '');
 
     if (postalCode1 && postalCode2 && postalCode1 === postalCode2) {
       return true;
     }
 
     // Compare city, state, country
-    const city1 = (address1.city || "").trim().toLowerCase();
-    const city2 = (address2.city || "").trim().toLowerCase();
+    const city1 = (address1.city || '').trim().toLowerCase();
+    const city2 = (address2.city || '').trim().toLowerCase();
 
-    const state1 = (address1.state || "").trim().toLowerCase();
-    const state2 = (address2.state || "").trim().toLowerCase();
+    const state1 = (address1.state || '').trim().toLowerCase();
+    const state2 = (address2.state || '').trim().toLowerCase();
 
-    const country1 = (address1.country || "").trim().toLowerCase();
-    const country2 = (address2.country || "").trim().toLowerCase();
+    const country1 = (address1.country || '').trim().toLowerCase();
+    const country2 = (address2.country || '').trim().toLowerCase();
 
     // City, state, and country must match
     return city1 === city2 && state1 === state2 && country1 === country2;
@@ -721,77 +721,77 @@ class OrderProcessorService {
     try {
       // Handle different webhook events from Trendyol
       if (!data.event || !data.orderId) {
-        throw new Error("Invalid webhook format");
+        throw new Error('Invalid webhook format');
       }
 
       // Find the order in our system
       const order = await Order.findOne({
         where: {
           platformOrderId: data.orderId,
-          platformId: { [Op.ne]: null }, // Ensure it has a platform ID
-        },
+          platformId: { [Op.ne]: null } // Ensure it has a platform ID
+        }
       });
 
       if (!order) {
         logger.warn(`Order not found for Trendyol webhook: ${data.orderId}`);
         return {
           success: false,
-          message: "Order not found in system",
-          event: data.event,
+          message: 'Order not found in system',
+          event: data.event
         };
       }
 
       // Update order based on event type
       switch (data.event.toLowerCase()) {
-        case "order_created":
-          // Update if we already have it but with different status
-          const newStatus = mapOrderStatus("new", "trendyol");
-          if (order.orderStatus !== newStatus) {
-            order.orderStatus = newStatus;
-            await order.save();
-          }
-          break;
-
-        case "order_shipped":
-          order.orderStatus = mapOrderStatus("shipped", "trendyol");
-          if (data.trackingNumber) {
-            order.trackingNumber = data.trackingNumber;
-          }
+      case 'order_created':
+        // Update if we already have it but with different status
+        const newStatus = mapOrderStatus('new', 'trendyol');
+        if (order.orderStatus !== newStatus) {
+          order.orderStatus = newStatus;
           await order.save();
-          break;
+        }
+        break;
 
-        case "order_cancelled":
-          order.orderStatus = mapOrderStatus("cancelled", "trendyol");
-          if (data.cancellationReason) {
-            order.cancellationReason = data.cancellationReason;
-          }
-          order.cancellationDate = new Date();
-          await order.save();
-          break;
+      case 'order_shipped':
+        order.orderStatus = mapOrderStatus('shipped', 'trendyol');
+        if (data.trackingNumber) {
+          order.trackingNumber = data.trackingNumber;
+        }
+        await order.save();
+        break;
 
-        case "order_delivered":
-          order.orderStatus = mapOrderStatus("delivered", "trendyol");
-          order.deliveryDate = new Date();
-          await order.save();
-          break;
+      case 'order_cancelled':
+        order.orderStatus = mapOrderStatus('cancelled', 'trendyol');
+        if (data.cancellationReason) {
+          order.cancellationReason = data.cancellationReason;
+        }
+        order.cancellationDate = new Date();
+        await order.save();
+        break;
 
-        default:
-          logger.info(`Unhandled Trendyol event type: ${data.event}`);
-          return {
-            success: false,
-            message: `Unhandled event type: ${data.event}`,
-            orderId: order.id,
-          };
+      case 'order_delivered':
+        order.orderStatus = mapOrderStatus('delivered', 'trendyol');
+        order.deliveryDate = new Date();
+        await order.save();
+        break;
+
+      default:
+        logger.info(`Unhandled Trendyol event type: ${data.event}`);
+        return {
+          success: false,
+          message: `Unhandled event type: ${data.event}`,
+          orderId: order.id
+        };
       }
 
       return {
         success: true,
         message: `Successfully processed ${data.event} event`,
         orderId: order.id,
-        status: order.orderStatus,
+        status: order.orderStatus
       };
     } catch (error) {
-      logger.error("Error processing Trendyol webhook:", error);
+      logger.error('Error processing Trendyol webhook:', error);
       throw error;
     }
   }
@@ -805,87 +805,87 @@ class OrderProcessorService {
   async _processHepsiburadaWebhook(data) {
     try {
       if (!data.event || !data.orderId) {
-        throw new Error("Invalid Hepsiburada webhook format");
+        throw new Error('Invalid Hepsiburada webhook format');
       }
 
       const order = await Order.findOne({
         where: {
           externalOrderId: data.orderId,
-          platformType: "hepsiburada",
-        },
+          platformType: 'hepsiburada'
+        }
       });
 
       if (!order) {
         logger.warn(`Order not found for Hepsiburada webhook: ${data.orderId}`);
         return {
           success: false,
-          message: "Order not found in system",
-          event: data.event,
+          message: 'Order not found in system',
+          event: data.event
         };
       }
 
       switch (data.event.toLowerCase()) {
-        case "created":
-          const createdStatus = mapOrderStatus("new", "hepsiburada");
-          if (order.orderStatus !== createdStatus) {
-            order.orderStatus = createdStatus;
-            await order.save();
-          }
-          break;
-
-        case "packaging":
-          order.orderStatus = mapOrderStatus("processing", "hepsiburada");
+      case 'created':
+        const createdStatus = mapOrderStatus('new', 'hepsiburada');
+        if (order.orderStatus !== createdStatus) {
+          order.orderStatus = createdStatus;
           await order.save();
-          break;
+        }
+        break;
 
-        case "shipped":
-          order.orderStatus = mapOrderStatus("shipped", "hepsiburada");
-          if (data.cargoTrackingNumber) {
-            order.trackingNumber = data.cargoTrackingNumber;
-          }
-          if (data.cargoTrackingUrl) {
-            order.trackingUrl = data.cargoTrackingUrl;
-          }
-          await order.save();
-          break;
+      case 'packaging':
+        order.orderStatus = mapOrderStatus('processing', 'hepsiburada');
+        await order.save();
+        break;
 
-        case "delivered":
-          order.orderStatus = mapOrderStatus("delivered", "hepsiburada");
-          order.deliveryDate = new Date();
-          await order.save();
-          break;
+      case 'shipped':
+        order.orderStatus = mapOrderStatus('shipped', 'hepsiburada');
+        if (data.cargoTrackingNumber) {
+          order.trackingNumber = data.cargoTrackingNumber;
+        }
+        if (data.cargoTrackingUrl) {
+          order.trackingUrl = data.cargoTrackingUrl;
+        }
+        await order.save();
+        break;
 
-        case "cancelled":
-          order.orderStatus = mapOrderStatus("cancelled", "hepsiburada");
-          order.cancellationReason = data.reason || "";
-          order.cancellationDate = new Date();
-          await order.save();
-          break;
+      case 'delivered':
+        order.orderStatus = mapOrderStatus('delivered', 'hepsiburada');
+        order.deliveryDate = new Date();
+        await order.save();
+        break;
 
-        case "returned":
-          order.orderStatus = mapOrderStatus("returned", "hepsiburada");
-          order.returnReason = data.reason || "";
-          order.returnDate = new Date();
-          await order.save();
-          break;
+      case 'cancelled':
+        order.orderStatus = mapOrderStatus('cancelled', 'hepsiburada');
+        order.cancellationReason = data.reason || '';
+        order.cancellationDate = new Date();
+        await order.save();
+        break;
 
-        default:
-          logger.info(`Unhandled Hepsiburada event type: ${data.event}`);
-          return {
-            success: false,
-            message: `Unhandled event type: ${data.event}`,
-            orderId: order.id,
-          };
+      case 'returned':
+        order.orderStatus = mapOrderStatus('returned', 'hepsiburada');
+        order.returnReason = data.reason || '';
+        order.returnDate = new Date();
+        await order.save();
+        break;
+
+      default:
+        logger.info(`Unhandled Hepsiburada event type: ${data.event}`);
+        return {
+          success: false,
+          message: `Unhandled event type: ${data.event}`,
+          orderId: order.id
+        };
       }
 
       return {
         success: true,
         message: `Successfully processed ${data.event} event`,
         orderId: order.id,
-        status: order.orderStatus,
+        status: order.orderStatus
       };
     } catch (error) {
-      logger.error("Error processing Hepsiburada webhook:", error);
+      logger.error('Error processing Hepsiburada webhook:', error);
       throw error;
     }
   }
@@ -899,88 +899,88 @@ class OrderProcessorService {
   async _processN11Webhook(data) {
     try {
       if (!data.event || !data.orderId) {
-        throw new Error("Invalid N11 webhook format");
+        throw new Error('Invalid N11 webhook format');
       }
 
       const order = await Order.findOne({
         where: {
           externalOrderId: data.orderId,
-          platformType: "n11",
-        },
+          platformType: 'n11'
+        }
       });
 
       if (!order) {
         logger.warn(`Order not found for N11 webhook: ${data.orderId}`);
         return {
           success: false,
-          message: "Order not found in system",
-          event: data.event,
+          message: 'Order not found in system',
+          event: data.event
         };
       }
 
       switch (data.event.toLowerCase()) {
-        case "new":
-          const newOrderStatus = mapOrderStatus("new", "n11");
-          if (order.orderStatus !== newOrderStatus) {
-            order.orderStatus = newOrderStatus;
-            await order.save();
-          }
-          break;
-
-        case "accepted":
-        case "picking":
-          order.orderStatus = mapOrderStatus("processing", "n11");
+      case 'new':
+        const newOrderStatus = mapOrderStatus('new', 'n11');
+        if (order.orderStatus !== newOrderStatus) {
+          order.orderStatus = newOrderStatus;
           await order.save();
-          break;
+        }
+        break;
 
-        case "shipped":
-          order.orderStatus = mapOrderStatus("shipped", "n11");
-          if (data.shipmentInfo) {
-            order.trackingNumber = data.shipmentInfo.trackingNumber;
-            order.trackingUrl = data.shipmentInfo.trackingUrl;
-            order.carrierName = data.shipmentInfo.carrierName;
-          }
-          await order.save();
-          break;
+      case 'accepted':
+      case 'picking':
+        order.orderStatus = mapOrderStatus('processing', 'n11');
+        await order.save();
+        break;
 
-        case "delivered":
-          order.orderStatus = mapOrderStatus("delivered", "n11");
-          order.deliveryDate = new Date();
-          await order.save();
-          break;
+      case 'shipped':
+        order.orderStatus = mapOrderStatus('shipped', 'n11');
+        if (data.shipmentInfo) {
+          order.trackingNumber = data.shipmentInfo.trackingNumber;
+          order.trackingUrl = data.shipmentInfo.trackingUrl;
+          order.carrierName = data.shipmentInfo.carrierName;
+        }
+        await order.save();
+        break;
 
-        case "rejected":
-        case "cancelled":
-          order.orderStatus = mapOrderStatus("cancelled", "n11");
-          order.cancellationReason = data.reason || "";
-          order.cancellationDate = new Date();
-          await order.save();
-          break;
+      case 'delivered':
+        order.orderStatus = mapOrderStatus('delivered', 'n11');
+        order.deliveryDate = new Date();
+        await order.save();
+        break;
 
-        case "returned":
-          order.orderStatus = mapOrderStatus("returned", "n11");
-          order.returnReason = data.reason || "";
-          order.returnDate = new Date();
-          await order.save();
-          break;
+      case 'rejected':
+      case 'cancelled':
+        order.orderStatus = mapOrderStatus('cancelled', 'n11');
+        order.cancellationReason = data.reason || '';
+        order.cancellationDate = new Date();
+        await order.save();
+        break;
 
-        default:
-          logger.info(`Unhandled N11 event type: ${data.event}`);
-          return {
-            success: false,
-            message: `Unhandled event type: ${data.event}`,
-            orderId: order.id,
-          };
+      case 'returned':
+        order.orderStatus = mapOrderStatus('returned', 'n11');
+        order.returnReason = data.reason || '';
+        order.returnDate = new Date();
+        await order.save();
+        break;
+
+      default:
+        logger.info(`Unhandled N11 event type: ${data.event}`);
+        return {
+          success: false,
+          message: `Unhandled event type: ${data.event}`,
+          orderId: order.id
+        };
       }
 
       return {
         success: true,
         message: `Successfully processed ${data.event} event`,
         orderId: order.id,
-        status: order.orderStatus,
+        status: order.orderStatus
       };
     } catch (error) {
-      logger.error("Error processing N11 webhook:", error);
+      logger.error('Error processing N11 webhook:', error);
       throw error;
     }
   }
@@ -993,8 +993,8 @@ class OrderProcessorService {
    */
   async _calculateConsolidatedTotals(orders) {
     const currencies = [...new Set(orders.map((o) => o.currency))];
-    let primaryCurrency = currencies[0];
-    let requiresConversion = currencies.length > 1;
+    const primaryCurrency = currencies[0];
+    const requiresConversion = currencies.length > 1;
 
     // If we have multiple currencies, convert everything to the primary currency
     let subtotal = 0;
@@ -1023,7 +1023,7 @@ class OrderProcessorService {
       shippingTotal,
       totalAmount: subtotal + taxTotal + shippingTotal,
       currency: primaryCurrency,
-      originalCurrencies: currencies,
+      originalCurrencies: currencies
     };
   }
 
@@ -1040,10 +1040,10 @@ class OrderProcessorService {
     const rates = {
       TRY: { USD: 0.037, EUR: 0.034 },
       USD: { TRY: 39.2, EUR: 0.92 },
-      EUR: { TRY: 45.5, USD: 1.09 },
+      EUR: { TRY: 45.5, USD: 1.09 }
     };
 
-    if (fromCurrency === toCurrency) return 1;
+    if (fromCurrency === toCurrency) {return 1;}
 
     const rate = rates[fromCurrency]?.[toCurrency];
     if (!rate) {

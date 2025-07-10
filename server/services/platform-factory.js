@@ -1,6 +1,6 @@
-const EnhancedTrendyolService = require("./trendyol-service-enhanced");
-const logger = require("../utils/logger");
-const EventEmitter = require("events");
+const EnhancedTrendyolService = require('./trendyol-service-enhanced');
+const logger = require('../utils/logger');
+const EventEmitter = require('events');
 
 /**
  * Platform Service Factory
@@ -17,21 +17,21 @@ class PlatformServiceFactory extends EventEmitter {
         serviceClass: EnhancedTrendyolService,
         rateLimits: { max: 100, window: 60000 },
         circuitBreaker: { threshold: 5, timeout: 30000 },
-        retryPolicy: { attempts: 3, backoff: "exponential" },
+        retryPolicy: { attempts: 3, backoff: 'exponential' }
       },
       // Future platforms can be added here
       hepsiburada: {
         serviceClass: null, // To be implemented
         rateLimits: { max: 50, window: 60000 },
         circuitBreaker: { threshold: 3, timeout: 20000 },
-        retryPolicy: { attempts: 2, backoff: "linear" },
+        retryPolicy: { attempts: 2, backoff: 'linear' }
       },
       n11: {
         serviceClass: null, // To be implemented
         rateLimits: { max: 200, window: 60000 },
         circuitBreaker: { threshold: 10, timeout: 45000 },
-        retryPolicy: { attempts: 5, backoff: "exponential" },
-      },
+        retryPolicy: { attempts: 5, backoff: 'exponential' }
+      }
     };
 
     // Global service monitoring
@@ -40,10 +40,10 @@ class PlatformServiceFactory extends EventEmitter {
       activeServices: 0,
       totalRequests: 0,
       totalErrors: 0,
-      circuitBreakerTrips: 0,
+      circuitBreakerTrips: 0
     };
 
-    logger.info("Platform Service Factory initialized");
+    logger.info('Platform Service Factory initialized');
   }
 
   /**
@@ -86,10 +86,10 @@ class PlatformServiceFactory extends EventEmitter {
         `Created enhanced ${platformType} service for connection ${connectionData.id}`
       );
 
-      this.emit("serviceCreated", {
+      this.emit('serviceCreated', {
         platformType,
         connectionId: connectionData.id,
-        serviceKey,
+        serviceKey
       });
 
       return service;
@@ -104,36 +104,36 @@ class PlatformServiceFactory extends EventEmitter {
    */
   setupServiceMonitoring(service, serviceKey) {
     // Monitor sync events
-    service.on("syncProgress", (data) => {
-      this.emit("globalSyncProgress", { serviceKey, ...data });
+    service.on('syncProgress', (data) => {
+      this.emit('globalSyncProgress', { serviceKey, ...data });
     });
 
-    service.on("syncComplete", (data) => {
+    service.on('syncComplete', (data) => {
       this.globalStats.totalRequests++;
-      this.emit("globalSyncComplete", { serviceKey, ...data });
+      this.emit('globalSyncComplete', { serviceKey, ...data });
     });
 
-    service.on("syncError", (data) => {
+    service.on('syncError', (data) => {
       this.globalStats.totalErrors++;
-      this.emit("globalSyncError", { serviceKey, ...data });
+      this.emit('globalSyncError', { serviceKey, ...data });
     });
 
     // Monitor circuit breaker events
-    service.on("circuitOpen", (data) => {
+    service.on('circuitOpen', (data) => {
       this.globalStats.circuitBreakerTrips++;
-      this.emit("globalCircuitOpen", { serviceKey, ...data });
+      this.emit('globalCircuitOpen', { serviceKey, ...data });
 
       // Potentially pause other services for the same platform
       this.handleCircuitBreakerTrip(serviceKey, data);
     });
 
     // Monitor real-time sync events
-    service.on("realTimeSyncStarted", (data) => {
-      this.emit("globalRealTimeSyncStarted", { serviceKey, ...data });
+    service.on('realTimeSyncStarted', (data) => {
+      this.emit('globalRealTimeSyncStarted', { serviceKey, ...data });
     });
 
-    service.on("realTimeSyncStopped", (data) => {
-      this.emit("globalRealTimeSyncStopped", { serviceKey, ...data });
+    service.on('realTimeSyncStopped', (data) => {
+      this.emit('globalRealTimeSyncStopped', { serviceKey, ...data });
     });
   }
 
@@ -141,7 +141,7 @@ class PlatformServiceFactory extends EventEmitter {
    * Handle circuit breaker trips across services
    */
   async handleCircuitBreakerTrip(serviceKey, data) {
-    const [platformType] = serviceKey.split("-");
+    const [platformType] = serviceKey.split('-');
 
     logger.warn(
       `Circuit breaker tripped for ${serviceKey}, evaluating platform-wide impact`
@@ -155,7 +155,7 @@ class PlatformServiceFactory extends EventEmitter {
     const trippedCircuits = platformServices.filter(([key, service]) => {
       const health = service.getHealthStatus();
       return Object.values(health.circuitBreakers).some(
-        (cb) => cb.state === "open"
+        (cb) => cb.state === 'open'
       );
     });
 
@@ -167,10 +167,10 @@ class PlatformServiceFactory extends EventEmitter {
 
       await this.implementPlatformBackoff(platformType);
 
-      this.emit("platformWideIssue", {
+      this.emit('platformWideIssue', {
         platformType,
         affectedServices: trippedCircuits.length,
-        totalServices: platformServices.length,
+        totalServices: platformServices.length
       });
     }
   }
@@ -193,7 +193,7 @@ class PlatformServiceFactory extends EventEmitter {
       logger.info(
         `Platform backoff period ended for ${platformType}, allowing service restart`
       );
-      this.emit("platformBackoffEnded", { platformType });
+      this.emit('platformBackoffEnded', { platformType });
     }, 5 * 60 * 1000);
   }
 
@@ -215,7 +215,7 @@ class PlatformServiceFactory extends EventEmitter {
     return {
       success: true,
       serviceKey,
-      interval: options.interval || 5 * 60 * 1000,
+      interval: options.interval || 5 * 60 * 1000
     };
   }
 
@@ -255,7 +255,7 @@ class PlatformServiceFactory extends EventEmitter {
         ordersProcessed: result.ordersProcessed,
         created: result.created,
         updated: result.updated,
-        errors: result.errors?.length || 0,
+        errors: result.errors?.length || 0
       });
 
       return result;
@@ -277,7 +277,7 @@ class PlatformServiceFactory extends EventEmitter {
       } catch (error) {
         serviceHealths[serviceKey] = {
           error: error.message,
-          status: "unhealthy",
+          status: 'unhealthy'
         };
       }
     }
@@ -285,7 +285,7 @@ class PlatformServiceFactory extends EventEmitter {
     return {
       globalStats: this.globalStats,
       services: serviceHealths,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     };
   }
 
@@ -312,10 +312,10 @@ class PlatformServiceFactory extends EventEmitter {
 
         logger.info(`Destroyed service ${serviceKey}`);
 
-        this.emit("serviceDestroyed", {
+        this.emit('serviceDestroyed', {
           platformType,
           connectionId,
-          serviceKey,
+          serviceKey
         });
 
         return { success: true };
@@ -325,7 +325,7 @@ class PlatformServiceFactory extends EventEmitter {
       }
     }
 
-    return { success: false, reason: "Service not found" };
+    return { success: false, reason: 'Service not found' };
   }
 
   /**
@@ -349,7 +349,7 @@ class PlatformServiceFactory extends EventEmitter {
 
     this.removeAllListeners();
 
-    logger.info("All enhanced platform services destroyed");
+    logger.info('All enhanced platform services destroyed');
   }
 
   /**
@@ -362,8 +362,8 @@ class PlatformServiceFactory extends EventEmitter {
       config: {
         rateLimits: this.serviceConfigs[platform].rateLimits,
         circuitBreaker: this.serviceConfigs[platform].circuitBreaker,
-        retryPolicy: this.serviceConfigs[platform].retryPolicy,
-      },
+        retryPolicy: this.serviceConfigs[platform].retryPolicy
+      }
     }));
   }
 }
@@ -373,5 +373,5 @@ const platformServiceFactory = new PlatformServiceFactory();
 
 module.exports = {
   PlatformServiceFactory,
-  platformServiceFactory,
+  platformServiceFactory
 };

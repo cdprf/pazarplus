@@ -1,7 +1,7 @@
-const { Order, OrderItem, Product } = require("../../../models");
-const { Op } = require("sequelize");
-const logger = require("../../../utils/logger");
-const ProductOrderLinkingService = require("../../../services/product-order-linking-service");
+const { Order, OrderItem, Product } = require('../../../models');
+const { Op } = require('sequelize');
+const logger = require('../../../utils/logger');
+const ProductOrderLinkingService = require('../../../services/product-order-linking-service');
 
 /**
  * Get unlinked order items statistics and list
@@ -14,7 +14,7 @@ const getUnlinkedItems = async (req, res) => {
       platform,
       startDate,
       endDate,
-      search,
+      search
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -22,15 +22,15 @@ const getUnlinkedItems = async (req, res) => {
 
     // Add platform filter if specified
     if (platform) {
-      where["$order.platform$"] = platform;
+      where['$order.platform$'] = platform;
     }
 
     // Add date range filter if specified
     if (startDate || endDate) {
       const dateFilter = {};
-      if (startDate) dateFilter[Op.gte] = new Date(startDate);
-      if (endDate) dateFilter[Op.lte] = new Date(endDate);
-      where["$order.orderDate$"] = dateFilter;
+      if (startDate) {dateFilter[Op.gte] = new Date(startDate);}
+      if (endDate) {dateFilter[Op.lte] = new Date(endDate);}
+      where['$order.orderDate$'] = dateFilter;
     }
 
     // Add search filter if specified
@@ -38,7 +38,7 @@ const getUnlinkedItems = async (req, res) => {
       where[Op.or] = [
         { title: { [Op.iLike]: `%${search}%` } },
         { sku: { [Op.iLike]: `%${search}%` } },
-        { barcode: { [Op.iLike]: `%${search}%` } },
+        { barcode: { [Op.iLike]: `%${search}%` } }
       ];
     }
 
@@ -47,43 +47,43 @@ const getUnlinkedItems = async (req, res) => {
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           attributes: [
-            "id",
-            "orderNumber",
-            "platform",
-            "orderDate",
-            "orderStatus",
-          ],
-        },
+            'id',
+            'orderNumber',
+            'platform',
+            'orderDate',
+            'orderStatus'
+          ]
+        }
       ],
-      order: [["createdAt", "DESC"]],
+      order: [['createdAt', 'DESC']],
       limit: parseInt(limit),
-      offset,
+      offset
     });
 
     // Get platform breakdown
     const platformBreakdown = await OrderItem.findAll({
       where: { productId: null },
       attributes: [
-        "$order.platform$",
+        '$order.platform$',
         [
-          require("sequelize").fn(
-            "COUNT",
-            require("sequelize").col("OrderItem.id")
+          require('sequelize').fn(
+            'COUNT',
+            require('sequelize').col('OrderItem.id')
           ),
-          "count",
-        ],
+          'count'
+        ]
       ],
       include: [
         {
           model: Order,
-          as: "order",
-          attributes: [],
-        },
+          as: 'order',
+          attributes: []
+        }
       ],
-      group: ["order.platform"],
-      raw: true,
+      group: ['order.platform'],
+      raw: true
     });
 
     res.json({
@@ -94,16 +94,16 @@ const getUnlinkedItems = async (req, res) => {
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          totalPages: Math.ceil(count / limit),
+          totalPages: Math.ceil(count / limit)
         },
-        platformBreakdown,
-      },
+        platformBreakdown
+      }
     });
   } catch (error) {
-    logger.error("Get unlinked items error:", error);
+    logger.error('Get unlinked items error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get unlinked items",
+      message: 'Failed to get unlinked items'
     });
   }
 };
@@ -117,11 +117,11 @@ const getLinkingStats = async (req, res) => {
 
     // Build base query filters
     const orderWhere = {};
-    if (platform) orderWhere.platform = platform;
+    if (platform) {orderWhere.platform = platform;}
     if (startDate || endDate) {
       const dateFilter = {};
-      if (startDate) dateFilter[Op.gte] = new Date(startDate);
-      if (endDate) dateFilter[Op.lte] = new Date(endDate);
+      if (startDate) {dateFilter[Op.gte] = new Date(startDate);}
+      if (endDate) {dateFilter[Op.lte] = new Date(endDate);}
       orderWhere.orderDate = dateFilter;
     }
 
@@ -130,10 +130,10 @@ const getLinkingStats = async (req, res) => {
       include: [
         {
           model: Order,
-          as: "order",
-          where: orderWhere,
-        },
-      ],
+          as: 'order',
+          where: orderWhere
+        }
+      ]
     });
 
     // Get linked order items
@@ -142,10 +142,10 @@ const getLinkingStats = async (req, res) => {
       include: [
         {
           model: Order,
-          as: "order",
-          where: orderWhere,
-        },
-      ],
+          as: 'order',
+          where: orderWhere
+        }
+      ]
     });
 
     // Get unlinked order items
@@ -154,34 +154,34 @@ const getLinkingStats = async (req, res) => {
     // Get linking rate by platform
     const linkingByPlatform = await OrderItem.findAll({
       attributes: [
-        "$order.platform$",
+        '$order.platform$',
         [
-          require("sequelize").fn(
-            "COUNT",
-            require("sequelize").col("OrderItem.id")
+          require('sequelize').fn(
+            'COUNT',
+            require('sequelize').col('OrderItem.id')
           ),
-          "total",
+          'total'
         ],
         [
-          require("sequelize").fn(
-            "COUNT",
-            require("sequelize").literal(
+          require('sequelize').fn(
+            'COUNT',
+            require('sequelize').literal(
               'CASE WHEN "OrderItem"."productId" IS NOT NULL THEN 1 END'
             )
           ),
-          "linked",
-        ],
+          'linked'
+        ]
       ],
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           where: orderWhere,
-          attributes: [],
-        },
+          attributes: []
+        }
       ],
-      group: ["order.platform"],
-      raw: true,
+      group: ['order.platform'],
+      raw: true
     });
 
     // Calculate linking percentages
@@ -193,7 +193,7 @@ const getLinkingStats = async (req, res) => {
       linkingRate: (
         (parseInt(item.linked) / parseInt(item.total)) *
         100
-      ).toFixed(2),
+      ).toFixed(2)
     }));
 
     // Get recent linking activity (orders created in last 7 days)
@@ -202,57 +202,57 @@ const getLinkingStats = async (req, res) => {
 
     const recentActivity = await OrderItem.findAll({
       where: {
-        createdAt: { [Op.gte]: weekAgo },
+        createdAt: { [Op.gte]: weekAgo }
       },
       attributes: [
         [
-          require("sequelize").fn(
-            "DATE",
-            require("sequelize").col("OrderItem.createdAt")
+          require('sequelize').fn(
+            'DATE',
+            require('sequelize').col('OrderItem.createdAt')
           ),
-          "date",
+          'date'
         ],
         [
-          require("sequelize").fn(
-            "COUNT",
-            require("sequelize").col("OrderItem.id")
+          require('sequelize').fn(
+            'COUNT',
+            require('sequelize').col('OrderItem.id')
           ),
-          "total",
+          'total'
         ],
         [
-          require("sequelize").fn(
-            "COUNT",
-            require("sequelize").literal(
+          require('sequelize').fn(
+            'COUNT',
+            require('sequelize').literal(
               'CASE WHEN "OrderItem"."productId" IS NOT NULL THEN 1 END'
             )
           ),
-          "linked",
-        ],
+          'linked'
+        ]
       ],
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           where: orderWhere,
-          attributes: [],
-        },
+          attributes: []
+        }
       ],
       group: [
-        require("sequelize").fn(
-          "DATE",
-          require("sequelize").col("OrderItem.createdAt")
-        ),
+        require('sequelize').fn(
+          'DATE',
+          require('sequelize').col('OrderItem.createdAt')
+        )
       ],
       order: [
         [
-          require("sequelize").fn(
-            "DATE",
-            require("sequelize").col("OrderItem.createdAt")
+          require('sequelize').fn(
+            'DATE',
+            require('sequelize').col('OrderItem.createdAt')
           ),
-          "ASC",
-        ],
+          'ASC'
+        ]
       ],
-      raw: true,
+      raw: true
     });
 
     const overallLinkingRate =
@@ -267,17 +267,17 @@ const getLinkingStats = async (req, res) => {
           totalOrderItems,
           linkedOrderItems,
           unlinkedOrderItems,
-          linkingRate: overallLinkingRate,
+          linkingRate: overallLinkingRate
         },
         platformStats,
-        recentActivity,
-      },
+        recentActivity
+      }
     });
   } catch (error) {
-    logger.error("Get linking stats error:", error);
+    logger.error('Get linking stats error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get linking statistics",
+      message: 'Failed to get linking statistics'
     });
   }
 };
@@ -293,16 +293,16 @@ const runRetroactiveLinking = async (req, res) => {
       endDate,
       batchSize = 100,
       dryRun = false,
-      strategies,
+      strategies
     } = req.body;
 
     // Build query filters
     const orderWhere = {};
-    if (platform) orderWhere.platform = platform;
+    if (platform) {orderWhere.platform = platform;}
     if (startDate || endDate) {
       const dateFilter = {};
-      if (startDate) dateFilter[Op.gte] = new Date(startDate);
-      if (endDate) dateFilter[Op.lte] = new Date(endDate);
+      if (startDate) {dateFilter[Op.gte] = new Date(startDate);}
+      if (endDate) {dateFilter[Op.lte] = new Date(endDate);}
       orderWhere.orderDate = dateFilter;
     }
 
@@ -312,22 +312,22 @@ const runRetroactiveLinking = async (req, res) => {
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           where: orderWhere,
-          attributes: ["id", "platform", "orderNumber"],
-        },
-      ],
+          attributes: ['id', 'platform', 'orderNumber']
+        }
+      ]
     });
 
     if (unlinkedItems.length === 0) {
       return res.json({
         success: true,
-        message: "No unlinked items found",
+        message: 'No unlinked items found',
         data: {
           processedItems: 0,
           linkedItems: 0,
-          results: [],
-        },
+          results: []
+        }
       });
     }
 
@@ -338,7 +338,7 @@ const runRetroactiveLinking = async (req, res) => {
         startDate,
         endDate,
         dryRun,
-        strategies,
+        strategies
       }
     );
 
@@ -372,12 +372,12 @@ const runRetroactiveLinking = async (req, res) => {
 
         // Send progress update for long-running operations
         if (req.app?.io) {
-          req.app.io.emit("linking-progress", {
+          req.app.io.emit('linking-progress', {
             batch: i + 1,
             totalBatches,
             processed: batchEnd,
             total: unlinkedItems.length,
-            currentResult: batchResult,
+            currentResult: batchResult
           });
         }
       } catch (batchError) {
@@ -385,7 +385,7 @@ const runRetroactiveLinking = async (req, res) => {
         results.push({
           processedItems: batch.length,
           linkedItems: 0,
-          errors: [batchError.message],
+          errors: [batchError.message]
         });
       }
     }
@@ -398,7 +398,7 @@ const runRetroactiveLinking = async (req, res) => {
         acc.errors = [...(acc.errors || []), ...(result.errors || [])];
         acc.strategyStats = {
           ...acc.strategyStats,
-          ...result.strategyStats,
+          ...result.strategyStats
         };
         return acc;
       },
@@ -406,22 +406,22 @@ const runRetroactiveLinking = async (req, res) => {
         processedItems: 0,
         linkedItems: 0,
         errors: [],
-        strategyStats: {},
+        strategyStats: {}
       }
     );
 
-    logger.info("Retroactive linking completed", aggregatedResults);
+    logger.info('Retroactive linking completed', aggregatedResults);
 
     res.json({
       success: true,
       message: `Processed ${aggregatedResults.processedItems} items, linked ${aggregatedResults.linkedItems}`,
-      data: aggregatedResults,
+      data: aggregatedResults
     });
   } catch (error) {
-    logger.error("Retroactive linking error:", error);
+    logger.error('Retroactive linking error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to run retroactive linking",
+      message: 'Failed to run retroactive linking'
     });
   }
 };
@@ -436,13 +436,13 @@ const manualLinkItem = async (req, res) => {
 
     // Validate order item exists
     const orderItem = await OrderItem.findByPk(orderItemId, {
-      include: [{ model: Order, as: "order" }],
+      include: [{ model: Order, as: 'order' }]
     });
 
     if (!orderItem) {
       return res.status(404).json({
         success: false,
-        message: "Order item not found",
+        message: 'Order item not found'
       });
     }
 
@@ -452,36 +452,36 @@ const manualLinkItem = async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
+        message: 'Product not found'
       });
     }
 
     // Update the order item
     await orderItem.update({ productId });
 
-    logger.info("Manual product linking completed", {
+    logger.info('Manual product linking completed', {
       orderItemId,
       productId,
-      orderNumber: orderItem.order?.orderNumber,
+      orderNumber: orderItem.order?.orderNumber
     });
 
     res.json({
       success: true,
-      message: "Order item linked to product successfully",
+      message: 'Order item linked to product successfully',
       data: {
         orderItem: await OrderItem.findByPk(orderItemId, {
           include: [
-            { model: Order, as: "order" },
-            { model: Product, as: "product" },
-          ],
-        }),
-      },
+            { model: Order, as: 'order' },
+            { model: Product, as: 'product' }
+          ]
+        })
+      }
     });
   } catch (error) {
-    logger.error("Manual linking error:", error);
+    logger.error('Manual linking error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to link order item to product",
+      message: 'Failed to link order item to product'
     });
   }
 };
@@ -494,32 +494,32 @@ const unlinkItem = async (req, res) => {
     const { orderItemId } = req.params;
 
     const orderItem = await OrderItem.findByPk(orderItemId, {
-      include: [{ model: Order, as: "order" }],
+      include: [{ model: Order, as: 'order' }]
     });
 
     if (!orderItem) {
       return res.status(404).json({
         success: false,
-        message: "Order item not found",
+        message: 'Order item not found'
       });
     }
 
     await orderItem.update({ productId: null });
 
-    logger.info("Product link removed", {
+    logger.info('Product link removed', {
       orderItemId,
-      orderNumber: orderItem.order?.orderNumber,
+      orderNumber: orderItem.order?.orderNumber
     });
 
     res.json({
       success: true,
-      message: "Product link removed successfully",
+      message: 'Product link removed successfully'
     });
   } catch (error) {
-    logger.error("Unlink item error:", error);
+    logger.error('Unlink item error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to unlink order item",
+      message: 'Failed to unlink order item'
     });
   }
 };
@@ -536,7 +536,7 @@ const getProductSuggestions = async (req, res) => {
     if (!orderItem) {
       return res.status(404).json({
         success: false,
-        message: "Order item not found",
+        message: 'Order item not found'
       });
     }
 
@@ -547,14 +547,14 @@ const getProductSuggestions = async (req, res) => {
       success: true,
       data: {
         orderItem,
-        suggestions,
-      },
+        suggestions
+      }
     });
   } catch (error) {
-    logger.error("Get product suggestions error:", error);
+    logger.error('Get product suggestions error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get product suggestions",
+      message: 'Failed to get product suggestions'
     });
   }
 };
@@ -565,5 +565,5 @@ module.exports = {
   runRetroactiveLinking,
   manualLinkItem,
   unlinkItem,
-  getProductSuggestions,
+  getProductSuggestions
 };

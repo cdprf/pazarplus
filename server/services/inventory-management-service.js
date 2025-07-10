@@ -1,14 +1,14 @@
-const EventEmitter = require("events");
-const logger = require("../utils/logger");
-const cacheService = require("./cache-service");
-const notificationService = require("./notification-service");
+const EventEmitter = require('events');
+const logger = require('../utils/logger');
+const cacheService = require('./cache-service');
+const notificationService = require('./notification-service');
 const {
   Product,
   OrderItem,
   PlatformConnection,
-  sequelize,
-} = require("../models");
-const { Op } = require("sequelize");
+  sequelize
+} = require('../models');
+const { Op } = require('sequelize');
 
 /**
  * Enhanced Inventory Management Service
@@ -43,7 +43,7 @@ class InventoryManagementService extends EventEmitter {
     this.platformUpdateDelays = {
       trendyol: 0,
       hepsiburada: 1000,
-      n11: 2000,
+      n11: 2000
     };
   }
 
@@ -84,7 +84,7 @@ class InventoryManagementService extends EventEmitter {
    */
   async fetchProductInventoryFromPlatforms(sku) {
     const platforms = await PlatformConnection.findAll({
-      where: { isActive: true },
+      where: { isActive: true }
     });
 
     const inventoryData = {
@@ -92,7 +92,7 @@ class InventoryManagementService extends EventEmitter {
       totalQuantity: 0,
       platformQuantities: {},
       lastUpdated: new Date(),
-      conflicts: [],
+      conflicts: []
     };
 
     const inventoryPromises = platforms.map(async (connection) => {
@@ -109,7 +109,7 @@ class InventoryManagementService extends EventEmitter {
             inventoryData.platformQuantities[connection.platformType] = {
               quantity: stockResult.quantity,
               lastUpdated: stockResult.lastUpdated || new Date(),
-              connectionId: connection.id,
+              connectionId: connection.id
             };
           }
         }
@@ -121,7 +121,7 @@ class InventoryManagementService extends EventEmitter {
         inventoryData.platformQuantities[connection.platformType] = {
           quantity: 0,
           error: error.message,
-          lastUpdated: new Date(),
+          lastUpdated: new Date()
         };
       }
     });
@@ -139,11 +139,11 @@ class InventoryManagementService extends EventEmitter {
 
       if (maxQuantity - minQuantity > 0) {
         inventoryData.conflicts.push({
-          type: "QUANTITY_MISMATCH",
+          type: 'QUANTITY_MISMATCH',
           minQuantity,
           maxQuantity,
           platforms: Object.keys(inventoryData.platformQuantities),
-          severity: maxQuantity - minQuantity > 10 ? "high" : "low",
+          severity: maxQuantity - minQuantity > 10 ? 'high' : 'low'
         });
       }
     }
@@ -172,12 +172,12 @@ class InventoryManagementService extends EventEmitter {
       logger.info(`Starting inventory update for SKU ${sku}:`, {
         newQuantity,
         originPlatform,
-        updateId,
+        updateId
       });
 
       // Get all platform connections
       const platforms = await PlatformConnection.findAll({
-        where: { isActive: true },
+        where: { isActive: true }
       });
 
       const updateResults = [];
@@ -209,7 +209,7 @@ class InventoryManagementService extends EventEmitter {
                 newQuantity,
                 {
                   ...options,
-                  updateId,
+                  updateId
                 }
               );
 
@@ -219,14 +219,14 @@ class InventoryManagementService extends EventEmitter {
                 success: result.success,
                 message: result.message,
                 previousQuantity: result.previousQuantity,
-                newQuantity: result.newQuantity,
+                newQuantity: result.newQuantity
               });
             } else {
               updateResults.push({
                 platform: connection.platformType,
                 connectionId: connection.id,
                 success: false,
-                message: "Platform does not support inventory updates",
+                message: 'Platform does not support inventory updates'
               });
             }
           } catch (error) {
@@ -238,7 +238,7 @@ class InventoryManagementService extends EventEmitter {
               platform: connection.platformType,
               connectionId: connection.id,
               success: false,
-              error: error.message,
+              error: error.message
             });
           }
 
@@ -258,13 +258,13 @@ class InventoryManagementService extends EventEmitter {
       await this.checkLowStockAlert(sku, newQuantity);
 
       // Emit inventory update event
-      this.emit("inventoryUpdated", {
+      this.emit('inventoryUpdated', {
         sku,
         newQuantity,
         originPlatform,
         updateResults,
         updateId,
-        timestamp: new Date(),
+        timestamp: new Date()
       });
 
       // Send real-time notification
@@ -272,13 +272,13 @@ class InventoryManagementService extends EventEmitter {
         sku,
         newQuantity,
         originPlatform,
-        syncResults: updateResults,
+        syncResults: updateResults
       });
 
       logger.info(`Inventory update completed for SKU ${sku}:`, {
         updateId,
         successCount: updateResults.filter((r) => r.success).length,
-        totalPlatforms: updateResults.length,
+        totalPlatforms: updateResults.length
       });
 
       return {
@@ -286,7 +286,7 @@ class InventoryManagementService extends EventEmitter {
         updateId,
         results: updateResults,
         totalPlatforms: updateResults.length,
-        successCount: updateResults.filter((r) => r.success).length,
+        successCount: updateResults.filter((r) => r.success).length
       };
     } catch (error) {
       logger.error(`Inventory update failed for SKU ${sku}:`, error);
@@ -318,7 +318,7 @@ class InventoryManagementService extends EventEmitter {
         orderNumber,
         reservationId,
         expiresAt: new Date(Date.now() + duration),
-        createdAt: new Date(),
+        createdAt: new Date()
       };
 
       // Store reservation
@@ -343,13 +343,13 @@ class InventoryManagementService extends EventEmitter {
         quantity,
         orderNumber,
         reservationId,
-        expiresAt: reservation.expiresAt,
+        expiresAt: reservation.expiresAt
       });
 
       return {
         success: true,
         reservationId,
-        expiresAt: reservation.expiresAt,
+        expiresAt: reservation.expiresAt
       };
     } catch (error) {
       logger.error(`Failed to reserve stock for SKU ${sku}:`, error);
@@ -367,7 +367,7 @@ class InventoryManagementService extends EventEmitter {
       );
 
       if (!reservation) {
-        return { success: false, message: "Reservation not found" };
+        return { success: false, message: 'Reservation not found' };
       }
 
       const sku = reservation.sku;
@@ -385,14 +385,14 @@ class InventoryManagementService extends EventEmitter {
       logger.info(`Stock reservation released:`, {
         reservationId,
         sku,
-        quantity: reservation.quantity,
+        quantity: reservation.quantity
       });
 
       return {
         success: true,
         reservationId,
         sku,
-        quantity: reservation.quantity,
+        quantity: reservation.quantity
       };
     } catch (error) {
       logger.error(
@@ -413,7 +413,7 @@ class InventoryManagementService extends EventEmitter {
       );
 
       if (!reservation) {
-        return { success: false, message: "Reservation not found" };
+        return { success: false, message: 'Reservation not found' };
       }
 
       const sku = reservation.sku;
@@ -430,16 +430,16 @@ class InventoryManagementService extends EventEmitter {
       );
 
       await this.updateInventoryAcrossPlatforms(sku, newQuantity, null, {
-        reason: "order_confirmed",
+        reason: 'order_confirmed',
         orderNumber: reservation.orderNumber,
-        reservationId,
+        reservationId
       });
 
       logger.info(`Stock reservation confirmed and inventory updated:`, {
         reservationId,
         sku,
         quantity,
-        newQuantity,
+        newQuantity
       });
 
       return {
@@ -447,7 +447,7 @@ class InventoryManagementService extends EventEmitter {
         reservationId,
         sku,
         quantity,
-        newQuantity,
+        newQuantity
       };
     } catch (error) {
       logger.error(
@@ -486,7 +486,7 @@ class InventoryManagementService extends EventEmitter {
       ...existing,
       sku,
       totalQuantity: quantity,
-      lastUpdated: new Date(),
+      lastUpdated: new Date()
     };
 
     await cacheService.set(cacheKey, updated, 5 * 60); // 5 minutes TTL
@@ -505,21 +505,21 @@ class InventoryManagementService extends EventEmitter {
     if (availableQuantity <= threshold) {
       // Get product information
       const product = await Product.findOne({
-        where: { sku },
+        where: { sku }
       });
 
       const alertData = {
         sku,
-        productName: product?.name || "Unknown Product",
+        productName: product?.name || 'Unknown Product',
         quantity: availableQuantity,
         threshold,
         totalQuantity: quantity,
         reservedQuantity,
-        platforms: await this.getProductPlatforms(sku),
+        platforms: await this.getProductPlatforms(sku)
       };
 
       // Emit low inventory event
-      this.emit("lowInventory", alertData);
+      this.emit('lowInventory', alertData);
 
       // Send real-time notification
       notificationService.notifyLowInventory(alertData);
@@ -536,7 +536,7 @@ class InventoryManagementService extends EventEmitter {
     // For now, return all active platforms
     const platforms = await PlatformConnection.findAll({
       where: { isActive: true },
-      attributes: ["platformType"],
+      attributes: ['platformType']
     });
 
     return platforms.map((p) => p.platformType);
@@ -572,13 +572,13 @@ class InventoryManagementService extends EventEmitter {
         results.push({
           sku: update.sku,
           success: true,
-          result,
+          result
         });
       } catch (error) {
         results.push({
           sku: update.sku,
           success: false,
-          error: error.message,
+          error: error.message
         });
       }
     }
@@ -605,14 +605,14 @@ class InventoryManagementService extends EventEmitter {
         movements: {
           inbound: 0,
           outbound: 0,
-          adjustments: 0,
+          adjustments: 0
         },
         platformDistribution: {},
         topMovingProducts: [],
         alerts: {
           lowStock: [],
-          conflicts: [],
-        },
+          conflicts: []
+        }
       };
 
       // Process inventory data
@@ -632,7 +632,7 @@ class InventoryManagementService extends EventEmitter {
           analytics.alerts.lowStock.push({
             sku,
             quantity: availableQuantity,
-            threshold,
+            threshold
           });
         }
 
@@ -640,7 +640,7 @@ class InventoryManagementService extends EventEmitter {
         if (inventory.conflicts && inventory.conflicts.length > 0) {
           analytics.alerts.conflicts.push({
             sku,
-            conflicts: inventory.conflicts,
+            conflicts: inventory.conflicts
           });
         }
 
@@ -652,7 +652,7 @@ class InventoryManagementService extends EventEmitter {
             if (!analytics.platformDistribution[platform]) {
               analytics.platformDistribution[platform] = {
                 totalProducts: 0,
-                totalQuantity: 0,
+                totalQuantity: 0
               };
             }
             analytics.platformDistribution[platform].totalProducts++;
@@ -664,7 +664,7 @@ class InventoryManagementService extends EventEmitter {
 
       return analytics;
     } catch (error) {
-      logger.error("Failed to get inventory analytics:", error);
+      logger.error('Failed to get inventory analytics:', error);
       throw error;
     }
   }
@@ -687,7 +687,7 @@ class InventoryManagementService extends EventEmitter {
       try {
         await this.monitorInventoryHealth();
       } catch (error) {
-        logger.error("Inventory monitoring failed:", error);
+        logger.error('Inventory monitoring failed:', error);
       }
     }, this.syncInterval);
 
@@ -696,7 +696,7 @@ class InventoryManagementService extends EventEmitter {
       this.cleanupExpiredReservations();
     }, 5 * 60 * 1000);
 
-    logger.info("Inventory monitoring started");
+    logger.info('Inventory monitoring started');
   }
 
   /**
@@ -709,11 +709,11 @@ class InventoryManagementService extends EventEmitter {
       // Check for platform conflicts
       if (inventory.conflicts && inventory.conflicts.length > 0) {
         for (const conflict of inventory.conflicts) {
-          if (conflict.severity === "high") {
+          if (conflict.severity === 'high') {
             issues.push({
-              type: "HIGH_SEVERITY_CONFLICT",
+              type: 'HIGH_SEVERITY_CONFLICT',
               sku,
-              conflict,
+              conflict
             });
           }
         }
@@ -726,10 +726,10 @@ class InventoryManagementService extends EventEmitter {
       if (staleDuration > 10 * 60 * 1000) {
         // 10 minutes
         issues.push({
-          type: "STALE_INVENTORY_DATA",
+          type: 'STALE_INVENTORY_DATA',
           sku,
           lastUpdated,
-          staleDuration,
+          staleDuration
         });
       }
     }
@@ -737,13 +737,13 @@ class InventoryManagementService extends EventEmitter {
     if (issues.length > 0) {
       logger.warn(`Inventory health issues detected:`, {
         issueCount: issues.length,
-        issues: issues.slice(0, 5), // Log first 5 issues
+        issues: issues.slice(0, 5) // Log first 5 issues
       });
 
       // Emit health issues event
-      this.emit("inventoryHealthIssues", {
+      this.emit('inventoryHealthIssues', {
         issues,
-        timestamp: new Date(),
+        timestamp: new Date()
       });
     }
   }
@@ -775,17 +775,17 @@ class InventoryManagementService extends EventEmitter {
    */
   getPlatformService(platformType, connectionId) {
     switch (platformType.toLowerCase()) {
-      case "trendyol":
-        const TrendyolService = require("../modules/order-management/services/platforms/trendyol/trendyol-service");
-        return new TrendyolService(connectionId);
-      case "hepsiburada":
-        const HepsiburadaService = require("../modules/order-management/services/platforms/hepsiburada/hepsiburada-service");
-        return new HepsiburadaService(connectionId);
-      case "n11":
-        const N11Service = require("../modules/order-management/services/platforms/n11/n11-service");
-        return new N11Service(connectionId);
-      default:
-        throw new Error(`Unsupported platform type: ${platformType}`);
+    case 'trendyol':
+      const TrendyolService = require('../modules/order-management/services/platforms/trendyol/trendyol-service');
+      return new TrendyolService(connectionId);
+    case 'hepsiburada':
+      const HepsiburadaService = require('../modules/order-management/services/platforms/hepsiburada/hepsiburada-service');
+      return new HepsiburadaService(connectionId);
+    case 'n11':
+      const N11Service = require('../modules/order-management/services/platforms/n11/n11-service');
+      return new N11Service(connectionId);
+    default:
+      throw new Error(`Unsupported platform type: ${platformType}`);
     }
   }
 
@@ -813,7 +813,7 @@ class InventoryManagementService extends EventEmitter {
       totalReservations: 0,
       totalReservedQuantity: 0,
       cacheSize: this.inventoryCache.size,
-      lastMonitorRun: new Date(),
+      lastMonitorRun: new Date()
     };
 
     for (const [sku, reservations] of this.reservedStock) {

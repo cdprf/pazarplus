@@ -3,9 +3,9 @@
  * Handles e-invoice and e-archive generation using QNB Finans e-solutions API
  */
 
-const { Order, User, Settings } = require("../models");
-const qnbFinansService = require("../services/qnbFinansService");
-const logger = require("../utils/logger");
+const { Order, User, Settings } = require('../models');
+const qnbFinansService = require('../services/qnbFinansService');
+const logger = require('../utils/logger');
 
 class QNBFinansInvoiceController {
   /**
@@ -19,13 +19,13 @@ class QNBFinansInvoiceController {
       // Get order
       const order = await Order.findOne({
         where: { id: orderId, userId },
-        include: [{ model: require("../models").OrderItem, as: "items" }],
+        include: [{ model: require('../models').OrderItem, as: 'items' }]
       });
 
       if (!order) {
         return res.status(404).json({
           success: false,
-          message: "Order not found",
+          message: 'Order not found'
         });
       }
 
@@ -35,7 +35,7 @@ class QNBFinansInvoiceController {
         return res.status(400).json({
           success: false,
           message:
-            "QNB Finans configuration not found. Please configure your QNB Finans settings first.",
+            'QNB Finans configuration not found. Please configure your QNB Finans settings first.'
         });
       }
 
@@ -48,24 +48,24 @@ class QNBFinansInvoiceController {
           invoicePrinted: true,
           invoicePrintedAt: new Date(),
           invoiceNumber: result.data.invoiceNumber,
-          invoiceProvider: "qnb_finans",
-          invoiceMetadata: JSON.stringify(result.data),
+          invoiceProvider: 'qnb_finans',
+          invoiceMetadata: JSON.stringify(result.data)
         });
 
         logger.info(`E-invoice generated successfully for order ${orderId}`, {
           orderId,
           invoiceNumber: result.data.invoiceNumber,
-          userId,
+          userId
         });
       }
 
       res.json(result);
     } catch (error) {
-      logger.error("Error generating QNB Finans e-invoice:", error);
+      logger.error('Error generating QNB Finans e-invoice:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to generate e-invoice",
-        error: error.message,
+        message: 'Failed to generate e-invoice',
+        error: error.message
       });
     }
   }
@@ -81,13 +81,13 @@ class QNBFinansInvoiceController {
       // Get order
       const order = await Order.findOne({
         where: { id: orderId, userId },
-        include: [{ model: require("../models").OrderItem, as: "items" }],
+        include: [{ model: require('../models').OrderItem, as: 'items' }]
       });
 
       if (!order) {
         return res.status(404).json({
           success: false,
-          message: "Order not found",
+          message: 'Order not found'
         });
       }
 
@@ -97,7 +97,7 @@ class QNBFinansInvoiceController {
         return res.status(400).json({
           success: false,
           message:
-            "QNB Finans configuration not found. Please configure your QNB Finans settings first.",
+            'QNB Finans configuration not found. Please configure your QNB Finans settings first.'
         });
       }
 
@@ -110,24 +110,24 @@ class QNBFinansInvoiceController {
           invoicePrinted: true,
           invoicePrintedAt: new Date(),
           invoiceNumber: result.data.archiveNumber,
-          invoiceProvider: "qnb_finans_archive",
-          invoiceMetadata: JSON.stringify(result.data),
+          invoiceProvider: 'qnb_finans_archive',
+          invoiceMetadata: JSON.stringify(result.data)
         });
 
         logger.info(`E-archive generated successfully for order ${orderId}`, {
           orderId,
           archiveNumber: result.data.archiveNumber,
-          userId,
+          userId
         });
       }
 
       res.json(result);
     } catch (error) {
-      logger.error("Error generating QNB Finans e-archive:", error);
+      logger.error('Error generating QNB Finans e-archive:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to generate e-archive",
-        error: error.message,
+        message: 'Failed to generate e-archive',
+        error: error.message
       });
     }
   }
@@ -145,7 +145,7 @@ class QNBFinansInvoiceController {
       if (!qnbConfig) {
         return res.status(400).json({
           success: false,
-          message: "QNB Finans configuration not found",
+          message: 'QNB Finans configuration not found'
         });
       }
 
@@ -155,11 +155,11 @@ class QNBFinansInvoiceController {
       );
       res.json(result);
     } catch (error) {
-      logger.error("Error getting QNB Finans invoice status:", error);
+      logger.error('Error getting QNB Finans invoice status:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get invoice status",
-        error: error.message,
+        message: 'Failed to get invoice status',
+        error: error.message
       });
     }
   }
@@ -178,7 +178,7 @@ class QNBFinansInvoiceController {
       if (!qnbConfig) {
         return res.status(400).json({
           success: false,
-          message: "QNB Finans configuration not found",
+          message: 'QNB Finans configuration not found'
         });
       }
 
@@ -189,11 +189,11 @@ class QNBFinansInvoiceController {
       );
       res.json(result);
     } catch (error) {
-      logger.error("Error cancelling QNB Finans invoice:", error);
+      logger.error('Error cancelling QNB Finans invoice:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to cancel invoice",
-        error: error.message,
+        message: 'Failed to cancel invoice',
+        error: error.message
       });
     }
   }
@@ -210,18 +210,18 @@ class QNBFinansInvoiceController {
       if (!qnbConfig) {
         return res.status(400).json({
           success: false,
-          message: "QNB Finans configuration not found",
+          message: 'QNB Finans configuration not found'
         });
       }
 
       const result = await qnbFinansService.testConnection(qnbConfig);
       res.json(result);
     } catch (error) {
-      logger.error("Error testing QNB Finans connection:", error);
+      logger.error('Error testing QNB Finans connection:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to test connection",
-        error: error.message,
+        message: 'Failed to test connection',
+        error: error.message
       });
     }
   }
@@ -237,16 +237,16 @@ class QNBFinansInvoiceController {
       const qnbSettings = await Settings.findOne({
         where: {
           userId,
-          category: "qnb_finans",
-        },
+          category: 'qnb_finans'
+        }
       });
 
       // Get company settings
       const companySettings = await Settings.findOne({
         where: {
           userId,
-          category: "company",
-        },
+          category: 'company'
+        }
       });
 
       if (!qnbSettings) {
@@ -256,23 +256,23 @@ class QNBFinansInvoiceController {
       const qnbConfig = qnbSettings.value ? JSON.parse(qnbSettings.value) : {};
       const companyInfo = companySettings
         ? {
-            companyName: companySettings.name,
-            address: companySettings.address,
-            phone: companySettings.phone,
-            email: companySettings.email,
-            taxNumber: companySettings.taxNumber,
-            taxOffice: companySettings.taxOffice,
-            city: companySettings.city,
-            postalCode: companySettings.postalCode,
-          }
+          companyName: companySettings.name,
+          address: companySettings.address,
+          phone: companySettings.phone,
+          email: companySettings.email,
+          taxNumber: companySettings.taxNumber,
+          taxOffice: companySettings.taxOffice,
+          city: companySettings.city,
+          postalCode: companySettings.postalCode
+        }
         : {};
 
       return {
         ...qnbConfig,
-        companyInfo,
+        companyInfo
       };
     } catch (error) {
-      logger.error("Error getting QNB Finans config:", error);
+      logger.error('Error getting QNB Finans config:', error);
       return null;
     }
   }

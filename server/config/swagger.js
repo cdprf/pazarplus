@@ -1,16 +1,16 @@
 /**
  * Swagger configuration for API documentation
  */
-const swaggerJsdoc = require("swagger-jsdoc");
-const swaggerUi = require("swagger-ui-express");
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
 
 // Swagger specification
 const options = {
   definition: {
-    openapi: "3.0.0",
+    openapi: '3.0.0',
     info: {
-      title: "Pazar+ Order Management API",
-      version: "1.0.0",
+      title: 'Pazar+ Order Management API',
+      version: '1.0.0',
       description: `
         API documentation for the Order Management module of Pazar+ e-commerce platform.
         
@@ -28,31 +28,31 @@ const options = {
         \`\`\`
       `,
       contact: {
-        name: "Pazar+ Development Team",
-      },
+        name: 'Pazar+ Development Team'
+      }
     },
     servers: [
       {
-        url: "http://localhost:5001",
-        description: "Development server",
-      },
+        url: 'http://localhost:5001',
+        description: 'Development server'
+      }
     ],
     components: {
       securitySchemes: {
         bearerAuth: {
-          type: "http",
-          scheme: "bearer",
-          bearerFormat: "JWT",
-        },
-      },
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT'
+        }
+      }
     },
     security: [
       {
-        bearerAuth: [],
-      },
-    ],
+        bearerAuth: []
+      }
+    ]
   },
-  apis: ["./routes/*.js", "./controllers/*.js", "./models/*.js"],
+  apis: ['./routes/*.js', './controllers/*.js', './models/*.js']
 };
 
 // Generate Swagger specification
@@ -66,10 +66,10 @@ const initializeSwagger = (app) => {
   const swaggerUiOptions = {
     explorer: true,
     swaggerOptions: {
-      docExpansion: "list",
+      docExpansion: 'list',
       filter: true,
       displayRequestDuration: true,
-      persistAuthorization: true,
+      persistAuthorization: true
     },
     customCss: `
       /* Custom styling for Swagger UI */
@@ -100,12 +100,12 @@ const initializeSwagger = (app) => {
         border-left: 4px solid #ffc107;
         border: 1px solid #ffeaa7;
       }
-    `,
+    `
   };
 
   // Mount Swagger UI
   app.use(
-    "/api-docs",
+    '/api-docs',
     swaggerUi.serve,
     swaggerUi.setup(specs, swaggerUiOptions)
   );
@@ -114,5 +114,5 @@ const initializeSwagger = (app) => {
 module.exports = {
   specs,
   swaggerUi,
-  initializeSwagger,
+  initializeSwagger
 };

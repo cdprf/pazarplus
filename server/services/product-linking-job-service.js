@@ -2,9 +2,9 @@ let cron;
 let cronEnabled = true;
 
 try {
-  cron = require("node-cron");
+  cron = require('node-cron');
 } catch (error) {
-  console.warn("Cron job dependencies not available:", error.message);
+  console.warn('Cron job dependencies not available:', error.message);
   cronEnabled = false;
 
   // Create fallback cron implementation
@@ -12,16 +12,16 @@ try {
     schedule: () => ({
       start: () => {},
       stop: () => {},
-      destroy: () => {},
+      destroy: () => {}
     }),
-    validate: () => true,
+    validate: () => true
   };
 }
 
-const logger = require("../utils/logger");
-const ProductOrderLinkingService = require("../services/product-order-linking-service");
-const { OrderItem, Order } = require("../models");
-const { Op } = require("sequelize");
+const logger = require('../utils/logger');
+const ProductOrderLinkingService = require('../services/product-order-linking-service');
+const { OrderItem, Order } = require('../models');
+const { Op } = require('sequelize');
 
 class ProductLinkingJobService {
   constructor() {
@@ -36,57 +36,57 @@ class ProductLinkingJobService {
    */
   start() {
     if (!cronEnabled) {
-      logger.warn("Cron jobs disabled - dependencies not available");
+      logger.warn('Cron jobs disabled - dependencies not available');
       return;
     }
 
-    logger.info("Starting Product Linking Background Jobs");
+    logger.info('Starting Product Linking Background Jobs');
 
     // Run every 30 minutes
     const autoLinkingJob = cron.schedule(
-      "*/30 * * * *",
+      '*/30 * * * *',
       async () => {
         await this.runAutoLinking();
       },
       {
         scheduled: false,
-        timezone: "Europe/Istanbul",
+        timezone: 'Europe/Istanbul'
       }
     );
 
     // Run daily at 2 AM for comprehensive linking
     const dailyLinkingJob = cron.schedule(
-      "0 2 * * *",
+      '0 2 * * *',
       async () => {
         await this.runDailyLinking();
       },
       {
         scheduled: false,
-        timezone: "Europe/Istanbul",
+        timezone: 'Europe/Istanbul'
       }
     );
 
     // Run weekly on Sunday at 3 AM for cleanup and optimization
     const weeklyOptimizationJob = cron.schedule(
-      "0 3 * * 0",
+      '0 3 * * 0',
       async () => {
         await this.runWeeklyOptimization();
       },
       {
         scheduled: false,
-        timezone: "Europe/Istanbul",
+        timezone: 'Europe/Istanbul'
       }
     );
 
     // Store job references
     this.schedules = [
-      { name: "auto-linking", job: autoLinkingJob, enabled: true },
-      { name: "daily-linking", job: dailyLinkingJob, enabled: true },
+      { name: 'auto-linking', job: autoLinkingJob, enabled: true },
+      { name: 'daily-linking', job: dailyLinkingJob, enabled: true },
       {
-        name: "weekly-optimization",
+        name: 'weekly-optimization',
         job: weeklyOptimizationJob,
-        enabled: true,
-      },
+        enabled: true
+      }
     ];
 
     // Start all jobs
@@ -97,14 +97,14 @@ class ProductLinkingJobService {
       }
     });
 
-    logger.info("All Product Linking Background Jobs started successfully");
+    logger.info('All Product Linking Background Jobs started successfully');
   }
 
   /**
    * Stop all scheduled jobs
    */
   stop() {
-    logger.info("Stopping Product Linking Background Jobs");
+    logger.info('Stopping Product Linking Background Jobs');
     this.schedules.forEach((schedule) => {
       schedule.job.stop();
       logger.info(`Stopped job: ${schedule.name}`);
@@ -117,7 +117,7 @@ class ProductLinkingJobService {
    */
   async runAutoLinking() {
     if (this.isRunning) {
-      logger.warn("Auto linking job already running, skipping...");
+      logger.warn('Auto linking job already running, skipping...');
       return;
     }
 
@@ -125,7 +125,7 @@ class ProductLinkingJobService {
     const startTime = Date.now();
 
     try {
-      logger.info("Starting automatic product linking job");
+      logger.info('Starting automatic product linking job');
 
       // Get recent unlinked items (last 24 hours)
       const last24Hours = new Date();
@@ -134,26 +134,26 @@ class ProductLinkingJobService {
       const unlinkedItems = await OrderItem.findAll({
         where: {
           productId: null,
-          createdAt: { [Op.gte]: last24Hours },
+          createdAt: { [Op.gte]: last24Hours }
         },
         include: [
           {
             model: Order,
-            as: "order",
-            attributes: ["id", "platform", "orderNumber", "userId"],
-          },
+            as: 'order',
+            attributes: ['id', 'platform', 'orderNumber', 'userId']
+          }
         ],
         limit: 100, // Process max 100 items per run
-        order: [["createdAt", "DESC"]],
+        order: [['createdAt', 'DESC']]
       });
 
       if (unlinkedItems.length === 0) {
-        logger.info("No recent unlinked items found");
+        logger.info('No recent unlinked items found');
         this.lastRunStats = {
           processedItems: 0,
           linkedItems: 0,
           duration: Date.now() - startTime,
-          timestamp: new Date(),
+          timestamp: new Date()
         };
         return;
       }
@@ -209,14 +209,14 @@ class ProductLinkingJobService {
         processedItems: totalProcessed,
         linkedItems: totalLinked,
         duration,
-        timestamp: new Date(),
+        timestamp: new Date()
       };
 
       logger.info(
         `Auto linking completed: ${totalLinked}/${totalProcessed} items linked in ${duration}ms`
       );
     } catch (error) {
-      logger.error("Auto linking job failed:", error);
+      logger.error('Auto linking job failed:', error);
     } finally {
       this.isRunning = false;
     }
@@ -228,7 +228,7 @@ class ProductLinkingJobService {
    */
   async runDailyLinking() {
     if (this.isRunning) {
-      logger.warn("Daily linking job skipped - auto linking job is running");
+      logger.warn('Daily linking job skipped - auto linking job is running');
       return;
     }
 
@@ -236,7 +236,7 @@ class ProductLinkingJobService {
     const startTime = Date.now();
 
     try {
-      logger.info("Starting daily comprehensive product linking job");
+      logger.info('Starting daily comprehensive product linking job');
 
       // Get all unlinked items (with reasonable limit)
       const unlinkedItems = await OrderItem.findAll({
@@ -244,16 +244,16 @@ class ProductLinkingJobService {
         include: [
           {
             model: Order,
-            as: "order",
-            attributes: ["id", "platform", "orderNumber", "userId"],
-          },
+            as: 'order',
+            attributes: ['id', 'platform', 'orderNumber', 'userId']
+          }
         ],
         limit: 1000, // Process max 1000 items per daily run
-        order: [["createdAt", "DESC"]],
+        order: [['createdAt', 'DESC']]
       });
 
       if (unlinkedItems.length === 0) {
-        logger.info("No unlinked items found");
+        logger.info('No unlinked items found');
         return;
       }
 
@@ -312,7 +312,7 @@ class ProductLinkingJobService {
         `Daily linking completed: ${totalLinked}/${totalProcessed} items linked in ${duration}ms`
       );
     } catch (error) {
-      logger.error("Daily linking job failed:", error);
+      logger.error('Daily linking job failed:', error);
     } finally {
       this.isRunning = false;
     }
@@ -324,7 +324,7 @@ class ProductLinkingJobService {
    */
   async runWeeklyOptimization() {
     try {
-      logger.info("Starting weekly optimization job");
+      logger.info('Starting weekly optimization job');
 
       // Get linking statistics for the week
       const weekAgo = new Date();
@@ -332,7 +332,7 @@ class ProductLinkingJobService {
 
       const weeklyStats = await this.generateLinkingReport(weekAgo);
 
-      logger.info("Weekly linking report:", weeklyStats);
+      logger.info('Weekly linking report:', weeklyStats);
 
       // Here you could add:
       // - Cleanup of old linking attempts
@@ -340,9 +340,9 @@ class ProductLinkingJobService {
       // - Alert generation for low linking rates
       // - Performance metrics collection
 
-      logger.info("Weekly optimization completed");
+      logger.info('Weekly optimization completed');
     } catch (error) {
-      logger.error("Weekly optimization job failed:", error);
+      logger.error('Weekly optimization job failed:', error);
     }
   }
 
@@ -354,27 +354,27 @@ class ProductLinkingJobService {
 
     const totalItems = await OrderItem.count({
       where: { createdAt: { [Op.gte]: sinceDate } },
-      include: [{ model: Order, as: "order", attributes: [] }],
+      include: [{ model: Order, as: 'order', attributes: [] }]
     });
 
     const linkedItems = await OrderItem.count({
       where: {
         productId: { [Op.not]: null },
-        createdAt: { [Op.gte]: sinceDate },
+        createdAt: { [Op.gte]: sinceDate }
       },
-      include: [{ model: Order, as: "order", attributes: [] }],
+      include: [{ model: Order, as: 'order', attributes: [] }]
     });
 
     const linkingRate =
-      totalItems > 0 ? ((linkedItems / totalItems) * 100).toFixed(2) : "0.00";
+      totalItems > 0 ? ((linkedItems / totalItems) * 100).toFixed(2) : '0.00';
 
     return {
-      period: since ? "custom" : "last_24h",
+      period: since ? 'custom' : 'last_24h',
       since: sinceDate,
       totalItems,
       linkedItems,
       unlinkedItems: totalItems - linkedItems,
-      linkingRate: parseFloat(linkingRate),
+      linkingRate: parseFloat(linkingRate)
     };
   }
 
@@ -388,8 +388,8 @@ class ProductLinkingJobService {
       schedules: this.schedules.map((s) => ({
         name: s.name,
         enabled: s.enabled,
-        running: s.job.running,
-      })),
+        running: s.job.running
+      }))
     };
   }
 
@@ -397,7 +397,7 @@ class ProductLinkingJobService {
    * Manually trigger auto linking job
    */
   async triggerAutoLinking() {
-    logger.info("Manually triggering auto linking job");
+    logger.info('Manually triggering auto linking job');
     await this.runAutoLinking();
   }
 

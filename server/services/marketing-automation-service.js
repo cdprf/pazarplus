@@ -1,8 +1,8 @@
-const { EventEmitter } = require("events");
-const logger = require("../utils/logger");
-const { User, Customer, Order, Campaign, EmailTemplate } = require("../models");
-const nodemailer = require("nodemailer");
-const { Op } = require("sequelize");
+const { EventEmitter } = require('events');
+const logger = require('../utils/logger');
+const { User, Customer, Order, Campaign, EmailTemplate } = require('../models');
+const nodemailer = require('nodemailer');
+const { Op } = require('sequelize');
 
 /**
  * Marketing Automation Service
@@ -13,13 +13,13 @@ class MarketingAutomationService extends EventEmitter {
     super();
     // Create our own email transporter instead of using EmailService
     this.emailTransporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port: parseInt(process.env.SMTP_PORT || "587"),
-      secure: process.env.SMTP_SECURE === "true",
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
       auth: {
         user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
+        pass: process.env.SMTP_PASS
+      }
     });
     this.campaigns = new Map();
     this.automationRules = new Map();
@@ -31,46 +31,46 @@ class MarketingAutomationService extends EventEmitter {
    */
   setupAutomationRules() {
     // Welcome series for new customers
-    this.automationRules.set("welcome_series", {
-      trigger: "customer_registered",
+    this.automationRules.set('welcome_series', {
+      trigger: 'customer_registered',
       emails: [
-        { delay: 0, template: "welcome_email" },
-        { delay: 24 * 60 * 60 * 1000, template: "getting_started" },
-        { delay: 7 * 24 * 60 * 60 * 1000, template: "tips_and_tricks" },
-      ],
+        { delay: 0, template: 'welcome_email' },
+        { delay: 24 * 60 * 60 * 1000, template: 'getting_started' },
+        { delay: 7 * 24 * 60 * 60 * 1000, template: 'tips_and_tricks' }
+      ]
     });
 
     // Cart abandonment
-    this.automationRules.set("cart_abandonment", {
-      trigger: "cart_abandoned",
+    this.automationRules.set('cart_abandonment', {
+      trigger: 'cart_abandoned',
       emails: [
-        { delay: 1 * 60 * 60 * 1000, template: "cart_reminder" },
-        { delay: 24 * 60 * 60 * 1000, template: "cart_recovery_discount" },
-        { delay: 72 * 60 * 60 * 1000, template: "final_cart_reminder" },
-      ],
+        { delay: 1 * 60 * 60 * 1000, template: 'cart_reminder' },
+        { delay: 24 * 60 * 60 * 1000, template: 'cart_recovery_discount' },
+        { delay: 72 * 60 * 60 * 1000, template: 'final_cart_reminder' }
+      ]
     });
 
     // Customer reactivation
-    this.automationRules.set("reactivation", {
-      trigger: "customer_inactive",
+    this.automationRules.set('reactivation', {
+      trigger: 'customer_inactive',
       emails: [
-        { delay: 0, template: "we_miss_you" },
-        { delay: 7 * 24 * 60 * 60 * 1000, template: "comeback_offer" },
-        { delay: 14 * 24 * 60 * 60 * 1000, template: "feedback_request" },
-      ],
+        { delay: 0, template: 'we_miss_you' },
+        { delay: 7 * 24 * 60 * 60 * 1000, template: 'comeback_offer' },
+        { delay: 14 * 24 * 60 * 60 * 1000, template: 'feedback_request' }
+      ]
     });
 
     // Post-purchase follow-up
-    this.automationRules.set("post_purchase", {
-      trigger: "order_delivered",
+    this.automationRules.set('post_purchase', {
+      trigger: 'order_delivered',
       emails: [
-        { delay: 2 * 24 * 60 * 60 * 1000, template: "delivery_confirmation" },
-        { delay: 7 * 24 * 60 * 60 * 1000, template: "review_request" },
-        { delay: 30 * 24 * 60 * 60 * 1000, template: "cross_sell" },
-      ],
+        { delay: 2 * 24 * 60 * 60 * 1000, template: 'delivery_confirmation' },
+        { delay: 7 * 24 * 60 * 60 * 1000, template: 'review_request' },
+        { delay: 30 * 24 * 60 * 60 * 1000, template: 'cross_sell' }
+      ]
     });
 
-    logger.info("Marketing automation rules setup complete");
+    logger.info('Marketing automation rules setup complete');
   }
 
   /**
@@ -79,7 +79,7 @@ class MarketingAutomationService extends EventEmitter {
   async triggerAutomation(trigger, data) {
     try {
       const rule = this.automationRules.get(trigger);
-      if (!rule) return;
+      if (!rule) {return;}
 
       logger.info(`Triggering automation: ${trigger}`, data);
 
@@ -89,7 +89,7 @@ class MarketingAutomationService extends EventEmitter {
         }, email.delay);
       }
     } catch (error) {
-      logger.error("Error triggering automation:", error);
+      logger.error('Error triggering automation:', error);
     }
   }
 
@@ -99,27 +99,27 @@ class MarketingAutomationService extends EventEmitter {
   async sendAutomatedEmail(customerId, templateName, data = {}) {
     try {
       const customer = await Customer.findByPk(customerId);
-      if (!customer) return;
+      if (!customer) {return;}
 
       const template = await this.getEmailTemplate(templateName);
-      if (!template) return;
+      if (!template) {return;}
 
       const personalizedContent = this.personalizeContent(template.content, {
         ...data,
         customerName: customer.name,
-        customerEmail: customer.email,
+        customerEmail: customer.email
       });
 
       await this.emailService.transporter.sendMail({
-        from: process.env.SMTP_FROM || "no-reply@pazar.plus",
+        from: process.env.SMTP_FROM || 'no-reply@pazar.plus',
         to: customer.email,
         subject: template.subject,
-        html: personalizedContent,
+        html: personalizedContent
       });
 
       logger.info(`Automated email sent: ${templateName} to ${customer.email}`);
     } catch (error) {
-      logger.error("Error sending automated email:", error);
+      logger.error('Error sending automated email:', error);
     }
   }
 
@@ -130,13 +130,13 @@ class MarketingAutomationService extends EventEmitter {
     try {
       // Placeholder implementation
       return {
-        highValue: { count: 0, criteria: "High spending customers" },
-        regular: { count: 0, criteria: "Regular customers" },
-        newCustomers: { count: 0, criteria: "Recently registered customers" },
-        dormant: { count: 0, criteria: "Inactive customers" },
+        highValue: { count: 0, criteria: 'High spending customers' },
+        regular: { count: 0, criteria: 'Regular customers' },
+        newCustomers: { count: 0, criteria: 'Recently registered customers' },
+        dormant: { count: 0, criteria: 'Inactive customers' }
       };
     } catch (error) {
-      logger.error("Error segmenting customers", { error: error.message });
+      logger.error('Error segmenting customers', { error: error.message });
       throw error;
     }
   }
@@ -147,15 +147,15 @@ class MarketingAutomationService extends EventEmitter {
   async createCampaign(campaignData) {
     try {
       // Placeholder implementation
-      logger.info("Creating marketing campaign", { name: campaignData.name });
+      logger.info('Creating marketing campaign', { name: campaignData.name });
       return {
-        id: "campaign-" + Date.now(),
+        id: 'campaign-' + Date.now(),
         ...campaignData,
-        status: "created",
-        createdAt: new Date(),
+        status: 'created',
+        createdAt: new Date()
       };
     } catch (error) {
-      logger.error("Error creating campaign", { error: error.message });
+      logger.error('Error creating campaign', { error: error.message });
       throw error;
     }
   }
@@ -166,9 +166,9 @@ class MarketingAutomationService extends EventEmitter {
   async sendCampaign(campaignId) {
     try {
       const campaign = await Campaign.findByPk(campaignId);
-      if (!campaign) throw new Error("Campaign not found");
+      if (!campaign) {throw new Error('Campaign not found');}
 
-      campaign.status = "sending";
+      campaign.status = 'sending';
       campaign.sentAt = new Date();
       await campaign.save();
 
@@ -197,15 +197,15 @@ class MarketingAutomationService extends EventEmitter {
             campaign.content,
             {
               customerName: customer.name,
-              customerEmail: customer.email,
+              customerEmail: customer.email
             }
           );
 
           await this.emailService.transporter.sendMail({
-            from: process.env.SMTP_FROM || "no-reply@pazar.plus",
+            from: process.env.SMTP_FROM || 'no-reply@pazar.plus',
             to: customer.email,
             subject: campaign.subject,
-            html: personalizedContent,
+            html: personalizedContent
           });
 
           sentCount++;
@@ -215,7 +215,7 @@ class MarketingAutomationService extends EventEmitter {
         }
       }
 
-      campaign.status = "sent";
+      campaign.status = 'sent';
       campaign.sentCount = sentCount;
       campaign.failedCount = failedCount;
       await campaign.save();
@@ -225,7 +225,7 @@ class MarketingAutomationService extends EventEmitter {
       );
       return { sentCount, failedCount };
     } catch (error) {
-      logger.error("Error sending campaign:", error);
+      logger.error('Error sending campaign:', error);
       throw error;
     }
   }
@@ -252,8 +252,8 @@ class MarketingAutomationService extends EventEmitter {
     Object.keys(data).forEach((key) => {
       const placeholder = `{{${key}}}`;
       personalizedContent = personalizedContent.replace(
-        new RegExp(placeholder, "g"),
-        data[key] || ""
+        new RegExp(placeholder, 'g'),
+        data[key] || ''
       );
     });
 
@@ -266,10 +266,10 @@ class MarketingAutomationService extends EventEmitter {
   async getEmailTemplate(templateName) {
     try {
       return await EmailTemplate.findOne({
-        where: { name: templateName },
+        where: { name: templateName }
       });
     } catch (error) {
-      logger.error("Error getting email template:", error);
+      logger.error('Error getting email template:', error);
       return null;
     }
   }
@@ -281,14 +281,14 @@ class MarketingAutomationService extends EventEmitter {
     try {
       // Placeholder implementation
       return {
-        customerGrowth: { rate: 0, trend: "stable" },
+        customerGrowth: { rate: 0, trend: 'stable' },
         conversionRate: { rate: 0, change: 0 },
         averageOrderValue: { value: 0, change: 0 },
-        recommendations: [],
+        recommendations: []
       };
     } catch (error) {
-      logger.error("Error generating marketing insights", {
-        error: error.message,
+      logger.error('Error generating marketing insights', {
+        error: error.message
       });
       throw error;
     }
@@ -305,10 +305,10 @@ class MarketingAutomationService extends EventEmitter {
         activeCampaigns: 0,
         totalSent: 0,
         totalOpened: 0,
-        totalClicked: 0,
+        totalClicked: 0
       };
     } catch (error) {
-      logger.error("Error getting campaign stats", { error: error.message });
+      logger.error('Error getting campaign stats', { error: error.message });
       throw error;
     }
   }
@@ -322,30 +322,30 @@ class MarketingAutomationService extends EventEmitter {
     // High-value customer recommendations
     if (segments.high_value && segments.high_value.length > 0) {
       recommendations.push({
-        type: "high_value_retention",
-        title: "VIP Customer Program",
+        type: 'high_value_retention',
+        title: 'VIP Customer Program',
         description: `You have ${segments.high_value.length} high-value customers. Consider creating a VIP program with exclusive offers.`,
-        priority: "high",
+        priority: 'high'
       });
     }
 
     // At-risk customer recommendations
     if (segments.at_risk && segments.at_risk.length > 0) {
       recommendations.push({
-        type: "reactivation_campaign",
-        title: "Customer Reactivation",
+        type: 'reactivation_campaign',
+        title: 'Customer Reactivation',
         description: `${segments.at_risk.length} customers are at risk of churning. Launch a reactivation campaign with special offers.`,
-        priority: "high",
+        priority: 'high'
       });
     }
 
     // New customer onboarding
     if (segments.new_customers && segments.new_customers.length > 0) {
       recommendations.push({
-        type: "onboarding_optimization",
-        title: "Improve Onboarding",
+        type: 'onboarding_optimization',
+        title: 'Improve Onboarding',
         description: `${segments.new_customers.length} new customers joined recently. Optimize your welcome series for better engagement.`,
-        priority: "medium",
+        priority: 'medium'
       });
     }
 
@@ -360,15 +360,15 @@ class MarketingAutomationService extends EventEmitter {
     const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
 
     const recentCustomers = await Customer.count({
-      where: { createdAt: { [Op.gte]: thirtyDaysAgo } },
+      where: { createdAt: { [Op.gte]: thirtyDaysAgo } }
     });
 
     const previousCustomers = await Customer.count({
       where: {
         createdAt: {
-          [Op.between]: [sixtyDaysAgo, thirtyDaysAgo],
-        },
-      },
+          [Op.between]: [sixtyDaysAgo, thirtyDaysAgo]
+        }
+      }
     });
 
     const customerGrowthRate =
@@ -380,8 +380,8 @@ class MarketingAutomationService extends EventEmitter {
       customerAcquisition: {
         recent: recentCustomers,
         previous: previousCustomers,
-        growthRate: customerGrowthRate,
-      },
+        growthRate: customerGrowthRate
+      }
       // Add more trend analysis as needed
     };
   }

@@ -2,21 +2,21 @@
  * Base Platform Service
  * Provides common functionality for all platform services
  */
-const logger = require("../../../../utils/logger");
+const logger = require('../../../../utils/logger');
 const {
   Order,
   OrderItem,
   ShippingDetail,
   Product,
-  PlatformConnection,
-} = require("../../../../models");
-const axios = require("axios");
+  PlatformConnection
+} = require('../../../../models');
+const axios = require('axios');
 
 class BasePlatformService {
   constructor(connectionId, directCredentials = null) {
     // Handle both string IDs and object inputs
     this.connectionId =
-      typeof connectionId === "object" ? connectionId.id : connectionId;
+      typeof connectionId === 'object' ? connectionId.id : connectionId;
     this.directCredentials = directCredentials;
     this.connection = null;
     this.apiUrl = null;
@@ -52,7 +52,7 @@ class BasePlatformService {
       logger.error(`Failed to initialize platform service: ${error.message}`, {
         error,
         connectionId: this.connectionId,
-        platformType: this.getPlatformType(),
+        platformType: this.getPlatformType()
       });
       throw new Error(
         `Failed to initialize platform service: ${error.message}`
@@ -70,22 +70,22 @@ class BasePlatformService {
         id: this.connectionId || null,
         userId: null, // No userId for direct credentials
         credentials: JSON.stringify(this.directCredentials),
-        type: "direct",
+        type: 'direct',
         createdAt: null,
-        updatedAt: null,
+        updatedAt: null
       };
     }
     // Use the imported PlatformConnection model directly
     const connection = await PlatformConnection.findByPk(this.connectionId);
-    if (!connection) return null;
+    if (!connection) {return null;}
     // Standardize the return structure for downstream compatibility
     return {
       id: connection.id,
       userId: connection.userId,
       credentials: connection.credentials,
-      type: connection.type || "db",
+      type: connection.type || 'db',
       createdAt: connection.createdAt,
-      updatedAt: connection.updatedAt,
+      updatedAt: connection.updatedAt
     };
   }
 
@@ -95,7 +95,7 @@ class BasePlatformService {
    */
   async setupAxiosInstance() {
     throw new Error(
-      "setupAxiosInstance must be implemented by platform service"
+      'setupAxiosInstance must be implemented by platform service'
     );
   }
 
@@ -111,11 +111,11 @@ class BasePlatformService {
 
     // Basic validation that applies to all platforms
     if (!productData) {
-      errors.push("Product data is required");
+      errors.push('Product data is required');
     } else {
       // Check for common required fields
       if (!productData.title && !productData.productName && !productData.name) {
-        errors.push("Product title/name is required");
+        errors.push('Product title/name is required');
       }
 
       if (
@@ -123,7 +123,7 @@ class BasePlatformService {
         !productData.sku &&
         !productData.merchantSku
       ) {
-        warnings.push("Product identifier (barcode/sku) is recommended");
+        warnings.push('Product identifier (barcode/sku) is recommended');
       }
 
       if (
@@ -131,14 +131,14 @@ class BasePlatformService {
         !productData.salePrice &&
         !productData.listPrice
       ) {
-        errors.push("Product price is required");
+        errors.push('Product price is required');
       }
     }
 
     return {
       isValid: errors.length === 0,
       errors,
-      warnings,
+      warnings
     };
   }
 
@@ -148,7 +148,7 @@ class BasePlatformService {
    * @returns {Promise<Array>} List of categories
    */
   async getCategories() {
-    throw new Error("getCategories must be implemented by platform service");
+    throw new Error('getCategories must be implemented by platform service');
   }
 
   /**
@@ -159,7 +159,7 @@ class BasePlatformService {
    */
   async getCategoryAttributes(categoryId) {
     throw new Error(
-      "getCategoryAttributes must be implemented by platform service"
+      'getCategoryAttributes must be implemented by platform service'
     );
   }
 
@@ -170,7 +170,7 @@ class BasePlatformService {
    * @returns {Promise<Object>} Platform-specific field definitions
    */
   async getProductFields(categoryId = null) {
-    throw new Error("getProductFields must be implemented by platform service");
+    throw new Error('getProductFields must be implemented by platform service');
   }
 
   /**
@@ -180,7 +180,7 @@ class BasePlatformService {
    */
   decryptCredentials(encryptedCredentials) {
     // In a real implementation, this would use proper encryption/decryption
-    return typeof encryptedCredentials === "string"
+    return typeof encryptedCredentials === 'string'
       ? JSON.parse(encryptedCredentials)
       : encryptedCredentials;
   }
@@ -196,7 +196,7 @@ class BasePlatformService {
       // Default implementation for platforms that don't implement their own testConnection method
       return {
         success: true,
-        message: `Successfully connected to ${this.getPlatformType()}`,
+        message: `Successfully connected to ${this.getPlatformType()}`
       };
     } catch (error) {
       return {
@@ -204,7 +204,7 @@ class BasePlatformService {
         message: `Failed to connect to ${this.getPlatformType()}: ${
           error.message
         }`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -214,7 +214,7 @@ class BasePlatformService {
    * Should be implemented by each platform service
    */
   getPlatformType() {
-    throw new Error("getPlatformType must be implemented by platform service");
+    throw new Error('getPlatformType must be implemented by platform service');
   }
 
   /**
@@ -223,7 +223,7 @@ class BasePlatformService {
    * @returns {Promise<Object>} Result containing order data
    */
   async fetchOrders(params = {}) {
-    throw new Error("fetchOrders must be implemented by platform service");
+    throw new Error('fetchOrders must be implemented by platform service');
   }
 
   /**
@@ -241,7 +241,7 @@ class BasePlatformService {
           {
             error: result.error,
             connectionId: this.connectionId,
-            platformType: this.getPlatformType(),
+            platformType: this.getPlatformType()
           }
         );
         return [];
@@ -252,7 +252,7 @@ class BasePlatformService {
       this.logger.error(`Error in getOrders method: ${error.message}`, {
         error,
         connectionId: this.connectionId,
-        platformType: this.getPlatformType(),
+        platformType: this.getPlatformType()
       });
       return [];
     }
@@ -270,7 +270,7 @@ class BasePlatformService {
         `Syncing orders from ${this.getPlatformType()} for period ${startDate.toISOString()} to ${endDate.toISOString()}`,
         {
           connectionId: this.connectionId,
-          platformType: this.getPlatformType(),
+          platformType: this.getPlatformType()
           //startDate,
           //endDate,
         }
@@ -296,7 +296,7 @@ class BasePlatformService {
           ? endDate instanceof Date
             ? endDate.getTime()
             : new Date(endDate).getTime()
-          : now.getTime(),
+          : now.getTime()
       };
 
       // Use fetchOrders method which includes normalization (platform-specific)
@@ -306,22 +306,22 @@ class BasePlatformService {
       if (!result || !result.success) {
         logger.warn(
           `Failed to fetch orders from ${this.getPlatformType()}: ${
-            result?.message || "Unknown error"
+            result?.message || 'Unknown error'
           }`,
           {
             connectionId: this.connectionId,
             platformType: this.getPlatformType(),
-            result,
+            result
           }
         );
 
         return {
           success: false,
-          message: result?.message || "Failed to fetch orders from platform",
+          message: result?.message || 'Failed to fetch orders from platform',
           data: {
             count: 0,
-            skipped: 0,
-          },
+            skipped: 0
+          }
         };
       }
 
@@ -341,7 +341,7 @@ class BasePlatformService {
           totalRetrieved: orders.length,
           successCount: stats.success,
           updatedCount: stats.updated || 0,
-          skippedCount: stats.skipped,
+          skippedCount: stats.skipped
         }
       );
 
@@ -354,7 +354,7 @@ class BasePlatformService {
       } catch (updateError) {
         logger.warn(`Failed to update last sync time: ${updateError.message}`, {
           connectionId: this.connectionId,
-          error: updateError,
+          error: updateError
         });
       }
 
@@ -365,8 +365,8 @@ class BasePlatformService {
           count: stats.success || 0,
           updated: stats.updated || 0,
           skipped: stats.skipped || 0,
-          total: orders.length,
-        },
+          total: orders.length
+        }
       };
     } catch (error) {
       logger.error(
@@ -376,7 +376,7 @@ class BasePlatformService {
         {
           error,
           connectionId: this.connectionId,
-          platformType: this.getPlatformType(),
+          platformType: this.getPlatformType()
         }
       );
 
@@ -392,7 +392,7 @@ class BasePlatformService {
    */
   async updateOrderStatus(orderId, newStatus) {
     throw new Error(
-      "updateOrderStatus must be implemented by platform service"
+      'updateOrderStatus must be implemented by platform service'
     );
   }
 
@@ -402,7 +402,7 @@ class BasePlatformService {
    * @returns {String} Internal status
    */
   mapOrderStatus(platformStatus) {
-    throw new Error("mapOrderStatus must be implemented by platform service");
+    throw new Error('mapOrderStatus must be implemented by platform service');
   }
 
   /**
@@ -412,7 +412,7 @@ class BasePlatformService {
    */
   mapToPlatformStatus(internalStatus) {
     throw new Error(
-      "mapToPlatformStatus must be implemented by platform service"
+      'mapToPlatformStatus must be implemented by platform service'
     );
   }
 
@@ -431,11 +431,11 @@ class BasePlatformService {
       // With country code (+90 or 0090)
       /\b(\+?90[\s-]?5\d{2}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2})\b/,
       // Generic phone number pattern as fallback
-      /\b(\d{10,11})\b/,
+      /\b(\d{10,11})\b/
     ];
 
     // Default implementation checks common locations in order object
-    let phoneCandidate = "";
+    let phoneCandidate = '';
 
     // Try to extract from common fields in order APIs
     if (order.shipmentAddress && order.shipmentAddress.phone) {
@@ -463,7 +463,7 @@ class BasePlatformService {
       }
     }
 
-    return "";
+    return '';
   }
 
   /**
@@ -508,7 +508,7 @@ class BasePlatformService {
             {
               error,
               connectionId: this.connectionId,
-              platformType: this.getPlatformType(),
+              platformType: this.getPlatformType()
             }
           );
           throw error;
@@ -527,7 +527,7 @@ class BasePlatformService {
   getDefaultStartDate() {
     const date = new Date();
     date.setDate(date.getDate() - 30); // 30 days ago
-    return date.toISOString().split("T")[0]; // Return YYYY-MM-DD format
+    return date.toISOString().split('T')[0]; // Return YYYY-MM-DD format
   }
 
   /**
@@ -536,7 +536,7 @@ class BasePlatformService {
    */
   getDefaultEndDate() {
     const date = new Date();
-    return date.toISOString().split("T")[0]; // Return YYYY-MM-DD format
+    return date.toISOString().split('T')[0]; // Return YYYY-MM-DD format
   }
 }
 

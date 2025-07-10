@@ -2,11 +2,11 @@
  * Database Transaction Management API Routes
  * Handles database transaction status, user interactions, and control
  */
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const dbTransactionManager = require("../services/database-transaction-manager");
-const { auth } = require("../middleware/auth");
-const logger = require("../utils/logger");
+const dbTransactionManager = require('../services/database-transaction-manager');
+const { auth } = require('../middleware/auth');
+const logger = require('../utils/logger');
 
 // Apply authentication to all routes
 router.use(auth);
@@ -15,19 +15,19 @@ router.use(auth);
  * GET /api/database/status
  * Get current database transaction status
  */
-router.get("/status", async (req, res) => {
+router.get('/status', async (req, res) => {
   try {
     const status = dbTransactionManager.getStatus();
     res.json({
       success: true,
-      data: status,
+      data: status
     });
   } catch (error) {
-    logger.error("Error getting database status:", error);
+    logger.error('Error getting database status:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get database status",
-      error: error.message,
+      message: 'Failed to get database status',
+      error: error.message
     });
   }
 });
@@ -36,22 +36,22 @@ router.get("/status", async (req, res) => {
  * POST /api/database/user-decision
  * Handle user decision for database busy state
  */
-router.post("/user-decision", async (req, res) => {
+router.post('/user-decision', async (req, res) => {
   try {
     const { interactionId, action, options = {} } = req.body;
 
     if (!interactionId || !action) {
       return res.status(400).json({
         success: false,
-        message: "interactionId and action are required",
+        message: 'interactionId and action are required'
       });
     }
 
-    const validActions = ["wait", "force_close", "queue", "cancel"];
+    const validActions = ['wait', 'force_close', 'queue', 'cancel'];
     if (!validActions.includes(action)) {
       return res.status(400).json({
         success: false,
-        message: `Invalid action. Must be one of: ${validActions.join(", ")}`,
+        message: `Invalid action. Must be one of: ${validActions.join(', ')}`
       });
     }
 
@@ -59,14 +59,14 @@ router.post("/user-decision", async (req, res) => {
 
     res.json({
       success: true,
-      message: `User decision '${action}' registered for interaction ${interactionId}`,
+      message: `User decision '${action}' registered for interaction ${interactionId}`
     });
   } catch (error) {
-    logger.error("Error handling user decision:", error);
+    logger.error('Error handling user decision:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to handle user decision",
-      error: error.message,
+      message: 'Failed to handle user decision',
+      error: error.message
     });
   }
 });
@@ -75,7 +75,7 @@ router.post("/user-decision", async (req, res) => {
  * POST /api/database/pause-operation/:operationId
  * Pause a specific operation
  */
-router.post("/pause-operation/:operationId", async (req, res) => {
+router.post('/pause-operation/:operationId', async (req, res) => {
   try {
     const { operationId } = req.params;
 
@@ -83,14 +83,14 @@ router.post("/pause-operation/:operationId", async (req, res) => {
 
     res.json({
       success: true,
-      message: `Operation ${operationId} paused`,
+      message: `Operation ${operationId} paused`
     });
   } catch (error) {
-    logger.error("Error pausing operation:", error);
+    logger.error('Error pausing operation:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to pause operation",
-      error: error.message,
+      message: 'Failed to pause operation',
+      error: error.message
     });
   }
 });
@@ -99,7 +99,7 @@ router.post("/pause-operation/:operationId", async (req, res) => {
  * POST /api/database/resume-operation/:operationId
  * Resume a paused operation
  */
-router.post("/resume-operation/:operationId", async (req, res) => {
+router.post('/resume-operation/:operationId', async (req, res) => {
   try {
     const { operationId } = req.params;
 
@@ -107,14 +107,14 @@ router.post("/resume-operation/:operationId", async (req, res) => {
 
     res.json({
       success: true,
-      message: `Operation ${operationId} resumed`,
+      message: `Operation ${operationId} resumed`
     });
   } catch (error) {
-    logger.error("Error resuming operation:", error);
+    logger.error('Error resuming operation:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to resume operation",
-      error: error.message,
+      message: 'Failed to resume operation',
+      error: error.message
     });
   }
 });
@@ -123,7 +123,7 @@ router.post("/resume-operation/:operationId", async (req, res) => {
  * DELETE /api/database/cancel-operation/:operationId
  * Cancel a specific operation
  */
-router.delete("/cancel-operation/:operationId", async (req, res) => {
+router.delete('/cancel-operation/:operationId', async (req, res) => {
   try {
     const { operationId } = req.params;
 
@@ -131,14 +131,14 @@ router.delete("/cancel-operation/:operationId", async (req, res) => {
 
     res.json({
       success: true,
-      message: `Operation ${operationId} cancelled`,
+      message: `Operation ${operationId} cancelled`
     });
   } catch (error) {
-    logger.error("Error cancelling operation:", error);
+    logger.error('Error cancelling operation:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to cancel operation",
-      error: error.message,
+      message: 'Failed to cancel operation',
+      error: error.message
     });
   }
 });
@@ -147,19 +147,19 @@ router.delete("/cancel-operation/:operationId", async (req, res) => {
  * GET /api/database/busy-details
  * Get detailed information about database busy state
  */
-router.get("/busy-details", async (req, res) => {
+router.get('/busy-details', async (req, res) => {
   try {
     const busyDetails = dbTransactionManager.getDatabaseBusyDetails();
     res.json({
       success: true,
-      data: busyDetails,
+      data: busyDetails
     });
   } catch (error) {
-    logger.error("Error getting database busy details:", error);
+    logger.error('Error getting database busy details:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get database busy details",
-      error: error.message,
+      message: 'Failed to get database busy details',
+      error: error.message
     });
   }
 });
@@ -168,7 +168,7 @@ router.get("/busy-details", async (req, res) => {
  * POST /api/database/force-close-all
  * Force close all active transactions (emergency action)
  */
-router.post("/force-close-all", async (req, res) => {
+router.post('/force-close-all', async (req, res) => {
   try {
     const activeTransactions =
       dbTransactionManager.getStatus().activeTransactions;
@@ -178,11 +178,11 @@ router.post("/force-close-all", async (req, res) => {
     );
 
     // This is a dangerous operation, log it extensively
-    logger.warn("EMERGENCY: Force closing all database transactions", {
+    logger.warn('EMERGENCY: Force closing all database transactions', {
       userId: req.user.id,
       userEmail: req.user.email,
       activeTransactionCount: activeTransactions.length,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
 
     // Force close all transactions by operation ID
@@ -200,14 +200,14 @@ router.post("/force-close-all", async (req, res) => {
     res.json({
       success: true,
       message: `Force closed ${activeTransactions.length} active transactions`,
-      closedTransactions: activeTransactions.length,
+      closedTransactions: activeTransactions.length
     });
   } catch (error) {
-    logger.error("Error force closing all transactions:", error);
+    logger.error('Error force closing all transactions:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to force close all transactions",
-      error: error.message,
+      message: 'Failed to force close all transactions',
+      error: error.message
     });
   }
 });
@@ -216,7 +216,7 @@ router.post("/force-close-all", async (req, res) => {
  * GET /api/database/queue-status
  * Get status of queued operations
  */
-router.get("/queue-status", async (req, res) => {
+router.get('/queue-status', async (req, res) => {
   try {
     const status = dbTransactionManager.getStatus();
     res.json({
@@ -227,16 +227,16 @@ router.get("/queue-status", async (req, res) => {
         queue: dbTransactionManager.transactionQueue.map((op) => ({
           operationId: op.operationId,
           queuedAt: op.queuedAt,
-          waitTime: Date.now() - op.queuedAt,
-        })),
-      },
+          waitTime: Date.now() - op.queuedAt
+        }))
+      }
     });
   } catch (error) {
-    logger.error("Error getting queue status:", error);
+    logger.error('Error getting queue status:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get queue status",
-      error: error.message,
+      message: 'Failed to get queue status',
+      error: error.message
     });
   }
 });

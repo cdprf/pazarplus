@@ -1,5 +1,5 @@
-const { DataTypes, Model } = require("sequelize");
-const sequelize = require("../config/database");
+const { DataTypes, Model } = require('sequelize');
+const sequelize = require('../config/database');
 
 /**
  * Platform Template Model
@@ -12,15 +12,15 @@ PlatformTemplate.init(
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
+      primaryKey: true
     },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
         notEmpty: true,
-        len: [1, 255],
-      },
+        len: [1, 255]
+      }
     },
     platform: {
       type: DataTypes.STRING,
@@ -28,25 +28,25 @@ PlatformTemplate.init(
       validate: {
         isIn: [
           [
-            "trendyol",
-            "hepsiburada",
-            "n11",
-            "amazon",
-            "gittigidiyor",
-            "custom",
-          ],
-        ],
-      },
+            'trendyol',
+            'hepsiburada',
+            'n11',
+            'amazon',
+            'gittigidiyor',
+            'custom'
+          ]
+        ]
+      }
     },
     category: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Platform-specific category this template applies to",
+      comment: 'Platform-specific category this template applies to'
     },
     subcategory: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "More specific category targeting",
+      comment: 'More specific category targeting'
     },
 
     // Field Definitions
@@ -54,19 +54,19 @@ PlatformTemplate.init(
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: [],
-      comment: "Array of required field definitions",
+      comment: 'Array of required field definitions'
     },
     optionalFields: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: [],
-      comment: "Array of optional field definitions",
+      comment: 'Array of optional field definitions'
     },
     fieldValidations: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: {},
-      comment: "Validation rules for each field",
+      comment: 'Validation rules for each field'
     },
 
     // Auto-learning Data
@@ -74,21 +74,21 @@ PlatformTemplate.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
-      comment: "Number of products this template was learned from",
+      comment: 'Number of products this template was learned from'
     },
     lastLearningUpdate: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: "Last time auto-learning updated this template",
+      comment: 'Last time auto-learning updated this template'
     },
     learningConfidence: {
       type: DataTypes.DECIMAL(3, 2),
       allowNull: true,
       validate: {
         min: 0,
-        max: 1,
+        max: 1
       },
-      comment: "Confidence score for auto-learned fields",
+      comment: 'Confidence score for auto-learned fields'
     },
 
     // Template Configuration
@@ -96,37 +96,37 @@ PlatformTemplate.init(
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: {},
-      comment: "Default values for template fields",
+      comment: 'Default values for template fields'
     },
     fieldMappings: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: {},
-      comment: "Mappings from main product fields to platform fields",
+      comment: 'Mappings from main product fields to platform fields'
     },
     conditionalFields: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: {},
-      comment: "Fields that appear based on other field values",
+      comment: 'Fields that appear based on other field values'
     },
 
     // Platform-specific Configuration
     platformApiVersion: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Platform API version this template targets",
+      comment: 'Platform API version this template targets'
     },
     platformCategoryId: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Platform's internal category ID",
+      comment: 'Platform\'s internal category ID'
     },
     platformCategoryPath: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: [],
-      comment: "Full category path in platform hierarchy",
+      comment: 'Full category path in platform hierarchy'
     },
 
     // Validation and Processing Rules
@@ -134,13 +134,13 @@ PlatformTemplate.init(
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: {},
-      comment: "Rules for preprocessing data before sending to platform",
+      comment: 'Rules for preprocessing data before sending to platform'
     },
     postProcessingRules: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: {},
-      comment: "Rules for processing data received from platform",
+      comment: 'Rules for processing data received from platform'
     },
 
     // Media Requirements
@@ -148,7 +148,7 @@ PlatformTemplate.init(
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: {},
-      comment: "Platform-specific media requirements and transformations",
+      comment: 'Platform-specific media requirements and transformations'
     },
 
     // Usage Statistics
@@ -156,36 +156,36 @@ PlatformTemplate.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
-      comment: "Number of times this template has been used",
+      comment: 'Number of times this template has been used'
     },
     successRate: {
       type: DataTypes.DECIMAL(5, 4),
       allowNull: true,
-      comment: "Success rate of products using this template",
+      comment: 'Success rate of products using this template'
     },
 
     // Status and Versioning
     isActive: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: true,
+      defaultValue: true
     },
     version: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "1.0.0",
-      comment: "Template version for change tracking",
+      defaultValue: '1.0.0',
+      comment: 'Template version for change tracking'
     },
     parentTemplateId: {
       type: DataTypes.UUID,
       allowNull: true,
       references: {
-        model: "platform_templates",
-        key: "id",
+        model: 'platform_templates',
+        key: 'id'
       },
-      onUpdate: "CASCADE",
-      onDelete: "SET NULL",
-      comment: "Parent template if this is a derived version",
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL',
+      comment: 'Parent template if this is a derived version'
     },
 
     // Auto-discovery Settings
@@ -193,68 +193,68 @@ PlatformTemplate.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
-      comment: "Whether this template participates in auto-discovery",
+      comment: 'Whether this template participates in auto-discovery'
     },
     discoveryPatterns: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: [],
-      comment: "Patterns used for automatic template selection",
+      comment: 'Patterns used for automatic template selection'
     },
 
     userId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: "users",
-        key: "id",
+        model: 'users',
+        key: 'id'
       },
-      onUpdate: "CASCADE",
-      onDelete: "CASCADE",
-    },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE'
+    }
   },
   {
     sequelize,
-    modelName: "PlatformTemplate",
-    tableName: "platform_templates",
+    modelName: 'PlatformTemplate',
+    tableName: 'platform_templates',
     timestamps: true,
     indexes: [
       {
         unique: true,
-        fields: ["platform", "category", "subcategory", "userId"],
-        name: "platform_templates_unique_category",
+        fields: ['platform', 'category', 'subcategory', 'userId'],
+        name: 'platform_templates_unique_category'
       },
       {
-        fields: ["platform"],
+        fields: ['platform']
       },
       {
-        fields: ["category"],
+        fields: ['category']
       },
       {
-        fields: ["isActive"],
+        fields: ['isActive']
       },
       {
-        fields: ["autoDiscovery"],
+        fields: ['autoDiscovery']
       },
       {
-        fields: ["userId"],
+        fields: ['userId']
       },
       {
-        fields: ["parentTemplateId"],
-      },
+        fields: ['parentTemplateId']
+      }
     ],
     hooks: {
       afterUpdate: async (template) => {
         // Update usage statistics
-        if (template.changed("usageCount")) {
+        if (template.changed('usageCount')) {
           // Calculate success rate based on usage
-          const { PlatformVariant } = require("./index");
+          const { PlatformVariant } = require('./index');
           const variants = await PlatformVariant.findAll({
-            where: { templateId: template.id },
+            where: { templateId: template.id }
           });
 
           const successfulVariants = variants.filter(
-            (v) => v.syncStatus === "success"
+            (v) => v.syncStatus === 'success'
           );
           const successRate =
             variants.length > 0
@@ -263,8 +263,8 @@ PlatformTemplate.init(
 
           await template.update({ successRate }, { hooks: false });
         }
-      },
-    },
+      }
+    }
   }
 );
 
@@ -279,13 +279,13 @@ PlatformTemplate.findBestTemplate = async function (
       platform,
       category: category || null,
       isActive: true,
-      autoDiscovery: true,
+      autoDiscovery: true
     },
     order: [
-      ["learningConfidence", "DESC"],
-      ["successRate", "DESC"],
-      ["usageCount", "DESC"],
-    ],
+      ['learningConfidence', 'DESC'],
+      ['successRate', 'DESC'],
+      ['usageCount', 'DESC']
+    ]
   });
 
   // Simple matching logic - can be enhanced
@@ -303,17 +303,17 @@ PlatformTemplate.learnFromProduct = async function (
     where: {
       platform,
       category: category || null,
-      userId,
-    },
+      userId
+    }
   });
 
   if (!template) {
     template = await this.create({
-      name: `Auto-learned ${platform} ${category || "General"} Template`,
+      name: `Auto-learned ${platform} ${category || 'General'} Template`,
       platform,
       category,
       userId,
-      learnedFromProducts: 0,
+      learnedFromProducts: 0
     });
   }
 
@@ -327,11 +327,11 @@ PlatformTemplate.learnFromProduct = async function (
       const fieldDef = {
         name: key,
         type: typeof productData[key],
-        sample: productData[key],
+        sample: productData[key]
       };
 
       // Determine if field is required based on platform knowledge
-      if (["name", "price", "category"].includes(key)) {
+      if (['name', 'price', 'category'].includes(key)) {
         requiredFields.push(fieldDef);
       } else {
         optionalFields.push(fieldDef);
@@ -351,7 +351,7 @@ PlatformTemplate.learnFromProduct = async function (
     ),
     learnedFromProducts: template.learnedFromProducts + 1,
     lastLearningUpdate: new Date(),
-    learningConfidence: Math.min(1.0, template.learnedFromProducts / 10),
+    learningConfidence: Math.min(1.0, template.learnedFromProducts / 10)
   });
 
   return template;
@@ -379,23 +379,23 @@ PlatformTemplate.mergeFieldDefinitions = function (existing, newFields) {
 // PlatformTemplate associations
 PlatformTemplate.associate = function (models) {
   PlatformTemplate.belongsTo(models.User, {
-    foreignKey: "userId",
-    as: "user",
+    foreignKey: 'userId',
+    as: 'user'
   });
 
   PlatformTemplate.belongsTo(models.PlatformTemplate, {
-    foreignKey: "parentTemplateId",
-    as: "parentTemplate",
+    foreignKey: 'parentTemplateId',
+    as: 'parentTemplate'
   });
 
   PlatformTemplate.hasMany(models.PlatformTemplate, {
-    foreignKey: "parentTemplateId",
-    as: "childTemplates",
+    foreignKey: 'parentTemplateId',
+    as: 'childTemplates'
   });
 
   PlatformTemplate.hasMany(models.PlatformVariant, {
-    foreignKey: "templateId",
-    as: "variants",
+    foreignKey: 'templateId',
+    as: 'variants'
   });
 };
 

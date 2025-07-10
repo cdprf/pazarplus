@@ -11,12 +11,12 @@ const securityHeaders = [
     
     // Content-Security-Policy
     res.setHeader('Content-Security-Policy', 
-      "default-src 'self'; " +
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-      "style-src 'self' 'unsafe-inline'; " +
-      "img-src 'self' data: https:; " +
-      "font-src 'self' data:; " +
-      "frame-ancestors 'none';"
+      'default-src \'self\'; ' +
+      'script-src \'self\' \'unsafe-inline\' \'unsafe-eval\'; ' +
+      'style-src \'self\' \'unsafe-inline\'; ' +
+      'img-src \'self\' data: https:; ' +
+      'font-src \'self\' data:; ' +
+      'frame-ancestors \'none\';'
     );
     
     // Permissions-Policy

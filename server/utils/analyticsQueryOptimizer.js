@@ -22,7 +22,7 @@ class AnalyticsQueryOptimizer {
       ...query,
       raw: false, // Use Sequelize objects for better caching
       nest: true, // Nest related objects
-      subQuery: false, // Disable subqueries for better performance
+      subQuery: false // Disable subqueries for better performance
     };
   }
   

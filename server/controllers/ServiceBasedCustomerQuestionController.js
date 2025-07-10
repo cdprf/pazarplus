@@ -1,7 +1,7 @@
 // Enhanced Customer Question Controller with simplified service
-const { validationResult } = require("express-validator");
-const SimplifiedCustomerQuestionService = require("../services/SimplifiedCustomerQuestionService");
-const debug = require("debug")("pazar:controller:questions:with-service");
+const { validationResult } = require('express-validator');
+const SimplifiedCustomerQuestionService = require('../services/SimplifiedCustomerQuestionService');
+const debug = require('debug')('pazar:controller:questions:with-service');
 
 class ServiceBasedCustomerQuestionController {
   constructor() {
@@ -9,7 +9,7 @@ class ServiceBasedCustomerQuestionController {
     this.questionService = new SimplifiedCustomerQuestionService();
     this.initialized = true;
     debug(
-      "ServiceBasedCustomerQuestionController instantiated with simplified service"
+      'ServiceBasedCustomerQuestionController instantiated with simplified service'
     );
   }
 
@@ -17,14 +17,14 @@ class ServiceBasedCustomerQuestionController {
    * Get questions with filters and pagination
    */
   async getQuestions(req, res) {
-    debug("Getting questions with filters and pagination");
+    debug('Getting questions with filters and pagination');
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -38,8 +38,8 @@ class ServiceBasedCustomerQuestionController {
         end_date,
         page = 1,
         limit = 20,
-        sort_by = "creation_date",
-        sort_order = "DESC",
+        sort_by = 'creation_date',
+        sort_order = 'DESC'
       } = req.query;
 
       const options = {
@@ -53,24 +53,24 @@ class ServiceBasedCustomerQuestionController {
         page: parseInt(page),
         limit: parseInt(limit),
         sortBy: sort_by,
-        sortOrder: sort_order,
+        sortOrder: sort_order
       };
 
-      debug("Calling questionService.getQuestions with options:", options);
+      debug('Calling questionService.getQuestions with options:', options);
 
       const result = await this.questionService.getQuestions(options);
 
       res.json({
         success: true,
         data: result.questions,
-        pagination: result.pagination,
+        pagination: result.pagination
       });
     } catch (error) {
-      debug("Error getting questions:", error.message);
+      debug('Error getting questions:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get questions",
-        error: error.message,
+        message: 'Failed to get questions',
+        error: error.message
       });
     }
   }
@@ -87,8 +87,8 @@ class ServiceBasedCustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -97,8 +97,8 @@ class ServiceBasedCustomerQuestionController {
         platform,
         page = 1,
         limit = 20,
-        sort_by = "creation_date",
-        sort_order = "DESC",
+        sort_by = 'creation_date',
+        sort_order = 'DESC'
       } = req.query;
 
       const options = {
@@ -107,7 +107,7 @@ class ServiceBasedCustomerQuestionController {
         page: parseInt(page),
         limit: parseInt(limit),
         sortBy: sort_by,
-        sortOrder: sort_order,
+        sortOrder: sort_order
       };
 
       const result = await this.questionService.getQuestionsByCustomer(
@@ -118,14 +118,14 @@ class ServiceBasedCustomerQuestionController {
       res.json({
         success: true,
         data: result.questions,
-        pagination: result.pagination,
+        pagination: result.pagination
       });
     } catch (error) {
-      debug("Error getting questions by customer:", error.message);
+      debug('Error getting questions by customer:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get questions for customer",
-        error: error.message,
+        message: 'Failed to get questions for customer',
+        error: error.message
       });
     }
   }
@@ -142,8 +142,8 @@ class ServiceBasedCustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -152,20 +152,20 @@ class ServiceBasedCustomerQuestionController {
       if (!question) {
         return res.status(404).json({
           success: false,
-          message: "Question not found",
+          message: 'Question not found'
         });
       }
 
       res.json({
         success: true,
-        data: question,
+        data: question
       });
     } catch (error) {
-      debug("Error getting question:", error.message);
+      debug('Error getting question:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get question",
-        error: error.message,
+        message: 'Failed to get question',
+        error: error.message
       });
     }
   }
@@ -184,8 +184,8 @@ class ServiceBasedCustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -197,21 +197,21 @@ class ServiceBasedCustomerQuestionController {
       if (!updatedQuestion) {
         return res.status(404).json({
           success: false,
-          message: "Question not found",
+          message: 'Question not found'
         });
       }
 
       res.json({
         success: true,
-        message: "Question status updated successfully",
-        data: updatedQuestion,
+        message: 'Question status updated successfully',
+        data: updatedQuestion
       });
     } catch (error) {
-      debug("Error updating question status:", error.message);
+      debug('Error updating question status:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to update question status",
-        error: error.message,
+        message: 'Failed to update question status',
+        error: error.message
       });
     }
   }
@@ -222,7 +222,7 @@ class ServiceBasedCustomerQuestionController {
   async createReply(req, res) {
     try {
       const { id } = req.params;
-      const { message, reply_type = "manual" } = req.body;
+      const { message, reply_type = 'manual' } = req.body;
 
       debug(`Creating reply for question ${id}`);
 
@@ -230,8 +230,8 @@ class ServiceBasedCustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -241,20 +241,20 @@ class ServiceBasedCustomerQuestionController {
         question_id: parseInt(id),
         message,
         reply_type,
-        created_at: new Date(),
+        created_at: new Date()
       };
 
       res.status(201).json({
         success: true,
-        message: "Reply created successfully",
-        data: reply,
+        message: 'Reply created successfully',
+        data: reply
       });
     } catch (error) {
-      debug("Error creating reply:", error.message);
+      debug('Error creating reply:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to create reply",
-        error: error.message,
+        message: 'Failed to create reply',
+        error: error.message
       });
     }
   }
@@ -264,31 +264,31 @@ class ServiceBasedCustomerQuestionController {
    */
   async getQuestionStats(req, res) {
     try {
-      debug("Getting question statistics");
+      debug('Getting question statistics');
 
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
 
       const stats = await this.questionService.getQuestionStats(timeframe);
 
       res.json({
         success: true,
-        data: stats,
+        data: stats
       });
     } catch (error) {
-      debug("Error getting question statistics:", error.message);
+      debug('Error getting question statistics:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get question statistics",
-        error: error.message,
+        message: 'Failed to get question statistics',
+        error: error.message
       });
     }
   }
@@ -298,14 +298,14 @@ class ServiceBasedCustomerQuestionController {
    */
   async syncQuestions(req, res) {
     try {
-      debug("Syncing questions from platforms");
+      debug('Syncing questions from platforms');
 
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -315,15 +315,15 @@ class ServiceBasedCustomerQuestionController {
 
       res.json({
         success: true,
-        message: "Sync completed",
-        data: result,
+        message: 'Sync completed',
+        data: result
       });
     } catch (error) {
-      debug("Error syncing questions:", error.message);
+      debug('Error syncing questions:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to sync questions",
-        error: error.message,
+        message: 'Failed to sync questions',
+        error: error.message
       });
     }
   }

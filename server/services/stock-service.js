@@ -4,15 +4,15 @@
  * Consolidated from enhanced-stock-service.js
  */
 
-const logger = require("../utils/logger");
+const logger = require('../utils/logger');
 const {
   MainProduct,
   PlatformVariant,
   InventoryMovement,
   StockReservation,
-  sequelize,
-} = require("../models");
-const { Op } = require("sequelize");
+  sequelize
+} = require('../models');
+const { Op } = require('sequelize');
 
 class StockService {
   /**
@@ -24,21 +24,21 @@ class StockService {
         include: [
           {
             model: PlatformVariant,
-            as: "platformVariants",
-            where: { status: "active" },
-            required: false,
+            as: 'platformVariants',
+            where: { status: 'active' },
+            required: false
           },
           {
             model: StockReservation,
-            as: "stockReservations",
-            where: { status: "active" },
-            required: false,
-          },
-        ],
+            as: 'stockReservations',
+            where: { status: 'active' },
+            required: false
+          }
+        ]
       });
 
       if (!mainProduct) {
-        throw new Error("Main product not found");
+        throw new Error('Main product not found');
       }
 
       const totalReserved = await this.calculateReservedStock(mainProductId);
@@ -56,12 +56,12 @@ class StockService {
           platform: variant.platform,
           platformSku: variant.platformSku,
           isPublished: variant.isPublished,
-          syncStatus: variant.syncStatus,
+          syncStatus: variant.syncStatus
         })),
-        lastStockUpdate: mainProduct.lastStockUpdate,
+        lastStockUpdate: mainProduct.lastStockUpdate
       };
     } catch (error) {
-      logger.error("Error getting stock status:", error);
+      logger.error('Error getting stock status:', error);
       throw error;
     }
   }
@@ -71,17 +71,17 @@ class StockService {
    */
   async calculateReservedStock(mainProductId) {
     try {
-      const result = await StockReservation.sum("quantity", {
+      const result = await StockReservation.sum('quantity', {
         where: {
           mainProductId,
-          status: "active",
-          expiresAt: { [Op.gt]: new Date() },
-        },
+          status: 'active',
+          expiresAt: { [Op.gt]: new Date() }
+        }
       });
 
       return result || 0;
     } catch (error) {
-      logger.error("Error calculating reserved stock:", error);
+      logger.error('Error calculating reserved stock:', error);
       return 0;
     }
   }
@@ -92,7 +92,7 @@ class StockService {
   async updateStock(
     mainProductId,
     newQuantity,
-    reason = "Manual update",
+    reason = 'Manual update',
     userId = null,
     metadata = {}
   ) {
@@ -100,11 +100,11 @@ class StockService {
 
     try {
       const mainProduct = await MainProduct.findByPk(mainProductId, {
-        transaction,
+        transaction
       });
 
       if (!mainProduct) {
-        throw new Error("Main product not found");
+        throw new Error('Main product not found');
       }
 
       const oldQuantity = mainProduct.stockQuantity;
@@ -114,7 +114,7 @@ class StockService {
       await mainProduct.update(
         {
           stockQuantity: newQuantity,
-          lastStockUpdate: new Date(),
+          lastStockUpdate: new Date()
         },
         { transaction }
       );
@@ -123,23 +123,23 @@ class StockService {
       await InventoryMovement.create(
         {
           mainProductId,
-          changeType: quantityChange > 0 ? "increase" : "decrease",
+          changeType: quantityChange > 0 ? 'increase' : 'decrease',
           quantity: Math.abs(quantityChange),
           reason,
           userId,
           metadata,
           previousStock: oldQuantity,
-          newStock: newQuantity,
+          newStock: newQuantity
         },
         { transaction }
       );
 
       // Update platform variants sync status
       await PlatformVariant.update(
-        { syncStatus: "pending" },
+        { syncStatus: 'pending' },
         {
           where: { mainProductId },
-          transaction,
+          transaction
         }
       );
 
@@ -155,11 +155,11 @@ class StockService {
         newQuantity,
         quantityChange,
         reason,
-        timestamp: new Date(),
+        timestamp: new Date()
       };
     } catch (error) {
       await transaction.rollback();
-      logger.error("Error updating stock:", error);
+      logger.error('Error updating stock:', error);
       throw error;
     }
   }
@@ -170,7 +170,7 @@ class StockService {
   async adjustStock(
     mainProductId,
     adjustment,
-    reason = "Stock adjustment",
+    reason = 'Stock adjustment',
     userId = null,
     metadata = {}
   ) {
@@ -178,7 +178,7 @@ class StockService {
       const mainProduct = await MainProduct.findByPk(mainProductId);
 
       if (!mainProduct) {
-        throw new Error("Main product not found");
+        throw new Error('Main product not found');
       }
 
       const newQuantity = Math.max(0, mainProduct.stockQuantity + adjustment);
@@ -191,7 +191,7 @@ class StockService {
         metadata
       );
     } catch (error) {
-      logger.error("Error adjusting stock:", error);
+      logger.error('Error adjusting stock:', error);
       throw error;
     }
   }
@@ -227,8 +227,8 @@ class StockService {
           orderId,
           platform,
           userId,
-          status: "active",
-          expiresAt: new Date(Date.now() + expirationMinutes * 60 * 1000),
+          status: 'active',
+          expiresAt: new Date(Date.now() + expirationMinutes * 60 * 1000)
         },
         { transaction }
       );
@@ -237,13 +237,13 @@ class StockService {
       await InventoryMovement.create(
         {
           mainProductId,
-          changeType: "reservation",
+          changeType: 'reservation',
           quantity,
           reason: `Stock reserved for order ${orderId}`,
           userId,
           metadata: { orderId, platform, reservationId: reservation.id },
           previousStock: stockStatus.totalStock,
-          newStock: stockStatus.totalStock, // Stock quantity doesn't change, just reserved
+          newStock: stockStatus.totalStock // Stock quantity doesn't change, just reserved
         },
         { transaction }
       );
@@ -258,11 +258,11 @@ class StockService {
         success: true,
         reservationId: reservation.id,
         quantity,
-        expiresAt: reservation.expiresAt,
+        expiresAt: reservation.expiresAt
       };
     } catch (error) {
       await transaction.rollback();
-      logger.error("Error reserving stock:", error);
+      logger.error('Error reserving stock:', error);
       throw error;
     }
   }
@@ -270,28 +270,28 @@ class StockService {
   /**
    * Release stock reservation
    */
-  async releaseReservation(reservationId, reason = "Manual release") {
+  async releaseReservation(reservationId, reason = 'Manual release') {
     const transaction = await sequelize.transaction();
 
     try {
       const reservation = await StockReservation.findByPk(reservationId, {
-        transaction,
+        transaction
       });
 
       if (!reservation) {
-        throw new Error("Reservation not found");
+        throw new Error('Reservation not found');
       }
 
-      if (reservation.status !== "active") {
-        throw new Error("Reservation is not active");
+      if (reservation.status !== 'active') {
+        throw new Error('Reservation is not active');
       }
 
       // Update reservation status
       await reservation.update(
         {
-          status: "released",
+          status: 'released',
           releasedAt: new Date(),
-          releaseReason: reason,
+          releaseReason: reason
         },
         { transaction }
       );
@@ -300,11 +300,11 @@ class StockService {
       await InventoryMovement.create(
         {
           mainProductId: reservation.mainProductId,
-          changeType: "release",
+          changeType: 'release',
           quantity: reservation.quantity,
           reason: `Stock reservation released: ${reason}`,
           userId: reservation.userId,
-          metadata: { reservationId, orderId: reservation.orderId },
+          metadata: { reservationId, orderId: reservation.orderId }
         },
         { transaction }
       );
@@ -319,11 +319,11 @@ class StockService {
         success: true,
         reservationId,
         quantity: reservation.quantity,
-        reason,
+        reason
       };
     } catch (error) {
       await transaction.rollback();
-      logger.error("Error releasing reservation:", error);
+      logger.error('Error releasing reservation:', error);
       throw error;
     }
   }
@@ -331,20 +331,20 @@ class StockService {
   /**
    * Confirm stock reservation (convert to actual stock reduction)
    */
-  async confirmReservation(reservationId, reason = "Order confirmed") {
+  async confirmReservation(reservationId, reason = 'Order confirmed') {
     const transaction = await sequelize.transaction();
 
     try {
       const reservation = await StockReservation.findByPk(reservationId, {
-        transaction,
+        transaction
       });
 
       if (!reservation) {
-        throw new Error("Reservation not found");
+        throw new Error('Reservation not found');
       }
 
-      if (reservation.status !== "active") {
-        throw new Error("Reservation is not active");
+      if (reservation.status !== 'active') {
+        throw new Error('Reservation is not active');
       }
 
       // Get current stock
@@ -354,7 +354,7 @@ class StockService {
       );
 
       if (!mainProduct) {
-        throw new Error("Main product not found");
+        throw new Error('Main product not found');
       }
 
       const newQuantity = Math.max(
@@ -366,7 +366,7 @@ class StockService {
       await mainProduct.update(
         {
           stockQuantity: newQuantity,
-          lastStockUpdate: new Date(),
+          lastStockUpdate: new Date()
         },
         { transaction }
       );
@@ -374,9 +374,9 @@ class StockService {
       // Update reservation status
       await reservation.update(
         {
-          status: "confirmed",
+          status: 'confirmed',
           confirmedAt: new Date(),
-          confirmReason: reason,
+          confirmReason: reason
         },
         { transaction }
       );
@@ -385,23 +385,23 @@ class StockService {
       await InventoryMovement.create(
         {
           mainProductId: reservation.mainProductId,
-          changeType: "decrease",
+          changeType: 'decrease',
           quantity: reservation.quantity,
           reason: `Stock confirmed for order ${reservation.orderId}`,
           userId: reservation.userId,
           metadata: { reservationId, orderId: reservation.orderId },
           previousStock: mainProduct.stockQuantity + reservation.quantity,
-          newStock: newQuantity,
+          newStock: newQuantity
         },
         { transaction }
       );
 
       // Update platform variants sync status
       await PlatformVariant.update(
-        { syncStatus: "pending" },
+        { syncStatus: 'pending' },
         {
           where: { mainProductId: reservation.mainProductId },
-          transaction,
+          transaction
         }
       );
 
@@ -416,11 +416,11 @@ class StockService {
         reservationId,
         quantity: reservation.quantity,
         newStockLevel: newQuantity,
-        reason,
+        reason
       };
     } catch (error) {
       await transaction.rollback();
-      logger.error("Error confirming reservation:", error);
+      logger.error('Error confirming reservation:', error);
       throw error;
     }
   }
@@ -435,15 +435,15 @@ class StockService {
         offset = 0,
         startDate = null,
         endDate = null,
-        changeType = null,
+        changeType = null
       } = options;
 
       const where = { mainProductId };
 
       if (startDate || endDate) {
         where.createdAt = {};
-        if (startDate) where.createdAt[Op.gte] = new Date(startDate);
-        if (endDate) where.createdAt[Op.lte] = new Date(endDate);
+        if (startDate) {where.createdAt[Op.gte] = new Date(startDate);}
+        if (endDate) {where.createdAt[Op.lte] = new Date(endDate);}
       }
 
       if (changeType) {
@@ -452,18 +452,18 @@ class StockService {
 
       const movements = await InventoryMovement.findAll({
         where,
-        order: [["createdAt", "DESC"]],
+        order: [['createdAt', 'DESC']],
         limit,
-        offset,
+        offset
       });
 
       return {
         success: true,
         movements,
-        total: movements.length,
+        total: movements.length
       };
     } catch (error) {
-      logger.error("Error getting stock history:", error);
+      logger.error('Error getting stock history:', error);
       throw error;
     }
   }
@@ -476,19 +476,19 @@ class StockService {
       const reservations = await StockReservation.findAll({
         where: {
           mainProductId,
-          status: "active",
-          expiresAt: { [Op.gt]: new Date() },
+          status: 'active',
+          expiresAt: { [Op.gt]: new Date() }
         },
-        order: [["createdAt", "DESC"]],
+        order: [['createdAt', 'DESC']]
       });
 
       return {
         success: true,
         reservations,
-        totalReserved: reservations.reduce((sum, r) => sum + r.quantity, 0),
+        totalReserved: reservations.reduce((sum, r) => sum + r.quantity, 0)
       };
     } catch (error) {
-      logger.error("Error getting active reservations:", error);
+      logger.error('Error getting active reservations:', error);
       throw error;
     }
   }
@@ -499,20 +499,20 @@ class StockService {
   async getLowStockProducts(userId = null) {
     try {
       const where = {};
-      if (userId) where.userId = userId;
+      if (userId) {where.userId = userId;}
 
       const products = await MainProduct.findAll({
         where: {
           ...where,
           [Op.and]: [
             sequelize.where(
-              sequelize.col("stockQuantity"),
+              sequelize.col('stockQuantity'),
               Op.lte,
-              sequelize.col("minStockLevel")
-            ),
-          ],
+              sequelize.col('minStockLevel')
+            )
+          ]
         },
-        order: [["stockQuantity", "ASC"]],
+        order: [['stockQuantity', 'ASC']]
       });
 
       return {
@@ -523,12 +523,12 @@ class StockService {
           baseSku: p.baseSku,
           stockQuantity: p.stockQuantity,
           minStockLevel: p.minStockLevel,
-          urgency: p.stockQuantity === 0 ? "critical" : "low",
+          urgency: p.stockQuantity === 0 ? 'critical' : 'low'
         })),
-        count: products.length,
+        count: products.length
       };
     } catch (error) {
-      logger.error("Error getting low stock products:", error);
+      logger.error('Error getting low stock products:', error);
       throw error;
     }
   }
@@ -546,14 +546,14 @@ class StockService {
           const result = await this.updateStock(
             update.mainProductId,
             update.quantity,
-            update.reason || "Bulk update",
+            update.reason || 'Bulk update',
             userId,
             update.metadata || {}
           );
 
           results.push({
             ...result,
-            mainProductId: update.mainProductId,
+            mainProductId: update.mainProductId
           });
         } catch (error) {
           logger.error(
@@ -563,7 +563,7 @@ class StockService {
           results.push({
             success: false,
             mainProductId: update.mainProductId,
-            error: error.message,
+            error: error.message
           });
         }
       }
@@ -572,7 +572,7 @@ class StockService {
       return results;
     } catch (error) {
       await transaction.rollback();
-      logger.error("Error in bulk stock update:", error);
+      logger.error('Error in bulk stock update:', error);
       throw error;
     }
   }
@@ -584,15 +584,15 @@ class StockService {
     try {
       const expiredReservations = await StockReservation.findAll({
         where: {
-          status: "active",
-          expiresAt: { [Op.lt]: new Date() },
-        },
+          status: 'active',
+          expiresAt: { [Op.lt]: new Date() }
+        }
       });
 
       for (const reservation of expiredReservations) {
         await this.releaseReservation(
           reservation.id,
-          "Automatic cleanup - expired"
+          'Automatic cleanup - expired'
         );
       }
 
@@ -601,7 +601,7 @@ class StockService {
       );
       return expiredReservations.length;
     } catch (error) {
-      logger.error("Error cleaning up expired reservations:", error);
+      logger.error('Error cleaning up expired reservations:', error);
       return 0;
     }
   }
@@ -615,14 +615,14 @@ class StockService {
         mainProductIds.map((id) =>
           this.getStockStatus(id).catch((error) => ({
             id,
-            error: error.message,
+            error: error.message
           }))
         )
       );
 
       return results;
     } catch (error) {
-      logger.error("Error getting bulk stock status:", error);
+      logger.error('Error getting bulk stock status:', error);
       throw error;
     }
   }

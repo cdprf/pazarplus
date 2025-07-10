@@ -1,7 +1,7 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { auth } = require("../middleware/auth");
-const platformOperationsController = require("../controllers/platform-operations-controller");
+const { auth } = require('../middleware/auth');
+const platformOperationsController = require('../controllers/platform-operations-controller');
 
 // All routes require authentication
 router.use(auth);
@@ -11,7 +11,7 @@ router.use(auth);
  * @desc Get all background tasks for the user
  * @access Private
  */
-router.get("/tasks", (req, res) =>
+router.get('/tasks', (req, res) =>
   platformOperationsController.getTasks.call(
     platformOperationsController,
     req,
@@ -24,7 +24,7 @@ router.get("/tasks", (req, res) =>
  * @desc Start background order fetching task
  * @access Private
  */
-router.post("/tasks/order-fetching", (req, res) =>
+router.post('/tasks/order-fetching', (req, res) =>
   platformOperationsController.startOrderFetching.call(
     platformOperationsController,
     req,
@@ -37,7 +37,7 @@ router.post("/tasks/order-fetching", (req, res) =>
  * @desc Stop a background task
  * @access Private
  */
-router.post("/tasks/:taskId/stop", (req, res) =>
+router.post('/tasks/:taskId/stop', (req, res) =>
   platformOperationsController.stopTask.call(
     platformOperationsController,
     req,
@@ -50,7 +50,7 @@ router.post("/tasks/:taskId/stop", (req, res) =>
  * @desc Get platform connections for user
  * @access Private
  */
-router.get("/connections", (req, res) =>
+router.get('/connections', (req, res) =>
   platformOperationsController.getPlatformConnections.call(
     platformOperationsController,
     req,
@@ -63,7 +63,7 @@ router.get("/connections", (req, res) =>
  * @desc Get order statistics
  * @access Private
  */
-router.get("/stats/orders", (req, res) =>
+router.get('/stats/orders', (req, res) =>
   platformOperationsController.getOrderStats.call(
     platformOperationsController,
     req,

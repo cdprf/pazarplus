@@ -2,30 +2,30 @@ let speakeasy, QRCode;
 let twoFactorEnabled = true;
 
 try {
-  speakeasy = require("speakeasy");
-  QRCode = require("qrcode");
+  speakeasy = require('speakeasy');
+  QRCode = require('qrcode');
 } catch (error) {
   console.warn(
-    "Two-factor authentication dependencies not available:",
+    'Two-factor authentication dependencies not available:',
     error.message
   );
   twoFactorEnabled = false;
 
   // Create fallback implementations
   speakeasy = {
-    generateSecret: () => ({ base32: "disabled", otpauth_url: "disabled" }),
+    generateSecret: () => ({ base32: 'disabled', otpauth_url: 'disabled' }),
     totp: {
-      verify: () => false,
-    },
+      verify: () => false
+    }
   };
 
   QRCode = {
-    toDataURL: () => Promise.resolve("data:image/png;base64,disabled"),
+    toDataURL: () => Promise.resolve('data:image/png;base64,disabled')
   };
 }
 
-const logger = require("../../../utils/logger");
-const { User } = require("../../../models");
+const logger = require('../../../utils/logger');
+const { User } = require('../../../models');
 
 class TwoFactorService {
   /**
@@ -36,23 +36,23 @@ class TwoFactorService {
   async generateSecret(email) {
     if (!twoFactorEnabled) {
       throw new Error(
-        "Two-factor authentication is disabled - dependencies not available"
+        'Two-factor authentication is disabled - dependencies not available'
       );
     }
 
     try {
       const secret = speakeasy.generateSecret({
-        name: `Pazar+ (${email})`,
+        name: `Pazar+ (${email})`
       });
 
       const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
 
       return {
         secret: secret.base32,
-        qrCode: qrCodeUrl,
+        qrCode: qrCodeUrl
       };
     } catch (error) {
-      logger.error("Error generating 2FA secret:", error);
+      logger.error('Error generating 2FA secret:', error);
       throw error;
     }
   }
@@ -67,12 +67,12 @@ class TwoFactorService {
     try {
       return speakeasy.totp.verify({
         secret: secret,
-        encoding: "base32",
+        encoding: 'base32',
         token: token,
-        window: 1, // Allow 30 seconds clock skew
+        window: 1 // Allow 30 seconds clock skew
       });
     } catch (error) {
-      logger.error("Error verifying 2FA token:", error);
+      logger.error('Error verifying 2FA token:', error);
       return false;
     }
   }
@@ -96,16 +96,16 @@ class TwoFactorService {
       await User.update(
         {
           twoFactorSecret: secret,
-          twoFactorEnabled: true,
+          twoFactorEnabled: true
         },
         {
-          where: { id: userId },
+          where: { id: userId }
         }
       );
 
       return true;
     } catch (error) {
-      logger.error("Error enabling 2FA:", error);
+      logger.error('Error enabling 2FA:', error);
       throw error;
     }
   }
@@ -120,16 +120,16 @@ class TwoFactorService {
       await User.update(
         {
           twoFactorSecret: null,
-          twoFactorEnabled: false,
+          twoFactorEnabled: false
         },
         {
-          where: { id: userId },
+          where: { id: userId }
         }
       );
 
       return true;
     } catch (error) {
-      logger.error("Error disabling 2FA:", error);
+      logger.error('Error disabling 2FA:', error);
       throw error;
     }
   }
@@ -172,7 +172,7 @@ class TwoFactorService {
 
       return true;
     } catch (error) {
-      logger.error("Error verifying backup code:", error);
+      logger.error('Error verifying backup code:', error);
       return false;
     }
   }

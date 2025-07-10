@@ -9,7 +9,7 @@ const multer = require('multer');
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10 MB limit
+    fileSize: 10 * 1024 * 1024 // 10 MB limit
   },
   fileFilter: (req, file, cb) => {
     // Accept only CSV files

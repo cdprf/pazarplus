@@ -304,7 +304,7 @@ class PaymentServiceFactory {
     const results = {};
     
     for (const [providerKey, config] of this.providers) {
-      if (!config.enabled) continue;
+      if (!config.enabled) {continue;}
       
       try {
         const service = this.getPaymentService(providerKey);

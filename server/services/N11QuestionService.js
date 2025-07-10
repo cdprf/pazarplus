@@ -1,16 +1,16 @@
-const axios = require("axios");
-const crypto = require("crypto");
-const debug = require("debug")("pazar:n11:questions");
+const axios = require('axios');
+const crypto = require('crypto');
+const debug = require('debug')('pazar:n11:questions');
 
 class N11QuestionService {
   constructor(config) {
-    debug("Initializing N11QuestionService");
+    debug('Initializing N11QuestionService');
     this.apiKey = config.apiKey;
     this.secretKey = config.secretKey;
     this.baseURL = config.isTest
-      ? "https://api.n11.com/ws"
-      : "https://api.n11.com/ws";
-    debug("N11QuestionService initialized with base URL:", this.baseURL);
+      ? 'https://api.n11.com/ws'
+      : 'https://api.n11.com/ws';
+    debug('N11QuestionService initialized with base URL:', this.baseURL);
   }
 
   /**
@@ -22,10 +22,10 @@ class N11QuestionService {
     const signature = this.generateSignature(timestamp);
 
     return {
-      "Content-Type": "application/json",
-      "X-N11-Api-Key": this.apiKey,
-      "X-N11-Timestamp": timestamp,
-      "X-N11-Signature": signature,
+      'Content-Type': 'application/json',
+      'X-N11-Api-Key': this.apiKey,
+      'X-N11-Timestamp': timestamp,
+      'X-N11-Signature': signature
     };
   }
 
@@ -34,7 +34,7 @@ class N11QuestionService {
    */
   generateSignature(timestamp) {
     const data = `${this.apiKey}${timestamp}${this.secretKey}`;
-    return crypto.createHash("sha256").update(data).digest("hex");
+    return crypto.createHash('sha256').update(data).digest('hex');
   }
 
   /**
@@ -42,7 +42,7 @@ class N11QuestionService {
    * Based on N11 official SOAP API documentation
    */
   async getQuestions(options = {}) {
-    debug("Fetching questions from N11 with options:", options);
+    debug('Fetching questions from N11 with options:', options);
     try {
       const {
         page = 0, // N11 uses 0-based pagination
@@ -51,7 +51,7 @@ class N11QuestionService {
         buyerEmail,
         subject,
         status,
-        questionDate,
+        questionDate
       } = options;
 
       // Build SOAP request body for GetProductQuestionList matching the official documentation
@@ -65,24 +65,24 @@ class N11QuestionService {
          </auth>
          <productQuestionSearch>
             ${
-              productId
-                ? `<productId>${productId}</productId>`
-                : "<productId></productId>"
-            }
+  productId
+    ? `<productId>${productId}</productId>`
+    : '<productId></productId>'
+}
             ${
-              buyerEmail
-                ? `<buyerEmail>${buyerEmail}</buyerEmail>`
-                : "<buyerEmail></buyerEmail>"
-            }
-            ${subject ? `<subject>${subject}</subject>` : "<subject></subject>"}
-            ${status ? `<status>${status}</status>` : "<status></status>"}
+  buyerEmail
+    ? `<buyerEmail>${buyerEmail}</buyerEmail>`
+    : '<buyerEmail></buyerEmail>'
+}
+            ${subject ? `<subject>${subject}</subject>` : '<subject></subject>'}
+            ${status ? `<status>${status}</status>` : '<status></status>'}
             ${
-              questionDate
-                ? `<questionDate>${this.formatDate(
-                    questionDate
-                  )}</questionDate>`
-                : "<questionDate></questionDate>"
-            }
+  questionDate
+    ? `<questionDate>${this.formatDate(
+      questionDate
+    )}</questionDate>`
+    : '<questionDate></questionDate>'
+}
          </productQuestionSearch>
          <pagingData>
             <currentPage>${page}</currentPage>
@@ -94,32 +94,32 @@ class N11QuestionService {
 
       const url = `${this.baseURL}/ProductService.wsdl`;
 
-      debug("Fetching questions from N11:", { url, page, size });
+      debug('Fetching questions from N11:', { url, page, size });
 
       const response = await axios.post(url, soapBody, {
         headers: {
-          "Content-Type": "text/xml; charset=utf-8",
-          SOAPAction: "getProductQuestionList",
-        },
+          'Content-Type': 'text/xml; charset=utf-8',
+          SOAPAction: 'getProductQuestionList'
+        }
       });
 
-      debug("N11 questions response received");
+      debug('N11 questions response received');
 
       return this.normalizeQuestionsResponse(response.data);
     } catch (error) {
       debug(
-        "Error fetching questions from N11:",
+        'Error fetching questions from N11:',
         error.response?.data || error.message
       );
 
       // Graceful fallback for missing API implementation
-      if (error.response?.status === 404 || error.code === "ENOTFOUND") {
+      if (error.response?.status === 404 || error.code === 'ENOTFOUND') {
         debug(
-          "N11 questions API endpoint not available, returning empty result"
+          'N11 questions API endpoint not available, returning empty result'
         );
         return {
           questions: [],
-          pagination: { page: 0, totalPages: 0, totalItems: 0 },
+          pagination: { page: 0, totalPages: 0, totalItems: 0 }
         };
       }
 
@@ -136,8 +136,8 @@ class N11QuestionService {
    */
   formatDate(date) {
     const d = new Date(date);
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
   }
@@ -147,10 +147,10 @@ class N11QuestionService {
    * Based on N11 official SOAP API documentation
    */
   async getQuestionById(productQuestionId) {
-    debug("Fetching question detail from N11:", { productQuestionId });
+    debug('Fetching question detail from N11:', { productQuestionId });
     try {
       if (!productQuestionId) {
-        throw new Error("Product question ID is required");
+        throw new Error('Product question ID is required');
       }
 
       // Build SOAP request body for GetProductQuestionDetail matching the official documentation
@@ -169,27 +169,27 @@ class N11QuestionService {
 
       const url = `${this.baseURL}/ProductService.wsdl`;
 
-      debug("Fetching question detail from N11:", { url, productQuestionId });
+      debug('Fetching question detail from N11:', { url, productQuestionId });
 
       const response = await axios.post(url, soapBody, {
         headers: {
-          "Content-Type": "text/xml; charset=utf-8",
-          SOAPAction: "getProductQuestionDetail",
-        },
+          'Content-Type': 'text/xml; charset=utf-8',
+          SOAPAction: 'getProductQuestionDetail'
+        }
       });
 
-      debug("N11 question detail response received");
+      debug('N11 question detail response received');
 
       return this.parseQuestionDetailResponse(response.data);
     } catch (error) {
       debug(
-        "Error fetching question detail from N11:",
+        'Error fetching question detail from N11:',
         error.response?.data || error.message
       );
 
       // Graceful fallback
-      if (error.response?.status === 404 || error.code === "ENOTFOUND") {
-        debug("N11 question detail API endpoint not available");
+      if (error.response?.status === 404 || error.code === 'ENOTFOUND') {
+        debug('N11 question detail API endpoint not available');
         return null;
       }
 
@@ -206,22 +206,22 @@ class N11QuestionService {
    * Based on N11 official documentation: SaveProductAnswer
    */
   async answerQuestion(productQuestionId, answerText) {
-    debug("Answering question on N11 with SaveProductAnswer:", {
+    debug('Answering question on N11 with SaveProductAnswer:', {
       productQuestionId,
-      answerLength: answerText.length,
+      answerLength: answerText.length
     });
 
     try {
       if (!productQuestionId) {
-        throw new Error("Product question ID is required");
+        throw new Error('Product question ID is required');
       }
 
       if (!answerText || answerText.trim().length < 10) {
-        throw new Error("Answer text must be at least 10 characters");
+        throw new Error('Answer text must be at least 10 characters');
       }
 
       if (answerText.length > 2000) {
-        throw new Error("Answer text must be less than 2000 characters");
+        throw new Error('Answer text must be less than 2000 characters');
       }
 
       // Build SOAP request body for SaveProductAnswer matching the official documentation
@@ -241,39 +241,39 @@ class N11QuestionService {
 
       const url = `${this.baseURL}/ProductService.wsdl`;
 
-      debug("Sending SaveProductAnswer request to N11:", {
+      debug('Sending SaveProductAnswer request to N11:', {
         url,
-        productQuestionId,
+        productQuestionId
       });
 
       const response = await axios.post(url, soapBody, {
         headers: {
-          "Content-Type": "text/xml; charset=utf-8",
-          SOAPAction: "saveProductAnswer",
+          'Content-Type': 'text/xml; charset=utf-8',
+          SOAPAction: 'saveProductAnswer'
         },
-        timeout: 30000, // 30 seconds timeout
+        timeout: 30000 // 30 seconds timeout
       });
 
-      debug("N11 SaveProductAnswer response received");
+      debug('N11 SaveProductAnswer response received');
 
       // Parse SOAP response
       const responseData = this.parseSaveProductAnswerResponse(response.data);
 
       if (responseData.success) {
-        debug("Question answered successfully on N11:", productQuestionId);
+        debug('Question answered successfully on N11:', productQuestionId);
         return {
           success: true,
           questionId: productQuestionId,
-          response: responseData,
+          response: responseData
         };
       } else {
-        throw new Error(responseData.error || "Failed to save answer");
+        throw new Error(responseData.error || 'Failed to save answer');
       }
     } catch (error) {
-      debug("Error answering question on N11:", error.message);
+      debug('Error answering question on N11:', error.message);
 
-      if (error.code === "ECONNABORTED") {
-        throw new Error("N11 API timeout - please try again");
+      if (error.code === 'ECONNABORTED') {
+        throw new Error('N11 API timeout - please try again');
       }
 
       throw new Error(`N11 answer submission failed: ${error.message}`);
@@ -287,25 +287,25 @@ class N11QuestionService {
     try {
       const url = `${this.baseURL}/CustomerQuestionService.wsdl/${questionId}/report`;
 
-      debug("Reporting question on N11:", { url, questionId, reason });
+      debug('Reporting question on N11:', { url, questionId, reason });
 
       const response = await axios.post(
         url,
         {
-          reason: reason,
+          reason: reason
         },
         {
-          headers: this.getAuthHeaders(),
+          headers: this.getAuthHeaders()
         }
       );
 
       return {
         success: response.status === 200,
-        response: response.data,
+        response: response.data
       };
     } catch (error) {
       debug(
-        "Error reporting question on N11:",
+        'Error reporting question on N11:',
         error.response?.data || error.message
       );
       throw new Error(
@@ -322,39 +322,39 @@ class N11QuestionService {
   normalizeQuestionsResponse(xmlData) {
     try {
       // Parse SOAP XML response
-      const xml2js = require("xml2js");
+      const xml2js = require('xml2js');
       const parser = new xml2js.Parser({ explicitArray: false });
 
       return new Promise((resolve, reject) => {
         parser.parseString(xmlData, (err, result) => {
           if (err) {
-            debug("Error parsing N11 SOAP response:", err);
+            debug('Error parsing N11 SOAP response:', err);
             resolve({
               questions: [],
-              pagination: { page: 0, totalPages: 0, totalItems: 0 },
+              pagination: { page: 0, totalPages: 0, totalItems: 0 }
             });
             return;
           }
 
           try {
             const envelope =
-              result["env:Envelope"] ||
-              result["soap:Envelope"] ||
+              result['env:Envelope'] ||
+              result['soap:Envelope'] ||
               result.Envelope;
             const body =
-              envelope["env:Body"] || envelope["soap:Body"] || envelope.Body;
+              envelope['env:Body'] || envelope['soap:Body'] || envelope.Body;
             const response =
-              body["ns3:GetProductQuestionListResponse"] ||
+              body['ns3:GetProductQuestionListResponse'] ||
               body.GetProductQuestionListResponse;
 
-            if (!response || response.result?.status !== "success") {
+            if (!response || response.result?.status !== 'success') {
               debug(
-                "N11 API returned unsuccessful response:",
+                'N11 API returned unsuccessful response:',
                 response?.result
               );
               resolve({
                 questions: [],
-                pagination: { page: 0, totalPages: 0, totalItems: 0 },
+                pagination: { page: 0, totalPages: 0, totalItems: 0 }
               });
               return;
             }
@@ -365,36 +365,36 @@ class N11QuestionService {
 
             const questions = Array.isArray(questionsData)
               ? questionsData
-                  .map((q) => this.normalizeQuestionData(q))
-                  .filter((q) => q !== null)
+                .map((q) => this.normalizeQuestionData(q))
+                .filter((q) => q !== null)
               : questionsData
-              ? [this.normalizeQuestionData(questionsData)].filter(
+                ? [this.normalizeQuestionData(questionsData)].filter(
                   (q) => q !== null
                 )
-              : [];
+                : [];
 
             const pagination = {
               page: parseInt(pagingData.currentPage) || 0,
               totalPages: parseInt(pagingData.pageCount) || 0,
               totalItems: parseInt(pagingData.totalCount) || 0,
-              pageSize: parseInt(pagingData.pageSize) || 50,
+              pageSize: parseInt(pagingData.pageSize) || 50
             };
 
             resolve({ questions, pagination });
           } catch (parseError) {
-            debug("Error processing N11 response structure:", parseError);
+            debug('Error processing N11 response structure:', parseError);
             resolve({
               questions: [],
-              pagination: { page: 0, totalPages: 0, totalItems: 0 },
+              pagination: { page: 0, totalPages: 0, totalItems: 0 }
             });
           }
         });
       });
     } catch (error) {
-      debug("Error in normalizeQuestionsResponse:", error);
+      debug('Error in normalizeQuestionsResponse:', error);
       return {
         questions: [],
-        pagination: { page: 0, totalPages: 0, totalItems: 0 },
+        pagination: { page: 0, totalPages: 0, totalItems: 0 }
       };
     }
   }
@@ -412,29 +412,29 @@ class N11QuestionService {
    */
   normalizeQuestionData(question) {
     // Handle cases where question data might be missing
-    if (!question || typeof question !== "object") {
+    if (!question || typeof question !== 'object') {
       return null;
     }
 
     // Extract fields from N11 GetProductQuestionList response format
-    const questionText = question.question || "";
-    const answerText = question.answer || "";
+    const questionText = question.question || '';
+    const answerText = question.answer || '';
     const questionHash = this.generateQuestionHash(questionText);
 
     return {
-      platform: "n11",
+      platform: 'n11',
       platform_question_id: question.id?.toString(),
       customer_id: null, // N11 doesn't provide customer ID in question list
-      customer_name: "N11 Customer", // N11 doesn't provide customer name in question list
+      customer_name: 'N11 Customer', // N11 doesn't provide customer name in question list
       customer_email: null, // Available only in question detail
       show_customer_name: false,
       question_text: questionText,
-      status: this.mapN11Status(answerText ? "answered" : "waiting"),
-      product_name: question.productTitle || "",
+      status: this.mapN11Status(answerText ? 'answered' : 'waiting'),
+      product_name: question.productTitle || '',
       product_id: question.productId?.toString(),
       product_sku: null, // Not provided in N11 API
       product_image_url: null, // Not provided in N11 API
-      subject: question.questionSubject || question.subject || "",
+      subject: question.questionSubject || question.subject || '',
       public: true, // Default to public
       creation_date: question.questionDate
         ? this.parseN11Date(question.questionDate)
@@ -448,7 +448,7 @@ class N11QuestionService {
 
       // N11 specific fields
       n11_product_id: question.productId,
-      n11_question_subject: question.questionSubject,
+      n11_question_subject: question.questionSubject
     };
   }
 
@@ -460,9 +460,9 @@ class N11QuestionService {
   parseN11Date(dateString) {
     try {
       // N11 might use various date formats, handle common ones
-      if (dateString.includes("/")) {
+      if (dateString.includes('/')) {
         // DD/MM/YYYY format
-        const parts = dateString.split("/");
+        const parts = dateString.split('/');
         if (parts.length === 3) {
           return new Date(
             parseInt(parts[2]),
@@ -474,7 +474,7 @@ class N11QuestionService {
       // Try standard ISO format
       return new Date(dateString);
     } catch (error) {
-      debug("Error parsing N11 date:", dateString, error);
+      debug('Error parsing N11 date:', dateString, error);
       return new Date();
     }
   }
@@ -483,16 +483,16 @@ class N11QuestionService {
    * Map N11 status to our internal status
    */
   mapN11Status(status) {
-    if (!status) return "WAITING_FOR_ANSWER";
+    if (!status) {return 'WAITING_FOR_ANSWER';}
 
     const statusMapping = {
-      waiting: "WAITING_FOR_ANSWER",
-      pending: "WAITING_FOR_ANSWER",
-      answered: "ANSWERED",
-      replied: "ANSWERED",
-      rejected: "REJECTED",
-      closed: "AUTO_CLOSED",
-      expired: "AUTO_CLOSED",
+      waiting: 'WAITING_FOR_ANSWER',
+      pending: 'WAITING_FOR_ANSWER',
+      answered: 'ANSWERED',
+      replied: 'ANSWERED',
+      rejected: 'REJECTED',
+      closed: 'AUTO_CLOSED',
+      expired: 'AUTO_CLOSED'
     };
 
     return statusMapping[status.toLowerCase()] || status.toUpperCase();
@@ -502,20 +502,20 @@ class N11QuestionService {
    * Generate a hash for question similarity detection
    */
   generateQuestionHash(questionText) {
-    if (!questionText) return "";
+    if (!questionText) {return '';}
 
     // Normalize text: lowercase, remove punctuation, sort words
     const normalizedText = questionText
       .toLowerCase()
-      .replace(/[^\w\s]/g, " ")
-      .replace(/\s+/g, " ")
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
       .trim()
-      .split(" ")
+      .split(' ')
       .filter((word) => word.length > 2) // Remove very short words
       .sort()
-      .join(" ");
+      .join(' ');
 
-    return crypto.createHash("md5").update(normalizedText).digest("hex");
+    return crypto.createHash('md5').update(normalizedText).digest('hex');
   }
 
   /**
@@ -529,28 +529,28 @@ class N11QuestionService {
         waiting_for_answer: 0,
         answered: 0,
         rejected: 0,
-        auto_closed: 0,
+        auto_closed: 0
       };
 
       try {
         const response = await this.getQuestions({
           startDate,
           endDate,
-          size: 1,
+          size: 1
         });
         if (response.pagination) {
           stats.total_questions = response.pagination.totalElements;
         }
       } catch (error) {
         debug(
-          "Could not fetch N11 questions stats, returning zeros:",
+          'Could not fetch N11 questions stats, returning zeros:',
           error.message
         );
       }
 
       return stats;
     } catch (error) {
-      debug("Error getting questions stats from N11:", error.message);
+      debug('Error getting questions stats from N11:', error.message);
       throw error;
     }
   }
@@ -564,14 +564,14 @@ class N11QuestionService {
       const response = await this.getQuestions({ size: 1 });
       return {
         success: true,
-        message: "N11 API connection successful",
-        data: response,
+        message: 'N11 API connection successful',
+        data: response
       };
     } catch (error) {
       return {
         success: false,
         message: `N11 API connection failed: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -580,16 +580,16 @@ class N11QuestionService {
    * Escape XML special characters
    */
   escapeXml(unsafe) {
-    if (typeof unsafe !== "string") {
+    if (typeof unsafe !== 'string') {
       return unsafe;
     }
 
     return unsafe
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   /**
@@ -597,13 +597,13 @@ class N11QuestionService {
    */
   parseSaveProductAnswerResponse(xmlData) {
     try {
-      debug("Parsing SaveProductAnswer response:", xmlData);
+      debug('Parsing SaveProductAnswer response:', xmlData);
 
       // Check for success status in the response
-      if (xmlData.includes("<status>success</status>")) {
+      if (xmlData.includes('<status>success</status>')) {
         return {
           success: true,
-          status: "success",
+          status: 'success'
         };
       }
 
@@ -612,36 +612,36 @@ class N11QuestionService {
       if (errorMatch) {
         return {
           success: false,
-          error: errorMatch[1],
+          error: errorMatch[1]
         };
       }
 
       // Check for fault/error in SOAP envelope
-      if (xmlData.includes("soap:Fault") || xmlData.includes("faultstring")) {
+      if (xmlData.includes('soap:Fault') || xmlData.includes('faultstring')) {
         const faultMatch = xmlData.match(/<faultstring>(.*?)<\/faultstring>/);
         return {
           success: false,
-          error: faultMatch ? faultMatch[1] : "SOAP Fault occurred",
+          error: faultMatch ? faultMatch[1] : 'SOAP Fault occurred'
         };
       }
 
       // If we can't determine status, consider it successful if no obvious errors
-      if (!xmlData.includes("error") && !xmlData.includes("fault")) {
+      if (!xmlData.includes('error') && !xmlData.includes('fault')) {
         return {
           success: true,
-          status: "completed",
+          status: 'completed'
         };
       }
 
       return {
         success: false,
-        error: "Unknown response format",
+        error: 'Unknown response format'
       };
     } catch (error) {
-      debug("Error parsing SaveProductAnswer response:", error.message);
+      debug('Error parsing SaveProductAnswer response:', error.message);
       return {
         success: false,
-        error: `Response parsing failed: ${error.message}`,
+        error: `Response parsing failed: ${error.message}`
       };
     }
   }
@@ -652,31 +652,31 @@ class N11QuestionService {
    */
   parseQuestionDetailResponse(xmlData) {
     try {
-      const xml2js = require("xml2js");
+      const xml2js = require('xml2js');
       const parser = new xml2js.Parser({ explicitArray: false });
 
       return new Promise((resolve, reject) => {
         parser.parseString(xmlData, (err, result) => {
           if (err) {
-            debug("Error parsing N11 question detail SOAP response:", err);
+            debug('Error parsing N11 question detail SOAP response:', err);
             resolve(null);
             return;
           }
 
           try {
             const envelope =
-              result["env:Envelope"] ||
-              result["soap:Envelope"] ||
+              result['env:Envelope'] ||
+              result['soap:Envelope'] ||
               result.Envelope;
             const body =
-              envelope["env:Body"] || envelope["soap:Body"] || envelope.Body;
+              envelope['env:Body'] || envelope['soap:Body'] || envelope.Body;
             const response =
-              body["ns3:GetProductQuestionDetailResponse"] ||
+              body['ns3:GetProductQuestionDetailResponse'] ||
               body.GetProductQuestionDetailResponse;
 
-            if (!response || response.result?.status !== "success") {
+            if (!response || response.result?.status !== 'success') {
               debug(
-                "N11 question detail API returned unsuccessful response:",
+                'N11 question detail API returned unsuccessful response:',
                 response?.result
               );
               resolve(null);
@@ -691,11 +691,11 @@ class N11QuestionService {
 
             // Normalize the detailed question data according to N11 API response format
             const normalizedQuestion = {
-              platform: "n11",
+              platform: 'n11',
               platform_question_id: questionData.id?.toString(),
-              customer_name: questionData.fullName || "N11 Customer",
+              customer_name: questionData.fullName || 'N11 Customer',
               customer_email: questionData.email,
-              question_text: questionData.question || "",
+              question_text: questionData.question || '',
               status: this.mapN11Status(questionData.status),
               product_name: questionData.productTitle,
               product_id: questionData.productId?.toString(),
@@ -710,19 +710,19 @@ class N11QuestionService {
               seller_expose: questionData.sellerExpose,
               raw_data: questionData,
               question_hash: this.generateQuestionHash(
-                questionData.question || ""
-              ),
+                questionData.question || ''
+              )
             };
 
             resolve(normalizedQuestion);
           } catch (parseError) {
-            debug("Error processing N11 question detail response:", parseError);
+            debug('Error processing N11 question detail response:', parseError);
             resolve(null);
           }
         });
       });
     } catch (error) {
-      debug("Error in parseQuestionDetailResponse:", error);
+      debug('Error in parseQuestionDetailResponse:', error);
       return null;
     }
   }

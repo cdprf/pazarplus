@@ -1,139 +1,139 @@
-const { DataTypes } = require("sequelize");
+const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
   const InventoryMovement = sequelize.define(
-    "InventoryMovement",
+    'InventoryMovement',
     {
       id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
-        primaryKey: true,
+        primaryKey: true
       },
       productId: {
         type: DataTypes.UUID,
         allowNull: true,
         references: {
-          model: "products",
-          key: "id",
-        },
+          model: 'products',
+          key: 'id'
+        }
       },
       variantId: {
         type: DataTypes.UUID,
         allowNull: true,
         references: {
-          model: "product_variants",
-          key: "id",
-        },
+          model: 'product_variants',
+          key: 'id'
+        }
       },
       sku: {
         type: DataTypes.STRING(100),
         allowNull: false,
-        comment: "SKU at the time of movement",
+        comment: 'SKU at the time of movement'
       },
       movementType: {
         type: DataTypes.ENUM(
-          "IN_STOCK", // Initial stock entry
-          "PURCHASE", // Stock purchased/received
-          "SALE", // Stock sold
-          "ADJUSTMENT", // Manual adjustment
-          "RETURN", // Product returned
-          "DAMAGE", // Damaged/lost stock
-          "TRANSFER", // Transferred between locations
-          "SYNC_UPDATE", // Updated from platform sync
-          "RESERVATION", // Stock reserved for order
-          "RELEASE" // Reserved stock released
+          'IN_STOCK', // Initial stock entry
+          'PURCHASE', // Stock purchased/received
+          'SALE', // Stock sold
+          'ADJUSTMENT', // Manual adjustment
+          'RETURN', // Product returned
+          'DAMAGE', // Damaged/lost stock
+          'TRANSFER', // Transferred between locations
+          'SYNC_UPDATE', // Updated from platform sync
+          'RESERVATION', // Stock reserved for order
+          'RELEASE' // Reserved stock released
         ),
-        allowNull: false,
+        allowNull: false
       },
       quantity: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        comment: "Positive for increases, negative for decreases",
+        comment: 'Positive for increases, negative for decreases'
       },
       previousQuantity: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: false
       },
       newQuantity: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: false
       },
       reason: {
         type: DataTypes.TEXT,
-        allowNull: true,
+        allowNull: true
       },
       referenceId: {
         type: DataTypes.STRING,
         allowNull: true,
-        comment: "Reference to order, purchase, etc.",
+        comment: 'Reference to order, purchase, etc.'
       },
       referenceType: {
         type: DataTypes.STRING,
         allowNull: true,
-        comment: "Type of reference (order, purchase, etc.)",
+        comment: 'Type of reference (order, purchase, etc.)'
       },
       userId: {
         type: DataTypes.UUID,
         allowNull: false,
         references: {
-          model: "users",
-          key: "id",
-        },
+          model: 'users',
+          key: 'id'
+        }
       },
       platformType: {
         type: DataTypes.STRING,
         allowNull: true,
-        comment: "Platform that triggered the movement",
+        comment: 'Platform that triggered the movement'
       },
       metadata: {
         type: DataTypes.JSON,
         allowNull: true,
         defaultValue: {},
-        comment: "Additional movement metadata",
-      },
+        comment: 'Additional movement metadata'
+      }
     },
     {
-      tableName: "inventory_movements",
+      tableName: 'inventory_movements',
       indexes: [
         {
-          fields: ["productId"],
+          fields: ['productId']
         },
         {
-          fields: ["variantId"],
+          fields: ['variantId']
         },
         {
-          fields: ["sku"],
+          fields: ['sku']
         },
         {
-          fields: ["movementType"],
+          fields: ['movementType']
         },
         {
-          fields: ["userId"],
+          fields: ['userId']
         },
         {
-          fields: ["createdAt"],
+          fields: ['createdAt']
         },
         {
-          fields: ["referenceId", "referenceType"],
-        },
-      ],
+          fields: ['referenceId', 'referenceType']
+        }
+      ]
     }
   );
 
   InventoryMovement.associate = function (models) {
     InventoryMovement.belongsTo(models.Product, {
-      foreignKey: "productId",
-      as: "product",
+      foreignKey: 'productId',
+      as: 'product'
     });
 
     InventoryMovement.belongsTo(models.ProductVariant, {
-      foreignKey: "variantId",
-      as: "variant",
+      foreignKey: 'variantId',
+      as: 'variant'
     });
 
     InventoryMovement.belongsTo(models.User, {
-      foreignKey: "userId",
-      as: "user",
+      foreignKey: 'userId',
+      as: 'user'
     });
   };
 

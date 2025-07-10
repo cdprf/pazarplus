@@ -1,17 +1,17 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const analyticsController = require("../controllers/analytics-controller");
-const { auth } = require("../middleware/auth"); // Fixed: destructure auth from middleware
-const rateLimit = require("express-rate-limit");
-const analyticsPerformanceMiddleware = require("../middleware/analyticsPerformance");
+const analyticsController = require('../controllers/analytics-controller');
+const { auth } = require('../middleware/auth'); // Fixed: destructure auth from middleware
+const rateLimit = require('express-rate-limit');
+const analyticsPerformanceMiddleware = require('../middleware/analyticsPerformance');
 
 // Rate limiting for analytics endpoints
 const analyticsRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
-  message: "Too many analytics requests, please try again later.",
+  message: 'Too many analytics requests, please try again later.',
   standardHeaders: true,
-  legacyHeaders: false,
+  legacyHeaders: false
 });
 
 // Apply middleware to all routes
@@ -77,7 +77,7 @@ router.use(analyticsPerformanceMiddleware);
  *         description: Server error
  */
 router.get(
-  "/dashboard",
+  '/dashboard',
   analyticsController.getDashboardAnalytics.bind(analyticsController)
 );
 
@@ -105,7 +105,7 @@ router.get(
  *         description: Server error
  */
 router.get(
-  "/business-intelligence",
+  '/business-intelligence',
   analyticsController.getBusinessIntelligence.bind(analyticsController)
 );
 
@@ -138,7 +138,7 @@ router.get(
  *         description: Server error
  */
 router.get(
-  "/revenue",
+  '/revenue',
   analyticsController.getRevenueAnalytics.bind(analyticsController)
 );
 
@@ -165,7 +165,7 @@ router.get(
  *         description: Server error
  */
 router.get(
-  "/platform-performance",
+  '/platform-performance',
   analyticsController.getPlatformPerformance.bind(analyticsController)
 );
 
@@ -192,7 +192,7 @@ router.get(
  *         description: Server error
  */
 router.get(
-  "/inventory-insights",
+  '/inventory-insights',
   analyticsController.getInventoryInsights.bind(analyticsController)
 );
 
@@ -219,7 +219,7 @@ router.get(
  *         description: Server error
  */
 router.get(
-  "/market-analysis",
+  '/market-analysis',
   analyticsController.getMarketAnalysis.bind(analyticsController)
 );
 
@@ -240,7 +240,7 @@ router.get(
  *         description: Server error
  */
 router.get(
-  "/realtime",
+  '/realtime',
   analyticsController.getRealtimeUpdates.bind(analyticsController)
 );
 
@@ -273,7 +273,7 @@ router.get(
  *         description: Server error
  */
 router.get(
-  "/export",
+  '/export',
   analyticsController.exportAnalyticsData.bind(analyticsController)
 );
 
@@ -306,7 +306,7 @@ router.get(
  *         description: Server error
  */
 router.get(
-  "/products",
+  '/products',
   analyticsController.getProductAnalytics.bind(analyticsController)
 );
 
@@ -339,7 +339,7 @@ router.get(
  *         description: Server error
  */
 router.get(
-  "/products/performance",
+  '/products/performance',
   analyticsController.getProductPerformanceComparison.bind(analyticsController)
 );
 
@@ -371,7 +371,7 @@ router.get(
  *         description: Server error
  */
 router.get(
-  "/products/insights",
+  '/products/insights',
   analyticsController.getProductInsights.bind(analyticsController)
 );
 
@@ -398,7 +398,7 @@ router.get(
  *         description: Server error
  */
 router.get(
-  "/products/realtime",
+  '/products/realtime',
   analyticsController.getRealtimeProductMetrics.bind(analyticsController)
 );
 
@@ -425,7 +425,7 @@ router.get(
  *       500:
  *         description: Server error
  */
-router.get("/trends", analyticsController.getTrends.bind(analyticsController));
+router.get('/trends', analyticsController.getTrends.bind(analyticsController));
 
 /**
  * @swagger
@@ -451,7 +451,7 @@ router.get("/trends", analyticsController.getTrends.bind(analyticsController));
  *         description: Server error
  */
 router.get(
-  "/accurate",
+  '/accurate',
   analyticsController.getAccurateAnalytics.bind(analyticsController)
 );
 
@@ -477,7 +477,7 @@ router.get(
  *         description: Customer analytics retrieved successfully
  */
 router.get(
-  "/customer-analytics",
+  '/customer-analytics',
   analyticsController.getCustomerAnalytics.bind(analyticsController)
 );
 
@@ -501,7 +501,7 @@ router.get(
  *         description: Cohort analysis retrieved successfully
  */
 router.get(
-  "/cohort-analysis",
+  '/cohort-analysis',
   analyticsController.getCohortAnalysis.bind(analyticsController)
 );
 
@@ -525,7 +525,7 @@ router.get(
  *         description: Competitive analysis retrieved successfully
  */
 router.get(
-  "/competitive-analysis",
+  '/competitive-analysis',
   analyticsController.getCompetitiveAnalysis.bind(analyticsController)
 );
 
@@ -549,7 +549,7 @@ router.get(
  *         description: Funnel analysis retrieved successfully
  */
 router.get(
-  "/funnel-analysis",
+  '/funnel-analysis',
   analyticsController.getFunnelAnalysis.bind(analyticsController)
 );
 
@@ -566,7 +566,7 @@ router.get(
  *         description: Real-time analytics retrieved successfully
  */
 router.get(
-  "/real-time",
+  '/real-time',
   analyticsController.getRealTimeAnalytics.bind(analyticsController)
 );
 
@@ -590,7 +590,7 @@ router.get(
  *         description: Attribution analysis retrieved successfully
  */
 router.get(
-  "/attribution-analysis",
+  '/attribution-analysis',
   analyticsController.getAttributionAnalysis.bind(analyticsController)
 );
 
@@ -614,7 +614,7 @@ router.get(
  *         description: Anomaly detection results retrieved successfully
  */
 router.get(
-  "/anomaly-detection",
+  '/anomaly-detection',
   analyticsController.getAnomalyDetection.bind(analyticsController)
 );
 
@@ -650,7 +650,7 @@ router.get(
  *         description: Custom report generated successfully
  */
 router.post(
-  "/custom-reports",
+  '/custom-reports',
   analyticsController.generateCustomReport.bind(analyticsController)
 );
 
@@ -686,7 +686,7 @@ router.post(
  *       500:
  *         description: Server error
  */
-router.get("/alerts", analyticsController.getAlerts.bind(analyticsController));
+router.get('/alerts', analyticsController.getAlerts.bind(analyticsController));
 
 /**
  * @swagger
@@ -701,7 +701,7 @@ router.get("/alerts", analyticsController.getAlerts.bind(analyticsController));
  *         description: System health issues detected
  */
 router.get(
-  "/health",
+  '/health',
   analyticsController.healthCheck.bind(analyticsController)
 );
 

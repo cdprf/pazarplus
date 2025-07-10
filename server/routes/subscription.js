@@ -1,7 +1,7 @@
-const express = require("express");
-const subscriptionController = require("../controllers/subscription-controller");
-const { auth } = require("../middleware/auth");
-const { body, query, validationResult } = require("express-validator");
+const express = require('express');
+const subscriptionController = require('../controllers/subscription-controller');
+const { auth } = require('../middleware/auth');
+const { body, query, validationResult } = require('express-validator');
 
 const router = express.Router();
 
@@ -11,8 +11,8 @@ const validateRequest = (req, res, next) => {
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
-      message: "Validation failed",
-      errors: errors.array(),
+      message: 'Validation failed',
+      errors: errors.array()
     });
   }
   next();
@@ -20,36 +20,36 @@ const validateRequest = (req, res, next) => {
 
 // Validation middleware
 const upgradeValidation = [
-  body("planId")
-    .isIn(["starter", "professional", "enterprise"])
-    .withMessage("Invalid plan ID"),
-  body("paymentMethodId")
+  body('planId')
+    .isIn(['starter', 'professional', 'enterprise'])
+    .withMessage('Invalid plan ID'),
+  body('paymentMethodId')
     .optional()
     .isString()
-    .withMessage("Payment method ID must be a string"),
+    .withMessage('Payment method ID must be a string')
 ];
 
 const cancelValidation = [
-  body("reason")
+  body('reason')
     .optional()
     .isString()
     .isLength({ min: 3, max: 500 })
-    .withMessage("Cancellation reason must be between 3 and 500 characters"),
-  body("cancelAtPeriodEnd")
+    .withMessage('Cancellation reason must be between 3 and 500 characters'),
+  body('cancelAtPeriodEnd')
     .optional()
     .isBoolean()
-    .withMessage("cancelAtPeriodEnd must be a boolean"),
+    .withMessage('cancelAtPeriodEnd must be a boolean')
 ];
 
 const paginationValidation = [
-  query("page")
+  query('page')
     .optional()
     .isInt({ min: 1 })
-    .withMessage("Page must be a positive integer"),
-  query("limit")
+    .withMessage('Page must be a positive integer'),
+  query('limit')
     .optional()
     .isInt({ min: 1, max: 100 })
-    .withMessage("Limit must be between 1 and 100"),
+    .withMessage('Limit must be between 1 and 100')
 ];
 
 /**
@@ -62,7 +62,7 @@ const paginationValidation = [
  *       200:
  *         description: List of available subscription plans
  */
-router.get("/plans", subscriptionController.getPlans);
+router.get('/plans', subscriptionController.getPlans);
 
 /**
  * @swagger
@@ -78,7 +78,7 @@ router.get("/plans", subscriptionController.getPlans);
  *       404:
  *         description: No active subscription found
  */
-router.get("/current", auth, subscriptionController.getCurrentSubscription);
+router.get('/current', auth, subscriptionController.getCurrentSubscription);
 
 /**
  * @swagger
@@ -94,7 +94,7 @@ router.get("/current", auth, subscriptionController.getCurrentSubscription);
  *       400:
  *         description: User already has a subscription
  */
-router.post("/trial", auth, subscriptionController.startTrial);
+router.post('/trial', auth, subscriptionController.startTrial);
 
 /**
  * @swagger
@@ -125,7 +125,7 @@ router.post("/trial", auth, subscriptionController.startTrial);
  *         description: Invalid plan or payment failed
  */
 router.post(
-  "/upgrade",
+  '/upgrade',
   auth,
   upgradeValidation,
   validateRequest,
@@ -159,7 +159,7 @@ router.post(
  *         description: No active subscription found
  */
 router.post(
-  "/cancel",
+  '/cancel',
   auth,
   cancelValidation,
   validateRequest,
@@ -193,7 +193,7 @@ router.post(
  *         description: Billing history retrieved successfully
  */
 router.get(
-  "/billing-history",
+  '/billing-history',
   auth,
   paginationValidation,
   validateRequest,

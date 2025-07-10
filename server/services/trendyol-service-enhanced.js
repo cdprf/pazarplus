@@ -1,11 +1,11 @@
 // Safe import with fallback for missing dependencies
 let CircuitBreaker;
 try {
-  CircuitBreaker = require("opossum");
+  CircuitBreaker = require('opossum');
 } catch (error) {
-  console.warn("opossum not available, circuit breaker disabled");
+  console.warn('opossum not available, circuit breaker disabled');
   // Fallback circuit breaker that just passes through
-  CircuitBreaker = function(fn) {
+  CircuitBreaker = function (fn) {
     const breaker = {
       fire: fn,
       on: () => {},
@@ -18,30 +18,30 @@ try {
 // Safe import with fallback for missing dependencies
 let pRetry;
 try {
-  pRetry = require("p-retry");
+  pRetry = require('p-retry');
 } catch (error) {
-  console.warn("p-retry not available, using simple retry");
+  console.warn('p-retry not available, using simple retry');
   // Simple fallback retry function
-  pRetry = async function(fn, options = {}) {
+  pRetry = async function (fn, options = {}) {
     const maxRetries = options.retries || 3;
     for (let i = 0; i <= maxRetries; i++) {
       try {
         return await fn();
       } catch (error) {
-        if (i === maxRetries) throw error;
-        await new Promise(resolve => setTimeout(resolve, 1000 * i));
+        if (i === maxRetries) {throw error;}
+        await new Promise((resolve) => setTimeout(resolve, 1000 * i));
       }
     }
   };
 }
-// Safe import with fallback for missing dependencies  
+// Safe import with fallback for missing dependencies
 let Bottleneck;
 try {
-  Bottleneck = require("bottleneck");
+  Bottleneck = require('bottleneck');
 } catch (error) {
-  console.warn("bottleneck not available, rate limiting disabled");
+  console.warn('bottleneck not available, rate limiting disabled');
   // Simple fallback that doesn't rate limit
-  Bottleneck = function(options) {
+  Bottleneck = function (options) {
     return {
       schedule: (fn, ...args) => fn(...args),
       stop: () => {},
@@ -49,11 +49,11 @@ try {
     };
   };
 }
-const axios = require("axios");
-const EventEmitter = require("events");
-const logger = require("../utils/logger");
-const { TurkishComplianceService } = require("./turkishComplianceService");
-const { mapOrderStatus } = require("../utils/enum-validators");
+const axios = require('axios');
+const EventEmitter = require('events');
+const logger = require('../utils/logger');
+const { TurkishComplianceService } = require('./turkishComplianceService');
+const { mapOrderStatus } = require('../utils/enum-validators');
 
 /**
  * Enhanced Trendyol Integration Service
@@ -73,7 +73,7 @@ class EnhancedTrendyolService extends EventEmitter {
     this.userId = connectionData.userId;
     this.credentials = connectionData.credentials;
     this.settings = connectionData.settings || {};
-    this.platformType = "trendyol";
+    this.platformType = 'trendyol';
 
     // Initialize compliance service
     this.complianceService = new TurkishComplianceService();
@@ -84,7 +84,7 @@ class EnhancedTrendyolService extends EventEmitter {
       minTime: 600, // 600ms between requests (100 req/min)
       reservoir: 100, // 100 requests
       reservoirRefreshAmount: 100,
-      reservoirRefreshInterval: 60 * 1000, // Refresh every minute
+      reservoirRefreshInterval: 60 * 1000 // Refresh every minute
     });
 
     // Configure retry policy
@@ -98,9 +98,9 @@ class EnhancedTrendyolService extends EventEmitter {
         logger.warn(`Trendyol API retry attempt ${attempt}:`, {
           error: error.message,
           connectionId: this.connectionId,
-          attempt,
+          attempt
         });
-      },
+      }
     };
 
     // Configure circuit breaker
@@ -111,7 +111,7 @@ class EnhancedTrendyolService extends EventEmitter {
       rollingCountTimeout: 10000, // 10 second rolling window
       rollingCountBuckets: 10,
       name: `trendyol-${this.connectionId}`,
-      group: "trendyol-apis",
+      group: 'trendyol-apis'
     };
 
     this.setupAxiosInstance();
@@ -127,8 +127,8 @@ class EnhancedTrendyolService extends EventEmitter {
         ordersCreated: 0,
         ordersUpdated: 0,
         ordersFailed: 0,
-        complianceProcessed: 0,
-      },
+        complianceProcessed: 0
+      }
     };
 
     logger.info(
@@ -139,16 +139,16 @@ class EnhancedTrendyolService extends EventEmitter {
   setupAxiosInstance() {
     const authString = Buffer.from(
       `${this.credentials.apiKey}:${this.credentials.apiSecret}`
-    ).toString("base64");
+    ).toString('base64');
 
     this.axios = axios.create({
-      baseURL: "https://api.trendyol.com/sapigw",
+      baseURL: 'https://api.trendyol.com/sapigw',
       headers: {
         Authorization: `Basic ${authString}`,
-        "Content-Type": "application/json",
-        "User-Agent": `${this.credentials.supplierId} - SelfIntegration`,
+        'Content-Type': 'application/json',
+        'User-Agent': `${this.credentials.supplierId} - SelfIntegration`
       },
-      timeout: 30000,
+      timeout: 30000
     });
 
     // Request interceptor for logging
@@ -157,7 +157,7 @@ class EnhancedTrendyolService extends EventEmitter {
         `Trendyol API Request: ${config.method?.toUpperCase()} ${config.url}`,
         {
           connectionId: this.connectionId,
-          params: config.params,
+          params: config.params
         }
       );
       return config;
@@ -172,10 +172,10 @@ class EnhancedTrendyolService extends EventEmitter {
           method: error.config?.method,
           status: error.response?.status,
           data: error.response?.data,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         };
 
-        logger.error("Trendyol API Error:", errorInfo);
+        logger.error('Trendyol API Error:', errorInfo);
         return Promise.reject(error);
       }
     );
@@ -204,27 +204,27 @@ class EnhancedTrendyolService extends EventEmitter {
     [
       this.ordersCircuit,
       this.productsCircuit,
-      this.orderDetailsCircuit,
+      this.orderDetailsCircuit
     ].forEach((circuit) => {
-      circuit.on("open", () => {
+      circuit.on('open', () => {
         logger.warn(`Circuit breaker OPEN for ${circuit.name}`, {
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         });
-        this.emit("circuitOpen", {
+        this.emit('circuitOpen', {
           circuit: circuit.name,
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         });
       });
 
-      circuit.on("halfOpen", () => {
+      circuit.on('halfOpen', () => {
         logger.info(`Circuit breaker HALF-OPEN for ${circuit.name}`, {
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         });
       });
 
-      circuit.on("close", () => {
+      circuit.on('close', () => {
         logger.info(`Circuit breaker CLOSED for ${circuit.name}`, {
-          connectionId: this.connectionId,
+          connectionId: this.connectionId
         });
       });
     });
@@ -234,7 +234,7 @@ class EnhancedTrendyolService extends EventEmitter {
   async makeOrdersRequest(params) {
     return this.rateLimiter.schedule(() =>
       this.axios.get(`/suppliers/${this.credentials.supplierId}/orders`, {
-        params,
+        params
       })
     );
   }
@@ -242,7 +242,7 @@ class EnhancedTrendyolService extends EventEmitter {
   async makeProductsRequest(params) {
     return this.rateLimiter.schedule(() =>
       this.axios.get(`/suppliers/${this.credentials.supplierId}/products`, {
-        params,
+        params
       })
     );
   }
@@ -258,7 +258,7 @@ class EnhancedTrendyolService extends EventEmitter {
   // Enhanced sync methods with retry logic
   async syncOrders(options = {}) {
     if (this.syncState.isRunning) {
-      throw new Error("Sync already in progress");
+      throw new Error('Sync already in progress');
     }
 
     this.syncState.isRunning = true;
@@ -276,7 +276,7 @@ class EnhancedTrendyolService extends EventEmitter {
         endDate: options.endDate || new Date().getTime(),
         page: 0,
         size: options.pageSize || 50,
-        ...options.params,
+        ...options.params
       };
 
       let allOrders = [];
@@ -288,7 +288,7 @@ class EnhancedTrendyolService extends EventEmitter {
           const pageResult = await pRetry(async () => {
             const response = await this.ordersCircuit.fire({
               ...params,
-              page: currentPage,
+              page: currentPage
             });
             return response.data;
           }, this.retryPolicy);
@@ -307,17 +307,17 @@ class EnhancedTrendyolService extends EventEmitter {
           currentPage++;
 
           // Emit progress event
-          this.emit("syncProgress", {
+          this.emit('syncProgress', {
             page: currentPage,
             totalPages: pageResult.totalPages,
-            ordersProcessed: this.syncState.stats.ordersProcessed,
+            ordersProcessed: this.syncState.stats.ordersProcessed
           });
         } catch (error) {
           logger.error(`Failed to fetch page ${currentPage}:`, error);
           this.syncState.errors.push({
             page: currentPage,
             error: error.message,
-            timestamp: new Date(),
+            timestamp: new Date()
           });
 
           if (options.stopOnPageError) {
@@ -332,26 +332,26 @@ class EnhancedTrendyolService extends EventEmitter {
       const processResult = await this.processOrders(allOrders, options);
 
       this.syncState.lastSync = new Date();
-      this.emit("syncComplete", {
+      this.emit('syncComplete', {
         ordersProcessed: allOrders.length,
         ...processResult,
-        connectionId: this.connectionId,
+        connectionId: this.connectionId
       });
 
       return {
         success: true,
         ordersProcessed: allOrders.length,
         ...processResult,
-        errors: this.syncState.errors,
+        errors: this.syncState.errors
       };
     } catch (error) {
       logger.error(
         `Orders sync failed for connection ${this.connectionId}:`,
         error
       );
-      this.emit("syncError", {
+      this.emit('syncError', {
         error: error.message,
-        connectionId: this.connectionId,
+        connectionId: this.connectionId
       });
       throw error;
     } finally {
@@ -361,8 +361,8 @@ class EnhancedTrendyolService extends EventEmitter {
 
   // Enhanced order processing with compliance integration
   async processOrders(orders, options = {}) {
-    const { Order, OrderItem, ShippingDetail } = require("../models");
-    const { sequelize } = require("../config/database");
+    const { Order, OrderItem, ShippingDetail } = require('../models');
+    const { sequelize } = require('../config/database');
 
     let created = 0;
     let updated = 0;
@@ -377,9 +377,9 @@ class EnhancedTrendyolService extends EventEmitter {
         const existingOrder = await Order.findOne({
           where: {
             externalOrderId: trendyolOrder.orderNumber,
-            connectionId: this.connectionId,
+            connectionId: this.connectionId
           },
-          transaction,
+          transaction
         });
 
         if (existingOrder) {
@@ -427,7 +427,7 @@ class EnhancedTrendyolService extends EventEmitter {
         this.syncState.errors.push({
           orderNumber: trendyolOrder.orderNumber,
           error: error.message,
-          timestamp: new Date(),
+          timestamp: new Date()
         });
       }
     }
@@ -436,20 +436,20 @@ class EnhancedTrendyolService extends EventEmitter {
   }
 
   async createNewOrder(trendyolOrder, transaction) {
-    const { Order, OrderItem, ShippingDetail } = require("../models");
+    const { Order, OrderItem, ShippingDetail } = require('../models');
 
     // Create shipping detail
     const shippingDetail = await ShippingDetail.create(
       {
-        recipientName: trendyolOrder.shipmentAddress?.fullName || "Unknown",
-        address1: trendyolOrder.shipmentAddress?.address1 || "",
-        address2: trendyolOrder.shipmentAddress?.address2 || "",
-        city: trendyolOrder.shipmentAddress?.city || "",
-        state: trendyolOrder.shipmentAddress?.district || "",
-        postalCode: trendyolOrder.shipmentAddress?.postalCode || "",
-        country: "TR",
-        phone: trendyolOrder.shipmentAddress?.phone || "",
-        email: trendyolOrder.customerEmail || "",
+        recipientName: trendyolOrder.shipmentAddress?.fullName || 'Unknown',
+        address1: trendyolOrder.shipmentAddress?.address1 || '',
+        address2: trendyolOrder.shipmentAddress?.address2 || '',
+        city: trendyolOrder.shipmentAddress?.city || '',
+        state: trendyolOrder.shipmentAddress?.district || '',
+        postalCode: trendyolOrder.shipmentAddress?.postalCode || '',
+        country: 'TR',
+        phone: trendyolOrder.shipmentAddress?.phone || '',
+        email: trendyolOrder.customerEmail || ''
       },
       { transaction }
     );
@@ -461,8 +461,8 @@ class EnhancedTrendyolService extends EventEmitter {
         orderNumber: trendyolOrder.orderNumber,
         connectionId: this.connectionId,
         userId: this.userId,
-        customerName: `${trendyolOrder.customerFirstName || ""} ${
-          trendyolOrder.customerLastName || ""
+        customerName: `${trendyolOrder.customerFirstName || ''} ${
+          trendyolOrder.customerLastName || ''
         }`.trim(),
         customerEmail: trendyolOrder.customerEmail,
         customerPhone: trendyolOrder.shipmentAddress?.phone,
@@ -471,16 +471,16 @@ class EnhancedTrendyolService extends EventEmitter {
           trendyolOrder.shipmentPackageStatus || trendyolOrder.status
         ),
         totalAmount: trendyolOrder.totalPrice || 0,
-        currency: "TRY",
+        currency: 'TRY',
         shippingDetailId: shippingDetail.id,
         cargoTrackingNumber: trendyolOrder.cargoTrackingNumber
           ? this.preserveCargoTrackingNumber(trendyolOrder.cargoTrackingNumber)
           : null,
         cargoTrackingLink: trendyolOrder.cargoTrackingLink || null,
         cargoCompany: trendyolOrder.cargoProviderName || null,
-        notes: trendyolOrder.note || "",
+        notes: trendyolOrder.note || '',
         rawData: JSON.stringify(trendyolOrder),
-        lastSyncedAt: new Date(),
+        lastSyncedAt: new Date()
       },
       { transaction }
     );
@@ -493,16 +493,16 @@ class EnhancedTrendyolService extends EventEmitter {
             orderId: order.id,
             platformProductId:
               item.productId?.toString() || item.productCode?.toString(),
-            title: item.productName || "Unknown Product",
+            title: item.productName || 'Unknown Product',
             sku: item.merchantSku,
             quantity: item.quantity || 1,
             price: item.price || 0,
-            currency: "TRY",
+            currency: 'TRY',
             barcode: item.barcode,
             variantInfo: item.variantFeatures
               ? JSON.stringify(item.variantFeatures)
               : null,
-            rawData: JSON.stringify(item),
+            rawData: JSON.stringify(item)
           },
           { transaction }
         );
@@ -519,7 +519,7 @@ class EnhancedTrendyolService extends EventEmitter {
           trendyolOrder.shipmentPackageStatus || trendyolOrder.status
         ),
         rawData: JSON.stringify(trendyolOrder),
-        lastSyncedAt: new Date(),
+        lastSyncedAt: new Date()
       },
       { transaction }
     );
@@ -538,19 +538,19 @@ class EnhancedTrendyolService extends EventEmitter {
           orderId: trendyolOrder.orderNumber,
           customerType: this.determineCustomerType(trendyolOrder),
           customerInfo: {
-            name: `${trendyolOrder.customerFirstName || ""} ${
-              trendyolOrder.customerLastName || ""
+            name: `${trendyolOrder.customerFirstName || ''} ${
+              trendyolOrder.customerLastName || ''
             }`.trim(),
             email: trendyolOrder.customerEmail,
             phone: trendyolOrder.shipmentAddress?.phone,
-            address: trendyolOrder.shipmentAddress,
+            address: trendyolOrder.shipmentAddress
           },
           orderData: {
             items: trendyolOrder.lines,
             totalAmount: trendyolOrder.totalPrice,
-            currency: "TRY",
-            orderDate: new Date(trendyolOrder.orderDate),
-          },
+            currency: 'TRY',
+            orderDate: new Date(trendyolOrder.orderDate)
+          }
         };
 
         // Initialize compliance processing
@@ -578,10 +578,10 @@ class EnhancedTrendyolService extends EventEmitter {
   hasRegulatedProducts(lines = []) {
     // Check if order contains regulated products (electronics, cosmetics, etc.)
     const regulatedCategories = [
-      "Electronics",
-      "Cosmetics",
-      "Health",
-      "Automotive",
+      'Electronics',
+      'Cosmetics',
+      'Health',
+      'Automotive'
     ];
     return lines.some((line) =>
       regulatedCategories.some((category) =>
@@ -594,33 +594,33 @@ class EnhancedTrendyolService extends EventEmitter {
     // Determine if customer is individual or company based on tax number
     const taxNumber = trendyolOrder.taxNumber;
     if (taxNumber && taxNumber.length === 10) {
-      return "COMPANY"; // VKN is 10 digits
+      return 'COMPANY'; // VKN is 10 digits
     }
-    return "INDIVIDUAL";
+    return 'INDIVIDUAL';
   }
 
   mapOrderStatus(trendyolStatus) {
     const statusMap = {
       // Trendyol Order Statuses
-      Awaiting: "new",
-      Created: "new",
-      ReadyToShip: "processing",
-      Picking: "processing",
-      Invoiced: "processing",
-      Shipped: "shipped",
-      InTransit: "in_transit",
-      AtCollectionPoint: "shipped", // Package available for pickup
-      Delivered: "delivered",
-      Cancelled: "cancelled",
-      UnDelivered: "failed",
-      Returned: "returned",
-      Refunded: "refunded",
+      Awaiting: 'new',
+      Created: 'new',
+      ReadyToShip: 'processing',
+      Picking: 'processing',
+      Invoiced: 'processing',
+      Shipped: 'shipped',
+      InTransit: 'in_transit',
+      AtCollectionPoint: 'shipped', // Package available for pickup
+      Delivered: 'delivered',
+      Cancelled: 'cancelled',
+      UnDelivered: 'failed',
+      Returned: 'returned',
+      Refunded: 'refunded',
       // Additional shipment package statuses
-      Processing: "processing",
-      InProcess: "processing",
-      ReadyForShipping: "processing",
-      OnTheWay: "in_transit",
-      DeliveredToCustomer: "delivered",
+      Processing: 'processing',
+      InProcess: 'processing',
+      ReadyForShipping: 'processing',
+      OnTheWay: 'in_transit',
+      DeliveredToCustomer: 'delivered'
     };
 
     const mappedStatus = statusMap[trendyolStatus];
@@ -630,31 +630,31 @@ class EnhancedTrendyolService extends EventEmitter {
       console.warn(
         `Unknown Trendyol order status encountered: ${trendyolStatus}`,
         {
-          platformType: "trendyol",
+          platformType: 'trendyol',
           connectionId: this.connectionId,
-          unmappedStatus: trendyolStatus,
+          unmappedStatus: trendyolStatus
         }
       );
 
       // Use centralized mapping utility as fallback
-      return mapOrderStatus(trendyolStatus, "trendyol");
+      return mapOrderStatus(trendyolStatus, 'trendyol');
     }
 
     // Validate the mapped status through centralized utility
-    return mapOrderStatus(mappedStatus || trendyolStatus, "trendyol");
+    return mapOrderStatus(mappedStatus || trendyolStatus, 'trendyol');
   }
 
   // Preserve cargo tracking number as string to avoid scientific notation
   preserveCargoTrackingNumber(cargoTrackingNumber) {
-    if (!cargoTrackingNumber) return null;
+    if (!cargoTrackingNumber) {return null;}
 
     // If it's already a string, return as-is
-    if (typeof cargoTrackingNumber === "string") {
+    if (typeof cargoTrackingNumber === 'string') {
       return cargoTrackingNumber;
     }
 
     // If it's a number, check if it's in scientific notation
-    if (typeof cargoTrackingNumber === "number") {
+    if (typeof cargoTrackingNumber === 'number') {
       // Convert to string using toFixed to avoid scientific notation
       if (cargoTrackingNumber > 1e15 || cargoTrackingNumber < -1e15) {
         return cargoTrackingNumber.toFixed(0);
@@ -680,7 +680,7 @@ class EnhancedTrendyolService extends EventEmitter {
           startDate: new Date(Date.now() - interval - 60000).getTime(), // Slight overlap
           processCompliance: true,
           stopOnPageError: false,
-          maxPages: 5, // Limit for real-time sync
+          maxPages: 5 // Limit for real-time sync
         });
       } catch (error) {
         logger.error(
@@ -690,9 +690,9 @@ class EnhancedTrendyolService extends EventEmitter {
       }
     }, interval);
 
-    this.emit("realTimeSyncStarted", {
+    this.emit('realTimeSyncStarted', {
       connectionId: this.connectionId,
-      interval,
+      interval
     });
   }
 
@@ -700,7 +700,7 @@ class EnhancedTrendyolService extends EventEmitter {
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
       this.syncInterval = null;
-      this.emit("realTimeSyncStopped", { connectionId: this.connectionId });
+      this.emit('realTimeSyncStopped', { connectionId: this.connectionId });
       logger.info(`Real-time sync stopped for connection ${this.connectionId}`);
     }
   }
@@ -719,8 +719,8 @@ class EnhancedTrendyolService extends EventEmitter {
 
     return {
       resolved: true,
-      strategy: "latest_wins",
-      conflicts: conflictData.length,
+      strategy: 'latest_wins',
+      conflicts: conflictData.length
     };
   }
 
@@ -732,16 +732,16 @@ class EnhancedTrendyolService extends EventEmitter {
       circuitBreakers: {
         orders: this.ordersCircuit.stats,
         products: this.productsCircuit.stats,
-        orderDetails: this.orderDetailsCircuit.stats,
+        orderDetails: this.orderDetailsCircuit.stats
       },
       rateLimiter: {
         running: this.rateLimiter.running(),
         queued: this.rateLimiter.queued(),
-        done: this.rateLimiter.done,
+        done: this.rateLimiter.done
       },
       syncState: this.syncState,
       lastSync: this.syncState.lastSync,
-      isRealTimeSyncActive: !!this.syncInterval,
+      isRealTimeSyncActive: !!this.syncInterval
     };
   }
 
@@ -757,7 +757,7 @@ class EnhancedTrendyolService extends EventEmitter {
     [
       this.ordersCircuit,
       this.productsCircuit,
-      this.orderDetailsCircuit,
+      this.orderDetailsCircuit
     ].forEach((circuit) => {
       if (circuit) {
         circuit.shutdown();

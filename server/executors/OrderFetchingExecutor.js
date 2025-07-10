@@ -1,7 +1,7 @@
-const logger = require("../utils/logger");
-const { Order } = require("../models");
-const sequelize = require("../config/database");
-const { Op } = require("sequelize");
+const logger = require('../utils/logger');
+const { Order } = require('../models');
+const sequelize = require('../config/database');
+const { Op } = require('sequelize');
 
 /**
  * Order Fetching Task Executor
@@ -18,8 +18,8 @@ class OrderFetchingExecutor {
       taskType: task.taskType,
       platformConnectionId: task.platformConnectionId,
       userId: task.userId,
-      executorVersion: "2.0.0",
-      timestamp: new Date().toISOString(),
+      executorVersion: '2.0.0',
+      timestamp: new Date().toISOString()
     };
 
     // Enhanced structured logging function with detailed feedback
@@ -27,10 +27,10 @@ class OrderFetchingExecutor {
       const logData = {
         ...logContext,
         ...additionalData,
-        source: "OrderFetchingExecutor",
-        phase: additionalData.phase || "execution",
+        source: 'OrderFetchingExecutor',
+        phase: additionalData.phase || 'execution',
         timestamp: new Date().toISOString(),
-        elapsed: Date.now() - progressReporter.startTime,
+        elapsed: Date.now() - progressReporter.startTime
       };
 
       // Create detailed message for task logs
@@ -47,9 +47,9 @@ class OrderFetchingExecutor {
       onLog(level, detailedMessage, logData);
 
       // Also log to application logger for debugging
-      if (level === "error") {
+      if (level === 'error') {
         logger.error(`[Task ${task.id}] ${detailedMessage}`, logData);
-      } else if (level === "warn") {
+      } else if (level === 'warn') {
         logger.warn(`[Task ${task.id}] ${detailedMessage}`, logData);
       } else {
         logger.info(`[Task ${task.id}] ${detailedMessage}`, logData);
@@ -65,59 +65,59 @@ class OrderFetchingExecutor {
     let allOrders = [];
     let estimatedTotal = 1000; // Default value, will be updated when orders are fetched
     let actualTotal = 1000; // Track actual number of orders to process
-    let progressReporter = {
+    const progressReporter = {
       current: 0,
       total: 0,
       percentage: 0,
-      phase: "initializing",
+      phase: 'initializing',
       startTime: Date.now(),
-      lastUpdate: Date.now(),
+      lastUpdate: Date.now()
     };
 
     try {
       // Initialize with enhanced logging
-      structuredLog("info", "Starting order fetching task", {
+      structuredLog('info', 'Starting order fetching task', {
         config,
-        source: task.metadata?.source || "unknown",
-        phase: "initialization",
+        source: task.metadata?.source || 'unknown',
+        phase: 'initialization'
       });
 
       // Log how this task was created (important for debugging)
       structuredLog(
-        "info",
-        `Task source: ${task.metadata?.source || "unknown"}`,
+        'info',
+        `Task source: ${task.metadata?.source || 'unknown'}`,
         {
           metadata: task.metadata,
           createdAt: task.createdAt,
-          phase: "initialization",
+          phase: 'initialization'
         }
       );
 
       // Get platform connection with error handling
       const platformConnection = task.platformConnection;
       if (!platformConnection) {
-        throw new Error("Platform connection not found");
+        throw new Error('Platform connection not found');
       }
 
-      structuredLog("info", "Platform connection validated", {
+      structuredLog('info', 'Platform connection validated', {
         platformType: platformConnection.platformType,
         platformConnectionId: task.platformConnectionId,
-        credentials: platformConnection.credentials ? "Present" : "Missing",
-        phase: "connection_setup",
+        credentials: platformConnection.credentials ? 'Present' : 'Missing',
+        phase: 'connection_setup'
       });
 
       // Normalize configuration to handle different frontend formats
-      let normalizedConfig = { ...config };
+      const normalizedConfig = { ...config };
 
       // Handle legacy/frontend config format
       if (config.dateRangeMode) {
         // Convert frontend config to executor format
         if (
-          config.dateRangeMode === "interval" &&
-          config.intervalPeriod === "month"
+          config.dateRangeMode === 'interval' &&
+          config.intervalPeriod === 'month'
         ) {
           const days = config.customDays || 30;
-          normalizedConfig.mode = "duration";
+          normalizedConfig.mode = 'duration';
           normalizedConfig.duration = days;
           normalizedConfig.startDate =
             config.fromDate ||
@@ -133,15 +133,15 @@ class OrderFetchingExecutor {
         endDate = new Date().toISOString(), // Default: now
         batchSize = 100,
         maxOrders = 1000,
-        mode: configMode = "duration",
+        mode: configMode = 'duration',
         duration = 30,
         stopAtFirst = false,
-        intervalPeriod = "month", // week, month, quarter, year, custom
-        customDays = 30,
+        intervalPeriod = 'month', // week, month, quarter, year, custom
+        customDays = 30
       } = normalizedConfig;
 
       // Enhanced Auto Mode: Calculate date range based on oldest order
-      if (configMode === "auto") {
+      if (configMode === 'auto') {
         const autoDateRange = await this.calculateAutoDateRange(
           task,
           platformConnection,
@@ -152,33 +152,33 @@ class OrderFetchingExecutor {
           startDate = autoDateRange.startDate;
           endDate = autoDateRange.endDate;
 
-          structuredLog("info", "Auto mode: Calculated date range", {
-            originalStartDate: normalizedConfig.startDate || "default",
-            originalEndDate: normalizedConfig.endDate || "default",
+          structuredLog('info', 'Auto mode: Calculated date range', {
+            originalStartDate: normalizedConfig.startDate || 'default',
+            originalEndDate: normalizedConfig.endDate || 'default',
             calculatedStartDate: startDate,
             calculatedEndDate: endDate,
             oldestOrderDate: autoDateRange.oldestOrderDate,
             isInitialRun: autoDateRange.isInitialRun,
-            phase: "auto_date_calculation",
+            phase: 'auto_date_calculation'
           });
         }
       }
 
-      structuredLog("info", "Starting order fetching task execution", {
-        phase: "initialization",
+      structuredLog('info', 'Starting order fetching task execution', {
+        phase: 'initialization',
         config: {
           mode: configMode,
           duration,
           batchSize,
           maxOrders,
           startDate,
-          endDate,
+          endDate
         },
         platform: platformConnection.platformType,
-        connectionId: platformConnection.id,
+        connectionId: platformConnection.id
       });
 
-      structuredLog("info", "Task configuration validated and normalized", {
+      structuredLog('info', 'Task configuration validated and normalized', {
         originalConfig: config,
         normalizedConfig: {
           startDate,
@@ -187,9 +187,9 @@ class OrderFetchingExecutor {
           maxOrders,
           mode: configMode,
           duration,
-          stopAtFirst,
+          stopAtFirst
         },
-        phase: "configuration",
+        phase: 'configuration'
       });
 
       // Initialize progress with enhanced reporting
@@ -198,7 +198,7 @@ class OrderFetchingExecutor {
       progressReporter.startTime = Date.now();
       progressReporter.lastUpdate = Date.now();
 
-      onProgress(0, estimatedTotal, "Initializing order fetch", "connecting");
+      onProgress(0, estimatedTotal, 'Initializing order fetch', 'connecting');
 
       // Check for cancellation
       checkCancellation();
@@ -206,15 +206,15 @@ class OrderFetchingExecutor {
       // Connect to platform API with connection guard
       try {
         structuredLog(
-          "info",
+          'info',
           `Initializing connection to ${platformConnection.platformType.toUpperCase()} platform`,
           {
             platformType: platformConnection.platformType,
             platformName:
               platformConnection.name || platformConnection.platformName,
             connectionId: platformConnection.id,
-            environment: platformConnection.environment || "production",
-            phase: "connecting",
+            environment: platformConnection.environment || 'production',
+            phase: 'connecting'
           }
         );
 
@@ -222,20 +222,20 @@ class OrderFetchingExecutor {
           10,
           estimatedTotal,
           `Connecting to ${platformConnection.platformType.toUpperCase()}`,
-          "connecting"
+          'connecting'
         );
 
         platformService = await this.getPlatformService(platformConnection);
 
         structuredLog(
-          "info",
+          'info',
           `Successfully connected to ${platformConnection.platformType.toUpperCase()} platform`,
           {
             platformType: platformConnection.platformType,
             serviceName: platformService.constructor.name,
             hasAuthentication:
               !!platformService.accessToken || !!platformService.apiKey,
-            phase: "connected",
+            phase: 'connected'
           }
         );
 
@@ -243,18 +243,18 @@ class OrderFetchingExecutor {
           20,
           estimatedTotal,
           `Connected to ${platformConnection.platformType.toUpperCase()}`,
-          "connected"
+          'connected'
         );
       } catch (connectionError) {
         structuredLog(
-          "error",
+          'error',
           `Failed to establish connection to ${platformConnection.platformType.toUpperCase()}`,
           {
             error: connectionError.message,
             platformType: platformConnection.platformType,
             connectionId: platformConnection.id,
             stack: connectionError.stack,
-            phase: "connection_failed",
+            phase: 'connection_failed'
           }
         );
         throw connectionError;
@@ -265,29 +265,29 @@ class OrderFetchingExecutor {
       // Fetch orders with enhanced error handling and progress tracking
       try {
         structuredLog(
-          "info",
+          'info',
           `Starting order fetch from ${platformConnection.platformType.toUpperCase()}`,
           {
             dateRange: { startDate, endDate },
             batchSize,
             maxOrders,
             fetchMode: configMode,
-            phase: "fetching_start",
+            phase: 'fetching_start'
           }
         );
 
         onProgress(
           30,
           estimatedTotal,
-          "Fetching orders from platform...",
-          "fetching"
+          'Fetching orders from platform...',
+          'fetching'
         );
 
         const fetchStartTime = Date.now();
         const fetchResult = await platformService.fetchOrders({
           startDate,
           endDate,
-          size: batchSize,
+          size: batchSize
         });
 
         if (!fetchResult.success) {
@@ -301,10 +301,10 @@ class OrderFetchingExecutor {
         actualTotal = Math.min(allOrders.length, maxOrders);
         estimatedTotal = actualTotal;
         progressReporter.total = estimatedTotal;
-        progressReporter.phase = "processing";
+        progressReporter.phase = 'processing';
 
         structuredLog(
-          "info",
+          'info',
           `Successfully fetched ${
             allOrders.length
           } orders from ${platformConnection.platformType.toUpperCase()}`,
@@ -321,9 +321,9 @@ class OrderFetchingExecutor {
               averageOrderFetchTime:
                 allOrders.length > 0
                   ? Math.round(fetchDuration / allOrders.length)
-                  : 0,
+                  : 0
             },
-            phase: "fetched",
+            phase: 'fetched'
           }
         );
 
@@ -331,19 +331,19 @@ class OrderFetchingExecutor {
           40,
           actualTotal,
           `Found ${allOrders.length} orders, processing ${actualTotal}`,
-          "processing"
+          'processing'
         );
 
         // Start database transaction for batch processing
         dbTransaction = await sequelize.transaction();
 
         structuredLog(
-          "info",
-          "Database transaction started for order processing",
+          'info',
+          'Database transaction started for order processing',
           {
             transactionId: dbTransaction.id,
             totalOrdersToProcess: actualTotal,
-            phase: "transaction_start",
+            phase: 'transaction_start'
           }
         );
 
@@ -360,7 +360,7 @@ class OrderFetchingExecutor {
             const orderProcessStartTime = Date.now();
 
             structuredLog(
-              "debug",
+              'debug',
               `Processing order ${i + 1}/${ordersToProcess.length}: ${
                 order.orderNumber || order.id
               }`,
@@ -374,7 +374,7 @@ class OrderFetchingExecutor {
                 progressPercentage: Math.round(
                   ((i + 1) / ordersToProcess.length) * 100
                 ),
-                phase: "order_processing",
+                phase: 'order_processing'
               }
             );
 
@@ -386,13 +386,13 @@ class OrderFetchingExecutor {
             );
 
             // Log transformation details
-            structuredLog("debug", `Order transformed successfully`, {
+            structuredLog('debug', `Order transformed successfully`, {
               originalOrderId: order.id,
               transformedOrderNumber: transformedOrder.orderNumber,
               customerName: transformedOrder.customerName,
               orderStatus: transformedOrder.orderStatus,
               totalAmount: transformedOrder.totalAmount,
-              phase: "order_transformed",
+              phase: 'order_transformed'
             });
 
             // Check for duplicates using both externalOrderId and orderNumber
@@ -402,29 +402,29 @@ class OrderFetchingExecutor {
                   {
                     externalOrderId: transformedOrder.externalOrderId,
                     platformType: transformedOrder.platformType,
-                    userId: transformedOrder.userId,
+                    userId: transformedOrder.userId
                   },
                   {
                     orderNumber: transformedOrder.orderNumber,
                     platformType: transformedOrder.platformType,
-                    userId: transformedOrder.userId,
-                  },
-                ],
+                    userId: transformedOrder.userId
+                  }
+                ]
               },
-              transaction: dbTransaction,
+              transaction: dbTransaction
             });
 
             if (existingOrder) {
               duplicatesSkipped++;
               structuredLog(
-                "info",
+                'info',
                 `Duplicate order skipped: ${transformedOrder.orderNumber}`,
                 {
                   externalOrderId: transformedOrder.externalOrderId,
                   orderNumber: transformedOrder.orderNumber,
                   existingOrderId: existingOrder.id,
                   duplicatesSkipped,
-                  phase: "duplicate_skip",
+                  phase: 'duplicate_skip'
                 }
               );
               continue;
@@ -433,7 +433,7 @@ class OrderFetchingExecutor {
             // Save new order with transaction
             const orderSaveStartTime = Date.now();
             const savedOrder = await Order.create(transformedOrder, {
-              transaction: dbTransaction,
+              transaction: dbTransaction
             });
             const orderSaveDuration = Date.now() - orderSaveStartTime;
 
@@ -441,7 +441,7 @@ class OrderFetchingExecutor {
             processedOrders++;
 
             structuredLog(
-              "info",
+              'info',
               `Order saved successfully: ${savedOrder.orderNumber}`,
               {
                 orderId: savedOrder.id,
@@ -451,7 +451,7 @@ class OrderFetchingExecutor {
                 totalAmount: savedOrder.totalAmount,
                 saveDuration: orderSaveDuration,
                 processedOrders,
-                phase: "order_saved",
+                phase: 'order_saved'
               }
             );
 
@@ -474,13 +474,13 @@ class OrderFetchingExecutor {
               processedOrders,
               actualTotal,
               `Processed ${processedOrders}/${actualTotal} orders (${duplicatesSkipped} duplicates skipped) - ETA: ${eta}s`,
-              "processing"
+              'processing'
             );
 
             // Enhanced logging every 25 orders with performance metrics
             if (processedOrders % 25 === 0) {
               structuredLog(
-                "info",
+                'info',
                 `Progress checkpoint: ${processedOrders} orders processed`,
                 {
                   processed: processedOrders,
@@ -490,19 +490,19 @@ class OrderFetchingExecutor {
                   rate: Math.round(rate * 100) / 100,
                   eta: eta,
                   elapsed: Math.round(elapsed / 1000),
-                  phase: "progress_checkpoint",
+                  phase: 'progress_checkpoint'
                 }
               );
             }
           } catch (orderError) {
             structuredLog(
-              "warn",
+              'warn',
               `Failed to process order ${order.id || order.orderNumber}`,
               {
                 error: orderError.message,
                 orderId: order.id || order.orderNumber,
                 orderIndex: i + 1,
-                phase: "order_error",
+                phase: 'order_error'
               }
             );
             // Continue with next order
@@ -518,22 +518,22 @@ class OrderFetchingExecutor {
         onProgress(
           processedOrders,
           processedOrders,
-          "Order fetching completed",
-          "completed"
+          'Order fetching completed',
+          'completed'
         );
 
         const resultMessage = `Order fetching completed. Processed ${processedOrders} new orders${
           duplicatesSkipped > 0
             ? `, skipped ${duplicatesSkipped} duplicates`
-            : ""
+            : ''
         }`;
-        onLog("info", resultMessage);
+        onLog('info', resultMessage);
 
         // Check if we should continue in automatic mode
-        if (configMode === "auto") {
+        if (configMode === 'auto') {
           if (processedOrders > 0) {
             onLog(
-              "info",
+              'info',
               `Automatic mode: Found ${processedOrders} new orders, scheduling next fetch in 30 seconds...`
             );
 
@@ -548,78 +548,78 @@ class OrderFetchingExecutor {
             }
 
             structuredLog(
-              "info",
-              "Auto mode: Calculated oldest order date for next iteration",
+              'info',
+              'Auto mode: Calculated oldest order date for next iteration',
               {
                 ordersInCurrentFetch: orders.length,
                 oldestOrderInThisFetch: oldestOrderInThisFetch.toISOString(),
                 currentDateRange: { startDate, endDate },
-                phase: "auto_next_iteration_calculation",
+                phase: 'auto_next_iteration_calculation'
               }
             );
 
             // Schedule next automatic fetch with updated oldest date
             setTimeout(async () => {
               try {
-                const BackgroundTaskService = require("../services/BackgroundTaskService");
+                const BackgroundTaskService = require('../services/BackgroundTaskService');
                 await BackgroundTaskService.createTask({
                   userId: task.userId,
-                  taskType: "order_fetching",
-                  priority: "normal",
+                  taskType: 'order_fetching',
+                  priority: 'normal',
                   config: {
                     ...config,
-                    mode: "auto", // Ensure continuation
+                    mode: 'auto', // Ensure continuation
                     // Update the oldest date for next iteration
-                    oldestOrderDate: oldestOrderInThisFetch.toISOString(),
+                    oldestOrderDate: oldestOrderInThisFetch.toISOString()
                   },
                   platformConnectionId: task.platformConnectionId,
                   metadata: {
-                    source: "automatic_continuation",
+                    source: 'automatic_continuation',
                     parentTaskId: task.id,
                     iterationCount: (task.metadata?.iterationCount || 0) + 1,
-                    oldestOrderDate: oldestOrderInThisFetch.toISOString(),
-                  },
+                    oldestOrderDate: oldestOrderInThisFetch.toISOString()
+                  }
                 });
                 onLog(
-                  "info",
-                  "Next automatic fetch task scheduled successfully"
+                  'info',
+                  'Next automatic fetch task scheduled successfully'
                 );
 
-                structuredLog("info", "Auto-fetch continuation scheduled", {
+                structuredLog('info', 'Auto-fetch continuation scheduled', {
                   nextOldestDate: oldestOrderInThisFetch.toISOString(),
                   iterationCount: (task.metadata?.iterationCount || 0) + 1,
-                  phase: "auto_scheduled_next",
+                  phase: 'auto_scheduled_next'
                 });
               } catch (error) {
                 onLog(
-                  "error",
+                  'error',
                   `Failed to schedule next automatic fetch: ${error.message}`
                 );
 
                 structuredLog(
-                  "error",
-                  "Failed to schedule auto-fetch continuation",
+                  'error',
+                  'Failed to schedule auto-fetch continuation',
                   {
                     error: error.message,
                     parentTaskId: task.id,
-                    phase: "auto_schedule_failed",
+                    phase: 'auto_schedule_failed'
                   }
                 );
               }
             }, 30000); // 30 second delay
           } else {
             onLog(
-              "info",
-              "Automatic mode: No new orders found, stopping auto-fetch sequence"
+              'info',
+              'Automatic mode: No new orders found, stopping auto-fetch sequence'
             );
 
             structuredLog(
-              "info",
-              "Auto-fetch sequence completed - no more orders available",
+              'info',
+              'Auto-fetch sequence completed - no more orders available',
               {
                 totalIterations: (task.metadata?.iterationCount || 0) + 1,
                 finalDateRange: { startDate, endDate },
-                phase: "auto_sequence_complete",
+                phase: 'auto_sequence_complete'
               }
             );
           }
@@ -628,9 +628,9 @@ class OrderFetchingExecutor {
         // Commit transaction
         if (dbTransaction) {
           await dbTransaction.commit();
-          structuredLog("info", "Database transaction committed successfully", {
+          structuredLog('info', 'Database transaction committed successfully', {
             transactionId: dbTransaction.id,
-            phase: "transaction_commit",
+            phase: 'transaction_commit'
           });
         }
 
@@ -643,22 +643,22 @@ class OrderFetchingExecutor {
           startDate,
           endDate,
           mode: configMode,
-          automaticContinuation: configMode === "auto" && processedOrders > 0,
+          automaticContinuation: configMode === 'auto' && processedOrders > 0,
           orders: orders.map((order) => ({
             id: order.id,
             orderNumber: order.orderNumber,
             status: order.orderStatus,
-            totalAmount: order.totalAmount,
+            totalAmount: order.totalAmount
           })),
           statistics: {
             successCount: orders.length,
             errorCount: processedOrders - orders.length,
             duplicatesSkipped,
-            duration: Date.now() - progressReporter.startTime,
-          },
+            duration: Date.now() - progressReporter.startTime
+          }
         };
       } catch (error) {
-        onLog("error", `Order fetching failed: ${error.message}`);
+        onLog('error', `Order fetching failed: ${error.message}`);
         throw error;
       }
     } finally {
@@ -666,35 +666,35 @@ class OrderFetchingExecutor {
       if (dbTransaction) {
         try {
           await dbTransaction.rollback();
-          structuredLog("info", "Database transaction rolled back", {
+          structuredLog('info', 'Database transaction rolled back', {
             transactionId: dbTransaction.id,
-            phase: "transaction_rollback",
+            phase: 'transaction_rollback'
           });
         } catch (rollbackError) {
-          structuredLog("error", "Failed to roll back database transaction", {
+          structuredLog('error', 'Failed to roll back database transaction', {
             error: rollbackError.message,
             transactionId: dbTransaction.id,
-            phase: "transaction_rollback_failed",
+            phase: 'transaction_rollback_failed'
           });
         }
       }
 
       // Close platform service connection if applicable
-      if (platformService && typeof platformService.close === "function") {
+      if (platformService && typeof platformService.close === 'function') {
         try {
           await platformService.close();
-          structuredLog("info", "Platform service connection closed", {
+          structuredLog('info', 'Platform service connection closed', {
             platformType: platformConnection.platformType,
-            phase: "service_close",
+            phase: 'service_close'
           });
         } catch (closeError) {
           structuredLog(
-            "error",
-            "Failed to close platform service connection",
+            'error',
+            'Failed to close platform service connection',
             {
               error: closeError.message,
               platformType: platformConnection.platformType,
-              phase: "service_close_failed",
+              phase: 'service_close_failed'
             }
           );
         }
@@ -704,13 +704,13 @@ class OrderFetchingExecutor {
       onProgress(
         processedOrders,
         actualTotal,
-        "Order fetching task completed",
-        "completed"
+        'Order fetching task completed',
+        'completed'
       );
-      structuredLog("info", "Order fetching task execution completed", {
+      structuredLog('info', 'Order fetching task execution completed', {
         processedOrders,
         totalAvailable: actualTotal,
-        phase: "finalization",
+        phase: 'finalization'
       });
     }
   }
@@ -718,12 +718,12 @@ class OrderFetchingExecutor {
   static async calculateAutoDateRange(task, platformConnection, config) {
     try {
       const {
-        intervalPeriod = "month",
+        intervalPeriod = 'month',
         customDays = 30,
-        oldestOrderDate, // This comes from previous iterations
+        oldestOrderDate // This comes from previous iterations
       } = config;
 
-      const isInitialRun = !task.metadata?.source?.includes("continuation");
+      const isInitialRun = !task.metadata?.source?.includes('continuation');
 
       if (isInitialRun) {
         // First run: use the original date range from config
@@ -733,21 +733,21 @@ class OrderFetchingExecutor {
             new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
           endDate: config.endDate || new Date().toISOString(),
           oldestOrderDate: null,
-          isInitialRun: true,
+          isInitialRun: true
         };
       }
 
       // Continuation run: calculate new date range based on oldest order from previous fetch
       if (!oldestOrderDate) {
         // If no oldest date is provided, find the oldest order from the database
-        const { Order } = require("../models");
+        const { Order } = require('../models');
         const oldestOrder = await Order.findOne({
           where: {
             userId: task.userId,
-            connectionId: platformConnection.id,
+            connectionId: platformConnection.id
           },
-          order: [["orderDate", "ASC"]],
-          attributes: ["orderDate"],
+          order: [['orderDate', 'ASC']],
+          attributes: ['orderDate']
         });
 
         if (!oldestOrder) {
@@ -758,7 +758,7 @@ class OrderFetchingExecutor {
             ).toISOString(),
             endDate: new Date().toISOString(),
             oldestOrderDate: null,
-            isInitialRun: false,
+            isInitialRun: false
           };
         }
 
@@ -768,21 +768,21 @@ class OrderFetchingExecutor {
       // Calculate the period duration in days
       let periodDays = 30; // default
       switch (intervalPeriod) {
-        case "week":
-          periodDays = 7;
-          break;
-        case "month":
-          periodDays = 30;
-          break;
-        case "quarter":
-          periodDays = 90;
-          break;
-        case "year":
-          periodDays = 365;
-          break;
-        case "custom":
-          periodDays = customDays || 30;
-          break;
+      case 'week':
+        periodDays = 7;
+        break;
+      case 'month':
+        periodDays = 30;
+        break;
+      case 'quarter':
+        periodDays = 90;
+        break;
+      case 'year':
+        periodDays = 365;
+        break;
+      case 'custom':
+        periodDays = customDays || 30;
+        break;
       }
 
       // Calculate new date range going backwards from the oldest order date
@@ -797,10 +797,10 @@ class OrderFetchingExecutor {
         oldestOrderDate: oldestOrderDate,
         isInitialRun: false,
         periodDays,
-        calculatedFromOldest: true,
+        calculatedFromOldest: true
       };
     } catch (error) {
-      logger.error("Error calculating auto date range:", error);
+      logger.error('Error calculating auto date range:', error);
       // Fallback to default range
       return {
         startDate: new Date(
@@ -809,16 +809,16 @@ class OrderFetchingExecutor {
         endDate: new Date().toISOString(),
         oldestOrderDate: null,
         isInitialRun: false,
-        error: error.message,
+        error: error.message
       };
     }
   }
 
   static async getPlatformService(platformConnection) {
     const services = {
-      trendyol: require("../modules/order-management/services/platforms/trendyol/trendyol-service"),
-      hepsiburada: require("../modules/order-management/services/platforms/hepsiburada/hepsiburada-service"),
-      n11: require("../modules/order-management/services/platforms/n11/n11-service"),
+      trendyol: require('../modules/order-management/services/platforms/trendyol/trendyol-service'),
+      hepsiburada: require('../modules/order-management/services/platforms/hepsiburada/hepsiburada-service'),
+      n11: require('../modules/order-management/services/platforms/n11/n11-service')
     };
 
     const ServiceClass = services[platformConnection.platformType];
@@ -832,7 +832,7 @@ class OrderFetchingExecutor {
   }
 
   static async transformOrder(rawOrder, platformConnection, task) {
-    const { mapOrderStatus } = require("../utils/enum-validators");
+    const { mapOrderStatus } = require('../utils/enum-validators');
 
     // Transform platform-specific order format to internal format
     const baseOrder = {
@@ -851,28 +851,28 @@ class OrderFetchingExecutor {
       ),
       orderDate: new Date(rawOrder.orderDate || rawOrder.createdAt),
       totalAmount: parseFloat(rawOrder.totalAmount || rawOrder.total || 0),
-      currency: rawOrder.currency || "TRY",
+      currency: rawOrder.currency || 'TRY',
       customerName:
         rawOrder.customerName ||
         rawOrder.customerfullName ||
         rawOrder.customer?.name ||
-        `${rawOrder.customer?.firstName || ""} ${
-          rawOrder.customer?.lastName || ""
+        `${rawOrder.customer?.firstName || ''} ${
+          rawOrder.customer?.lastName || ''
         }`.trim() ||
         rawOrder.shippingAddress?.fullName ||
         rawOrder.billingAddress?.fullName ||
-        "",
-      customerEmail: rawOrder.customerEmail || rawOrder.customer?.email || "",
+        '',
+      customerEmail: rawOrder.customerEmail || rawOrder.customer?.email || '',
       customerPhone:
         rawOrder.customerPhone ||
         rawOrder.customer?.phone ||
         rawOrder.shippingAddress?.gsm ||
         rawOrder.billingAddress?.gsm ||
-        "",
+        '',
       shippingAddress: rawOrder.shippingAddress || {},
       billingAddress: rawOrder.billingAddress || rawOrder.shippingAddress || {},
       items: rawOrder.items || rawOrder.lines || [],
-      rawData: rawOrder, // Store original data for reference
+      rawData: rawOrder // Store original data for reference
     };
 
     return baseOrder;
@@ -883,7 +883,7 @@ class OrderFetchingExecutor {
       // Direct creation - duplicate checking is now done in main execution flow
       return await Order.create(orderData);
     } catch (error) {
-      logger.error("Error saving order:", error);
+      logger.error('Error saving order:', error);
       throw error;
     }
   }

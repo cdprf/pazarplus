@@ -19,15 +19,15 @@ class PlatformServiceFactory {
    */
   static createService(connection) {
     switch (connection.platformType.toLowerCase()) {
-      case 'trendyol':
-        return new TrendyolService(connection);
+    case 'trendyol':
+      return new TrendyolService(connection);
       // Add more platform services as needed
       // case 'amazon':
       //   return new AmazonService(connection);
       // case 'shopify':
       //   return new ShopifyService(connection);
-      default:
-        throw new Error(`Unsupported platform type: ${connection.platformType}`);
+    default:
+      throw new Error(`Unsupported platform type: ${connection.platformType}`);
     }
   }
 }
@@ -106,7 +106,7 @@ const getSupportedPlatforms = () => {
         { name: 'apiUrl', type: 'string', label: 'API URL', required: false, default: 'https://api.trendyol.com/sapigw' }
       ],
       description: 'Connect to Trendyol marketplace to sync orders and inventory.'
-    },
+    }
     // Add more platforms with their configurations
     // {
     //   type: 'amazon',

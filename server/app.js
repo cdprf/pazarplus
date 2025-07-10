@@ -14,11 +14,7 @@ const logger =
 const config = require("./config/config");
 
 // Error handling and middleware
-const {
-  errorHandler,
-  notFoundHandler,
-  AppError,
-} = require("./middleware/errorHandler");
+const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
 
 const {
   apiVersioning,
@@ -127,7 +123,9 @@ app.use(
   cors({
     origin: function (origin, callback) {
       // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
+      if (!origin) {
+        return callback(null, true);
+      }
 
       // For development, allow all origins first
       if (process.env.NODE_ENV === "development") {
@@ -298,6 +296,7 @@ app.use((req, res, next) => {
 
   // Enhanced request logging
   logger.debug("Incoming Request", {
+    timestamp,
     method: req.method,
     url: req.originalUrl,
     apiVersion: req.apiVersion?.resolved,
@@ -332,7 +331,7 @@ app.use((req, res, next) => {
 });
 
 // Handle webpack hot-update files - should not be served by backend
-app.use("*.hot-update.json", (req, res, next) => {
+app.use("*.hot-update.json", (req, res) => {
   // These files should only be served by webpack dev server
   res.status(404).json({
     success: false,
@@ -565,6 +564,14 @@ async function initializeEnhancedServices() {
     // Initialize cache service
     await cacheService.connect();
 
+    // Initialize background services manager (using singleton instance)
+    await BackgroundServicesManager.initialize();
+    logger.info("Background services manager initialized");
+
+    // Initialize database status WebSocket service
+    databaseStatusWebSocket.initialize();
+    logger.info("Database status WebSocket service initialized");
+
     // Setup enhanced platform service event listeners
     setupEnhancedPlatformEventListeners();
 
@@ -691,12 +698,12 @@ function initializeWebSocketServer(server) {
   }
 }
 
-// Initialize services when app starts (temporarily disabled for debugging)
-// setImmediate(() => {
-//   initializeEnhancedServices().catch(error => {
-//     logger.error("Failed to initialize enhanced services:", error);
-//   });
-// });
+// Initialize services when app starts
+process.nextTick(() => {
+  initializeEnhancedServices().catch((error) => {
+    logger.error("Failed to initialize enhanced services:", error);
+  });
+});
 
 logger.debug("App module loaded successfully");
 

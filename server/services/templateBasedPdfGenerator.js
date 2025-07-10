@@ -4,8 +4,27 @@
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
-const bwipjs = require("bwip-js");
-const sharp = require("sharp");
+
+// Try to require bwip-js for barcode generation - make it optional
+let bwipjs = null;
+try {
+  bwipjs = require("bwip-js");
+} catch (_error) {
+  logger.warn(
+    "bwip-js barcode library not available, barcode generation will be limited"
+  );
+}
+
+// Try to require sharp for image processing - make it optional
+let sharp = null;
+try {
+  sharp = require("sharp");
+} catch (_error) {
+  logger.warn(
+    "Sharp image processing library not available, image operations will be limited"
+  );
+}
+
 const logger = require("../utils/logger");
 const FontManager = require("../utils/FontManager");
 
@@ -1073,15 +1092,30 @@ class TemplateBasedPDFGenerator {
         );
       }
 
-      const barcodeBuffer = await bwipjs.toBuffer({
-        bcid: barcodeType,
-        text: content,
-        scale: 2,
-        width: widthMM, // Actual width in mm (converted from points, aspect-ratio adjusted)
-        height: heightMM, // Actual height in mm (converted from points, aspect-ratio adjusted)
-        includetext: element.showText !== false,
-        textxalign: "center",
-      });
+      const barcodeBuffer = bwipjs
+        ? await bwipjs.toBuffer({
+            bcid: barcodeType,
+            text: content,
+            scale: 2,
+            width: widthMM, // Actual width in mm (converted from points, aspect-ratio adjusted)
+            height: heightMM, // Actual height in mm (converted from points, aspect-ratio adjusted)
+            includetext: element.showText !== false,
+            textxalign: "center",
+          })
+        : null;
+
+      if (!barcodeBuffer) {
+        // If bwip-js is not available, render a text fallback
+        const fallbackText = bwipjs
+          ? "Error generating barcode"
+          : "Barcode library not available";
+        doc.font("Helvetica").fontSize(10).fillColor("#666666");
+        doc.text(fallbackText, x, y + height / 2, {
+          width: width,
+          align: "center",
+        });
+        return;
+      }
 
       // Get alignment settings from element style with modern CSS support
       const elementStyle = element.style || {};
@@ -1188,7 +1222,20 @@ class TemplateBasedPDFGenerator {
         options.eclevel = element.errorCorrectionLevel;
       }
 
-      const qrBuffer = await bwipjs.toBuffer(options);
+      const qrBuffer = bwipjs ? await bwipjs.toBuffer(options) : null;
+
+      if (!qrBuffer) {
+        // If bwip-js is not available, render a text fallback
+        const fallbackText = bwipjs
+          ? "Error generating QR code"
+          : "QR code library not available";
+        doc.font("Helvetica").fontSize(10).fillColor("#666666");
+        doc.text(fallbackText, x, y + height / 2, {
+          width: width,
+          align: "center",
+        });
+        return;
+      }
 
       // Get alignment settings from element style with modern CSS support
       const elementStyle = element.style || {};
@@ -1342,6 +1389,7 @@ class TemplateBasedPDFGenerator {
       // Calculate actual image dimensions maintaining aspect ratio
       // Only try to get metadata for local files with supported formats
       const canUseSharp =
+        sharp && // Check if sharp is available
         !imageSource.startsWith("http://") &&
         !imageSource.startsWith("https://") &&
         !imageSource.startsWith("data:") &&
@@ -1552,7 +1600,9 @@ class TemplateBasedPDFGenerator {
     doc.font("Helvetica").fontSize(fontSize);
 
     orderData.items.forEach((item) => {
-      if (currentY + rowHeight > y + height) return; // Stop if we exceed bounds
+      if (currentY + rowHeight > y + height) {
+        return;
+      } // Stop if we exceed bounds
 
       currentX = x;
       columns.forEach((col) => {
@@ -1581,7 +1631,9 @@ class TemplateBasedPDFGenerator {
    * @returns {string} - Properly encoded text
    */
   ensureProperEncoding(text) {
-    if (!text || typeof text !== "string") return text;
+    if (!text || typeof text !== "string") {
+      return text;
+    }
 
     // Simple text processing without Unicode normalization
     return text;
@@ -1594,7 +1646,9 @@ class TemplateBasedPDFGenerator {
    * @returns {string} - Processed content
    */
   processContent(content, orderData) {
-    if (!content) return "";
+    if (!content) {
+      return "";
+    }
 
     // First process placeholders
     const processed = content.replace(
@@ -1837,7 +1891,9 @@ class TemplateBasedPDFGenerator {
     // Estimate initial content height more accurately by looking at actual data
     let estimatedLines = 0;
     for (const item of data) {
-      if (!item.value) continue;
+      if (!item.value) {
+        continue;
+      }
       const valueString = String(item.value);
 
       // Check if this will likely be a multi-line entry
@@ -3066,7 +3122,9 @@ class TemplateBasedPDFGenerator {
    * Format date
    */
   formatDate(date) {
-    if (!date) return "";
+    if (!date) {
+      return "";
+    }
     return new Date(date).toLocaleDateString();
   }
 
@@ -3074,7 +3132,9 @@ class TemplateBasedPDFGenerator {
    * Format currency
    */
   formatCurrency(amount, currency = "₺") {
-    if (amount === undefined || amount === null) return "";
+    if (amount === undefined || amount === null) {
+      return "";
+    }
     return `${currency}${Number(amount).toFixed(2)}`;
   }
 

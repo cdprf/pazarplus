@@ -1,5 +1,5 @@
-const { DataTypes, Model } = require("sequelize");
-const sequelize = require("../config/database");
+const { DataTypes, Model } = require('sequelize');
+const sequelize = require('../config/database');
 
 /**
  * Platform Variant Model
@@ -12,28 +12,28 @@ PlatformVariant.init(
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
+      primaryKey: true
     },
     mainProductId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: "main_products",
-        key: "id",
+        model: 'main_products',
+        key: 'id'
       },
-      onUpdate: "CASCADE",
-      onDelete: "CASCADE",
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE'
     },
     productId: {
       type: DataTypes.UUID,
       allowNull: true,
       references: {
-        model: "products",
-        key: "id",
+        model: 'products',
+        key: 'id'
       },
-      onUpdate: "CASCADE",
-      onDelete: "CASCADE",
-      comment: "Reference to regular Product table for backward compatibility",
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
+      comment: 'Reference to regular Product table for backward compatibility'
     },
 
     // Platform Information
@@ -43,41 +43,41 @@ PlatformVariant.init(
       validate: {
         isIn: [
           [
-            "trendyol",
-            "hepsiburada",
-            "n11",
-            "amazon",
-            "gittigidiyor",
-            "custom",
-          ],
-        ],
+            'trendyol',
+            'hepsiburada',
+            'n11',
+            'amazon',
+            'gittigidiyor',
+            'custom'
+          ]
+        ]
       },
-      comment: "Target platform for this variant",
+      comment: 'Target platform for this variant'
     },
     platformSku: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
         notEmpty: true,
-        len: [1, 100],
+        len: [1, 100]
       },
-      comment: "Platform-specific SKU",
+      comment: 'Platform-specific SKU'
     },
     platformBarcode: {
       type: DataTypes.STRING,
       allowNull: true,
       validate: {
-        len: [0, 100],
+        len: [0, 100]
       },
-      comment: "Platform-specific barcode",
+      comment: 'Platform-specific barcode'
     },
     variantSuffix: {
       type: DataTypes.STRING,
       allowNull: true,
       validate: {
-        len: [0, 20],
+        len: [0, 20]
       },
-      comment: "Suffix added to base SKU (e.g., TR, UK, ORJ)",
+      comment: 'Suffix added to base SKU (e.g., TR, UK, ORJ)'
     },
 
     // Pricing Configuration
@@ -85,27 +85,27 @@ PlatformVariant.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
-      comment: "Whether to inherit price from main product",
+      comment: 'Whether to inherit price from main product'
     },
     platformPrice: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
       validate: {
-        min: 0,
+        min: 0
       },
-      comment: "Platform-specific price override",
+      comment: 'Platform-specific price override'
     },
     platformCostPrice: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
       validate: {
-        min: 0,
-      },
+        min: 0
+      }
     },
     priceMarkup: {
       type: DataTypes.DECIMAL(5, 2),
       allowNull: true,
-      comment: "Markup percentage for this platform",
+      comment: 'Markup percentage for this platform'
     },
 
     // Platform-specific Information
@@ -113,30 +113,30 @@ PlatformVariant.init(
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: {},
-      comment: "Platform-specific attributes and fields",
+      comment: 'Platform-specific attributes and fields'
     },
     platformCategory: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Platform-specific category",
+      comment: 'Platform-specific category'
     },
     platformCategoryId: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Platform category ID",
+      comment: 'Platform category ID'
     },
     platformTitle: {
       type: DataTypes.STRING,
       allowNull: true,
       validate: {
-        len: [0, 500],
+        len: [0, 500]
       },
-      comment: "Platform-specific product title",
+      comment: 'Platform-specific product title'
     },
     platformDescription: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: "Platform-specific description",
+      comment: 'Platform-specific description'
     },
 
     // Media Management
@@ -144,19 +144,19 @@ PlatformVariant.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
-      comment: "Whether to inherit media from main product",
+      comment: 'Whether to inherit media from main product'
     },
     platformMedia: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: [],
-      comment: "Platform-specific media files",
+      comment: 'Platform-specific media files'
     },
     mediaTransformations: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: {},
-      comment: "Platform-specific media transformations/optimizations",
+      comment: 'Platform-specific media transformations/optimizations'
     },
 
     // Publication Status
@@ -164,45 +164,45 @@ PlatformVariant.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-      comment: "Whether this variant is published to the platform",
+      comment: 'Whether this variant is published to the platform'
     },
     publishedAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: "When this variant was first published",
+      comment: 'When this variant was first published'
     },
     lastSyncAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: "Last successful sync with platform",
+      comment: 'Last successful sync with platform'
     },
     syncStatus: {
       type: DataTypes.ENUM(
-        "pending",
-        "syncing",
-        "success",
-        "error",
-        "conflict"
+        'pending',
+        'syncing',
+        'success',
+        'error',
+        'conflict'
       ),
       allowNull: false,
-      defaultValue: "pending",
+      defaultValue: 'pending'
     },
     syncError: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: "Last sync error message",
+      comment: 'Last sync error message'
     },
 
     // Platform External IDs
     externalId: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Platform's internal product ID",
+      comment: 'Platform\'s internal product ID'
     },
     externalUrl: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "URL to product on platform",
+      comment: 'URL to product on platform'
     },
 
     // Template Usage
@@ -210,18 +210,18 @@ PlatformVariant.init(
       type: DataTypes.UUID,
       allowNull: true,
       references: {
-        model: "platform_templates",
-        key: "id",
+        model: 'platform_templates',
+        key: 'id'
       },
-      onUpdate: "CASCADE",
-      onDelete: "SET NULL",
-      comment: "Template used for this variant",
+      onUpdate: 'CASCADE',
+      onDelete: 'SET NULL',
+      comment: 'Template used for this variant'
     },
     templateFields: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: {},
-      comment: "Template field values",
+      comment: 'Template field values'
     },
 
     // Variant Configuration
@@ -229,101 +229,101 @@ PlatformVariant.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-      comment: "Whether this is the default variant for the platform",
+      comment: 'Whether this is the default variant for the platform'
     },
     sortOrder: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
-      comment: "Display order among variants",
+      comment: 'Display order among variants'
     },
 
     // Status
     status: {
-      type: DataTypes.ENUM("active", "inactive", "draft", "error"),
+      type: DataTypes.ENUM('active', 'inactive', 'draft', 'error'),
       allowNull: false,
-      defaultValue: "draft",
+      defaultValue: 'draft'
     },
 
     // Auto-Learning Data
     learnedFromProduct: {
       type: DataTypes.UUID,
       allowNull: true,
-      comment: "Original product this variant was learned from",
+      comment: 'Original product this variant was learned from'
     },
     learningConfidence: {
       type: DataTypes.DECIMAL(3, 2),
       allowNull: true,
       validate: {
         min: 0,
-        max: 1,
+        max: 1
       },
-      comment: "Confidence score for auto-learned data",
+      comment: 'Confidence score for auto-learned data'
     },
 
     // Performance Metrics
     conversionRate: {
       type: DataTypes.DECIMAL(5, 4),
       allowNull: true,
-      comment: "Platform-specific conversion rate",
+      comment: 'Platform-specific conversion rate'
     },
     avgRating: {
       type: DataTypes.DECIMAL(3, 2),
       allowNull: true,
-      comment: "Average rating on platform",
+      comment: 'Average rating on platform'
     },
     totalSales: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
-      comment: "Total units sold on this platform",
-    },
+      comment: 'Total units sold on this platform'
+    }
   },
   {
     sequelize,
-    modelName: "PlatformVariant",
-    tableName: "platform_variants",
+    modelName: 'PlatformVariant',
+    tableName: 'platform_variants',
     timestamps: true,
     indexes: [
       {
         unique: true,
-        fields: ["mainProductId", "platform"],
-        name: "platform_variants_main_product_platform_unique",
+        fields: ['mainProductId', 'platform'],
+        name: 'platform_variants_main_product_platform_unique'
       },
       {
-        fields: ["platform"],
+        fields: ['platform']
       },
       {
-        fields: ["platformSku"],
+        fields: ['platformSku']
       },
       {
-        fields: ["isPublished"],
+        fields: ['isPublished']
       },
       {
-        fields: ["syncStatus"],
+        fields: ['syncStatus']
       },
       {
-        fields: ["status"],
+        fields: ['status']
       },
       {
-        fields: ["externalId"],
+        fields: ['externalId']
       },
       {
-        fields: ["templateId"],
-      },
+        fields: ['templateId']
+      }
     ],
     hooks: {
       beforeValidate: async (variant) => {
         // Ensure only one default variant per platform for each main product
-        if (variant.isDefault && variant.changed("isDefault")) {
+        if (variant.isDefault && variant.changed('isDefault')) {
           await PlatformVariant.update(
             { isDefault: false },
             {
               where: {
                 mainProductId: variant.mainProductId,
                 platform: variant.platform,
-                id: { [sequelize.Sequelize.Op.ne]: variant.id },
-              },
+                id: { [sequelize.Sequelize.Op.ne]: variant.id }
+              }
             }
           );
         }
@@ -338,47 +338,47 @@ PlatformVariant.init(
 
       afterUpdate: async (variant) => {
         // Update main product sync status
-        if (variant.changed("syncStatus") || variant.changed("isPublished")) {
-          const { MainProduct } = require("./index");
+        if (variant.changed('syncStatus') || variant.changed('isPublished')) {
+          const { MainProduct } = require('./index');
           const mainProduct = await MainProduct.findByPk(variant.mainProductId);
           if (mainProduct) {
             await mainProduct.update({ lastSyncedAt: new Date() });
           }
         }
-      },
-    },
+      }
+    }
   }
 );
 
 // PlatformVariant associations
 PlatformVariant.associate = function (models) {
   PlatformVariant.belongsTo(models.MainProduct, {
-    foreignKey: "mainProductId",
-    as: "mainProduct",
+    foreignKey: 'mainProductId',
+    as: 'mainProduct'
   });
 
   PlatformVariant.belongsTo(models.Product, {
-    foreignKey: "productId",
-    as: "product",
+    foreignKey: 'productId',
+    as: 'product'
   });
 
   PlatformVariant.belongsTo(models.PlatformTemplate, {
-    foreignKey: "templateId",
-    as: "template",
+    foreignKey: 'templateId',
+    as: 'template'
   });
 
   PlatformVariant.hasMany(models.PlatformData, {
-    foreignKey: "entityId",
+    foreignKey: 'entityId',
     constraints: false,
     scope: {
-      entityType: "platform_variant",
+      entityType: 'platform_variant'
     },
-    as: "platformData",
+    as: 'platformData'
   });
 
   PlatformVariant.hasMany(models.InventoryMovement, {
-    foreignKey: "platformVariantId",
-    as: "inventoryMovements",
+    foreignKey: 'platformVariantId',
+    as: 'inventoryMovements'
   });
 };
 

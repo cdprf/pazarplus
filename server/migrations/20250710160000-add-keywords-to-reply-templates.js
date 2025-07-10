@@ -1,20 +1,20 @@
-"use strict";
+'use strict';
 
 module.exports = {
   async up(queryInterface, Sequelize) {
     try {
       // Add keywords column to reply_templates table
-      await queryInterface.addColumn("reply_templates", "keywords", {
+      await queryInterface.addColumn('reply_templates', 'keywords', {
         type: Sequelize.JSON,
         defaultValue: [],
-        comment: "Keywords that trigger this template suggestion",
+        comment: 'Keywords that trigger this template suggestion'
       });
 
       console.log(
-        "Successfully added keywords column to reply_templates table"
+        'Successfully added keywords column to reply_templates table'
       );
     } catch (error) {
-      console.error("Error adding keywords column:", error.message);
+      console.error('Error adding keywords column:', error.message);
       throw error;
     }
   },
@@ -22,14 +22,14 @@ module.exports = {
   async down(queryInterface, Sequelize) {
     try {
       // Remove keywords column from reply_templates table
-      await queryInterface.removeColumn("reply_templates", "keywords");
+      await queryInterface.removeColumn('reply_templates', 'keywords');
 
       console.log(
-        "Successfully removed keywords column from reply_templates table"
+        'Successfully removed keywords column from reply_templates table'
       );
     } catch (error) {
-      console.error("Error removing keywords column:", error.message);
+      console.error('Error removing keywords column:', error.message);
       throw error;
     }
-  },
+  }
 };

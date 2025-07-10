@@ -1,5 +1,5 @@
-const { DataTypes, Model } = require("sequelize");
-const sequelize = require("../config/database");
+const { DataTypes, Model } = require('sequelize');
+const sequelize = require('../config/database');
 
 class TrendyolOrder extends Model {}
 
@@ -8,195 +8,195 @@ TrendyolOrder.init(
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
+      primaryKey: true
     },
     orderId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: "orders",
-        key: "id",
+        model: 'orders',
+        key: 'id'
       },
-      onDelete: "CASCADE",
+      onDelete: 'CASCADE'
     },
     trendyolOrderId: {
       type: DataTypes.STRING,
       allowNull: false,
       unique: true,
-      index: true,
+      index: true
     },
     orderNumber: {
       type: DataTypes.STRING,
       allowNull: true,
-      index: true,
+      index: true
     },
     supplierId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     customerId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     orderStatus: {
       type: DataTypes.STRING(50),
       allowNull: true,
-      defaultValue: "Created",
+      defaultValue: 'Created'
     },
     paymentType: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     paymentStatus: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     cargoProviderName: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     cargoTrackingNumber: {
       type: DataTypes.STRING,
       allowNull: true,
-      index: true,
+      index: true
     },
     cargoTrackingLink: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     estimatedDeliveryStartDate: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: true
     },
     estimatedDeliveryEndDate: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: true
     },
     shipmentAddress: {
       type: DataTypes.JSON,
       allowNull: true,
-      comment: "Trendyol shipment address details",
+      comment: 'Trendyol shipment address details'
     },
     invoiceAddress: {
       type: DataTypes.JSON,
       allowNull: true,
-      comment: "Trendyol invoice address details",
+      comment: 'Trendyol invoice address details'
     },
     customerInfo: {
       type: DataTypes.JSON,
       allowNull: true,
-      comment: "Trendyol customer information",
+      comment: 'Trendyol customer information'
     },
     invoiceData: {
       type: DataTypes.JSON,
       allowNull: true,
-      comment: "Trendyol invoice details for Turkish compliance",
+      comment: 'Trendyol invoice details for Turkish compliance'
     },
     trendyolOrderDate: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: true
     },
     lastModifiedDate: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: true
     },
     lastSyncAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: "Last synchronization with Trendyol platform",
+      comment: 'Last synchronization with Trendyol platform'
     },
     commercialInvoiceNumber: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Turkish commercial invoice number",
+      comment: 'Turkish commercial invoice number'
     },
     grossAmount: {
       type: DataTypes.DECIMAL(10, 2),
-      allowNull: true,
+      allowNull: true
     },
     totalDiscount: {
       type: DataTypes.DECIMAL(10, 2),
-      allowNull: true,
+      allowNull: true
     },
     taxNumber: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Turkish tax number (VKN/TCKN)",
+      comment: 'Turkish tax number (VKN/TCKN)'
     },
     deliveryType: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     timeSlotId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     fastDelivery: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false,
+      defaultValue: false
     },
     scheduledDelivery: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false,
+      defaultValue: false
     },
     agreedDeliveryDate: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: true
     },
     packingListId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     shipmentPackageStatus: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     currency: {
       type: DataTypes.STRING,
-      defaultValue: "TRY",
-      allowNull: false,
+      defaultValue: 'TRY',
+      allowNull: false
     },
     platformOrderData: {
       type: DataTypes.JSON,
       allowNull: true,
-      comment: "Raw Trendyol order data for backup and debugging",
-    },
+      comment: 'Raw Trendyol order data for backup and debugging'
+    }
   },
   {
     sequelize,
-    modelName: "TrendyolOrder",
-    tableName: "trendyol_orders",
+    modelName: 'TrendyolOrder',
+    tableName: 'trendyol_orders',
     timestamps: true,
     indexes: [
       {
-        fields: ["orderId"],
+        fields: ['orderId']
       },
       {
-        fields: ["trendyolOrderId"],
-        unique: true,
+        fields: ['trendyolOrderId'],
+        unique: true
       },
       {
-        fields: ["orderNumber"],
+        fields: ['orderNumber']
       },
       {
-        fields: ["supplierId"],
+        fields: ['supplierId']
       },
       {
-        fields: ["orderStatus"],
+        fields: ['orderStatus']
       },
       {
-        fields: ["cargoTrackingNumber"],
+        fields: ['cargoTrackingNumber']
       },
       {
-        fields: ["trendyolOrderDate"],
+        fields: ['trendyolOrderDate']
       },
       {
-        fields: ["lastSyncAt"],
+        fields: ['lastSyncAt']
       },
       {
-        fields: ["commercialInvoiceNumber"],
-      },
-    ],
+        fields: ['commercialInvoiceNumber']
+      }
+    ]
   }
 );
 

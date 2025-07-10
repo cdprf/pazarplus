@@ -6,10 +6,10 @@
  * Contact: proje@destek.qnbefinans.com for production WSDL URLs
  */
 
-const InvoiceService = require("./qnb/InvoiceService");
-const QNBConfig = require("./qnb/config/QNBConfig");
-const QNBHelpers = require("./qnb/utils/QNBHelpers");
-const logger = require("../utils/logger");
+const InvoiceService = require('./qnb/InvoiceService');
+const QNBConfig = require('./qnb/config/QNBConfig');
+const QNBHelpers = require('./qnb/utils/QNBHelpers');
+const logger = require('../utils/logger');
 
 class QNBFinansService {
   constructor() {
@@ -27,30 +27,30 @@ class QNBFinansService {
    */
   async testConnection(config) {
     try {
-      logger.info("Testing QNB Finans connection", {
-        username: QNBHelpers.maskSensitiveData(config?.username || "N/A"),
+      logger.info('Testing QNB Finans connection', {
+        username: QNBHelpers.maskSensitiveData(config?.username || 'N/A')
       });
 
       const result = await this.invoiceService.testConnection(config);
 
       if (result.success) {
-        logger.info("QNB Finans connection test successful");
+        logger.info('QNB Finans connection test successful');
       } else {
-        logger.warn("QNB Finans connection test failed", {
+        logger.warn('QNB Finans connection test failed', {
           message: result.message,
-          error: result.error,
+          error: result.error
         });
       }
 
       return result;
     } catch (error) {
       logger.error(`QNB Finans connection test error: ${error.message}`, {
-        error,
+        error
       });
       return {
         success: false,
         message: `Connection test failed: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -62,58 +62,58 @@ class QNBFinansService {
    */
   async wsLogin(config) {
     try {
-      const { username, password, language = "tr" } = config;
+      const { username, password, language = 'tr' } = config;
 
       if (!username || !password) {
-        throw new Error("QNB Finans credentials not configured");
+        throw new Error('QNB Finans credentials not configured');
       }
 
       const soapEnvelope = {
-        "soapenv:Envelope": {
+        'soapenv:Envelope': {
           $: {
-            "xmlns:soapenv": "http://schemas.xmlsoap.org/soap/envelope/",
-            "xmlns:ser": "http://service.user.cs.com.tr/",
+            'xmlns:soapenv': 'http://schemas.xmlsoap.org/soap/envelope/',
+            'xmlns:ser': 'http://service.user.cs.com.tr/'
           },
-          "soapenv:Header": {},
-          "soapenv:Body": {
-            "ser:wsLogin": {
+          'soapenv:Header': {},
+          'soapenv:Body': {
+            'ser:wsLogin': {
               kullaniciAdi: username,
               sifre: password,
-              dil: language,
-            },
-          },
-        },
+              dil: language
+            }
+          }
+        }
       };
 
       const soapXML = this.xmlBuilder.buildObject(soapEnvelope);
 
       const response = await axios.post(this.userServiceWSDL, soapXML, {
         headers: {
-          "Content-Type": "text/xml; charset=utf-8",
-          SOAPAction: "",
+          'Content-Type': 'text/xml; charset=utf-8',
+          SOAPAction: ''
         },
-        withCredentials: true,
+        withCredentials: true
       });
 
       // Extract session cookie from response
-      const cookies = response.headers["set-cookie"];
+      const cookies = response.headers['set-cookie'];
       if (cookies) {
         this.sessionCookie = cookies.find((cookie) =>
-          cookie.includes("JSESSIONID")
+          cookie.includes('JSESSIONID')
         );
       }
 
       return {
         success: true,
-        message: "QNB Finans login successful",
-        sessionCookie: this.sessionCookie,
+        message: 'QNB Finans login successful',
+        sessionCookie: this.sessionCookie
       };
     } catch (error) {
       logger.error(`QNB Finans login error: ${error.message}`, { error });
       return {
         success: false,
         message: `Login failed: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -125,40 +125,40 @@ class QNBFinansService {
   async logout() {
     try {
       const soapEnvelope = {
-        "soapenv:Envelope": {
+        'soapenv:Envelope': {
           $: {
-            "xmlns:soapenv": "http://schemas.xmlsoap.org/soap/envelope/",
-            "xmlns:ser": "http://service.user.cs.com.tr/",
+            'xmlns:soapenv': 'http://schemas.xmlsoap.org/soap/envelope/',
+            'xmlns:ser': 'http://service.user.cs.com.tr/'
           },
-          "soapenv:Header": {},
-          "soapenv:Body": {
-            "ser:logout": {},
-          },
-        },
+          'soapenv:Header': {},
+          'soapenv:Body': {
+            'ser:logout': {}
+          }
+        }
       };
 
       const soapXML = this.xmlBuilder.buildObject(soapEnvelope);
 
       await axios.post(this.userServiceWSDL, soapXML, {
         headers: {
-          "Content-Type": "text/xml; charset=utf-8",
-          SOAPAction: "",
-          Cookie: this.sessionCookie,
-        },
+          'Content-Type': 'text/xml; charset=utf-8',
+          SOAPAction: '',
+          Cookie: this.sessionCookie
+        }
       });
 
       this.sessionCookie = null;
 
       return {
         success: true,
-        message: "Logout successful",
+        message: 'Logout successful'
       };
     } catch (error) {
       logger.error(`QNB Finans logout error: ${error.message}`, { error });
       return {
         success: false,
         message: `Logout failed: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -171,29 +171,29 @@ class QNBFinansService {
    */
   createSOAPEnvelope(bodyContent, config = null) {
     const envelope = {
-      "soapenv:Envelope": {
+      'soapenv:Envelope': {
         $: {
-          "xmlns:soapenv": "http://schemas.xmlsoap.org/soap/envelope/",
-          "xmlns:ser": "http://service.earsiv.uut.cs.com.tr/",
+          'xmlns:soapenv': 'http://schemas.xmlsoap.org/soap/envelope/',
+          'xmlns:ser': 'http://service.earsiv.uut.cs.com.tr/'
         },
-        "soapenv:Header": {},
-        "soapenv:Body": bodyContent,
-      },
+        'soapenv:Header': {},
+        'soapenv:Body': bodyContent
+      }
     };
 
     // Add authentication header if no session cookie and config provided
     if (!this.sessionCookie && config && config.username && config.password) {
-      envelope["soapenv:Envelope"]["soapenv:Header"] = {
-        "wsse:Security": {
+      envelope['soapenv:Envelope']['soapenv:Header'] = {
+        'wsse:Security': {
           $: {
-            "xmlns:wsse":
-              "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd",
+            'xmlns:wsse':
+              'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd'
           },
-          "wsse:UsernameToken": {
-            "wsse:Username": config.username,
-            "wsse:Password": config.password,
-          },
-        },
+          'wsse:UsernameToken': {
+            'wsse:Username': config.username,
+            'wsse:Password': config.password
+          }
+        }
       };
     }
 
@@ -209,8 +209,8 @@ class QNBFinansService {
   async makeSOAPRequest(soapXML, config) {
     try {
       const headers = {
-        "Content-Type": "text/xml; charset=utf-8",
-        SOAPAction: "",
+        'Content-Type': 'text/xml; charset=utf-8',
+        SOAPAction: ''
       };
 
       // Add session cookie if available
@@ -223,7 +223,7 @@ class QNBFinansService {
         soapXML,
         {
           headers,
-          timeout: 30000,
+          timeout: 30000
         }
       );
 
@@ -246,11 +246,11 @@ class QNBFinansService {
   parseSOAPResponse(soapResponse) {
     try {
       const body =
-        soapResponse["S:Envelope"] ||
-        soapResponse["soap:Envelope"] ||
-        soapResponse["soapenv:Envelope"];
+        soapResponse['S:Envelope'] ||
+        soapResponse['soap:Envelope'] ||
+        soapResponse['soapenv:Envelope'];
       const responseBody =
-        body["S:Body"] || body["soap:Body"] || body["soapenv:Body"];
+        body['S:Body'] || body['soap:Body'] || body['soapenv:Body'];
 
       // Extract the actual response content
       const responseKeys = Object.keys(responseBody);
@@ -259,19 +259,19 @@ class QNBFinansService {
       if (responseContent.return) {
         const result = responseContent.return;
         return {
-          success: result.resultCode === "AE00000",
+          success: result.resultCode === 'AE00000',
           resultCode: result.resultCode,
           resultText: result.resultText,
           resultExtra: result.resultExtra,
           output: responseContent.output,
-          data: result,
+          data: result
         };
       }
 
       return responseContent;
     } catch (error) {
       logger.error(`SOAP response parsing error: ${error.message}`, { error });
-      throw new Error("Failed to parse SOAP response");
+      throw new Error('Failed to parse SOAP response');
     }
   }
 
@@ -283,8 +283,8 @@ class QNBFinansService {
    */
   async faturaNoUret(invoiceData, config) {
     try {
-      logger.info("Generating QNB Finans invoice number", {
-        transactionId: invoiceData?.transactionId,
+      logger.info('Generating QNB Finans invoice number', {
+        transactionId: invoiceData?.transactionId
       });
 
       const result = await this.invoiceService.faturaNoUret(
@@ -293,14 +293,14 @@ class QNBFinansService {
       );
 
       if (result.success) {
-        logger.info("QNB Finans invoice number generated successfully", {
+        logger.info('QNB Finans invoice number generated successfully', {
           invoiceNumber: result.data?.invoiceNumber,
-          transactionId: result.data?.transactionId,
+          transactionId: result.data?.transactionId
         });
       } else {
-        logger.warn("QNB Finans invoice number generation failed", {
+        logger.warn('QNB Finans invoice number generation failed', {
           message: result.message,
-          error: result.error,
+          error: result.error
         });
       }
 
@@ -313,7 +313,7 @@ class QNBFinansService {
       return {
         success: false,
         message: `Failed to generate invoice number: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -326,24 +326,24 @@ class QNBFinansService {
    */
   async faturaOlustur(order, config) {
     try {
-      logger.info("Creating QNB Finans e-archive invoice", {
+      logger.info('Creating QNB Finans e-archive invoice', {
         orderId: order?.id,
-        transactionId: order?.transactionId,
+        transactionId: order?.transactionId
       });
 
       const result = await this.invoiceService.faturaOlustur(order, config);
 
       if (result.success) {
-        logger.info("QNB Finans e-archive invoice created successfully", {
+        logger.info('QNB Finans e-archive invoice created successfully', {
           invoiceNumber: result.data?.invoiceNumber,
           invoiceId: result.data?.invoiceId,
-          orderId: order?.id,
+          orderId: order?.id
         });
       } else {
-        logger.warn("QNB Finans e-archive invoice creation failed", {
+        logger.warn('QNB Finans e-archive invoice creation failed', {
           message: result.message,
           error: result.error,
-          orderId: order?.id,
+          orderId: order?.id
         });
       }
 
@@ -351,12 +351,12 @@ class QNBFinansService {
     } catch (error) {
       logger.error(`QNB Finans e-archive creation error: ${error.message}`, {
         error,
-        orderId: order?.id,
+        orderId: order?.id
       });
       return {
         success: false,
         message: `Failed to create e-archive invoice: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -369,17 +369,17 @@ class QNBFinansService {
    */
   async faturaSorgula(invoiceId, config) {
     try {
-      logger.info("Querying QNB Finans invoice", { invoiceId });
+      logger.info('Querying QNB Finans invoice', { invoiceId });
 
       const result = await this.invoiceService.faturaSorgula(invoiceId, config);
 
       if (result.success) {
-        logger.info("QNB Finans invoice query successful", { invoiceId });
+        logger.info('QNB Finans invoice query successful', { invoiceId });
       } else {
-        logger.warn("QNB Finans invoice query failed", {
+        logger.warn('QNB Finans invoice query failed', {
           message: result.message,
           error: result.error,
-          invoiceId,
+          invoiceId
         });
       }
 
@@ -387,12 +387,12 @@ class QNBFinansService {
     } catch (error) {
       logger.error(`QNB Finans invoice query error: ${error.message}`, {
         error,
-        invoiceId,
+        invoiceId
       });
       return {
         success: false,
         message: `Failed to query invoice: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -404,9 +404,9 @@ class QNBFinansService {
    * @param {string} reason - Cancellation reason
    * @returns {Object} Cancellation result
    */
-  async faturaIptalEt(invoiceId, config, reason = "İptal") {
+  async faturaIptalEt(invoiceId, config, reason = 'İptal') {
     try {
-      logger.info("Cancelling QNB Finans invoice", { invoiceId, reason });
+      logger.info('Cancelling QNB Finans invoice', { invoiceId, reason });
 
       const result = await this.invoiceService.faturaIptalEt(
         invoiceId,
@@ -415,12 +415,12 @@ class QNBFinansService {
       );
 
       if (result.success) {
-        logger.info("QNB Finans invoice cancelled successfully", { invoiceId });
+        logger.info('QNB Finans invoice cancelled successfully', { invoiceId });
       } else {
-        logger.warn("QNB Finans invoice cancellation failed", {
+        logger.warn('QNB Finans invoice cancellation failed', {
           message: result.message,
           error: result.error,
-          invoiceId,
+          invoiceId
         });
       }
 
@@ -428,12 +428,12 @@ class QNBFinansService {
     } catch (error) {
       logger.error(`QNB Finans invoice cancellation error: ${error.message}`, {
         error,
-        invoiceId,
+        invoiceId
       });
       return {
         success: false,
         message: `Failed to cancel invoice: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -445,97 +445,97 @@ class QNBFinansService {
    * @returns {string} UBL XML string
    */
   createUBLInvoiceData(order, config) {
-    const invoiceDate = new Date().toISOString().split("T")[0];
-    const invoiceTime = new Date().toISOString().split("T")[1].split(".")[0];
+    const invoiceDate = new Date().toISOString().split('T')[0];
+    const invoiceTime = new Date().toISOString().split('T')[1].split('.')[0];
 
     const ublData = {
       Invoice: {
         $: {
-          xmlns: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
-          "xmlns:cac":
-            "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
-          "xmlns:cbc":
-            "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
+          xmlns: 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2',
+          'xmlns:cac':
+            'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2',
+          'xmlns:cbc':
+            'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2'
         },
-        "cbc:UBLVersionID": "2.1",
-        "cbc:CustomizationID": "TR1.2",
-        "cbc:ProfileID": "EARSIVFATURA",
-        "cbc:ID": order.invoiceNumber || "TEMP",
-        "cbc:CopyIndicator": "false",
-        "cbc:UUID": order.uuid || this.generateUUID(),
-        "cbc:IssueDate": invoiceDate,
-        "cbc:IssueTime": invoiceTime,
-        "cbc:InvoiceTypeCode": "SATIS",
-        "cbc:DocumentCurrencyCode": "TRY",
+        'cbc:UBLVersionID': '2.1',
+        'cbc:CustomizationID': 'TR1.2',
+        'cbc:ProfileID': 'EARSIVFATURA',
+        'cbc:ID': order.invoiceNumber || 'TEMP',
+        'cbc:CopyIndicator': 'false',
+        'cbc:UUID': order.uuid || this.generateUUID(),
+        'cbc:IssueDate': invoiceDate,
+        'cbc:IssueTime': invoiceTime,
+        'cbc:InvoiceTypeCode': 'SATIS',
+        'cbc:DocumentCurrencyCode': 'TRY',
 
         // Supplier Party (Company)
-        "cac:AccountingSupplierParty": {
-          "cac:Party": {
-            "cac:PartyName": {
-              "cbc:Name": config.companyInfo?.companyName || "",
+        'cac:AccountingSupplierParty': {
+          'cac:Party': {
+            'cac:PartyName': {
+              'cbc:Name': config.companyInfo?.companyName || ''
             },
-            "cac:PostalAddress": {
-              "cbc:StreetName": config.companyInfo?.address || "",
-              "cbc:CityName": config.companyInfo?.city || "",
-              "cbc:PostalZone": config.companyInfo?.postalCode || "",
-              "cac:Country": {
-                "cbc:Name": "Türkiye",
-              },
+            'cac:PostalAddress': {
+              'cbc:StreetName': config.companyInfo?.address || '',
+              'cbc:CityName': config.companyInfo?.city || '',
+              'cbc:PostalZone': config.companyInfo?.postalCode || '',
+              'cac:Country': {
+                'cbc:Name': 'Türkiye'
+              }
             },
-            "cac:PartyTaxScheme": {
-              "cbc:TaxNumber": config.companyInfo?.taxNumber || "",
-            },
-          },
+            'cac:PartyTaxScheme': {
+              'cbc:TaxNumber': config.companyInfo?.taxNumber || ''
+            }
+          }
         },
 
         // Customer Party
-        "cac:AccountingCustomerParty": {
-          "cac:Party": {
-            "cac:PartyName": {
-              "cbc:Name": this.getCustomerName(order),
+        'cac:AccountingCustomerParty': {
+          'cac:Party': {
+            'cac:PartyName': {
+              'cbc:Name': this.getCustomerName(order)
             },
-            "cac:PostalAddress": {
-              "cbc:StreetName": this.getShippingAddress(order),
-              "cbc:CityName": this.getShippingCity(order),
-              "cbc:PostalZone": this.getShippingPostalCode(order),
-              "cac:Country": {
-                "cbc:Name": "Türkiye",
-              },
-            },
-          },
+            'cac:PostalAddress': {
+              'cbc:StreetName': this.getShippingAddress(order),
+              'cbc:CityName': this.getShippingCity(order),
+              'cbc:PostalZone': this.getShippingPostalCode(order),
+              'cac:Country': {
+                'cbc:Name': 'Türkiye'
+              }
+            }
+          }
         },
 
         // Invoice Lines
-        "cac:InvoiceLine": this.prepareUBLInvoiceLines(order),
+        'cac:InvoiceLine': this.prepareUBLInvoiceLines(order),
 
         // Tax Total
-        "cac:TaxTotal": {
-          "cbc:TaxAmount": {
-            $: { currencyID: "TRY" },
-            _: this.calculateTotalTax(order).toFixed(2),
-          },
+        'cac:TaxTotal': {
+          'cbc:TaxAmount': {
+            $: { currencyID: 'TRY' },
+            _: this.calculateTotalTax(order).toFixed(2)
+          }
         },
 
         // Legal Monetary Total
-        "cac:LegalMonetaryTotal": {
-          "cbc:LineExtensionAmount": {
-            $: { currencyID: "TRY" },
-            _: this.calculateSubtotal(order).toFixed(2),
+        'cac:LegalMonetaryTotal': {
+          'cbc:LineExtensionAmount': {
+            $: { currencyID: 'TRY' },
+            _: this.calculateSubtotal(order).toFixed(2)
           },
-          "cbc:TaxExclusiveAmount": {
-            $: { currencyID: "TRY" },
-            _: this.calculateSubtotal(order).toFixed(2),
+          'cbc:TaxExclusiveAmount': {
+            $: { currencyID: 'TRY' },
+            _: this.calculateSubtotal(order).toFixed(2)
           },
-          "cbc:TaxInclusiveAmount": {
-            $: { currencyID: "TRY" },
-            _: (order.totalAmount || 0).toFixed(2),
+          'cbc:TaxInclusiveAmount': {
+            $: { currencyID: 'TRY' },
+            _: (order.totalAmount || 0).toFixed(2)
           },
-          "cbc:PayableAmount": {
-            $: { currencyID: "TRY" },
-            _: (order.totalAmount || 0).toFixed(2),
-          },
-        },
-      },
+          'cbc:PayableAmount': {
+            $: { currencyID: 'TRY' },
+            _: (order.totalAmount || 0).toFixed(2)
+          }
+        }
+      }
     };
 
     return this.xmlBuilder.buildObject(ublData);
@@ -546,11 +546,11 @@ class QNBFinansService {
    * @returns {string} UUID
    */
   generateUUID() {
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
       /[xy]/g,
       function (c) {
         const r = (Math.random() * 16) | 0;
-        const v = c == "x" ? r : (r & 0x3) | 0x8;
+        const v = c == 'x' ? r : (r & 0x3) | 0x8;
         return v.toString(16);
       }
     );
@@ -569,7 +569,7 @@ class QNBFinansService {
     return await this.faturaSorgula(invoiceId, config);
   }
 
-  async cancelInvoice(invoiceId, config, reason = "") {
+  async cancelInvoice(invoiceId, config, reason = '') {
     return await this.faturaIptalEt(invoiceId, config, reason);
   }
 
@@ -577,96 +577,96 @@ class QNBFinansService {
   getCustomerName(order) {
     try {
       const customerInfo =
-        typeof order.customerInfo === "string"
+        typeof order.customerInfo === 'string'
           ? JSON.parse(order.customerInfo)
           : order.customerInfo;
-      return customerInfo?.name || order.customerName || "";
+      return customerInfo?.name || order.customerName || '';
     } catch (error) {
-      return order.customerName || "";
+      return order.customerName || '';
     }
   }
 
   getCustomerTaxNumber(order) {
     try {
       const customerInfo =
-        typeof order.customerInfo === "string"
+        typeof order.customerInfo === 'string'
           ? JSON.parse(order.customerInfo)
           : order.customerInfo;
-      return customerInfo?.taxNumber || "";
+      return customerInfo?.taxNumber || '';
     } catch (error) {
-      return "";
+      return '';
     }
   }
 
   getCustomerTCKN(order) {
     try {
       const customerInfo =
-        typeof order.customerInfo === "string"
+        typeof order.customerInfo === 'string'
           ? JSON.parse(order.customerInfo)
           : order.customerInfo;
-      return customerInfo?.tckn || customerInfo?.identityNumber || "";
+      return customerInfo?.tckn || customerInfo?.identityNumber || '';
     } catch (error) {
-      return "";
+      return '';
     }
   }
 
   getCustomerPhone(order) {
     try {
       const shippingAddress =
-        typeof order.shippingAddress === "string"
+        typeof order.shippingAddress === 'string'
           ? JSON.parse(order.shippingAddress)
           : order.shippingAddress;
-      return shippingAddress?.phone || "";
+      return shippingAddress?.phone || '';
     } catch (error) {
-      return "";
+      return '';
     }
   }
 
   getCustomerEmail(order) {
     try {
       const customerInfo =
-        typeof order.customerInfo === "string"
+        typeof order.customerInfo === 'string'
           ? JSON.parse(order.customerInfo)
           : order.customerInfo;
-      return customerInfo?.email || "";
+      return customerInfo?.email || '';
     } catch (error) {
-      return "";
+      return '';
     }
   }
 
   getShippingAddress(order) {
     try {
       const shippingAddress =
-        typeof order.shippingAddress === "string"
+        typeof order.shippingAddress === 'string'
           ? JSON.parse(order.shippingAddress)
           : order.shippingAddress;
-      return shippingAddress?.address || "";
+      return shippingAddress?.address || '';
     } catch (error) {
-      return "";
+      return '';
     }
   }
 
   getShippingCity(order) {
     try {
       const shippingAddress =
-        typeof order.shippingAddress === "string"
+        typeof order.shippingAddress === 'string'
           ? JSON.parse(order.shippingAddress)
           : order.shippingAddress;
-      return shippingAddress?.city || "";
+      return shippingAddress?.city || '';
     } catch (error) {
-      return "";
+      return '';
     }
   }
 
   getShippingPostalCode(order) {
     try {
       const shippingAddress =
-        typeof order.shippingAddress === "string"
+        typeof order.shippingAddress === 'string'
           ? JSON.parse(order.shippingAddress)
           : order.shippingAddress;
-      return shippingAddress?.postalCode || "";
+      return shippingAddress?.postalCode || '';
     } catch (error) {
-      return "";
+      return '';
     }
   }
 
@@ -696,7 +696,7 @@ class QNBFinansService {
       if (!taxRates[taxRate]) {
         taxRates[taxRate] = {
           taxableAmount: 0,
-          taxAmount: 0,
+          taxAmount: 0
         };
       }
 
@@ -706,10 +706,10 @@ class QNBFinansService {
 
     return Object.entries(taxRates).map(([rate, amounts]) => ({
       taxCategory: {
-        taxPercent: parseFloat(rate) * 100,
+        taxPercent: parseFloat(rate) * 100
       },
       taxableAmount: amounts.taxableAmount,
-      taxAmount: amounts.taxAmount,
+      taxAmount: amounts.taxAmount
     }));
   }
 
@@ -721,18 +721,18 @@ class QNBFinansService {
       invoicedQuantity: item.quantity,
       lineExtensionAmount: item.price * item.quantity,
       item: {
-        name: item.productName || item.name || "",
-        description: item.description || "",
+        name: item.productName || item.name || '',
+        description: item.description || '',
         sellersItemIdentification: {
-          id: item.sku || item.productId || "",
-        },
+          id: item.sku || item.productId || ''
+        }
       },
       price: {
-        priceAmount: item.price,
+        priceAmount: item.price
       },
       taxTotal: {
-        taxAmount: item.price * item.quantity * (item.taxRate || 0.18),
-      },
+        taxAmount: item.price * item.quantity * (item.taxRate || 0.18)
+      }
     }));
   }
 
@@ -740,28 +740,28 @@ class QNBFinansService {
     const items = order.items || [];
 
     return items.map((item, index) => ({
-      "cbc:ID": (index + 1).toString(),
-      "cbc:InvoicedQuantity": {
-        $: { unitCode: "NIU" },
-        _: item.quantity.toString(),
+      'cbc:ID': (index + 1).toString(),
+      'cbc:InvoicedQuantity': {
+        $: { unitCode: 'NIU' },
+        _: item.quantity.toString()
       },
-      "cbc:LineExtensionAmount": {
-        $: { currencyID: "TRY" },
-        _: (item.price * item.quantity).toFixed(2),
+      'cbc:LineExtensionAmount': {
+        $: { currencyID: 'TRY' },
+        _: (item.price * item.quantity).toFixed(2)
       },
-      "cac:Item": {
-        "cbc:Name": item.productName || item.name || "",
-        "cbc:Description": item.description || "",
-        "cac:SellersItemIdentification": {
-          "cbc:ID": item.sku || item.productId || "",
-        },
+      'cac:Item': {
+        'cbc:Name': item.productName || item.name || '',
+        'cbc:Description': item.description || '',
+        'cac:SellersItemIdentification': {
+          'cbc:ID': item.sku || item.productId || ''
+        }
       },
-      "cac:Price": {
-        "cbc:PriceAmount": {
-          $: { currencyID: "TRY" },
-          _: item.price.toFixed(2),
-        },
-      },
+      'cac:Price': {
+        'cbc:PriceAmount': {
+          $: { currencyID: 'TRY' },
+          _: item.price.toFixed(2)
+        }
+      }
     }));
   }
 
@@ -773,7 +773,7 @@ class QNBFinansService {
    */
   async faturaIptaliKaldir(invoiceId, config) {
     try {
-      logger.info("Removing QNB Finans invoice cancellation", { invoiceId });
+      logger.info('Removing QNB Finans invoice cancellation', { invoiceId });
 
       const result = await this.invoiceService.faturaIptaliKaldir(
         invoiceId,
@@ -781,14 +781,14 @@ class QNBFinansService {
       );
 
       if (result.success) {
-        logger.info("QNB Finans invoice cancellation removed successfully", {
-          invoiceId,
+        logger.info('QNB Finans invoice cancellation removed successfully', {
+          invoiceId
         });
       } else {
-        logger.warn("QNB Finans invoice cancellation removal failed", {
+        logger.warn('QNB Finans invoice cancellation removal failed', {
           message: result.message,
           error: result.error,
-          invoiceId,
+          invoiceId
         });
       }
 
@@ -798,13 +798,13 @@ class QNBFinansService {
         `QNB Finans invoice cancellation removal error: ${error.message}`,
         {
           error,
-          invoiceId,
+          invoiceId
         }
       );
       return {
         success: false,
         message: `Failed to remove invoice cancellation: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -818,7 +818,7 @@ class QNBFinansService {
    */
   async ePostaGonder(invoiceId, email, config) {
     try {
-      logger.info("Sending QNB Finans invoice email", { invoiceId, email });
+      logger.info('Sending QNB Finans invoice email', { invoiceId, email });
 
       const result = await this.invoiceService.ePostaGonder(
         invoiceId,
@@ -827,16 +827,16 @@ class QNBFinansService {
       );
 
       if (result.success) {
-        logger.info("QNB Finans invoice email sent successfully", {
+        logger.info('QNB Finans invoice email sent successfully', {
           invoiceId,
-          email,
+          email
         });
       } else {
-        logger.warn("QNB Finans invoice email sending failed", {
+        logger.warn('QNB Finans invoice email sending failed', {
           message: result.message,
           error: result.error,
           invoiceId,
-          email,
+          email
         });
       }
 
@@ -845,12 +845,12 @@ class QNBFinansService {
       logger.error(`QNB Finans invoice email sending error: ${error.message}`, {
         error,
         invoiceId,
-        email,
+        email
       });
       return {
         success: false,
         message: `Failed to send invoice email: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -863,9 +863,9 @@ class QNBFinansService {
    */
   async faturaTaslakOlustur(order, config) {
     try {
-      logger.info("Creating QNB Finans draft invoice", {
+      logger.info('Creating QNB Finans draft invoice', {
         orderId: order?.id,
-        transactionId: order?.transactionId,
+        transactionId: order?.transactionId
       });
 
       const result = await this.invoiceService.faturaTaslakOlustur(
@@ -874,16 +874,16 @@ class QNBFinansService {
       );
 
       if (result.success) {
-        logger.info("QNB Finans draft invoice created successfully", {
+        logger.info('QNB Finans draft invoice created successfully', {
           draftId: result.data?.draftId,
           transactionId: result.data?.transactionId,
-          orderId: order?.id,
+          orderId: order?.id
         });
       } else {
-        logger.warn("QNB Finans draft invoice creation failed", {
+        logger.warn('QNB Finans draft invoice creation failed', {
           message: result.message,
           error: result.error,
-          orderId: order?.id,
+          orderId: order?.id
         });
       }
 
@@ -891,12 +891,12 @@ class QNBFinansService {
     } catch (error) {
       logger.error(`QNB Finans draft creation error: ${error.message}`, {
         error,
-        orderId: order?.id,
+        orderId: order?.id
       });
       return {
         success: false,
         message: `Failed to create draft invoice: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -922,28 +922,28 @@ class QNBFinansService {
   // Legacy method names for backward compatibility
   async generateEInvoice(order, config) {
     logger.info(
-      "Legacy method generateEInvoice called, redirecting to faturaOlustur"
+      'Legacy method generateEInvoice called, redirecting to faturaOlustur'
     );
     return await this.faturaOlustur(order, config);
   }
 
   async generateEArchive(order, config) {
     logger.info(
-      "Legacy method generateEArchive called, redirecting to faturaOlustur"
+      'Legacy method generateEArchive called, redirecting to faturaOlustur'
     );
     return await this.faturaOlustur(order, config);
   }
 
   async getInvoiceStatus(invoiceId, config) {
     logger.info(
-      "Legacy method getInvoiceStatus called, redirecting to faturaSorgula"
+      'Legacy method getInvoiceStatus called, redirecting to faturaSorgula'
     );
     return await this.faturaSorgula(invoiceId, config);
   }
 
-  async cancelInvoice(invoiceId, config, reason = "") {
+  async cancelInvoice(invoiceId, config, reason = '') {
     logger.info(
-      "Legacy method cancelInvoice called, redirecting to faturaIptalEt"
+      'Legacy method cancelInvoice called, redirecting to faturaIptalEt'
     );
     return await this.faturaIptalEt(invoiceId, config, reason);
   }
@@ -953,38 +953,38 @@ class QNBFinansService {
     return (
       QNBHelpers.safeJSONParse(order.customerInfo, {})?.name ||
       order.customerName ||
-      ""
+      ''
     );
   }
 
   getCustomerTaxNumber(order) {
-    return QNBHelpers.safeJSONParse(order.customerInfo, {})?.taxNumber || "";
+    return QNBHelpers.safeJSONParse(order.customerInfo, {})?.taxNumber || '';
   }
 
   getCustomerTCKN(order) {
     const customerInfo = QNBHelpers.safeJSONParse(order.customerInfo, {});
-    return customerInfo?.tckn || customerInfo?.identityNumber || "";
+    return customerInfo?.tckn || customerInfo?.identityNumber || '';
   }
 
   getCustomerPhone(order) {
-    return QNBHelpers.safeJSONParse(order.shippingAddress, {})?.phone || "";
+    return QNBHelpers.safeJSONParse(order.shippingAddress, {})?.phone || '';
   }
 
   getCustomerEmail(order) {
-    return QNBHelpers.safeJSONParse(order.customerInfo, {})?.email || "";
+    return QNBHelpers.safeJSONParse(order.customerInfo, {})?.email || '';
   }
 
   getShippingAddress(order) {
-    return QNBHelpers.safeJSONParse(order.shippingAddress, {})?.address || "";
+    return QNBHelpers.safeJSONParse(order.shippingAddress, {})?.address || '';
   }
 
   getShippingCity(order) {
-    return QNBHelpers.safeJSONParse(order.shippingAddress, {})?.city || "";
+    return QNBHelpers.safeJSONParse(order.shippingAddress, {})?.city || '';
   }
 
   getShippingPostalCode(order) {
     return (
-      QNBHelpers.safeJSONParse(order.shippingAddress, {})?.postalCode || ""
+      QNBHelpers.safeJSONParse(order.shippingAddress, {})?.postalCode || ''
     );
   }
 
@@ -1014,7 +1014,7 @@ class QNBFinansService {
       if (!taxRates[taxRate]) {
         taxRates[taxRate] = {
           taxableAmount: 0,
-          taxAmount: 0,
+          taxAmount: 0
         };
       }
 
@@ -1024,10 +1024,10 @@ class QNBFinansService {
 
     return Object.entries(taxRates).map(([rate, amounts]) => ({
       taxCategory: {
-        taxPercent: parseFloat(rate) * 100,
+        taxPercent: parseFloat(rate) * 100
       },
       taxableAmount: amounts.taxableAmount,
-      taxAmount: amounts.taxAmount,
+      taxAmount: amounts.taxAmount
     }));
   }
 
@@ -1039,18 +1039,18 @@ class QNBFinansService {
       invoicedQuantity: item.quantity,
       lineExtensionAmount: item.price * item.quantity,
       item: {
-        name: item.productName || item.name || "",
-        description: item.description || "",
+        name: item.productName || item.name || '',
+        description: item.description || '',
         sellersItemIdentification: {
-          id: item.sku || item.productId || "",
-        },
+          id: item.sku || item.productId || ''
+        }
       },
       price: {
-        priceAmount: item.price,
+        priceAmount: item.price
       },
       taxTotal: {
-        taxAmount: item.price * item.quantity * (item.taxRate || 0.18),
-      },
+        taxAmount: item.price * item.quantity * (item.taxRate || 0.18)
+      }
     }));
   }
 
@@ -1058,28 +1058,28 @@ class QNBFinansService {
     const items = order.items || [];
 
     return items.map((item, index) => ({
-      "cbc:ID": (index + 1).toString(),
-      "cbc:InvoicedQuantity": {
-        $: { unitCode: "NIU" },
-        _: item.quantity.toString(),
+      'cbc:ID': (index + 1).toString(),
+      'cbc:InvoicedQuantity': {
+        $: { unitCode: 'NIU' },
+        _: item.quantity.toString()
       },
-      "cbc:LineExtensionAmount": {
-        $: { currencyID: "TRY" },
-        _: (item.price * item.quantity).toFixed(2),
+      'cbc:LineExtensionAmount': {
+        $: { currencyID: 'TRY' },
+        _: (item.price * item.quantity).toFixed(2)
       },
-      "cac:Item": {
-        "cbc:Name": item.productName || item.name || "",
-        "cbc:Description": item.description || "",
-        "cac:SellersItemIdentification": {
-          "cbc:ID": item.sku || item.productId || "",
-        },
+      'cac:Item': {
+        'cbc:Name': item.productName || item.name || '',
+        'cbc:Description': item.description || '',
+        'cac:SellersItemIdentification': {
+          'cbc:ID': item.sku || item.productId || ''
+        }
       },
-      "cac:Price": {
-        "cbc:PriceAmount": {
-          $: { currencyID: "TRY" },
-          _: item.price.toFixed(2),
-        },
-      },
+      'cac:Price': {
+        'cbc:PriceAmount': {
+          $: { currencyID: 'TRY' },
+          _: item.price.toFixed(2)
+        }
+      }
     }));
   }
 }

@@ -1,11 +1,11 @@
 let Redis;
 try {
-  Redis = require("redis");
+  Redis = require('redis');
 } catch (error) {
-  console.warn("Redis module not available, using in-memory cache only");
+  console.warn('Redis module not available, using in-memory cache only');
   Redis = null;
 }
-const logger = require("../utils/logger");
+const logger = require('../utils/logger');
 
 /**
  * Redis Cache Service
@@ -30,7 +30,7 @@ class CacheService {
 
     // If Redis module is not available, skip connection
     if (!this.useRedis) {
-      logger.warn("Redis module not available, using in-memory cache only");
+      logger.warn('Redis module not available, using in-memory cache only');
       return false;
     }
 
@@ -51,7 +51,7 @@ class CacheService {
 
     try {
       this.client = Redis.createClient({
-        host: process.env.REDIS_HOST || "localhost",
+        host: process.env.REDIS_HOST || 'localhost',
         port: process.env.REDIS_PORT || 6379,
         password: process.env.REDIS_PASSWORD || undefined,
         db: process.env.REDIS_DB || 0,
@@ -59,19 +59,19 @@ class CacheService {
         enableReadyCheck: true,
         maxRetriesPerRequest: 1, // Reduced from 3
         lazyConnect: true,
-        connectTimeout: 3000, // Reduced from 5000
+        connectTimeout: 3000 // Reduced from 5000
       });
 
-      this.client.on("error", (err) => {
+      this.client.on('error', (err) => {
         if (this.connectionAttempts === 0) {
-          logger.warn("Redis unavailable, using in-memory cache fallback");
+          logger.warn('Redis unavailable, using in-memory cache fallback');
         }
         this.isConnected = false;
         this.connectionAttempts++;
       });
 
-      this.client.on("connect", () => {
-        logger.info("Redis cache connected successfully");
+      this.client.on('connect', () => {
+        logger.info('Redis cache connected successfully');
         this.isConnected = true;
         this.connectionAttempts = 0;
       });
@@ -81,19 +81,19 @@ class CacheService {
         return Promise.race([
           this.client.connect(),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Connection timeout")), 5000)
-          ),
+            setTimeout(() => reject(new Error('Connection timeout')), 5000)
+          )
         ]);
       };
 
       await connectWithTimeout();
       await this.client.ping();
-      logger.info("Redis cache service initialized successfully");
+      logger.info('Redis cache service initialized successfully');
       return true;
     } catch (error) {
       this.connectionAttempts++;
       if (this.connectionAttempts === 1) {
-        logger.warn("Redis not available, using fallback cache");
+        logger.warn('Redis not available, using fallback cache');
       }
       this.isConnected = false;
       return false;
@@ -105,9 +105,9 @@ class CacheService {
       try {
         await this.client.quit();
         this.isConnected = false;
-        logger.info("Redis connection closed");
+        logger.info('Redis connection closed');
       } catch (error) {
-        logger.error("Error closing Redis connection:", error);
+        logger.error('Error closing Redis connection:', error);
       }
     }
     this.fallbackCache.clear();
@@ -157,7 +157,7 @@ class CacheService {
     // Fallback to in-memory cache
     this.fallbackCache.set(key, {
       data: value,
-      expires: Date.now() + ttl * 1000,
+      expires: Date.now() + ttl * 1000
     });
     return true;
   }
@@ -178,7 +178,7 @@ class CacheService {
   }
 
   async exists(key) {
-    if (!this.isConnected) return false;
+    if (!this.isConnected) {return false;}
 
     try {
       const result = await this.client.exists(key);
@@ -233,7 +233,7 @@ class CacheService {
   // Rate limiting cache operations
   async incrementRateLimit(identifier, window = 60) {
     if (!this.isConnected)
-      return { count: 0, resetTime: Date.now() + window * 1000 };
+    {return { count: 0, resetTime: Date.now() + window * 1000 };}
 
     const key = `rate_limit:${identifier}`;
 
@@ -254,7 +254,7 @@ class CacheService {
   }
 
   async getRateLimit(identifier) {
-    if (!this.isConnected) return { count: 0, resetTime: Date.now() };
+    if (!this.isConnected) {return { count: 0, resetTime: Date.now() };}
 
     const key = `rate_limit:${identifier}`;
 
@@ -264,7 +264,7 @@ class CacheService {
 
       return {
         count: parseInt(count) || 0,
-        resetTime: ttl > 0 ? Date.now() + ttl * 1000 : Date.now(),
+        resetTime: ttl > 0 ? Date.now() + ttl * 1000 : Date.now()
       };
     } catch (error) {
       logger.error(`Get rate limit error for ${identifier}:`, error);
@@ -290,17 +290,17 @@ class CacheService {
 
   // Cache invalidation patterns
   async invalidateUserCache(userId) {
-    if (!this.isConnected) return false;
+    if (!this.isConnected) {return false;}
 
     try {
       const patterns = [
         `user_orders:${userId}`,
         `user_products:${userId}`,
-        `user_analytics:${userId}*`,
+        `user_analytics:${userId}*`
       ];
 
       for (const pattern of patterns) {
-        if (pattern.includes("*")) {
+        if (pattern.includes('*')) {
           const keys = await this.client.keys(pattern);
           if (keys.length > 0) {
             await this.client.del(keys);
@@ -319,17 +319,17 @@ class CacheService {
   }
 
   async invalidatePlatformCache(connectionId) {
-    if (!this.isConnected) return false;
+    if (!this.isConnected) {return false;}
 
     try {
       const patterns = [
         `platform_orders:${connectionId}`,
         `platform_connection:${connectionId}`,
-        `platform_sync:${connectionId}*`,
+        `platform_sync:${connectionId}*`
       ];
 
       for (const pattern of patterns) {
-        if (pattern.includes("*")) {
+        if (pattern.includes('*')) {
           const keys = await this.client.keys(pattern);
           if (keys.length > 0) {
             await this.client.del(keys);
@@ -355,17 +355,17 @@ class CacheService {
     const stats = {
       isConnected: this.isConnected,
       fallbackCacheSize: this.fallbackCache.size,
-      connectionAttempts: this.connectionAttempts,
+      connectionAttempts: this.connectionAttempts
     };
 
     if (this.isConnected && this.client) {
       try {
-        const info = await this.client.info("memory");
-        const keyspace = await this.client.info("keyspace");
+        const info = await this.client.info('memory');
+        const keyspace = await this.client.info('keyspace');
         stats.memory = info;
         stats.keyspace = keyspace;
       } catch (error) {
-        logger.warn("Error getting Redis cache stats:", error.message);
+        logger.warn('Error getting Redis cache stats:', error.message);
         this.isConnected = false;
       }
     }
@@ -377,10 +377,10 @@ class CacheService {
   async healthCheck() {
     if (!this.isConnected) {
       return {
-        status: "degraded",
-        message: "Using fallback cache",
+        status: 'degraded',
+        message: 'Using fallback cache',
         isConnected: false,
-        fallbackCacheSize: this.fallbackCache.size,
+        fallbackCacheSize: this.fallbackCache.size
       };
     }
 
@@ -390,19 +390,19 @@ class CacheService {
       const latency = Date.now() - start;
 
       return {
-        status: "healthy",
+        status: 'healthy',
         latency: `${latency}ms`,
         isConnected: this.isConnected,
-        fallbackCacheSize: this.fallbackCache.size,
+        fallbackCacheSize: this.fallbackCache.size
       };
     } catch (error) {
-      logger.error("Cache health check failed:", error);
+      logger.error('Cache health check failed:', error);
       this.isConnected = false;
       return {
-        status: "unhealthy",
+        status: 'unhealthy',
         error: error.message,
         isConnected: false,
-        fallbackCacheSize: this.fallbackCache.size,
+        fallbackCacheSize: this.fallbackCache.size
       };
     }
   }
@@ -412,8 +412,8 @@ class CacheService {
     if (!this.isConnected) {
       // For fallback cache, filter Map keys by pattern
       const keys = Array.from(this.fallbackCache.keys());
-      if (pattern.includes("*")) {
-        const regex = new RegExp(pattern.replace(/\*/g, ".*"));
+      if (pattern.includes('*')) {
+        const regex = new RegExp(pattern.replace(/\*/g, '.*'));
         return keys.filter((key) => regex.test(key));
       }
       return keys.filter((key) => key === pattern);
@@ -432,13 +432,13 @@ class CacheService {
 const cacheService = new CacheService();
 
 // Graceful shutdown handling
-process.on("SIGTERM", async () => {
-  logger.info("SIGTERM received, closing Redis connection");
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM received, closing Redis connection');
   await cacheService.disconnect();
 });
 
-process.on("SIGINT", async () => {
-  logger.info("SIGINT received, closing Redis connection");
+process.on('SIGINT', async () => {
+  logger.info('SIGINT received, closing Redis connection');
   await cacheService.disconnect();
 });
 

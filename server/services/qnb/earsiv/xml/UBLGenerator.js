@@ -7,9 +7,9 @@ let xml2js;
 let xmlEnabled = true;
 
 try {
-  xml2js = require("xml2js");
+  xml2js = require('xml2js');
 } catch (error) {
-  console.warn("XML processing dependencies not available:", error.message);
+  console.warn('XML processing dependencies not available:', error.message);
   xmlEnabled = false;
 
   // Create fallback XML implementation
@@ -17,22 +17,22 @@ try {
     Builder: class {
       constructor() {}
       buildObject() {
-        throw new Error("XML generation disabled - dependencies not available");
+        throw new Error('XML generation disabled - dependencies not available');
       }
     },
     parseString: () => {
-      throw new Error("XML parsing disabled - dependencies not available");
-    },
+      throw new Error('XML parsing disabled - dependencies not available');
+    }
   };
 }
 
-const config = require("../config/QNBConfig");
-const QNBHelpers = require("../utils/QNBHelpers");
+const config = require('../config/QNBConfig');
+const QNBHelpers = require('../utils/QNBHelpers');
 
 class UBLGenerator {
   constructor() {
     if (!xmlEnabled) {
-      console.warn("UBL Generator disabled - XML dependencies not available");
+      console.warn('UBL Generator disabled - XML dependencies not available');
       return;
     }
 
@@ -48,11 +48,11 @@ class UBLGenerator {
    */
   generateInvoiceUBL(order, companyInfo, options = {}) {
     const {
-      invoiceNumber = "TEMP",
+      invoiceNumber = 'TEMP',
       uuid = this.generateUUID(),
       profileId = config.invoiceProfiles.E_ARCHIVE,
       copyIndicator = config.defaults.copyIndicator,
-      customizationId = config.defaults.customizationId,
+      customizationId = config.defaults.customizationId
     } = options;
 
     const invoiceDate = this.formatDate(new Date());
@@ -62,40 +62,40 @@ class UBLGenerator {
       Invoice: {
         $: {
           xmlns: config.namespaces.ubl,
-          "xmlns:cac": config.namespaces.cac,
-          "xmlns:cbc": config.namespaces.cbc,
+          'xmlns:cac': config.namespaces.cac,
+          'xmlns:cbc': config.namespaces.cbc
         },
 
         // Document identification
-        "cbc:UBLVersionID": config.defaults.ublVersion,
-        "cbc:CustomizationID": customizationId,
-        "cbc:ProfileID": profileId,
-        "cbc:ID": invoiceNumber,
-        "cbc:CopyIndicator": copyIndicator,
-        "cbc:UUID": uuid,
-        "cbc:IssueDate": invoiceDate,
-        "cbc:IssueTime": invoiceTime,
-        "cbc:InvoiceTypeCode": config.defaults.invoiceTypeCode,
-        "cbc:DocumentCurrencyCode": config.defaults.currency,
+        'cbc:UBLVersionID': config.defaults.ublVersion,
+        'cbc:CustomizationID': customizationId,
+        'cbc:ProfileID': profileId,
+        'cbc:ID': invoiceNumber,
+        'cbc:CopyIndicator': copyIndicator,
+        'cbc:UUID': uuid,
+        'cbc:IssueDate': invoiceDate,
+        'cbc:IssueTime': invoiceTime,
+        'cbc:InvoiceTypeCode': config.defaults.invoiceTypeCode,
+        'cbc:DocumentCurrencyCode': config.defaults.currency,
 
         // Additional notes
-        ...(order.notes && { "cbc:Note": order.notes }),
+        ...(order.notes && { 'cbc:Note': order.notes }),
 
         // Supplier party (company)
-        "cac:AccountingSupplierParty": this.createSupplierParty(companyInfo),
+        'cac:AccountingSupplierParty': this.createSupplierParty(companyInfo),
 
         // Customer party
-        "cac:AccountingCustomerParty": this.createCustomerParty(order),
+        'cac:AccountingCustomerParty': this.createCustomerParty(order),
 
         // Invoice lines
-        "cac:InvoiceLine": this.createInvoiceLines(order),
+        'cac:InvoiceLine': this.createInvoiceLines(order),
 
         // Tax totals
-        "cac:TaxTotal": this.createTaxTotal(order),
+        'cac:TaxTotal': this.createTaxTotal(order),
 
         // Legal monetary totals
-        "cac:LegalMonetaryTotal": this.createMonetaryTotal(order),
-      },
+        'cac:LegalMonetaryTotal': this.createMonetaryTotal(order)
+      }
     };
 
     return this.xmlBuilder.buildObject(ublData);
@@ -108,34 +108,34 @@ class UBLGenerator {
    */
   createSupplierParty(companyInfo) {
     return {
-      "cac:Party": {
-        "cac:PartyName": {
-          "cbc:Name": companyInfo.companyName || "",
+      'cac:Party': {
+        'cac:PartyName': {
+          'cbc:Name': companyInfo.companyName || ''
         },
-        "cac:PostalAddress": {
-          "cbc:StreetName": companyInfo.address || "",
-          "cbc:CityName": companyInfo.city || "",
-          "cbc:PostalZone": companyInfo.postalCode || "",
-          "cac:Country": {
-            "cbc:IdentificationCode": config.defaults.country,
-            "cbc:Name": config.defaults.countryName,
-          },
+        'cac:PostalAddress': {
+          'cbc:StreetName': companyInfo.address || '',
+          'cbc:CityName': companyInfo.city || '',
+          'cbc:PostalZone': companyInfo.postalCode || '',
+          'cac:Country': {
+            'cbc:IdentificationCode': config.defaults.country,
+            'cbc:Name': config.defaults.countryName
+          }
         },
-        "cac:PartyTaxScheme": {
-          "cbc:TaxNumber": companyInfo.taxNumber || "",
-          "cac:TaxScheme": {
-            "cbc:Name": "VKN",
-          },
+        'cac:PartyTaxScheme': {
+          'cbc:TaxNumber': companyInfo.taxNumber || '',
+          'cac:TaxScheme': {
+            'cbc:Name': 'VKN'
+          }
         },
         ...(companyInfo.phone && {
-          "cac:Contact": {
-            "cbc:Telephone": companyInfo.phone,
+          'cac:Contact': {
+            'cbc:Telephone': companyInfo.phone,
             ...(companyInfo.email && {
-              "cbc:ElectronicMail": companyInfo.email,
-            }),
-          },
-        }),
-      },
+              'cbc:ElectronicMail': companyInfo.email
+            })
+          }
+        })
+      }
     };
   }
 
@@ -150,36 +150,36 @@ class UBLGenerator {
     const customerTCKN = QNBHelpers.getCustomerTCKN(order);
 
     const party = {
-      "cac:Party": {
-        "cac:PartyName": {
-          "cbc:Name": customerName,
+      'cac:Party': {
+        'cac:PartyName': {
+          'cbc:Name': customerName
         },
-        "cac:PostalAddress": {
-          "cbc:StreetName": QNBHelpers.getShippingAddress(order),
-          "cbc:CityName": QNBHelpers.getShippingCity(order),
-          "cbc:PostalZone": QNBHelpers.getShippingPostalCode(order),
-          "cac:Country": {
-            "cbc:IdentificationCode": config.defaults.country,
-            "cbc:Name": config.defaults.countryName,
-          },
-        },
-      },
+        'cac:PostalAddress': {
+          'cbc:StreetName': QNBHelpers.getShippingAddress(order),
+          'cbc:CityName': QNBHelpers.getShippingCity(order),
+          'cbc:PostalZone': QNBHelpers.getShippingPostalCode(order),
+          'cac:Country': {
+            'cbc:IdentificationCode': config.defaults.country,
+            'cbc:Name': config.defaults.countryName
+          }
+        }
+      }
     };
 
     // Add tax identification
     if (customerTaxNumber) {
-      party["cac:Party"]["cac:PartyTaxScheme"] = {
-        "cbc:TaxNumber": customerTaxNumber,
-        "cac:TaxScheme": {
-          "cbc:Name": "VKN",
-        },
+      party['cac:Party']['cac:PartyTaxScheme'] = {
+        'cbc:TaxNumber': customerTaxNumber,
+        'cac:TaxScheme': {
+          'cbc:Name': 'VKN'
+        }
       };
     } else if (customerTCKN) {
-      party["cac:Party"]["cac:PartyIdentification"] = {
-        "cbc:ID": {
-          $: { schemeID: "TCKN" },
-          _: customerTCKN,
-        },
+      party['cac:Party']['cac:PartyIdentification'] = {
+        'cbc:ID': {
+          $: { schemeID: 'TCKN' },
+          _: customerTCKN
+        }
       };
     }
 
@@ -188,10 +188,10 @@ class UBLGenerator {
     const email = QNBHelpers.getCustomerEmail(order);
 
     if (phone || email) {
-      party["cac:Party"]["cac:Contact"] = {};
-      if (phone) party["cac:Party"]["cac:Contact"]["cbc:Telephone"] = phone;
+      party['cac:Party']['cac:Contact'] = {};
+      if (phone) {party['cac:Party']['cac:Contact']['cbc:Telephone'] = phone;}
       if (email)
-        party["cac:Party"]["cac:Contact"]["cbc:ElectronicMail"] = email;
+      {party['cac:Party']['cac:Contact']['cbc:ElectronicMail'] = email;}
     }
 
     return party;
@@ -211,63 +211,63 @@ class UBLGenerator {
         lineExtensionAmount * (item.taxRate || config.defaultTaxRates.VAT_18);
 
       return {
-        "cbc:ID": (index + 1).toString(),
-        "cbc:InvoicedQuantity": {
-          $: { unitCode: "NIU" }, // Number of items unit
-          _: item.quantity.toString(),
+        'cbc:ID': (index + 1).toString(),
+        'cbc:InvoicedQuantity': {
+          $: { unitCode: 'NIU' }, // Number of items unit
+          _: item.quantity.toString()
         },
-        "cbc:LineExtensionAmount": {
+        'cbc:LineExtensionAmount': {
           $: { currencyID: config.defaults.currency },
-          _: lineExtensionAmount.toFixed(2),
+          _: lineExtensionAmount.toFixed(2)
         },
-        "cac:Item": {
-          "cbc:Name": item.productName || item.name || "",
-          ...(item.description && { "cbc:Description": item.description }),
-          "cac:SellersItemIdentification": {
-            "cbc:ID": item.sku || item.productId || "",
+        'cac:Item': {
+          'cbc:Name': item.productName || item.name || '',
+          ...(item.description && { 'cbc:Description': item.description }),
+          'cac:SellersItemIdentification': {
+            'cbc:ID': item.sku || item.productId || ''
           },
-          "cac:ClassifiedTaxCategory": {
-            "cbc:ID": "S", // Standard rate
-            "cbc:Percent": (
+          'cac:ClassifiedTaxCategory': {
+            'cbc:ID': 'S', // Standard rate
+            'cbc:Percent': (
               (item.taxRate || config.defaultTaxRates.VAT_18) * 100
             ).toFixed(0),
-            "cac:TaxScheme": {
-              "cbc:ID": "KDV",
-              "cbc:Name": "Katma Değer Vergisi",
-            },
-          },
+            'cac:TaxScheme': {
+              'cbc:ID': 'KDV',
+              'cbc:Name': 'Katma Değer Vergisi'
+            }
+          }
         },
-        "cac:Price": {
-          "cbc:PriceAmount": {
+        'cac:Price': {
+          'cbc:PriceAmount': {
             $: { currencyID: config.defaults.currency },
-            _: item.price.toFixed(2),
-          },
+            _: item.price.toFixed(2)
+          }
         },
-        "cac:TaxTotal": {
-          "cbc:TaxAmount": {
+        'cac:TaxTotal': {
+          'cbc:TaxAmount': {
             $: { currencyID: config.defaults.currency },
-            _: taxAmount.toFixed(2),
+            _: taxAmount.toFixed(2)
           },
-          "cac:TaxSubtotal": {
-            "cbc:TaxableAmount": {
+          'cac:TaxSubtotal': {
+            'cbc:TaxableAmount': {
               $: { currencyID: config.defaults.currency },
-              _: lineExtensionAmount.toFixed(2),
+              _: lineExtensionAmount.toFixed(2)
             },
-            "cbc:TaxAmount": {
+            'cbc:TaxAmount': {
               $: { currencyID: config.defaults.currency },
-              _: taxAmount.toFixed(2),
+              _: taxAmount.toFixed(2)
             },
-            "cac:TaxCategory": {
-              "cbc:ID": "S",
-              "cbc:Percent": (
+            'cac:TaxCategory': {
+              'cbc:ID': 'S',
+              'cbc:Percent': (
                 (item.taxRate || config.defaultTaxRates.VAT_18) * 100
               ).toFixed(0),
-              "cac:TaxScheme": {
-                "cbc:ID": "KDV",
-              },
-            },
-          },
-        },
+              'cac:TaxScheme': {
+                'cbc:ID': 'KDV'
+              }
+            }
+          }
+        }
       };
     });
   }
@@ -282,28 +282,28 @@ class UBLGenerator {
     const totalTaxAmount = QNBHelpers.calculateTotalTax(order);
 
     return {
-      "cbc:TaxAmount": {
+      'cbc:TaxAmount': {
         $: { currencyID: config.defaults.currency },
-        _: totalTaxAmount.toFixed(2),
+        _: totalTaxAmount.toFixed(2)
       },
-      "cac:TaxSubtotal": taxSubtotals.map((subtotal) => ({
-        "cbc:TaxableAmount": {
+      'cac:TaxSubtotal': taxSubtotals.map((subtotal) => ({
+        'cbc:TaxableAmount': {
           $: { currencyID: config.defaults.currency },
-          _: subtotal.taxableAmount.toFixed(2),
+          _: subtotal.taxableAmount.toFixed(2)
         },
-        "cbc:TaxAmount": {
+        'cbc:TaxAmount': {
           $: { currencyID: config.defaults.currency },
-          _: subtotal.taxAmount.toFixed(2),
+          _: subtotal.taxAmount.toFixed(2)
         },
-        "cac:TaxCategory": {
-          "cbc:ID": "S",
-          "cbc:Percent": subtotal.taxCategory.taxPercent.toFixed(0),
-          "cac:TaxScheme": {
-            "cbc:ID": "KDV",
-            "cbc:Name": "Katma Değer Vergisi",
-          },
-        },
-      })),
+        'cac:TaxCategory': {
+          'cbc:ID': 'S',
+          'cbc:Percent': subtotal.taxCategory.taxPercent.toFixed(0),
+          'cac:TaxScheme': {
+            'cbc:ID': 'KDV',
+            'cbc:Name': 'Katma Değer Vergisi'
+          }
+        }
+      }))
     };
   }
 
@@ -319,22 +319,22 @@ class UBLGenerator {
     const payableAmount = order.totalAmount || taxInclusiveAmount;
 
     return {
-      "cbc:LineExtensionAmount": {
+      'cbc:LineExtensionAmount': {
         $: { currencyID: config.defaults.currency },
-        _: lineExtensionAmount.toFixed(2),
+        _: lineExtensionAmount.toFixed(2)
       },
-      "cbc:TaxExclusiveAmount": {
+      'cbc:TaxExclusiveAmount': {
         $: { currencyID: config.defaults.currency },
-        _: lineExtensionAmount.toFixed(2),
+        _: lineExtensionAmount.toFixed(2)
       },
-      "cbc:TaxInclusiveAmount": {
+      'cbc:TaxInclusiveAmount': {
         $: { currencyID: config.defaults.currency },
-        _: taxInclusiveAmount.toFixed(2),
+        _: taxInclusiveAmount.toFixed(2)
       },
-      "cbc:PayableAmount": {
+      'cbc:PayableAmount': {
         $: { currencyID: config.defaults.currency },
-        _: payableAmount.toFixed(2),
-      },
+        _: payableAmount.toFixed(2)
+      }
     };
   }
 
@@ -343,11 +343,11 @@ class UBLGenerator {
    * @returns {string} UUID v4
    */
   generateUUID() {
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
       /[xy]/g,
       function (c) {
         const r = (Math.random() * 16) | 0;
-        const v = c == "x" ? r : (r & 0x3) | 0x8;
+        const v = c == 'x' ? r : (r & 0x3) | 0x8;
         return v.toString(16);
       }
     );
@@ -359,7 +359,7 @@ class UBLGenerator {
    * @returns {string} Formatted date (YYYY-MM-DD)
    */
   formatDate(date) {
-    return date.toISOString().split("T")[0];
+    return date.toISOString().split('T')[0];
   }
 
   /**
@@ -368,7 +368,7 @@ class UBLGenerator {
    * @returns {string} Formatted time (HH:MM:SS)
    */
   formatTime(date) {
-    return date.toISOString().split("T")[1].split(".")[0];
+    return date.toISOString().split('T')[1].split('.')[0];
   }
 
   /**
@@ -379,7 +379,7 @@ class UBLGenerator {
   validateUBL(ublXml) {
     try {
       // Basic XML validation
-      const xml2js = require("xml2js");
+      const xml2js = require('xml2js');
       const parser = new xml2js.Parser();
 
       parser.parseString(ublXml, (err, result) => {
@@ -389,18 +389,18 @@ class UBLGenerator {
       });
 
       // Basic UBL structure validation
-      if (!ublXml.includes("<Invoice") || !ublXml.includes("</Invoice>")) {
-        throw new Error("Invalid UBL structure - missing Invoice element");
+      if (!ublXml.includes('<Invoice') || !ublXml.includes('</Invoice>')) {
+        throw new Error('Invalid UBL structure - missing Invoice element');
       }
 
       return {
         isValid: true,
-        message: "UBL XML is valid",
+        message: 'UBL XML is valid'
       };
     } catch (error) {
       return {
         isValid: false,
-        error: error.message,
+        error: error.message
       };
     }
   }

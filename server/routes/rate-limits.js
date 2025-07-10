@@ -1,22 +1,22 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { auth } = require("../middleware/auth");
-const cacheService = require("../services/cache-service");
-const logger = require("../utils/logger");
+const { auth } = require('../middleware/auth');
+const cacheService = require('../services/cache-service');
+const logger = require('../utils/logger');
 
 // Rate limiting management middleware - only for admins
 const requireAdmin = (req, res, next) => {
-  if (req.user?.role !== "admin") {
+  if (req.user?.role !== 'admin') {
     return res.status(403).json({
       success: false,
-      message: "Admin access required",
+      message: 'Admin access required'
     });
   }
   next();
 };
 
 // Get comprehensive rate limit status
-router.get("/rate-limits", auth, requireAdmin, async (req, res) => {
+router.get('/rate-limits', auth, requireAdmin, async (req, res) => {
   try {
     const { user: userId, type, ip } = req.query;
 
@@ -28,7 +28,7 @@ router.get("/rate-limits", auth, requireAdmin, async (req, res) => {
     } else if (ip) {
       keys = await cacheService.client.keys(`rate_limit:*${ip}*`);
     } else {
-      keys = await cacheService.client.keys("rate_limit:*");
+      keys = await cacheService.client.keys('rate_limit:*');
     }
 
     const rateLimits = {};
@@ -39,7 +39,7 @@ router.get("/rate-limits", auth, requireAdmin, async (req, res) => {
         rateLimits[key] = {
           count: parseInt(value) || 0,
           ttl: ttl,
-          expiresAt: ttl > 0 ? new Date(Date.now() + ttl * 1000) : null,
+          expiresAt: ttl > 0 ? new Date(Date.now() + ttl * 1000) : null
         };
       } catch (error) {
         logger.warn(`Failed to get rate limit data for key ${key}:`, error);
@@ -49,9 +49,9 @@ router.get("/rate-limits", auth, requireAdmin, async (req, res) => {
     // Group by type for better overview
     const grouped = {};
     Object.entries(rateLimits).forEach(([key, data]) => {
-      const parts = key.split(":");
-      const type = parts[1] || "unknown";
-      if (!grouped[type]) grouped[type] = [];
+      const parts = key.split(':');
+      const type = parts[1] || 'unknown';
+      if (!grouped[type]) {grouped[type] = [];}
       grouped[type].push({ key, ...data });
     });
 
@@ -60,21 +60,21 @@ router.get("/rate-limits", auth, requireAdmin, async (req, res) => {
       data: {
         total: Object.keys(rateLimits).length,
         byType: grouped,
-        raw: rateLimits,
-      },
+        raw: rateLimits
+      }
     });
   } catch (error) {
-    logger.error("Rate limit status error:", error);
+    logger.error('Rate limit status error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get rate limit status",
-      error: error.message,
+      message: 'Failed to get rate limit status',
+      error: error.message
     });
   }
 });
 
 // Clear specific rate limits
-router.delete("/rate-limits", auth, requireAdmin, async (req, res) => {
+router.delete('/rate-limits', auth, requireAdmin, async (req, res) => {
   try {
     const { user: userId, type, ip, key } = req.body;
 
@@ -92,15 +92,15 @@ router.delete("/rate-limits", auth, requireAdmin, async (req, res) => {
     } else {
       return res.status(400).json({
         success: false,
-        message: "Please specify user, type, ip, or specific key to delete",
+        message: 'Please specify user, type, ip, or specific key to delete'
       });
     }
 
     if (keysToDelete.length === 0) {
       return res.json({
         success: true,
-        message: "No rate limit entries found to delete",
-        deleted: 0,
+        message: 'No rate limit entries found to delete',
+        deleted: 0
       });
     }
 
@@ -109,26 +109,26 @@ router.delete("/rate-limits", auth, requireAdmin, async (req, res) => {
     logger.info(`Rate limits cleared by admin ${req.user.id}`, {
       adminId: req.user.id,
       keysDeleted: keysToDelete.length,
-      criteria: { user: userId, type, ip, key },
+      criteria: { user: userId, type, ip, key }
     });
 
     res.json({
       success: true,
       message: `Successfully cleared ${keysToDelete.length} rate limit entries`,
-      deleted: keysToDelete.length,
+      deleted: keysToDelete.length
     });
   } catch (error) {
-    logger.error("Rate limit clear error:", error);
+    logger.error('Rate limit clear error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to clear rate limits",
-      error: error.message,
+      message: 'Failed to clear rate limits',
+      error: error.message
     });
   }
 });
 
 // Check if user/IP is currently rate limited
-router.post("/rate-limits/check", auth, async (req, res) => {
+router.post('/rate-limits/check', auth, async (req, res) => {
   try {
     const { identifier, type } = req.body;
     const checkId = identifier || req.user?.id || req.ip;
@@ -142,7 +142,7 @@ router.post("/rate-limits/check", auth, async (req, res) => {
       limits[key] = {
         count: parseInt(value) || 0,
         ttl: ttl,
-        resetTime: ttl > 0 ? new Date(Date.now() + ttl * 1000) : null,
+        resetTime: ttl > 0 ? new Date(Date.now() + ttl * 1000) : null
       };
     }
 
@@ -151,42 +151,42 @@ router.post("/rate-limits/check", auth, async (req, res) => {
       data: {
         identifier: checkId,
         limits,
-        isLimited: Object.keys(limits).length > 0,
-      },
+        isLimited: Object.keys(limits).length > 0
+      }
     });
   } catch (error) {
-    logger.error("Rate limit check error:", error);
+    logger.error('Rate limit check error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to check rate limits",
-      error: error.message,
+      message: 'Failed to check rate limits',
+      error: error.message
     });
   }
 });
 
 // Get rate limiting statistics
-router.get("/rate-limits/stats", auth, requireAdmin, async (req, res) => {
+router.get('/rate-limits/stats', auth, requireAdmin, async (req, res) => {
   try {
-    const allKeys = await cacheService.client.keys("rate_limit:*");
+    const allKeys = await cacheService.client.keys('rate_limit:*');
 
     const stats = {
       total: allKeys.length,
       byType: {},
       topUsers: {},
-      recentActivity: [],
+      recentActivity: []
     };
 
     // Analyze keys
     for (const key of allKeys) {
-      const parts = key.split(":");
-      const type = parts[1] || "unknown";
-      const identifier = parts[2] || "unknown";
+      const parts = key.split(':');
+      const type = parts[1] || 'unknown';
+      const identifier = parts[2] || 'unknown';
 
       // Count by type
       stats.byType[type] = (stats.byType[type] || 0) + 1;
 
       // Count by user/IP
-      if (identifier && identifier !== "unknown") {
+      if (identifier && identifier !== 'unknown') {
         stats.topUsers[identifier] = (stats.topUsers[identifier] || 0) + 1;
       }
 
@@ -199,7 +199,7 @@ router.get("/rate-limits/stats", auth, requireAdmin, async (req, res) => {
           type,
           identifier,
           count: parseInt(count) || 0,
-          expiresIn: ttl,
+          expiresIn: ttl
         });
       } catch (error) {
         // Skip if we can't read the key
@@ -223,14 +223,14 @@ router.get("/rate-limits/stats", auth, requireAdmin, async (req, res) => {
     res.json({
       success: true,
       data: stats,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
-    logger.error("Rate limit stats error:", error);
+    logger.error('Rate limit stats error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get rate limit statistics",
-      error: error.message,
+      message: 'Failed to get rate limit statistics',
+      error: error.message
     });
   }
 });

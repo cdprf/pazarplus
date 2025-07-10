@@ -14,13 +14,13 @@
  * @version 1.0.0
  */
 
-const logger = require("../utils/logger");
-const { Op } = require("sequelize");
+const logger = require('../utils/logger');
+const { Op } = require('sequelize');
 
 // Import existing services
-const productMergeService = require("./product-merge-service");
-const IntelligentSKUClassifier = require("./intelligent-sku-classifier-enhanced");
-const IntegratedPatternDetectionEngine = require("./integrated-pattern-detection-engine");
+const productMergeService = require('./product-merge-service');
+const IntelligentSKUClassifier = require('./intelligent-sku-classifier-enhanced');
+const IntegratedPatternDetectionEngine = require('./integrated-pattern-detection-engine');
 
 /**
  * Unified Product Intelligence Service
@@ -39,24 +39,24 @@ class UnifiedProductIntelligenceService {
           sku: 0.8,
           name: 0.75,
           barcode: 1.0, // Exact match required
-          description: 0.6,
+          description: 0.6
         },
         weights: {
           sku: 0.35,
           name: 0.3,
           barcode: 0.25,
-          category: 0.1,
-        },
+          category: 0.1
+        }
       },
       classification: {
         confidence_threshold: 0.4,
         learning_enabled: true,
-        pattern_analysis: true,
+        pattern_analysis: true
       },
       merging: {
-        grouping_strategy: "multi_pass", // SKU -> barcode -> name -> pattern
-        confidence_minimum: 0.6,
-      },
+        grouping_strategy: 'multi_pass', // SKU -> barcode -> name -> pattern
+        confidence_minimum: 0.6
+      }
     };
 
     this.statistics = {
@@ -65,7 +65,7 @@ class UnifiedProductIntelligenceService {
       groups_created: 0,
       patterns_detected: 0,
       merge_operations: 0,
-      learning_updates: 0,
+      learning_updates: 0
     };
   }
 
@@ -77,8 +77,8 @@ class UnifiedProductIntelligenceService {
    */
   async getUserProducts(userId, options = {}) {
     try {
-      const { Op } = require("sequelize");
-      const { Product, ProductVariant, PlatformData } = require("../models");
+      const { Op } = require('sequelize');
+      const { Product, ProductVariant, PlatformData } = require('../models');
 
       const {
         limit = 1000,
@@ -88,7 +88,7 @@ class UnifiedProductIntelligenceService {
         status = null,
         category = null,
         platform = null,
-        searchTerm = null,
+        searchTerm = null
       } = options;
 
       // Build where clause
@@ -106,7 +106,7 @@ class UnifiedProductIntelligenceService {
         whereClause[Op.or] = [
           { name: { [Op.iLike]: `%${searchTerm}%` } },
           { sku: { [Op.iLike]: `%${searchTerm}%` } },
-          { barcode: { [Op.iLike]: `%${searchTerm}%` } },
+          { barcode: { [Op.iLike]: `%${searchTerm}%` } }
         ];
       }
 
@@ -116,17 +116,17 @@ class UnifiedProductIntelligenceService {
       if (includeVariants) {
         include.push({
           model: ProductVariant,
-          as: "variants",
-          required: false,
+          as: 'variants',
+          required: false
         });
       }
 
       if (includePlatformData) {
         include.push({
           model: PlatformData,
-          as: "platformData",
+          as: 'platformData',
           required: false,
-          where: platform ? { platform } : undefined,
+          where: platform ? { platform } : undefined
         });
       }
 
@@ -135,7 +135,7 @@ class UnifiedProductIntelligenceService {
         include,
         limit,
         offset,
-        order: [["updatedAt", "DESC"]],
+        order: [['updatedAt', 'DESC']]
       });
 
       logger.info(`Retrieved ${products.length} products for user ${userId}`);
@@ -143,7 +143,7 @@ class UnifiedProductIntelligenceService {
       // Convert to plain objects to avoid circular references
       return products.map((product) => product.get({ plain: true }));
     } catch (error) {
-      logger.error("Error retrieving user products:", error);
+      logger.error('Error retrieving user products:', error);
       throw new Error(`Failed to retrieve user products: ${error.message}`);
     }
   }
@@ -212,15 +212,15 @@ class UnifiedProductIntelligenceService {
         metadata: {
           config_used: this.config,
           products_analyzed: products.length,
-          timestamp: new Date().toISOString(),
-        },
+          timestamp: new Date().toISOString()
+        }
       };
     } catch (error) {
-      logger.error("Unified product intelligence analysis failed:", error);
+      logger.error('Unified product intelligence analysis failed:', error);
       return {
         success: false,
         error: error.message,
-        processingTime: Date.now() - startTime,
+        processingTime: Date.now() - startTime
       };
     }
   }
@@ -239,8 +239,8 @@ class UnifiedProductIntelligenceService {
         total_classified: 0,
         skus_detected: 0,
         barcodes_detected: 0,
-        patterns_learned: 0,
-      },
+        patterns_learned: 0
+      }
     };
 
     for (const product of products) {
@@ -262,9 +262,9 @@ class UnifiedProductIntelligenceService {
 
         // Update statistics
         results.statistics.total_classified++;
-        if (enhancedClassification.type === "sku") {
+        if (enhancedClassification.type === 'sku') {
           results.statistics.skus_detected++;
-        } else if (enhancedClassification.type === "barcode") {
+        } else if (enhancedClassification.type === 'barcode') {
           results.statistics.barcodes_detected++;
         }
 
@@ -299,17 +299,17 @@ class UnifiedProductIntelligenceService {
   async enhancedProductMerging(products, classificationResults) {
     // Ensure products is an array
     if (!Array.isArray(products)) {
-      logger.error("Products parameter is not an array:", typeof products);
+      logger.error('Products parameter is not an array:', typeof products);
       return {
         groups: [],
         merged_products: [],
         statistics: {
           original_count: 0,
           merged_count: 0,
-          reduction_percentage: "0.00",
+          reduction_percentage: '0.00',
           groups_created: 0,
-          avg_group_size: "0.00",
-        },
+          avg_group_size: '0.00'
+        }
       };
     }
 
@@ -323,9 +323,9 @@ class UnifiedProductIntelligenceService {
         _intelligence: {
           classification,
           primary_identifier: this.extractPrimaryIdentifier(product),
-          identifier_type: classification?.type || "unknown",
-          confidence: classification?.confidence || 0,
-        },
+          identifier_type: classification?.type || 'unknown',
+          confidence: classification?.confidence || 0
+        }
       };
     });
 
@@ -348,8 +348,8 @@ class UnifiedProductIntelligenceService {
           100
         ).toFixed(2),
         groups_created: groups.length,
-        avg_group_size: (products.length / groups.length).toFixed(2),
-      },
+        avg_group_size: (products.length / groups.length).toFixed(2)
+      }
     };
   }
 
@@ -387,7 +387,7 @@ class UnifiedProductIntelligenceService {
       const intelligence = product._intelligence;
 
       if (
-        intelligence?.identifier_type === "sku" &&
+        intelligence?.identifier_type === 'sku' &&
         intelligence.confidence > 0.7
       ) {
         const normalizedSku = this.normalizeSKU(
@@ -409,9 +409,9 @@ class UnifiedProductIntelligenceService {
       if (group.length > 0) {
         groups.set(`sku_group_${groupId++}`, {
           products: group,
-          grouping_strategy: "classified_sku",
-          confidence: this.calculateGroupConfidence(group, "sku"),
-          primary_identifier: group[0]._intelligence.primary_identifier,
+          grouping_strategy: 'classified_sku',
+          confidence: this.calculateGroupConfidence(group, 'sku'),
+          primary_identifier: group[0]._intelligence.primary_identifier
         });
       }
     });
@@ -427,7 +427,7 @@ class UnifiedProductIntelligenceService {
       const intelligence = product._intelligence;
 
       if (
-        intelligence?.identifier_type === "barcode" &&
+        intelligence?.identifier_type === 'barcode' &&
         intelligence.confidence > 0.8
       ) {
         const barcode = intelligence.primary_identifier;
@@ -447,9 +447,9 @@ class UnifiedProductIntelligenceService {
       if (group.length > 0) {
         groups.set(`barcode_group_${groupId++}`, {
           products: group,
-          grouping_strategy: "classified_barcode",
-          confidence: this.calculateGroupConfidence(group, "barcode"),
-          primary_identifier: group[0]._intelligence.primary_identifier,
+          grouping_strategy: 'classified_barcode',
+          confidence: this.calculateGroupConfidence(group, 'barcode'),
+          primary_identifier: group[0]._intelligence.primary_identifier
         });
       }
     });
@@ -463,7 +463,7 @@ class UnifiedProductIntelligenceService {
     const processed = new Set();
 
     ungrouped.forEach((product1, i) => {
-      if (processed.has(i)) return;
+      if (processed.has(i)) {return;}
 
       const similarProducts = [product1];
       processed.add(i);
@@ -485,10 +485,10 @@ class UnifiedProductIntelligenceService {
       if (similarProducts.length > 1) {
         nameGroups.push({
           products: similarProducts,
-          grouping_strategy: "intelligent_name_similarity",
-          confidence: this.calculateGroupConfidence(similarProducts, "name"),
+          grouping_strategy: 'intelligent_name_similarity',
+          confidence: this.calculateGroupConfidence(similarProducts, 'name'),
           similarity_metrics:
-            this.calculateGroupSimilarityMetrics(similarProducts),
+            this.calculateGroupSimilarityMetrics(similarProducts)
         });
       }
     });
@@ -522,8 +522,8 @@ class UnifiedProductIntelligenceService {
     if (
       sku1 &&
       sku2 &&
-      product1._intelligence?.identifier_type === "sku" &&
-      product2._intelligence?.identifier_type === "sku"
+      product1._intelligence?.identifier_type === 'sku' &&
+      product2._intelligence?.identifier_type === 'sku'
     ) {
       const skuSimilarity = this.calculateStringSimilarity(sku1, sku2);
       weightedScore += skuSimilarity * weights.sku;
@@ -548,8 +548,8 @@ class UnifiedProductIntelligenceService {
             ? product1.category === product2.category
               ? 1
               : 0
-            : 0,
-      },
+            : 0
+      }
     };
   }
 
@@ -560,8 +560,8 @@ class UnifiedProductIntelligenceService {
     // Safely extract all products from groups
     const allProducts = Array.isArray(groups)
       ? groups.flatMap((group) =>
-          Array.isArray(group.products) ? group.products : []
-        )
+        Array.isArray(group.products) ? group.products : []
+      )
       : [];
 
     if (allProducts.length === 0) {
@@ -572,8 +572,8 @@ class UnifiedProductIntelligenceService {
         statistics: {
           patterns_detected: 0,
           variant_groups: 0,
-          confidence_distribution: {},
-        },
+          confidence_distribution: {}
+        }
       };
     }
 
@@ -581,7 +581,7 @@ class UnifiedProductIntelligenceService {
     const patternResults = await this.patternEngine.detectPatterns(allProducts);
 
     if (!patternResults.success) {
-      logger.error("Pattern detection failed:", patternResults.error);
+      logger.error('Pattern detection failed:', patternResults.error);
       return {
         variant_patterns: new Map(),
         naming_patterns: new Map(),
@@ -589,8 +589,8 @@ class UnifiedProductIntelligenceService {
         statistics: {
           patterns_detected: 0,
           variant_groups: 0,
-          confidence_distribution: {},
-        },
+          confidence_distribution: {}
+        }
       };
     }
 
@@ -601,7 +601,7 @@ class UnifiedProductIntelligenceService {
       feature_patterns: patternResults.results.feature_patterns,
       hierarchical_patterns: patternResults.results.hierarchical_patterns,
       statistics: patternResults.results.statistics,
-      confidence: patternResults.results.confidence,
+      confidence: patternResults.results.confidence
     };
   }
 
@@ -618,7 +618,7 @@ class UnifiedProductIntelligenceService {
       merging_suggestions: [],
       classification_suggestions: [],
       pattern_suggestions: [],
-      optimization_suggestions: [],
+      optimization_suggestions: []
     };
 
     // Generate merging suggestions
@@ -662,7 +662,7 @@ class UnifiedProductIntelligenceService {
       has_numeric_only: /^\d+$/.test(classification.input),
       has_platform_source: product.sourcePlatform,
       has_category: !!product.category,
-      length: classification.input?.length || 0,
+      length: classification.input?.length || 0
     };
 
     // Adjust confidence based on context
@@ -670,7 +670,7 @@ class UnifiedProductIntelligenceService {
 
     if (context.has_numeric_only && context.length >= 8) {
       // Likely barcode if numeric and 8+ digits
-      if (classification.type === "barcode") {
+      if (classification.type === 'barcode') {
         adjustedConfidence = Math.min(adjustedConfidence + 0.1, 1.0);
       }
     }
@@ -678,13 +678,13 @@ class UnifiedProductIntelligenceService {
     return {
       ...classification,
       confidence: adjustedConfidence,
-      context,
+      context
     };
   }
 
   normalizeSKU(sku) {
-    if (!sku) return "";
-    return sku.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!sku) {return '';}
+    return sku.toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 
   calculateStringSimilarity(str1, str2) {
@@ -697,15 +697,15 @@ class UnifiedProductIntelligenceService {
     let baseConfidence = 0.5;
 
     switch (strategy) {
-      case "sku":
-        baseConfidence = 0.9;
-        break;
-      case "barcode":
-        baseConfidence = 0.95;
-        break;
-      case "name":
-        baseConfidence = 0.7;
-        break;
+    case 'sku':
+      baseConfidence = 0.9;
+      break;
+    case 'barcode':
+      baseConfidence = 0.95;
+      break;
+    case 'name':
+      baseConfidence = 0.7;
+      break;
     }
 
     // Adjust based on group size and consistency
@@ -721,11 +721,11 @@ class UnifiedProductIntelligenceService {
 
     // Check category consistency
     const categories = new Set(products.map((p) => p.category).filter(Boolean));
-    if (categories.size === 1) consistency += 0.3;
+    if (categories.size === 1) {consistency += 0.3;}
 
     // Check brand consistency
     const brands = new Set(products.map((p) => p.brand).filter(Boolean));
-    if (brands.size === 1) consistency += 0.3;
+    if (brands.size === 1) {consistency += 0.3;}
 
     // Check price range consistency
     const prices = products
@@ -735,7 +735,7 @@ class UnifiedProductIntelligenceService {
       const maxPrice = Math.max(...prices);
       const minPrice = Math.min(...prices);
       const priceVariation = (maxPrice - minPrice) / maxPrice;
-      if (priceVariation < 0.2) consistency += 0.4; // Prices within 20%
+      if (priceVariation < 0.2) {consistency += 0.4;} // Prices within 20%
     }
 
     return Math.min(consistency, 1.0);
@@ -755,7 +755,7 @@ class UnifiedProductIntelligenceService {
       classifications: group.products
         .map((p) => p._intelligence?.classification)
         .filter(Boolean),
-      merge_timestamp: new Date().toISOString(),
+      merge_timestamp: new Date().toISOString()
     };
 
     return mergedProduct;
@@ -792,7 +792,7 @@ class UnifiedProductIntelligenceService {
         classificationResults.classifications
       ),
       merging_confidence: this.calculateMergingConfidence(mergeResults),
-      pattern_confidence: this.calculatePatternConfidence(patternResults),
+      pattern_confidence: this.calculatePatternConfidence(patternResults)
     };
   }
 
@@ -840,7 +840,7 @@ class UnifiedProductIntelligenceService {
           detected_groups: [],
           total_products: 0,
           processing_time: 0,
-          message: "No products provided for analysis",
+          message: 'No products provided for analysis'
         };
       }
 
@@ -855,13 +855,13 @@ class UnifiedProductIntelligenceService {
         let confidence = 1.0; // Default confidence for raw products
 
         if (
-          product._intelligence?.identifier_type === "sku" &&
+          product._intelligence?.identifier_type === 'sku' &&
           product._intelligence.confidence > 0.7
         ) {
           // Pre-processed product with high confidence SKU classification
           sku = product._intelligence.primary_identifier;
           confidence = product._intelligence.confidence;
-        } else if (product.sku && typeof product.sku === "string") {
+        } else if (product.sku && typeof product.sku === 'string') {
           // Raw product with SKU field
           sku = product.sku;
           confidence = 0.8; // Assume moderate confidence for raw SKUs
@@ -876,7 +876,7 @@ class UnifiedProductIntelligenceService {
             }
             skuGroups.get(baseSku).push({
               ...product,
-              _detectionMeta: { sku, confidence, baseSku },
+              _detectionMeta: { sku, confidence, baseSku }
             });
           }
         }
@@ -909,15 +909,15 @@ class UnifiedProductIntelligenceService {
         total_products: products.length,
         processing_time: processingTime,
         base_patterns_analyzed: skuGroups.size,
-        message: `Detected ${variantGroups.length} variant groups`,
+        message: `Detected ${variantGroups.length} variant groups`
       };
     } catch (error) {
-      logger.error("Error in variant pattern detection:", error);
+      logger.error('Error in variant pattern detection:', error);
       return {
         detected_groups: [],
         total_products: products.length,
         processing_time: 0,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -929,10 +929,10 @@ class UnifiedProductIntelligenceService {
    * @returns {string} Base SKU pattern
    */
   extractBaseSKUPattern(sku) {
-    if (!sku) return "";
+    if (!sku) {return '';}
 
     // For complex patterns like "iPhone-15-Pro-Max", we need multiple strategies
-    const separators = ["-", "_", ".", " "];
+    const separators = ['-', '_', '.', ' '];
 
     for (const separator of separators) {
       if (sku.includes(separator)) {
@@ -960,14 +960,14 @@ class UnifiedProductIntelligenceService {
       /-Pro$/i, // -Pro
       /-Max$/i, // -Max
       /-Plus$/i, // -Plus
-      /-Mini$/i, // -Mini
+      /-Mini$/i // -Mini
     ];
 
     let baseSku = sku;
     for (const suffix of variantSuffixes) {
       const match = baseSku.match(suffix);
       if (match) {
-        baseSku = baseSku.replace(suffix, "");
+        baseSku = baseSku.replace(suffix, '');
         break;
       }
     }
@@ -982,44 +982,44 @@ class UnifiedProductIntelligenceService {
    * @returns {boolean} Whether this is a valid base pattern
    */
   isValidBasePattern(basePattern, remainingParts) {
-    if (!basePattern || remainingParts.length === 0) return false;
+    if (!basePattern || remainingParts.length === 0) {return false;}
 
     // Base pattern should be meaningful (not just a single letter/number)
-    if (basePattern.length < 2) return false;
+    if (basePattern.length < 2) {return false;}
 
     // Remaining parts should look like variants
     const variantIndicators = [
-      "pro",
-      "max",
-      "plus",
-      "mini",
-      "lite",
-      "ultra",
-      "red",
-      "blue",
-      "green",
-      "black",
-      "white",
-      "yellow",
-      "orange",
-      "xs",
-      "s",
-      "m",
-      "l",
-      "xl",
-      "xxl",
-      "small",
-      "medium",
-      "large",
+      'pro',
+      'max',
+      'plus',
+      'mini',
+      'lite',
+      'ultra',
+      'red',
+      'blue',
+      'green',
+      'black',
+      'white',
+      'yellow',
+      'orange',
+      'xs',
+      's',
+      'm',
+      'l',
+      'xl',
+      'xxl',
+      'small',
+      'medium',
+      'large',
       /^\d+$/, // Pure numbers
-      /^v\d+$/i, // Version numbers
+      /^v\d+$/i // Version numbers
     ];
 
-    const remainingText = remainingParts.join("-").toLowerCase();
+    const remainingText = remainingParts.join('-').toLowerCase();
 
     // Check if remaining parts contain variant indicators
     return variantIndicators.some((indicator) => {
-      if (typeof indicator === "string") {
+      if (typeof indicator === 'string') {
         return remainingText.includes(indicator);
       } else {
         return indicator.test(remainingText);
@@ -1041,13 +1041,13 @@ class UnifiedProductIntelligenceService {
         product._intelligence?.primary_identifier ||
         product._detectionMeta?.sku ||
         product.sku;
-      const suffix = sku ? sku.replace(baseSku, "") : "";
+      const suffix = sku ? sku.replace(baseSku, '') : '';
 
       return {
         product,
         sku,
         suffix,
-        variantType: this.detectVariantType(suffix),
+        variantType: this.detectVariantType(suffix)
       };
     });
 
@@ -1055,7 +1055,7 @@ class UnifiedProductIntelligenceService {
     const confidence = this.calculateVariantPatternConfidence(variants);
 
     return {
-      id: `variant_${baseSku.replace(/[^a-zA-Z0-9]/g, "_")}`,
+      id: `variant_${baseSku.replace(/[^a-zA-Z0-9]/g, '_')}`,
       baseSku,
       basePattern: baseSku,
       variants,
@@ -1063,7 +1063,7 @@ class UnifiedProductIntelligenceService {
       confidence,
       variantTypes: [...new Set(variants.map((v) => v.variantType))],
       productCount: products.length,
-      pattern_type: "sku_variant",
+      pattern_type: 'sku_variant'
     };
   }
 
@@ -1073,49 +1073,49 @@ class UnifiedProductIntelligenceService {
    * @returns {string} Variant type
    */
   detectVariantType(suffix) {
-    const cleanSuffix = suffix.toLowerCase().replace(/[-_.]/g, "");
+    const cleanSuffix = suffix.toLowerCase().replace(/[-_.]/g, '');
 
     // Color variants
     const colors = [
-      "red",
-      "blue",
-      "green",
-      "black",
-      "white",
-      "yellow",
-      "orange",
-      "purple",
-      "pink",
-      "brown",
-      "gray",
-      "grey",
+      'red',
+      'blue',
+      'green',
+      'black',
+      'white',
+      'yellow',
+      'orange',
+      'purple',
+      'pink',
+      'brown',
+      'gray',
+      'grey'
     ];
-    if (colors.some((color) => cleanSuffix.includes(color))) return "color";
+    if (colors.some((color) => cleanSuffix.includes(color))) {return 'color';}
 
     // Size variants
     const sizes = [
-      "xs",
-      "s",
-      "m",
-      "l",
-      "xl",
-      "xxl",
-      "small",
-      "medium",
-      "large",
-      "mini",
-      "max",
+      'xs',
+      's',
+      'm',
+      'l',
+      'xl',
+      'xxl',
+      'small',
+      'medium',
+      'large',
+      'mini',
+      'max'
     ];
-    if (sizes.some((size) => cleanSuffix.includes(size))) return "size";
+    if (sizes.some((size) => cleanSuffix.includes(size))) {return 'size';}
 
     // Version variants
-    if (/v?\d+$/.test(cleanSuffix) || cleanSuffix.includes("version"))
-      return "version";
+    if (/v?\d+$/.test(cleanSuffix) || cleanSuffix.includes('version'))
+    {return 'version';}
 
     // Numeric variants
-    if (/^\d+$/.test(cleanSuffix)) return "numeric";
+    if (/^\d+$/.test(cleanSuffix)) {return 'numeric';}
 
-    return "generic";
+    return 'generic';
   }
 
   /**
@@ -1128,7 +1128,7 @@ class UnifiedProductIntelligenceService {
 
     // Boost for consistent variant types
     const uniqueTypes = new Set(variants.map((v) => v.variantType));
-    if (uniqueTypes.size === 1 && !uniqueTypes.has("generic")) {
+    if (uniqueTypes.size === 1 && !uniqueTypes.has('generic')) {
       confidence += 0.3;
     }
 
@@ -1150,7 +1150,7 @@ class UnifiedProductIntelligenceService {
    */
   hasLogicalProgression(variants) {
     const suffixes = variants.map((v) =>
-      v.suffix.toLowerCase().replace(/[-_.]/g, "")
+      v.suffix.toLowerCase().replace(/[-_.]/g, '')
     );
 
     // Check for numeric progression
@@ -1162,19 +1162,19 @@ class UnifiedProductIntelligenceService {
       const isSequential = numbers.every(
         (num, i) => i === 0 || num === numbers[i - 1] + 1
       );
-      if (isSequential) return true;
+      if (isSequential) {return true;}
     }
 
     // Check for version progression
     const versions = suffixes
       .filter((s) => /^v?\d+$/.test(s))
-      .map((s) => parseInt(s.replace("v", "")))
+      .map((s) => parseInt(s.replace('v', '')))
       .sort((a, b) => a - b);
     if (versions.length > 1) {
       const isSequential = versions.every(
         (num, i) => i === 0 || num === versions[i - 1] + 1
       );
-      if (isSequential) return true;
+      if (isSequential) {return true;}
     }
 
     return false;
@@ -1221,13 +1221,13 @@ class UnifiedProductIntelligenceService {
    * @returns {string} Normalized name
    */
   normalizeProductName(name) {
-    if (!name) return "";
+    if (!name) {return '';}
 
     return name
       .toLowerCase()
       .trim()
-      .replace(/[^\w\s-]/g, "") // Remove special chars except word chars, spaces, hyphens
-      .replace(/\s+/g, " "); // Normalize whitespace
+      .replace(/[^\w\s-]/g, '') // Remove special chars except word chars, spaces, hyphens
+      .replace(/\s+/g, ' '); // Normalize whitespace
   }
 
   /**
@@ -1243,12 +1243,12 @@ class UnifiedProductIntelligenceService {
       /\s+(v\d+|version\s+\d+)$/,
       /\s+\d+$/,
       /\s*-\s*(red|blue|green|black|white|yellow|orange|purple|pink|brown|gray|grey)$/,
-      /\s*-\s*(xs|s|m|l|xl|xxl|small|medium|large|mini|max)$/,
+      /\s*-\s*(xs|s|m|l|xl|xxl|small|medium|large|mini|max)$/
     ];
 
     let baseName = name;
     for (const pattern of patterns) {
-      baseName = baseName.replace(pattern, "");
+      baseName = baseName.replace(pattern, '');
     }
 
     return baseName.trim();
@@ -1263,11 +1263,11 @@ class UnifiedProductIntelligenceService {
   analyzeNamingPattern(products, baseName) {
     const nameVariants = products.map((product) => {
       const fullName = this.normalizeProductName(this.extractName(product));
-      const variant = fullName.replace(baseName, "").trim();
+      const variant = fullName.replace(baseName, '').trim();
       return {
         product,
         variant,
-        variantType: this.detectNameVariantType(variant),
+        variantType: this.detectNameVariantType(variant)
       };
     });
 
@@ -1279,7 +1279,7 @@ class UnifiedProductIntelligenceService {
       confidence,
       variantTypes: [...new Set(nameVariants.map((v) => v.variantType))],
       productCount: products.length,
-      pattern_type: "name_variant",
+      pattern_type: 'name_variant'
     };
   }
 
@@ -1289,46 +1289,46 @@ class UnifiedProductIntelligenceService {
    * @returns {string} Variant type
    */
   detectNameVariantType(variant) {
-    const cleanVariant = variant.toLowerCase().replace(/[-_\s]/g, "");
+    const cleanVariant = variant.toLowerCase().replace(/[-_\s]/g, '');
 
     // Color detection
     const colors = [
-      "red",
-      "blue",
-      "green",
-      "black",
-      "white",
-      "yellow",
-      "orange",
-      "purple",
-      "pink",
-      "brown",
-      "gray",
-      "grey",
+      'red',
+      'blue',
+      'green',
+      'black',
+      'white',
+      'yellow',
+      'orange',
+      'purple',
+      'pink',
+      'brown',
+      'gray',
+      'grey'
     ];
-    if (colors.some((color) => cleanVariant.includes(color))) return "color";
+    if (colors.some((color) => cleanVariant.includes(color))) {return 'color';}
 
     // Size detection
     const sizes = [
-      "xs",
-      "s",
-      "m",
-      "l",
-      "xl",
-      "xxl",
-      "small",
-      "medium",
-      "large",
-      "mini",
-      "max",
+      'xs',
+      's',
+      'm',
+      'l',
+      'xl',
+      'xxl',
+      'small',
+      'medium',
+      'large',
+      'mini',
+      'max'
     ];
-    if (sizes.some((size) => cleanVariant.includes(size))) return "size";
+    if (sizes.some((size) => cleanVariant.includes(size))) {return 'size';}
 
     // Version detection
-    if (/v?\d+/.test(cleanVariant) || cleanVariant.includes("version"))
-      return "version";
+    if (/v?\d+/.test(cleanVariant) || cleanVariant.includes('version'))
+    {return 'version';}
 
-    return "description";
+    return 'description';
   }
 
   /**
@@ -1341,7 +1341,7 @@ class UnifiedProductIntelligenceService {
 
     // Boost for consistent variant types
     const uniqueTypes = new Set(nameVariants.map((v) => v.variantType));
-    if (uniqueTypes.size === 1 && !uniqueTypes.has("description")) {
+    if (uniqueTypes.size === 1 && !uniqueTypes.has('description')) {
       confidence += 0.3;
     }
 
@@ -1376,7 +1376,7 @@ class UnifiedProductIntelligenceService {
           typeGroups.set(key, {
             type: intelligence.identifier_type,
             confidenceRange: Math.floor(intelligence.confidence * 10) / 10,
-            products: [],
+            products: []
           });
         }
         typeGroups.get(key).products.push(product);
@@ -1410,8 +1410,8 @@ class UnifiedProductIntelligenceService {
       confidence_range: confidenceRange,
       product_count: products.length,
       characteristics,
-      pattern_type: "classification",
-      confidence: confidenceRange,
+      pattern_type: 'classification',
+      confidence: confidenceRange
     };
   }
 
@@ -1427,21 +1427,21 @@ class UnifiedProductIntelligenceService {
       sourcePlatforms: new Set(),
       identifierLengths: [],
       hasNumericOnly: 0,
-      hasAlphaNumeric: 0,
+      hasAlphaNumeric: 0
     };
 
     for (const product of products) {
-      if (product.category) characteristics.categories.add(product.category);
-      if (product.brand) characteristics.brands.add(product.brand);
+      if (product.category) {characteristics.categories.add(product.category);}
+      if (product.brand) {characteristics.brands.add(product.brand);}
       if (product.sourcePlatform)
-        characteristics.sourcePlatforms.add(product.sourcePlatform);
+      {characteristics.sourcePlatforms.add(product.sourcePlatform);}
 
       const identifier = this.extractPrimaryIdentifier(product);
       if (identifier) {
         characteristics.identifierLengths.push(identifier.length);
-        if (/^\d+$/.test(identifier)) characteristics.hasNumericOnly++;
+        if (/^\d+$/.test(identifier)) {characteristics.hasNumericOnly++;}
         if (/^(?=.*[a-zA-Z])(?=.*\d)/.test(identifier))
-          characteristics.hasAlphaNumeric++;
+        {characteristics.hasAlphaNumeric++;}
       }
     }
 
@@ -1452,12 +1452,12 @@ class UnifiedProductIntelligenceService {
       avg_identifier_length:
         characteristics.identifierLengths.length > 0
           ? Math.round(
-              characteristics.identifierLengths.reduce((a, b) => a + b, 0) /
+            characteristics.identifierLengths.reduce((a, b) => a + b, 0) /
                 characteristics.identifierLengths.length
-            )
+          )
           : 0,
       numeric_only_ratio: characteristics.hasNumericOnly / products.length,
-      alpha_numeric_ratio: characteristics.hasAlphaNumeric / products.length,
+      alpha_numeric_ratio: characteristics.hasAlphaNumeric / products.length
     };
   }
 
@@ -1467,14 +1467,14 @@ class UnifiedProductIntelligenceService {
    * @returns {Object} Similarity metrics
    */
   calculateGroupSimilarityMetrics(products) {
-    if (products.length < 2) return {};
+    if (products.length < 2) {return {};}
 
     const metrics = {
       name_similarity: 0,
       sku_similarity: 0,
       category_consistency: 0,
       brand_consistency: 0,
-      price_variance: 0,
+      price_variance: 0
     };
 
     let totalComparisons = 0;
@@ -1558,13 +1558,13 @@ class UnifiedProductIntelligenceService {
         if (products.length > 0) {
           groups.set(groupKey, {
             products,
-            grouping_strategy: "detected_pattern",
+            grouping_strategy: 'detected_pattern',
             confidence: pattern.confidence,
             pattern_info: {
               type: pattern.pattern_type,
               base_sku: pattern.baseSku,
-              variant_types: pattern.variantTypes,
-            },
+              variant_types: pattern.variantTypes
+            }
           });
 
           // Remove grouped products from ungrouped
@@ -1574,7 +1574,7 @@ class UnifiedProductIntelligenceService {
                 const index = ungrouped.findIndex(
                   (p) => p.id === variant.product.id
                 );
-                if (index !== -1) ungrouped.splice(index, 1);
+                if (index !== -1) {ungrouped.splice(index, 1);}
               }
             });
           }
@@ -1594,13 +1594,13 @@ class UnifiedProductIntelligenceService {
     for (const group of mergeResults.groups) {
       if (group.products.length > 1) {
         const suggestion = {
-          type: "merge",
+          type: 'merge',
           confidence: group.confidence,
           strategy: group.grouping_strategy,
           products: group.products,
           reason: this.generateMergeReason(group),
           potential_savings: this.calculateMergeSavings(group.products),
-          action: "merge_products",
+          action: 'merge_products'
         };
 
         suggestions.push(suggestion);
@@ -1618,19 +1618,19 @@ class UnifiedProductIntelligenceService {
   generateMergeReason(group) {
     const { grouping_strategy, confidence } = group;
     const confidenceText =
-      confidence > 0.9 ? "very high" : confidence > 0.7 ? "high" : "moderate";
+      confidence > 0.9 ? 'very high' : confidence > 0.7 ? 'high' : 'moderate';
 
     switch (grouping_strategy) {
-      case "classified_sku":
-        return `${confidenceText} confidence SKU-based grouping using enhanced classification`;
-      case "classified_barcode":
-        return `${confidenceText} confidence barcode-based grouping with exact match`;
-      case "intelligent_name_similarity":
-        return `${confidenceText} confidence name similarity with pattern context`;
-      case "detected_pattern":
-        return `${confidenceText} confidence pattern-based grouping`;
-      default:
-        return `${confidenceText} confidence similarity-based grouping`;
+    case 'classified_sku':
+      return `${confidenceText} confidence SKU-based grouping using enhanced classification`;
+    case 'classified_barcode':
+      return `${confidenceText} confidence barcode-based grouping with exact match`;
+    case 'intelligent_name_similarity':
+      return `${confidenceText} confidence name similarity with pattern context`;
+    case 'detected_pattern':
+      return `${confidenceText} confidence pattern-based grouping`;
+    default:
+      return `${confidenceText} confidence similarity-based grouping`;
     }
   }
 
@@ -1647,7 +1647,7 @@ class UnifiedProductIntelligenceService {
         100
       ).toFixed(1)}%`,
       management_simplification:
-        products.length > 5 ? "high" : products.length > 2 ? "medium" : "low",
+        products.length > 5 ? 'high' : products.length > 2 ? 'medium' : 'low'
     };
   }
 
@@ -1662,7 +1662,7 @@ class UnifiedProductIntelligenceService {
     // Handle null or undefined classificationResults
     if (!classificationResults) {
       logger.warn(
-        "No classification results provided for suggestion generation"
+        'No classification results provided for suggestion generation'
       );
       return suggestions;
     }
@@ -1672,7 +1672,7 @@ class UnifiedProductIntelligenceService {
     // Additional validation for required properties
     if (!classifications || !confidence_distribution) {
       logger.warn(
-        "Invalid classification results structure - missing required properties"
+        'Invalid classification results structure - missing required properties'
       );
       return suggestions;
     }
@@ -1684,12 +1684,12 @@ class UnifiedProductIntelligenceService {
 
     if (lowConfidenceProducts.length > 0) {
       suggestions.push({
-        type: "manual_review",
+        type: 'manual_review',
         confidence: 0.8,
         products: lowConfidenceProducts,
-        reason: "Low confidence classifications need manual review",
-        action: "review_classifications",
-        count: lowConfidenceProducts.length,
+        reason: 'Low confidence classifications need manual review',
+        action: 'review_classifications',
+        count: lowConfidenceProducts.length
       });
     }
 
@@ -1729,12 +1729,12 @@ class UnifiedProductIntelligenceService {
 
         if (avgConfidence > 0.85) {
           suggestions.push({
-            type: "pattern_learning",
+            type: 'pattern_learning',
             confidence: avgConfidence,
             pattern,
             count: group.length,
             reason: `Consistent pattern detected: ${pattern}`,
-            action: "learn_pattern",
+            action: 'learn_pattern'
           });
         }
       }
@@ -1751,11 +1751,11 @@ class UnifiedProductIntelligenceService {
   extractClassificationPattern(classification) {
     const { input, type, confidence } = classification;
     const length = input?.length || 0;
-    const isNumeric = /^\d+$/.test(input || "");
-    const hasLetters = /[a-zA-Z]/.test(input || "");
+    const isNumeric = /^\d+$/.test(input || '');
+    const hasLetters = /[a-zA-Z]/.test(input || '');
 
-    return `${type}_${length}_${isNumeric ? "num" : ""}${
-      hasLetters ? "alpha" : ""
+    return `${type}_${length}_${isNumeric ? 'num' : ''}${
+      hasLetters ? 'alpha' : ''
     }_${Math.floor(confidence * 10)}`;
   }
 
@@ -1772,13 +1772,13 @@ class UnifiedProductIntelligenceService {
       for (const [key, pattern] of patternResults.variant_patterns) {
         if (pattern.confidence > 0.7) {
           suggestions.push({
-            type: "variant_grouping",
+            type: 'variant_grouping',
             confidence: pattern.confidence,
             pattern: pattern.baseSku,
             products: pattern.variants.map((v) => v.product),
             reason: `Strong variant pattern detected for ${pattern.baseSku}`,
-            action: "create_variant_group",
-            variant_types: pattern.variantTypes,
+            action: 'create_variant_group',
+            variant_types: pattern.variantTypes
           });
         }
       }
@@ -1789,12 +1789,12 @@ class UnifiedProductIntelligenceService {
       for (const [key, pattern] of patternResults.naming_patterns) {
         if (pattern.confidence > 0.6) {
           suggestions.push({
-            type: "name_standardization",
+            type: 'name_standardization',
             confidence: pattern.confidence,
             pattern: pattern.baseName,
             products: pattern.variants.map((v) => v.product),
             reason: `Naming pattern suggests standardization opportunity`,
-            action: "standardize_names",
+            action: 'standardize_names'
           });
         }
       }
@@ -1858,13 +1858,13 @@ class UnifiedProductIntelligenceService {
     );
     if (missingIdentifiers.length > 0) {
       suggestions.push({
-        type: "data_quality",
-        subtype: "missing_identifiers",
+        type: 'data_quality',
+        subtype: 'missing_identifiers',
         confidence: 1.0,
         count: missingIdentifiers.length,
-        reason: "Products missing primary identifiers (SKU/barcode)",
-        action: "add_identifiers",
-        impact: "high",
+        reason: 'Products missing primary identifiers (SKU/barcode)',
+        action: 'add_identifiers',
+        impact: 'high'
       });
     }
 
@@ -1872,13 +1872,13 @@ class UnifiedProductIntelligenceService {
     const namingInconsistencies = this.detectNamingInconsistencies(products);
     if (namingInconsistencies.length > 0) {
       suggestions.push({
-        type: "data_quality",
-        subtype: "naming_inconsistencies",
+        type: 'data_quality',
+        subtype: 'naming_inconsistencies',
         confidence: 0.8,
         count: namingInconsistencies.length,
-        reason: "Inconsistent product naming patterns detected",
-        action: "standardize_naming",
-        impact: "medium",
+        reason: 'Inconsistent product naming patterns detected',
+        action: 'standardize_naming',
+        impact: 'medium'
       });
     }
 
@@ -1914,7 +1914,7 @@ class UnifiedProductIntelligenceService {
           inconsistencies.push({
             pattern,
             products,
-            consistency,
+            consistency
           });
         }
       }
@@ -1935,8 +1935,8 @@ class UnifiedProductIntelligenceService {
     const hasSpecialChars = /[^a-z0-9\s]/.test(normalized);
     const wordCount = normalized.split(/\s+/).length;
 
-    return `${wordCount}words_${hasNumbers ? "num" : "nonum"}_${
-      hasSpecialChars ? "special" : "nospecial"
+    return `${wordCount}words_${hasNumbers ? 'num' : 'nonum'}_${
+      hasSpecialChars ? 'special' : 'nospecial'
     }`;
   }
 
@@ -1946,7 +1946,7 @@ class UnifiedProductIntelligenceService {
    * @returns {number} Consistency score
    */
   calculateNamingConsistency(products) {
-    if (products.length < 2) return 1.0;
+    if (products.length < 2) {return 1.0;}
 
     let totalSimilarity = 0;
     let comparisons = 0;
@@ -1977,13 +1977,13 @@ class UnifiedProductIntelligenceService {
     // Merge efficiency
     if (mergeResults?.statistics?.reduction_percentage > 20) {
       suggestions.push({
-        type: "performance",
-        subtype: "merge_efficiency",
+        type: 'performance',
+        subtype: 'merge_efficiency',
         confidence: 0.9,
         value: mergeResults.statistics.reduction_percentage,
         reason: `High merge potential: ${mergeResults.statistics.reduction_percentage}% reduction possible`,
-        action: "implement_merging",
-        impact: "high",
+        action: 'implement_merging',
+        impact: 'high'
       });
     }
 
@@ -1991,13 +1991,13 @@ class UnifiedProductIntelligenceService {
     const patternUtilization = this.calculatePatternUtilization(patternResults);
     if (patternUtilization < 0.5) {
       suggestions.push({
-        type: "performance",
-        subtype: "pattern_utilization",
+        type: 'performance',
+        subtype: 'pattern_utilization',
         confidence: 0.7,
         value: patternUtilization,
-        reason: "Low pattern utilization suggests optimization opportunities",
-        action: "improve_pattern_detection",
-        impact: "medium",
+        reason: 'Low pattern utilization suggests optimization opportunities',
+        action: 'improve_pattern_detection',
+        impact: 'medium'
       });
     }
 
@@ -2018,7 +2018,7 @@ class UnifiedProductIntelligenceService {
     const highConfidencePatterns = [
       ...(patternResults.variant_patterns?.values() || []),
       ...(patternResults.naming_patterns?.values() || []),
-      ...(patternResults.classification_patterns || []),
+      ...(patternResults.classification_patterns || [])
     ].filter((pattern) => pattern.confidence > 0.7).length;
 
     return totalPatterns > 0 ? highConfidencePatterns / totalPatterns : 0;
@@ -2038,14 +2038,14 @@ class UnifiedProductIntelligenceService {
       classificationResults?.statistics?.patterns_learned || 0;
     if (learningOpps > 0) {
       suggestions.push({
-        type: "learning",
-        subtype: "classification_patterns",
+        type: 'learning',
+        subtype: 'classification_patterns',
         confidence: 0.8,
         count: learningOpps,
         reason:
-          "New classification patterns learned and available for future use",
-        action: "review_learned_patterns",
-        impact: "medium",
+          'New classification patterns learned and available for future use',
+        action: 'review_learned_patterns',
+        impact: 'medium'
       });
     }
 
@@ -2054,13 +2054,13 @@ class UnifiedProductIntelligenceService {
       this.identifyPatternRefinementOpportunities(patternResults);
     if (refinementOpps.length > 0) {
       suggestions.push({
-        type: "learning",
-        subtype: "pattern_refinement",
+        type: 'learning',
+        subtype: 'pattern_refinement',
         confidence: 0.7,
         opportunities: refinementOpps,
-        reason: "Pattern detection can be refined based on current results",
-        action: "refine_patterns",
-        impact: "low",
+        reason: 'Pattern detection can be refined based on current results',
+        action: 'refine_patterns',
+        impact: 'low'
       });
     }
 
@@ -2078,7 +2078,7 @@ class UnifiedProductIntelligenceService {
     // Low confidence patterns that appear frequently
     const lowConfidencePatterns = [
       ...(patternResults.variant_patterns?.values() || []),
-      ...(patternResults.naming_patterns?.values() || []),
+      ...(patternResults.naming_patterns?.values() || [])
     ].filter((pattern) => pattern.confidence < 0.7 && pattern.productCount > 2);
 
     opportunities.push(
@@ -2086,7 +2086,7 @@ class UnifiedProductIntelligenceService {
         type: pattern.pattern_type,
         confidence: pattern.confidence,
         productCount: pattern.productCount,
-        refinement: "increase_confidence_threshold",
+        refinement: 'increase_confidence_threshold'
       }))
     );
 
@@ -2112,7 +2112,7 @@ class UnifiedProductIntelligenceService {
     const weights = {
       classification: 0.4,
       merging: 0.35,
-      patterns: 0.25,
+      patterns: 0.25
     };
 
     const classificationConf = this.calculateAverageConfidence(
@@ -2134,7 +2134,7 @@ class UnifiedProductIntelligenceService {
    * @returns {number} Average confidence
    */
   calculateAverageConfidence(classifications) {
-    if (classifications.size === 0) return 0;
+    if (classifications.size === 0) {return 0;}
 
     let totalConfidence = 0;
     for (const [_, classification] of classifications) {
@@ -2150,7 +2150,7 @@ class UnifiedProductIntelligenceService {
    * @returns {number} Merging confidence
    */
   calculateMergingConfidence(mergeResults) {
-    if (mergeResults.groups.length === 0) return 0;
+    if (mergeResults.groups.length === 0) {return 0;}
 
     let totalConfidence = 0;
     let totalProducts = 0;
@@ -2172,10 +2172,10 @@ class UnifiedProductIntelligenceService {
     const allPatterns = [
       ...(patternResults.variant_patterns?.values() || []),
       ...(patternResults.naming_patterns?.values() || []),
-      ...(patternResults.classification_patterns || []),
+      ...(patternResults.classification_patterns || [])
     ];
 
-    if (allPatterns.length === 0) return 0;
+    if (allPatterns.length === 0) {return 0;}
 
     let totalConfidence = 0;
     let totalWeight = 0;

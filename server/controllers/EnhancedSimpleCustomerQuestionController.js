@@ -1,14 +1,14 @@
 // Enhanced Simple Customer Question Controller with database functionality but no platform services
-const { Op } = require("sequelize");
-const { validationResult } = require("express-validator");
-const debug = require("debug")("pazar:controller:questions:enhanced");
+const { Op } = require('sequelize');
+const { validationResult } = require('express-validator');
+const debug = require('debug')('pazar:controller:questions:enhanced');
 
 class EnhancedSimpleCustomerQuestionController {
   constructor() {
     // No async initialization - models will be loaded on demand
     this.initialized = false;
     debug(
-      "EnhancedSimpleCustomerQuestionController instantiated without async operations"
+      'EnhancedSimpleCustomerQuestionController instantiated without async operations'
     );
   }
 
@@ -18,16 +18,16 @@ class EnhancedSimpleCustomerQuestionController {
   async getQuestions(req, res) {
     try {
       // Lazy load models only when needed
-      const { CustomerQuestion } = require("../models");
+      const { CustomerQuestion } = require('../models');
 
-      debug("Getting questions with filters and pagination from database");
+      debug('Getting questions with filters and pagination from database');
 
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -42,8 +42,8 @@ class EnhancedSimpleCustomerQuestionController {
         search,
         page = 1,
         limit = 20,
-        sort_by = "creation_date",
-        sort_order = "DESC",
+        sort_by = 'creation_date',
+        sort_order = 'DESC'
       } = req.query;
 
       // Build where clause for filtering
@@ -63,7 +63,7 @@ class EnhancedSimpleCustomerQuestionController {
 
       if (customer_name) {
         whereClause.customer_name = {
-          [Op.iLike]: `%${customer_name}%`,
+          [Op.iLike]: `%${customer_name}%`
         };
       }
 
@@ -72,19 +72,19 @@ class EnhancedSimpleCustomerQuestionController {
         whereClause[Op.or] = [
           {
             customer_name: {
-              [Op.iLike]: `%${search}%`,
-            },
+              [Op.iLike]: `%${search}%`
+            }
           },
           {
             question_text: {
-              [Op.iLike]: `%${search}%`,
-            },
+              [Op.iLike]: `%${search}%`
+            }
           },
           {
             product_name: {
-              [Op.iLike]: `%${search}%`,
-            },
-          },
+              [Op.iLike]: `%${search}%`
+            }
+          }
         ];
       }
 
@@ -95,14 +95,14 @@ class EnhancedSimpleCustomerQuestionController {
       if (start_date) {
         whereClause.creation_date = {
           ...whereClause.creation_date,
-          [Op.gte]: new Date(start_date),
+          [Op.gte]: new Date(start_date)
         };
       }
 
       if (end_date) {
         whereClause.creation_date = {
           ...whereClause.creation_date,
-          [Op.lte]: new Date(end_date),
+          [Op.lte]: new Date(end_date)
         };
       }
 
@@ -114,11 +114,11 @@ class EnhancedSimpleCustomerQuestionController {
       // Build order clause
       const orderClause = [[sort_by, sort_order.toUpperCase()]];
 
-      debug("Query options:", {
+      debug('Query options:', {
         where: whereClause,
         limit: limitNumber,
         offset,
-        order: orderClause,
+        order: orderClause
       });
 
       // Get questions from database
@@ -127,7 +127,7 @@ class EnhancedSimpleCustomerQuestionController {
           where: whereClause,
           limit: limitNumber,
           offset,
-          order: orderClause,
+          order: orderClause
         }
       );
 
@@ -144,15 +144,15 @@ class EnhancedSimpleCustomerQuestionController {
           page: pageNumber,
           limit: limitNumber,
           totalItems: count,
-          totalPages,
-        },
+          totalPages
+        }
       });
     } catch (error) {
-      debug("Error getting questions:", error.message);
+      debug('Error getting questions:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get questions",
-        error: error.message,
+        message: 'Failed to get questions',
+        error: error.message
       });
     }
   }
@@ -162,7 +162,7 @@ class EnhancedSimpleCustomerQuestionController {
    */
   async getQuestionsByCustomer(req, res) {
     try {
-      const { CustomerQuestion } = require("../models");
+      const { CustomerQuestion } = require('../models');
       const { email } = req.params;
 
       debug(`Getting questions for customer: ${email}`);
@@ -171,8 +171,8 @@ class EnhancedSimpleCustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -181,13 +181,13 @@ class EnhancedSimpleCustomerQuestionController {
         platform,
         page = 1,
         limit = 20,
-        sort_by = "creation_date",
-        sort_order = "DESC",
+        sort_by = 'creation_date',
+        sort_order = 'DESC'
       } = req.query;
 
       // Build where clause
       const whereClause = {
-        customer_email: email,
+        customer_email: email
       };
 
       if (status) {
@@ -212,7 +212,7 @@ class EnhancedSimpleCustomerQuestionController {
           where: whereClause,
           limit: limitNumber,
           offset,
-          order: orderClause,
+          order: orderClause
         }
       );
 
@@ -227,15 +227,15 @@ class EnhancedSimpleCustomerQuestionController {
           page: pageNumber,
           limit: limitNumber,
           totalItems: count,
-          totalPages,
-        },
+          totalPages
+        }
       });
     } catch (error) {
-      debug("Error getting questions by customer:", error.message);
+      debug('Error getting questions by customer:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get questions for customer",
-        error: error.message,
+        message: 'Failed to get questions for customer',
+        error: error.message
       });
     }
   }
@@ -245,7 +245,7 @@ class EnhancedSimpleCustomerQuestionController {
    */
   async getQuestion(req, res) {
     try {
-      const { CustomerQuestion } = require("../models");
+      const { CustomerQuestion } = require('../models');
       const { id } = req.params;
 
       debug(`Getting question with ID: ${id}`);
@@ -254,8 +254,8 @@ class EnhancedSimpleCustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -264,7 +264,7 @@ class EnhancedSimpleCustomerQuestionController {
       if (!question) {
         return res.status(404).json({
           success: false,
-          message: "Question not found",
+          message: 'Question not found'
         });
       }
 
@@ -272,14 +272,14 @@ class EnhancedSimpleCustomerQuestionController {
 
       res.json({
         success: true,
-        data: question,
+        data: question
       });
     } catch (error) {
-      debug("Error getting question:", error.message);
+      debug('Error getting question:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get question",
-        error: error.message,
+        message: 'Failed to get question',
+        error: error.message
       });
     }
   }
@@ -289,7 +289,7 @@ class EnhancedSimpleCustomerQuestionController {
    */
   async updateQuestionStatus(req, res) {
     try {
-      const { CustomerQuestion } = require("../models");
+      const { CustomerQuestion } = require('../models');
       const { id } = req.params;
       const { status } = req.body;
 
@@ -299,8 +299,8 @@ class EnhancedSimpleCustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -309,28 +309,28 @@ class EnhancedSimpleCustomerQuestionController {
       if (!question) {
         return res.status(404).json({
           success: false,
-          message: "Question not found",
+          message: 'Question not found'
         });
       }
 
       const updatedQuestion = await question.update({
         status,
-        updated_at: new Date(),
+        updated_at: new Date()
       });
 
       debug(`Question ${id} status updated successfully`);
 
       res.json({
         success: true,
-        message: "Question status updated successfully",
-        data: updatedQuestion,
+        message: 'Question status updated successfully',
+        data: updatedQuestion
       });
     } catch (error) {
-      debug("Error updating question status:", error.message);
+      debug('Error updating question status:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to update question status",
-        error: error.message,
+        message: 'Failed to update question status',
+        error: error.message
       });
     }
   }
@@ -340,9 +340,9 @@ class EnhancedSimpleCustomerQuestionController {
    */
   async createReply(req, res) {
     try {
-      const { CustomerReply } = require("../models");
+      const { CustomerReply } = require('../models');
       const { id } = req.params;
-      const { message, reply_type = "manual" } = req.body;
+      const { message, reply_type = 'manual' } = req.body;
 
       debug(`Creating reply for question ${id}`);
 
@@ -350,8 +350,8 @@ class EnhancedSimpleCustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -361,22 +361,22 @@ class EnhancedSimpleCustomerQuestionController {
         message,
         reply_type,
         created_at: new Date(),
-        updated_at: new Date(),
+        updated_at: new Date()
       });
 
       debug(`Reply created successfully with ID: ${reply.id}`);
 
       res.status(201).json({
         success: true,
-        message: "Reply created successfully",
-        data: reply,
+        message: 'Reply created successfully',
+        data: reply
       });
     } catch (error) {
-      debug("Error creating reply:", error.message);
+      debug('Error creating reply:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to create reply",
-        error: error.message,
+        message: 'Failed to create reply',
+        error: error.message
       });
     }
   }
@@ -386,38 +386,38 @@ class EnhancedSimpleCustomerQuestionController {
    */
   async getQuestionStats(req, res) {
     try {
-      const { CustomerQuestion } = require("../models");
-      const { Sequelize } = require("sequelize");
+      const { CustomerQuestion } = require('../models');
+      const { Sequelize } = require('sequelize');
 
-      debug("Getting question statistics");
+      debug('Getting question statistics');
 
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
 
       // Calculate date range
       const now = new Date();
       let startDate;
 
       switch (timeframe) {
-        case "7d":
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case "30d":
-          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          break;
-        case "90d":
-          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-          break;
-        default:
-          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       }
 
       // Get various statistics
@@ -426,57 +426,57 @@ class EnhancedSimpleCustomerQuestionController {
         openQuestions,
         answeredQuestions,
         questionsByPlatform,
-        questionsByPriority,
+        questionsByPriority
       ] = await Promise.all([
         CustomerQuestion.count({
           where: {
             creation_date: {
-              [Op.gte]: startDate,
-            },
-          },
+              [Op.gte]: startDate
+            }
+          }
         }),
         CustomerQuestion.count({
           where: {
-            status: "open",
+            status: 'open',
             creation_date: {
-              [Op.gte]: startDate,
-            },
-          },
+              [Op.gte]: startDate
+            }
+          }
         }),
         CustomerQuestion.count({
           where: {
-            status: "answered",
+            status: 'answered',
             creation_date: {
-              [Op.gte]: startDate,
-            },
-          },
+              [Op.gte]: startDate
+            }
+          }
         }),
         CustomerQuestion.findAll({
           where: {
             creation_date: {
-              [Op.gte]: startDate,
-            },
+              [Op.gte]: startDate
+            }
           },
           attributes: [
-            "platform",
-            [Sequelize.fn("COUNT", Sequelize.col("id")), "count"],
+            'platform',
+            [Sequelize.fn('COUNT', Sequelize.col('id')), 'count']
           ],
-          group: ["platform"],
-          raw: true,
+          group: ['platform'],
+          raw: true
         }),
         CustomerQuestion.findAll({
           where: {
             creation_date: {
-              [Op.gte]: startDate,
-            },
+              [Op.gte]: startDate
+            }
           },
           attributes: [
-            "priority",
-            [Sequelize.fn("COUNT", Sequelize.col("id")), "count"],
+            'priority',
+            [Sequelize.fn('COUNT', Sequelize.col('id')), 'count']
           ],
-          group: ["priority"],
-          raw: true,
-        }),
+          group: ['priority'],
+          raw: true
+        })
       ]);
 
       const stats = {
@@ -489,21 +489,21 @@ class EnhancedSimpleCustomerQuestionController {
             ? ((answeredQuestions / totalQuestions) * 100).toFixed(2)
             : 0,
         platformDistribution: questionsByPlatform,
-        priorityDistribution: questionsByPriority,
+        priorityDistribution: questionsByPriority
       };
 
-      debug("Question statistics calculated successfully");
+      debug('Question statistics calculated successfully');
 
       res.json({
         success: true,
-        data: stats,
+        data: stats
       });
     } catch (error) {
-      debug("Error getting question statistics:", error.message);
+      debug('Error getting question statistics:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get question statistics",
-        error: error.message,
+        message: 'Failed to get question statistics',
+        error: error.message
       });
     }
   }

@@ -1,61 +1,61 @@
-const sequelize = require("../config/database");
-const User = require("./User");
-const Order = require("./Order");
-const OrderItem = require("./OrderItem");
-const Product = require("./Product");
-const Customer = require("./Customer");
-const PlatformConnection = require("./PlatformConnection");
-const PlatformData = require("./PlatformData");
-const PlatformConflict = require("./PlatformConflict");
-const ShippingDetail = require("./ShippingDetail");
-const HepsiburadaOrder = require("./HepsiburadaOrder");
-const N11Order = require("./N11Order");
-const TrendyolOrder = require("./TrendyolOrder");
-const ShippingCarrier = require("./ShippingCarrier");
-const ShippingRate = require("./ShippingRate");
-const TurkishCompliance = require("./TurkishCompliance");
-const ComplianceDocuments = require("./ComplianceDocuments");
-const Settings = require("./Settings");
+const sequelize = require('../config/database');
+const User = require('./User');
+const Order = require('./Order');
+const OrderItem = require('./OrderItem');
+const Product = require('./Product');
+const Customer = require('./Customer');
+const PlatformConnection = require('./PlatformConnection');
+const PlatformData = require('./PlatformData');
+const PlatformConflict = require('./PlatformConflict');
+const ShippingDetail = require('./ShippingDetail');
+const HepsiburadaOrder = require('./HepsiburadaOrder');
+const N11Order = require('./N11Order');
+const TrendyolOrder = require('./TrendyolOrder');
+const ShippingCarrier = require('./ShippingCarrier');
+const ShippingRate = require('./ShippingRate');
+const TurkishCompliance = require('./TurkishCompliance');
+const ComplianceDocuments = require('./ComplianceDocuments');
+const Settings = require('./Settings');
 
 // === PLATFORM-SPECIFIC PRODUCT MODELS ===
-const TrendyolProduct = require("./TrendyolProduct");
-const HepsiburadaProduct = require("./HepsiburadaProduct");
-const N11Product = require("./N11Product");
+const TrendyolProduct = require('./TrendyolProduct');
+const HepsiburadaProduct = require('./HepsiburadaProduct');
+const N11Product = require('./N11Product');
 
 // === PRODUCT VARIANT AND INVENTORY MODELS ===
-const ProductVariant = require("./ProductVariant")(sequelize);
-const InventoryMovement = require("./InventoryMovement")(sequelize);
-const StockReservation = require("./StockReservation")(sequelize);
+const ProductVariant = require('./ProductVariant')(sequelize);
+const InventoryMovement = require('./InventoryMovement')(sequelize);
+const StockReservation = require('./StockReservation')(sequelize);
 
 // === NEW PRODUCT MANAGEMENT MODELS ===
-const ProductTemplate = require("./ProductTemplate")(sequelize);
-const ProductMedia = require("./ProductMedia")(sequelize);
-const PlatformCategory = require("./PlatformCategory")(sequelize);
-const BulkOperation = require("./BulkOperation")(sequelize);
-const InventorySync = require("./InventorySync");
+const ProductTemplate = require('./ProductTemplate')(sequelize);
+const ProductMedia = require('./ProductMedia')(sequelize);
+const PlatformCategory = require('./PlatformCategory')(sequelize);
+const BulkOperation = require('./BulkOperation')(sequelize);
+const InventorySync = require('./InventorySync');
 
 // === NEW SUBSCRIPTION MODELS ===
-const Subscription = require("./Subscription");
-const UsageRecord = require("./UsageRecord");
-const Invoice = require("./Invoice");
+const Subscription = require('./Subscription');
+const UsageRecord = require('./UsageRecord');
+const Invoice = require('./Invoice');
 
 // === BACKGROUND TASK MODELS ===
 // Temporarily commenting out BackgroundTask to debug server hang
-const BackgroundTask = require("./BackgroundTask")(sequelize);
+const BackgroundTask = require('./BackgroundTask')(sequelize);
 
 // === CUSTOMER QUESTION MODELS ===
-const CustomerQuestion = require("./CustomerQuestion");
-const CustomerReply = require("./CustomerReply");
-const ReplyTemplate = require("./ReplyTemplate");
-const QuestionStats = require("./QuestionStats");
+const CustomerQuestion = require('./CustomerQuestion');
+const CustomerReply = require('./CustomerReply');
+const ReplyTemplate = require('./ReplyTemplate');
+const QuestionStats = require('./QuestionStats');
 
 // ========================================
 // === NEW ENHANCED PRODUCT MANAGEMENT MODELS ===
 // ========================================
-const MainProduct = require("./MainProduct");
-const PlatformVariant = require("./PlatformVariant");
-const PlatformTemplate = require("./PlatformTemplate");
-const EnhancedProductMedia = require("./EnhancedProductMedia")(sequelize);
+const MainProduct = require('./MainProduct');
+const PlatformVariant = require('./PlatformVariant');
+const PlatformTemplate = require('./PlatformTemplate');
+const EnhancedProductMedia = require('./EnhancedProductMedia')(sequelize);
 
 // Initialize models with sequelize
 const models = {
@@ -118,22 +118,22 @@ const models = {
 
   // === ADDITIONAL MODELS ===
   PlatformConflict: PlatformConflict,
-  InventorySync: InventorySync,
+  InventorySync: InventorySync
 };
 
 // === CORE ASSOCIATIONS ===
 
 // User associations
 models.User.hasMany(models.Order, {
-  foreignKey: "userId",
-  as: "orders",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'userId',
+  as: 'orders',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.Order.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
+  foreignKey: 'userId',
+  as: 'user',
+  allowNull: false
 });
 
 // models.User.hasMany(models.Product, {
@@ -150,288 +150,288 @@ models.Order.belongsTo(models.User, {
 // NOTE: Product associations are now handled in Product.associate() function
 
 models.User.hasMany(models.PlatformConnection, {
-  foreignKey: "userId",
-  as: "platformConnections",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'userId',
+  as: 'platformConnections',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.PlatformConnection.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
+  foreignKey: 'userId',
+  as: 'user',
+  allowNull: false
 });
 
 // Order associations
 models.Order.hasMany(models.OrderItem, {
-  foreignKey: "orderId",
-  as: "items",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'orderId',
+  as: 'items',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.OrderItem.belongsTo(models.Order, {
-  foreignKey: "orderId",
-  as: "order",
-  allowNull: false,
+  foreignKey: 'orderId',
+  as: 'order',
+  allowNull: false
 });
 
 // Customer associations
 models.Customer.hasMany(models.Order, {
-  foreignKey: "customerEmail",
-  sourceKey: "email",
-  as: "orders",
+  foreignKey: 'customerEmail',
+  sourceKey: 'email',
+  as: 'orders'
 });
 models.Order.belongsTo(models.Customer, {
-  foreignKey: "customerEmail",
-  targetKey: "email",
-  as: "customer",
+  foreignKey: 'customerEmail',
+  targetKey: 'email',
+  as: 'customer'
 });
 
 models.Product.hasMany(models.OrderItem, {
-  foreignKey: "productId",
-  as: "orderItems",
-  onDelete: "SET NULL",
+  foreignKey: 'productId',
+  as: 'orderItems',
+  onDelete: 'SET NULL'
 });
 models.OrderItem.belongsTo(models.Product, {
-  foreignKey: "productId",
-  as: "product",
+  foreignKey: 'productId',
+  as: 'product'
 });
 
 models.PlatformConnection.hasMany(models.Order, {
-  foreignKey: "connectionId",
-  as: "orders",
-  onDelete: "RESTRICT",
+  foreignKey: 'connectionId',
+  as: 'orders',
+  onDelete: 'RESTRICT'
 });
 models.Order.belongsTo(models.PlatformConnection, {
-  foreignKey: "connectionId",
-  as: "platformConnection",
-  allowNull: false,
+  foreignKey: 'connectionId',
+  as: 'platformConnection',
+  allowNull: false
 });
 
 // Shipping associations
 models.Order.hasOne(models.ShippingDetail, {
-  foreignKey: "orderId",
-  as: "shippingDetail",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'orderId',
+  as: 'shippingDetail',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.ShippingDetail.belongsTo(models.Order, {
-  foreignKey: "orderId",
-  as: "order",
-  allowNull: false,
+  foreignKey: 'orderId',
+  as: 'order',
+  allowNull: false
 });
 
 // Additional reference from Order to ShippingDetail via shippingDetailId
 // This allows orders to reference shipping details that may be shared
 models.Order.belongsTo(models.ShippingDetail, {
-  foreignKey: "shippingDetailId",
-  as: "shippingDetailRef",
-  onDelete: "SET NULL",
+  foreignKey: 'shippingDetailId',
+  as: 'shippingDetailRef',
+  onDelete: 'SET NULL'
 });
 
 // Platform-specific order associations
 models.Order.hasOne(models.HepsiburadaOrder, {
-  foreignKey: "orderId",
-  as: "hepsiburadaOrder",
+  foreignKey: 'orderId',
+  as: 'hepsiburadaOrder'
 });
 models.HepsiburadaOrder.belongsTo(models.Order, {
-  foreignKey: "orderId",
-  as: "order",
+  foreignKey: 'orderId',
+  as: 'order'
 });
 
-models.Order.hasOne(models.N11Order, { foreignKey: "orderId", as: "n11Order" });
-models.N11Order.belongsTo(models.Order, { foreignKey: "orderId", as: "order" });
+models.Order.hasOne(models.N11Order, { foreignKey: 'orderId', as: 'n11Order' });
+models.N11Order.belongsTo(models.Order, { foreignKey: 'orderId', as: 'order' });
 
 models.Order.hasOne(models.TrendyolOrder, {
-  foreignKey: "orderId",
-  as: "trendyolOrder",
+  foreignKey: 'orderId',
+  as: 'trendyolOrder'
 });
 models.TrendyolOrder.belongsTo(models.Order, {
-  foreignKey: "orderId",
-  as: "order",
+  foreignKey: 'orderId',
+  as: 'order'
 });
 
 // === PLATFORM-SPECIFIC PRODUCT ASSOCIATIONS ===
 
 // Product <-> TrendyolProduct (One-to-One)
 models.Product.hasOne(models.TrendyolProduct, {
-  foreignKey: "productId",
-  as: "trendyolProduct",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'productId',
+  as: 'trendyolProduct',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.TrendyolProduct.belongsTo(models.Product, {
-  foreignKey: "productId",
-  as: "product",
-  allowNull: false,
+  foreignKey: 'productId',
+  as: 'product',
+  allowNull: false
 });
 
 // Product <-> HepsiburadaProduct (One-to-One)
 models.Product.hasOne(models.HepsiburadaProduct, {
-  foreignKey: "productId",
-  as: "hepsiburadaProduct",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'productId',
+  as: 'hepsiburadaProduct',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.HepsiburadaProduct.belongsTo(models.Product, {
-  foreignKey: "productId",
-  as: "product",
-  allowNull: false,
+  foreignKey: 'productId',
+  as: 'product',
+  allowNull: false
 });
 
 // Product <-> N11Product (One-to-One)
 models.Product.hasOne(models.N11Product, {
-  foreignKey: "productId",
-  as: "n11Product",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'productId',
+  as: 'n11Product',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.N11Product.belongsTo(models.Product, {
-  foreignKey: "productId",
-  as: "product",
-  allowNull: false,
+  foreignKey: 'productId',
+  as: 'product',
+  allowNull: false
 });
 
 // === SHIPPING ASSOCIATIONS ===
 
 // ShippingCarrier <-> ShippingRate (One-to-Many)
 models.ShippingCarrier.hasMany(models.ShippingRate, {
-  foreignKey: "carrierId",
-  as: "rates",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'carrierId',
+  as: 'rates',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.ShippingRate.belongsTo(models.ShippingCarrier, {
-  foreignKey: "carrierId",
-  as: "carrier",
-  allowNull: false,
+  foreignKey: 'carrierId',
+  as: 'carrier',
+  allowNull: false
 });
 
 // User <-> ShippingRate (One-to-Many)
 models.User.hasMany(models.ShippingRate, {
-  foreignKey: "userId",
-  as: "shippingRates",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'userId',
+  as: 'shippingRates',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.ShippingRate.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
+  foreignKey: 'userId',
+  as: 'user',
+  allowNull: false
 });
 
 // ShippingDetail <-> ShippingCarrier (Many-to-One)
 models.ShippingDetail.belongsTo(models.ShippingCarrier, {
-  foreignKey: "carrierId",
-  as: "carrier",
+  foreignKey: 'carrierId',
+  as: 'carrier'
 });
 models.ShippingCarrier.hasMany(models.ShippingDetail, {
-  foreignKey: "carrierId",
-  as: "shipments",
-  onDelete: "SET NULL",
+  foreignKey: 'carrierId',
+  as: 'shipments',
+  onDelete: 'SET NULL'
 });
 
 // === COMPLIANCE ASSOCIATIONS ===
 
 // Order <-> TurkishCompliance (One-to-One)
 models.Order.hasOne(models.TurkishCompliance, {
-  foreignKey: "orderId",
-  as: "turkishCompliance",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'orderId',
+  as: 'turkishCompliance',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.TurkishCompliance.belongsTo(models.Order, {
-  foreignKey: "orderId",
-  as: "order",
-  allowNull: false,
+  foreignKey: 'orderId',
+  as: 'order',
+  allowNull: false
 });
 
 // Order <-> ComplianceDocuments (One-to-Many)
 models.Order.hasMany(models.ComplianceDocuments, {
-  foreignKey: "orderId",
-  as: "complianceDocuments",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'orderId',
+  as: 'complianceDocuments',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.ComplianceDocuments.belongsTo(models.Order, {
-  foreignKey: "orderId",
-  as: "order",
-  allowNull: false,
+  foreignKey: 'orderId',
+  as: 'order',
+  allowNull: false
 });
 
 // === SUBSCRIPTION ASSOCIATIONS ===
 
 // User <-> Subscription (One-to-Many)
 models.User.hasMany(models.Subscription, {
-  foreignKey: "userId",
-  as: "subscriptions",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'userId',
+  as: 'subscriptions',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.Subscription.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
+  foreignKey: 'userId',
+  as: 'user',
+  allowNull: false
 });
 
 // User <-> UsageRecord (One-to-Many)
 models.User.hasMany(models.UsageRecord, {
-  foreignKey: "userId",
-  as: "usageRecords",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'userId',
+  as: 'usageRecords',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.UsageRecord.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
+  foreignKey: 'userId',
+  as: 'user',
+  allowNull: false
 });
 
 // User <-> Invoice (One-to-Many)
 models.User.hasMany(models.Invoice, {
-  foreignKey: "userId",
-  as: "invoices",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'userId',
+  as: 'invoices',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.Invoice.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
+  foreignKey: 'userId',
+  as: 'user',
+  allowNull: false
 });
 
 // Order <-> Invoice (One-to-One)
 models.Order.hasOne(models.Invoice, {
-  foreignKey: "orderId",
-  as: "invoice",
-  onDelete: "SET NULL",
+  foreignKey: 'orderId',
+  as: 'invoice',
+  onDelete: 'SET NULL'
 });
 models.Invoice.belongsTo(models.Order, {
-  foreignKey: "orderId",
-  as: "order",
+  foreignKey: 'orderId',
+  as: 'order'
 });
 
 // User self-referencing for referrals
 models.User.hasMany(models.User, {
-  foreignKey: "referredBy",
-  as: "referrals",
-  onDelete: "SET NULL",
+  foreignKey: 'referredBy',
+  as: 'referrals',
+  onDelete: 'SET NULL'
 });
 models.User.belongsTo(models.User, {
-  foreignKey: "referredBy",
-  as: "referrer",
+  foreignKey: 'referredBy',
+  as: 'referrer'
 });
 
 // User <-> Settings (One-to-Many)
 models.User.hasMany(models.Settings, {
-  foreignKey: "userId",
-  as: "userSettingsRecords", // Changed alias to avoid conflict with 'settings' attribute
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'userId',
+  as: 'userSettingsRecords', // Changed alias to avoid conflict with 'settings' attribute
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.Settings.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
+  foreignKey: 'userId',
+  as: 'user',
+  allowNull: false
 });
 
 // === PLATFORM DATA ASSOCIATIONS ===
@@ -473,40 +473,40 @@ models.Settings.belongsTo(models.User, {
 
 // User <-> PlatformConflict (One-to-Many)
 models.User.hasMany(models.PlatformConflict, {
-  foreignKey: "userId",
-  as: "platformConflicts",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'userId',
+  as: 'platformConflicts',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.PlatformConflict.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
+  foreignKey: 'userId',
+  as: 'user',
+  allowNull: false
 });
 
 // User <-> PlatformConflict (resolver)
 models.User.hasMany(models.PlatformConflict, {
-  foreignKey: "resolvedBy",
-  as: "resolvedConflicts",
-  onDelete: "SET NULL",
+  foreignKey: 'resolvedBy',
+  as: 'resolvedConflicts',
+  onDelete: 'SET NULL'
 });
 models.PlatformConflict.belongsTo(models.User, {
-  foreignKey: "resolvedBy",
-  as: "resolver",
+  foreignKey: 'resolvedBy',
+  as: 'resolver'
 });
 
 // === INVENTORY SYNC ASSOCIATIONS ===
 
 // Product <-> InventorySync (One-to-One)
 models.Product.hasOne(models.InventorySync, {
-  foreignKey: "productId",
-  as: "inventorySync",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'productId',
+  as: 'inventorySync',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.InventorySync.belongsTo(models.Product, {
-  foreignKey: "productId",
-  as: "product",
+  foreignKey: 'productId',
+  as: 'product'
 });
 
 // === PRODUCT VARIANT AND INVENTORY ASSOCIATIONS ===
@@ -629,124 +629,124 @@ models.InventorySync.belongsTo(models.Product, {
 
 // Product <-> ProductTemplate (Many-to-One)
 models.Product.belongsTo(models.ProductTemplate, {
-  foreignKey: "templateId",
-  as: "template",
+  foreignKey: 'templateId',
+  as: 'template'
 });
 models.ProductTemplate.hasMany(models.Product, {
-  foreignKey: "templateId",
-  as: "products",
-  onDelete: "SET NULL",
+  foreignKey: 'templateId',
+  as: 'products',
+  onDelete: 'SET NULL'
 });
 
 // User <-> ProductTemplate (One-to-Many)
 models.User.hasMany(models.ProductTemplate, {
-  foreignKey: "userId",
-  as: "productTemplates",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'userId',
+  as: 'productTemplates',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.ProductTemplate.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
+  foreignKey: 'userId',
+  as: 'user',
+  allowNull: false
 });
 
 // Product <-> ProductMedia (One-to-Many)
 models.Product.hasMany(models.ProductMedia, {
-  foreignKey: "productId",
-  as: "media",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'productId',
+  as: 'media',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.ProductMedia.belongsTo(models.Product, {
-  foreignKey: "productId",
-  as: "product",
-  allowNull: false,
+  foreignKey: 'productId',
+  as: 'product',
+  allowNull: false
 });
 
 // ProductVariant <-> ProductMedia (One-to-Many)
 models.ProductVariant.hasMany(models.ProductMedia, {
-  foreignKey: "variantId",
-  as: "media",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'variantId',
+  as: 'media',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.ProductMedia.belongsTo(models.ProductVariant, {
-  foreignKey: "variantId",
-  as: "variant",
+  foreignKey: 'variantId',
+  as: 'variant'
 });
 
 // User <-> ProductMedia (One-to-Many)
 models.User.hasMany(models.ProductMedia, {
-  foreignKey: "userId",
-  as: "productMedia",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'userId',
+  as: 'productMedia',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.ProductMedia.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
+  foreignKey: 'userId',
+  as: 'user',
+  allowNull: false
 });
 
 // User <-> PlatformCategory (One-to-Many)
 models.User.hasMany(models.PlatformCategory, {
-  foreignKey: "userId",
-  as: "platformCategories",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'userId',
+  as: 'platformCategories',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.PlatformCategory.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
+  foreignKey: 'userId',
+  as: 'user'
 });
 
 // User <-> BulkOperation (One-to-Many)
 models.User.hasMany(models.BulkOperation, {
-  foreignKey: "userId",
-  as: "bulkOperations",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'userId',
+  as: 'bulkOperations',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.BulkOperation.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
+  foreignKey: 'userId',
+  as: 'user',
+  allowNull: false
 });
 
 // User <-> BackgroundTask (One-to-Many)
 models.User.hasMany(models.BackgroundTask, {
-  foreignKey: "userId",
-  as: "backgroundTasks",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'userId',
+  as: 'backgroundTasks',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.BackgroundTask.belongsTo(models.User, {
-  foreignKey: "userId",
-  as: "user",
-  allowNull: false,
+  foreignKey: 'userId',
+  as: 'user',
+  allowNull: false
 });
 
 // PlatformConnection <-> BackgroundTask (One-to-Many)
 models.PlatformConnection.hasMany(models.BackgroundTask, {
-  foreignKey: "platformConnectionId",
-  as: "backgroundTasks",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'platformConnectionId',
+  as: 'backgroundTasks',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.BackgroundTask.belongsTo(models.PlatformConnection, {
-  foreignKey: "platformConnectionId",
-  as: "platformConnection",
+  foreignKey: 'platformConnectionId',
+  as: 'platformConnection'
 });
 
 // BackgroundTask self-referencing for parent-child relationships
 models.BackgroundTask.belongsTo(models.BackgroundTask, {
-  foreignKey: "parentTaskId",
-  as: "parentTask",
+  foreignKey: 'parentTaskId',
+  as: 'parentTask'
 });
 models.BackgroundTask.hasMany(models.BackgroundTask, {
-  foreignKey: "parentTaskId",
-  as: "childTasks",
+  foreignKey: 'parentTaskId',
+  as: 'childTasks'
 });
 
 // ========================================
@@ -761,10 +761,10 @@ models.BackgroundTask.hasMany(models.BackgroundTask, {
 
 // User <-> MainProduct (One-to-Many)
 models.User.hasMany(models.MainProduct, {
-  foreignKey: "userId",
-  as: "mainProducts",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'userId',
+  as: 'mainProducts',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 // Note: MainProduct -> User association is defined in MainProduct.js model file
 
@@ -774,41 +774,41 @@ models.User.hasMany(models.MainProduct, {
 
 // CustomerQuestion <-> CustomerReply (One-to-Many)
 models.CustomerQuestion.hasMany(models.CustomerReply, {
-  foreignKey: "question_id",
-  as: "replies",
-  onDelete: "CASCADE",
-  hooks: true,
+  foreignKey: 'question_id',
+  as: 'replies',
+  onDelete: 'CASCADE',
+  hooks: true
 });
 models.CustomerReply.belongsTo(models.CustomerQuestion, {
-  foreignKey: "question_id",
-  as: "question",
-  allowNull: false,
+  foreignKey: 'question_id',
+  as: 'question',
+  allowNull: false
 });
 
 // User <-> CustomerReply (One-to-Many)
 models.User.hasMany(models.CustomerReply, {
-  foreignKey: "created_by",
-  as: "customerReplies",
-  onDelete: "SET NULL",
-  hooks: true,
+  foreignKey: 'created_by',
+  as: 'customerReplies',
+  onDelete: 'SET NULL',
+  hooks: true
 });
 models.CustomerReply.belongsTo(models.User, {
-  foreignKey: "created_by",
-  as: "creator",
-  allowNull: true,
+  foreignKey: 'created_by',
+  as: 'creator',
+  allowNull: true
 });
 
 // ReplyTemplate <-> CustomerReply (One-to-Many)
 models.ReplyTemplate.hasMany(models.CustomerReply, {
-  foreignKey: "template_id",
-  as: "replies",
-  onDelete: "SET NULL",
-  hooks: true,
+  foreignKey: 'template_id',
+  as: 'replies',
+  onDelete: 'SET NULL',
+  hooks: true
 });
 models.CustomerReply.belongsTo(models.ReplyTemplate, {
-  foreignKey: "template_id",
-  as: "template",
-  allowNull: true,
+  foreignKey: 'template_id',
+  as: 'template',
+  allowNull: true
 });
 
 // ========================================
@@ -854,5 +854,5 @@ if (models.EnhancedProductMedia.associate) {
 
 module.exports = {
   sequelize,
-  ...models,
+  ...models
 };

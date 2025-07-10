@@ -2,8 +2,8 @@
  * SQLite Optimizer Service
  * Handles SQLite-specific optimizations for better concurrency and performance
  */
-const logger = require("../utils/logger");
-const { sequelize } = require("../models");
+const logger = require('../utils/logger');
+const { sequelize } = require('../models');
 
 class SQLiteOptimizer {
   constructor() {
@@ -24,7 +24,7 @@ class SQLiteOptimizer {
       const dialect = sequelize.getDialect();
       logger.debug(`Database dialect detected: ${dialect}`);
 
-      if (dialect !== "sqlite") {
+      if (dialect !== 'sqlite') {
         logger.info(
           `Database dialect is ${dialect}, skipping SQLite-specific optimizations`
         );
@@ -32,39 +32,39 @@ class SQLiteOptimizer {
         return;
       }
 
-      logger.info("Applying SQLite optimizations for better concurrency...");
+      logger.info('Applying SQLite optimizations for better concurrency...');
 
       // Critical SQLite settings for better concurrency
       const optimizations = [
         // Enable WAL mode for better concurrency (allows concurrent reads)
-        "PRAGMA journal_mode = WAL",
+        'PRAGMA journal_mode = WAL',
 
         // Set busy timeout (how long to wait when database is locked)
-        "PRAGMA busy_timeout = 30000",
+        'PRAGMA busy_timeout = 30000',
 
         // Optimize synchronous mode for better performance while maintaining safety
-        "PRAGMA synchronous = NORMAL",
+        'PRAGMA synchronous = NORMAL',
 
         // Increase cache size for better performance
-        "PRAGMA cache_size = 10000",
+        'PRAGMA cache_size = 10000',
 
         // Store temporary tables in memory for better performance
-        "PRAGMA temp_store = MEMORY",
+        'PRAGMA temp_store = MEMORY',
 
         // Optimize page size
-        "PRAGMA page_size = 4096",
+        'PRAGMA page_size = 4096',
 
         // Enable memory-mapped I/O for better performance
-        "PRAGMA mmap_size = 268435456", // 256MB
+        'PRAGMA mmap_size = 268435456', // 256MB
 
         // Optimize WAL checkpoint
-        "PRAGMA wal_autocheckpoint = 1000",
+        'PRAGMA wal_autocheckpoint = 1000',
 
         // Optimize locking mode
-        "PRAGMA locking_mode = NORMAL",
+        'PRAGMA locking_mode = NORMAL',
 
         // Enable query planner optimizations
-        "PRAGMA optimize",
+        'PRAGMA optimize'
       ];
 
       for (const pragma of optimizations) {
@@ -77,12 +77,12 @@ class SQLiteOptimizer {
       }
 
       // Verify WAL mode is enabled
-      const [walModeResult] = await sequelize.query("PRAGMA journal_mode");
+      const [walModeResult] = await sequelize.query('PRAGMA journal_mode');
       const walMode = walModeResult[0]?.journal_mode;
 
-      if (walMode === "wal") {
+      if (walMode === 'wal') {
         logger.info(
-          "✅ WAL mode enabled successfully - concurrent reads now supported"
+          '✅ WAL mode enabled successfully - concurrent reads now supported'
         );
       } else {
         logger.warn(
@@ -91,14 +91,14 @@ class SQLiteOptimizer {
       }
 
       // Verify busy timeout
-      const [busyTimeoutResult] = await sequelize.query("PRAGMA busy_timeout");
+      const [busyTimeoutResult] = await sequelize.query('PRAGMA busy_timeout');
       const busyTimeout = busyTimeoutResult[0]?.busy_timeout;
       logger.info(`SQLite busy timeout set to: ${busyTimeout}ms`);
 
       this.isOptimized = true;
-      logger.info("✅ SQLite optimization completed successfully");
+      logger.info('✅ SQLite optimization completed successfully');
     } catch (error) {
-      logger.error("Failed to optimize SQLite:", error);
+      logger.error('Failed to optimize SQLite:', error);
       throw error;
     }
   }
@@ -110,7 +110,7 @@ class SQLiteOptimizer {
     const dialect = sequelize.getDialect();
 
     // For non-SQLite databases, just execute the operation without retry logic
-    if (dialect !== "sqlite") {
+    if (dialect !== 'sqlite') {
       return await operationFn();
     }
 
@@ -185,17 +185,17 @@ class SQLiteOptimizer {
    * Check if error is a SQLite busy/lock error that should be retried
    */
   isSQLiteBusyError(error) {
-    if (!error || !error.message) return false;
+    if (!error || !error.message) {return false;}
 
     const busyIndicators = [
-      "database is locked",
-      "SQLITE_BUSY",
-      "SQLITE_LOCKED",
-      "database busy",
-      "cannot start a transaction within a transaction",
-      "database table is locked",
-      "database schema has changed",
-      "locking protocol",
+      'database is locked',
+      'SQLITE_BUSY',
+      'SQLITE_LOCKED',
+      'database busy',
+      'cannot start a transaction within a transaction',
+      'database table is locked',
+      'database schema has changed',
+      'locking protocol'
     ];
 
     const errorMessage = error.message.toLowerCase();
@@ -241,9 +241,9 @@ class SQLiteOptimizer {
       operations: Array.from(this.retryAttempts.entries()).map(
         ([id, attempts]) => ({
           operationId: id,
-          attempts: attempts + 1,
+          attempts: attempts + 1
         })
-      ),
+      )
     };
   }
 
@@ -261,19 +261,19 @@ class SQLiteOptimizer {
     try {
       const dialect = sequelize.getDialect();
 
-      if (dialect !== "sqlite") {
+      if (dialect !== 'sqlite') {
         logger.info(
           `Database dialect is ${dialect}, skipping SQLite health check`
         );
-        return { status: "N/A - Not using SQLite" };
+        return { status: 'N/A - Not using SQLite' };
       }
 
       const checks = [
-        { query: "PRAGMA journal_mode", expected: "wal", name: "WAL Mode" },
-        { query: "PRAGMA busy_timeout", name: "Busy Timeout" },
-        { query: "PRAGMA cache_size", name: "Cache Size" },
-        { query: "PRAGMA synchronous", name: "Synchronous Mode" },
-        { query: "PRAGMA temp_store", name: "Temp Store" },
+        { query: 'PRAGMA journal_mode', expected: 'wal', name: 'WAL Mode' },
+        { query: 'PRAGMA busy_timeout', name: 'Busy Timeout' },
+        { query: 'PRAGMA cache_size', name: 'Cache Size' },
+        { query: 'PRAGMA synchronous', name: 'Synchronous Mode' },
+        { query: 'PRAGMA temp_store', name: 'Temp Store' }
       ];
 
       const results = {};
@@ -286,23 +286,23 @@ class SQLiteOptimizer {
             value,
             status: check.expected
               ? value === check.expected
-                ? "✅"
-                : "⚠️"
-              : "ℹ️",
+                ? '✅'
+                : '⚠️'
+              : 'ℹ️'
           };
         } catch (error) {
           results[check.name] = {
-            value: "Error",
-            status: "❌",
-            error: error.message,
+            value: 'Error',
+            status: '❌',
+            error: error.message
           };
         }
       }
 
-      logger.info("SQLite Health Check:", results);
+      logger.info('SQLite Health Check:', results);
       return results;
     } catch (error) {
-      logger.error("SQLite health check failed:", error);
+      logger.error('SQLite health check failed:', error);
       throw error;
     }
   }
@@ -314,23 +314,23 @@ class SQLiteOptimizer {
     try {
       const dialect = sequelize.getDialect();
 
-      if (dialect !== "sqlite") {
+      if (dialect !== 'sqlite') {
         logger.info(`Database dialect is ${dialect}, skipping WAL checkpoint`);
         return true;
       }
 
-      logger.info("Performing emergency WAL checkpoint...");
+      logger.info('Performing emergency WAL checkpoint...');
 
       // Force WAL checkpoint
-      await sequelize.query("PRAGMA wal_checkpoint(TRUNCATE)");
+      await sequelize.query('PRAGMA wal_checkpoint(TRUNCATE)');
 
       // Check WAL file size
-      const [walInfo] = await sequelize.query("PRAGMA wal_checkpoint");
-      logger.info("WAL checkpoint completed:", walInfo[0]);
+      const [walInfo] = await sequelize.query('PRAGMA wal_checkpoint');
+      logger.info('WAL checkpoint completed:', walInfo[0]);
 
       return true;
     } catch (error) {
-      logger.error("Emergency WAL checkpoint failed:", error);
+      logger.error('Emergency WAL checkpoint failed:', error);
       return false;
     }
   }

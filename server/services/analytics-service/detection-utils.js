@@ -1,4 +1,4 @@
-const logger = require("../../utils/logger");
+const logger = require('../../utils/logger');
 
 /**
  * Identify market opportunities
@@ -21,18 +21,18 @@ function identifyMarketOpportunities(categoryPerformance, pricingAnalysis) {
 
       underperforming.forEach((category) => {
         opportunities.push({
-          type: "growth",
+          type: 'growth',
           category: category.category,
-          opportunity: "Category expansion",
-          potential: "High",
-          description: `${category.category} has growth potential`,
+          opportunity: 'Category expansion',
+          potential: 'High',
+          description: `${category.category} has growth potential`
         });
       });
     }
 
     return opportunities.slice(0, 3); // Return top 3 opportunities
   } catch (error) {
-    logger.error("Error identifying market opportunities:", error);
+    logger.error('Error identifying market opportunities:', error);
     return [];
   }
 }
@@ -49,27 +49,27 @@ function identifyPricingOpportunities(pricingData) {
     }
 
     pricingData.forEach((item) => {
-      const avgPrice = parseFloat(item.get("avgPrice")) || 0;
-      const minPrice = parseFloat(item.get("minPrice")) || 0;
-      const maxPrice = parseFloat(item.get("maxPrice")) || 0;
+      const avgPrice = parseFloat(item.get('avgPrice')) || 0;
+      const minPrice = parseFloat(item.get('minPrice')) || 0;
+      const maxPrice = parseFloat(item.get('maxPrice')) || 0;
 
       const priceVariation = maxPrice - minPrice;
 
       if (priceVariation > avgPrice * 0.2) {
         // >20% price variation
         opportunities.push({
-          productId: item.get("productId"),
-          type: "price_optimization",
-          description: "High price variation detected",
-          recommendation: "Consider price standardization",
-          potential_impact: "Medium",
+          productId: item.get('productId'),
+          type: 'price_optimization',
+          description: 'High price variation detected',
+          recommendation: 'Consider price standardization',
+          potential_impact: 'Medium'
         });
       }
     });
 
     return opportunities.slice(0, 5); // Return top 5 opportunities
   } catch (error) {
-    logger.error("Error identifying pricing opportunities:", error);
+    logger.error('Error identifying pricing opportunities:', error);
     return [];
   }
 }
@@ -78,7 +78,7 @@ function identifyPricingOpportunities(pricingData) {
  * Identify peak sales months from monthly trends
  */
 function identifyPeakMonths(monthlyTrends) {
-  if (!monthlyTrends || monthlyTrends.length === 0) return [];
+  if (!monthlyTrends || monthlyTrends.length === 0) {return [];}
 
   const avgRevenue =
     monthlyTrends.reduce((sum, month) => sum + month.revenue, 0) /
@@ -90,7 +90,7 @@ function identifyPeakMonths(monthlyTrends) {
       month: month.month,
       revenue: month.revenue,
       orders: month.orders,
-      percentageAboveAverage: ((month.revenue - avgRevenue) / avgRevenue) * 100,
+      percentageAboveAverage: ((month.revenue - avgRevenue) / avgRevenue) * 100
     }))
     .sort((a, b) => b.revenue - a.revenue);
 }
@@ -99,7 +99,7 @@ function identifyPeakMonths(monthlyTrends) {
  * Identify low season months from monthly trends
  */
 function identifyLowSeasons(monthlyTrends) {
-  if (!monthlyTrends || monthlyTrends.length === 0) return [];
+  if (!monthlyTrends || monthlyTrends.length === 0) {return [];}
 
   const avgRevenue =
     monthlyTrends.reduce((sum, month) => sum + month.revenue, 0) /
@@ -111,7 +111,7 @@ function identifyLowSeasons(monthlyTrends) {
       month: month.month,
       revenue: month.revenue,
       orders: month.orders,
-      percentageBelowAverage: ((avgRevenue - month.revenue) / avgRevenue) * 100,
+      percentageBelowAverage: ((avgRevenue - month.revenue) / avgRevenue) * 100
     }))
     .sort((a, b) => a.revenue - b.revenue);
 }
@@ -121,31 +121,31 @@ function identifyLowSeasons(monthlyTrends) {
  */
 function determineStockStatusFromMetrics(currentStock, dailyDemand) {
   if (currentStock <= 0) {
-    return "out_of_stock";
+    return 'out_of_stock';
   }
 
   if (dailyDemand > 0) {
     const daysRemaining = currentStock / dailyDemand;
     if (daysRemaining <= 3) {
-      return "critical";
+      return 'critical';
     } else if (daysRemaining <= 7) {
-      return "low_stock";
+      return 'low_stock';
     } else if (daysRemaining <= 14) {
-      return "moderate";
+      return 'moderate';
     }
   }
 
-  return "in_stock";
+  return 'in_stock';
 }
 /**
  * Detect anomalies in analytics data
  */
-async function detectAnomalies(userId, timeframe = "30d") {
+async function detectAnomalies(userId, timeframe = '30d') {
   const cacheKey = `${cachePrefix}anomaly-detection:${userId}:${timeframe}`;
 
   try {
     const cached = await cacheService.get(cacheKey);
-    if (cached) return cached;
+    if (cached) {return cached;}
 
     const dateRange = getDateRange(timeframe);
 
@@ -153,26 +153,26 @@ async function detectAnomalies(userId, timeframe = "30d") {
     const dailyOrders = await Order.findAll({
       where: {
         userId,
-        createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+        createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
       },
       attributes: [
-        [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt")), "date"],
-        [Order.sequelize.fn("COUNT", Order.sequelize.col("id")), "orderCount"],
+        [Order.sequelize.fn('DATE', Order.sequelize.col('createdAt')), 'date'],
+        [Order.sequelize.fn('COUNT', Order.sequelize.col('id')), 'orderCount'],
         [
-          Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")),
-          "totalRevenue",
-        ],
+          Order.sequelize.fn('SUM', Order.sequelize.col('totalAmount')),
+          'totalRevenue'
+        ]
       ],
-      group: [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt"))],
+      group: [Order.sequelize.fn('DATE', Order.sequelize.col('createdAt'))],
       order: [
-        [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt")), "ASC"],
-      ],
+        [Order.sequelize.fn('DATE', Order.sequelize.col('createdAt')), 'ASC']
+      ]
     });
 
     const orderData = dailyOrders.map((item) => ({
       date: item.dataValues.date,
       orders: parseInt(item.dataValues.orderCount) || 0,
-      revenue: parseFloat(item.dataValues.totalRevenue) || 0,
+      revenue: parseFloat(item.dataValues.totalRevenue) || 0
     }));
 
     // Simple anomaly detection using standard deviation
@@ -207,30 +207,30 @@ async function detectAnomalies(userId, timeframe = "30d") {
       if (orderZScore > threshold) {
         anomalies.push({
           date: day.date,
-          type: "orders",
+          type: 'orders',
           value: day.orders,
           expected: orderMean,
           deviation: orderZScore,
-          severity: orderZScore > 3 ? "high" : "medium",
+          severity: orderZScore > 3 ? 'high' : 'medium',
           description:
             day.orders > orderMean
-              ? "Unusually high order volume"
-              : "Unusually low order volume",
+              ? 'Unusually high order volume'
+              : 'Unusually low order volume'
         });
       }
 
       if (revenueZScore > threshold) {
         anomalies.push({
           date: day.date,
-          type: "revenue",
+          type: 'revenue',
           value: day.revenue,
           expected: revenueMean,
           deviation: revenueZScore,
-          severity: revenueZScore > 3 ? "high" : "medium",
+          severity: revenueZScore > 3 ? 'high' : 'medium',
           description:
             day.revenue > revenueMean
-              ? "Unusually high revenue"
-              : "Unusually low revenue",
+              ? 'Unusually high revenue'
+              : 'Unusually low revenue'
         });
       }
     });
@@ -239,33 +239,33 @@ async function detectAnomalies(userId, timeframe = "30d") {
       anomalies: anomalies.sort((a, b) => b.deviation - a.deviation),
       summary: {
         totalAnomalies: anomalies.length,
-        highSeverity: anomalies.filter((a) => a.severity === "high").length,
-        mediumSeverity: anomalies.filter((a) => a.severity === "medium").length,
+        highSeverity: anomalies.filter((a) => a.severity === 'high').length,
+        mediumSeverity: anomalies.filter((a) => a.severity === 'medium').length,
         orderBaseline: { mean: orderMean, stdDev: orderStdDev },
-        revenueBaseline: { mean: revenueMean, stdDev: revenueStdDev },
+        revenueBaseline: { mean: revenueMean, stdDev: revenueStdDev }
       },
       insights: [
         `${anomalies.length} anomalies detected in ${timeframe} period`,
-        "Monitor patterns that deviate significantly from normal",
-        "Set up alerts for real-time anomaly detection",
+        'Monitor patterns that deviate significantly from normal',
+        'Set up alerts for real-time anomaly detection'
       ],
       recommendations: [
-        "Investigate high-deviation days for insights",
-        "Implement automated anomaly alerts",
-        "Track external factors that might cause anomalies",
-      ],
+        'Investigate high-deviation days for insights',
+        'Implement automated anomaly alerts',
+        'Track external factors that might cause anomalies'
+      ]
     };
 
     await cacheService.set(cacheKey, result, defaultCacheTTL);
     return result;
   } catch (error) {
-    logger.error("Error detecting anomalies:", error);
+    logger.error('Error detecting anomalies:', error);
     return {
       anomalies: [],
       summary: {},
       insights: [],
       recommendations: [],
-      error: error.message,
+      error: error.message
     };
   }
 }
@@ -281,54 +281,54 @@ async function getSeasonalTrends(userId, dateRange) {
         createdAt: {
           [Op.between]: [
             new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 year back
-            new Date(),
-          ],
-        },
+            new Date()
+          ]
+        }
       },
       attributes: [
         [
           Order.sequelize.fn(
-            "strftime",
-            "%m",
-            Order.sequelize.col("createdAt")
+            'strftime',
+            '%m',
+            Order.sequelize.col('createdAt')
           ),
-          "month",
+          'month'
         ],
-        [Order.sequelize.fn("COUNT", Order.sequelize.col("id")), "orderCount"],
+        [Order.sequelize.fn('COUNT', Order.sequelize.col('id')), 'orderCount'],
         [
-          Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")),
-          "revenue",
-        ],
+          Order.sequelize.fn('SUM', Order.sequelize.col('totalAmount')),
+          'revenue'
+        ]
       ],
       group: [
-        Order.sequelize.fn("strftime", "%m", Order.sequelize.col("createdAt")),
+        Order.sequelize.fn('strftime', '%m', Order.sequelize.col('createdAt'))
       ],
       order: [
         [
           Order.sequelize.fn(
-            "strftime",
-            "%m",
-            Order.sequelize.col("createdAt")
+            'strftime',
+            '%m',
+            Order.sequelize.col('createdAt')
           ),
-          "ASC",
-        ],
-      ],
+          'ASC'
+        ]
+      ]
     });
 
     const monthlyTrends = yearlyData.map((item) => ({
-      month: parseInt(item.get("month")),
-      orders: parseInt(item.get("orderCount")),
-      revenue: parseFloat(item.get("revenue") || 0),
+      month: parseInt(item.get('month')),
+      orders: parseInt(item.get('orderCount')),
+      revenue: parseFloat(item.get('revenue') || 0)
     }));
 
     return {
       monthlyTrends,
       peakMonths: identifyPeakMonths(monthlyTrends),
       lowSeasons: identifyLowSeasons(monthlyTrends),
-      seasonalityIndex: calculateSeasonalityIndex(monthlyTrends),
+      seasonalityIndex: calculateSeasonalityIndex(monthlyTrends)
     };
   } catch (error) {
-    logger.error("Seasonal trends error:", error);
+    logger.error('Seasonal trends error:', error);
     return null;
   }
 }
@@ -339,9 +339,9 @@ function detectSeasonality(historicalData) {
   if (!historicalData || historicalData.length < 7) {
     return {
       hasSeasonality: false,
-      pattern: "insufficient_data",
+      pattern: 'insufficient_data',
       peakDays: [],
-      lowDays: [],
+      lowDays: []
     };
   }
 
@@ -353,7 +353,7 @@ function detectSeasonality(historicalData) {
     3: [],
     4: [],
     5: [],
-    6: [],
+    6: []
   }; // Sunday = 0, Monday = 1, etc.
 
   historicalData.forEach((item) => {
@@ -364,13 +364,13 @@ function detectSeasonality(historicalData) {
   // Calculate average for each day
   const dayAverages = {};
   const dayNames = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday'
   ];
 
   Object.keys(dayGroups).forEach((day) => {
@@ -400,13 +400,13 @@ function detectSeasonality(historicalData) {
 
   return {
     hasSeasonality: peakDays.length > 0 || lowDays.length > 0,
-    pattern: peakDays.length > 0 ? "weekly_peaks" : "stable",
+    pattern: peakDays.length > 0 ? 'weekly_peaks' : 'stable',
     peakDays,
     lowDays,
     dayAverages: Object.keys(dayAverages).reduce((result, day) => {
       result[dayNames[day]] = Math.round(dayAverages[day]);
       return result;
-    }, {}),
+    }, {})
   };
 }
 
@@ -415,5 +415,5 @@ module.exports = {
   identifyPricingOpportunities,
   detectAnomalies,
   detectSeasonality,
-  determineStockStatusFromMetrics,
+  determineStockStatusFromMetrics
 };

@@ -21,45 +21,45 @@ class DynamicSKUDataManager {
    */
   initializeBasicData() {
     // Add a default own brand that user can modify
-    this.ownBrands.set("COMPANY", {
-      code: "COMPANY",
-      name: "Your Company",
-      fullName: "Your Company Name",
-      description: "Default company brand - please update",
+    this.ownBrands.set('COMPANY', {
+      code: 'COMPANY',
+      name: 'Your Company',
+      fullName: 'Your Company Name',
+      description: 'Default company brand - please update',
       isDefault: true,
       createdAt: new Date(),
-      updatedAt: new Date(),
+      updatedAt: new Date()
     });
 
     // Add basic product types that can be extended
     const basicTypes = [
-      { code: "PROD", name: "Product", category: "General" },
-      { code: "ITEM", name: "Item", category: "General" },
+      { code: 'PROD', name: 'Product', category: 'General' },
+      { code: 'ITEM', name: 'Item', category: 'General' }
     ];
 
     basicTypes.forEach((type) => {
       this.productTypes.set(type.code, {
         ...type,
-        source: "default",
+        source: 'default',
         isDefault: true,
         createdAt: new Date(),
-        updatedAt: new Date(),
+        updatedAt: new Date()
       });
     });
 
     // Add basic variant codes
     const basicVariants = [
-      { code: "STD", name: "Standard", category: "Default" },
-      { code: "V1", name: "Version 1", category: "Version" },
+      { code: 'STD', name: 'Standard', category: 'Default' },
+      { code: 'V1', name: 'Version 1', category: 'Version' }
     ];
 
     basicVariants.forEach((variant) => {
       this.variantCodes.set(variant.code, {
         ...variant,
-        source: "default",
+        source: 'default',
         isDefault: true,
         createdAt: new Date(),
-        updatedAt: new Date(),
+        updatedAt: new Date()
       });
     });
   }
@@ -96,7 +96,7 @@ class DynamicSKUDataManager {
       productTypes: new Set(),
       categories: new Set(),
       skuPatterns: [],
-      extractedAt: new Date(),
+      extractedAt: new Date()
     };
 
     try {
@@ -156,7 +156,7 @@ class DynamicSKUDataManager {
           source: platformName,
           confidence: 0.7,
           discoveredAt: new Date(),
-          platforms: [platformName],
+          platforms: [platformName]
         });
       } else {
         // Update existing brand
@@ -180,7 +180,7 @@ class DynamicSKUDataManager {
           source: platformName,
           confidence: 0.6,
           discoveredAt: new Date(),
-          platforms: [platformName],
+          platforms: [platformName]
         });
       } else {
         // Update existing type
@@ -200,7 +200,7 @@ class DynamicSKUDataManager {
    */
   generateBrandCode(brandName) {
     // Clean and normalize the brand name
-    const cleaned = brandName.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+    const cleaned = brandName.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 
     // Take first 4 characters, or use specific rules
     if (cleaned.length <= 4) {
@@ -213,7 +213,7 @@ class DynamicSKUDataManager {
       // Take first 2 letters of each word
       return words
         .map((word) => word.substring(0, 2).toUpperCase())
-        .join("")
+        .join('')
         .substring(0, 4);
     }
 
@@ -225,7 +225,7 @@ class DynamicSKUDataManager {
    * Generate product type code from category name
    */
   generateProductTypeCode(categoryName) {
-    const cleaned = categoryName.replace(/[^A-Za-z]/g, "").toUpperCase();
+    const cleaned = categoryName.replace(/[^A-Za-z]/g, '').toUpperCase();
 
     if (cleaned.length <= 3) {
       return cleaned;
@@ -234,7 +234,7 @@ class DynamicSKUDataManager {
     // Take first 3 consonants if possible
     const consonants = cleaned.match(/[BCDFGHJKLMNPQRSTVWXYZ]/g) || [];
     if (consonants.length >= 3) {
-      return consonants.slice(0, 3).join("");
+      return consonants.slice(0, 3).join('');
     }
 
     // Fallback to first 3 characters
@@ -248,42 +248,42 @@ class DynamicSKUDataManager {
     const name = typeName.toLowerCase();
 
     if (
-      name.includes("electronic") ||
-      name.includes("tech") ||
-      name.includes("computer")
+      name.includes('electronic') ||
+      name.includes('tech') ||
+      name.includes('computer')
     ) {
-      return "Electronics";
+      return 'Electronics';
     }
     if (
-      name.includes("clothing") ||
-      name.includes("apparel") ||
-      name.includes("fashion")
+      name.includes('clothing') ||
+      name.includes('apparel') ||
+      name.includes('fashion')
     ) {
-      return "Clothing";
+      return 'Clothing';
     }
     if (
-      name.includes("home") ||
-      name.includes("furniture") ||
-      name.includes("kitchen")
+      name.includes('home') ||
+      name.includes('furniture') ||
+      name.includes('kitchen')
     ) {
-      return "Home & Garden";
+      return 'Home & Garden';
     }
     if (
-      name.includes("book") ||
-      name.includes("media") ||
-      name.includes("entertainment")
+      name.includes('book') ||
+      name.includes('media') ||
+      name.includes('entertainment')
     ) {
-      return "Media";
+      return 'Media';
     }
     if (
-      name.includes("sport") ||
-      name.includes("fitness") ||
-      name.includes("outdoor")
+      name.includes('sport') ||
+      name.includes('fitness') ||
+      name.includes('outdoor')
     ) {
-      return "Sports & Outdoors";
+      return 'Sports & Outdoors';
     }
 
-    return "Other";
+    return 'Other';
   }
 
   /**
@@ -293,19 +293,19 @@ class DynamicSKUDataManager {
     const { code, name, fullName, description } = brandData;
 
     if (!code || !name) {
-      throw new Error("Brand code and name are required");
+      throw new Error('Brand code and name are required');
     }
 
     this.ownBrands.set(code.toUpperCase(), {
       code: code.toUpperCase(),
       name,
       fullName: fullName || name,
-      description: description || "",
+      description: description || '',
       userDefined: true,
       createdAt: this.ownBrands.has(code.toUpperCase())
         ? this.ownBrands.get(code.toUpperCase()).createdAt
         : new Date(),
-      updatedAt: new Date(),
+      updatedAt: new Date()
     });
 
     return this.ownBrands.get(code.toUpperCase());
@@ -318,20 +318,20 @@ class DynamicSKUDataManager {
     const { code, name, fullName, source } = brandData;
 
     if (!code || !name) {
-      throw new Error("Brand code and name are required");
+      throw new Error('Brand code and name are required');
     }
 
     this.externalBrands.set(code.toUpperCase(), {
       code: code.toUpperCase(),
       name,
       fullName: fullName || name,
-      source: source || "user",
+      source: source || 'user',
       confidence: 1.0,
       userDefined: true,
       createdAt: this.externalBrands.has(code.toUpperCase())
         ? this.externalBrands.get(code.toUpperCase()).createdAt
         : new Date(),
-      updatedAt: new Date(),
+      updatedAt: new Date()
     });
 
     return this.externalBrands.get(code.toUpperCase());
@@ -344,19 +344,19 @@ class DynamicSKUDataManager {
     const { code, name, category, description } = typeData;
 
     if (!code || !name) {
-      throw new Error("Product type code and name are required");
+      throw new Error('Product type code and name are required');
     }
 
     this.productTypes.set(code.toUpperCase(), {
       code: code.toUpperCase(),
       name,
-      category: category || "Other",
-      description: description || "",
+      category: category || 'Other',
+      description: description || '',
       userDefined: true,
       createdAt: this.productTypes.has(code.toUpperCase())
         ? this.productTypes.get(code.toUpperCase()).createdAt
         : new Date(),
-      updatedAt: new Date(),
+      updatedAt: new Date()
     });
 
     return this.productTypes.get(code.toUpperCase());
@@ -369,19 +369,19 @@ class DynamicSKUDataManager {
     const { code, name, category, description } = variantData;
 
     if (!code || !name) {
-      throw new Error("Variant code and name are required");
+      throw new Error('Variant code and name are required');
     }
 
     this.variantCodes.set(code.toUpperCase(), {
       code: code.toUpperCase(),
       name,
-      category: category || "Other",
-      description: description || "",
+      category: category || 'Other',
+      description: description || '',
       userDefined: true,
       createdAt: this.variantCodes.has(code.toUpperCase())
         ? this.variantCodes.get(code.toUpperCase()).createdAt
         : new Date(),
-      updatedAt: new Date(),
+      updatedAt: new Date()
     });
 
     return this.variantCodes.get(code.toUpperCase());
@@ -398,12 +398,12 @@ class DynamicSKUDataManager {
       return {
         success: true,
         brand: removed,
-        message: `Own brand ${code} removed successfully`,
+        message: `Own brand ${code} removed successfully`
       };
     }
     return {
       success: false,
-      message: `Own brand ${code} not found`,
+      message: `Own brand ${code} not found`
     };
   }
 
@@ -415,12 +415,12 @@ class DynamicSKUDataManager {
       return {
         success: true,
         brand: removed,
-        message: `External brand ${code} removed successfully`,
+        message: `External brand ${code} removed successfully`
       };
     }
     return {
       success: false,
-      message: `External brand ${code} not found`,
+      message: `External brand ${code} not found`
     };
   }
 
@@ -433,7 +433,7 @@ class DynamicSKUDataManager {
       if (removed.isDefault) {
         return {
           success: false,
-          message: `Cannot remove default product type ${code}`,
+          message: `Cannot remove default product type ${code}`
         };
       }
 
@@ -441,12 +441,12 @@ class DynamicSKUDataManager {
       return {
         success: true,
         productType: removed,
-        message: `Product type ${code} removed successfully`,
+        message: `Product type ${code} removed successfully`
       };
     }
     return {
       success: false,
-      message: `Product type ${code} not found`,
+      message: `Product type ${code} not found`
     };
   }
 
@@ -459,7 +459,7 @@ class DynamicSKUDataManager {
       if (removed.isDefault) {
         return {
           success: false,
-          message: `Cannot remove default variant code ${code}`,
+          message: `Cannot remove default variant code ${code}`
         };
       }
 
@@ -467,12 +467,12 @@ class DynamicSKUDataManager {
       return {
         success: true,
         variantCode: removed,
-        message: `Variant code ${code} removed successfully`,
+        message: `Variant code ${code} removed successfully`
       };
     }
     return {
       success: false,
-      message: `Variant code ${code} not found`,
+      message: `Variant code ${code} not found`
     };
   }
 
@@ -498,7 +498,7 @@ class DynamicSKUDataManager {
   getAllBrands() {
     return {
       own: this.getAllOwnBrands(),
-      external: this.getAllExternalBrands(),
+      external: this.getAllExternalBrands()
     };
   }
 
@@ -516,7 +516,7 @@ class DynamicSKUDataManager {
         brand.name.toLowerCase().includes(lowerQuery) ||
         brand.fullName.toLowerCase().includes(lowerQuery)
       ) {
-        results.push({ ...brand, type: "own" });
+        results.push({ ...brand, type: 'own' });
       }
     });
 
@@ -527,7 +527,7 @@ class DynamicSKUDataManager {
         brand.name.toLowerCase().includes(lowerQuery) ||
         brand.fullName.toLowerCase().includes(lowerQuery)
       ) {
-        results.push({ ...brand, type: "external" });
+        results.push({ ...brand, type: 'external' });
       }
     });
 
@@ -584,7 +584,7 @@ class DynamicSKUDataManager {
       productTypes: this.productTypes.size,
       variantCodes: this.variantCodes.size,
       platformsConnected: this.platformData.size,
-      lastUpdated: new Date(),
+      lastUpdated: new Date()
     };
   }
 
@@ -598,7 +598,7 @@ class DynamicSKUDataManager {
       productTypes: this.getAllProductTypes(),
       variantCodes: this.getAllVariantCodes(),
       platformData: Object.fromEntries(this.platformData),
-      exportedAt: new Date(),
+      exportedAt: new Date()
     };
   }
 
@@ -617,7 +617,7 @@ class DynamicSKUDataManager {
         data.externalBrands.forEach((brand) => {
           this.externalBrands.set(brand.code, {
             ...brand,
-            importedAt: new Date(),
+            importedAt: new Date()
           });
         });
       }
@@ -632,7 +632,7 @@ class DynamicSKUDataManager {
         data.variantCodes.forEach((variant) => {
           this.variantCodes.set(variant.code, {
             ...variant,
-            importedAt: new Date(),
+            importedAt: new Date()
           });
         });
       }
@@ -665,7 +665,7 @@ class DynamicSKUDataManager {
       suggested,
       available:
         !this.ownBrands.has(suggested) && !this.externalBrands.has(suggested),
-      alternatives,
+      alternatives
     };
   }
 
@@ -689,7 +689,7 @@ class DynamicSKUDataManager {
     return {
       suggested,
       available: !this.productTypes.has(suggested),
-      alternatives,
+      alternatives
     };
   }
 }

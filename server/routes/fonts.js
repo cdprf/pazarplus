@@ -3,10 +3,10 @@
  * Provides endpoints for font detection and validation
  */
 
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const FontManager = require("../utils/FontManager");
-const logger = require("../utils/logger");
+const FontManager = require('../utils/FontManager');
+const logger = require('../utils/logger');
 
 // Initialize FontManager instance
 const fontManager = new FontManager();
@@ -15,21 +15,21 @@ const fontManager = new FontManager();
  * GET /api/fonts/available
  * Get list of available system fonts for use in templates
  */
-router.get("/available", async (req, res) => {
+router.get('/available', async (req, res) => {
   try {
     const fonts = await fontManager.getAvailableFonts();
 
     res.json({
       success: true,
       data: fonts,
-      message: "Available fonts retrieved successfully",
+      message: 'Available fonts retrieved successfully'
     });
   } catch (error) {
-    logger.error("Failed to get available fonts", { error: error.message });
+    logger.error('Failed to get available fonts', { error: error.message });
     res.status(500).json({
       success: false,
-      message: "Failed to retrieve available fonts",
-      error: error.message,
+      message: 'Failed to retrieve available fonts',
+      error: error.message
     });
   }
 });
@@ -38,14 +38,14 @@ router.get("/available", async (req, res) => {
  * POST /api/fonts/validate-text
  * Validate if text can be properly rendered with selected font
  */
-router.post("/validate-text", async (req, res) => {
+router.post('/validate-text', async (req, res) => {
   try {
-    const { text, fontFamily, weight = "normal" } = req.body;
+    const { text, fontFamily, weight = 'normal' } = req.body;
 
     if (!text) {
       return res.status(400).json({
         success: false,
-        message: "Text content is required",
+        message: 'Text content is required'
       });
     }
 
@@ -57,7 +57,7 @@ router.post("/validate-text", async (req, res) => {
 
     // Check for encoding issues
     const hasEncodingIssues =
-      text.includes("�") || /[\uFFFD\uFEFF\u200B-\u200D\u2060]/.test(text);
+      text.includes('�') || /[\uFFFD\uFEFF\u200B-\u200D\u2060]/.test(text);
 
     // Check for complex Unicode characters
     const hasComplexUnicode = /[^\u0000-\u00FF]/.test(text);
@@ -80,15 +80,15 @@ router.post("/validate-text", async (req, res) => {
           text,
           hasEncodingIssues,
           hasComplexUnicode
-        ),
-      },
+        )
+      }
     });
   } catch (error) {
-    logger.error("Text validation failed", { error: error.message });
+    logger.error('Text validation failed', { error: error.message });
     res.status(500).json({
       success: false,
-      message: "Text validation failed",
-      error: error.message,
+      message: 'Text validation failed',
+      error: error.message
     });
   }
 });
@@ -97,21 +97,21 @@ router.post("/validate-text", async (req, res) => {
  * GET /api/fonts/detect-system
  * Detect and register system fonts (admin only)
  */
-router.get("/detect-system", async (req, res) => {
+router.get('/detect-system', async (req, res) => {
   try {
     const detectedFonts = fontManager.detectSystemFonts();
 
     res.json({
       success: true,
       data: detectedFonts,
-      message: "System fonts detected successfully",
+      message: 'System fonts detected successfully'
     });
   } catch (error) {
-    logger.error("System font detection failed", { error: error.message });
+    logger.error('System font detection failed', { error: error.message });
     res.status(500).json({
       success: false,
-      message: "System font detection failed",
-      error: error.message,
+      message: 'System font detection failed',
+      error: error.message
     });
   }
 });
@@ -124,29 +124,29 @@ function generateTextSuggestions(text, hasEncodingIssues, hasComplexUnicode) {
 
   if (hasEncodingIssues) {
     suggestions.push({
-      type: "error",
+      type: 'error',
       message:
-        "Text contains replacement characters (�). Try re-entering the text or check your input source.",
-      action: "fix-encoding",
+        'Text contains replacement characters (�). Try re-entering the text or check your input source.',
+      action: 'fix-encoding'
     });
   }
 
   if (hasComplexUnicode) {
     suggestions.push({
-      type: "info",
+      type: 'info',
       message:
-        "Text contains special characters. Using DejaVu Sans font for better compatibility.",
-      action: "font-recommendation",
+        'Text contains special characters. Using DejaVu Sans font for better compatibility.',
+      action: 'font-recommendation'
     });
   }
 
   // Check for common Turkish characters
   if (/[çğıöşüÇĞİÖŞÜ]/.test(text)) {
     suggestions.push({
-      type: "success",
+      type: 'success',
       message:
-        "Turkish characters detected. Font automatically optimized for Turkish text.",
-      action: "turkish-optimization",
+        'Turkish characters detected. Font automatically optimized for Turkish text.',
+      action: 'turkish-optimization'
     });
   }
 

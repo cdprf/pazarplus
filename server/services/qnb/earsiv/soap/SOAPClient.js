@@ -3,10 +3,10 @@
  * Handles SOAP envelope creation, requests, and response parsing
  */
 
-const axios = require("axios");
-const xml2js = require("xml2js");
-const config = require("../config/QNBConfig");
-const logger = require("../../../utils/logger");
+const axios = require('axios');
+const xml2js = require('xml2js');
+const config = require('../config/QNBConfig');
+const logger = require('../../../utils/logger');
 
 class SOAPClient {
   constructor() {
@@ -22,14 +22,14 @@ class SOAPClient {
    */
   createSOAPEnvelope(bodyContent, authHeader = null) {
     const envelope = {
-      "soapenv:Envelope": {
+      'soapenv:Envelope': {
         $: {
-          "xmlns:soapenv": config.namespaces.soapEnv,
-          "xmlns:ser": config.namespaces.earsivService,
+          'xmlns:soapenv': config.namespaces.soapEnv,
+          'xmlns:ser': config.namespaces.earsivService
         },
-        "soapenv:Header": authHeader || {},
-        "soapenv:Body": bodyContent,
-      },
+        'soapenv:Header': authHeader || {},
+        'soapenv:Body': bodyContent
+      }
     };
 
     return this.xmlBuilder.buildObject(envelope);
@@ -44,14 +44,14 @@ class SOAPClient {
   async makeRequest(soapXML, requestConfig) {
     try {
       const {
-        environment = "test",
+        environment = 'test',
         sessionCookie = null,
-        soapAction = "",
+        soapAction = ''
       } = requestConfig;
 
       const headers = {
-        "Content-Type": "text/xml; charset=utf-8",
-        SOAPAction: soapAction,
+        'Content-Type': 'text/xml; charset=utf-8',
+        SOAPAction: soapAction
       };
 
       // Add session cookie if available
@@ -59,17 +59,17 @@ class SOAPClient {
         headers.Cookie = sessionCookie;
       }
 
-      const serviceUrl = config.getEndpoint(environment, "earsivService");
+      const serviceUrl = config.getEndpoint(environment, 'earsivService');
 
-      logger.debug("Making SOAP request", {
+      logger.debug('Making SOAP request', {
         url: serviceUrl,
         hasSession: !!sessionCookie,
-        bodyLength: soapXML.length,
+        bodyLength: soapXML.length
       });
 
       const response = await axios.post(serviceUrl, soapXML, {
         headers,
-        timeout: config.defaults.timeout,
+        timeout: config.defaults.timeout
       });
 
       // Parse SOAP response
@@ -80,18 +80,18 @@ class SOAPClient {
     } catch (error) {
       logger.error(`SOAP request error: ${error.message}`, {
         error: error.message,
-        requestConfig,
+        requestConfig
       });
 
       // Handle specific HTTP errors
       if (error.response) {
         const statusCode = error.response.status;
         if (statusCode === 401) {
-          throw new Error("Authentication failed - invalid credentials");
+          throw new Error('Authentication failed - invalid credentials');
         } else if (statusCode === 403) {
-          throw new Error("Access forbidden - insufficient permissions");
+          throw new Error('Access forbidden - insufficient permissions');
         } else if (statusCode >= 500) {
-          throw new Error("Server error - QNB Finans service unavailable");
+          throw new Error('Server error - QNB Finans service unavailable');
         }
       }
 
@@ -108,27 +108,27 @@ class SOAPClient {
     try {
       // Handle different SOAP envelope variations
       const envelope =
-        soapResponse["S:Envelope"] ||
-        soapResponse["soap:Envelope"] ||
-        soapResponse["soapenv:Envelope"];
+        soapResponse['S:Envelope'] ||
+        soapResponse['soap:Envelope'] ||
+        soapResponse['soapenv:Envelope'];
 
       if (!envelope) {
-        throw new Error("Invalid SOAP response - no envelope found");
+        throw new Error('Invalid SOAP response - no envelope found');
       }
 
       const body =
-        envelope["S:Body"] || envelope["soap:Body"] || envelope["soapenv:Body"];
+        envelope['S:Body'] || envelope['soap:Body'] || envelope['soapenv:Body'];
 
       if (!body) {
-        throw new Error("Invalid SOAP response - no body found");
+        throw new Error('Invalid SOAP response - no body found');
       }
 
       // Check for SOAP faults
       const fault =
-        body["S:Fault"] || body["soap:Fault"] || body["soapenv:Fault"];
+        body['S:Fault'] || body['soap:Fault'] || body['soapenv:Fault'];
       if (fault) {
         const faultString =
-          fault.faultstring || fault.faultString || "Unknown SOAP fault";
+          fault.faultstring || fault.faultString || 'Unknown SOAP fault';
         throw new Error(`SOAP Fault: ${faultString}`);
       }
 
@@ -137,7 +137,7 @@ class SOAPClient {
       const responseContent = body[responseKeys[0]];
 
       if (!responseContent) {
-        throw new Error("Invalid SOAP response - no content found");
+        throw new Error('Invalid SOAP response - no content found');
       }
 
       // Handle different response formats
@@ -152,7 +152,7 @@ class SOAPClient {
           resultExtra: result.resultExtra,
           output: responseContent.output,
           data: result,
-          raw: responseContent,
+          raw: responseContent
         };
       }
 
@@ -160,7 +160,7 @@ class SOAPClient {
       return {
         success: true,
         data: responseContent,
-        raw: responseContent,
+        raw: responseContent
       };
     } catch (error) {
       logger.error(`SOAP response parsing error: ${error.message}`, { error });
@@ -195,14 +195,14 @@ class SOAPClient {
         error: {
           code: errorCode,
           message: errorMessage,
-          originalText: parsedResponse.resultText,
-        },
+          originalText: parsedResponse.resultText
+        }
       };
     }
 
     return {
       isValid: true,
-      data: parsedResponse.data,
+      data: parsedResponse.data
     };
   }
 

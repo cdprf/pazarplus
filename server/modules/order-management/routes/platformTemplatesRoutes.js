@@ -16,7 +16,7 @@ router.post('/', [
   body('name').notEmpty().trim().withMessage('Name is required'),
   body('apiEndpoints').notEmpty().withMessage('API endpoints are required'),
   body('authType').notEmpty().trim().withMessage('Auth type is required'),
-  body('credentialSchema').notEmpty().withMessage('Credential schema is required'),
+  body('credentialSchema').notEmpty().withMessage('Credential schema is required')
 ], platformTemplatesController.createTemplate);
 
 router.put('/:id', [
@@ -24,7 +24,7 @@ router.put('/:id', [
   body('name').optional().trim(),
   body('apiEndpoints').optional(),
   body('authType').optional().trim(),
-  body('credentialSchema').optional(),
+  body('credentialSchema').optional()
 ], platformTemplatesController.updateTemplate);
 
 router.delete('/:id', platformTemplatesController.deleteTemplate);

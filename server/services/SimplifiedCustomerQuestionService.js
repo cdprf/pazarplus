@@ -1,6 +1,6 @@
 // Simplified Customer Question Service without platform service initialization
-const { Op, Sequelize } = require("sequelize");
-const debug = require("debug")("pazar:customer:questions:simplified");
+const { Op, Sequelize } = require('sequelize');
+const debug = require('debug')('pazar:customer:questions:simplified');
 
 class SimplifiedCustomerQuestionService {
   constructor() {
@@ -8,7 +8,7 @@ class SimplifiedCustomerQuestionService {
     this.platformServices = {};
     this.initialized = true; // Mark as initialized immediately
     debug(
-      "SimplifiedCustomerQuestionService instantiated without platform services"
+      'SimplifiedCustomerQuestionService instantiated without platform services'
     );
   }
 
@@ -17,10 +17,10 @@ class SimplifiedCustomerQuestionService {
    */
   async getQuestions(options = {}) {
     try {
-      debug("Getting questions from database with options:", options);
+      debug('Getting questions from database with options:', options);
 
       // Lazy load models
-      const { CustomerQuestion } = require("../models");
+      const { CustomerQuestion } = require('../models');
 
       const {
         platform,
@@ -32,9 +32,9 @@ class SimplifiedCustomerQuestionService {
         endDate,
         page = 1,
         limit = 20,
-        sortBy = "creation_date",
-        sortOrder = "DESC",
-        search,
+        sortBy = 'creation_date',
+        sortOrder = 'DESC',
+        search
       } = options;
 
       // Build where clause
@@ -54,7 +54,7 @@ class SimplifiedCustomerQuestionService {
 
       if (customer_name) {
         whereClause.customer_name = {
-          [Op.iLike]: `%${customer_name}%`,
+          [Op.iLike]: `%${customer_name}%`
         };
       }
 
@@ -65,14 +65,14 @@ class SimplifiedCustomerQuestionService {
       if (startDate) {
         whereClause.creation_date = {
           ...whereClause.creation_date,
-          [Op.gte]: startDate,
+          [Op.gte]: startDate
         };
       }
 
       if (endDate) {
         whereClause.creation_date = {
           ...whereClause.creation_date,
-          [Op.lte]: endDate,
+          [Op.lte]: endDate
         };
       }
 
@@ -80,19 +80,19 @@ class SimplifiedCustomerQuestionService {
         whereClause[Op.or] = [
           {
             customer_name: {
-              [Op.iLike]: `%${search}%`,
-            },
+              [Op.iLike]: `%${search}%`
+            }
           },
           {
             question_text: {
-              [Op.iLike]: `%${search}%`,
-            },
+              [Op.iLike]: `%${search}%`
+            }
           },
           {
             answer_text: {
-              [Op.iLike]: `%${search}%`,
-            },
-          },
+              [Op.iLike]: `%${search}%`
+            }
+          }
         ];
       }
 
@@ -102,24 +102,24 @@ class SimplifiedCustomerQuestionService {
       // Build order clause
       const orderClause = [[sortBy, sortOrder.toUpperCase()]];
 
-      debug("Database query options:", {
+      debug('Database query options:', {
         where: whereClause,
         limit,
         offset,
-        order: orderClause,
+        order: orderClause
       });
 
       // Try to get questions from database
       try {
         // Lazy load CustomerReply model as well
-        const { CustomerReply } = require("../models");
+        const { CustomerReply } = require('../models');
 
         const { count, rows: questions } =
           await CustomerQuestion.findAndCountAll({
             where: whereClause,
             limit,
             offset,
-            order: orderClause,
+            order: orderClause
           });
 
         const totalPages = Math.ceil(count / limit);
@@ -132,15 +132,15 @@ class SimplifiedCustomerQuestionService {
             page,
             limit,
             totalItems: count,
-            totalPages,
-          },
+            totalPages
+          }
         };
       } catch (dbError) {
-        debug("Database query failed:", dbError.message);
+        debug('Database query failed:', dbError.message);
         throw dbError;
       }
     } catch (error) {
-      debug("Error in getQuestions:", error.message);
+      debug('Error in getQuestions:', error.message);
       throw error;
     }
   }
@@ -152,20 +152,20 @@ class SimplifiedCustomerQuestionService {
     try {
       debug(`Getting questions for customer: ${email}`);
 
-      const { CustomerQuestion } = require("../models");
+      const { CustomerQuestion } = require('../models');
 
       const {
         status,
         platform,
         page = 1,
         limit = 20,
-        sortBy = "creation_date",
-        sortOrder = "DESC",
+        sortBy = 'creation_date',
+        sortOrder = 'DESC'
       } = options;
 
       // Build where clause
       const whereClause = {
-        customer_email: email,
+        customer_email: email
       };
 
       if (status) {
@@ -186,7 +186,7 @@ class SimplifiedCustomerQuestionService {
             where: whereClause,
             limit,
             offset,
-            order: [[sortBy, sortOrder.toUpperCase()]],
+            order: [[sortBy, sortOrder.toUpperCase()]]
           });
 
         const totalPages = Math.ceil(count / limit);
@@ -197,15 +197,15 @@ class SimplifiedCustomerQuestionService {
             page,
             limit,
             totalItems: count,
-            totalPages,
-          },
+            totalPages
+          }
         };
       } catch (dbError) {
-        debug("Database query failed:", dbError.message);
+        debug('Database query failed:', dbError.message);
         throw dbError;
       }
     } catch (error) {
-      debug("Error getting questions by customer:", error.message);
+      debug('Error getting questions by customer:', error.message);
       throw error;
     }
   }
@@ -217,7 +217,7 @@ class SimplifiedCustomerQuestionService {
     try {
       debug(`Getting question by ID: ${id}`);
 
-      const { CustomerQuestion } = require("../models");
+      const { CustomerQuestion } = require('../models');
 
       try {
         const question = await CustomerQuestion.findByPk(id);
@@ -230,11 +230,11 @@ class SimplifiedCustomerQuestionService {
           return null;
         }
       } catch (dbError) {
-        debug("Database query failed:", dbError.message);
+        debug('Database query failed:', dbError.message);
         throw dbError;
       }
     } catch (error) {
-      debug("Error getting question by ID:", error.message);
+      debug('Error getting question by ID:', error.message);
       throw error;
     }
   }
@@ -246,7 +246,7 @@ class SimplifiedCustomerQuestionService {
     try {
       debug(`Updating question ${id} status to: ${status}`);
 
-      const { CustomerQuestion } = require("../models");
+      const { CustomerQuestion } = require('../models');
 
       try {
         const question = await CustomerQuestion.findByPk(id);
@@ -259,17 +259,17 @@ class SimplifiedCustomerQuestionService {
         const updatedQuestion = await question.update({
           status,
           updated_at: new Date(),
-          ...(updatedBy && { updated_by: updatedBy }),
+          ...(updatedBy && { updated_by: updatedBy })
         });
 
         debug(`Question ${id} status updated successfully`);
         return updatedQuestion;
       } catch (dbError) {
-        debug("Database update failed:", dbError.message);
+        debug('Database update failed:', dbError.message);
         throw dbError;
       }
     } catch (error) {
-      debug("Error updating question status:", error.message);
+      debug('Error updating question status:', error.message);
       throw error;
     }
   }
@@ -277,28 +277,28 @@ class SimplifiedCustomerQuestionService {
   /**
    * Get question statistics
    */
-  async getQuestionStats(timeframe = "30d") {
+  async getQuestionStats(timeframe = '30d') {
     try {
-      debug("Getting question statistics for timeframe:", timeframe);
+      debug('Getting question statistics for timeframe:', timeframe);
 
-      const { CustomerQuestion } = require("../models");
+      const { CustomerQuestion } = require('../models');
 
       // Calculate date range
       const now = new Date();
       let startDate;
 
       switch (timeframe) {
-        case "7d":
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case "30d":
-          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          break;
-        case "90d":
-          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-          break;
-        default:
-          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       }
 
       try {
@@ -310,73 +310,73 @@ class SimplifiedCustomerQuestionService {
           rejectedQuestions,
           autoClosedQuestions,
           questionsByPlatform,
-          questionsByPriority,
+          questionsByPriority
         ] = await Promise.all([
           CustomerQuestion.count({
             where: {
               creation_date: {
-                [Op.gte]: startDate,
-              },
-            },
+                [Op.gte]: startDate
+              }
+            }
           }),
           CustomerQuestion.count({
             where: {
-              status: "WAITING_FOR_ANSWER",
+              status: 'WAITING_FOR_ANSWER',
               creation_date: {
-                [Op.gte]: startDate,
-              },
-            },
+                [Op.gte]: startDate
+              }
+            }
           }),
           CustomerQuestion.count({
             where: {
-              status: "ANSWERED",
+              status: 'ANSWERED',
               creation_date: {
-                [Op.gte]: startDate,
-              },
-            },
+                [Op.gte]: startDate
+              }
+            }
           }),
           CustomerQuestion.count({
             where: {
-              status: "REJECTED",
+              status: 'REJECTED',
               creation_date: {
-                [Op.gte]: startDate,
-              },
-            },
+                [Op.gte]: startDate
+              }
+            }
           }),
           CustomerQuestion.count({
             where: {
-              status: "AUTO_CLOSED",
+              status: 'AUTO_CLOSED',
               creation_date: {
-                [Op.gte]: startDate,
-              },
-            },
+                [Op.gte]: startDate
+              }
+            }
           }),
           CustomerQuestion.findAll({
             where: {
               creation_date: {
-                [Op.gte]: startDate,
-              },
+                [Op.gte]: startDate
+              }
             },
             attributes: [
-              "platform",
-              [Sequelize.fn("COUNT", Sequelize.col("id")), "count"],
+              'platform',
+              [Sequelize.fn('COUNT', Sequelize.col('id')), 'count']
             ],
-            group: ["platform"],
-            raw: true,
+            group: ['platform'],
+            raw: true
           }),
           CustomerQuestion.findAll({
             where: {
               creation_date: {
-                [Op.gte]: startDate,
-              },
+                [Op.gte]: startDate
+              }
             },
             attributes: [
-              "priority",
-              [Sequelize.fn("COUNT", Sequelize.col("id")), "count"],
+              'priority',
+              [Sequelize.fn('COUNT', Sequelize.col('id')), 'count']
             ],
-            group: ["priority"],
-            raw: true,
-          }),
+            group: ['priority'],
+            raw: true
+          })
         ]);
 
         const stats = {
@@ -391,17 +391,17 @@ class SimplifiedCustomerQuestionService {
               ? ((answeredQuestions / totalQuestions) * 100).toFixed(2)
               : 0,
           platformDistribution: questionsByPlatform,
-          priorityDistribution: questionsByPriority,
+          priorityDistribution: questionsByPriority
         };
 
-        debug("Database statistics calculated successfully");
+        debug('Database statistics calculated successfully');
         return stats;
       } catch (dbError) {
-        debug("Database stats query failed:", dbError.message);
+        debug('Database stats query failed:', dbError.message);
         throw dbError;
       }
     } catch (error) {
-      debug("Error getting question statistics:", error.message);
+      debug('Error getting question statistics:', error.message);
       throw error;
     }
   }
@@ -414,7 +414,7 @@ class SimplifiedCustomerQuestionService {
       debug(`Replying to question ${questionId} with simplified service`);
 
       // Lazy load models
-      const { CustomerQuestion, CustomerReply } = require("../models");
+      const { CustomerQuestion, CustomerReply } = require('../models');
 
       const question = await this.getQuestionById(questionId);
       if (!question) {
@@ -425,13 +425,13 @@ class SimplifiedCustomerQuestionService {
       let validUserId = userId;
       if (
         !userId ||
-        typeof userId !== "string" ||
+        typeof userId !== 'string' ||
         !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
           userId
         )
       ) {
         debug(`Invalid userId "${userId}", using default user`);
-        validUserId = "38d86fd2-bf87-4271-b49d-f1a7645ee4ef"; // Default to existing user
+        validUserId = '38d86fd2-bf87-4271-b49d-f1a7645ee4ef'; // Default to existing user
       }
 
       // Create reply record
@@ -439,21 +439,21 @@ class SimplifiedCustomerQuestionService {
         question_id: questionId,
         platform: question.platform,
         reply_text: replyData.text,
-        reply_type: replyData.type || "answer",
-        from_type: "merchant",
+        reply_type: replyData.type || 'answer',
+        from_type: 'merchant',
         created_by: null, // Set to null for now due to schema mismatch (expects integer, but users have UUID)
         creation_date: new Date(),
-        status: "draft", // Start as draft since no platform integration
+        status: 'draft', // Start as draft since no platform integration
         template_id: replyData.template_id,
-        attachments: replyData.attachments || [],
+        attachments: replyData.attachments || []
       });
 
       debug(`Reply created with ID ${reply.id} for question ${questionId}`);
 
       // Update question status
       await question.update({
-        status: replyData.type === "reject" ? "REJECTED" : "ANSWERED",
-        answered_date: new Date(),
+        status: replyData.type === 'reject' ? 'REJECTED' : 'ANSWERED',
+        answered_date: new Date()
       });
 
       debug(`Question ${questionId} status updated to ${question.status}`);
@@ -461,14 +461,14 @@ class SimplifiedCustomerQuestionService {
       // Since this is simplified service without platform integration,
       // we keep the reply as "draft" with a message explaining the situation
       await reply.update({
-        status: "draft",
+        status: 'draft',
         error_message:
-          "Reply created but not sent to platform - platform services not initialized",
+          'Reply created but not sent to platform - platform services not initialized'
       });
 
       return reply;
     } catch (error) {
-      debug("Error replying to question:", error.message);
+      debug('Error replying to question:', error.message);
       throw error;
     }
   }
@@ -477,13 +477,13 @@ class SimplifiedCustomerQuestionService {
    * Sync questions from platforms (placeholder - no actual platform integration)
    */
   async syncQuestions(platforms = []) {
-    debug("Sync questions called - but no platform services initialized");
+    debug('Sync questions called - but no platform services initialized');
 
     return {
       success: true,
-      message: "Sync not performed - platform services not initialized",
+      message: 'Sync not performed - platform services not initialized',
       synced: 0,
-      platforms: [],
+      platforms: []
     };
   }
 }

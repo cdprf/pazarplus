@@ -1,6 +1,6 @@
-const { PlatformCategory } = require("../models");
-const logger = require("../utils/logger");
-const PlatformServiceFactory = require("../modules/order-management/services/platforms/platformServiceFactory");
+const { PlatformCategory } = require('../models');
+const logger = require('../utils/logger');
+const PlatformServiceFactory = require('../modules/order-management/services/platforms/platformServiceFactory');
 
 class PlatformCategoryService {
   /**
@@ -21,7 +21,7 @@ class PlatformCategoryService {
       }
 
       // Mark sync as starting
-      await this.updateSyncStatus(platformType, userId, "syncing");
+      await this.updateSyncStatus(platformType, userId, 'syncing');
 
       // Fetch categories from platform
       const platformCategories = await platformService.getCategories();
@@ -38,7 +38,7 @@ class PlatformCategoryService {
       );
 
       // Mark sync as completed
-      await this.updateSyncStatus(platformType, userId, "completed");
+      await this.updateSyncStatus(platformType, userId, 'completed');
 
       logger.info(`Category sync completed for ${platformType}:`, syncStats);
 
@@ -46,7 +46,7 @@ class PlatformCategoryService {
         success: true,
         platform: platformType,
         stats: syncStats,
-        syncedAt: new Date(),
+        syncedAt: new Date()
       };
     } catch (error) {
       logger.error(`Error syncing categories for ${platformType}:`, error);
@@ -55,7 +55,7 @@ class PlatformCategoryService {
       await this.updateSyncStatus(
         platformType,
         userId,
-        "failed",
+        'failed',
         error.message
       );
 
@@ -72,7 +72,7 @@ class PlatformCategoryService {
       created: 0,
       updated: 0,
       skipped: 0,
-      errors: 0,
+      errors: 0
     };
 
     try {
@@ -85,7 +85,7 @@ class PlatformCategoryService {
         categoryMap.set(cat.id, {
           ...cat,
           children: [],
-          level: 0,
+          level: 0
         });
       });
 
@@ -111,8 +111,8 @@ class PlatformCategoryService {
             where: {
               platformType,
               platformCategoryId: category.id.toString(),
-              userId,
-            },
+              userId
+            }
           });
 
           const categoryData = {
@@ -121,9 +121,9 @@ class PlatformCategoryService {
             name: category.name,
             parentId: category.parentId?.toString() || null,
             level: category.level,
-            path: currentPath.join(" > "),
+            path: currentPath.join(' > '),
             isLeaf: category.children.length === 0,
-            isActive: category.status !== "inactive",
+            isActive: category.status !== 'inactive',
             fieldDefinitions: category.fieldDefinitions || {},
             requiredFields: category.requiredFields || [],
             commissionRate: category.commissionRate || null,
@@ -131,11 +131,11 @@ class PlatformCategoryService {
             restrictions: category.restrictions || {},
             metadata: {
               originalData: category,
-              syncedAt: new Date(),
+              syncedAt: new Date()
             },
             lastSyncAt: new Date(),
-            syncStatus: "completed",
-            userId,
+            syncStatus: 'completed',
+            userId
           };
 
           if (existingCategory) {
@@ -161,7 +161,7 @@ class PlatformCategoryService {
         await processCategory(rootCategory);
       }
     } catch (error) {
-      logger.error("Error processing categories:", error);
+      logger.error('Error processing categories:', error);
       throw error;
     }
 
@@ -175,24 +175,24 @@ class PlatformCategoryService {
     try {
       const updateData = {
         syncStatus: status,
-        lastSyncAt: new Date(),
+        lastSyncAt: new Date()
       };
 
       if (error) {
         updateData.metadata = {
           syncError: error,
-          errorAt: new Date(),
+          errorAt: new Date()
         };
       }
 
       await PlatformCategory.update(updateData, {
         where: {
           platformType,
-          userId,
-        },
+          userId
+        }
       });
     } catch (err) {
-      logger.error("Error updating sync status:", err);
+      logger.error('Error updating sync status:', err);
     }
   }
 
@@ -205,12 +205,12 @@ class PlatformCategoryService {
         includeInactive = false,
         maxLevel = null,
         search = null,
-        leafOnly = false,
+        leafOnly = false
       } = options;
 
       const whereClause = {
         platformType,
-        userId,
+        userId
       };
 
       if (!includeInactive) {
@@ -218,12 +218,12 @@ class PlatformCategoryService {
       }
 
       if (maxLevel !== null) {
-        whereClause.level = { [require("sequelize").Op.lte]: maxLevel };
+        whereClause.level = { [require('sequelize').Op.lte]: maxLevel };
       }
 
       if (search) {
         whereClause.name = {
-          [require("sequelize").Op.iLike]: `%${search}%`,
+          [require('sequelize').Op.iLike]: `%${search}%`
         };
       }
 
@@ -234,15 +234,15 @@ class PlatformCategoryService {
       const categories = await PlatformCategory.findAll({
         where: whereClause,
         order: [
-          ["level", "ASC"],
-          ["name", "ASC"],
-        ],
+          ['level', 'ASC'],
+          ['name', 'ASC']
+        ]
       });
 
       // Build hierarchy
       return this.buildCategoryHierarchy(categories);
     } catch (error) {
-      logger.error("Error fetching categories:", error);
+      logger.error('Error fetching categories:', error);
       throw error;
     }
   }
@@ -258,7 +258,7 @@ class PlatformCategoryService {
     categories.forEach((cat) => {
       categoryMap.set(cat.platformCategoryId, {
         ...cat.toJSON(),
-        children: [],
+        children: []
       });
     });
 
@@ -285,8 +285,8 @@ class PlatformCategoryService {
         where: {
           platformType,
           platformCategoryId: categoryId,
-          userId,
-        },
+          userId
+        }
       });
 
       if (!category) {
@@ -297,10 +297,10 @@ class PlatformCategoryService {
         category: category.toJSON(),
         fields: category.fieldDefinitions || {},
         requiredFields: category.requiredFields || [],
-        restrictions: category.restrictions || {},
+        restrictions: category.restrictions || {}
       };
     } catch (error) {
-      logger.error("Error fetching category fields:", error);
+      logger.error('Error fetching category fields:', error);
       throw error;
     }
   }
@@ -347,10 +347,10 @@ class PlatformCategoryService {
         mapping,
         missing,
         errors,
-        isComplete: missing.length === 0 && errors.length === 0,
+        isComplete: missing.length === 0 && errors.length === 0
       };
     } catch (error) {
-      logger.error("Error mapping product to category:", error);
+      logger.error('Error mapping product to category:', error);
       throw error;
     }
   }
@@ -366,7 +366,7 @@ class PlatformCategoryService {
         name: product.name,
         description: product.description,
         price: product.price,
-        currency: product.currency || "TRY",
+        currency: product.currency || 'TRY',
         brand: product.brand,
         model: product.model,
         sku: product.sku,
@@ -375,7 +375,7 @@ class PlatformCategoryService {
         dimensions: product.dimensions,
         category: product.category,
         tags: product.tags,
-        images: product.images,
+        images: product.images
       };
 
       // Try direct mapping first
@@ -393,8 +393,8 @@ class PlatformCategoryService {
         fieldName,
         fieldName.toLowerCase(),
         fieldName.toUpperCase(),
-        fieldName.replace(/[_-]/g, ""),
-        fieldName.replace(/([A-Z])/g, "_$1").toLowerCase(),
+        fieldName.replace(/[_-]/g, ''),
+        fieldName.replace(/([A-Z])/g, '_$1').toLowerCase()
       ];
 
       for (const variation of variations) {
@@ -415,7 +415,7 @@ class PlatformCategoryService {
    */
   static async getSyncStatus(userId) {
     try {
-      const { sequelize } = require("../models");
+      const { sequelize } = require('../models');
 
       const syncStats = await sequelize.query(
         `
@@ -431,7 +431,7 @@ class PlatformCategoryService {
       `,
         {
           replacements: { userId },
-          type: sequelize.QueryTypes.SELECT,
+          type: sequelize.QueryTypes.SELECT
         }
       );
 
@@ -445,7 +445,7 @@ class PlatformCategoryService {
             failed: 0,
             pending: 0,
             syncing: 0,
-            lastSyncAt: null,
+            lastSyncAt: null
           };
         }
 
@@ -463,7 +463,7 @@ class PlatformCategoryService {
 
       return statusByPlatform;
     } catch (error) {
-      logger.error("Error fetching sync status:", error);
+      logger.error('Error fetching sync status:', error);
       throw error;
     }
   }

@@ -3,10 +3,10 @@ const {
   ProductVariant,
   InventoryMovement,
   StockReservation,
-  sequelize,
-} = require("../models");
-const { Op } = require("sequelize");
-const logger = require("../utils/logger");
+  sequelize
+} = require('../models');
+const { Op } = require('sequelize');
+const logger = require('../utils/logger');
 
 /**
  * Advanced Inventory Service
@@ -27,7 +27,7 @@ class AdvancedInventoryService {
       userId,
       orderId = null,
       reference = null,
-      metadata = {},
+      metadata = {}
     },
     options = {}
   ) {
@@ -37,11 +37,11 @@ class AdvancedInventoryService {
     try {
       // Find the product/variant to update
       let targetEntity = null;
-      let stockField = "stockQuantity";
+      const stockField = 'stockQuantity';
 
       if (variantId) {
         targetEntity = await ProductVariant.findByPk(variantId, {
-          transaction,
+          transaction
         });
         if (!targetEntity) {
           throw new Error(`Product variant not found: ${variantId}`);
@@ -55,13 +55,13 @@ class AdvancedInventoryService {
         // Try to find by SKU - check variants first, then products
         targetEntity = await ProductVariant.findOne({
           where: { sku },
-          transaction,
+          transaction
         });
 
         if (!targetEntity) {
           targetEntity = await Product.findOne({
             where: { sku },
-            transaction,
+            transaction
           });
           if (targetEntity) {
             productId = targetEntity.id;
@@ -75,7 +75,7 @@ class AdvancedInventoryService {
           throw new Error(`No product or variant found with SKU: ${sku}`);
         }
       } else {
-        throw new Error("Must provide productId, variantId, or sku");
+        throw new Error('Must provide productId, variantId, or sku');
       }
 
       const currentStock = targetEntity[stockField] || 0;
@@ -96,7 +96,7 @@ class AdvancedInventoryService {
           orderId,
           reference,
           metadata,
-          occurredAt: new Date(),
+          occurredAt: new Date()
         },
         { transaction }
       );
@@ -105,7 +105,7 @@ class AdvancedInventoryService {
       await targetEntity.update(
         {
           [stockField]: newStock,
-          lastSyncedAt: new Date(),
+          lastSyncedAt: new Date()
         },
         { transaction }
       );
@@ -124,13 +124,13 @@ class AdvancedInventoryService {
         movement,
         previousStock: currentStock,
         newStock,
-        entity: targetEntity,
+        entity: targetEntity
       };
     } catch (error) {
       if (shouldCommitTransaction) {
         await transaction.rollback();
       }
-      logger.error("Error recording inventory movement:", error);
+      logger.error('Error recording inventory movement:', error);
       throw error;
     }
   }
@@ -143,11 +143,11 @@ class AdvancedInventoryService {
       productId,
       variantId,
       sku,
-      movementType: "ADJUSTMENT",
+      movementType: 'ADJUSTMENT',
       quantity: adjustment,
       reason,
       userId,
-      metadata: { manualAdjustment: true },
+      metadata: { manualAdjustment: true }
     });
   }
 
@@ -162,7 +162,7 @@ class AdvancedInventoryService {
     orderId,
     userId,
     expiresAt = null,
-    metadata = {},
+    metadata = {}
   }) {
     const transaction = await sequelize.transaction();
 
@@ -189,9 +189,9 @@ class AdvancedInventoryService {
           quantity,
           orderId,
           userId,
-          status: "active",
+          status: 'active',
           expiresAt: expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours default
-          metadata,
+          metadata
         },
         { transaction }
       );
@@ -202,13 +202,13 @@ class AdvancedInventoryService {
           productId,
           variantId,
           sku,
-          movementType: "RESERVATION",
+          movementType: 'RESERVATION',
           quantity: -quantity, // Negative because it's reserved
           reason: `Stock reserved for order ${orderId}`,
           userId,
           orderId,
           reference: reservation.id,
-          metadata: { reservationId: reservation.id },
+          metadata: { reservationId: reservation.id }
         },
         { transaction }
       );
@@ -222,7 +222,7 @@ class AdvancedInventoryService {
       return reservation;
     } catch (error) {
       await transaction.rollback();
-      logger.error("Error reserving stock:", error);
+      logger.error('Error reserving stock:', error);
       throw error;
     }
   }
@@ -230,27 +230,27 @@ class AdvancedInventoryService {
   /**
    * Release a stock reservation
    */
-  async releaseReservation(reservationId, reason = "Reservation released") {
+  async releaseReservation(reservationId, reason = 'Reservation released') {
     const transaction = await sequelize.transaction();
 
     try {
       const reservation = await StockReservation.findByPk(reservationId, {
-        transaction,
+        transaction
       });
 
       if (!reservation) {
         throw new Error(`Reservation not found: ${reservationId}`);
       }
 
-      if (reservation.status !== "active") {
+      if (reservation.status !== 'active') {
         throw new Error(`Reservation is not active: ${reservation.status}`);
       }
 
       // Update reservation status
       await reservation.update(
         {
-          status: "released",
-          releasedAt: new Date(),
+          status: 'released',
+          releasedAt: new Date()
         },
         { transaction }
       );
@@ -261,13 +261,13 @@ class AdvancedInventoryService {
           productId: reservation.productId,
           variantId: reservation.variantId,
           sku: reservation.sku,
-          movementType: "RELEASE",
+          movementType: 'RELEASE',
           quantity: reservation.quantity, // Positive because it's released back
           reason,
           userId: reservation.userId,
           orderId: reservation.orderId,
           reference: reservationId,
-          metadata: { reservationId },
+          metadata: { reservationId }
         },
         { transaction }
       );
@@ -279,7 +279,7 @@ class AdvancedInventoryService {
       return reservation;
     } catch (error) {
       await transaction.rollback();
-      logger.error("Error releasing stock reservation:", error);
+      logger.error('Error releasing stock reservation:', error);
       throw error;
     }
   }
@@ -289,28 +289,28 @@ class AdvancedInventoryService {
    */
   async confirmReservation(
     reservationId,
-    reason = "Reservation confirmed - order completed"
+    reason = 'Reservation confirmed - order completed'
   ) {
     const transaction = await sequelize.transaction();
 
     try {
       const reservation = await StockReservation.findByPk(reservationId, {
-        transaction,
+        transaction
       });
 
       if (!reservation) {
         throw new Error(`Reservation not found: ${reservationId}`);
       }
 
-      if (reservation.status !== "active") {
+      if (reservation.status !== 'active') {
         throw new Error(`Reservation is not active: ${reservation.status}`);
       }
 
       // Update reservation status
       await reservation.update(
         {
-          status: "confirmed",
-          confirmedAt: new Date(),
+          status: 'confirmed',
+          confirmedAt: new Date()
         },
         { transaction }
       );
@@ -321,7 +321,7 @@ class AdvancedInventoryService {
           productId: reservation.productId,
           variantId: reservation.variantId,
           sku: reservation.sku,
-          movementType: "SALE",
+          movementType: 'SALE',
           quantity: 0, // No stock change since it was already reserved
           reason,
           userId: reservation.userId,
@@ -330,8 +330,8 @@ class AdvancedInventoryService {
           metadata: {
             reservationId,
             confirmedReservation: true,
-            originalQuantity: reservation.quantity,
-          },
+            originalQuantity: reservation.quantity
+          }
         },
         { transaction }
       );
@@ -343,7 +343,7 @@ class AdvancedInventoryService {
       return reservation;
     } catch (error) {
       await transaction.rollback();
-      logger.error("Error confirming stock reservation:", error);
+      logger.error('Error confirming stock reservation:', error);
       throw error;
     }
   }
@@ -354,7 +354,7 @@ class AdvancedInventoryService {
   async getAvailableStock(productId, variantId, sku = null) {
     try {
       let targetEntity = null;
-      let entityWhere = {};
+      const entityWhere = {};
 
       if (variantId) {
         targetEntity = await ProductVariant.findByPk(variantId);
@@ -376,23 +376,23 @@ class AdvancedInventoryService {
       }
 
       if (!targetEntity) {
-        throw new Error("Product or variant not found");
+        throw new Error('Product or variant not found');
       }
 
       const totalStock = targetEntity.stockQuantity || 0;
 
       // Calculate reserved stock
       const reservedStock =
-        (await StockReservation.sum("quantity", {
+        (await StockReservation.sum('quantity', {
           where: {
             ...entityWhere,
-            status: "active",
-          },
+            status: 'active'
+          }
         })) || 0;
 
       return Math.max(0, totalStock - reservedStock);
     } catch (error) {
-      logger.error("Error getting available stock:", error);
+      logger.error('Error getting available stock:', error);
       throw error;
     }
   }
@@ -408,19 +408,19 @@ class AdvancedInventoryService {
         movementType,
         startDate,
         endDate,
-        includeMetadata = true,
+        includeMetadata = true
       } = options;
 
       const whereClause = {};
 
-      if (productId) whereClause.productId = productId;
-      if (variantId) whereClause.variantId = variantId;
-      if (movementType) whereClause.movementType = movementType;
+      if (productId) {whereClause.productId = productId;}
+      if (variantId) {whereClause.variantId = variantId;}
+      if (movementType) {whereClause.movementType = movementType;}
 
       if (startDate || endDate) {
         whereClause.occurredAt = {};
-        if (startDate) whereClause.occurredAt[Op.gte] = startDate;
-        if (endDate) whereClause.occurredAt[Op.lte] = endDate;
+        if (startDate) {whereClause.occurredAt[Op.gte] = startDate;}
+        if (endDate) {whereClause.occurredAt[Op.lte] = endDate;}
       }
 
       const { count, rows: movements } =
@@ -429,21 +429,21 @@ class AdvancedInventoryService {
           include: [
             {
               model: Product,
-              as: "product",
-              attributes: ["id", "name", "sku"],
-              required: false,
+              as: 'product',
+              attributes: ['id', 'name', 'sku'],
+              required: false
             },
             {
               model: ProductVariant,
-              as: "variant",
-              attributes: ["id", "name", "sku"],
-              required: false,
-            },
+              as: 'variant',
+              attributes: ['id', 'name', 'sku'],
+              required: false
+            }
           ],
-          order: [["occurredAt", "DESC"]],
+          order: [['occurredAt', 'DESC']],
           limit: parseInt(limit),
           offset: parseInt(page) * parseInt(limit),
-          attributes: includeMetadata ? undefined : { exclude: ["metadata"] },
+          attributes: includeMetadata ? undefined : { exclude: ['metadata'] }
         });
 
       return {
@@ -454,12 +454,12 @@ class AdvancedInventoryService {
             currentPage: parseInt(page),
             totalPages: Math.ceil(count / parseInt(limit)),
             totalItems: count,
-            itemsPerPage: parseInt(limit),
-          },
-        },
+            itemsPerPage: parseInt(limit)
+          }
+        }
       };
     } catch (error) {
-      logger.error("Error getting inventory history:", error);
+      logger.error('Error getting inventory history:', error);
       throw error;
     }
   }
@@ -475,19 +475,19 @@ class AdvancedInventoryService {
         variantId,
         page = 0,
         limit = 50,
-        includeExpired = false,
+        includeExpired = false
       } = options;
 
       const whereClause = { userId };
 
-      if (status) whereClause.status = status;
-      if (productId) whereClause.productId = productId;
-      if (variantId) whereClause.variantId = variantId;
+      if (status) {whereClause.status = status;}
+      if (productId) {whereClause.productId = productId;}
+      if (variantId) {whereClause.variantId = variantId;}
 
       if (!includeExpired && !status) {
         whereClause[Op.or] = [
-          { status: { [Op.ne]: "expired" } },
-          { expiresAt: { [Op.gt]: new Date() } },
+          { status: { [Op.ne]: 'expired' } },
+          { expiresAt: { [Op.gt]: new Date() } }
         ];
       }
 
@@ -497,20 +497,20 @@ class AdvancedInventoryService {
           include: [
             {
               model: Product,
-              as: "product",
-              attributes: ["id", "name", "sku"],
-              required: false,
+              as: 'product',
+              attributes: ['id', 'name', 'sku'],
+              required: false
             },
             {
               model: ProductVariant,
-              as: "variant",
-              attributes: ["id", "name", "sku"],
-              required: false,
-            },
+              as: 'variant',
+              attributes: ['id', 'name', 'sku'],
+              required: false
+            }
           ],
-          order: [["createdAt", "DESC"]],
+          order: [['createdAt', 'DESC']],
           limit: parseInt(limit),
-          offset: parseInt(page) * parseInt(limit),
+          offset: parseInt(page) * parseInt(limit)
         });
 
       return {
@@ -521,12 +521,12 @@ class AdvancedInventoryService {
             currentPage: parseInt(page),
             totalPages: Math.ceil(count / parseInt(limit)),
             totalItems: count,
-            itemsPerPage: parseInt(limit),
-          },
-        },
+            itemsPerPage: parseInt(limit)
+          }
+        }
       };
     } catch (error) {
-      logger.error("Error getting stock reservations:", error);
+      logger.error('Error getting stock reservations:', error);
       throw error;
     }
   }
@@ -540,16 +540,16 @@ class AdvancedInventoryService {
     try {
       const expiredReservations = await StockReservation.findAll({
         where: {
-          status: "active",
-          expiresAt: { [Op.lt]: new Date() },
+          status: 'active',
+          expiresAt: { [Op.lt]: new Date() }
         },
-        transaction,
+        transaction
       });
 
       for (const reservation of expiredReservations) {
         await reservation.update(
           {
-            status: "expired",
+            status: 'expired'
           },
           { transaction }
         );
@@ -560,16 +560,16 @@ class AdvancedInventoryService {
             productId: reservation.productId,
             variantId: reservation.variantId,
             sku: reservation.sku,
-            movementType: "RELEASE",
+            movementType: 'RELEASE',
             quantity: reservation.quantity,
-            reason: "Reservation expired automatically",
+            reason: 'Reservation expired automatically',
             userId: reservation.userId,
             orderId: reservation.orderId,
             reference: reservation.id,
             metadata: {
               reservationId: reservation.id,
-              autoExpired: true,
-            },
+              autoExpired: true
+            }
           },
           { transaction }
         );
@@ -586,7 +586,7 @@ class AdvancedInventoryService {
       return expiredReservations.length;
     } catch (error) {
       await transaction.rollback();
-      logger.error("Error expiring old reservations:", error);
+      logger.error('Error expiring old reservations:', error);
       throw error;
     }
   }
@@ -599,50 +599,50 @@ class AdvancedInventoryService {
       const products = await Product.findAll({
         where: {
           userId,
-          status: "active",
+          status: 'active',
           [Op.or]: [
             // Stock below minimum level
             sequelize.where(
-              sequelize.col("stockQuantity"),
+              sequelize.col('stockQuantity'),
               Op.lte,
-              sequelize.col("minStockLevel")
+              sequelize.col('minStockLevel')
             ),
             // Stock below threshold if no minimum level set
             threshold
               ? {
-                  minStockLevel: { [Op.or]: [null, 0] },
-                  stockQuantity: { [Op.lte]: threshold },
-                }
-              : {},
-          ],
+                minStockLevel: { [Op.or]: [null, 0] },
+                stockQuantity: { [Op.lte]: threshold }
+              }
+              : {}
+          ]
         },
         include: [
           {
             model: ProductVariant,
-            as: "variants",
+            as: 'variants',
             where: {
               [Op.or]: [
                 sequelize.where(
-                  sequelize.col("variants.stockQuantity"),
+                  sequelize.col('variants.stockQuantity'),
                   Op.lte,
-                  sequelize.col("variants.minStockLevel")
+                  sequelize.col('variants.minStockLevel')
                 ),
                 threshold
                   ? {
-                      minStockLevel: { [Op.or]: [null, 0] },
-                      stockQuantity: { [Op.lte]: threshold },
-                    }
-                  : {},
-              ],
+                    minStockLevel: { [Op.or]: [null, 0] },
+                    stockQuantity: { [Op.lte]: threshold }
+                  }
+                  : {}
+              ]
             },
-            required: false,
-          },
-        ],
+            required: false
+          }
+        ]
       });
 
       return products;
     } catch (error) {
-      logger.error("Error getting low stock alerts:", error);
+      logger.error('Error getting low stock alerts:', error);
       throw error;
     }
   }
@@ -653,14 +653,14 @@ class AdvancedInventoryService {
   async getSkuForEntity(productId, variantId) {
     if (variantId) {
       const variant = await ProductVariant.findByPk(variantId, {
-        attributes: ["sku"],
+        attributes: ['sku']
       });
       return variant?.sku;
     }
 
     if (productId) {
       const product = await Product.findByPk(productId, {
-        attributes: ["sku"],
+        attributes: ['sku']
       });
       return product?.sku;
     }
@@ -690,13 +690,13 @@ class AdvancedInventoryService {
       `,
         {
           replacements: { userId },
-          type: sequelize.QueryTypes.SELECT,
+          type: sequelize.QueryTypes.SELECT
         }
       );
 
       return summary[0];
     } catch (error) {
-      logger.error("Error getting inventory summary:", error);
+      logger.error('Error getting inventory summary:', error);
       throw error;
     }
   }

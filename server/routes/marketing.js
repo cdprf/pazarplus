@@ -1,8 +1,8 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const MarketingAutomationService = require("../services/marketing-automation-service");
-const logger = require("../utils/logger");
-const { auth, requireRole } = require("../middleware/auth");
+const MarketingAutomationService = require('../services/marketing-automation-service');
+const logger = require('../utils/logger');
+const { auth, requireRole } = require('../middleware/auth');
 
 const marketingService = new MarketingAutomationService();
 
@@ -10,9 +10,9 @@ const marketingService = new MarketingAutomationService();
  * Get customer segments
  */
 router.get(
-  "/segments",
+  '/segments',
   auth,
-  requireRole(["admin", "marketing"]),
+  requireRole(['admin', 'marketing']),
   async (req, res) => {
     try {
       const segments = await marketingService.segmentCustomers();
@@ -25,14 +25,14 @@ router.get(
           totalCustomers: Object.values(segments).reduce(
             (sum, segment) => sum + segment.length,
             0
-          ),
-        },
+          )
+        }
       });
     } catch (error) {
-      logger.error("Error getting customer segments:", error);
+      logger.error('Error getting customer segments:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve customer segments",
+        message: 'Failed to retrieve customer segments'
       });
     }
   }
@@ -42,9 +42,9 @@ router.get(
  * Create and send marketing campaign
  */
 router.post(
-  "/campaigns",
+  '/campaigns',
   auth,
-  requireRole(["admin", "marketing"]),
+  requireRole(['admin', 'marketing']),
   async (req, res) => {
     try {
       const { name, subject, content, segmentIds, scheduledAt } = req.body;
@@ -53,7 +53,7 @@ router.post(
         return res.status(400).json({
           success: false,
           message:
-            "Missing required fields: name, subject, content, segmentIds",
+            'Missing required fields: name, subject, content, segmentIds'
         });
       }
 
@@ -62,19 +62,19 @@ router.post(
         subject,
         content,
         segmentIds,
-        scheduledAt,
+        scheduledAt
       });
 
       res.json({
         success: true,
         data: campaign,
-        message: "Campaign created successfully",
+        message: 'Campaign created successfully'
       });
     } catch (error) {
-      logger.error("Error creating campaign:", error);
+      logger.error('Error creating campaign:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to create campaign",
+        message: 'Failed to create campaign'
       });
     }
   }
@@ -84,9 +84,9 @@ router.post(
  * Get marketing insights and recommendations
  */
 router.get(
-  "/insights",
+  '/insights',
   auth,
-  requireRole(["admin", "marketing"]),
+  requireRole(['admin', 'marketing']),
   async (req, res) => {
     try {
       const insights = await marketingService.generateMarketingInsights();
@@ -94,13 +94,13 @@ router.get(
       res.json({
         success: true,
         data: insights,
-        generatedAt: new Date(),
+        generatedAt: new Date()
       });
     } catch (error) {
-      logger.error("Error generating marketing insights:", error);
+      logger.error('Error generating marketing insights:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to generate marketing insights",
+        message: 'Failed to generate marketing insights'
       });
     }
   }
@@ -110,9 +110,9 @@ router.get(
  * Trigger automation manually (for testing)
  */
 router.post(
-  "/automation/trigger",
+  '/automation/trigger',
   auth,
-  requireRole(["admin"]),
+  requireRole(['admin']),
   async (req, res) => {
     try {
       const { trigger, customerId, data } = req.body;
@@ -120,24 +120,24 @@ router.post(
       if (!trigger || !customerId) {
         return res.status(400).json({
           success: false,
-          message: "Missing required fields: trigger, customerId",
+          message: 'Missing required fields: trigger, customerId'
         });
       }
 
       await marketingService.triggerAutomation(trigger, {
         customerId,
-        ...data,
+        ...data
       });
 
       res.json({
         success: true,
-        message: `Automation triggered: ${trigger} for customer ${customerId}`,
+        message: `Automation triggered: ${trigger} for customer ${customerId}`
       });
     } catch (error) {
-      logger.error("Error triggering automation:", error);
+      logger.error('Error triggering automation:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to trigger automation",
+        message: 'Failed to trigger automation'
       });
     }
   }
@@ -147,12 +147,12 @@ router.post(
  * Get campaign performance analytics
  */
 router.get(
-  "/campaigns/analytics",
+  '/campaigns/analytics',
   auth,
-  requireRole(["admin", "marketing"]),
+  requireRole(['admin', 'marketing']),
   async (req, res) => {
     try {
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
 
       const campaignStats = await marketingService.getCampaignStats();
 
@@ -172,15 +172,15 @@ router.get(
                 campaignStats.length || 0,
             avgClickRate:
               campaignStats.reduce((sum, c) => sum + (c.clickRate || 0), 0) /
-                campaignStats.length || 0,
-          },
-        },
+                campaignStats.length || 0
+          }
+        }
       });
     } catch (error) {
-      logger.error("Error getting campaign analytics:", error);
+      logger.error('Error getting campaign analytics:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve campaign analytics",
+        message: 'Failed to retrieve campaign analytics'
       });
     }
   }
@@ -190,9 +190,9 @@ router.get(
  * Create email template
  */
 router.post(
-  "/templates",
+  '/templates',
   auth,
-  requireRole(["admin", "marketing"]),
+  requireRole(['admin', 'marketing']),
   async (req, res) => {
     try {
       const { name, subject, content, type } = req.body;
@@ -200,28 +200,28 @@ router.post(
       if (!name || !subject || !content) {
         return res.status(400).json({
           success: false,
-          message: "Missing required fields: name, subject, content",
+          message: 'Missing required fields: name, subject, content'
         });
       }
 
-      const { EmailTemplate } = require("../models");
+      const { EmailTemplate } = require('../models');
       const template = await EmailTemplate.create({
         name,
         subject,
         content,
-        type: type || "marketing",
+        type: type || 'marketing'
       });
 
       res.json({
         success: true,
         data: template,
-        message: "Email template created successfully",
+        message: 'Email template created successfully'
       });
     } catch (error) {
-      logger.error("Error creating email template:", error);
+      logger.error('Error creating email template:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to create email template",
+        message: 'Failed to create email template'
       });
     }
   }
@@ -231,25 +231,25 @@ router.post(
  * Get all email templates
  */
 router.get(
-  "/templates",
+  '/templates',
   auth,
-  requireRole(["admin", "marketing"]),
+  requireRole(['admin', 'marketing']),
   async (req, res) => {
     try {
-      const { EmailTemplate } = require("../models");
+      const { EmailTemplate } = require('../models');
       const templates = await EmailTemplate.findAll({
-        order: [["createdAt", "DESC"]],
+        order: [['createdAt', 'DESC']]
       });
 
       res.json({
         success: true,
-        data: templates,
+        data: templates
       });
     } catch (error) {
-      logger.error("Error getting email templates:", error);
+      logger.error('Error getting email templates:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve email templates",
+        message: 'Failed to retrieve email templates'
       });
     }
   }
@@ -259,9 +259,9 @@ router.get(
  * Get automation rules status
  */
 router.get(
-  "/automation/rules",
+  '/automation/rules',
   auth,
-  requireRole(["admin", "marketing"]),
+  requireRole(['admin', 'marketing']),
   async (req, res) => {
     try {
       const rules = Array.from(marketingService.automationRules.entries()).map(
@@ -271,21 +271,21 @@ router.get(
           emailCount: rule.emails.length,
           emails: rule.emails.map((email) => ({
             template: email.template,
-            delayHours: email.delay / (1000 * 60 * 60),
-          })),
+            delayHours: email.delay / (1000 * 60 * 60)
+          }))
         })
       );
 
       res.json({
         success: true,
         data: rules,
-        totalRules: rules.length,
+        totalRules: rules.length
       });
     } catch (error) {
-      logger.error("Error getting automation rules:", error);
+      logger.error('Error getting automation rules:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve automation rules",
+        message: 'Failed to retrieve automation rules'
       });
     }
   }

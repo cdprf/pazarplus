@@ -8,16 +8,16 @@
  * @version 1.0.0
  */
 
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const logger = require("../utils/logger");
-const { auth } = require("../middleware/auth");
-const { body, query, param } = require("express-validator");
-const validationMiddleware = require("../middleware/validation-middleware");
-const { jsonResponseMiddleware } = require("../utils/json-serializer");
+const logger = require('../utils/logger');
+const { auth } = require('../middleware/auth');
+const { body, query, param } = require('express-validator');
+const validationMiddleware = require('../middleware/validation-middleware');
+const { jsonResponseMiddleware } = require('../utils/json-serializer');
 
 // Import the unified service
-const UnifiedProductIntelligenceService = require("../services/unified-product-intelligence-service");
+const UnifiedProductIntelligenceService = require('../services/unified-product-intelligence-service');
 
 // Initialize service instance
 const intelligenceService = new UnifiedProductIntelligenceService();
@@ -27,23 +27,23 @@ const intelligenceService = new UnifiedProductIntelligenceService();
  * @desc Health check endpoint
  * @access Public
  */
-router.get("/health", (req, res) => {
+router.get('/health', (req, res) => {
   res.json({
     success: true,
-    service: "Unified Product Intelligence Service",
-    status: "healthy",
+    service: 'Unified Product Intelligence Service',
+    status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: "1.0.0",
+    version: '1.0.0',
     capabilities: [
-      "Enhanced SKU Classification",
-      "Variant Pattern Detection",
-      "Naming Pattern Analysis",
-      "Classification Pattern Analysis",
-      "Intelligent Suggestions",
-      "Optimization Recommendations",
-      "Batch Processing",
-      "User Learning",
-    ],
+      'Enhanced SKU Classification',
+      'Variant Pattern Detection',
+      'Naming Pattern Analysis',
+      'Classification Pattern Analysis',
+      'Intelligent Suggestions',
+      'Optimization Recommendations',
+      'Batch Processing',
+      'User Learning'
+    ]
   });
 });
 
@@ -59,13 +59,13 @@ router.use(jsonResponseMiddleware);
  * @access Private
  */
 router.post(
-  "/analyze",
+  '/analyze',
   [
-    body("products")
+    body('products')
       .isArray({ min: 1 })
-      .withMessage("Products array is required"),
-    body("options").optional().isObject(),
-    validationMiddleware,
+      .withMessage('Products array is required'),
+    body('options').optional().isObject(),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
@@ -78,7 +78,7 @@ router.post(
 
       const results = await intelligenceService.analyzeProducts(products, {
         ...options,
-        userId,
+        userId
       });
 
       if (results.success) {
@@ -89,24 +89,24 @@ router.post(
         res.json({
           success: true,
           data: results,
-          message: `Successfully analyzed ${products.length} products`,
+          message: `Successfully analyzed ${products.length} products`
         });
       } else {
-        logger.error("Product intelligence analysis failed:", results.error);
+        logger.error('Product intelligence analysis failed:', results.error);
 
         res.status(500).json({
           success: false,
-          message: "Analysis failed",
-          error: results.error,
+          message: 'Analysis failed',
+          error: results.error
         });
       }
     } catch (error) {
-      logger.error("Product intelligence analysis error:", error);
+      logger.error('Product intelligence analysis error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Internal server error during analysis",
-        error: error.message,
+        message: 'Internal server error during analysis',
+        error: error.message
       });
     }
   }
@@ -118,13 +118,13 @@ router.post(
  * @access Private
  */
 router.post(
-  "/variants/detect",
+  '/variants/detect',
   [
-    body("products")
+    body('products')
       .isArray({ min: 1 })
-      .withMessage("Products array is required"),
-    body("options").optional().isObject(),
-    validationMiddleware,
+      .withMessage('Products array is required'),
+    body('options').optional().isObject(),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
@@ -145,15 +145,15 @@ router.post(
         data: variantResults,
         message: `Detected ${
           variantResults.detected_groups?.length || 0
-        } variant groups`,
+        } variant groups`
       });
     } catch (error) {
-      logger.error("Variant pattern detection error:", error);
+      logger.error('Variant pattern detection error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Variant pattern detection failed",
-        error: error.message,
+        message: 'Variant pattern detection failed',
+        error: error.message
       });
     }
   }
@@ -165,13 +165,13 @@ router.post(
  * @access Private
  */
 router.post(
-  "/naming/patterns",
+  '/naming/patterns',
   [
-    body("products")
+    body('products')
       .isArray({ min: 1 })
-      .withMessage("Products array is required"),
-    body("options").optional().isObject(),
-    validationMiddleware,
+      .withMessage('Products array is required'),
+    body('options').optional().isObject(),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
@@ -190,15 +190,15 @@ router.post(
       res.json({
         success: true,
         data: namingResults,
-        message: `Analyzed naming patterns for ${products.length} products`,
+        message: `Analyzed naming patterns for ${products.length} products`
       });
     } catch (error) {
-      logger.error("Naming pattern detection error:", error);
+      logger.error('Naming pattern detection error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Naming pattern detection failed",
-        error: error.message,
+        message: 'Naming pattern detection failed',
+        error: error.message
       });
     }
   }
@@ -210,13 +210,13 @@ router.post(
  * @access Private
  */
 router.post(
-  "/classification/patterns",
+  '/classification/patterns',
   [
-    body("products")
+    body('products')
       .isArray({ min: 1 })
-      .withMessage("Products array is required"),
-    body("options").optional().isObject(),
-    validationMiddleware,
+      .withMessage('Products array is required'),
+    body('options').optional().isObject(),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
@@ -230,21 +230,21 @@ router.post(
       const classificationResults =
         await intelligenceService.detectClassificationPatterns(products, {
           ...options,
-          userId,
+          userId
         });
 
       res.json({
         success: true,
         data: classificationResults,
-        message: `Analyzed classification patterns for ${products.length} products`,
+        message: `Analyzed classification patterns for ${products.length} products`
       });
     } catch (error) {
-      logger.error("Classification pattern detection error:", error);
+      logger.error('Classification pattern detection error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Classification pattern detection failed",
-        error: error.message,
+        message: 'Classification pattern detection failed',
+        error: error.message
       });
     }
   }
@@ -256,13 +256,13 @@ router.post(
  * @access Private
  */
 router.post(
-  "/suggestions/merging",
+  '/suggestions/merging',
   [
-    body("analysisResults")
+    body('analysisResults')
       .isObject()
-      .withMessage("Analysis results object is required"),
-    body("options").optional().isObject(),
-    validationMiddleware,
+      .withMessage('Analysis results object is required'),
+    body('options').optional().isObject(),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
@@ -274,7 +274,7 @@ router.post(
       const mergingSuggestions =
         await intelligenceService.generateMergingSuggestions(analysisResults, {
           ...options,
-          userId,
+          userId
         });
 
       res.json({
@@ -282,15 +282,15 @@ router.post(
         data: mergingSuggestions,
         message: `Generated ${
           mergingSuggestions.suggestions?.length || 0
-        } merging suggestions`,
+        } merging suggestions`
       });
     } catch (error) {
-      logger.error("Merging suggestions generation error:", error);
+      logger.error('Merging suggestions generation error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Merging suggestions generation failed",
-        error: error.message,
+        message: 'Merging suggestions generation failed',
+        error: error.message
       });
     }
   }
@@ -302,13 +302,13 @@ router.post(
  * @access Private
  */
 router.post(
-  "/suggestions/classification",
+  '/suggestions/classification',
   [
-    body("analysisResults")
+    body('analysisResults')
       .isObject()
-      .withMessage("Analysis results object is required"),
-    body("options").optional().isObject(),
-    validationMiddleware,
+      .withMessage('Analysis results object is required'),
+    body('options').optional().isObject(),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
@@ -328,15 +328,15 @@ router.post(
         data: classificationSuggestions,
         message: `Generated ${
           classificationSuggestions.suggestions?.length || 0
-        } classification suggestions`,
+        } classification suggestions`
       });
     } catch (error) {
-      logger.error("Classification suggestions generation error:", error);
+      logger.error('Classification suggestions generation error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Classification suggestions generation failed",
-        error: error.message,
+        message: 'Classification suggestions generation failed',
+        error: error.message
       });
     }
   }
@@ -348,13 +348,13 @@ router.post(
  * @access Private
  */
 router.post(
-  "/suggestions/patterns",
+  '/suggestions/patterns',
   [
-    body("analysisResults")
+    body('analysisResults')
       .isObject()
-      .withMessage("Analysis results object is required"),
-    body("options").optional().isObject(),
-    validationMiddleware,
+      .withMessage('Analysis results object is required'),
+    body('options').optional().isObject(),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
@@ -366,7 +366,7 @@ router.post(
       const patternSuggestions =
         await intelligenceService.generatePatternSuggestions(analysisResults, {
           ...options,
-          userId,
+          userId
         });
 
       res.json({
@@ -374,15 +374,15 @@ router.post(
         data: patternSuggestions,
         message: `Generated ${
           patternSuggestions.suggestions?.length || 0
-        } pattern suggestions`,
+        } pattern suggestions`
       });
     } catch (error) {
-      logger.error("Pattern suggestions generation error:", error);
+      logger.error('Pattern suggestions generation error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Pattern suggestions generation failed",
-        error: error.message,
+        message: 'Pattern suggestions generation failed',
+        error: error.message
       });
     }
   }
@@ -394,13 +394,13 @@ router.post(
  * @access Private
  */
 router.post(
-  "/suggestions/optimization",
+  '/suggestions/optimization',
   [
-    body("analysisResults")
+    body('analysisResults')
       .isObject()
-      .withMessage("Analysis results object is required"),
-    body("options").optional().isObject(),
-    validationMiddleware,
+      .withMessage('Analysis results object is required'),
+    body('options').optional().isObject(),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
@@ -422,15 +422,15 @@ router.post(
         data: optimizationSuggestions,
         message: `Generated ${
           optimizationSuggestions.suggestions?.length || 0
-        } optimization suggestions`,
+        } optimization suggestions`
       });
     } catch (error) {
-      logger.error("Optimization suggestions generation error:", error);
+      logger.error('Optimization suggestions generation error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Optimization suggestions generation failed",
-        error: error.message,
+        message: 'Optimization suggestions generation failed',
+        error: error.message
       });
     }
   }
@@ -442,19 +442,19 @@ router.post(
  * @access Private
  */
 router.get(
-  "/user/products",
+  '/user/products',
   [
-    query("limit").optional().isInt({ min: 1, max: 1000 }),
-    query("includeVariants").optional().isBoolean(),
-    query("includePlatformData").optional().isBoolean(),
-    validationMiddleware,
+    query('limit').optional().isInt({ min: 1, max: 1000 }),
+    query('includeVariants').optional().isBoolean(),
+    query('includePlatformData').optional().isBoolean(),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
       const userId = req.user.id;
       const limit = parseInt(req.query.limit) || 100;
-      const includeVariants = req.query.includeVariants !== "false";
-      const includePlatformData = req.query.includePlatformData !== "false";
+      const includeVariants = req.query.includeVariants !== 'false';
+      const includePlatformData = req.query.includePlatformData !== 'false';
 
       logger.info(
         `Fetching products for intelligence analysis (User: ${userId})`
@@ -463,7 +463,7 @@ router.get(
       const products = await intelligenceService.getUserProducts(userId, {
         limit: limit,
         includeVariants: includeVariants,
-        includePlatformData: includePlatformData,
+        includePlatformData: includePlatformData
       });
 
       res.json({
@@ -474,18 +474,18 @@ router.get(
             totalProducts: products.length,
             includeVariants: includeVariants,
             includePlatformData: includePlatformData,
-            limit: limit,
-          },
+            limit: limit
+          }
         },
-        message: `Retrieved ${products.length} products for analysis`,
+        message: `Retrieved ${products.length} products for analysis`
       });
     } catch (error) {
-      logger.error("User products retrieval error:", error);
+      logger.error('User products retrieval error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve user products",
-        error: error.message,
+        message: 'Failed to retrieve user products',
+        error: error.message
       });
     }
   }
@@ -497,17 +497,17 @@ router.get(
  * @access Private
  */
 router.post(
-  "/batch/analyze",
+  '/batch/analyze',
   [
-    body("filters").optional().isObject(),
-    body("analysisTypes").optional().isArray(),
-    body("options").optional().isObject(),
-    validationMiddleware,
+    body('filters').optional().isObject(),
+    body('analysisTypes').optional().isArray(),
+    body('options').optional().isObject(),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
       const userId = req.user.id;
-      const { filters = {}, analysisTypes = ["all"], options = {} } = req.body;
+      const { filters = {}, analysisTypes = ['all'], options = {} } = req.body;
 
       logger.info(
         `Starting batch analysis for user products (User: ${userId})`
@@ -518,17 +518,17 @@ router.post(
         limit: 1000,
         includeVariants: true,
         includePlatformData: true,
-        ...filters,
+        ...filters
       });
 
       if (products.length === 0) {
         return res.json({
           success: true,
           data: {
-            message: "No products found matching criteria",
-            analysisResults: null,
+            message: 'No products found matching criteria',
+            analysisResults: null
           },
-          message: "No products to analyze",
+          message: 'No products to analyze'
         });
       }
 
@@ -536,54 +536,54 @@ router.post(
       const batchResults = {
         totalProducts: products.length,
         analysisTypes,
-        results: {},
+        results: {}
       };
 
       // Run different types of analysis based on request
-      if (analysisTypes.includes("all") || analysisTypes.includes("variants")) {
-        logger.info("Running variant pattern detection...");
+      if (analysisTypes.includes('all') || analysisTypes.includes('variants')) {
+        logger.info('Running variant pattern detection...');
         batchResults.results.variants =
           await intelligenceService.detectVariantPatterns(products, {
             ...options,
-            userId,
+            userId
           });
       }
 
-      if (analysisTypes.includes("all") || analysisTypes.includes("naming")) {
-        logger.info("Running naming pattern detection...");
+      if (analysisTypes.includes('all') || analysisTypes.includes('naming')) {
+        logger.info('Running naming pattern detection...');
         batchResults.results.naming =
           await intelligenceService.detectNamingPatterns(products, {
             ...options,
-            userId,
+            userId
           });
       }
 
       if (
-        analysisTypes.includes("all") ||
-        analysisTypes.includes("classification")
+        analysisTypes.includes('all') ||
+        analysisTypes.includes('classification')
       ) {
-        logger.info("Running classification pattern detection...");
+        logger.info('Running classification pattern detection...');
         batchResults.results.classification =
           await intelligenceService.classifyIdentifiers(products);
       }
 
       if (
-        analysisTypes.includes("all") ||
-        analysisTypes.includes("suggestions")
+        analysisTypes.includes('all') ||
+        analysisTypes.includes('suggestions')
       ) {
-        logger.info("Generating intelligent suggestions...");
+        logger.info('Generating intelligent suggestions...');
 
         // First perform classification if not already done
         let classificationResults = batchResults.results.classification;
         if (!classificationResults) {
-          logger.info("Performing classification for suggestions...");
+          logger.info('Performing classification for suggestions...');
           classificationResults = await intelligenceService.classifyIdentifiers(
             products
           );
         }
 
         // Perform product merging for merge suggestions
-        logger.info("Performing product merging for suggestions...");
+        logger.info('Performing product merging for suggestions...');
         const mergeResults = await intelligenceService.enhancedProductMerging(
           products,
           classificationResults
@@ -595,7 +595,7 @@ router.post(
           variants: batchResults.results.variants,
           naming: batchResults.results.naming,
           classification: classificationResults,
-          merging: mergeResults,
+          merging: mergeResults
         };
 
         batchResults.results.suggestions = {
@@ -615,7 +615,7 @@ router.post(
               classificationResults,
               mergeResults,
               analysisResults
-            ),
+            )
         };
       }
 
@@ -626,15 +626,15 @@ router.post(
       res.json({
         success: true,
         data: batchResults,
-        message: `Successfully analyzed ${products.length} products`,
+        message: `Successfully analyzed ${products.length} products`
       });
     } catch (error) {
-      logger.error("Batch analysis error:", error);
+      logger.error('Batch analysis error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Batch analysis failed",
-        error: error.message,
+        message: 'Batch analysis failed',
+        error: error.message
       });
     }
   }
@@ -646,12 +646,12 @@ router.post(
  * @access Private
  */
 router.post(
-  "/classify",
+  '/classify',
   [
-    body("products")
+    body('products')
       .isArray({ min: 1 })
-      .withMessage("Products array is required"),
-    validationMiddleware,
+      .withMessage('Products array is required'),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
@@ -668,15 +668,15 @@ router.post(
       res.json({
         success: true,
         data: classificationResults,
-        message: `Successfully classified ${classificationResults.statistics.total_classified} identifiers`,
+        message: `Successfully classified ${classificationResults.statistics.total_classified} identifiers`
       });
     } catch (error) {
-      logger.error("Product classification error:", error);
+      logger.error('Product classification error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Classification failed",
-        error: error.message,
+        message: 'Classification failed',
+        error: error.message
       });
     }
   }
@@ -688,13 +688,13 @@ router.post(
  * @access Private
  */
 router.post(
-  "/merge",
+  '/merge',
   [
-    body("products")
+    body('products')
       .isArray({ min: 1 })
-      .withMessage("Products array is required"),
-    body("options").optional().isObject(),
-    validationMiddleware,
+      .withMessage('Products array is required'),
+    body('options').optional().isObject(),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
@@ -719,17 +719,17 @@ router.post(
         success: true,
         data: {
           classification: classificationResults,
-          merging: mergeResults,
+          merging: mergeResults
         },
-        message: `Merged ${products.length} products into ${mergeResults.merged_products.length} unique products`,
+        message: `Merged ${products.length} products into ${mergeResults.merged_products.length} unique products`
       });
     } catch (error) {
-      logger.error("Product merging error:", error);
+      logger.error('Product merging error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Merging failed",
-        error: error.message,
+        message: 'Merging failed',
+        error: error.message
       });
     }
   }
@@ -741,13 +741,13 @@ router.post(
  * @access Private
  */
 router.post(
-  "/patterns",
+  '/patterns',
   [
-    body("products")
+    body('products')
       .isArray({ min: 1 })
-      .withMessage("Products array is required"),
-    body("classificationData").optional().isObject(),
-    validationMiddleware,
+      .withMessage('Products array is required'),
+    body('classificationData').optional().isObject(),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
@@ -768,15 +768,15 @@ router.post(
       res.json({
         success: true,
         data: patternResults,
-        message: `Detected ${patternResults.statistics.patterns_detected} patterns`,
+        message: `Detected ${patternResults.statistics.patterns_detected} patterns`
       });
     } catch (error) {
-      logger.error("Pattern detection error:", error);
+      logger.error('Pattern detection error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Pattern detection failed",
-        error: error.message,
+        message: 'Pattern detection failed',
+        error: error.message
       });
     }
   }
@@ -787,7 +787,7 @@ router.post(
  * @desc Get service statistics
  * @access Private
  */
-router.get("/statistics", async (req, res) => {
+router.get('/statistics', async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -797,33 +797,33 @@ router.get("/statistics", async (req, res) => {
         statistics: intelligenceService.statistics,
         config: intelligenceService.config,
         service_info: {
-          version: "1.0.0",
-          name: "Unified Product Intelligence Service",
+          version: '1.0.0',
+          name: 'Unified Product Intelligence Service',
           features: [
-            "Enhanced SKU Classification",
-            "Intelligent Product Merging",
-            "Variant Pattern Detection",
-            "Naming Pattern Analysis",
-            "Classification Pattern Analysis",
-            "Intelligent Suggestions Generation",
-            "Optimization Recommendations",
-            "Similarity Matching",
-            "Confidence Scoring",
-            "Batch Processing",
-          ],
+            'Enhanced SKU Classification',
+            'Intelligent Product Merging',
+            'Variant Pattern Detection',
+            'Naming Pattern Analysis',
+            'Classification Pattern Analysis',
+            'Intelligent Suggestions Generation',
+            'Optimization Recommendations',
+            'Similarity Matching',
+            'Confidence Scoring',
+            'Batch Processing'
+          ]
         },
         user_info: {
-          userId: userId,
-        },
-      },
+          userId: userId
+        }
+      }
     });
   } catch (error) {
-    logger.error("Statistics retrieval error:", error);
+    logger.error('Statistics retrieval error:', error);
 
     res.status(500).json({
       success: false,
-      message: "Failed to retrieve statistics",
-      error: error.message,
+      message: 'Failed to retrieve statistics',
+      error: error.message
     });
   }
 });
@@ -834,10 +834,10 @@ router.get("/statistics", async (req, res) => {
  * @access Private
  */
 router.post(
-  "/configure",
+  '/configure',
   [
-    body("config").isObject().withMessage("Configuration object is required"),
-    validationMiddleware,
+    body('config').isObject().withMessage('Configuration object is required'),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
@@ -854,17 +854,17 @@ router.post(
       res.json({
         success: true,
         data: {
-          config: intelligenceService.config,
+          config: intelligenceService.config
         },
-        message: "Configuration updated successfully",
+        message: 'Configuration updated successfully'
       });
     } catch (error) {
-      logger.error("Configuration update error:", error);
+      logger.error('Configuration update error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Configuration update failed",
-        error: error.message,
+        message: 'Configuration update failed',
+        error: error.message
       });
     }
   }
@@ -876,14 +876,14 @@ router.post(
  * @access Private
  */
 router.post(
-  "/learn",
+  '/learn',
   [
-    body("identifier").notEmpty().withMessage("Identifier is required"),
-    body("correctClassification")
+    body('identifier').notEmpty().withMessage('Identifier is required'),
+    body('correctClassification')
       .notEmpty()
-      .withMessage("Correct classification is required"),
-    body("userFeedback").optional().isString(),
-    validationMiddleware,
+      .withMessage('Correct classification is required'),
+    body('userFeedback').optional().isString(),
+    validationMiddleware
   ],
   async (req, res) => {
     try {
@@ -897,7 +897,7 @@ router.post(
           type: correctClassification,
           confidence: 1.0, // User feedback is considered high confidence
           feedback: userFeedback,
-          userId: userId,
+          userId: userId
         }
       );
 
@@ -909,20 +909,20 @@ router.post(
 
       res.json({
         success: true,
-        message: "Learning update applied successfully",
+        message: 'Learning update applied successfully',
         data: {
           identifier,
           learned_classification: correctClassification,
-          user_feedback: userFeedback,
-        },
+          user_feedback: userFeedback
+        }
       });
     } catch (error) {
-      logger.error("Learning update error:", error);
+      logger.error('Learning update error:', error);
 
       res.status(500).json({
         success: false,
-        message: "Learning update failed",
-        error: error.message,
+        message: 'Learning update failed',
+        error: error.message
       });
     }
   }

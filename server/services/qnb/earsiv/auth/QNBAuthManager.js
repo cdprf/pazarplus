@@ -3,10 +3,10 @@
  * Handles login, logout, and session management
  */
 
-const axios = require("axios");
-const xml2js = require("xml2js");
-const config = require("../config/QNBConfig");
-const logger = require("../../../utils/logger");
+const axios = require('axios');
+const xml2js = require('xml2js');
+const config = require('../config/QNBConfig');
+const logger = require('../../../utils/logger');
 
 class QNBAuthManager {
   constructor() {
@@ -26,63 +26,63 @@ class QNBAuthManager {
       const {
         username,
         password,
-        language = "tr",
-        environment = "test",
+        language = 'tr',
+        environment = 'test'
       } = userConfig;
 
       if (!username || !password) {
-        throw new Error("QNB Finans credentials not configured");
+        throw new Error('QNB Finans credentials not configured');
       }
 
       const soapEnvelope = {
-        "soapenv:Envelope": {
+        'soapenv:Envelope': {
           $: {
-            "xmlns:soapenv": config.namespaces.soapEnv,
-            "xmlns:ser": config.namespaces.userService,
+            'xmlns:soapenv': config.namespaces.soapEnv,
+            'xmlns:ser': config.namespaces.userService
           },
-          "soapenv:Header": {},
-          "soapenv:Body": {
-            "ser:wsLogin": {
+          'soapenv:Header': {},
+          'soapenv:Body': {
+            'ser:wsLogin': {
               kullaniciAdi: username,
               sifre: password,
-              dil: language,
-            },
-          },
-        },
+              dil: language
+            }
+          }
+        }
       };
 
       const soapXML = this.xmlBuilder.buildObject(soapEnvelope);
-      const userServiceUrl = config.getEndpoint(environment, "userService");
+      const userServiceUrl = config.getEndpoint(environment, 'userService');
 
       const response = await axios.post(userServiceUrl, soapXML, {
         headers: {
-          "Content-Type": "text/xml; charset=utf-8",
-          SOAPAction: "",
+          'Content-Type': 'text/xml; charset=utf-8',
+          SOAPAction: ''
         },
         withCredentials: true,
-        timeout: config.defaults.timeout,
+        timeout: config.defaults.timeout
       });
 
       // Extract session cookie from response
-      const cookies = response.headers["set-cookie"];
+      const cookies = response.headers['set-cookie'];
       if (cookies) {
         this.sessionCookie = cookies.find((cookie) =>
-          cookie.includes("JSESSIONID")
+          cookie.includes('JSESSIONID')
         );
         this.isAuthenticated = true;
       }
 
-      logger.info("QNB Finans login successful", {
+      logger.info('QNB Finans login successful', {
         username,
         environment,
-        hasSession: !!this.sessionCookie,
+        hasSession: !!this.sessionCookie
       });
 
       return {
         success: true,
-        message: "QNB Finans login successful",
+        message: 'QNB Finans login successful',
         sessionCookie: this.sessionCookie,
-        isAuthenticated: this.isAuthenticated,
+        isAuthenticated: this.isAuthenticated
       };
     } catch (error) {
       this.isAuthenticated = false;
@@ -90,14 +90,14 @@ class QNBAuthManager {
 
       logger.error(`QNB Finans login error: ${error.message}`, {
         error: error.message,
-        username: userConfig.username,
+        username: userConfig.username
       });
 
       return {
         success: false,
         message: `Login failed: ${error.message}`,
         error: error.message,
-        isAuthenticated: false,
+        isAuthenticated: false
       };
     }
   }
@@ -107,48 +107,48 @@ class QNBAuthManager {
    * @param {string} environment - Environment ('test' or 'production')
    * @returns {Object} Logout result
    */
-  async logout(environment = "test") {
+  async logout(environment = 'test') {
     try {
       if (!this.sessionCookie) {
         return {
           success: true,
-          message: "No active session to logout",
+          message: 'No active session to logout'
         };
       }
 
       const soapEnvelope = {
-        "soapenv:Envelope": {
+        'soapenv:Envelope': {
           $: {
-            "xmlns:soapenv": config.namespaces.soapEnv,
-            "xmlns:ser": config.namespaces.userService,
+            'xmlns:soapenv': config.namespaces.soapEnv,
+            'xmlns:ser': config.namespaces.userService
           },
-          "soapenv:Header": {},
-          "soapenv:Body": {
-            "ser:logout": {},
-          },
-        },
+          'soapenv:Header': {},
+          'soapenv:Body': {
+            'ser:logout': {}
+          }
+        }
       };
 
       const soapXML = this.xmlBuilder.buildObject(soapEnvelope);
-      const userServiceUrl = config.getEndpoint(environment, "userService");
+      const userServiceUrl = config.getEndpoint(environment, 'userService');
 
       await axios.post(userServiceUrl, soapXML, {
         headers: {
-          "Content-Type": "text/xml; charset=utf-8",
-          SOAPAction: "",
-          Cookie: this.sessionCookie,
+          'Content-Type': 'text/xml; charset=utf-8',
+          SOAPAction: '',
+          Cookie: this.sessionCookie
         },
-        timeout: config.defaults.timeout,
+        timeout: config.defaults.timeout
       });
 
       this.sessionCookie = null;
       this.isAuthenticated = false;
 
-      logger.info("QNB Finans logout successful");
+      logger.info('QNB Finans logout successful');
 
       return {
         success: true,
-        message: "Logout successful",
+        message: 'Logout successful'
       };
     } catch (error) {
       // Clear session even if logout fails
@@ -160,7 +160,7 @@ class QNBAuthManager {
       return {
         success: false,
         message: `Logout failed: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -173,15 +173,15 @@ class QNBAuthManager {
    */
   createAuthHeader(username, password) {
     return {
-      "wsse:Security": {
+      'wsse:Security': {
         $: {
-          "xmlns:wsse": config.namespaces.wsse,
+          'xmlns:wsse': config.namespaces.wsse
         },
-        "wsse:UsernameToken": {
-          "wsse:Username": username,
-          "wsse:Password": password,
-        },
-      },
+        'wsse:UsernameToken': {
+          'wsse:Username': username,
+          'wsse:Password': password
+        }
+      }
     };
   }
 

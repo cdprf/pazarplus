@@ -1,44 +1,44 @@
 module.exports = {
   apps: [
     {
-      name: "pazar-plus-server",
-      script: "server.js",
-      cwd: "/Users/ahmedabaas/Desktop/Soft/pazar+/server",
+      name: 'pazar-plus-server',
+      script: 'server.js',
+      cwd: '/Users/ahmedabaas/Desktop/Soft/pazar+/server',
       instances: 1,
-      exec_mode: "fork",
+      exec_mode: 'fork',
       watch: false,
-      max_memory_restart: "1G",
+      max_memory_restart: '1G',
       env: {
-        NODE_ENV: "development",
-        PORT: "5001",
+        NODE_ENV: 'development',
+        PORT: '5001'
       },
       env_production: {
-        NODE_ENV: "production",
-        PORT: "5001",
+        NODE_ENV: 'production',
+        PORT: '5001'
       },
-      log_file: "./logs/combined.log",
-      out_file: "./logs/out.log",
-      error_file: "./logs/error.log",
-      log_date_format: "YYYY-MM-DD HH:mm:ss Z",
+      log_file: './logs/combined.log',
+      out_file: './logs/out.log',
+      error_file: './logs/error.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
       time: true,
       autorestart: true,
       max_restarts: 10,
-      min_uptime: "10s",
+      min_uptime: '10s',
       restart_delay: 4000,
       kill_timeout: 30000,
       wait_ready: true,
       listen_timeout: 10000,
       shutdown_with_message: true,
       ignore_watch: [
-        "node_modules",
-        "logs",
-        "*.log",
-        "*.sqlite",
-        "database.sqlite",
-        "uploads",
-        "temp",
-      ],
-    },
-  ],
+        'node_modules',
+        'logs',
+        '*.log',
+        '*.sqlite',
+        'database.sqlite',
+        'uploads',
+        'temp'
+      ]
+    }
+  ]
 };

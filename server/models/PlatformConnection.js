@@ -1,21 +1,21 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database");
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
 const PlatformConnection = sequelize.define(
-  "PlatformConnection",
+  'PlatformConnection',
   {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
-      autoIncrement: true,
+      autoIncrement: true
     },
     userId: {
       type: DataTypes.UUID, // Fixed: Changed from INTEGER to UUID to match User model
       allowNull: false,
       references: {
-        model: "users",
-        key: "id",
-      },
+        model: 'users',
+        key: 'id'
+      }
     },
     platformType: {
       type: DataTypes.STRING,
@@ -23,145 +23,145 @@ const PlatformConnection = sequelize.define(
       validate: {
         isIn: [
           [
-            "trendyol",
-            "hepsiburada",
-            "n11",
-            "pazarama",
-            "amazon",
-            "csv",
-            "shopify",
-            "woocommerce",
-            "magento",
-            "etsy",
-            "ebay",
-            "lazada",
-            "jumia",
-            "shopee",
-            "aliexpress",
-            "cimri",
-            "akakce",
-            "ciceksepeti",
-            "idefix",
-          ],
-        ],
-      },
+            'trendyol',
+            'hepsiburada',
+            'n11',
+            'pazarama',
+            'amazon',
+            'csv',
+            'shopify',
+            'woocommerce',
+            'magento',
+            'etsy',
+            'ebay',
+            'lazada',
+            'jumia',
+            'shopee',
+            'aliexpress',
+            'cimri',
+            'akakce',
+            'ciceksepeti',
+            'idefix'
+          ]
+        ]
+      }
     },
     platformName: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: false
     },
     name: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     credentials: {
       type: DataTypes.JSON,
-      allowNull: false,
+      allowNull: false
     },
     environment: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "production",
+      defaultValue: 'production',
       validate: {
-        isIn: [["test", "sandbox", "staging", "production"]],
-      },
+        isIn: [['test', 'sandbox', 'staging', 'production']]
+      }
     },
     status: {
       type: DataTypes.STRING,
-      defaultValue: "active",
+      defaultValue: 'active',
       validate: {
         isIn: [
-          ["active", "inactive", "error", "pending", "testing", "suspended"],
-        ],
-      },
+          ['active', 'inactive', 'error', 'pending', 'testing', 'suspended']
+        ]
+      }
     },
     isActive: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true,
+      defaultValue: true
     },
     isDefault: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-      comment: "Whether this is the default connection for this platform type",
+      comment: 'Whether this is the default connection for this platform type'
     },
     lastTestedAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: "When the connection was last tested",
+      comment: 'When the connection was last tested'
     },
     lastSyncAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: "When data was last synced from this platform",
+      comment: 'When data was last synced from this platform'
     },
     syncInterval: {
       type: DataTypes.INTEGER,
       defaultValue: 300, // 5 minutes in seconds
-      comment: "Sync interval in seconds",
+      comment: 'Sync interval in seconds'
     },
     autoSync: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
-      comment: "Whether automatic sync is enabled",
+      comment: 'Whether automatic sync is enabled'
     },
     rateLimitInfo: {
       type: DataTypes.JSON,
       defaultValue: {},
-      comment: "Rate limit information from the platform",
+      comment: 'Rate limit information from the platform'
     },
     lastError: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: "Last error message encountered",
+      comment: 'Last error message encountered'
     },
     errorCount: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
-      comment: "Number of consecutive errors",
+      comment: 'Number of consecutive errors'
     },
     maxRetries: {
       type: DataTypes.INTEGER,
       defaultValue: 3,
-      comment: "Maximum number of retries for failed requests",
+      comment: 'Maximum number of retries for failed requests'
     },
     webhookUrl: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Webhook URL for receiving platform notifications",
+      comment: 'Webhook URL for receiving platform notifications'
     },
     webhookSecret: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Secret for webhook verification",
+      comment: 'Secret for webhook verification'
     },
     supportedFeatures: {
       type: DataTypes.JSON,
       defaultValue: [],
-      comment: "List of supported features for this connection",
+      comment: 'List of supported features for this connection'
     },
     platformMetadata: {
       type: DataTypes.JSON,
       defaultValue: {},
-      comment: "Platform-specific metadata and configuration",
+      comment: 'Platform-specific metadata and configuration'
     },
     settings: {
       type: DataTypes.JSON,
-      defaultValue: {},
+      defaultValue: {}
     },
     tags: {
       type: DataTypes.JSON,
       defaultValue: [],
-      comment: "Tags for organizing connections",
+      comment: 'Tags for organizing connections'
     },
     description: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: "Description or notes about this connection",
+      comment: 'Description or notes about this connection'
     },
     expiresAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: "When the connection credentials expire (if applicable)",
+      comment: 'When the connection credentials expire (if applicable)'
     },
     notificationSettings: {
       type: DataTypes.JSON,
@@ -169,31 +169,31 @@ const PlatformConnection = sequelize.define(
         onError: true,
         onSync: false,
         onOrderUpdate: true,
-        onConnectionExpiry: true,
+        onConnectionExpiry: true
       },
-      comment: "Notification preferences for this connection",
-    },
+      comment: 'Notification preferences for this connection'
+    }
   },
   {
-    tableName: "platform_connections",
+    tableName: 'platform_connections',
     timestamps: true,
     indexes: [
       {
         unique: false,
-        fields: ["userId"],
+        fields: ['userId']
       },
       {
         unique: false,
-        fields: ["platformType"],
+        fields: ['platformType']
       },
       {
         unique: false,
-        fields: ["status"],
+        fields: ['status']
       },
       {
         unique: false,
-        fields: ["environment"],
-      },
+        fields: ['environment']
+      }
     ],
     hooks: {
       beforeCreate: async (connection) => {
@@ -205,15 +205,15 @@ const PlatformConnection = sequelize.define(
               where: {
                 userId: connection.userId,
                 platformType: connection.platformType,
-                isDefault: true,
-              },
+                isDefault: true
+              }
             }
           );
         }
       },
       beforeUpdate: async (connection) => {
         // If this is being set as default, unset other defaults for this user/platform
-        if (connection.changed("isDefault") && connection.isDefault) {
+        if (connection.changed('isDefault') && connection.isDefault) {
           await PlatformConnection.update(
             { isDefault: false },
             {
@@ -221,13 +221,13 @@ const PlatformConnection = sequelize.define(
                 userId: connection.userId,
                 platformType: connection.platformType,
                 isDefault: true,
-                id: { [sequelize.Sequelize.Op.ne]: connection.id },
-              },
+                id: { [sequelize.Sequelize.Op.ne]: connection.id }
+              }
             }
           );
         }
-      },
-    },
+      }
+    }
   }
 );
 
@@ -237,8 +237,8 @@ PlatformConnection.prototype.isExpired = function () {
 };
 
 PlatformConnection.prototype.needsSync = function () {
-  if (!this.autoSync || !this.isActive) return false;
-  if (!this.lastSyncAt) return true;
+  if (!this.autoSync || !this.isActive) {return false;}
+  if (!this.lastSyncAt) {return true;}
 
   const nextSync = new Date(
     this.lastSyncAt.getTime() + this.syncInterval * 1000
@@ -251,7 +251,7 @@ PlatformConnection.prototype.incrementErrorCount = async function () {
 
   // Auto-suspend after too many consecutive errors
   if (this.errorCount >= 10) {
-    this.status = "suspended";
+    this.status = 'suspended';
   }
 
   await this.save();
@@ -263,8 +263,8 @@ PlatformConnection.prototype.resetErrorCount = async function () {
     this.lastError = null;
 
     // Reactivate if it was suspended due to errors
-    if (this.status === "suspended") {
-      this.status = "active";
+    if (this.status === 'suspended') {
+      this.status = 'active';
     }
 
     await this.save();
@@ -281,8 +281,8 @@ PlatformConnection.getDefaultConnection = async function (
       userId,
       platformType,
       isDefault: true,
-      isActive: true,
-    },
+      isActive: true
+    }
   });
 };
 
@@ -293,7 +293,7 @@ PlatformConnection.getActiveConnections = async function (
   const where = {
     userId,
     isActive: true,
-    status: "active",
+    status: 'active'
   };
 
   if (platformType) {

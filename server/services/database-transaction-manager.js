@@ -2,10 +2,10 @@
  * Database Transaction Manager
  * Handles SQLite database transaction monitoring, queueing, and user control
  */
-const EventEmitter = require("events");
-const logger = require("../utils/logger");
-const { sequelize } = require("../models");
-const sqliteOptimizer = require("./sqlite-optimizer");
+const EventEmitter = require('events');
+const logger = require('../utils/logger');
+const { sequelize } = require('../models');
+const sqliteOptimizer = require('./sqlite-optimizer');
 
 class DatabaseTransactionManager extends EventEmitter {
   constructor() {
@@ -34,10 +34,10 @@ class DatabaseTransactionManager extends EventEmitter {
       await sqliteOptimizer.optimizeSQLite();
       this.isInitialized = true;
       logger.info(
-        "Database Transaction Manager initialized with SQLite optimizations"
+        'Database Transaction Manager initialized with SQLite optimizations'
       );
     } catch (error) {
-      logger.error("Failed to initialize SQLite optimizations:", error);
+      logger.error('Failed to initialize SQLite optimizations:', error);
       // Continue without optimizations rather than failing
     }
   }
@@ -49,16 +49,16 @@ class DatabaseTransactionManager extends EventEmitter {
     const transaction = {
       id: operationId,
       startTime: Date.now(),
-      status: "pending",
+      status: 'pending',
       metadata,
       retryCount: 0,
-      maxRetries: 3,
+      maxRetries: 3
     };
 
     this.activeTransactions.set(operationId, transaction);
 
     // Emit transaction registered event
-    this.emit("transactionRegistered", transaction);
+    this.emit('transactionRegistered', transaction);
 
     logger.info(`Transaction registered: ${operationId}`, metadata);
     return transaction;
@@ -76,7 +76,7 @@ class DatabaseTransactionManager extends EventEmitter {
     const {
       userControlled = true,
       pausable = true,
-      autoRetry = true,
+      autoRetry = true
     } = options;
 
     try {
@@ -95,7 +95,7 @@ class DatabaseTransactionManager extends EventEmitter {
 
       // Check concurrent transaction limit
       const activeCount = Array.from(this.activeTransactions.values()).filter(
-        (t) => t.status === "running"
+        (t) => t.status === 'running'
       ).length;
 
       if (activeCount >= this.maxConcurrentTransactions) {
@@ -123,7 +123,7 @@ class DatabaseTransactionManager extends EventEmitter {
       // Clean up completed transaction after a delay
       setTimeout(() => {
         this.activeTransactions.delete(operationId);
-        this.emit("transactionCleaned", { id: operationId });
+        this.emit('transactionCleaned', { id: operationId });
       }, 5000);
     }
   }
@@ -138,30 +138,30 @@ class DatabaseTransactionManager extends EventEmitter {
     }
 
     // Mark transaction as running
-    transaction.status = "running";
+    transaction.status = 'running';
     transaction.startTime = Date.now();
-    this.emit("transactionStarted", transaction);
+    this.emit('transactionStarted', transaction);
 
     try {
       // Execute the operation
       const result = await operationFn();
 
       // Mark as completed
-      transaction.status = "completed";
+      transaction.status = 'completed';
       transaction.endTime = Date.now();
       transaction.duration = transaction.endTime - transaction.startTime;
-      this.emit("transactionCompleted", transaction);
+      this.emit('transactionCompleted', transaction);
 
       logger.debug(
         `Transaction ${operationId} completed in ${transaction.duration}ms`
       );
       return result;
     } catch (error) {
-      transaction.status = "failed";
+      transaction.status = 'failed';
       transaction.error = error.message;
       transaction.endTime = Date.now();
       transaction.duration = transaction.endTime - transaction.startTime;
-      this.emit("transactionFailed", transaction);
+      this.emit('transactionFailed', transaction);
       throw error;
     }
   }
@@ -179,24 +179,24 @@ class DatabaseTransactionManager extends EventEmitter {
     const userInteraction = {
       id: interactionId,
       operationId,
-      type: "database_busy",
-      message: "Database is currently busy. What would you like to do?",
+      type: 'database_busy',
+      message: 'Database is currently busy. What would you like to do?',
       options: [
-        { id: "wait", label: "Wait and retry automatically", action: "wait" },
-        { id: "queue", label: "Queue operation for later", action: "queue" },
+        { id: 'wait', label: 'Wait and retry automatically', action: 'wait' },
+        { id: 'queue', label: 'Queue operation for later', action: 'queue' },
         {
-          id: "force",
-          label: "Force execute (may cause conflicts)",
-          action: "force",
+          id: 'force',
+          label: 'Force execute (may cause conflicts)',
+          action: 'force'
         },
-        { id: "cancel", label: "Cancel operation", action: "cancel" },
+        { id: 'cancel', label: 'Cancel operation', action: 'cancel' }
       ],
       timestamp: Date.now(),
-      timeout: this.busyTimeout,
+      timeout: this.busyTimeout
     };
 
     this.userInteractions.set(interactionId, userInteraction);
-    this.emit("userInteractionRequired", userInteraction);
+    this.emit('userInteractionRequired', userInteraction);
 
     // Wait for user decision or timeout
     return await this.waitForUserDecision(operationId, userInteraction);
@@ -209,7 +209,7 @@ class DatabaseTransactionManager extends EventEmitter {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         // Default action after timeout - queue the operation
-        this.handleUserDecision(userInteraction.id, "queue");
+        this.handleUserDecision(userInteraction.id, 'queue');
         resolve(this.queueOperation(operationId));
       }, this.busyTimeout);
 
@@ -217,29 +217,29 @@ class DatabaseTransactionManager extends EventEmitter {
       const handleDecision = (decision) => {
         if (decision.interactionId === userInteraction.id) {
           clearTimeout(timeout);
-          this.removeListener("userDecision", handleDecision);
+          this.removeListener('userDecision', handleDecision);
 
           switch (decision.action) {
-            case "wait":
-              resolve(this.waitAndRetry(operationId));
-              break;
-            case "force_close":
-              resolve(this.forceCloseAndExecute(operationId));
-              break;
-            case "queue":
-              resolve(this.queueOperation(operationId));
-              break;
-            case "cancel":
-              this.activeTransactions.get(operationId).status = "cancelled";
-              reject(new Error("Operation cancelled by user"));
-              break;
-            default:
-              reject(new Error(`Unknown user decision: ${decision.action}`));
+          case 'wait':
+            resolve(this.waitAndRetry(operationId));
+            break;
+          case 'force_close':
+            resolve(this.forceCloseAndExecute(operationId));
+            break;
+          case 'queue':
+            resolve(this.queueOperation(operationId));
+            break;
+          case 'cancel':
+            this.activeTransactions.get(operationId).status = 'cancelled';
+            reject(new Error('Operation cancelled by user'));
+            break;
+          default:
+            reject(new Error(`Unknown user decision: ${decision.action}`));
           }
         }
       };
 
-      this.on("userDecision", handleDecision);
+      this.on('userDecision', handleDecision);
     });
   }
 
@@ -256,16 +256,16 @@ class DatabaseTransactionManager extends EventEmitter {
       return;
     }
 
-    interaction.status = "decided";
+    interaction.status = 'decided';
     interaction.decision = action;
     interaction.decidedAt = Date.now();
 
     // Emit decision event
-    this.emit("userDecision", {
+    this.emit('userDecision', {
       interactionId,
       action,
       options,
-      interaction,
+      interaction
     });
 
     // Clean up interaction
@@ -295,17 +295,17 @@ class DatabaseTransactionManager extends EventEmitter {
         transaction.busyCount = (transaction.busyCount || 0) + 1;
 
         // Emit database busy event
-        this.emit("databaseBusy", {
+        this.emit('databaseBusy', {
           operationId,
           error: error.message,
           transaction,
-          busyCount: transaction.busyCount,
+          busyCount: transaction.busyCount
         });
 
         // Auto-recovery after a short delay if no user interaction needed
         setTimeout(() => {
           this.isDatabaseBusy = false;
-          this.emit("databaseRecovered");
+          this.emit('databaseRecovered');
         }, 5000);
       }
 
@@ -337,18 +337,18 @@ class DatabaseTransactionManager extends EventEmitter {
         try {
           if (connection.inTransaction) {
             await connection.rollback();
-            logger.info("Rolled back active transaction");
+            logger.info('Rolled back active transaction');
           }
         } catch (rollbackError) {
-          logger.warn("Error rolling back transaction:", rollbackError.message);
+          logger.warn('Error rolling back transaction:', rollbackError.message);
         }
       }
 
       // Mark other transactions as interrupted
       for (const [id, transaction] of this.activeTransactions) {
-        if (id !== operationId && transaction.status === "running") {
-          transaction.status = "interrupted";
-          this.emit("transactionInterrupted", transaction);
+        if (id !== operationId && transaction.status === 'running') {
+          transaction.status = 'interrupted';
+          this.emit('transactionInterrupted', transaction);
         }
       }
 
@@ -358,7 +358,7 @@ class DatabaseTransactionManager extends EventEmitter {
       // Retry the operation
       return await this.retryOperation(operationId);
     } catch (error) {
-      logger.error("Error during force close:", error);
+      logger.error('Error during force close:', error);
       throw error;
     }
   }
@@ -368,7 +368,7 @@ class DatabaseTransactionManager extends EventEmitter {
    */
   async waitAndRetry(operationId) {
     const transaction = this.activeTransactions.get(operationId);
-    transaction.status = "waiting";
+    transaction.status = 'waiting';
 
     // Wait for database to become available
     return new Promise((resolve, reject) => {
@@ -395,18 +395,18 @@ class DatabaseTransactionManager extends EventEmitter {
    */
   async queueOperation(operationId, operationFn, options) {
     const transaction = this.activeTransactions.get(operationId);
-    transaction.status = "queued";
+    transaction.status = 'queued';
 
     this.transactionQueue.push({
       operationId,
       operationFn,
       options,
-      queuedAt: Date.now(),
+      queuedAt: Date.now()
     });
 
-    this.emit("operationQueued", {
+    this.emit('operationQueued', {
       operationId,
-      queuePosition: this.transactionQueue.length,
+      queuePosition: this.transactionQueue.length
     });
 
     // Process queue when database becomes available
@@ -450,14 +450,14 @@ class DatabaseTransactionManager extends EventEmitter {
     const transaction = this.activeTransactions.get(operationId);
 
     if (transaction.retryCount >= transaction.maxRetries) {
-      transaction.status = "failed";
+      transaction.status = 'failed';
       throw new Error(
         `Operation failed after ${transaction.maxRetries} retries`
       );
     }
 
     transaction.retryCount++;
-    transaction.status = "retrying";
+    transaction.status = 'retrying';
 
     // Use SQLite optimizer for intelligent retry
     return await sqliteOptimizer.executeWithRetry(
@@ -474,9 +474,9 @@ class DatabaseTransactionManager extends EventEmitter {
   pauseOperation(operationId) {
     const transaction = this.activeTransactions.get(operationId);
     if (transaction) {
-      transaction.status = "paused";
+      transaction.status = 'paused';
       this.pausedOperations.set(operationId, Date.now());
-      this.emit("operationPaused", { operationId });
+      this.emit('operationPaused', { operationId });
     }
   }
 
@@ -488,8 +488,8 @@ class DatabaseTransactionManager extends EventEmitter {
       this.pausedOperations.delete(operationId);
       const transaction = this.activeTransactions.get(operationId);
       if (transaction) {
-        transaction.status = "pending";
-        this.emit("operationResumed", { operationId });
+        transaction.status = 'pending';
+        this.emit('operationResumed', { operationId });
       }
     }
   }
@@ -523,7 +523,7 @@ class DatabaseTransactionManager extends EventEmitter {
     const transaction = this.activeTransactions.get(operationId);
 
     if (this.isSQLiteBusyError(error)) {
-      transaction.status = "busy_error";
+      transaction.status = 'busy_error';
       transaction.lastError = error.message;
 
       // Handle busy error based on user preference
@@ -535,21 +535,21 @@ class DatabaseTransactionManager extends EventEmitter {
       }
     } else if (this.isPostgreSQLTransactionAbortError(error)) {
       // Handle PostgreSQL transaction abort errors
-      transaction.status = "aborted";
+      transaction.status = 'aborted';
       transaction.lastError = error.message;
 
       logger.error(
         `PostgreSQL transaction aborted for operation ${operationId}:`,
         error.message
       );
-      this.emit("transactionAborted", { operationId, error, transaction });
+      this.emit('transactionAborted', { operationId, error, transaction });
 
       // Don't retry aborted transactions, they need to be handled at the application level
       throw error;
     } else {
-      transaction.status = "error";
+      transaction.status = 'error';
       transaction.lastError = error.message;
-      this.emit("transactionError", { operationId, error, transaction });
+      this.emit('transactionError', { operationId, error, transaction });
       throw error;
     }
   }
@@ -561,13 +561,13 @@ class DatabaseTransactionManager extends EventEmitter {
     // PostgreSQL error code 25P02: current transaction is aborted
     return (
       error &&
-      (error.code === "25P02" ||
-        error.original?.code === "25P02" ||
-        error.parent?.code === "25P02" ||
+      (error.code === '25P02' ||
+        error.original?.code === '25P02' ||
+        error.parent?.code === '25P02' ||
         (error.message &&
-          error.message.includes("current transaction is aborted")) ||
+          error.message.includes('current transaction is aborted')) ||
         (error.original?.message &&
-          error.original.message.includes("current transaction is aborted")))
+          error.original.message.includes('current transaction is aborted')))
     );
   }
 
@@ -576,7 +576,7 @@ class DatabaseTransactionManager extends EventEmitter {
    */
   getBusyTransactions() {
     return Array.from(this.activeTransactions.values()).filter(
-      (t) => t.status === "running" || t.status === "busy_error"
+      (t) => t.status === 'running' || t.status === 'busy_error'
     );
   }
 
@@ -589,7 +589,7 @@ class DatabaseTransactionManager extends EventEmitter {
       activeTransactionCount: this.activeTransactions.size,
       queuedOperationCount: this.transactionQueue.length,
       busyTransactions: this.getBusyTransactions(),
-      longestRunningTransaction: this.getLongestRunningTransaction(),
+      longestRunningTransaction: this.getLongestRunningTransaction()
     };
   }
 
@@ -599,9 +599,9 @@ class DatabaseTransactionManager extends EventEmitter {
   getLongestRunningTransaction() {
     const runningTransactions = Array.from(
       this.activeTransactions.values()
-    ).filter((t) => t.status === "running");
+    ).filter((t) => t.status === 'running');
 
-    if (runningTransactions.length === 0) return null;
+    if (runningTransactions.length === 0) {return null;}
 
     return runningTransactions.reduce((longest, current) =>
       current.startTime < longest.startTime ? current : longest
@@ -618,7 +618,7 @@ class DatabaseTransactionManager extends EventEmitter {
       activeTransactions: Array.from(this.activeTransactions.values()),
       queuedOperations: this.transactionQueue.length,
       pausedOperations: this.pausedOperations.size,
-      userInteractions: Array.from(this.userInteractions.values()),
+      userInteractions: Array.from(this.userInteractions.values())
     };
   }
 
@@ -628,9 +628,9 @@ class DatabaseTransactionManager extends EventEmitter {
   cancelOperation(operationId) {
     const transaction = this.activeTransactions.get(operationId);
     if (transaction) {
-      transaction.status = "cancelled";
+      transaction.status = 'cancelled';
       this.activeTransactions.delete(operationId);
-      this.emit("operationCancelled", { operationId });
+      this.emit('operationCancelled', { operationId });
     }
   }
 

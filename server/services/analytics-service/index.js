@@ -1,14 +1,14 @@
-const { Op } = require("sequelize");
-const { Order, OrderItem, Product } = require("../../models");
-const cacheService = require("../cache-service");
-const logger = require("../../utils/logger");
+const { Op } = require('sequelize');
+const { Order, OrderItem, Product } = require('../../models');
+const cacheService = require('../cache-service');
+const logger = require('../../utils/logger');
 
 // Import modularized analytics utilities
 const {
   getAccurateAnalytics,
   getDashboardAnalytics,
-  getRevenueAnalytics,
-} = require("./analytics-utils");
+  getRevenueAnalytics
+} = require('./analytics-utils');
 
 const {
   calculateProfitMargins,
@@ -39,19 +39,19 @@ const {
   calculateElasticity,
   calculateGrowthRate,
   calculatePlatformRevenue,
-  getPricingAnalysis,
-} = require("./analytic-calculation-utils");
+  getPricingAnalysis
+} = require('./analytic-calculation-utils');
 
 const {
   getCustomerSegmentation,
   getProductCustomerSegmentation,
-  getCustomerMetrics,
-} = require("./customer-analysis-utils");
+  getCustomerMetrics
+} = require('./customer-analysis-utils');
 
 const {
   calculatePlatformPriceDifferences,
-  analyzePlatformPricing,
-} = require("./platform-analytics-utils");
+  analyzePlatformPricing
+} = require('./platform-analytics-utils');
 
 const {
   getTopProducts,
@@ -61,22 +61,22 @@ const {
   getProductPeriodData,
   getProductSeasonalTrends,
   getHourlyProductBreakdown,
-  getStockStatus,
-} = require("./product-analysis-utils");
+  getStockStatus
+} = require('./product-analysis-utils');
 
-const { getOrderSummary, getOrderTrends } = require("./orders-analytic-utils");
+const { getOrderSummary, getOrderTrends } = require('./orders-analytic-utils');
 
 const {
   getCompetitorInsights,
-  getPredictiveInsights,
-} = require("./insights-utils");
+  getPredictiveInsights
+} = require('./insights-utils');
 
 const {
   getPerformanceMetrics,
   getCategoryPerformance,
   getProductPerformanceMetrics,
-  getProductPlatformBreakdown,
-} = require("./performance-analysis-util");
+  getProductPlatformBreakdown
+} = require('./performance-analysis-util');
 
 const {
   generateInsights,
@@ -84,20 +84,20 @@ const {
   generateCustomReport,
   generateRecommendations,
   generatePricingRecommendations,
-  generateMarketRecommendations,
-} = require("./anlaysis-generation-utils");
+  generateMarketRecommendations
+} = require('./anlaysis-generation-utils');
 
 const {
   identifyMarketOpportunities,
   identifyPricingOpportunities,
   detectAnomalies,
   detectSeasonality,
-  determineStockStatusFromMetrics,
-} = require("./detection-utils");
+  determineStockStatusFromMetrics
+} = require('./detection-utils');
 
 class AnalyticsService {
   constructor() {
-    this.cachePrefix = "analytics:";
+    this.cachePrefix = 'analytics:';
     this.defaultCacheTTL = 3600; // 1 hour
     this.predictiveCacheTTL = 86400; // 24 hours for predictive analytics
   }
@@ -107,46 +107,46 @@ class AnalyticsService {
    */
   async getPlatformComparison(userId, dateRange) {
     // Valid statuses for revenue calculation (exclude returned/cancelled)
-    const validRevenueStatuses = ["new", "processing", "shipped", "delivered"];
+    const validRevenueStatuses = ['new', 'processing', 'shipped', 'delivered'];
 
     const whereClause = {
       userId,
       createdAt: {
-        [Op.between]: [dateRange.start, dateRange.end],
+        [Op.between]: [dateRange.start, dateRange.end]
       },
-      orderStatus: { [Op.in]: validRevenueStatuses }, // Exclude returned/cancelled orders
+      orderStatus: { [Op.in]: validRevenueStatuses } // Exclude returned/cancelled orders
     };
 
     const platformStats = await Order.findAll({
       where: whereClause,
       attributes: [
-        "platform",
-        [Order.sequelize.fn("COUNT", Order.sequelize.col("id")), "totalOrders"],
+        'platform',
+        [Order.sequelize.fn('COUNT', Order.sequelize.col('id')), 'totalOrders'],
         [
-          Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")),
-          "totalRevenue",
+          Order.sequelize.fn('SUM', Order.sequelize.col('totalAmount')),
+          'totalRevenue'
         ],
         [
-          Order.sequelize.fn("AVG", Order.sequelize.col("totalAmount")),
-          "avgOrderValue",
+          Order.sequelize.fn('AVG', Order.sequelize.col('totalAmount')),
+          'avgOrderValue'
         ],
         [
           Order.sequelize.fn(
-            "SUM",
+            'SUM',
             Order.sequelize.literal(
               'CASE WHEN "Order"."orderStatus" = \'delivered\' THEN 1 ELSE 0 END'
             )
           ),
-          "completedOrders",
-        ],
+          'completedOrders'
+        ]
       ],
-      group: ["platform"],
+      group: ['platform']
     });
 
     return platformStats.map((stat) => {
-      const totalOrders = parseInt(stat.get("totalOrders"));
-      const completedOrders = parseInt(stat.get("completedOrders"));
-      const totalRevenue = parseFloat(stat.get("totalRevenue") || 0);
+      const totalOrders = parseInt(stat.get('totalOrders'));
+      const completedOrders = parseInt(stat.get('completedOrders'));
+      const totalRevenue = parseFloat(stat.get('totalRevenue') || 0);
 
       return {
         name: stat.platform, // Frontend expects 'name' not 'platform'
@@ -155,11 +155,11 @@ class AnalyticsService {
         totalOrders,
         revenue: totalRevenue, // Frontend expects 'revenue' not 'totalRevenue'
         totalRevenue,
-        avgOrderValue: parseFloat(stat.get("avgOrderValue") || 0),
+        avgOrderValue: parseFloat(stat.get('avgOrderValue') || 0),
         completionRate: totalOrders ? (completedOrders / totalOrders) * 100 : 0,
         conversionRate: totalOrders ? (completedOrders / totalOrders) * 100 : 0, // Frontend expects conversionRate
         completedOrders,
-        percentage: 0, // Will be calculated in controller if needed
+        percentage: 0 // Will be calculated in controller if needed
       };
     });
   }
@@ -176,29 +176,29 @@ class AnalyticsService {
           createdAt: {
             [Op.between]: [
               new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // 90 days back
-              dateRange.end,
-            ],
+              dateRange.end
+            ]
           },
-          orderStatus: { [Op.notIn]: ["cancelled", "returned"] },
+          orderStatus: { [Op.notIn]: ['cancelled', 'returned'] }
         },
         attributes: [
           [
-            Order.sequelize.fn("DATE", Order.sequelize.col("createdAt")),
-            "date",
+            Order.sequelize.fn('DATE', Order.sequelize.col('createdAt')),
+            'date'
           ],
           [
-            Order.sequelize.fn("COUNT", Order.sequelize.col("id")),
-            "orderCount",
+            Order.sequelize.fn('COUNT', Order.sequelize.col('id')),
+            'orderCount'
           ],
           [
-            Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")),
-            "revenue",
-          ],
+            Order.sequelize.fn('SUM', Order.sequelize.col('totalAmount')),
+            'revenue'
+          ]
         ],
-        group: [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt"))],
+        group: [Order.sequelize.fn('DATE', Order.sequelize.col('createdAt'))],
         order: [
-          [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt")), "ASC"],
-        ],
+          [Order.sequelize.fn('DATE', Order.sequelize.col('createdAt')), 'ASC']
+        ]
       });
 
       // Apply moving average and trend analysis
@@ -208,10 +208,10 @@ class AnalyticsService {
         nextMonth: forecast.slice(0, 30),
         trend: calculateTrend(historicalData),
         confidence: calculateForecastConfidence(historicalData),
-        seasonality: detectSeasonality(historicalData),
+        seasonality: detectSeasonality(historicalData)
       };
     } catch (error) {
-      logger.error("Sales forecast error:", error);
+      logger.error('Sales forecast error:', error);
       return null;
     }
   }
@@ -251,7 +251,7 @@ class AnalyticsService {
               status: determineStockStatusFromMetrics(
                 stockStatus.quantity,
                 dailyDemand
-              ),
+              )
             });
           }
         } catch (productError) {
@@ -269,10 +269,10 @@ class AnalyticsService {
         overstockItems: predictions.filter((p) => p.daysUntilStockout > 90),
         reorderSuggestions: predictions.filter(
           (p) => p.currentStock <= p.reorderPoint
-        ),
+        )
       };
     } catch (error) {
-      logger.error("Inventory predictions error:", error);
+      logger.error('Inventory predictions error:', error);
       return null;
     }
   }
@@ -286,7 +286,7 @@ class AnalyticsService {
         await Promise.all([
           getCategoryPerformance(userId, dateRange),
           getPricingAnalysis(userId, dateRange),
-          getCompetitorInsights(userId, dateRange),
+          getCompetitorInsights(userId, dateRange)
         ]);
 
       return {
@@ -302,54 +302,54 @@ class AnalyticsService {
           categoryPerformance,
           pricingAnalysis
         ),
-        generatedAt: new Date(),
+        generatedAt: new Date()
       };
     } catch (error) {
-      logger.error("Market intelligence error:", error);
+      logger.error('Market intelligence error:', error);
       // Return meaningful fallback data instead of null
       return {
         categoryPerformance: [],
         pricingAnalysis: {
-          priceVariation: { coefficient: 0, analysis: "Yetersiz veri" },
+          priceVariation: { coefficient: 0, analysis: 'Yetersiz veri' },
           platformPricing: [],
-          elasticity: { score: 0, interpretation: "Hesaplanamadı" },
-          optimizationOpportunities: ["Daha fazla satış verisi gerekiyor"],
+          elasticity: { score: 0, interpretation: 'Hesaplanamadı' },
+          optimizationOpportunities: ['Daha fazla satış verisi gerekiyor']
         },
         competitorInsights: {
-          marketShare: { estimated: "Bilinmiyor", trend: "stable" },
+          marketShare: { estimated: 'Bilinmiyor', trend: 'stable' },
           competitorPricing: {
-            average: "N/A",
-            recommendation: "Piyasa araştırması yapın",
+            average: 'N/A',
+            recommendation: 'Piyasa araştırması yapın'
           },
           marketTrends: {
-            growth: "Stable",
-            opportunities: ["Yeni platformlara açılın"],
-          },
+            growth: 'Stable',
+            opportunities: ['Yeni platformlara açılın']
+          }
         },
         marketOpportunities: [
           {
-            type: "platform_expansion",
-            title: "Platform Genişletme",
-            description: "Yeni platformlarda satış yapma fırsatları",
-            potential: "medium",
-            effort: "low",
-          },
+            type: 'platform_expansion',
+            title: 'Platform Genişletme',
+            description: 'Yeni platformlarda satış yapma fırsatları',
+            potential: 'medium',
+            effort: 'low'
+          }
         ],
         marketTrends: {
-          direction: "stable",
-          velocity: "slow",
-          confidence: 40,
+          direction: 'stable',
+          velocity: 'slow',
+          confidence: 40
         },
         recommendations: [
           {
-            category: "research",
-            priority: "medium",
-            title: "Pazar Araştırması",
-            description: "Rekabet analizi için daha fazla veri toplayın",
-            timeframe: "1-2 hafta",
-          },
+            category: 'research',
+            priority: 'medium',
+            title: 'Pazar Araştırması',
+            description: 'Rekabet analizi için daha fazla veri toplayın',
+            timeframe: '1-2 hafta'
+          }
         ],
-        generatedAt: new Date(),
+        generatedAt: new Date()
       };
     }
   }
@@ -362,59 +362,59 @@ class AnalyticsService {
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           where: {
             userId,
-            createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+            createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
           },
-          attributes: ["platform"],
+          attributes: ['platform']
         },
         {
           model: Product,
-          as: "product",
-          attributes: ["name", "category"],
-        },
+          as: 'product',
+          attributes: ['name', 'category']
+        }
       ],
       attributes: [
-        "productId",
-        "price",
+        'productId',
+        'price',
         [
           OrderItem.sequelize.fn(
-            "AVG",
-            OrderItem.sequelize.col("OrderItem.price")
+            'AVG',
+            OrderItem.sequelize.col('OrderItem.price')
           ),
-          "avgPrice",
+          'avgPrice'
         ],
         [
           OrderItem.sequelize.fn(
-            "MIN",
-            OrderItem.sequelize.col("OrderItem.price")
+            'MIN',
+            OrderItem.sequelize.col('OrderItem.price')
           ),
-          "minPrice",
+          'minPrice'
         ],
         [
           OrderItem.sequelize.fn(
-            "MAX",
-            OrderItem.sequelize.col("OrderItem.price")
+            'MAX',
+            OrderItem.sequelize.col('OrderItem.price')
           ),
-          "maxPrice",
+          'maxPrice'
         ],
         [
           OrderItem.sequelize.fn(
-            "SUM",
-            OrderItem.sequelize.col("OrderItem.quantity")
+            'SUM',
+            OrderItem.sequelize.col('OrderItem.quantity')
           ),
-          "totalSold",
-        ],
+          'totalSold'
+        ]
       ],
-      group: ["productId", "Product.id", "Order.platform"],
+      group: ['productId', 'Product.id', 'Order.platform']
     });
 
     return {
       priceVariation: analyzePriceVariation(pricingData),
       platformPricing: analyzePlatformPricing(pricingData),
       elasticity: calculatePriceElasticity(pricingData),
-      optimizationOpportunities: identifyPricingOpportunities(pricingData),
+      optimizationOpportunities: identifyPricingOpportunities(pricingData)
     };
   }
   /**
@@ -426,9 +426,9 @@ class AnalyticsService {
         where: {
           userId,
           createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
-          orderStatus: { [Op.notIn]: ["cancelled", "returned"] },
+          orderStatus: { [Op.notIn]: ['cancelled', 'returned'] }
         },
-        include: [{ model: OrderItem, as: "items" }],
+        include: [{ model: OrderItem, as: 'items' }]
       });
 
       const revenue = orders.reduce(
@@ -447,13 +447,13 @@ class AnalyticsService {
       const safeGrowthRates = {
         revenue: parseFloat(growthRates?.revenue || 0),
         orders: parseFloat(growthRates?.orders || 0),
-        customers: parseFloat(growthRates?.customers || 0),
+        customers: parseFloat(growthRates?.customers || 0)
       };
 
       const safeProfitMargins = {
         gross: parseFloat(profitMargins?.gross || 0),
         net: parseFloat(profitMargins?.net || 0),
-        operating: parseFloat(profitMargins?.operating || 0),
+        operating: parseFloat(profitMargins?.operating || 0)
       };
 
       return {
@@ -476,12 +476,12 @@ class AnalyticsService {
             userId,
             dateRange
           ),
-          churnRate: await calculateChurnRate(userId, dateRange),
+          churnRate: await calculateChurnRate(userId, dateRange)
         },
-        generatedAt: new Date(),
+        generatedAt: new Date()
       };
     } catch (error) {
-      logger.error("Financial KPIs error:", error);
+      logger.error('Financial KPIs error:', error);
       // Return meaningful fallback data instead of null
       return {
         revenue: 0,
@@ -498,18 +498,18 @@ class AnalyticsService {
           grossMargin: 0,
           netMargin: 0,
           customerRetention: 0,
-          churnRate: 0,
+          churnRate: 0
         },
         recommendations: [
           {
-            type: "info",
-            title: "Finansal Veriler",
+            type: 'info',
+            title: 'Finansal Veriler',
             description:
-              "Daha detaylı finansal analiz için daha fazla satış verisi gerekiyor",
-            priority: "medium",
-          },
+              'Daha detaylı finansal analiz için daha fazla satış verisi gerekiyor',
+            priority: 'medium'
+          }
         ],
-        generatedAt: new Date(),
+        generatedAt: new Date()
       };
     }
   }
@@ -532,20 +532,20 @@ class AnalyticsService {
     const start = new Date();
 
     switch (timeframe) {
-      case "7d":
-        start.setDate(end.getDate() - 7);
-        break;
-      case "30d":
-        start.setDate(end.getDate() - 30);
-        break;
-      case "90d":
-        start.setDate(end.getDate() - 90);
-        break;
-      case "1y":
-        start.setFullYear(end.getFullYear() - 1);
-        break;
-      default:
-        start.setDate(end.getDate() - 30); // Default to 30 days
+    case '7d':
+      start.setDate(end.getDate() - 7);
+      break;
+    case '30d':
+      start.setDate(end.getDate() - 30);
+      break;
+    case '90d':
+      start.setDate(end.getDate() - 90);
+      break;
+    case '1y':
+      start.setFullYear(end.getFullYear() - 1);
+      break;
+    default:
+      start.setDate(end.getDate() - 30); // Default to 30 days
     }
 
     return { start, end };
@@ -565,13 +565,13 @@ class AnalyticsService {
           [Op.or]: [
             { stockQuantity: 0 }, // Out of stock
             Product.sequelize.where(
-              Product.sequelize.col("stockQuantity"),
-              "<=",
-              Product.sequelize.col("minStockLevel")
-            ), // Below minimum stock level
-          ],
+              Product.sequelize.col('stockQuantity'),
+              '<=',
+              Product.sequelize.col('minStockLevel')
+            ) // Below minimum stock level
+          ]
         },
-        limit: 20,
+        limit: 20
       });
 
       for (const product of lowStockProducts) {
@@ -581,19 +581,19 @@ class AnalyticsService {
           product.stockQuantity
         );
 
-        let alertType = "info";
-        let message = "";
+        let alertType = 'info';
+        let message = '';
 
         if (product.stockQuantity === 0) {
-          alertType = "critical";
+          alertType = 'critical';
           message = `${product.name} is out of stock`;
         } else if (product.stockQuantity <= product.minStockLevel) {
-          alertType = "warning";
+          alertType = 'warning';
           message = `${product.name} is running low (${product.stockQuantity} remaining)`;
         }
 
         if (daysUntilOutOfStock !== null && daysUntilOutOfStock <= 3) {
-          alertType = "critical";
+          alertType = 'critical';
           message += ` - Expected to run out in ${daysUntilOutOfStock} days`;
         }
 
@@ -606,7 +606,7 @@ class AnalyticsService {
           currentStock: product.stockQuantity,
           minStockLevel: product.minStockLevel,
           daysUntilOutOfStock,
-          timestamp: new Date(),
+          timestamp: new Date()
         });
       }
 
@@ -618,7 +618,7 @@ class AnalyticsService {
 
       return alerts;
     } catch (error) {
-      logger.error("Live inventory alerts error:", error);
+      logger.error('Live inventory alerts error:', error);
       return [];
     }
   }
@@ -626,12 +626,12 @@ class AnalyticsService {
   /**
    * Get cohort analysis for retention insights
    */
-  async getCohortAnalysis(userId, timeframe = "90d") {
+  async getCohortAnalysis(userId, timeframe = '90d') {
     const cacheKey = `${this.cachePrefix}cohort-analysis:${userId}:${timeframe}`;
 
     try {
       const cached = await cacheService.get(cacheKey);
-      if (cached) return cached;
+      if (cached) {return cached;}
 
       const dateRange = this.getDateRange(timeframe);
 
@@ -639,16 +639,16 @@ class AnalyticsService {
       const firstOrders = await Order.findAll({
         where: {
           userId,
-          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
         },
         attributes: [
-          "customerEmail",
+          'customerEmail',
           [
-            Order.sequelize.fn("MIN", Order.sequelize.col("createdAt")),
-            "firstOrderDate",
-          ],
+            Order.sequelize.fn('MIN', Order.sequelize.col('createdAt')),
+            'firstOrderDate'
+          ]
         ],
-        group: ["customerEmail"],
+        group: ['customerEmail']
       });
 
       const cohorts = {};
@@ -659,14 +659,14 @@ class AnalyticsService {
         const firstOrderDate = new Date(order.dataValues.firstOrderDate);
         const cohortMonth = `${firstOrderDate.getFullYear()}-${String(
           firstOrderDate.getMonth() + 1
-        ).padStart(2, "0")}`;
+        ).padStart(2, '0')}`;
 
         if (!cohorts[cohortMonth]) {
           cohorts[cohortMonth] = {
             month: cohortMonth,
             customers: [],
             size: 0,
-            retentionRates: {},
+            retentionRates: {}
           };
         }
 
@@ -676,7 +676,7 @@ class AnalyticsService {
 
       // Calculate retention rates for each cohort
       for (const [cohortMonth, cohort] of Object.entries(cohorts)) {
-        const cohortDate = new Date(cohortMonth + "-01");
+        const cohortDate = new Date(cohortMonth + '-01');
 
         for (let period = 1; period <= 12; period++) {
           const periodStart = new Date(cohortDate);
@@ -684,16 +684,16 @@ class AnalyticsService {
           const periodEnd = new Date(periodStart);
           periodEnd.setMonth(periodEnd.getMonth() + 1);
 
-          if (periodStart > now) break;
+          if (periodStart > now) {break;}
 
           const returningCustomers = await Order.count({
             where: {
               userId,
               customerEmail: { [Op.in]: cohort.customers },
-              createdAt: { [Op.between]: [periodStart, periodEnd] },
+              createdAt: { [Op.between]: [periodStart, periodEnd] }
             },
             distinct: true,
-            col: "customerEmail",
+            col: 'customerEmail'
           });
 
           cohort.retentionRates[`month_${period}`] =
@@ -724,25 +724,25 @@ class AnalyticsService {
             Object.values(cohorts).reduce(
               (sum, c) => sum + (c.retentionRates.month_12 || 0),
               0
-            ) / Object.keys(cohorts).length,
+            ) / Object.keys(cohorts).length
         },
         insights: [
-          "Cohort analysis shows customer retention patterns over time",
-          "Focus on improving first-month retention for new customers",
-          "Long-term retention indicates product-market fit",
-        ],
+          'Cohort analysis shows customer retention patterns over time',
+          'Focus on improving first-month retention for new customers',
+          'Long-term retention indicates product-market fit'
+        ]
       };
 
       await cacheService.set(cacheKey, result, this.defaultCacheTTL);
       return result;
     } catch (error) {
-      logger.error("Error getting cohort analysis:", error);
+      logger.error('Error getting cohort analysis:', error);
       return {
         cohorts: [],
         totalCohorts: 0,
         averageRetention: {},
         insights: [],
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -750,12 +750,12 @@ class AnalyticsService {
   /**
    * Get competitive analysis and market positioning
    */
-  async getCompetitiveAnalysis(userId, timeframe = "30d") {
+  async getCompetitiveAnalysis(userId, timeframe = '30d') {
     const cacheKey = `${this.cachePrefix}competitive-analysis:${userId}:${timeframe}`;
 
     try {
       const cached = await cacheService.get(cacheKey);
-      if (cached) return cached;
+      if (cached) {return cached;}
 
       const dateRange = this.getDateRange(timeframe);
 
@@ -765,19 +765,19 @@ class AnalyticsService {
         include: [
           {
             model: OrderItem,
-            as: "orderItems",
+            as: 'orderItems',
             include: [
               {
                 model: Order,
-                as: "order",
+                as: 'order',
                 where: {
-                  createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+                  createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
                 },
-                attributes: ["platform", "createdAt"],
-              },
-            ],
-          },
-        ],
+                attributes: ['platform', 'createdAt']
+              }
+            ]
+          }
+        ]
       });
 
       // Analyze pricing and performance by category
@@ -785,21 +785,21 @@ class AnalyticsService {
       const platformPerformance = {};
 
       userProducts.forEach((product) => {
-        const category = product.category || "uncategorized";
+        const category = product.category || 'uncategorized';
 
         if (!categoryAnalysis[category]) {
           categoryAnalysis[category] = {
             products: [],
             averagePrice: 0,
             totalSales: 0,
-            marketShare: 0,
+            marketShare: 0
           };
         }
 
         let totalSales = 0;
         product.orderItems?.forEach((item) => {
           totalSales += item.quantity;
-          const platform = item.order?.platform || "unknown";
+          const platform = item.order?.platform || 'unknown';
 
           if (!platformPerformance[platform]) {
             platformPerformance[platform] = { sales: 0, revenue: 0 };
@@ -812,7 +812,7 @@ class AnalyticsService {
           name: product.name,
           price: product.salePrice || product.originalPrice,
           sales: totalSales,
-          platform: product.platform,
+          platform: product.platform
         });
         categoryAnalysis[category].totalSales += totalSales;
       });
@@ -824,14 +824,14 @@ class AnalyticsService {
         platformDominance: Object.entries(platformPerformance)
           .sort(([, a], [, b]) => b.revenue - a.revenue)
           .slice(0, 3)
-          .map(([platform, data]) => ({ platform, ...data })),
+          .map(([platform, data]) => ({ platform, ...data }))
       };
 
       // Generate insights and recommendations
       const insights = [
-        "Monitor competitor pricing strategies regularly",
-        "Focus on high-performing categories for expansion",
-        "Optimize platform mix for better market coverage",
+        'Monitor competitor pricing strategies regularly',
+        'Focus on high-performing categories for expansion',
+        'Optimize platform mix for better market coverage'
       ];
 
       const result = {
@@ -842,37 +842,37 @@ class AnalyticsService {
           growingCategories: Object.entries(categoryAnalysis)
             .sort(([, a], [, b]) => b.totalSales - a.totalSales)
             .slice(0, 3)
-            .map(([category, data]) => ({ category, sales: data.totalSales })),
+            .map(([category, data]) => ({ category, sales: data.totalSales }))
         },
         recommendations: [
           {
-            title: "Consider premium pricing for high-demand products",
-            priority: "high",
-            description: "Analyze competitor pricing and adjust accordingly",
-            category: "pricing",
+            title: 'Consider premium pricing for high-demand products',
+            priority: 'high',
+            description: 'Analyze competitor pricing and adjust accordingly',
+            category: 'pricing'
           },
           {
-            title: "Expand into underserved market segments",
-            priority: "medium",
+            title: 'Expand into underserved market segments',
+            priority: 'medium',
             description:
-              "Identify and target niche markets with tailored offerings",
-            category: "market",
+              'Identify and target niche markets with tailored offerings',
+            category: 'market'
           },
           {
-            title: "Implement dynamic pricing strategies",
-            priority: "low",
+            title: 'Implement dynamic pricing strategies',
+            priority: 'low',
             description:
-              "Utilize AI-driven pricing tools for real-time adjustments",
-            category: "pricing",
-          },
+              'Utilize AI-driven pricing tools for real-time adjustments',
+            category: 'pricing'
+          }
         ],
-        insights,
+        insights
       };
 
       await cacheService.set(cacheKey, result, this.defaultCacheTTL);
       return result;
     } catch (error) {
-      logger.error("Error getting competitive analysis:", error);
+      logger.error('Error getting competitive analysis:', error);
       return {
         categoryAnalysis: {},
         platformPerformance: {},
@@ -880,7 +880,7 @@ class AnalyticsService {
         marketTrends: {},
         recommendations: [],
         insights: [],
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -888,12 +888,12 @@ class AnalyticsService {
   /**
    * Get conversion funnel analysis
    */
-  async getFunnelAnalysis(userId, timeframe = "30d") {
+  async getFunnelAnalysis(userId, timeframe = '30d') {
     const cacheKey = `${this.cachePrefix}funnel-analysis:${userId}:${timeframe}`;
 
     try {
       const cached = await cacheService.get(cacheKey);
-      if (cached) return cached;
+      if (cached) {return cached;}
 
       const dateRange = this.getDateRange(timeframe);
 
@@ -901,53 +901,53 @@ class AnalyticsService {
       const totalOrders = await Order.count({
         where: {
           userId,
-          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
-        },
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
+        }
       });
 
       const completedOrders = await Order.count({
         where: {
           userId,
-          orderStatus: "delivered",
-          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
-        },
+          orderStatus: 'delivered',
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
+        }
       });
 
       const cancelledOrders = await Order.count({
         where: {
           userId,
-          orderStatus: "cancelled",
-          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
-        },
+          orderStatus: 'cancelled',
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
+        }
       });
 
       // Simulate funnel stages
       const funnelStages = [
         {
-          stage: "Product Views",
+          stage: 'Product Views',
           visitors: Math.round(totalOrders * 10), // Simulate 10x more views than orders
-          conversionRate: 100,
+          conversionRate: 100
         },
         {
-          stage: "Add to Cart",
+          stage: 'Add to Cart',
           visitors: Math.round(totalOrders * 3), // Simulate 3x more cart additions
-          conversionRate: 30,
+          conversionRate: 30
         },
         {
-          stage: "Checkout Started",
+          stage: 'Checkout Started',
           visitors: Math.round(totalOrders * 1.5), // Simulate 1.5x more checkouts started
-          conversionRate: 15,
+          conversionRate: 15
         },
         {
-          stage: "Orders Placed",
+          stage: 'Orders Placed',
           visitors: totalOrders,
-          conversionRate: 10,
+          conversionRate: 10
         },
         {
-          stage: "Orders Completed",
+          stage: 'Orders Completed',
           visitors: completedOrders,
-          conversionRate: (completedOrders / totalOrders) * 10 || 0,
-        },
+          conversionRate: (completedOrders / totalOrders) * 10 || 0
+        }
       ];
 
       // Calculate drop-off rates
@@ -964,7 +964,7 @@ class AnalyticsService {
           from: previous.stage,
           to: current.stage,
           dropOffRate,
-          lostVisitors: previous.visitors - current.visitors,
+          lostVisitors: previous.visitors - current.visitors
         });
       }
 
@@ -983,10 +983,10 @@ class AnalyticsService {
             .filter((stage) => stage.dropOffRate > 50)
             .map((stage) => stage.from),
           recommendations: [
-            "Optimize checkout process to reduce abandonment",
-            "Improve product page conversion rates",
-            "Implement retargeting for cart abandoners",
-          ],
+            'Optimize checkout process to reduce abandonment',
+            'Improve product page conversion rates',
+            'Implement retargeting for cart abandoners'
+          ]
         },
         insights: [
           `${dropOffAnalysis[0]?.dropOffRate.toFixed(
@@ -995,21 +995,21 @@ class AnalyticsService {
           `${((cancelledOrders / totalOrders) * 100).toFixed(
             1
           )}% cancellation rate`,
-          "Focus on checkout optimization for better conversion",
-        ],
+          'Focus on checkout optimization for better conversion'
+        ]
       };
 
       await cacheService.set(cacheKey, result, this.defaultCacheTTL);
       return result;
     } catch (error) {
-      logger.error("Error getting funnel analysis:", error);
+      logger.error('Error getting funnel analysis:', error);
       return {
         funnelStages: [],
         dropOffAnalysis: [],
         overallConversionRate: 0,
         optimization: { criticalStages: [], recommendations: [] },
         insights: [],
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -1029,43 +1029,43 @@ class AnalyticsService {
         revenueLast24h,
         revenueLastHour,
         activeProducts,
-        lowStockProducts,
+        lowStockProducts
       ] = await Promise.all([
         Order.count({
           where: {
             userId,
-            createdAt: { [Op.gte]: last24h },
-          },
+            createdAt: { [Op.gte]: last24h }
+          }
         }),
         Order.count({
           where: {
             userId,
-            createdAt: { [Op.gte]: lastHour },
-          },
+            createdAt: { [Op.gte]: lastHour }
+          }
         }),
-        Order.sum("totalAmount", {
+        Order.sum('totalAmount', {
           where: {
             userId,
-            createdAt: { [Op.gte]: last24h },
-          },
+            createdAt: { [Op.gte]: last24h }
+          }
         }),
-        Order.sum("totalAmount", {
+        Order.sum('totalAmount', {
           where: {
             userId,
-            createdAt: { [Op.gte]: lastHour },
-          },
+            createdAt: { [Op.gte]: lastHour }
+          }
+        }),
+        Product.count({
+          where: {
+            userId
+          }
         }),
         Product.count({
           where: {
             userId,
-          },
-        }),
-        Product.count({
-          where: {
-            userId,
-            stockQuantity: { [Op.lt]: 10 },
-          },
-        }),
+            stockQuantity: { [Op.lt]: 10 }
+          }
+        })
       ]);
 
       // Get hourly breakdown for today
@@ -1082,22 +1082,22 @@ class AnalyticsService {
         const hourlyOrders = await Order.count({
           where: {
             userId,
-            createdAt: { [Op.between]: [hourStart, hourEnd] },
-          },
+            createdAt: { [Op.between]: [hourStart, hourEnd] }
+          }
         });
 
-        const hourlyRevenue = await Order.sum("totalAmount", {
+        const hourlyRevenue = await Order.sum('totalAmount', {
           where: {
             userId,
-            createdAt: { [Op.between]: [hourStart, hourEnd] },
-          },
+            createdAt: { [Op.between]: [hourStart, hourEnd] }
+          }
         });
 
         hourlyData.push({
           hour,
           orders: hourlyOrders || 0,
           revenue: hourlyRevenue || 0,
-          isCurrentHour: hour === now.getHours(),
+          isCurrentHour: hour === now.getHours()
         });
       }
 
@@ -1108,39 +1108,39 @@ class AnalyticsService {
           revenueLast24h: revenueLast24h || 0,
           revenueLastHour: revenueLastHour || 0,
           activeProducts: activeProducts || 0,
-          lowStockProducts: lowStockProducts || 0,
+          lowStockProducts: lowStockProducts || 0
         },
         hourlyData,
         alerts: [
           ...(lowStockProducts > 0
             ? [
-                {
-                  type: "inventory",
-                  message: `${lowStockProducts} products are low in stock`,
-                  severity: "warning",
-                },
-              ]
+              {
+                type: 'inventory',
+                message: `${lowStockProducts} products are low in stock`,
+                severity: 'warning'
+              }
+            ]
             : []),
           ...(ordersLastHour === 0
             ? [
-                {
-                  type: "sales",
-                  message: "No orders in the last hour",
-                  severity: "info",
-                },
-              ]
-            : []),
+              {
+                type: 'sales',
+                message: 'No orders in the last hour',
+                severity: 'info'
+              }
+            ]
+            : [])
         ],
-        lastUpdated: now.toISOString(),
+        lastUpdated: now.toISOString()
       };
     } catch (error) {
-      logger.error("Error getting real-time metrics:", error);
+      logger.error('Error getting real-time metrics:', error);
       return {
         current: {},
         hourlyData: [],
         alerts: [],
         lastUpdated: new Date().toISOString(),
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -1148,12 +1148,12 @@ class AnalyticsService {
   /**
    * Get marketing attribution analysis
    */
-  async getAttributionAnalysis(userId, timeframe = "30d") {
+  async getAttributionAnalysis(userId, timeframe = '30d') {
     const cacheKey = `${this.cachePrefix}attribution-analysis:${userId}:${timeframe}`;
 
     try {
       const cached = await cacheService.get(cacheKey);
-      if (cached) return cached;
+      if (cached) {return cached;}
 
       const dateRange = this.getDateRange(timeframe);
 
@@ -1161,33 +1161,33 @@ class AnalyticsService {
       const platformOrders = await Order.findAll({
         where: {
           userId,
-          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
         },
         attributes: [
-          "platform",
+          'platform',
           [
-            Order.sequelize.fn("COUNT", Order.sequelize.col("id")),
-            "orderCount",
+            Order.sequelize.fn('COUNT', Order.sequelize.col('id')),
+            'orderCount'
           ],
           [
-            Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")),
-            "totalRevenue",
+            Order.sequelize.fn('SUM', Order.sequelize.col('totalAmount')),
+            'totalRevenue'
           ],
           [
-            Order.sequelize.fn("AVG", Order.sequelize.col("totalAmount")),
-            "avgOrderValue",
-          ],
+            Order.sequelize.fn('AVG', Order.sequelize.col('totalAmount')),
+            'avgOrderValue'
+          ]
         ],
-        group: ["platform"],
+        group: ['platform']
       });
 
       const attributionData = platformOrders.map((item) => ({
-        channel: item.platform || "Direct",
+        channel: item.platform || 'Direct',
         orders: parseInt(item.dataValues.orderCount) || 0,
         revenue: parseFloat(item.dataValues.totalRevenue) || 0,
         avgOrderValue: parseFloat(item.dataValues.avgOrderValue) || 0,
         conversionRate: Math.random() * 5 + 1, // Simulated conversion rate
-        costPerAcquisition: Math.random() * 50 + 10, // Simulated CPA
+        costPerAcquisition: Math.random() * 50 + 10 // Simulated CPA
       }));
 
       // Calculate ROI and performance metrics
@@ -1207,7 +1207,7 @@ class AnalyticsService {
         orderShare: totalOrders > 0 ? (channel.orders / totalOrders) * 100 : 0,
         roi:
           (channel.revenue / (channel.costPerAcquisition * channel.orders)) *
-            100 || 0,
+            100 || 0
       }));
 
       const result = {
@@ -1220,30 +1220,30 @@ class AnalyticsService {
             (best, current) =>
               current.roi > (best?.roi || 0) ? current : best,
             null
-          ),
+          )
         },
         insights: [
           `${enrichedData[0]?.channel} generates highest revenue`,
-          "Diversify marketing channels for better attribution",
-          "Focus budget on highest ROI channels",
+          'Diversify marketing channels for better attribution',
+          'Focus budget on highest ROI channels'
         ],
         recommendations: [
-          "Implement proper tracking for all marketing channels",
-          "Test new acquisition channels",
-          "Optimize spend allocation based on ROI",
-        ],
+          'Implement proper tracking for all marketing channels',
+          'Test new acquisition channels',
+          'Optimize spend allocation based on ROI'
+        ]
       };
 
       await cacheService.set(cacheKey, result, this.defaultCacheTTL);
       return result;
     } catch (error) {
-      logger.error("Error getting attribution analysis:", error);
+      logger.error('Error getting attribution analysis:', error);
       return {
         channels: [],
         summary: {},
         insights: [],
         recommendations: [],
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -1257,25 +1257,25 @@ class AnalyticsService {
         averageVariation: 0,
         highVariationProducts: [],
         platformPriceDifferences: [],
-        recommendations: [],
+        recommendations: []
       };
     }
 
     const productPriceMap = new Map();
 
     pricingData.forEach((item) => {
-      const productId = item.get("productId");
+      const productId = item.get('productId');
       if (!productPriceMap.has(productId)) {
         productPriceMap.set(productId, {
           prices: [],
           platforms: new Set(),
-          name: item.product?.name || `Product ${productId}`,
+          name: item.product?.name || `Product ${productId}`
         });
       }
 
       const productData = productPriceMap.get(productId);
-      productData.prices.push(parseFloat(item.get("avgPrice") || 0));
-      productData.platforms.add(item.order?.platform || "Unknown");
+      productData.prices.push(parseFloat(item.get('avgPrice') || 0));
+      productData.platforms.add(item.order?.platform || 'Unknown');
     });
 
     const variations = [];
@@ -1298,7 +1298,7 @@ class AnalyticsService {
             minPrice,
             maxPrice,
             variation: variation.toFixed(2),
-            platforms: Array.from(data.platforms),
+            platforms: Array.from(data.platforms)
           });
         }
       }
@@ -1316,7 +1316,7 @@ class AnalyticsService {
       recommendations: generatePricingRecommendations(
         averageVariation,
         highVariationProducts
-      ),
+      )
     };
   }
 
@@ -1339,10 +1339,10 @@ class AnalyticsService {
         marketShare:
           totalRevenue > 0 ? (category.revenue / totalRevenue) * 100 : 0,
         growth: Math.random() * 20 - 10, // -10% to +10% mock growth
-        trend: Math.random() > 0.5 ? "up" : "down",
+        trend: Math.random() > 0.5 ? 'up' : 'down'
       }));
     } catch (error) {
-      logger.error("Error analyzing market trends:", error);
+      logger.error('Error analyzing market trends:', error);
       return [];
     }
   }
@@ -1355,12 +1355,12 @@ class AnalyticsService {
     const start = new Date();
 
     const timeframeMap = {
-      "7d": 7,
-      "30d": 30,
-      "90d": 90,
-      "180d": 180,
-      "365d": 365,
-      "1y": 365,
+      '7d': 7,
+      '30d': 30,
+      '90d': 90,
+      '180d': 180,
+      '365d': 365,
+      '1y': 365
     };
 
     const days = timeframeMap[timeframe] || 30;
@@ -1372,11 +1372,11 @@ class AnalyticsService {
   /**
    * Main dashboard analytics orchestrator
    */
-  async getDashboardAnalytics(userId, timeframe = "30d") {
+  async getDashboardAnalytics(userId, timeframe = '30d') {
     try {
       const cacheKey = `${this.cachePrefix}dashboard:${userId}:${timeframe}`;
       const cached = await cacheService.get(cacheKey);
-      if (cached) return cached;
+      if (cached) {return cached;}
 
       const dateRange = this.getDateRange(timeframe);
 
@@ -1390,7 +1390,7 @@ class AnalyticsService {
         performanceMetrics,
         predictiveInsights,
         marketIntelligence,
-        financialKPIs,
+        financialKPIs
       ] = await Promise.all([
         this.getOrderSummary(userId, dateRange),
         getRevenueAnalytics(userId, dateRange),
@@ -1400,7 +1400,7 @@ class AnalyticsService {
         this.getPerformanceMetrics(userId, dateRange),
         this.getPredictiveInsights(userId, dateRange),
         this.getMarketIntelligence(userId, dateRange),
-        this.getFinancialKPIs(userId, dateRange),
+        this.getFinancialKPIs(userId, dateRange)
       ]);
 
       const result = {
@@ -1418,14 +1418,14 @@ class AnalyticsService {
         metadata: {
           timeframe,
           generatedAt: new Date(),
-          userId,
-        },
+          userId
+        }
       };
 
       await cacheService.set(cacheKey, result, this.defaultCacheTTL);
       return result;
     } catch (error) {
-      logger.error("Dashboard analytics error:", error);
+      logger.error('Dashboard analytics error:', error);
       throw error;
     }
   }
@@ -1439,12 +1439,12 @@ class AnalyticsService {
         salesForecast,
         inventoryPredictions,
         cohortAnalysis,
-        competitiveAnalysis,
+        competitiveAnalysis
       ] = await Promise.all([
         this.getSalesForecast(userId, dateRange),
         this.getInventoryPredictions(userId, dateRange),
         this.getCohortAnalysis(userId),
-        this.getCompetitiveAnalysis(userId),
+        this.getCompetitiveAnalysis(userId)
       ]);
 
       return {
@@ -1455,21 +1455,21 @@ class AnalyticsService {
         insights: [
           ...(salesForecast?.insights || []),
           ...(inventoryPredictions?.insights || []),
-          ...(cohortAnalysis?.insights || []),
+          ...(cohortAnalysis?.insights || [])
         ],
         recommendations: [
           ...(salesForecast?.recommendations || []),
           ...(inventoryPredictions?.recommendations || []),
-          ...(competitiveAnalysis?.recommendations || []),
+          ...(competitiveAnalysis?.recommendations || [])
         ],
         confidence: calculateOverallConfidence(
           salesForecast,
           inventoryPredictions,
           cohortAnalysis
-        ),
+        )
       };
     } catch (error) {
-      logger.error("Predictive insights error:", error);
+      logger.error('Predictive insights error:', error);
       return {
         salesForecast: { nextMonth: [], confidence: 50 },
         inventoryPredictions: { predictions: [] },
@@ -1477,7 +1477,7 @@ class AnalyticsService {
         competitiveAnalysis: { insights: [] },
         insights: [],
         recommendations: [],
-        confidence: 50,
+        confidence: 50
       };
     }
   }
@@ -1490,8 +1490,8 @@ class AnalyticsService {
       const orders = await Order.findAll({
         where: {
           userId,
-          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
-        },
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
+        }
       });
 
       const totalOrders = orders.length;
@@ -1507,9 +1507,9 @@ class AnalyticsService {
         where: {
           userId,
           createdAt: {
-            [Op.between]: [previousPeriod.start, previousPeriod.end],
-          },
-        },
+            [Op.between]: [previousPeriod.start, previousPeriod.end]
+          }
+        }
       });
 
       const previousTotalOrders = previousOrders.length;
@@ -1530,10 +1530,10 @@ class AnalyticsService {
         previousRevenue: previousTotalRevenue,
         previousAvgOrderValue,
         conversionRate: calculateConversionRate(orders),
-        previousConversionRate: calculateConversionRate(previousOrders),
+        previousConversionRate: calculateConversionRate(previousOrders)
       };
     } catch (error) {
-      logger.error("Order summary error:", error);
+      logger.error('Order summary error:', error);
       return {
         totalOrders: 0,
         totalRevenue: 0,
@@ -1542,7 +1542,7 @@ class AnalyticsService {
         previousRevenue: 0,
         previousAvgOrderValue: 0,
         conversionRate: 0,
-        previousConversionRate: 0,
+        previousConversionRate: 0
       };
     }
   }
@@ -1556,78 +1556,78 @@ class AnalyticsService {
         include: [
           {
             model: Order,
-            as: "order",
+            as: 'order',
             where: {
               userId,
-              createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+              createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
             },
-            attributes: [],
+            attributes: []
           },
           {
             model: Product,
-            as: "product",
-            attributes: ["name", "category"],
-          },
+            as: 'product',
+            attributes: ['name', 'category']
+          }
         ],
         attributes: [
-          "productId",
+          'productId',
           [
-            OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
-            "totalSold",
+            OrderItem.sequelize.fn('SUM', OrderItem.sequelize.col('quantity')),
+            'totalSold'
           ],
           [
             OrderItem.sequelize.fn(
-              "COUNT",
+              'COUNT',
               OrderItem.sequelize.fn(
-                "DISTINCT",
-                OrderItem.sequelize.col("order.id")
+                'DISTINCT',
+                OrderItem.sequelize.col('order.id')
               )
             ),
-            "orderCount",
+            'orderCount'
           ],
           [
             OrderItem.sequelize.fn(
-              "SUM",
+              'SUM',
               OrderItem.sequelize.literal(
                 '"OrderItem"."price" * "OrderItem"."quantity"'
               )
             ),
-            "revenue",
+            'revenue'
           ],
           [
             OrderItem.sequelize.fn(
-              "AVG",
-              OrderItem.sequelize.col("OrderItem.price")
+              'AVG',
+              OrderItem.sequelize.col('OrderItem.price')
             ),
-            "avgPrice",
-          ],
+            'avgPrice'
+          ]
         ],
-        group: ["productId", "product.id"],
-        order: [[OrderItem.sequelize.literal("SUM(quantity)"), "DESC"]],
-        limit,
+        group: ['productId', 'product.id'],
+        order: [[OrderItem.sequelize.literal('SUM(quantity)'), 'DESC']],
+        limit
       });
 
       return topProducts.map((item) => {
-        const totalSold = parseInt(item.get("totalSold")) || 0;
-        const orderCount = parseInt(item.get("orderCount")) || 0;
-        const revenue = parseFloat(item.get("revenue")) || 0;
-        const avgPrice = parseFloat(item.get("avgPrice")) || 0;
+        const totalSold = parseInt(item.get('totalSold')) || 0;
+        const orderCount = parseInt(item.get('orderCount')) || 0;
+        const revenue = parseFloat(item.get('revenue')) || 0;
+        const avgPrice = parseFloat(item.get('avgPrice')) || 0;
 
         return {
-          productId: item.get("productId"),
-          name: item.product?.name || "Unknown Product",
-          category: item.product?.category || "Uncategorized",
-          sku: item.product?.sku || "",
+          productId: item.get('productId'),
+          name: item.product?.name || 'Unknown Product',
+          category: item.product?.category || 'Uncategorized',
+          sku: item.product?.sku || '',
           totalSold,
           orderCount, // Add order count
           unitsSold: totalSold, // Alias for compatibility
           revenue: isNaN(revenue) ? 0 : revenue,
           totalRevenue: isNaN(revenue) ? 0 : revenue, // Add totalRevenue field for frontend compatibility
-          avgPrice: isNaN(avgPrice) ? 0 : avgPrice,
+          avgPrice: isNaN(avgPrice) ? 0 : avgPrice
         };
       });
     } catch (error) {
-      logger.error("Top products error:", error);
+      logger.error('Top products error:', error);
       return [];
     }
   }
@@ -1640,32 +1640,32 @@ class AnalyticsService {
       const trends = await Order.findAll({
         where: {
           userId,
-          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
         },
         attributes: [
           [
-            Order.sequelize.fn("DATE", Order.sequelize.col("createdAt")),
-            "date",
+            Order.sequelize.fn('DATE', Order.sequelize.col('createdAt')),
+            'date'
           ],
-          [Order.sequelize.fn("COUNT", Order.sequelize.col("id")), "orders"],
+          [Order.sequelize.fn('COUNT', Order.sequelize.col('id')), 'orders'],
           [
-            Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")),
-            "revenue",
-          ],
+            Order.sequelize.fn('SUM', Order.sequelize.col('totalAmount')),
+            'revenue'
+          ]
         ],
-        group: [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt"))],
+        group: [Order.sequelize.fn('DATE', Order.sequelize.col('createdAt'))],
         order: [
-          [Order.sequelize.fn("DATE", Order.sequelize.col("createdAt")), "ASC"],
-        ],
+          [Order.sequelize.fn('DATE', Order.sequelize.col('createdAt')), 'ASC']
+        ]
       });
 
       return trends.map((trend) => ({
-        date: trend.get("date"),
-        orders: parseInt(trend.get("orders")),
-        revenue: parseFloat(trend.get("revenue")),
+        date: trend.get('date'),
+        orders: parseInt(trend.get('orders')),
+        revenue: parseFloat(trend.get('revenue'))
       }));
     } catch (error) {
-      logger.error("Order trends error:", error);
+      logger.error('Order trends error:', error);
       return [];
     }
   }
@@ -1678,8 +1678,8 @@ class AnalyticsService {
       const orders = await Order.findAll({
         where: {
           userId,
-          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
-        },
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
+        }
       });
 
       const totalRevenue = orders.reduce(
@@ -1699,17 +1699,17 @@ class AnalyticsService {
         satisfaction: satisfactionMetrics,
         customers: customerMetrics,
         avgResponseTime: Math.random() * 24 + 1, // Mock data
-        fulfillmentRate: 95 + Math.random() * 5, // Mock data
+        fulfillmentRate: 95 + Math.random() * 5 // Mock data
       };
     } catch (error) {
-      logger.error("Performance metrics error:", error);
+      logger.error('Performance metrics error:', error);
       return {
         totalRevenue: 0,
         returnRate: 0,
         satisfaction: { averageRating: 4.0, totalReviews: 0 },
         customers: { totalCustomers: 0, repeatCustomers: 0 },
         avgResponseTime: 12,
-        fulfillmentRate: 95,
+        fulfillmentRate: 95
       };
     }
   }
@@ -1721,9 +1721,9 @@ class AnalyticsService {
     try {
       // Check if timeframeOrDateRange is a string timeframe like "30d"
       let dateRange;
-      if (typeof timeframeOrDateRange === "string") {
+      if (typeof timeframeOrDateRange === 'string') {
         // Import getDateRange function if it's in a separate file
-        const { getDateRange } = require("./analytics-utils");
+        const { getDateRange } = require('./analytics-utils');
         dateRange = getDateRange(timeframeOrDateRange);
       } else {
         dateRange = timeframeOrDateRange;
@@ -1740,17 +1740,17 @@ class AnalyticsService {
 
       const cacheKey = `${this.cachePrefix}revenue:${userId}:${dateRange.start}:${dateRange.end}`;
       const cached = await cacheService.get(cacheKey);
-      if (cached) return cached;
+      if (cached) {return cached;}
 
       const result = await getRevenueAnalytics(userId, dateRange);
       await cacheService.set(cacheKey, result, this.defaultCacheTTL);
       return result;
     } catch (error) {
-      logger.error("Revenue analytics error:", error);
+      logger.error('Revenue analytics error:', error);
       return {
         totalRevenue: 0,
-        growth: { rate: 0, trend: "stable" },
-        breakdown: { daily: [], monthly: [], platforms: [] },
+        growth: { rate: 0, trend: 'stable' },
+        breakdown: { daily: [], monthly: [], platforms: [] }
       };
     }
   }
@@ -1761,7 +1761,7 @@ class AnalyticsService {
   async getProductAnalytics(userId, productId = null, dateRange, limit = 20) {
     try {
       // Handle parameter order - if productId is actually dateRange (when called with 2 params)
-      if (productId && typeof productId === "object" && productId.start) {
+      if (productId && typeof productId === 'object' && productId.start) {
         dateRange = productId;
         productId = null;
       }
@@ -1769,18 +1769,18 @@ class AnalyticsService {
       // If dateRange is still undefined, generate default date range
       if (
         !dateRange ||
-        typeof dateRange !== "object" ||
+        typeof dateRange !== 'object' ||
         !dateRange.start ||
         !dateRange.end
       ) {
-        dateRange = this.getDateRange("30d");
+        dateRange = this.getDateRange('30d');
       }
 
       const cacheKey = `${this.cachePrefix}products:${userId}:${
-        productId || "all"
+        productId || 'all'
       }:${dateRange.start}:${dateRange.end}:${limit}`;
       const cached = await cacheService.get(cacheKey);
-      if (cached) return cached;
+      if (cached) {return cached;}
 
       const result = await getProductAnalytics(
         userId,
@@ -1791,11 +1791,11 @@ class AnalyticsService {
       await cacheService.set(cacheKey, result, this.defaultCacheTTL);
       return result;
     } catch (error) {
-      logger.error("Product analytics error:", error);
+      logger.error('Product analytics error:', error);
       return {
         topProducts: [],
         categories: [],
-        performance: {},
+        performance: {}
       };
     }
   }
@@ -1807,17 +1807,17 @@ class AnalyticsService {
     try {
       const cacheKey = `${this.cachePrefix}customer_seg:${userId}:${dateRange.start}:${dateRange.end}`;
       const cached = await cacheService.get(cacheKey);
-      if (cached) return cached;
+      if (cached) {return cached;}
 
       const result = await getCustomerSegmentation(userId, dateRange);
       await cacheService.set(cacheKey, result, this.defaultCacheTTL);
       return result;
     } catch (error) {
-      logger.error("Customer segmentation error:", error);
+      logger.error('Customer segmentation error:', error);
       return {
         segments: [],
         totalCustomers: 0,
-        breakdown: {},
+        breakdown: {}
       };
     }
   }
@@ -1839,20 +1839,20 @@ class AnalyticsService {
         marketIntelligence,
         financialKPIs,
         platformComparison,
-        topProducts,
+        topProducts
       ] = await Promise.all([
         this.getPredictiveInsights(userId, dateRange),
         this.getMarketIntelligence(userId, dateRange),
         this.getFinancialKPIs(userId, dateRange),
         this.getPlatformComparison(userId, dateRange),
-        this.getTopProducts(userId, dateRange, 5),
+        this.getTopProducts(userId, dateRange, 5)
       ]);
 
       return {
         insights: {
           predictiveInsights,
           marketIntelligence,
-          financialKPIs,
+          financialKPIs
         },
         predictions: predictiveInsights,
         marketIntelligence,
@@ -1860,14 +1860,14 @@ class AnalyticsService {
         recommendations: [
           ...(predictiveInsights?.recommendations || []),
           ...(marketIntelligence?.recommendations || []),
-          ...(financialKPIs?.recommendations || []),
+          ...(financialKPIs?.recommendations || [])
         ],
         platforms: platformComparison,
         topProducts,
-        generatedAt: new Date(),
+        generatedAt: new Date()
       };
     } catch (error) {
-      logger.error("Business intelligence error:", error);
+      logger.error('Business intelligence error:', error);
       return {
         insights: {},
         predictions: {},
@@ -1876,7 +1876,7 @@ class AnalyticsService {
         recommendations: [],
         platforms: [],
         topProducts: [],
-        generatedAt: new Date(),
+        generatedAt: new Date()
       };
     }
   }
@@ -1904,29 +1904,29 @@ class AnalyticsService {
       let data;
 
       switch (type) {
-        case "dashboard":
-          data = await this.getDashboardAnalytics(userId, timeframe);
-          break;
-        case "revenue":
-          data = await this.getRevenueAnalytics(userId, dateRange);
-          break;
-        case "products":
-          data = await this.getProductAnalytics(userId, null, dateRange);
-          break;
-        case "platforms":
-          data = await this.getPlatformComparison(userId, dateRange);
-          break;
-        default:
-          data = await this.getDashboardAnalytics(userId, timeframe);
+      case 'dashboard':
+        data = await this.getDashboardAnalytics(userId, timeframe);
+        break;
+      case 'revenue':
+        data = await this.getRevenueAnalytics(userId, dateRange);
+        break;
+      case 'products':
+        data = await this.getProductAnalytics(userId, null, dateRange);
+        break;
+      case 'platforms':
+        data = await this.getPlatformComparison(userId, dateRange);
+        break;
+      default:
+        data = await this.getDashboardAnalytics(userId, timeframe);
       }
 
-      if (format === "csv") {
+      if (format === 'csv') {
         return this.convertToCSV(data, type);
       }
 
       return data;
     } catch (error) {
-      logger.error("Export analytics error:", error);
+      logger.error('Export analytics error:', error);
       throw error;
     }
   }
@@ -1936,51 +1936,51 @@ class AnalyticsService {
    */
   convertToCSV(data, type) {
     try {
-      let csv = "";
+      let csv = '';
 
       switch (type) {
-        case "revenue":
-          if (data.trends && data.trends.length > 0) {
-            csv = "Date,Revenue,Orders\n";
-            data.trends.forEach((trend) => {
-              csv += `${trend.date},${trend.revenue},${trend.orders}\n`;
-            });
-          }
-          break;
-        case "products":
-          if (data.topProducts && data.topProducts.length > 0) {
-            csv = "Product Name,Category,Units Sold,Revenue,Avg Price\n";
-            data.topProducts.forEach((product) => {
-              csv += `${product.name},${product.category},${
-                product.unitsSold || product.totalSold
-              },${product.revenue},${product.avgPrice}\n`;
-            });
-          }
-          break;
-        case "platforms":
-          if (Array.isArray(data) && data.length > 0) {
-            csv = "Platform,Orders,Revenue,Avg Order Value,Completion Rate\n";
-            data.forEach((platform) => {
-              csv += `${platform.name || platform.platform},${
-                platform.orders || platform.totalOrders
-              },${platform.revenue || platform.totalRevenue},${
-                platform.avgOrderValue
-              },${platform.completionRate || platform.conversionRate}\n`;
-            });
-          }
-          break;
-        default:
-          csv =
-            "Type,Value\nTotal Orders," +
+      case 'revenue':
+        if (data.trends && data.trends.length > 0) {
+          csv = 'Date,Revenue,Orders\n';
+          data.trends.forEach((trend) => {
+            csv += `${trend.date},${trend.revenue},${trend.orders}\n`;
+          });
+        }
+        break;
+      case 'products':
+        if (data.topProducts && data.topProducts.length > 0) {
+          csv = 'Product Name,Category,Units Sold,Revenue,Avg Price\n';
+          data.topProducts.forEach((product) => {
+            csv += `${product.name},${product.category},${
+              product.unitsSold || product.totalSold
+            },${product.revenue},${product.avgPrice}\n`;
+          });
+        }
+        break;
+      case 'platforms':
+        if (Array.isArray(data) && data.length > 0) {
+          csv = 'Platform,Orders,Revenue,Avg Order Value,Completion Rate\n';
+          data.forEach((platform) => {
+            csv += `${platform.name || platform.platform},${
+              platform.orders || platform.totalOrders
+            },${platform.revenue || platform.totalRevenue},${
+              platform.avgOrderValue
+            },${platform.completionRate || platform.conversionRate}\n`;
+          });
+        }
+        break;
+      default:
+        csv =
+            'Type,Value\nTotal Orders,' +
             (data.orderSummary?.totalOrders || 0) +
-            "\nTotal Revenue," +
+            '\nTotal Revenue,' +
             (data.revenue?.total || 0);
       }
 
-      return csv || "No data available";
+      return csv || 'No data available';
     } catch (error) {
-      logger.error("CSV conversion error:", error);
-      return "Error generating CSV";
+      logger.error('CSV conversion error:', error);
+      return 'Error generating CSV';
     }
   }
 
@@ -1993,11 +1993,11 @@ class AnalyticsService {
         where: {
           userId,
           orderDate: {
-            [Op.between]: [dateRange.start, dateRange.end],
-          },
+            [Op.between]: [dateRange.start, dateRange.end]
+          }
         },
-        attributes: ["orderDate", "totalAmount"],
-        order: [["orderDate", "ASC"]],
+        attributes: ['orderDate', 'totalAmount'],
+        order: [['orderDate', 'ASC']]
       });
 
       // Group by month to identify seasonal patterns
@@ -2014,27 +2014,27 @@ class AnalyticsService {
       // Calculate seasonal trends
       const trends = Object.entries(monthlyData).map(([month, data]) => ({
         month: parseInt(month),
-        monthName: new Date(2024, month, 1).toLocaleString("default", {
-          month: "long",
+        monthName: new Date(2024, month, 1).toLocaleString('default', {
+          month: 'long'
         }),
         orders: data.orders,
         revenue: data.revenue,
-        avgOrderValue: data.orders > 0 ? data.revenue / data.orders : 0,
+        avgOrderValue: data.orders > 0 ? data.revenue / data.orders : 0
       }));
 
       return {
         trends,
         seasonalInsights: this.analyzeSeasonalPatterns(trends),
         peakMonths: trends.sort((a, b) => b.revenue - a.revenue).slice(0, 3),
-        lowMonths: trends.sort((a, b) => a.revenue - b.revenue).slice(0, 3),
+        lowMonths: trends.sort((a, b) => a.revenue - b.revenue).slice(0, 3)
       };
     } catch (error) {
-      logger.error("Error getting seasonal trends:", error);
+      logger.error('Error getting seasonal trends:', error);
       return {
         trends: [],
         seasonalInsights: [],
         peakMonths: [],
-        lowMonths: [],
+        lowMonths: []
       };
     }
   }
@@ -2046,15 +2046,15 @@ class AnalyticsService {
         where: {
           userId,
           orderDate: {
-            [Op.between]: [dateRange.start, dateRange.end],
-          },
+            [Op.between]: [dateRange.start, dateRange.end]
+          }
         },
         include: [
           {
             model: OrderItem,
-            include: [Product],
-          },
-        ],
+            include: [Product]
+          }
+        ]
       });
 
       const productDemand = {};
@@ -2066,7 +2066,7 @@ class AnalyticsService {
               product: item.Product,
               totalSold: 0,
               totalRevenue: 0,
-              orderCount: 0,
+              orderCount: 0
             };
           }
           productDemand[productId].totalSold += parseInt(item.quantity || 0);
@@ -2080,16 +2080,16 @@ class AnalyticsService {
       // Calculate forecast based on current trends
       const forecasts = Object.values(productDemand).map((product) => ({
         productId: product.product?.id,
-        productName: product.product?.name || "Unknown Product",
+        productName: product.product?.name || 'Unknown Product',
         currentDemand: product.totalSold,
         forecastedDemand: Math.round(product.totalSold * 1.2), // 20% growth assumption
         confidence: 0.75,
-        trend: "increasing",
+        trend: 'increasing'
       }));
 
       return forecasts;
     } catch (error) {
-      logger.error("Error calculating demand forecast:", error);
+      logger.error('Error calculating demand forecast:', error);
       return [];
     }
   }
@@ -2106,12 +2106,12 @@ class AnalyticsService {
       if (topProducts.length > 0) {
         const topProduct = topProducts[0];
         insights.push({
-          type: "performance",
-          title: "Top Performing Product",
+          type: 'performance',
+          title: 'Top Performing Product',
           message: `${topProduct.name} is your best performer with ${topProduct.totalSold} units sold`,
-          priority: "high",
+          priority: 'high',
           actionable: true,
-          recommendation: "Consider increasing inventory for this product",
+          recommendation: 'Consider increasing inventory for this product'
         });
       }
 
@@ -2119,13 +2119,13 @@ class AnalyticsService {
       if (topProducts.length > 3) {
         const lowPerformers = topProducts.slice(-3);
         insights.push({
-          type: "optimization",
-          title: "Underperforming Products",
+          type: 'optimization',
+          title: 'Underperforming Products',
           message: `${lowPerformers.length} products have low sales volume`,
-          priority: "medium",
+          priority: 'medium',
           actionable: true,
           recommendation:
-            "Review pricing or marketing strategy for these products",
+            'Review pricing or marketing strategy for these products'
         });
       }
 
@@ -2136,18 +2136,18 @@ class AnalyticsService {
           recentTrend.reduce((sum, day) => sum + (day.revenue || 0), 0) /
           recentTrend.length;
         insights.push({
-          type: "trend",
-          title: "Revenue Trend",
+          type: 'trend',
+          title: 'Revenue Trend',
           message: `Average daily revenue is $${avgRevenue.toFixed(2)}`,
-          priority: "info",
+          priority: 'info',
           actionable: false,
-          recommendation: null,
+          recommendation: null
         });
       }
 
       return insights;
     } catch (error) {
-      logger.error("Error generating product insights:", error);
+      logger.error('Error generating product insights:', error);
       return [];
     }
   }
@@ -2167,15 +2167,15 @@ class AnalyticsService {
         where: {
           userId,
           orderDate: {
-            [Op.gte]: startOfDay,
-          },
+            [Op.gte]: startOfDay
+          }
         },
         include: [
           {
             model: OrderItem,
-            include: [Product],
-          },
-        ],
+            include: [Product]
+          }
+        ]
       });
 
       // Group by hour (simulate hourly breakdown)
@@ -2183,7 +2183,7 @@ class AnalyticsService {
         hour,
         orders: 0,
         revenue: 0,
-        products: {},
+        products: {}
       }));
 
       orders.forEach((order) => {
@@ -2192,7 +2192,7 @@ class AnalyticsService {
         hourlyData[hour].revenue += parseFloat(order.totalAmount || 0);
 
         order.OrderItems?.forEach((item) => {
-          const productName = item.Product?.name || "Unknown Product";
+          const productName = item.Product?.name || 'Unknown Product';
           if (!hourlyData[hour].products[productName]) {
             hourlyData[hour].products[productName] = 0;
           }
@@ -2213,26 +2213,26 @@ class AnalyticsService {
           (max, current, index) =>
             current.orders > hourlyData[max].orders ? index : max,
           0
-        ),
+        )
       };
     } catch (error) {
-      logger.error("Error getting hourly product breakdown:", error);
+      logger.error('Error getting hourly product breakdown:', error);
       return {
         hourlyBreakdown: [],
         totalTodayOrders: 0,
         totalTodayRevenue: 0,
-        peakHour: 0,
+        peakHour: 0
       };
     }
   }
 
   // Missing method: getAccurateAnalytics (just use existing getDashboardAnalytics)
-  async getAccurateAnalytics(userId, timeframe = "30d") {
+  async getAccurateAnalytics(userId, timeframe = '30d') {
     try {
       // Return the same data as dashboard analytics for accuracy
       return await this.getDashboardAnalytics(userId, timeframe);
     } catch (error) {
-      logger.error("Error getting accurate analytics:", error);
+      logger.error('Error getting accurate analytics:', error);
       throw error;
     }
   }
@@ -2262,14 +2262,14 @@ class AnalyticsService {
 
         if (Math.abs(changePercent) > 50) {
           anomalies.push({
-            type: "revenue",
-            severity: changePercent > 0 ? "positive" : "negative",
+            type: 'revenue',
+            severity: changePercent > 0 ? 'positive' : 'negative',
             message: `Revenue ${
-              changePercent > 0 ? "spike" : "drop"
+              changePercent > 0 ? 'spike' : 'drop'
             } of ${Math.abs(changePercent).toFixed(1)}% detected`,
             confidence: 0.8,
-            timeframe: "last_7_days",
-            value: changePercent,
+            timeframe: 'last_7_days',
+            value: changePercent
           });
         }
       }
@@ -2285,12 +2285,12 @@ class AnalyticsService {
 
         if (outliers.length > 0) {
           anomalies.push({
-            type: "product_performance",
-            severity: "positive",
+            type: 'product_performance',
+            severity: 'positive',
             message: `${outliers.length} product(s) performing exceptionally well`,
             confidence: 0.9,
             timeframe: dateRange,
-            products: outliers.map((p) => p.name),
+            products: outliers.map((p) => p.name)
           });
         }
       }
@@ -2299,29 +2299,29 @@ class AnalyticsService {
         anomalies,
         summary: {
           total: anomalies.length,
-          positive: anomalies.filter((a) => a.severity === "positive").length,
-          negative: anomalies.filter((a) => a.severity === "negative").length,
+          positive: anomalies.filter((a) => a.severity === 'positive').length,
+          negative: anomalies.filter((a) => a.severity === 'negative').length,
           confidence:
             anomalies.length > 0
               ? anomalies.reduce((sum, a) => sum + a.confidence, 0) /
                 anomalies.length
-              : 0,
+              : 0
         },
-        lastChecked: new Date().toISOString(),
+        lastChecked: new Date().toISOString()
       };
     } catch (error) {
-      logger.error("Error detecting anomalies:", error);
+      logger.error('Error detecting anomalies:', error);
       return {
         anomalies: [],
         summary: { total: 0, positive: 0, negative: 0, confidence: 0 },
-        lastChecked: new Date().toISOString(),
+        lastChecked: new Date().toISOString()
       };
     }
   }
 
   // Helper method for seasonal analysis
   analyzeSeasonalPatterns(trends) {
-    if (trends.length < 3) return [];
+    if (trends.length < 3) {return [];}
 
     const insights = [];
     const sortedByRevenue = trends.sort((a, b) => b.revenue - a.revenue);
@@ -2331,9 +2331,9 @@ class AnalyticsService {
       sortedByRevenue[sortedByRevenue.length - 1].revenue * 2
     ) {
       insights.push({
-        type: "seasonal_peak",
+        type: 'seasonal_peak',
         message: `${sortedByRevenue[0].monthName} shows significant seasonal strength`,
-        impact: "high",
+        impact: 'high'
       });
     }
 
@@ -2348,11 +2348,11 @@ class AnalyticsService {
 
       if (!product) {
         return {
-          status: "unknown",
+          status: 'unknown',
           quantity: 0,
           lowStockThreshold: 10,
           isLowStock: false,
-          daysOfStock: 0,
+          daysOfStock: 0
         };
       }
 
@@ -2362,23 +2362,23 @@ class AnalyticsService {
 
       return {
         productId,
-        productName: product.name || "Unknown Product",
-        status: simulatedStock > lowStockThreshold ? "in_stock" : "low_stock",
+        productName: product.name || 'Unknown Product',
+        status: simulatedStock > lowStockThreshold ? 'in_stock' : 'low_stock',
         quantity: simulatedStock,
         lowStockThreshold,
         isLowStock: simulatedStock <= lowStockThreshold,
         daysOfStock: Math.floor(simulatedStock / 2), // Assume 2 units sold per day
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
       };
     } catch (error) {
-      logger.error("Error getting stock status:", error);
+      logger.error('Error getting stock status:', error);
       return {
-        status: "error",
+        status: 'error',
         quantity: 0,
         lowStockThreshold: 10,
         isLowStock: false,
         daysOfStock: 0,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -2396,15 +2396,15 @@ class AnalyticsService {
         unitsPerDay: velocity,
         totalSold,
         periodDays: daysDiff,
-        velocity: velocity > 1 ? "high" : velocity > 0.5 ? "medium" : "low",
+        velocity: velocity > 1 ? 'high' : velocity > 0.5 ? 'medium' : 'low'
       };
     } catch (error) {
-      logger.error("Error calculating sales velocity:", error);
+      logger.error('Error calculating sales velocity:', error);
       return {
         unitsPerDay: 0,
         totalSold: 0,
         periodDays: 0,
-        velocity: "unknown",
+        velocity: 'unknown'
       };
     }
   }

@@ -1,9 +1,9 @@
-const { ProductVariant, PlatformData } = require("../models");
-const logger = require("../utils/logger");
-const crypto = require("crypto");
+const { ProductVariant, PlatformData } = require('../models');
+const logger = require('../utils/logger');
+const crypto = require('crypto');
 
 // Import the variant detection service for SKU pattern parsing
-const VariantDetectionService = require("./variant-detection-service");
+const VariantDetectionService = require('./variant-detection-service');
 
 class VariantDetector {
   /**
@@ -37,8 +37,8 @@ class VariantDetector {
         variantValue: null,
         variantGroupId: null,
         confidence: 0,
-        source: "auto",
-        reasoning: [],
+        source: 'auto',
+        reasoning: []
       };
 
       // Check if product looks like a variant based on SKU pattern
@@ -114,16 +114,16 @@ class VariantDetector {
       // If neither variant nor main product, set appropriate confidence
       if (!classification.isVariant && !classification.isMainProduct) {
         classification.confidence = 0.1; // Low confidence for no variant status
-        classification.reasoning.push("No variant indicators found");
+        classification.reasoning.push('No variant indicators found');
       }
 
       return {
         success: true,
         classification,
-        timestamp: new Date(),
+        timestamp: new Date()
       };
     } catch (error) {
-      logger.error("Error in product variant classification:", error);
+      logger.error('Error in product variant classification:', error);
       throw error;
     }
   }
@@ -132,14 +132,14 @@ class VariantDetector {
    * Analyze SKU for variant patterns
    */
   static analyzeSKUForVariantPattern(sku) {
-    if (!sku) return { isVariant: false, confidence: 0 };
+    if (!sku) {return { isVariant: false, confidence: 0 };}
 
     const result = {
       isVariant: false,
       variantType: null,
       variantValue: null,
       confidence: 0,
-      reasoning: "",
+      reasoning: ''
     };
 
     // Parse SKU using enhanced service
@@ -153,23 +153,23 @@ class VariantDetector {
         // Determine variant type based on variant code
         const variantCode = parsed.variant.toUpperCase();
         if (
-          ["SYH", "BEYAZ", "KIRMIZI", "BLACK", "WHITE", "RED", "BLUE"].some(
+          ['SYH', 'BEYAZ', 'KIRMIZI', 'BLACK', 'WHITE', 'RED', 'BLUE'].some(
             (color) => variantCode.includes(color)
           )
         ) {
-          result.variantType = "color";
+          result.variantType = 'color';
           result.variantValue = parsed.variant;
-        } else if (["S", "M", "L", "XL", "XXL"].includes(variantCode)) {
-          result.variantType = "size";
+        } else if (['S', 'M', 'L', 'XL', 'XXL'].includes(variantCode)) {
+          result.variantType = 'size';
           result.variantValue = parsed.variant;
-        } else if (["TR", "UK", "US", "ING"].includes(variantCode)) {
-          result.variantType = "feature";
+        } else if (['TR', 'UK', 'US', 'ING'].includes(variantCode)) {
+          result.variantType = 'feature';
           result.variantValue = parsed.variant;
-        } else if (["V1", "V2", "V3"].some((v) => variantCode.includes(v))) {
-          result.variantType = "model";
+        } else if (['V1', 'V2', 'V3'].some((v) => variantCode.includes(v))) {
+          result.variantType = 'model';
           result.variantValue = parsed.variant;
         } else {
-          result.variantType = "unknown";
+          result.variantType = 'unknown';
           result.variantValue = parsed.variant;
         }
       }
@@ -181,7 +181,7 @@ class VariantDetector {
         result.isVariant = true;
         result.confidence = 0.6;
         result.reasoning = `Simple SKU pattern match: ${match[1]}`;
-        result.variantType = "unknown";
+        result.variantType = 'unknown';
         result.variantValue = match[1];
       }
     }
@@ -198,7 +198,7 @@ class VariantDetector {
       variantType: null,
       variantValue: null,
       confidence: 0,
-      reasoning: "",
+      reasoning: ''
     };
 
     for (const platformData of platformDataArray) {
@@ -220,17 +220,17 @@ class VariantDetector {
       }
 
       // Check for variant attributes
-      if (data.color && data.color !== "default") {
+      if (data.color && data.color !== 'default') {
         result.isVariant = true;
-        result.variantType = "color";
+        result.variantType = 'color';
         result.variantValue = data.color;
         result.confidence = Math.max(result.confidence, 0.7);
         result.reasoning = `Platform data has color variant: ${data.color}`;
       }
 
-      if (data.size && data.size !== "default") {
+      if (data.size && data.size !== 'default') {
         result.isVariant = true;
-        result.variantType = "size";
+        result.variantType = 'size';
         result.variantValue = data.size;
         result.confidence = Math.max(result.confidence, 0.7);
         result.reasoning = `Platform data has size variant: ${data.size}`;
@@ -249,26 +249,26 @@ class VariantDetector {
       variantType: null,
       variantValue: null,
       confidence: 0,
-      reasoning: "",
+      reasoning: ''
     };
 
-    const text = `${name || ""} ${description || ""}`.toLowerCase();
+    const text = `${name || ''} ${description || ''}`.toLowerCase();
 
     // Color patterns
     const colorPatterns = [
-      { pattern: /\b(siyah|black)\b/i, value: "Black", type: "color" },
-      { pattern: /\b(beyaz|white)\b/i, value: "White", type: "color" },
-      { pattern: /\b(kırmızı|red)\b/i, value: "Red", type: "color" },
-      { pattern: /\b(mavi|blue)\b/i, value: "Blue", type: "color" },
-      { pattern: /\b(yeşil|green)\b/i, value: "Green", type: "color" },
+      { pattern: /\b(siyah|black)\b/i, value: 'Black', type: 'color' },
+      { pattern: /\b(beyaz|white)\b/i, value: 'White', type: 'color' },
+      { pattern: /\b(kırmızı|red)\b/i, value: 'Red', type: 'color' },
+      { pattern: /\b(mavi|blue)\b/i, value: 'Blue', type: 'color' },
+      { pattern: /\b(yeşil|green)\b/i, value: 'Green', type: 'color' }
     ];
 
     // Size patterns
     const sizePatterns = [
-      { pattern: /\b(small|küçük|s)\b/i, value: "Small", type: "size" },
-      { pattern: /\b(medium|orta|m)\b/i, value: "Medium", type: "size" },
-      { pattern: /\b(large|büyük|l)\b/i, value: "Large", type: "size" },
-      { pattern: /\b(extra large|xl)\b/i, value: "Extra Large", type: "size" },
+      { pattern: /\b(small|küçük|s)\b/i, value: 'Small', type: 'size' },
+      { pattern: /\b(medium|orta|m)\b/i, value: 'Medium', type: 'size' },
+      { pattern: /\b(large|büyük|l)\b/i, value: 'Large', type: 'size' },
+      { pattern: /\b(extra large|xl)\b/i, value: 'Extra Large', type: 'size' }
     ];
 
     // Check patterns
@@ -292,40 +292,40 @@ class VariantDetector {
    */
   static async checkForPotentialVariants(product) {
     try {
-      const { Product } = require("../models");
-      const { Op } = require("sequelize");
+      const { Product } = require('../models');
+      const { Op } = require('sequelize');
 
       const result = {
         hasVariants: false,
         confidence: 0,
-        reasoning: "",
-        similarProducts: [],
+        reasoning: '',
+        similarProducts: []
       };
 
       // Look for similar products based on name/SKU patterns
       const baseName = product.name
         .replace(
           /\s+(siyah|beyaz|kırmızı|mavi|small|medium|large|s|m|l|xl).*$/i,
-          ""
+          ''
         )
         .trim();
-      const baseSKU = product.sku ? product.sku.split("-")[0] : null;
+      const baseSKU = product.sku ? product.sku.split('-')[0] : null;
 
       const whereConditions = [];
 
       if (baseName.length > 3) {
         whereConditions.push({
           name: {
-            [Op.iLike]: `%${baseName}%`,
-          },
+            [Op.iLike]: `%${baseName}%`
+          }
         });
       }
 
       if (baseSKU) {
         whereConditions.push({
           sku: {
-            [Op.iLike]: `${baseSKU}%`,
-          },
+            [Op.iLike]: `${baseSKU}%`
+          }
         });
       }
 
@@ -337,17 +337,17 @@ class VariantDetector {
         where: {
           [Op.and]: [
             {
-              id: { [Op.ne]: product.id },
+              id: { [Op.ne]: product.id }
             },
             {
-              userId: product.userId,
+              userId: product.userId
             },
             {
-              [Op.or]: whereConditions,
-            },
-          ],
+              [Op.or]: whereConditions
+            }
+          ]
         },
-        limit: 10,
+        limit: 10
       });
 
       if (similarProducts.length > 0) {
@@ -357,18 +357,18 @@ class VariantDetector {
         result.similarProducts = similarProducts.map((p) => ({
           id: p.id,
           name: p.name,
-          sku: p.sku,
+          sku: p.sku
         }));
       }
 
       return result;
     } catch (error) {
-      logger.error("Error checking for potential variants:", error);
+      logger.error('Error checking for potential variants:', error);
       return {
         hasVariants: false,
         confidence: 0,
-        reasoning: "Error checking variants",
-        similarProducts: [],
+        reasoning: 'Error checking variants',
+        similarProducts: []
       };
     }
   }
@@ -388,12 +388,12 @@ class VariantDetector {
    */
   static generateVariantGroupId(product) {
     // Use base SKU or name to generate consistent group ID
-    const baseSKU = product.sku ? product.sku.split("-")[0] : null;
+    const baseSKU = product.sku ? product.sku.split('-')[0] : null;
     const baseName = product.name
       ? product.name.replace(
-          /\s+(siyah|beyaz|kırmızı|mavi|small|medium|large|s|m|l|xl).*$/i,
-          ""
-        )
+        /\s+(siyah|beyaz|kırmızı|mavi|small|medium|large|s|m|l|xl).*$/i,
+        ''
+      )
       : null;
 
     const base = baseSKU || baseName || product.id;
@@ -401,19 +401,19 @@ class VariantDetector {
     // Generate a deterministic UUID based on the base identifier
     // This ensures the same base products always get the same variant group ID
     const baseString = `variant-group-${base
-      .replace(/[^a-zA-Z0-9]/g, "_")
+      .replace(/[^a-zA-Z0-9]/g, '_')
       .toLowerCase()}`;
-    const hash = crypto.createHash("sha256").update(baseString).digest("hex");
+    const hash = crypto.createHash('sha256').update(baseString).digest('hex');
 
     // Create a UUID v4 format from the hash
     const uuid = [
       hash.substr(0, 8),
       hash.substr(8, 4),
-      "4" + hash.substr(13, 3), // Version 4
+      '4' + hash.substr(13, 3), // Version 4
       ((parseInt(hash.substr(16, 1), 16) & 0x3) | 0x8).toString(16) +
         hash.substr(17, 3), // Variant bits
-      hash.substr(20, 12),
-    ].join("-");
+      hash.substr(20, 12)
+    ].join('-');
 
     return uuid;
   }
@@ -423,7 +423,7 @@ class VariantDetector {
    */
   static async updateProductVariantStatus(productId, classification) {
     try {
-      const { Product } = require("../models");
+      const { Product } = require('../models');
 
       // Validate variantGroupId is a proper UUID format if provided
       let variantGroupId = classification.variantGroupId;
@@ -432,7 +432,7 @@ class VariantDetector {
           `Invalid UUID format for variantGroupId: ${variantGroupId}, setting to null`,
           {
             productId,
-            originalVariantGroupId: variantGroupId,
+            originalVariantGroupId: variantGroupId
           }
         );
         variantGroupId = null;
@@ -446,11 +446,11 @@ class VariantDetector {
         variantGroupId: variantGroupId,
         variantDetectionConfidence: classification.confidence,
         variantDetectionSource: classification.source,
-        lastVariantDetectionAt: new Date(),
+        lastVariantDetectionAt: new Date()
       };
 
       await Product.update(updateData, {
-        where: { id: productId },
+        where: { id: productId }
       });
 
       logger.info(
@@ -472,7 +472,7 @@ class VariantDetector {
    */
   static async removeVariantStatus(productId) {
     try {
-      const { Product } = require("../models");
+      const { Product } = require('../models');
 
       const updateData = {
         isVariant: false,
@@ -482,16 +482,16 @@ class VariantDetector {
         variantGroupId: null,
         parentProductId: null,
         variantDetectionConfidence: null,
-        variantDetectionSource: "manual",
-        lastVariantDetectionAt: new Date(),
+        variantDetectionSource: 'manual',
+        lastVariantDetectionAt: new Date()
       };
 
       await Product.update(updateData, {
-        where: { id: productId },
+        where: { id: productId }
       });
 
       logger.info(`Removed variant status from product ${productId}`);
-      return { success: true, message: "Variant status removed successfully" };
+      return { success: true, message: 'Variant status removed successfully' };
     } catch (error) {
       logger.error(
         `Error removing variant status from product ${productId}:`,
@@ -509,7 +509,7 @@ class VariantDetector {
       processed: 0,
       updated: 0,
       errors: 0,
-      classifications: [],
+      classifications: []
     };
 
     for (const product of products) {
@@ -533,7 +533,7 @@ class VariantDetector {
         results.classifications.push({
           productId: product.id,
           productName: product.name,
-          classification: classification.classification,
+          classification: classification.classification
         });
 
         results.processed++;

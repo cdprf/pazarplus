@@ -1,8 +1,8 @@
-const express = require("express");
-const https = require("https");
-const http = require("http");
-const { URL } = require("url");
-const crypto = require("crypto");
+const express = require('express');
+const https = require('https');
+const http = require('http');
+const { URL } = require('url');
+const crypto = require('crypto');
 
 const router = express.Router();
 
@@ -14,12 +14,12 @@ const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
  * Image proxy middleware to handle external images with SSL issues
  * Usage: /api/image-proxy?url=https://example.com/image.jpg
  */
-router.get("/image-proxy", async (req, res) => {
+router.get('/image-proxy', async (req, res) => {
   try {
     const { url } = req.query;
 
     if (!url) {
-      return res.status(400).json({ error: "URL parameter is required" });
+      return res.status(400).json({ error: 'URL parameter is required' });
     }
 
     // Validate URL
@@ -27,20 +27,20 @@ router.get("/image-proxy", async (req, res) => {
     try {
       imageUrl = new URL(url);
     } catch (error) {
-      return res.status(400).json({ error: "Invalid URL provided" });
+      return res.status(400).json({ error: 'Invalid URL provided' });
     }
 
     // Create cache key
-    const cacheKey = crypto.createHash("md5").update(url).digest("hex");
+    const cacheKey = crypto.createHash('md5').update(url).digest('hex');
 
     // Check cache first
     if (imageCache.has(cacheKey)) {
       const cached = imageCache.get(cacheKey);
       if (Date.now() - cached.timestamp < CACHE_TTL) {
         res.set({
-          "Content-Type": cached.contentType,
-          "Cache-Control": "public, max-age=86400", // 24 hours
-          "X-Cache": "HIT",
+          'Content-Type': cached.contentType,
+          'Cache-Control': 'public, max-age=86400', // 24 hours
+          'X-Cache': 'HIT'
         });
         return res.send(cached.data);
       } else {
@@ -49,26 +49,26 @@ router.get("/image-proxy", async (req, res) => {
     }
 
     // Set up request options
-    const isHttps = imageUrl.protocol === "https:";
+    const isHttps = imageUrl.protocol === 'https:';
     const requestModule = isHttps ? https : http;
 
     const options = {
       hostname: imageUrl.hostname,
       port: imageUrl.port || (isHttps ? 443 : 80),
       path: imageUrl.pathname + imageUrl.search,
-      method: "GET",
+      method: 'GET',
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; ImageProxy/1.0)",
-        Accept: "image/*,*/*;q=0.8",
-        "Accept-Encoding": "gzip, deflate",
+        'User-Agent': 'Mozilla/5.0 (compatible; ImageProxy/1.0)',
+        Accept: 'image/*,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate'
       },
-      timeout: 10000,
+      timeout: 10000
     };
 
     // For HTTPS, ignore certificate errors
     if (isHttps) {
       options.rejectUnauthorized = false;
-      options.secureProtocol = "TLSv1_2_method";
+      options.secureProtocol = 'TLSv1_2_method';
     }
 
     const request = requestModule.request(options, (response) => {
@@ -86,35 +86,35 @@ router.get("/image-proxy", async (req, res) => {
       // Check if response is successful
       if (statusCode !== 200) {
         return res.status(statusCode).json({
-          error: `Failed to fetch image: HTTP ${statusCode}`,
+          error: `Failed to fetch image: HTTP ${statusCode}`
         });
       }
 
       // Validate content type
-      const contentType = headers["content-type"] || "";
-      if (!contentType.startsWith("image/")) {
+      const contentType = headers['content-type'] || '';
+      if (!contentType.startsWith('image/')) {
         return res.status(400).json({
-          error: "URL does not point to an image",
+          error: 'URL does not point to an image'
         });
       }
 
       // Set response headers
       res.set({
-        "Content-Type": contentType,
-        "Cache-Control": "public, max-age=86400", // 24 hours
-        "X-Cache": "MISS",
-        "X-Original-URL": url,
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=86400', // 24 hours
+        'X-Cache': 'MISS',
+        'X-Original-URL': url
       });
 
       // Handle content encoding
       let responseStream = response;
-      const encoding = headers["content-encoding"];
+      const encoding = headers['content-encoding'];
 
-      if (encoding === "gzip") {
-        const zlib = require("zlib");
+      if (encoding === 'gzip') {
+        const zlib = require('zlib');
         responseStream = response.pipe(zlib.createGunzip());
-      } else if (encoding === "deflate") {
-        const zlib = require("zlib");
+      } else if (encoding === 'deflate') {
+        const zlib = require('zlib');
         responseStream = response.pipe(zlib.createInflate());
       }
 
@@ -122,25 +122,25 @@ router.get("/image-proxy", async (req, res) => {
       const chunks = [];
       let responseEnded = false;
 
-      responseStream.on("data", (chunk) => {
+      responseStream.on('data', (chunk) => {
         if (!responseEnded) {
           chunks.push(chunk);
           try {
             res.write(chunk);
           } catch (writeError) {
-            console.error("Error writing chunk:", writeError);
+            console.error('Error writing chunk:', writeError);
             responseEnded = true;
           }
         }
       });
 
-      responseStream.on("end", () => {
+      responseStream.on('end', () => {
         if (!responseEnded) {
           responseEnded = true;
           try {
             res.end();
           } catch (endError) {
-            console.error("Error ending response:", endError);
+            console.error('Error ending response:', endError);
           }
         }
 
@@ -151,60 +151,60 @@ router.get("/image-proxy", async (req, res) => {
           imageCache.set(cacheKey, {
             data: imageData,
             contentType,
-            timestamp: Date.now(),
+            timestamp: Date.now()
           });
         }
       });
 
-      responseStream.on("error", (error) => {
-        console.error("Error reading image stream:", error);
+      responseStream.on('error', (error) => {
+        console.error('Error reading image stream:', error);
         if (!res.headersSent && !responseEnded) {
           responseEnded = true;
           try {
-            res.status(500).json({ error: "Error processing image" });
+            res.status(500).json({ error: 'Error processing image' });
           } catch (errorResponseError) {
-            console.error("Error sending error response:", errorResponseError);
+            console.error('Error sending error response:', errorResponseError);
           }
         }
       });
     });
 
-    request.on("error", (error) => {
-      console.error("Error fetching image:", error);
+    request.on('error', (error) => {
+      console.error('Error fetching image:', error);
       if (!res.headersSent) {
         try {
           res.status(500).json({
-            error: "Failed to fetch image",
-            details: error.message,
+            error: 'Failed to fetch image',
+            details: error.message
           });
         } catch (errorResponseError) {
-          console.error("Error sending error response:", errorResponseError);
+          console.error('Error sending error response:', errorResponseError);
         }
       }
     });
 
-    request.on("timeout", () => {
+    request.on('timeout', () => {
       request.destroy();
       if (!res.headersSent) {
         try {
-          res.status(408).json({ error: "Image request timeout" });
+          res.status(408).json({ error: 'Image request timeout' });
         } catch (errorResponseError) {
-          console.error("Error sending timeout response:", errorResponseError);
+          console.error('Error sending timeout response:', errorResponseError);
         }
       }
     });
 
     request.end();
   } catch (error) {
-    console.error("Image proxy error:", error);
+    console.error('Image proxy error:', error);
     if (!res.headersSent) {
       try {
         res.status(500).json({
-          error: "Internal server error",
-          details: error.message,
+          error: 'Internal server error',
+          details: error.message
         });
       } catch (errorResponseError) {
-        console.error("Error sending error response:", errorResponseError);
+        console.error('Error sending error response:', errorResponseError);
       }
     }
   }
@@ -213,22 +213,22 @@ router.get("/image-proxy", async (req, res) => {
 /**
  * Health check endpoint
  */
-router.get("/image-proxy/health", (req, res) => {
+router.get('/image-proxy/health', (req, res) => {
   res.json({
-    status: "OK",
+    status: 'OK',
     cache: {
       size: imageCache.size,
-      maxAge: CACHE_TTL,
-    },
+      maxAge: CACHE_TTL
+    }
   });
 });
 
 /**
  * Clear cache endpoint (for debugging)
  */
-router.post("/image-proxy/clear-cache", (req, res) => {
+router.post('/image-proxy/clear-cache', (req, res) => {
   imageCache.clear();
-  res.json({ message: "Cache cleared successfully" });
+  res.json({ message: 'Cache cleared successfully' });
 });
 
 module.exports = router;

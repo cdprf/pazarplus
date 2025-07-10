@@ -1,5 +1,5 @@
-const { DataTypes, Model } = require("sequelize");
-const sequelize = require("../config/database");
+const { DataTypes, Model } = require('sequelize');
+const sequelize = require('../config/database');
 
 class Settings extends Model {}
 
@@ -8,70 +8,70 @@ Settings.init(
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
-      defaultValue: DataTypes.UUIDV4,
+      defaultValue: DataTypes.UUIDV4
     },
     userId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: "users",
-        key: "id",
-      },
+        model: 'users',
+        key: 'id'
+      }
     },
     category: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "company",
+      defaultValue: 'company'
     },
     name: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     address: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     phone: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     email: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     website: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     taxNumber: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     settings: {
       type: DataTypes.JSON,
       allowNull: true,
-      defaultValue: {},
+      defaultValue: {}
     },
     createdAt: {
       type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
+      defaultValue: DataTypes.NOW
     },
     updatedAt: {
       type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
+      defaultValue: DataTypes.NOW
+    }
   },
   {
     sequelize,
-    modelName: "Settings",
-    tableName: "settings",
+    modelName: 'Settings',
+    tableName: 'settings',
     timestamps: true,
     indexes: [
       {
         unique: true,
-        fields: ["userId", "category"],
-      },
-    ],
+        fields: ['userId', 'category']
+      }
+    ]
   }
 );
 

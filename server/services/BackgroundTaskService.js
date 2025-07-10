@@ -1,6 +1,6 @@
-const { Op } = require("sequelize");
-const { BackgroundTask, User, PlatformConnection } = require("../models");
-const logger = require("../utils/logger");
+const { Op } = require('sequelize');
+const { BackgroundTask, User, PlatformConnection } = require('../models');
+const logger = require('../utils/logger');
 
 class BackgroundTaskService {
   /**
@@ -13,19 +13,19 @@ class BackgroundTaskService {
       const {
         userId,
         taskType,
-        priority = "normal",
+        priority = 'normal',
         config = {},
         scheduledFor = null,
         platformConnectionId = null,
         maxRetries = 3,
         parentTaskId = null,
         dependsOnTaskIds = [],
-        metadata = {},
+        metadata = {}
       } = taskData;
 
       // Validate required fields
       if (!userId || !taskType) {
-        throw new Error("UserId and taskType are required");
+        throw new Error('UserId and taskType are required');
       }
 
       logger.info(`Creating background task`, {
@@ -34,19 +34,19 @@ class BackgroundTaskService {
         priority,
         platformConnectionId,
         config,
-        metadata,
+        metadata
       });
 
       // Validate dependencies exist
       if (dependsOnTaskIds.length > 0) {
         const existingTasks = await BackgroundTask.count({
-          where: { id: { [Op.in]: dependsOnTaskIds } },
+          where: { id: { [Op.in]: dependsOnTaskIds } }
         });
         if (existingTasks !== dependsOnTaskIds.length) {
-          throw new Error("One or more dependency tasks do not exist");
+          throw new Error('One or more dependency tasks do not exist');
         }
         logger.info(`Task has ${dependsOnTaskIds.length} dependencies`, {
-          dependsOnTaskIds,
+          dependsOnTaskIds
         });
       }
 
@@ -65,9 +65,9 @@ class BackgroundTaskService {
           current: 0,
           total: 0,
           percentage: 0,
-          phase: "created",
-          message: "Task created successfully",
-        },
+          phase: 'created',
+          message: 'Task created successfully'
+        }
       });
 
       logger.info(`Background task created successfully`, {
@@ -77,23 +77,23 @@ class BackgroundTaskService {
         priority,
         status: task.status,
         scheduledFor: task.scheduledFor,
-        timeoutAt: task.timeoutAt,
+        timeoutAt: task.timeoutAt
       });
 
       // Log platform connection details if available
       if (platformConnectionId) {
         logger.info(`Task associated with platform connection`, {
           taskId: task.id,
-          platformConnectionId,
+          platformConnectionId
         });
       }
 
       return task;
     } catch (error) {
-      logger.error("Error creating background task:", {
+      logger.error('Error creating background task:', {
         error: error.message,
         stack: error.stack,
-        taskData,
+        taskData
       });
       throw error;
     }
@@ -109,19 +109,19 @@ class BackgroundTaskService {
     const {
       includeUser = true,
       includePlatform = true,
-      includeChildren = false,
+      includeChildren = false
     } = options;
 
     const include = [];
     if (includeUser) {
-      include.push({ model: User, as: "user" });
+      include.push({ model: User, as: 'user' });
     }
     if (includePlatform) {
-      include.push({ model: PlatformConnection, as: "platformConnection" });
+      include.push({ model: PlatformConnection, as: 'platformConnection' });
     }
     if (includeChildren) {
-      include.push({ model: BackgroundTask, as: "childTasks" });
-      include.push({ model: BackgroundTask, as: "parentTask" });
+      include.push({ model: BackgroundTask, as: 'childTasks' });
+      include.push({ model: BackgroundTask, as: 'parentTask' });
     }
 
     return BackgroundTask.findByPk(taskId, { include });
@@ -142,49 +142,49 @@ class BackgroundTaskService {
       priority = null,
       platformConnectionId = null,
       search = null,
-      sortBy = "createdAt",
-      sortOrder = "desc",
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
       dateFrom = null,
-      dateTo = null,
+      dateTo = null
     } = params;
 
     // Build where clause
     const where = {};
 
-    if (userId) where.userId = userId;
-    if (status && status !== "all") where.status = status;
-    if (taskType && taskType !== "all") where.taskType = taskType;
-    if (priority && priority !== "all") where.priority = priority;
-    if (platformConnectionId) where.platformConnectionId = platformConnectionId;
+    if (userId) {where.userId = userId;}
+    if (status && status !== 'all') {where.status = status;}
+    if (taskType && taskType !== 'all') {where.taskType = taskType;}
+    if (priority && priority !== 'all') {where.priority = priority;}
+    if (platformConnectionId) {where.platformConnectionId = platformConnectionId;}
 
     if (dateFrom || dateTo) {
       where.createdAt = {};
-      if (dateFrom) where.createdAt[Op.gte] = new Date(dateFrom);
-      if (dateTo) where.createdAt[Op.lte] = new Date(dateTo);
+      if (dateFrom) {where.createdAt[Op.gte] = new Date(dateFrom);}
+      if (dateTo) {where.createdAt[Op.lte] = new Date(dateTo);}
     }
 
     if (search) {
       where[Op.or] = [
         { id: { [Op.iLike]: `%${search}%` } },
-        { "$user.firstName$": { [Op.iLike]: `%${search}%` } },
-        { "$user.lastName$": { [Op.iLike]: `%${search}%` } },
-        { "$user.email$": { [Op.iLike]: `%${search}%` } },
+        { '$user.firstName$': { [Op.iLike]: `%${search}%` } },
+        { '$user.lastName$': { [Op.iLike]: `%${search}%` } },
+        { '$user.email$': { [Op.iLike]: `%${search}%` } }
       ];
     }
 
     // Build order clause
     const order = [];
     const validSortFields = [
-      "createdAt",
-      "updatedAt",
-      "priority",
-      "status",
-      "taskType",
+      'createdAt',
+      'updatedAt',
+      'priority',
+      'status',
+      'taskType'
     ];
     if (validSortFields.includes(sortBy)) {
       order.push([sortBy, sortOrder.toUpperCase()]);
     } else {
-      order.push(["createdAt", "DESC"]);
+      order.push(['createdAt', 'DESC']);
     }
 
     const offset = (page - 1) * limit;
@@ -192,13 +192,13 @@ class BackgroundTaskService {
     const { count, rows } = await BackgroundTask.findAndCountAll({
       where,
       include: [
-        { model: User, as: "user" },
-        { model: PlatformConnection, as: "platformConnection" },
+        { model: User, as: 'user' },
+        { model: PlatformConnection, as: 'platformConnection' }
       ],
       order,
       limit: parseInt(limit),
       offset,
-      distinct: true,
+      distinct: true
     });
 
     return {
@@ -208,8 +208,8 @@ class BackgroundTaskService {
         totalPages: Math.ceil(count / limit),
         totalRecords: count,
         hasNextPage: page < Math.ceil(count / limit),
-        hasPrevPage: page > 1,
-      },
+        hasPrevPage: page > 1
+      }
     };
   }
 
@@ -219,32 +219,32 @@ class BackgroundTaskService {
    * @returns {Promise<BackgroundTask[]>}
    */
   static async getQueuedTasks(options = {}) {
-    logger.debug("Getting queued tasks", { options });
+    logger.debug('Getting queued tasks', { options });
 
     try {
       const tasks = await BackgroundTask.getQueuedTasks(options);
 
-      logger.info("Retrieved queued tasks", {
+      logger.info('Retrieved queued tasks', {
         count: tasks.length,
         taskIds: tasks.map((t) => t.id),
         taskTypes: tasks.map((t) => t.taskType),
-        priorities: tasks.map((t) => t.priority),
+        priorities: tasks.map((t) => t.priority)
       });
 
       return tasks;
     } catch (error) {
       // Handle specific database errors gracefully
       if (
-        error.name === "SequelizeDatabaseError" &&
-        error.original?.code === "42P01"
+        error.name === 'SequelizeDatabaseError' &&
+        error.original?.code === '42P01'
       ) {
         logger.warn(
-          "Background tasks table not yet created, returning empty task list"
+          'Background tasks table not yet created, returning empty task list'
         );
         return [];
       }
 
-      logger.error("Error getting queued tasks:", error);
+      logger.error('Error getting queued tasks:', error);
       return [];
     }
   }
@@ -262,12 +262,12 @@ class BackgroundTaskService {
     taskId,
     current,
     total,
-    message = "",
-    phase = ""
+    message = '',
+    phase = ''
   ) {
     const task = await BackgroundTask.findByPk(taskId);
     if (!task) {
-      throw new Error("Task not found");
+      throw new Error('Task not found');
     }
 
     await task.updateProgress(current, total, message, phase);
@@ -277,7 +277,7 @@ class BackgroundTaskService {
       current,
       total,
       percentage: total > 0 ? Math.floor((current / total) * 100) : 0,
-      phase,
+      phase
     });
 
     return task;
@@ -295,17 +295,17 @@ class BackgroundTaskService {
     try {
       // Validate inputs to prevent errors
       if (!taskId) {
-        logger.warn("Cannot add log: Missing taskId");
+        logger.warn('Cannot add log: Missing taskId');
         return null;
       }
 
       if (!message) {
-        message = "Log entry (no message provided)";
+        message = 'Log entry (no message provided)';
       }
 
       // Standardize log level
-      const validLevels = ["info", "warn", "error", "debug"];
-      const normalizedLevel = validLevels.includes(level) ? level : "info";
+      const validLevels = ['info', 'warn', 'error', 'debug'];
+      const normalizedLevel = validLevels.includes(level) ? level : 'info';
 
       // Attempt to find the task with retry logic
       let task = null;
@@ -324,7 +324,7 @@ class BackgroundTaskService {
             `Error finding task for logging (attempt ${attempts}): ${findError.message}`,
             {
               taskId,
-              error: findError.message,
+              error: findError.message
             }
           );
           if (attempts < maxAttempts) {
@@ -339,7 +339,7 @@ class BackgroundTaskService {
           {
             taskId,
             level: normalizedLevel,
-            message: message.substring(0, 50),
+            message: message.substring(0, 50)
           }
         );
         return null;
@@ -352,7 +352,7 @@ class BackgroundTaskService {
       logger.error(`Error in BackgroundTaskService.addLog`, {
         taskId,
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
       return null;
     }
@@ -368,21 +368,21 @@ class BackgroundTaskService {
 
     const task = await BackgroundTask.findByPk(taskId, {
       include: [
-        { model: User, as: "user" },
-        { model: PlatformConnection, as: "platformConnection" },
-      ],
+        { model: User, as: 'user' },
+        { model: PlatformConnection, as: 'platformConnection' }
+      ]
     });
 
     if (!task) {
       logger.error(`Task not found for start operation`, { taskId });
-      throw new Error("Task not found");
+      throw new Error('Task not found');
     }
 
-    if (task.status !== "pending") {
+    if (task.status !== 'pending') {
       logger.warn(`Task cannot be started - invalid status`, {
         taskId,
         currentStatus: task.status,
-        taskType: task.taskType,
+        taskType: task.taskType
       });
       throw new Error(`Task cannot be started. Current status: ${task.status}`);
     }
@@ -392,7 +392,7 @@ class BackgroundTaskService {
       logger.info(`Task starting with platform connection`, {
         taskId,
         platformType: task.platformConnection.platformType,
-        platformConnectionId: task.platformConnectionId,
+        platformConnectionId: task.platformConnectionId
       });
     }
 
@@ -404,7 +404,7 @@ class BackgroundTaskService {
       userId: task.userId,
       startedAt: task.startedAt,
       timeoutAt: task.timeoutAt,
-      priority: task.priority,
+      priority: task.priority
     });
 
     return task;
@@ -419,13 +419,13 @@ class BackgroundTaskService {
   static async completeTask(taskId, result = null) {
     logger.info(`Completing background task`, {
       taskId,
-      result: result ? Object.keys(result) : null,
+      result: result ? Object.keys(result) : null
     });
 
     const task = await BackgroundTask.findByPk(taskId);
     if (!task) {
       logger.error(`Task not found for completion`, { taskId });
-      throw new Error("Task not found");
+      throw new Error('Task not found');
     }
 
     const startTime = task.startedAt ? new Date(task.startedAt) : null;
@@ -443,14 +443,14 @@ class BackgroundTaskService {
       completedAt: task.completedAt,
       result: result
         ? {
-            keys: Object.keys(result),
-            summary:
-              typeof result === "object"
+          keys: Object.keys(result),
+          summary:
+              typeof result === 'object'
                 ? JSON.stringify(result).substring(0, 200)
-                : result,
-          }
+                : result
+        }
         : null,
-      progress: task.progress,
+      progress: task.progress
     });
 
     return task;
@@ -465,14 +465,14 @@ class BackgroundTaskService {
   static async failTask(taskId, error) {
     logger.error(`Failing background task`, {
       taskId,
-      error: typeof error === "string" ? error : error.message,
-      stack: error.stack,
+      error: typeof error === 'string' ? error : error.message,
+      stack: error.stack
     });
 
     const task = await BackgroundTask.findByPk(taskId);
     if (!task) {
       logger.error(`Task not found for failure`, { taskId });
-      throw new Error("Task not found");
+      throw new Error('Task not found');
     }
 
     await task.markAsFailed(error);
@@ -483,18 +483,18 @@ class BackgroundTaskService {
       taskId,
       taskType: task.taskType,
       userId: task.userId,
-      error: typeof error === "string" ? error : error.message,
+      error: typeof error === 'string' ? error : error.message,
       retryCount: task.retryCount,
       maxRetries: task.maxRetries,
       canRetry,
       duration: task.actualDuration,
-      progress: task.progress,
+      progress: task.progress
     });
 
     if (canRetry) {
       logger.info(`Task can be retried`, {
         taskId,
-        remainingRetries: task.maxRetries - task.retryCount,
+        remainingRetries: task.maxRetries - task.retryCount
       });
     }
 
@@ -507,13 +507,13 @@ class BackgroundTaskService {
    * @param {string} reason - Cancellation reason
    * @returns {Promise<BackgroundTask>}
    */
-  static async cancelTask(taskId, reason = "") {
+  static async cancelTask(taskId, reason = '') {
     const task = await BackgroundTask.findByPk(taskId);
     if (!task) {
-      throw new Error("Task not found");
+      throw new Error('Task not found');
     }
 
-    if (["completed", "failed", "cancelled"].includes(task.status)) {
+    if (['completed', 'failed', 'cancelled'].includes(task.status)) {
       throw new Error(
         `Task cannot be cancelled. Current status: ${task.status}`
       );
@@ -524,7 +524,7 @@ class BackgroundTaskService {
     logger.info(`Background task cancelled: ${taskId}`, {
       taskId,
       taskType: task.taskType,
-      reason,
+      reason
     });
 
     return task;
@@ -538,11 +538,11 @@ class BackgroundTaskService {
   static async retryTask(taskId) {
     const task = await BackgroundTask.findByPk(taskId);
     if (!task) {
-      throw new Error("Task not found");
+      throw new Error('Task not found');
     }
 
     if (!task.canRetry()) {
-      throw new Error("Task cannot be retried");
+      throw new Error('Task cannot be retried');
     }
 
     await task.retry();
@@ -551,7 +551,7 @@ class BackgroundTaskService {
       taskId,
       taskType: task.taskType,
       retryCount: task.retryCount,
-      maxRetries: task.maxRetries,
+      maxRetries: task.maxRetries
     });
 
     return task;
@@ -565,14 +565,14 @@ class BackgroundTaskService {
   static async pauseTask(taskId) {
     const task = await BackgroundTask.findByPk(taskId);
     if (!task) {
-      throw new Error("Task not found");
+      throw new Error('Task not found');
     }
 
     await task.pause();
 
     logger.info(`Background task paused: ${taskId}`, {
       taskId,
-      taskType: task.taskType,
+      taskType: task.taskType
     });
 
     return task;
@@ -586,14 +586,14 @@ class BackgroundTaskService {
   static async resumeTask(taskId) {
     const task = await BackgroundTask.findByPk(taskId);
     if (!task) {
-      throw new Error("Task not found");
+      throw new Error('Task not found');
     }
 
     await task.resume();
 
     logger.info(`Background task resumed: ${taskId}`, {
       taskId,
-      taskType: task.taskType,
+      taskType: task.taskType
     });
 
     return task;
@@ -605,7 +605,7 @@ class BackgroundTaskService {
    * @param {string} timeframe - Time frame (1h, 24h, 7d, 30d)
    * @returns {Promise<Object>}
    */
-  static async getTaskStats(userId = null, timeframe = "24h") {
+  static async getTaskStats(userId = null, timeframe = '24h') {
     const stats = await BackgroundTask.getTaskStats(userId, timeframe);
 
     // Process stats into a more useful format
@@ -614,7 +614,7 @@ class BackgroundTaskService {
       byStatus: {},
       byType: {},
       avgDuration: 0,
-      totalDuration: 0,
+      totalDuration: 0
     };
 
     stats.forEach((stat) => {
@@ -646,27 +646,27 @@ class BackgroundTaskService {
     const results = {
       success: [],
       failed: [],
-      total: taskIds.length,
+      total: taskIds.length
     };
 
     for (const taskId of taskIds) {
       try {
         let result;
         switch (operation) {
-          case "cancel":
-            result = await this.cancelTask(taskId, options.reason);
-            break;
-          case "retry":
-            result = await this.retryTask(taskId);
-            break;
-          case "delete":
-            result = await BackgroundTask.destroy({
-              where: { id: taskId },
-              force: true,
-            });
-            break;
-          default:
-            throw new Error(`Unknown operation: ${operation}`);
+        case 'cancel':
+          result = await this.cancelTask(taskId, options.reason);
+          break;
+        case 'retry':
+          result = await this.retryTask(taskId);
+          break;
+        case 'delete':
+          result = await BackgroundTask.destroy({
+            where: { id: taskId },
+            force: true
+          });
+          break;
+        default:
+          throw new Error(`Unknown operation: ${operation}`);
         }
         results.success.push({ taskId, result });
       } catch (error) {
@@ -678,7 +678,7 @@ class BackgroundTaskService {
       operation,
       total: results.total,
       success: results.success.length,
-      failed: results.failed.length,
+      failed: results.failed.length
     });
 
     return results;
@@ -694,7 +694,7 @@ class BackgroundTaskService {
 
     logger.info(`Cleaned up old background tasks`, {
       deletedCount,
-      daysOld,
+      daysOld
     });
 
     return deletedCount;
@@ -705,14 +705,14 @@ class BackgroundTaskService {
    * @returns {Promise<BackgroundTask[]>}
    */
   static async handleTimeouts() {
-    const timeoutTasks = await BackgroundTask.scope("overdue").findAll();
+    const timeoutTasks = await BackgroundTask.scope('overdue').findAll();
 
     const results = [];
     for (const task of timeoutTasks) {
       try {
-        task.status = "timeout";
+        task.status = 'timeout';
         await task.save();
-        await task.addLog("error", "Task timed out");
+        await task.addLog('error', 'Task timed out');
         results.push(task);
       } catch (error) {
         logger.error(`Error handling timeout for task ${task.id}:`, error);

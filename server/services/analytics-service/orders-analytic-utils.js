@@ -1,10 +1,10 @@
-const { Op } = require("sequelize");
-const { Order, OrderItem, Product } = require("../../models");
-const cacheService = require("../cache-service");
-const logger = require("../../utils/logger");
+const { Op } = require('sequelize');
+const { Order, OrderItem, Product } = require('../../models');
+const cacheService = require('../cache-service');
+const logger = require('../../utils/logger');
 
 // Analytics configuration
-const cachePrefix = "analytics:";
+const cachePrefix = 'analytics:';
 const defaultCacheTTL = 3600; // 1 hour
 
 /**
@@ -14,17 +14,17 @@ async function getOrderSummary(userId, dateRange) {
   const whereClause = {
     userId,
     createdAt: {
-      [Op.between]: [dateRange.start, dateRange.end],
-    },
+      [Op.between]: [dateRange.start, dateRange.end]
+    }
   };
 
   // Valid statuses for revenue calculation (exclude returned/cancelled)
   const validRevenueStatuses = [
-    "new",
-    "processing",
-    "shipped",
-    "delivered",
-    "completed",
+    'new',
+    'processing',
+    'shipped',
+    'delivered',
+    'completed'
   ];
 
   const [
@@ -35,7 +35,7 @@ async function getOrderSummary(userId, dateRange) {
     totalRevenue,
     avgOrderValue,
     ordersByStatus,
-    totalCustomers,
+    totalCustomers
   ] = await Promise.all([
     // Total orders (all statuses)
     Order.count({ where: whereClause }),
@@ -44,24 +44,24 @@ async function getOrderSummary(userId, dateRange) {
     Order.count({
       where: {
         ...whereClause,
-        orderStatus: { [Op.in]: validRevenueStatuses },
-      },
+        orderStatus: { [Op.in]: validRevenueStatuses }
+      }
     }),
 
     // Cancelled orders
     Order.count({
       where: {
         ...whereClause,
-        orderStatus: "cancelled",
-      },
+        orderStatus: 'cancelled'
+      }
     }),
 
     // Returned orders
     Order.count({
       where: {
         ...whereClause,
-        orderStatus: "returned",
-      },
+        orderStatus: 'returned'
+      }
     }),
 
     // Revenue only from valid orders using OrderItems (excludes returns/cancellations)
@@ -73,14 +73,14 @@ async function getOrderSummary(userId, dateRange) {
         include: [
           {
             model: Order,
-            as: "order",
+            as: 'order',
             where: {
               ...whereClause,
-              orderStatus: { [Op.in]: validRevenueStatuses },
+              orderStatus: { [Op.in]: validRevenueStatuses }
             },
-            attributes: [],
-          },
-        ],
+            attributes: []
+          }
+        ]
       }
     ).catch(() => 0),
 
@@ -89,25 +89,25 @@ async function getOrderSummary(userId, dateRange) {
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           where: {
             ...whereClause,
-            orderStatus: { [Op.in]: validRevenueStatuses },
+            orderStatus: { [Op.in]: validRevenueStatuses }
           },
-          attributes: [],
-        },
+          attributes: []
+        }
       ],
       attributes: [
         [
           Order.sequelize.fn(
-            "AVG",
+            'AVG',
             Order.sequelize.literal(
               'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
             )
           ),
-          "avg",
-        ],
-      ],
+          'avg'
+        ]
+      ]
     }),
 
     // Orders breakdown by status using OrderItem-based revenue
@@ -115,45 +115,45 @@ async function getOrderSummary(userId, dateRange) {
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           where: whereClause,
-          attributes: ["orderStatus"],
-        },
+          attributes: ['orderStatus']
+        }
       ],
       attributes: [
-        [OrderItem.sequelize.col("order.orderStatus"), "orderStatus"],
+        [OrderItem.sequelize.col('order.orderStatus'), 'orderStatus'],
         [
           OrderItem.sequelize.fn(
-            "COUNT",
+            'COUNT',
             OrderItem.sequelize.fn(
-              "DISTINCT",
-              OrderItem.sequelize.col("order.id")
+              'DISTINCT',
+              OrderItem.sequelize.col('order.id')
             )
           ),
-          "count",
+          'count'
         ],
         [
           OrderItem.sequelize.fn(
-            "SUM",
+            'SUM',
             OrderItem.sequelize.literal(
               'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
             )
           ),
-          "totalAmount",
-        ],
+          'totalAmount'
+        ]
       ],
-      group: [OrderItem.sequelize.col("order.orderStatus")],
+      group: [OrderItem.sequelize.col('order.orderStatus')]
     }),
 
     // Customer count from valid orders only
     Order.count({
       where: {
         ...whereClause,
-        orderStatus: { [Op.in]: validRevenueStatuses },
+        orderStatus: { [Op.in]: validRevenueStatuses }
       },
       distinct: true,
-      col: "customerEmail",
-    }).catch(() => 0),
+      col: 'customerEmail'
+    }).catch(() => 0)
   ]);
 
   return {
@@ -162,17 +162,17 @@ async function getOrderSummary(userId, dateRange) {
     cancelledOrders,
     returnedOrders,
     totalRevenue: totalRevenue || 0,
-    avgOrderValue: parseFloat(avgOrderValue?.get("avg") || 0),
+    avgOrderValue: parseFloat(avgOrderValue?.get('avg') || 0),
     totalCustomers: totalCustomers || 0,
     ordersByStatus: ordersByStatus.map((item) => ({
-      status: item.get("orderStatus"),
-      count: parseInt(item.get("count")),
-      totalAmount: parseFloat(item.get("totalAmount") || 0),
+      status: item.get('orderStatus'),
+      count: parseInt(item.get('count')),
+      totalAmount: parseFloat(item.get('totalAmount') || 0)
     })),
     // Calculate return and cancellation rates
     returnRate: totalOrders > 0 ? (returnedOrders / totalOrders) * 100 : 0,
     cancellationRate:
-      totalOrders > 0 ? (cancelledOrders / totalOrders) * 100 : 0,
+      totalOrders > 0 ? (cancelledOrders / totalOrders) * 100 : 0
   };
 }
 
@@ -184,65 +184,65 @@ async function getOrderTrends(userId, dateRange) {
     include: [
       {
         model: Order,
-        as: "order",
+        as: 'order',
         where: {
           userId,
           createdAt: {
-            [Op.between]: [dateRange.start, dateRange.end],
-          },
+            [Op.between]: [dateRange.start, dateRange.end]
+          }
         },
-        attributes: [],
-      },
+        attributes: []
+      }
     ],
     attributes: [
       [
         OrderItem.sequelize.fn(
-          "DATE",
-          OrderItem.sequelize.col("order.createdAt")
+          'DATE',
+          OrderItem.sequelize.col('order.createdAt')
         ),
-        "date",
+        'date'
       ],
       [
         OrderItem.sequelize.fn(
-          "COUNT",
+          'COUNT',
           OrderItem.sequelize.fn(
-            "DISTINCT",
-            OrderItem.sequelize.col("order.id")
+            'DISTINCT',
+            OrderItem.sequelize.col('order.id')
           )
         ),
-        "orders",
+        'orders'
       ],
       [
         OrderItem.sequelize.fn(
-          "SUM",
+          'SUM',
           OrderItem.sequelize.literal(
             'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
           )
         ),
-        "revenue",
-      ],
+        'revenue'
+      ]
     ],
     group: [
       OrderItem.sequelize.fn(
-        "DATE",
-        OrderItem.sequelize.col("order.createdAt")
-      ),
+        'DATE',
+        OrderItem.sequelize.col('order.createdAt')
+      )
     ],
     order: [
       [
         OrderItem.sequelize.fn(
-          "DATE",
-          OrderItem.sequelize.col("order.createdAt")
+          'DATE',
+          OrderItem.sequelize.col('order.createdAt')
         ),
-        "ASC",
-      ],
-    ],
+        'ASC'
+      ]
+    ]
   });
 
   const trends = dailyOrders.map((item) => ({
-    date: item.get("date"),
-    orders: parseInt(item.get("orders")),
-    revenue: parseFloat(item.get("revenue") || 0),
+    date: item.get('date'),
+    orders: parseInt(item.get('orders')),
+    revenue: parseFloat(item.get('revenue') || 0)
   }));
 
   // Simple moving average for trend analysis
@@ -253,11 +253,11 @@ async function getOrderTrends(userId, dateRange) {
     daily: trends,
     movingAverage,
     forecast,
-    insights: generateInsights(trends),
+    insights: generateInsights(trends)
   };
 }
 
 module.exports = {
   getOrderSummary,
-  getOrderTrends,
+  getOrderTrends
 };

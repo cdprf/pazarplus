@@ -1,12 +1,12 @@
-const logger = require("../utils/logger");
+const logger = require('../utils/logger');
 
 class EmailService {
   constructor() {
-    this.emailEnabled = process.env.EMAIL_ENABLED === "true";
-    this.emailProvider = process.env.EMAIL_PROVIDER || "console"; // console, smtp, sendgrid, etc.
-    this.fromEmail = process.env.FROM_EMAIL || "noreply@pazarplus.com";
-    this.fromName = process.env.FROM_NAME || "Pazar+ Platform";
-    this.baseUrl = process.env.BASE_URL || "http://localhost:3000";
+    this.emailEnabled = process.env.EMAIL_ENABLED === 'true';
+    this.emailProvider = process.env.EMAIL_PROVIDER || 'console'; // console, smtp, sendgrid, etc.
+    this.fromEmail = process.env.FROM_EMAIL || 'noreply@pazarplus.com';
+    this.fromName = process.env.FROM_NAME || 'Pazar+ Platform';
+    this.baseUrl = process.env.BASE_URL || 'http://localhost:3000';
   }
 
   async sendEmail(to, subject, htmlContent, textContent = null) {
@@ -16,70 +16,70 @@ class EmailService {
       subject,
       html: htmlContent,
       text: textContent || this.htmlToText(htmlContent),
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     };
 
     try {
       if (!this.emailEnabled) {
         logger.info(
-          "Email sending disabled - logging email instead:",
+          'Email sending disabled - logging email instead:',
           emailData
         );
-        return { success: true, messageId: "disabled", provider: "console" };
+        return { success: true, messageId: 'disabled', provider: 'console' };
       }
 
       // For now, implement console logging as the primary method
       // This can be extended with actual email providers later
       return await this.sendEmailViaConsole(emailData);
     } catch (error) {
-      logger.error("Email sending failed:", error);
+      logger.error('Email sending failed:', error);
       throw error;
     }
   }
 
   async sendEmailViaConsole(emailData) {
-    logger.info("📧 EMAIL SENT (Console Mode):", {
+    logger.info('📧 EMAIL SENT (Console Mode):', {
       to: emailData.to,
       subject: emailData.subject,
-      provider: "console",
+      provider: 'console'
     });
 
-    console.log("\n" + "=".repeat(80));
-    console.log("📧 EMAIL CONTENT");
-    console.log("=".repeat(80));
+    console.log('\n' + '='.repeat(80));
+    console.log('📧 EMAIL CONTENT');
+    console.log('='.repeat(80));
     console.log(`To: ${emailData.to}`);
     console.log(`From: ${emailData.from}`);
     console.log(`Subject: ${emailData.subject}`);
-    console.log("-".repeat(80));
+    console.log('-'.repeat(80));
     console.log(emailData.text || this.htmlToText(emailData.html));
-    console.log("=".repeat(80) + "\n");
+    console.log('='.repeat(80) + '\n');
 
     return {
       success: true,
       messageId: `console_${Date.now()}`,
-      provider: "console",
+      provider: 'console'
     };
   }
 
-  async sendPasswordResetEmail(email, resetToken, userFirstName = "") {
+  async sendPasswordResetEmail(email, resetToken, userFirstName = '') {
     const resetUrl = `${this.baseUrl}/reset-password?token=${resetToken}`;
 
-    const subject = "Reset Your Pazar+ Password";
+    const subject = 'Reset Your Pazar+ Password';
     const htmlContent = this.generatePasswordResetHTML(resetUrl, userFirstName);
     const textContent = this.generatePasswordResetText(resetUrl, userFirstName);
 
-    logger.info("Sending password reset email", {
+    logger.info('Sending password reset email', {
       email,
-      resetToken: resetToken.substring(0, 8) + "...",
+      resetToken: resetToken.substring(0, 8) + '...'
     });
 
     return await this.sendEmail(email, subject, htmlContent, textContent);
   }
 
-  async sendVerificationEmail(email, verificationToken, userFirstName = "") {
+  async sendVerificationEmail(email, verificationToken, userFirstName = '') {
     const verificationUrl = `${this.baseUrl}/verify-email?token=${verificationToken}`;
 
-    const subject = "Verify Your Pazar+ Email Address";
+    const subject = 'Verify Your Pazar+ Email Address';
     const htmlContent = this.generateVerificationHTML(
       verificationUrl,
       userFirstName
@@ -89,9 +89,9 @@ class EmailService {
       userFirstName
     );
 
-    logger.info("Sending verification email", {
+    logger.info('Sending verification email', {
       email,
-      verificationToken: verificationToken.substring(0, 8) + "...",
+      verificationToken: verificationToken.substring(0, 8) + '...'
     });
 
     return await this.sendEmail(email, subject, htmlContent, textContent);
@@ -201,8 +201,8 @@ support@pazarplus.com
 
   htmlToText(html) {
     return html
-      .replace(/<[^>]+>/g, "")
-      .replace(/\s+/g, " ")
+      .replace(/<[^>]+>/g, '')
+      .replace(/\s+/g, ' ')
       .trim();
   }
 }

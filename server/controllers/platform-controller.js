@@ -1,14 +1,14 @@
-const { PlatformConnection, Order, Product } = require("../models");
-const logger = require("../utils/logger");
-const HepsiburadaService = require("../modules/order-management/services/platforms/hepsiburada/hepsiburada-service");
-const TrendyolService = require("../modules/order-management/services/platforms/trendyol/trendyol-service");
-const N11Service = require("../modules/order-management/services/platforms/n11/n11-service");
+const { PlatformConnection, Order, Product } = require('../models');
+const logger = require('../utils/logger');
+const HepsiburadaService = require('../modules/order-management/services/platforms/hepsiburada/hepsiburada-service');
+const TrendyolService = require('../modules/order-management/services/platforms/trendyol/trendyol-service');
+const N11Service = require('../modules/order-management/services/platforms/n11/n11-service');
 
 // Utility function to safely serialize data and prevent circular references
 const safeJsonResponse = (data) => {
   try {
     // If data is a Sequelize instance, convert to plain object
-    if (data && typeof data.get === "function") {
+    if (data && typeof data.get === 'function') {
       data = data.get({ plain: true });
     }
 
@@ -18,29 +18,29 @@ const safeJsonResponse = (data) => {
     }
 
     // If data is an object, process recursively
-    if (data && typeof data === "object") {
+    if (data && typeof data === 'object') {
       const serialized = {};
       for (const [key, value] of Object.entries(data)) {
         // Skip circular reference properties and sensitive data
         if (
-          key === "user" ||
-          key === "User" ||
-          key === "dataValues" ||
-          key === "_previousDataValues" ||
-          key === "password" ||
-          key === "token"
+          key === 'user' ||
+          key === 'User' ||
+          key === 'dataValues' ||
+          key === '_previousDataValues' ||
+          key === 'password' ||
+          key === 'token'
         ) {
           continue;
         }
 
-        if (value && typeof value === "object") {
-          if (typeof value.get === "function") {
+        if (value && typeof value === 'object') {
+          if (typeof value.get === 'function') {
             // Sequelize instance
             serialized[key] = value.get({ plain: true });
           } else if (Array.isArray(value)) {
             // Array of potentially Sequelize instances
             serialized[key] = value.map((item) =>
-              item && typeof item.get === "function"
+              item && typeof item.get === 'function'
                 ? item.get({ plain: true })
                 : item
             );
@@ -57,13 +57,13 @@ const safeJsonResponse = (data) => {
 
     return data;
   } catch (error) {
-    logger.error("Error serializing data for JSON response:", error);
-    return { error: "Failed to serialize data", type: typeof data };
+    logger.error('Error serializing data for JSON response:', error);
+    return { error: 'Failed to serialize data', type: typeof data };
   }
 };
 
 // Try to import platform service modules with proper error handling
-let platformServices = {};
+const platformServices = {};
 
 platformServices.hepsiburada = HepsiburadaService;
 platformServices.trendyol = TrendyolService;
@@ -74,18 +74,18 @@ const getConnections = async (req, res) => {
   try {
     const connections = await PlatformConnection.findAll({
       where: { userId: req.user.id },
-      order: [["createdAt", "DESC"]],
+      order: [['createdAt', 'DESC']]
     });
 
     res.json({
       success: true,
-      data: safeJsonResponse(connections),
+      data: safeJsonResponse(connections)
     });
   } catch (error) {
     logger.error(`Get connections error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: "Failed to fetch platform connections",
+      message: 'Failed to fetch platform connections'
     });
   }
 };
@@ -98,26 +98,26 @@ const getConnection = async (req, res) => {
     const connection = await PlatformConnection.findOne({
       where: {
         id,
-        userId: req.user.id,
-      },
+        userId: req.user.id
+      }
     });
 
     if (!connection) {
       return res.status(404).json({
         success: false,
-        message: "Platform connection not found",
+        message: 'Platform connection not found'
       });
     }
 
     res.json({
       success: true,
-      data: safeJsonResponse(connection),
+      data: safeJsonResponse(connection)
     });
   } catch (error) {
     logger.error(`Get connection error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: "Failed to fetch platform connection",
+      message: 'Failed to fetch platform connection'
     });
   }
 };
@@ -131,7 +131,7 @@ const createConnection = async (req, res) => {
     if (!platformType || !name || !credentials) {
       return res.status(400).json({
         success: false,
-        message: "Platform type, name, and credentials are required",
+        message: 'Platform type, name, and credentials are required'
       });
     }
 
@@ -140,15 +140,15 @@ const createConnection = async (req, res) => {
       where: {
         userId: req.user.id,
         platformType,
-        platformName: name,
-      },
+        platformName: name
+      }
     });
 
     if (existingConnection) {
       return res.status(409).json({
         success: false,
         message: `A platform connection named "${name}" already exists for ${platformType}. Please use a different name.`,
-        error: "DUPLICATE_CONNECTION",
+        error: 'DUPLICATE_CONNECTION'
       });
     }
 
@@ -158,34 +158,34 @@ const createConnection = async (req, res) => {
       platformName: name,
       name: name, // Set both fields for compatibility
       credentials,
-      status: "active",
-      isActive,
+      status: 'active',
+      isActive
     });
 
     res.status(201).json({
       success: true,
-      message: "Platform connected successfully",
-      data: connection,
+      message: 'Platform connected successfully',
+      data: connection
     });
   } catch (error) {
     logger.error(`Create connection error: ${error.message}`, { error });
 
     // Handle unique constraint violations
     if (
-      error.name === "SequelizeUniqueConstraintError" ||
-      (error.original && error.original.code === "SQLITE_CONSTRAINT")
+      error.name === 'SequelizeUniqueConstraintError' ||
+      (error.original && error.original.code === 'SQLITE_CONSTRAINT')
     ) {
       return res.status(409).json({
         success: false,
         message: `A platform connection named "${req.body.name}" already exists for ${req.body.platformType}. Please use a different name.`,
-        error: "DUPLICATE_CONNECTION",
+        error: 'DUPLICATE_CONNECTION'
       });
     }
 
     res.status(500).json({
       success: false,
-      message: "Failed to create platform connection",
-      error: error.message,
+      message: 'Failed to create platform connection',
+      error: error.message
     });
   }
 };
@@ -199,14 +199,14 @@ const updateConnection = async (req, res) => {
     const connection = await PlatformConnection.findOne({
       where: {
         id,
-        userId: req.user.id,
-      },
+        userId: req.user.id
+      }
     });
 
     if (!connection) {
       return res.status(404).json({
         success: false,
-        message: "Platform connection not found",
+        message: 'Platform connection not found'
       });
     }
 
@@ -214,14 +214,14 @@ const updateConnection = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Platform connection updated successfully",
-      data: connection,
+      message: 'Platform connection updated successfully',
+      data: connection
     });
   } catch (error) {
     logger.error(`Update connection error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: "Failed to update platform connection",
+      message: 'Failed to update platform connection'
     });
   }
 };
@@ -234,14 +234,14 @@ const deleteConnection = async (req, res) => {
     const connection = await PlatformConnection.findOne({
       where: {
         id,
-        userId: req.user.id,
-      },
+        userId: req.user.id
+      }
     });
 
     if (!connection) {
       return res.status(404).json({
         success: false,
-        message: "Platform connection not found",
+        message: 'Platform connection not found'
       });
     }
 
@@ -249,13 +249,13 @@ const deleteConnection = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Platform connection deleted successfully",
+      message: 'Platform connection deleted successfully'
     });
   } catch (error) {
     logger.error(`Delete connection error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: "Failed to delete platform connection",
+      message: 'Failed to delete platform connection'
     });
   }
 };
@@ -268,14 +268,14 @@ const testConnection = async (req, res) => {
     const connection = await PlatformConnection.findOne({
       where: {
         id,
-        userId: req.user.id,
-      },
+        userId: req.user.id
+      }
     });
 
     if (!connection) {
       return res.status(404).json({
         success: false,
-        message: "Platform connection not found",
+        message: 'Platform connection not found'
       });
     }
 
@@ -285,15 +285,15 @@ const testConnection = async (req, res) => {
     // Only update status if the column exists
     try {
       if (testResult.success) {
-        await connection.update({ status: "active" });
+        await connection.update({ status: 'active' });
       } else {
-        await connection.update({ status: "error" });
+        await connection.update({ status: 'error' });
       }
     } catch (statusError) {
       // If status column doesn't exist, just log and continue
-      logger.warn("Status column not found in platform_connections table", {
+      logger.warn('Status column not found in platform_connections table', {
         error: statusError.message,
-        connectionId: id,
+        connectionId: id
       });
     }
 
@@ -302,16 +302,16 @@ const testConnection = async (req, res) => {
       message: testResult.message,
       data: {
         platform: connection.platformType,
-        status: testResult.success ? "connected" : "failed",
-        timestamp: new Date().toISOString(),
-      },
+        status: testResult.success ? 'connected' : 'failed',
+        timestamp: new Date().toISOString()
+      }
     });
   } catch (error) {
     logger.error(`Test connection error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: "Connection test failed",
-      error: error.message,
+      message: 'Connection test failed',
+      error: error.message
     });
   }
 };
@@ -324,14 +324,14 @@ const getConnectionSettings = async (req, res) => {
     const connection = await PlatformConnection.findOne({
       where: {
         id,
-        userId: req.user.id,
-      },
+        userId: req.user.id
+      }
     });
 
     if (!connection) {
       return res.status(404).json({
         success: false,
-        message: "Platform connection not found",
+        message: 'Platform connection not found'
       });
     }
 
@@ -346,18 +346,18 @@ const getConnectionSettings = async (req, res) => {
       syncSettings: connection.syncSettings || {},
       notificationSettings: connection.notificationSettings || {},
       createdAt: connection.createdAt,
-      updatedAt: connection.updatedAt,
+      updatedAt: connection.updatedAt
     };
 
     res.json({
       success: true,
-      data: settings,
+      data: settings
     });
   } catch (error) {
     logger.error(`Get connection settings error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: "Failed to fetch platform connection settings",
+      message: 'Failed to fetch platform connection settings'
     });
   }
 };
@@ -372,33 +372,33 @@ const updateConnectionSettings = async (req, res) => {
       environment,
       syncSettings,
       notificationSettings,
-      credentials,
+      credentials
     } = req.body;
 
     const connection = await PlatformConnection.findOne({
       where: {
         id,
-        userId: req.user.id,
-      },
+        userId: req.user.id
+      }
     });
 
     if (!connection) {
       return res.status(404).json({
         success: false,
-        message: "Platform connection not found",
+        message: 'Platform connection not found'
       });
     }
 
     // Prepare update object with only allowed fields
     const updates = {};
 
-    if (name !== undefined) updates.name = name;
-    if (isActive !== undefined) updates.isActive = isActive;
-    if (environment !== undefined) updates.environment = environment;
-    if (syncSettings !== undefined) updates.syncSettings = syncSettings;
+    if (name !== undefined) {updates.name = name;}
+    if (isActive !== undefined) {updates.isActive = isActive;}
+    if (environment !== undefined) {updates.environment = environment;}
+    if (syncSettings !== undefined) {updates.syncSettings = syncSettings;}
     if (notificationSettings !== undefined)
-      updates.notificationSettings = notificationSettings;
-    if (credentials !== undefined) updates.credentials = credentials;
+    {updates.notificationSettings = notificationSettings;}
+    if (credentials !== undefined) {updates.credentials = credentials;}
 
     await connection.update(updates);
 
@@ -412,21 +412,21 @@ const updateConnectionSettings = async (req, res) => {
       environment: connection.environment,
       syncSettings: connection.syncSettings || {},
       notificationSettings: connection.notificationSettings || {},
-      updatedAt: connection.updatedAt,
+      updatedAt: connection.updatedAt
     };
 
     res.json({
       success: true,
-      message: "Platform connection settings updated successfully",
-      data: updatedSettings,
+      message: 'Platform connection settings updated successfully',
+      data: updatedSettings
     });
   } catch (error) {
     logger.error(`Update connection settings error: ${error.message}`, {
-      error,
+      error
     });
     res.status(500).json({
       success: false,
-      message: "Failed to update platform connection settings",
+      message: 'Failed to update platform connection settings'
     });
   }
 };
@@ -439,28 +439,28 @@ const syncPlatform = async (req, res) => {
     const connection = await PlatformConnection.findOne({
       where: {
         id,
-        userId: req.user.id,
-      },
+        userId: req.user.id
+      }
     });
 
     if (!connection) {
       return res.status(404).json({
         success: false,
-        message: "Platform connection not found",
+        message: 'Platform connection not found'
       });
     }
 
     if (!connection.isActive) {
       return res.status(400).json({
         success: false,
-        message: "Platform connection is not active",
+        message: 'Platform connection is not active'
       });
     }
 
     logger.info(`Platform sync initiated`, {
       connectionId: id,
       platformType: connection.platformType,
-      userId: req.user.id,
+      userId: req.user.id
     });
 
     // Mock sync process - in real implementation, this would:
@@ -474,7 +474,7 @@ const syncPlatform = async (req, res) => {
     // Update last sync time
     await connection.update({
       lastSync: new Date(),
-      syncStatus: "completed",
+      syncStatus: 'completed'
     });
 
     logger.info(`Platform sync completed`, {
@@ -482,7 +482,7 @@ const syncPlatform = async (req, res) => {
       platformType: connection.platformType,
       userId: req.user.id,
       syncedOrders,
-      syncedProducts,
+      syncedProducts
     });
 
     res.json({
@@ -493,17 +493,17 @@ const syncPlatform = async (req, res) => {
         syncedOrders,
         syncedProducts,
         timestamp: new Date().toISOString(),
-        lastSync: connection.lastSync,
-      },
+        lastSync: connection.lastSync
+      }
     });
   } catch (error) {
     logger.error(`Platform sync error: ${error.message}`, {
       error,
-      connectionId: req.params.id,
+      connectionId: req.params.id
     });
     res.status(500).json({
       success: false,
-      message: "Failed to sync platform",
+      message: 'Failed to sync platform'
     });
   }
 };
@@ -512,24 +512,24 @@ const syncPlatform = async (req, res) => {
 const getPlatformAnalytics = async (req, res) => {
   try {
     const { id } = req.params;
-    const { timeRange = "30d" } = req.query;
+    const { timeRange = '30d' } = req.query;
 
     const connection = await PlatformConnection.findOne({
       where: {
         id,
-        userId: req.user.id,
-      },
+        userId: req.user.id
+      }
     });
 
     if (!connection) {
       return res.status(404).json({
         success: false,
-        message: "Platform connection not found",
+        message: 'Platform connection not found'
       });
     }
 
     // Calculate date range
-    const days = parseInt(timeRange.replace("d", "")) || 30;
+    const days = parseInt(timeRange.replace('d', '')) || 30;
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
@@ -541,17 +541,17 @@ const getPlatformAnalytics = async (req, res) => {
             userId: req.user.id,
             platform: connection.platformType,
             createdAt: {
-              [require("sequelize").Op.gte]: startDate,
-            },
+              [require('sequelize').Op.gte]: startDate
+            }
           },
-          order: [["createdAt", "ASC"]],
+          order: [['createdAt', 'ASC']]
         }),
         Product.findAll({
           where: {
             userId: req.user.id,
-            platform: connection.platformType,
-          },
-        }),
+            platform: connection.platformType
+          }
+        })
       ]);
 
       // Calculate real metrics
@@ -572,7 +572,7 @@ const getPlatformAnalytics = async (req, res) => {
       const statusDistribution = Object.entries(statusCounts).map(
         ([name, value]) => ({
           name: name.charAt(0).toUpperCase() + name.slice(1),
-          value,
+          value
         })
       );
 
@@ -582,7 +582,7 @@ const getPlatformAnalytics = async (req, res) => {
       const dailyOrders = {};
 
       orders.forEach((order) => {
-        const date = order.createdAt.toISOString().split("T")[0];
+        const date = order.createdAt.toISOString().split('T')[0];
         dailyOrders[date] = (dailyOrders[date] || 0) + 1;
         dailyRevenue[date] =
           (dailyRevenue[date] || 0) + parseFloat(order.totalAmount || 0);
@@ -592,12 +592,12 @@ const getPlatformAnalytics = async (req, res) => {
       for (let i = days - 1; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split("T")[0];
+        const dateStr = date.toISOString().split('T')[0];
 
         ordersOverTime.push({
           date: dateStr,
           orders: dailyOrders[dateStr] || 0,
-          revenue: dailyRevenue[dateStr] || 0,
+          revenue: dailyRevenue[dateStr] || 0
         });
       }
 
@@ -605,25 +605,25 @@ const getPlatformAnalytics = async (req, res) => {
       const syncPerformance = ordersOverTime.map((day) => ({
         date: day.date,
         successful: Math.floor(Math.random() * 5) + 1,
-        failed: Math.floor(Math.random() * 2),
+        failed: Math.floor(Math.random() * 2)
       }));
 
       // Generate recent activity from recent orders
       const recentOrders = orders.slice(-5).reverse();
       const recentActivity = recentOrders.map((order) => ({
-        action: "Order Sync",
+        action: 'Order Sync',
         description: `Synchronized order ${order.orderNumber || order.id}`,
-        status: "success",
-        timestamp: order.createdAt.toISOString(),
+        status: 'success',
+        timestamp: order.createdAt.toISOString()
       }));
 
       // Add some system activities if no recent orders
       if (recentActivity.length === 0) {
         recentActivity.push({
-          action: "Platform Check",
-          description: "Platform connection verified",
-          status: "success",
-          timestamp: new Date().toISOString(),
+          action: 'Platform Check',
+          description: 'Platform connection verified',
+          status: 'success',
+          timestamp: new Date().toISOString()
         });
       }
 
@@ -668,32 +668,32 @@ const getPlatformAnalytics = async (req, res) => {
 
       const performanceMetrics = [
         {
-          name: "Orders Per Week",
+          name: 'Orders Per Week',
           current: lastWeekOrders.length.toString(),
           previous: previousWeekOrders.length.toString(),
-          change: Math.round(orderGrowth),
+          change: Math.round(orderGrowth)
         },
         {
-          name: "Weekly Revenue",
+          name: 'Weekly Revenue',
           current: `₺${lastWeekRevenue.toFixed(0)}`,
           previous: `₺${previousWeekRevenue.toFixed(0)}`,
-          change: Math.round(revenueGrowth),
+          change: Math.round(revenueGrowth)
         },
         {
-          name: "Avg Order Value",
+          name: 'Avg Order Value',
           current: `₺${averageOrderValue.toFixed(0)}`,
           previous: `₺${(previousWeekOrders.length > 0
             ? previousWeekRevenue / previousWeekOrders.length
             : 0
           ).toFixed(0)}`,
-          change: 0, // Would need historical data for accurate calculation
+          change: 0 // Would need historical data for accurate calculation
         },
         {
-          name: "Total Products",
+          name: 'Total Products',
           current: products.length.toString(),
           previous: products.length.toString(),
-          change: 0,
-        },
+          change: 0
+        }
       ];
 
       const analytics = {
@@ -705,12 +705,12 @@ const getPlatformAnalytics = async (req, res) => {
         statusDistribution,
         syncPerformance,
         recentActivity,
-        performanceMetrics,
+        performanceMetrics
       };
 
       res.json({
         success: true,
-        data: analytics,
+        data: analytics
       });
     } catch (dbError) {
       logger.warn(
@@ -720,58 +720,58 @@ const getPlatformAnalytics = async (req, res) => {
       // Simple fallback with basic empty state
       const mockAnalytics = {
         totalOrders: 0,
-        totalRevenue: "0.00",
-        averageOrderValue: "0.00",
+        totalRevenue: '0.00',
+        averageOrderValue: '0.00',
         syncCount: 0,
         ordersOverTime: [],
         statusDistribution: [],
         syncPerformance: [],
         recentActivity: [
           {
-            action: "Platform Check",
-            description: "Platform connection verified",
-            status: "success",
-            timestamp: new Date().toISOString(),
-          },
+            action: 'Platform Check',
+            description: 'Platform connection verified',
+            status: 'success',
+            timestamp: new Date().toISOString()
+          }
         ],
         performanceMetrics: [
-          { name: "Orders Per Week", current: "0", previous: "0", change: 0 },
-          { name: "Weekly Revenue", current: "₺0", previous: "₺0", change: 0 },
-          { name: "Avg Order Value", current: "₺0", previous: "₺0", change: 0 },
-          { name: "Total Products", current: "0", previous: "0", change: 0 },
-        ],
+          { name: 'Orders Per Week', current: '0', previous: '0', change: 0 },
+          { name: 'Weekly Revenue', current: '₺0', previous: '₺0', change: 0 },
+          { name: 'Avg Order Value', current: '₺0', previous: '₺0', change: 0 },
+          { name: 'Total Products', current: '0', previous: '0', change: 0 }
+        ]
       };
 
       // Generate empty time series for the requested days
-      const days = parseInt(timeRange.replace("d", "")) || 30;
+      const days = parseInt(timeRange.replace('d', '')) || 30;
       for (let i = days - 1; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split("T")[0];
+        const dateStr = date.toISOString().split('T')[0];
 
         mockAnalytics.ordersOverTime.push({
           date: dateStr,
           orders: 0,
-          revenue: 0,
+          revenue: 0
         });
 
         mockAnalytics.syncPerformance.push({
           date: dateStr,
           successful: 0,
-          failed: 0,
+          failed: 0
         });
       }
 
       res.json({
         success: true,
-        data: mockAnalytics,
+        data: mockAnalytics
       });
     }
   } catch (error) {
     logger.error(`Get platform analytics error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: "Failed to fetch platform analytics",
+      message: 'Failed to fetch platform analytics'
     });
   }
 };
@@ -784,21 +784,21 @@ const getSyncHistory = async (req, res) => {
       page = 1,
       limit = 20,
       status,
-      dateRange = "30d",
-      search,
+      dateRange = '30d',
+      search
     } = req.query;
 
     const connection = await PlatformConnection.findOne({
       where: {
         id,
-        userId: req.user.id,
-      },
+        userId: req.user.id
+      }
     });
 
     if (!connection) {
       return res.status(404).json({
         success: false,
-        message: "Platform connection not found",
+        message: 'Platform connection not found'
       });
     }
 
@@ -812,20 +812,20 @@ const getSyncHistory = async (req, res) => {
 
     for (let i = startIndex; i < endIndex; i++) {
       const syncDate = new Date(Date.now() - i * 2 * 60 * 60 * 1000); // Every 2 hours
-      const syncStatus = Math.random() > 0.15 ? "success" : "failed";
+      const syncStatus = Math.random() > 0.15 ? 'success' : 'failed';
 
       mockHistory.push({
         id: `sync_${Date.now()}_${i}`,
         status: syncStatus,
-        type: Math.random() > 0.7 ? "Automatic" : "Manual",
+        type: Math.random() > 0.7 ? 'Automatic' : 'Manual',
         startedAt: syncDate.toISOString(),
         duration: Math.floor(Math.random() * 120000) + 10000, // 10s to 2min
         recordsProcessed:
-          syncStatus === "success" ? Math.floor(Math.random() * 50) + 5 : 0,
+          syncStatus === 'success' ? Math.floor(Math.random() * 50) + 5 : 0,
         recordsSkipped: Math.floor(Math.random() * 3),
         errorMessage:
-          syncStatus === "failed" ? "API rate limit exceeded" : null,
-        initiatedBy: Math.random() > 0.5 ? "admin@example.com" : "System",
+          syncStatus === 'failed' ? 'API rate limit exceeded' : null,
+        initiatedBy: Math.random() > 0.5 ? 'admin@example.com' : 'System'
       });
     }
 
@@ -836,14 +836,14 @@ const getSyncHistory = async (req, res) => {
         total: totalRecords,
         page: pageNum,
         limit: limitNum,
-        totalPages: Math.ceil(totalRecords / limitNum),
-      },
+        totalPages: Math.ceil(totalRecords / limitNum)
+      }
     });
   } catch (error) {
     logger.error(`Get sync history error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: "Failed to fetch sync history",
+      message: 'Failed to fetch sync history'
     });
   }
 };
@@ -856,14 +856,14 @@ const retrySyncHistory = async (req, res) => {
     const connection = await PlatformConnection.findOne({
       where: {
         id,
-        userId: req.user.id,
-      },
+        userId: req.user.id
+      }
     });
 
     if (!connection) {
       return res.status(404).json({
         success: false,
-        message: "Platform connection not found",
+        message: 'Platform connection not found'
       });
     }
 
@@ -871,30 +871,30 @@ const retrySyncHistory = async (req, res) => {
     const retryResult = {
       syncId: `retry_${Date.now()}`,
       originalSyncId: syncId,
-      status: Math.random() > 0.2 ? "success" : "failed",
+      status: Math.random() > 0.2 ? 'success' : 'failed',
       recordsProcessed: Math.floor(Math.random() * 30) + 5,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     };
 
     logger.info(`Sync retry completed for platform ${id}`, {
       platformId: id,
       syncId,
       userId: req.user.id,
-      retryResult,
+      retryResult
     });
 
     res.json({
       success: true,
       message: `Sync retry ${
-        retryResult.status === "success" ? "completed successfully" : "failed"
+        retryResult.status === 'success' ? 'completed successfully' : 'failed'
       }`,
-      data: retryResult,
+      data: retryResult
     });
   } catch (error) {
     logger.error(`Retry sync error: ${error.message}`, { error });
     res.status(500).json({
       success: false,
-      message: "Failed to retry sync",
+      message: 'Failed to retry sync'
     });
   }
 };
@@ -908,41 +908,41 @@ async function testPlatformConnection(connection) {
     if (!credentials || Object.keys(credentials).length === 0) {
       return {
         success: false,
-        message: "No credentials provided for platform connection",
+        message: 'No credentials provided for platform connection'
       };
     }
 
     switch (platformType) {
-      case "hepsiburada": {
-        const hepsiburadaService = new platformServices.hepsiburada(
-          connection.id
-        );
-        return await hepsiburadaService.testConnection();
-      }
-      case "trendyol": {
-        const trendyolService = new platformServices.trendyol(connection.id);
-        return await trendyolService.testConnection();
-      }
-      case "n11": {
-        const n11Service = new platformServices.n11(connection.id);
-        // Set connection directly to avoid having to fetch it again
-        n11Service.connection = connection;
-        return await n11Service.testConnection();
-      }
-      case "csv": {
-        const csvService = new platformServices.csv(connection.id);
-        return await csvService.testConnection();
-      }
-      default:
-        return {
-          success: false,
-          message: `Unsupported platform type: ${platformType}`,
-        };
+    case 'hepsiburada': {
+      const hepsiburadaService = new platformServices.hepsiburada(
+        connection.id
+      );
+      return await hepsiburadaService.testConnection();
+    }
+    case 'trendyol': {
+      const trendyolService = new platformServices.trendyol(connection.id);
+      return await trendyolService.testConnection();
+    }
+    case 'n11': {
+      const n11Service = new platformServices.n11(connection.id);
+      // Set connection directly to avoid having to fetch it again
+      n11Service.connection = connection;
+      return await n11Service.testConnection();
+    }
+    case 'csv': {
+      const csvService = new platformServices.csv(connection.id);
+      return await csvService.testConnection();
+    }
+    default:
+      return {
+        success: false,
+        message: `Unsupported platform type: ${platformType}`
+      };
     }
   } catch (error) {
     return {
       success: false,
-      message: `Connection test failed: ${error.message}`,
+      message: `Connection test failed: ${error.message}`
     };
   }
 }
@@ -959,5 +959,5 @@ module.exports = {
   syncPlatform,
   getPlatformAnalytics,
   getSyncHistory,
-  retrySyncHistory,
+  retrySyncHistory
 };

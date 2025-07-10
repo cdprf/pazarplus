@@ -1,4 +1,4 @@
-const logger = require("./logger");
+const logger = require('./logger');
 
 /**
  * Utility function to safely serialize data and prevent circular references
@@ -9,7 +9,7 @@ const safeJsonResponse = (data, maxDepth = 5, currentDepth = 0) => {
   try {
     // Prevent infinite recursion
     if (currentDepth >= maxDepth) {
-      return "[Max depth reached]";
+      return '[Max depth reached]';
     }
 
     // If data is null or undefined, return as is
@@ -18,7 +18,7 @@ const safeJsonResponse = (data, maxDepth = 5, currentDepth = 0) => {
     }
 
     // If data is a Sequelize instance, convert to plain object
-    if (data && typeof data.get === "function") {
+    if (data && typeof data.get === 'function') {
       data = data.get({ plain: true });
     }
 
@@ -30,7 +30,7 @@ const safeJsonResponse = (data, maxDepth = 5, currentDepth = 0) => {
     }
 
     // If data is an object, process recursively
-    if (data && typeof data === "object") {
+    if (data && typeof data === 'object') {
       // Handle Date objects
       if (data instanceof Date) {
         return data.toISOString();
@@ -38,36 +38,36 @@ const safeJsonResponse = (data, maxDepth = 5, currentDepth = 0) => {
 
       // Handle Buffer objects
       if (Buffer.isBuffer(data)) {
-        return data.toString("base64");
+        return data.toString('base64');
       }
 
       const serialized = {};
       for (const [key, value] of Object.entries(data)) {
         // Skip circular reference properties and sensitive data
         if (
-          key === "user" ||
-          key === "User" ||
-          key === "dataValues" ||
-          key === "_previousDataValues" ||
-          key === "_changed" ||
-          key === "_options" ||
-          key === "password" ||
-          key === "token" ||
-          key === "passwordResetToken" ||
-          key === "emailVerificationToken" ||
-          key === "refreshToken" ||
-          key === "apiKey" ||
-          key === "apiSecret" ||
-          key === "credentials" ||
-          key.toLowerCase().includes("password") ||
-          key.toLowerCase().includes("secret") ||
-          key.toLowerCase().includes("token")
+          key === 'user' ||
+          key === 'User' ||
+          key === 'dataValues' ||
+          key === '_previousDataValues' ||
+          key === '_changed' ||
+          key === '_options' ||
+          key === 'password' ||
+          key === 'token' ||
+          key === 'passwordResetToken' ||
+          key === 'emailVerificationToken' ||
+          key === 'refreshToken' ||
+          key === 'apiKey' ||
+          key === 'apiSecret' ||
+          key === 'credentials' ||
+          key.toLowerCase().includes('password') ||
+          key.toLowerCase().includes('secret') ||
+          key.toLowerCase().includes('token')
         ) {
           continue;
         }
 
-        if (value && typeof value === "object") {
-          if (typeof value.get === "function") {
+        if (value && typeof value === 'object') {
+          if (typeof value.get === 'function') {
             // Sequelize instance
             serialized[key] = safeJsonResponse(
               value.get({ plain: true }),
@@ -77,12 +77,12 @@ const safeJsonResponse = (data, maxDepth = 5, currentDepth = 0) => {
           } else if (Array.isArray(value)) {
             // Array of potentially Sequelize instances
             serialized[key] = value.map((item) =>
-              item && typeof item.get === "function"
+              item && typeof item.get === 'function'
                 ? safeJsonResponse(
-                    item.get({ plain: true }),
-                    maxDepth,
-                    currentDepth + 1
-                  )
+                  item.get({ plain: true }),
+                  maxDepth,
+                  currentDepth + 1
+                )
                 : safeJsonResponse(item, maxDepth, currentDepth + 1)
             );
           } else {
@@ -102,16 +102,16 @@ const safeJsonResponse = (data, maxDepth = 5, currentDepth = 0) => {
 
     return data;
   } catch (error) {
-    logger.error("Error serializing data for JSON response:", {
+    logger.error('Error serializing data for JSON response:', {
       error: error.message,
       dataType: typeof data,
       currentDepth,
-      stack: error.stack,
+      stack: error.stack
     });
     return {
-      error: "Failed to serialize data",
+      error: 'Failed to serialize data',
       type: typeof data,
-      originalError: error.message,
+      originalError: error.message
     };
   }
 };
@@ -127,11 +127,11 @@ const jsonResponseMiddleware = (req, res, next) => {
       const safeData = safeJsonResponse(data);
       return originalJson.call(this, safeData);
     } catch (error) {
-      logger.error("JSON response middleware error:", error);
+      logger.error('JSON response middleware error:', error);
       return originalJson.call(this, {
         success: false,
-        message: "Internal server error",
-        error: "Failed to serialize response data",
+        message: 'Internal server error',
+        error: 'Failed to serialize response data'
       });
     }
   };
@@ -143,12 +143,12 @@ const jsonResponseMiddleware = (req, res, next) => {
  * Helper function to sanitize user data for responses
  */
 const sanitizeUserData = (user) => {
-  if (!user) return null;
+  if (!user) {return null;}
 
   const sanitized = safeJsonResponse(user);
 
   // Additional sanitization for user-specific sensitive fields
-  if (sanitized && typeof sanitized === "object") {
+  if (sanitized && typeof sanitized === 'object') {
     delete sanitized.password;
     delete sanitized.passwordResetToken;
     delete sanitized.emailVerificationToken;
@@ -163,25 +163,25 @@ const sanitizeUserData = (user) => {
  * Helper function to sanitize platform connection data
  */
 const sanitizePlatformData = (connection) => {
-  if (!connection) return null;
+  if (!connection) {return null;}
 
   const sanitized = safeJsonResponse(connection);
 
   // Remove or mask credentials
   if (sanitized && sanitized.credentials) {
-    if (typeof sanitized.credentials === "object") {
+    if (typeof sanitized.credentials === 'object') {
       const maskedCredentials = {};
       for (const [key, value] of Object.entries(sanitized.credentials)) {
-        if (typeof value === "string" && value.length > 4) {
+        if (typeof value === 'string' && value.length > 4) {
           maskedCredentials[key] =
-            value.substring(0, 4) + "*".repeat(value.length - 4);
+            value.substring(0, 4) + '*'.repeat(value.length - 4);
         } else {
-          maskedCredentials[key] = "****";
+          maskedCredentials[key] = '****';
         }
       }
       sanitized.credentials = maskedCredentials;
     } else {
-      sanitized.credentials = "****";
+      sanitized.credentials = '****';
     }
   }
 
@@ -192,5 +192,5 @@ module.exports = {
   safeJsonResponse,
   jsonResponseMiddleware,
   sanitizeUserData,
-  sanitizePlatformData,
+  sanitizePlatformData
 };

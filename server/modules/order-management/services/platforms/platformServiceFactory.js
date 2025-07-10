@@ -20,20 +20,20 @@ class PlatformServiceFactory {
     const normalizedType = platformType.toLowerCase();
     
     switch (normalizedType) {
-      case 'trendyol':
-        return new TrendyolService(connectionData, directCredentials);
+    case 'trendyol':
+      return new TrendyolService(connectionData, directCredentials);
         
-      case 'hepsiburada':
-        return new HepsiburadaService(connectionData, directCredentials);
+    case 'hepsiburada':
+      return new HepsiburadaService(connectionData, directCredentials);
         
-      case 'n11':
-        return new N11Service(connectionData, directCredentials);
+    case 'n11':
+      return new N11Service(connectionData, directCredentials);
         
-      case 'csv':
-        return new CSVImporterService(connectionData);
+    case 'csv':
+      return new CSVImporterService(connectionData);
         
-      default:
-        throw new Error(`Unsupported platform type: ${platformType}`);
+    default:
+      throw new Error(`Unsupported platform type: ${platformType}`);
     }
   }
   

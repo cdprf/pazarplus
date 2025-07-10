@@ -1,16 +1,16 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const ProductLinkingJobService = require("../../../services/product-linking-job-service");
-const ProductOrderLinkingService = require("../../../services/product-order-linking-service");
+const ProductLinkingJobService = require('../../../services/product-linking-job-service');
+const ProductOrderLinkingService = require('../../../services/product-order-linking-service');
 const {
   auth: authenticateToken,
-  adminAuth,
-} = require("../../../middleware/auth");
-const logger = require("../../../utils/logger");
-const OrderItem = require("../../../models/OrderItem");
-const Product = require("../../../models/Product");
-const ProductVariant = require("../../../models/ProductVariant");
-const { Op } = require("sequelize");
+  adminAuth
+} = require('../../../middleware/auth');
+const logger = require('../../../utils/logger');
+const OrderItem = require('../../../models/OrderItem');
+const Product = require('../../../models/Product');
+const ProductVariant = require('../../../models/ProductVariant');
+const { Op } = require('sequelize');
 
 // Get a reference to the global job service instance
 // This will be set when the server starts
@@ -31,7 +31,7 @@ const ensureJobService = (req, res, next) => {
 /**
  * Get job status and statistics
  */
-router.get("/status", authenticateToken, ensureJobService, async (req, res) => {
+router.get('/status', authenticateToken, ensureJobService, async (req, res) => {
   try {
     const status = req.jobService.getStatus();
     const report = await req.jobService.generateLinkingReport();
@@ -40,14 +40,14 @@ router.get("/status", authenticateToken, ensureJobService, async (req, res) => {
       success: true,
       data: {
         ...status,
-        dailyReport: report,
-      },
+        dailyReport: report
+      }
     });
   } catch (error) {
-    logger.error("Error getting job status:", error);
+    logger.error('Error getting job status:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get job status",
+      message: 'Failed to get job status'
     });
   }
 });
@@ -55,22 +55,22 @@ router.get("/status", authenticateToken, ensureJobService, async (req, res) => {
 /**
  * Manually trigger auto linking job
  */
-router.post("/trigger-auto", adminAuth, ensureJobService, async (req, res) => {
+router.post('/trigger-auto', adminAuth, ensureJobService, async (req, res) => {
   try {
     // Run the job in the background
     req.jobService.triggerAutoLinking().catch((error) => {
-      logger.error("Auto linking job failed:", error);
+      logger.error('Auto linking job failed:', error);
     });
 
     res.json({
       success: true,
-      message: "Auto linking job triggered successfully",
+      message: 'Auto linking job triggered successfully'
     });
   } catch (error) {
-    logger.error("Error triggering auto linking job:", error);
+    logger.error('Error triggering auto linking job:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to trigger auto linking job",
+      message: 'Failed to trigger auto linking job'
     });
   }
 });
@@ -79,7 +79,7 @@ router.post("/trigger-auto", adminAuth, ensureJobService, async (req, res) => {
  * Enable or disable a specific job
  */
 router.post(
-  "/toggle/:jobName",
+  '/toggle/:jobName',
   adminAuth,
   ensureJobService,
   async (req, res) => {
@@ -87,10 +87,10 @@ router.post(
       const { jobName } = req.params;
       const { enabled } = req.body;
 
-      if (typeof enabled !== "boolean") {
+      if (typeof enabled !== 'boolean') {
         return res.status(400).json({
           success: false,
-          message: "enabled field must be a boolean",
+          message: 'enabled field must be a boolean'
         });
       }
 
@@ -99,21 +99,21 @@ router.post(
       if (!success) {
         return res.status(404).json({
           success: false,
-          message: `Job '${jobName}' not found`,
+          message: `Job '${jobName}' not found`
         });
       }
 
       res.json({
         success: true,
         message: `Job '${jobName}' ${
-          enabled ? "enabled" : "disabled"
-        } successfully`,
+          enabled ? 'enabled' : 'disabled'
+        } successfully`
       });
     } catch (error) {
-      logger.error("Error toggling job:", error);
+      logger.error('Error toggling job:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to toggle job",
+        message: 'Failed to toggle job'
       });
     }
   }
@@ -122,7 +122,7 @@ router.post(
 /**
  * Get linking statistics for a custom period
  */
-router.get("/report", authenticateToken, ensureJobService, async (req, res) => {
+router.get('/report', authenticateToken, ensureJobService, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
@@ -132,7 +132,7 @@ router.get("/report", authenticateToken, ensureJobService, async (req, res) => {
       if (isNaN(since.getTime())) {
         return res.status(400).json({
           success: false,
-          message: "Invalid startDate format",
+          message: 'Invalid startDate format'
         });
       }
     }
@@ -141,13 +141,13 @@ router.get("/report", authenticateToken, ensureJobService, async (req, res) => {
 
     res.json({
       success: true,
-      data: report,
+      data: report
     });
   } catch (error) {
-    logger.error("Error generating linking report:", error);
+    logger.error('Error generating linking report:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to generate linking report",
+      message: 'Failed to generate linking report'
     });
   }
 });
@@ -155,47 +155,47 @@ router.get("/report", authenticateToken, ensureJobService, async (req, res) => {
 /**
  * Get available jobs list
  */
-router.get("/jobs", authenticateToken, ensureJobService, async (req, res) => {
+router.get('/jobs', authenticateToken, ensureJobService, async (req, res) => {
   try {
     const status = req.jobService.getStatus();
 
     const jobs = [
       {
-        name: "auto-linking",
+        name: 'auto-linking',
         description:
-          "Automatic linking of recent order items (every 30 minutes)",
-        schedule: "*/30 * * * *",
+          'Automatic linking of recent order items (every 30 minutes)',
+        schedule: '*/30 * * * *',
         enabled:
-          status.schedules.find((s) => s.name === "auto-linking")?.enabled ||
-          false,
+          status.schedules.find((s) => s.name === 'auto-linking')?.enabled ||
+          false
       },
       {
-        name: "daily-linking",
-        description: "Comprehensive daily linking (daily at 2 AM)",
-        schedule: "0 2 * * *",
+        name: 'daily-linking',
+        description: 'Comprehensive daily linking (daily at 2 AM)',
+        schedule: '0 2 * * *',
         enabled:
-          status.schedules.find((s) => s.name === "daily-linking")?.enabled ||
-          false,
+          status.schedules.find((s) => s.name === 'daily-linking')?.enabled ||
+          false
       },
       {
-        name: "weekly-optimization",
-        description: "Weekly optimization and cleanup (Sunday at 3 AM)",
-        schedule: "0 3 * * 0",
+        name: 'weekly-optimization',
+        description: 'Weekly optimization and cleanup (Sunday at 3 AM)',
+        schedule: '0 3 * * 0',
         enabled:
-          status.schedules.find((s) => s.name === "weekly-optimization")
-            ?.enabled || false,
-      },
+          status.schedules.find((s) => s.name === 'weekly-optimization')
+            ?.enabled || false
+      }
     ];
 
     res.json({
       success: true,
-      data: jobs,
+      data: jobs
     });
   } catch (error) {
-    logger.error("Error getting jobs list:", error);
+    logger.error('Error getting jobs list:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get jobs list",
+      message: 'Failed to get jobs list'
     });
   }
 });
@@ -203,7 +203,7 @@ router.get("/jobs", authenticateToken, ensureJobService, async (req, res) => {
 /**
  * Get dashboard statistics
  */
-router.get("/stats", authenticateToken, ensureJobService, async (req, res) => {
+router.get('/stats', authenticateToken, ensureJobService, async (req, res) => {
   try {
     const { platform, startDate, endDate } = req.query;
 
@@ -211,7 +211,7 @@ router.get("/stats", authenticateToken, ensureJobService, async (req, res) => {
     const dateFilter = {};
     if (startDate && endDate) {
       dateFilter.createdAt = {
-        [Op.between]: [new Date(startDate), new Date(endDate)],
+        [Op.between]: [new Date(startDate), new Date(endDate)]
       };
     }
 
@@ -223,44 +223,44 @@ router.get("/stats", authenticateToken, ensureJobService, async (req, res) => {
       where: { ...dateFilter },
       include: [
         {
-          model: require("../../../models/Order"),
-          as: "order",
+          model: require('../../../models/Order'),
+          as: 'order',
           where: platformFilter,
-          required: true,
-        },
-      ],
+          required: true
+        }
+      ]
     });
 
     // Get linked items
     const linkedItems = await OrderItem.count({
       where: {
         ...dateFilter,
-        productId: { [Op.not]: null },
+        productId: { [Op.not]: null }
       },
       include: [
         {
-          model: require("../../../models/Order"),
-          as: "order",
+          model: require('../../../models/Order'),
+          as: 'order',
           where: platformFilter,
-          required: true,
-        },
-      ],
+          required: true
+        }
+      ]
     });
 
     // Get unlinked items
     const unlinkedItems = await OrderItem.count({
       where: {
         ...dateFilter,
-        productId: null,
+        productId: null
       },
       include: [
         {
-          model: require("../../../models/Order"),
-          as: "order",
+          model: require('../../../models/Order'),
+          as: 'order',
           where: platformFilter,
-          required: true,
-        },
-      ],
+          required: true
+        }
+      ]
     });
 
     // Calculate linking rate
@@ -274,16 +274,16 @@ router.get("/stats", authenticateToken, ensureJobService, async (req, res) => {
     const recentlyLinked = await OrderItem.count({
       where: {
         productId: { [Op.not]: null },
-        updatedAt: { [Op.gte]: yesterday },
+        updatedAt: { [Op.gte]: yesterday }
       },
       include: [
         {
-          model: require("../../../models/Order"),
-          as: "order",
+          model: require('../../../models/Order'),
+          as: 'order',
           where: platformFilter,
-          required: true,
-        },
-      ],
+          required: true
+        }
+      ]
     });
 
     res.json({
@@ -293,14 +293,14 @@ router.get("/stats", authenticateToken, ensureJobService, async (req, res) => {
         linkedItems,
         unlinkedItems,
         linkingRate: parseFloat(linkingRate),
-        recentlyLinked,
-      },
+        recentlyLinked
+      }
     });
   } catch (error) {
-    logger.error("Error getting dashboard stats:", error);
+    logger.error('Error getting dashboard stats:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get dashboard statistics",
+      message: 'Failed to get dashboard statistics'
     });
   }
 });
@@ -308,7 +308,7 @@ router.get("/stats", authenticateToken, ensureJobService, async (req, res) => {
 /**
  * Get unlinked items with pagination
  */
-router.get("/unlinked-items", authenticateToken, async (req, res) => {
+router.get('/unlinked-items', authenticateToken, async (req, res) => {
   try {
     const {
       page = 1,
@@ -316,7 +316,7 @@ router.get("/unlinked-items", authenticateToken, async (req, res) => {
       platform,
       search,
       startDate,
-      endDate,
+      endDate
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -331,7 +331,7 @@ router.get("/unlinked-items", authenticateToken, async (req, res) => {
 
     if (startDate && endDate) {
       whereClause.createdAt = {
-        [Op.between]: [new Date(startDate), new Date(endDate)],
+        [Op.between]: [new Date(startDate), new Date(endDate)]
       };
     }
 
@@ -339,7 +339,7 @@ router.get("/unlinked-items", authenticateToken, async (req, res) => {
       whereClause[Op.or] = [
         { title: { [Op.iLike]: `%${search}%` } },
         { sku: { [Op.iLike]: `%${search}%` } },
-        { barcode: { [Op.iLike]: `%${search}%` } },
+        { barcode: { [Op.iLike]: `%${search}%` } }
       ];
     }
 
@@ -347,16 +347,16 @@ router.get("/unlinked-items", authenticateToken, async (req, res) => {
       where: whereClause,
       include: [
         {
-          model: require("../../../models/Order"),
-          as: "order",
+          model: require('../../../models/Order'),
+          as: 'order',
           where: Object.keys(orderWhere).length > 0 ? orderWhere : undefined,
           required: true,
-          attributes: ["id", "orderNumber", "platform", "createdAt"],
-        },
+          attributes: ['id', 'orderNumber', 'platform', 'createdAt']
+        }
       ],
-      order: [["createdAt", "DESC"]],
+      order: [['createdAt', 'DESC']],
       limit: parseInt(limit),
-      offset: parseInt(offset),
+      offset: parseInt(offset)
     });
 
     const totalPages = Math.ceil(total / limit);
@@ -369,15 +369,15 @@ router.get("/unlinked-items", authenticateToken, async (req, res) => {
           currentPage: parseInt(page),
           totalPages,
           totalItems: total,
-          limit: parseInt(limit),
-        },
-      },
+          limit: parseInt(limit)
+        }
+      }
     });
   } catch (error) {
-    logger.error("Error getting unlinked items:", error);
+    logger.error('Error getting unlinked items:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get unlinked items",
+      message: 'Failed to get unlinked items'
     });
   }
 });
@@ -386,7 +386,7 @@ router.get("/unlinked-items", authenticateToken, async (req, res) => {
  * Run retroactive linking
  */
 router.post(
-  "/run-retroactive",
+  '/run-retroactive',
   adminAuth,
   ensureJobService,
   async (req, res) => {
@@ -396,12 +396,12 @@ router.post(
         startDate,
         endDate,
         batchSize = 100,
-        dryRun = false,
+        dryRun = false
       } = req.body;
 
       // Build filters for retroactive processing
       const filters = {};
-      if (platform) filters.platform = platform;
+      if (platform) {filters.platform = platform;}
       if (startDate && endDate) {
         filters.dateRange = { start: startDate, end: endDate };
       }
@@ -419,7 +419,7 @@ router.post(
 
       if (startDate && endDate) {
         whereClause.createdAt = {
-          [Op.between]: [new Date(startDate), new Date(endDate)],
+          [Op.between]: [new Date(startDate), new Date(endDate)]
         };
       }
 
@@ -427,13 +427,13 @@ router.post(
         where: whereClause,
         include: [
           {
-            model: require("../../../models/Order"),
-            as: "order",
+            model: require('../../../models/Order'),
+            as: 'order',
             where: Object.keys(orderWhere).length > 0 ? orderWhere : undefined,
-            required: true,
-          },
+            required: true
+          }
         ],
-        limit: parseInt(batchSize),
+        limit: parseInt(batchSize)
       });
 
       if (dryRun) {
@@ -443,8 +443,8 @@ router.post(
             processedItems: unlinkedItems.length,
             linkedItems: 0,
             dryRun: true,
-            message: `Would process ${unlinkedItems.length} items`,
-          },
+            message: `Would process ${unlinkedItems.length} items`
+          }
         });
       }
 
@@ -453,9 +453,9 @@ router.post(
         include: [
           {
             model: ProductVariant,
-            as: "variants",
-          },
-        ],
+            as: 'variants'
+          }
+        ]
       });
 
       // Process items
@@ -476,14 +476,14 @@ router.post(
         data: {
           processedItems: unlinkedItems.length,
           linkedItems: linkedCount,
-          dryRun: false,
-        },
+          dryRun: false
+        }
       });
     } catch (error) {
-      logger.error("Error running retroactive linking:", error);
+      logger.error('Error running retroactive linking:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to run retroactive linking",
+        message: 'Failed to run retroactive linking'
       });
     }
   }
@@ -492,7 +492,7 @@ router.post(
 /**
  * Get product suggestions for manual linking
  */
-router.get("/suggestions/:id", authenticateToken, async (req, res) => {
+router.get('/suggestions/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { limit = 10 } = req.query;
@@ -501,16 +501,16 @@ router.get("/suggestions/:id", authenticateToken, async (req, res) => {
     const orderItem = await OrderItem.findByPk(id, {
       include: [
         {
-          model: require("../../../models/Order"),
-          as: "order",
-        },
-      ],
+          model: require('../../../models/Order'),
+          as: 'order'
+        }
+      ]
     });
 
     if (!orderItem) {
       return res.status(404).json({
         success: false,
-        message: "Order item not found",
+        message: 'Order item not found'
       });
     }
 
@@ -522,9 +522,9 @@ router.get("/suggestions/:id", authenticateToken, async (req, res) => {
       include: [
         {
           model: ProductVariant,
-          as: "variants",
-        },
-      ],
+          as: 'variants'
+        }
+      ]
     });
 
     // Find potential matches using the linking service
@@ -540,14 +540,14 @@ router.get("/suggestions/:id", authenticateToken, async (req, res) => {
       success: true,
       data: {
         orderItem,
-        suggestions: limitedSuggestions,
-      },
+        suggestions: limitedSuggestions
+      }
     });
   } catch (error) {
-    logger.error("Error getting product suggestions:", error);
+    logger.error('Error getting product suggestions:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get product suggestions",
+      message: 'Failed to get product suggestions'
     });
   }
 });
@@ -555,7 +555,7 @@ router.get("/suggestions/:id", authenticateToken, async (req, res) => {
 /**
  * Manually link order item to product
  */
-router.post("/link/:id", authenticateToken, async (req, res) => {
+router.post('/link/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { productId, variantId } = req.body;
@@ -563,7 +563,7 @@ router.post("/link/:id", authenticateToken, async (req, res) => {
     if (!productId) {
       return res.status(400).json({
         success: false,
-        message: "Product ID is required",
+        message: 'Product ID is required'
       });
     }
 
@@ -572,7 +572,7 @@ router.post("/link/:id", authenticateToken, async (req, res) => {
     if (!orderItem) {
       return res.status(404).json({
         success: false,
-        message: "Order item not found",
+        message: 'Order item not found'
       });
     }
 
@@ -581,7 +581,7 @@ router.post("/link/:id", authenticateToken, async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
+        message: 'Product not found'
       });
     }
 
@@ -590,14 +590,14 @@ router.post("/link/:id", authenticateToken, async (req, res) => {
       const variant = await ProductVariant.findOne({
         where: {
           id: variantId,
-          productId: productId,
-        },
+          productId: productId
+        }
       });
       if (!variant) {
         return res.status(404).json({
           success: false,
           message:
-            "Product variant not found or doesn't belong to specified product",
+            'Product variant not found or doesn\'t belong to specified product'
         });
       }
     }
@@ -607,26 +607,26 @@ router.post("/link/:id", authenticateToken, async (req, res) => {
       productId: productId,
       variantId: variantId || null,
       linkedAt: new Date(),
-      linkingMethod: "manual",
+      linkingMethod: 'manual'
     });
 
     res.json({
       success: true,
-      message: "Order item linked successfully",
+      message: 'Order item linked successfully',
       data: {
         orderItem: await OrderItem.findByPk(id, {
           include: [
-            { model: Product, as: "product" },
-            { model: ProductVariant, as: "variant" },
-          ],
-        }),
-      },
+            { model: Product, as: 'product' },
+            { model: ProductVariant, as: 'variant' }
+          ]
+        })
+      }
     });
   } catch (error) {
-    logger.error("Error linking order item:", error);
+    logger.error('Error linking order item:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to link order item",
+      message: 'Failed to link order item'
     });
   }
 });
@@ -634,7 +634,7 @@ router.post("/link/:id", authenticateToken, async (req, res) => {
 /**
  * Unlink order item from product
  */
-router.delete("/unlink/:id", authenticateToken, async (req, res) => {
+router.delete('/unlink/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -643,14 +643,14 @@ router.delete("/unlink/:id", authenticateToken, async (req, res) => {
     if (!orderItem) {
       return res.status(404).json({
         success: false,
-        message: "Order item not found",
+        message: 'Order item not found'
       });
     }
 
     if (!orderItem.productId) {
       return res.status(400).json({
         success: false,
-        message: "Order item is not linked to any product",
+        message: 'Order item is not linked to any product'
       });
     }
 
@@ -659,19 +659,19 @@ router.delete("/unlink/:id", authenticateToken, async (req, res) => {
       productId: null,
       variantId: null,
       linkedAt: null,
-      linkingMethod: null,
+      linkingMethod: null
     });
 
     res.json({
       success: true,
-      message: "Order item unlinked successfully",
-      data: { orderItem },
+      message: 'Order item unlinked successfully',
+      data: { orderItem }
     });
   } catch (error) {
-    logger.error("Error unlinking order item:", error);
+    logger.error('Error unlinking order item:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to unlink order item",
+      message: 'Failed to unlink order item'
     });
   }
 });

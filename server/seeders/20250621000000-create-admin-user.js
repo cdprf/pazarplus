@@ -1,35 +1,35 @@
-"use strict";
+'use strict';
 
-const bcrypt = require("bcrypt");
-const { v4: uuidv4 } = require("uuid");
+const bcrypt = require('bcrypt');
+const { v4: uuidv4 } = require('uuid');
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const hashedPassword = await bcrypt.hash("admin123", 12);
+    const hashedPassword = await bcrypt.hash('admin123', 12);
 
     // Check if admin user already exists
     const [existingUser] = await queryInterface.sequelize.query(
-      "SELECT id FROM users WHERE username = 'admin' OR email = 'admin@pazar-plus.com'",
+      'SELECT id FROM users WHERE username = \'admin\' OR email = \'admin@pazar-plus.com\'',
       { type: Sequelize.QueryTypes.SELECT }
     );
 
     if (!existingUser) {
       await queryInterface.bulkInsert(
-        "users",
+        'users',
         [
           {
             id: uuidv4(),
-            username: "admin",
-            email: "admin@pazar-plus.com",
+            username: 'admin',
+            email: 'admin@pazar-plus.com',
             password: hashedPassword,
-            fullName: "System Administrator",
-            role: "admin",
+            fullName: 'System Administrator',
+            role: 'admin',
             isActive: true,
             emailVerified: true,
             twoFactorEnabled: false,
-            subscriptionPlan: "enterprise",
-            subscriptionStatus: "active",
+            subscriptionPlan: 'enterprise',
+            subscriptionStatus: 'active',
             tenantId: uuidv4(),
             onboardingCompleted: true,
             onboardingStep: 10,
@@ -46,19 +46,19 @@ module.exports = {
               multi_platform: true,
               ai_insights: true,
               custom_reports: true,
-              api_access: true,
+              api_access: true
             }),
-            companyName: "Pazar+ Admin",
-            businessType: "enterprise",
-            monthlyRevenue: "500k+",
+            companyName: 'Pazar+ Admin',
+            businessType: 'enterprise',
+            monthlyRevenue: '500k+',
             healthScore: 1.0,
             lastActivityAt: new Date(),
-            billingCurrency: "TRY",
-            billingCountry: "TR",
-            settings: "{}",
+            billingCurrency: 'TRY',
+            billingCountry: 'TR',
+            settings: '{}',
             createdAt: new Date(),
-            updatedAt: new Date(),
-          },
+            updatedAt: new Date()
+          }
         ],
         {}
       );
@@ -67,11 +67,11 @@ module.exports = {
 
   async down(queryInterface, Sequelize) {
     await queryInterface.bulkDelete(
-      "users",
+      'users',
       {
-        username: "admin",
+        username: 'admin'
       },
       {}
     );
-  },
+  }
 };

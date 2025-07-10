@@ -1,166 +1,166 @@
-const { DataTypes } = require("sequelize");
+const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
   const BulkOperation = sequelize.define(
-    "BulkOperation",
+    'BulkOperation',
     {
       id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
-        primaryKey: true,
+        primaryKey: true
       },
       userId: {
         type: DataTypes.UUID,
         allowNull: false,
         references: {
-          model: "Users",
-          key: "id",
+          model: 'Users',
+          key: 'id'
         },
-        onUpdate: "CASCADE",
-        onDelete: "CASCADE",
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
       type: {
         type: DataTypes.ENUM(
-          "product_import",
-          "product_export",
-          "price_update",
-          "stock_update",
-          "category_update",
-          "media_upload",
-          "platform_publish",
-          "platform_sync",
-          "variant_creation",
-          "bulk_delete"
+          'product_import',
+          'product_export',
+          'price_update',
+          'stock_update',
+          'category_update',
+          'media_upload',
+          'platform_publish',
+          'platform_sync',
+          'variant_creation',
+          'bulk_delete'
         ),
         allowNull: false,
-        comment: "Type of bulk operation",
+        comment: 'Type of bulk operation'
       },
       status: {
         type: DataTypes.ENUM(
-          "pending",
-          "processing",
-          "completed",
-          "failed",
-          "cancelled",
-          "partial"
+          'pending',
+          'processing',
+          'completed',
+          'failed',
+          'cancelled',
+          'partial'
         ),
-        defaultValue: "pending",
-        comment: "Operation status",
+        defaultValue: 'pending',
+        comment: 'Operation status'
       },
       totalItems: {
         type: DataTypes.INTEGER,
         defaultValue: 0,
-        comment: "Total number of items to process",
+        comment: 'Total number of items to process'
       },
       processedItems: {
         type: DataTypes.INTEGER,
         defaultValue: 0,
-        comment: "Number of items processed",
+        comment: 'Number of items processed'
       },
       successfulItems: {
         type: DataTypes.INTEGER,
         defaultValue: 0,
-        comment: "Number of successful operations",
+        comment: 'Number of successful operations'
       },
       failedItems: {
         type: DataTypes.INTEGER,
         defaultValue: 0,
-        comment: "Number of failed operations",
+        comment: 'Number of failed operations'
       },
       progress: {
         type: DataTypes.DECIMAL(5, 2),
         defaultValue: 0.0,
-        comment: "Progress percentage (0-100)",
+        comment: 'Progress percentage (0-100)'
       },
       configuration: {
         type: DataTypes.JSON,
         defaultValue: {},
-        comment: "Operation configuration and settings",
+        comment: 'Operation configuration and settings'
       },
       filters: {
         type: DataTypes.JSON,
         defaultValue: {},
-        comment: "Filters applied to the operation",
+        comment: 'Filters applied to the operation'
       },
       results: {
         type: DataTypes.JSON,
         defaultValue: {},
-        comment: "Operation results and summary",
+        comment: 'Operation results and summary'
       },
       errors: {
         type: DataTypes.JSON,
         defaultValue: [],
-        comment: "Array of errors encountered",
+        comment: 'Array of errors encountered'
       },
       warnings: {
         type: DataTypes.JSON,
         defaultValue: [],
-        comment: "Array of warnings encountered",
+        comment: 'Array of warnings encountered'
       },
       metadata: {
         type: DataTypes.JSON,
         defaultValue: {},
-        comment: "Additional operation metadata",
+        comment: 'Additional operation metadata'
       },
       startedAt: {
         type: DataTypes.DATE,
         allowNull: true,
-        comment: "When the operation started processing",
+        comment: 'When the operation started processing'
       },
       completedAt: {
         type: DataTypes.DATE,
         allowNull: true,
-        comment: "When the operation completed",
+        comment: 'When the operation completed'
       },
       estimatedCompletionAt: {
         type: DataTypes.DATE,
         allowNull: true,
-        comment: "Estimated completion time",
+        comment: 'Estimated completion time'
       },
       processingTimeMs: {
         type: DataTypes.BIGINT,
         allowNull: true,
-        comment: "Total processing time in milliseconds",
+        comment: 'Total processing time in milliseconds'
       },
       fileUrl: {
         type: DataTypes.TEXT,
         allowNull: true,
-        comment: "URL to input file if applicable",
+        comment: 'URL to input file if applicable'
       },
       resultFileUrl: {
         type: DataTypes.TEXT,
         allowNull: true,
-        comment: "URL to result file if applicable",
-      },
+        comment: 'URL to result file if applicable'
+      }
     },
     {
-      tableName: "BulkOperations",
+      tableName: 'BulkOperations',
       timestamps: true,
       indexes: [
         {
-          fields: ["userId"],
+          fields: ['userId']
         },
         {
-          fields: ["type"],
+          fields: ['type']
         },
         {
-          fields: ["status"],
+          fields: ['status']
         },
         {
-          fields: ["createdAt"],
+          fields: ['createdAt']
         },
         {
-          fields: ["userId", "status"],
-          name: "bulk_operations_user_status_idx",
-        },
-      ],
+          fields: ['userId', 'status'],
+          name: 'bulk_operations_user_status_idx'
+        }
+      ]
     }
   );
 
   BulkOperation.associate = function (models) {
     BulkOperation.belongsTo(models.User, {
-      foreignKey: "userId",
-      as: "user",
+      foreignKey: 'userId',
+      as: 'user'
     });
   };
 
@@ -202,13 +202,13 @@ module.exports = (sequelize) => {
   };
 
   BulkOperation.prototype.markAsStarted = function () {
-    this.status = "processing";
+    this.status = 'processing';
     this.startedAt = new Date();
     return this.save();
   };
 
   BulkOperation.prototype.markAsCompleted = function () {
-    this.status = this.failedCount > 0 ? "completed" : "completed";
+    this.status = this.failedCount > 0 ? 'completed' : 'completed';
     this.completedAt = new Date();
     this.progress = 100;
     this.estimatedTimeRemaining = 0;
@@ -216,26 +216,26 @@ module.exports = (sequelize) => {
   };
 
   BulkOperation.prototype.markAsFailed = function (error) {
-    this.status = "failed";
+    this.status = 'failed';
     this.completedAt = new Date();
     if (error) {
       this.errors.push({
         message: error.message,
         stack: error.stack,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
     }
     return this.save();
   };
 
   BulkOperation.prototype.cancel = function () {
-    if (this.status === "pending" || this.status === "processing") {
-      this.status = "cancelled";
+    if (this.status === 'pending' || this.status === 'processing') {
+      this.status = 'cancelled';
       this.completedAt = new Date();
       return this.save();
     }
     throw new Error(
-      "Cannot cancel operation that is not pending or processing"
+      'Cannot cancel operation that is not pending or processing'
     );
   };
 

@@ -1,36 +1,36 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
 
 // Platform templates routes
-router.get("/", (req, res) => {
+router.get('/', (req, res) => {
   res.json({
     success: true,
-    message: "Platform templates endpoint",
-    templates: [],
+    message: 'Platform templates endpoint',
+    templates: []
   });
 });
 
-router.get("/hepsiburada", (req, res) => {
+router.get('/hepsiburada', (req, res) => {
   res.json({
     success: true,
-    platform: "hepsiburada",
-    templates: [],
+    platform: 'hepsiburada',
+    templates: []
   });
 });
 
-router.get("/trendyol", (req, res) => {
+router.get('/trendyol', (req, res) => {
   res.json({
     success: true,
-    platform: "trendyol",
-    templates: [],
+    platform: 'trendyol',
+    templates: []
   });
 });
 
-router.get("/n11", (req, res) => {
+router.get('/n11', (req, res) => {
   res.json({
     success: true,
-    platform: "n11",
-    templates: [],
+    platform: 'n11',
+    templates: []
   });
 });
 

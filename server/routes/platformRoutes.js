@@ -1,10 +1,10 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const platformController = require("../controllers/platform-controller");
-const { auth } = require("../middleware/auth");
-const { platformServiceFactory } = require("../services/platform-factory");
-const { body, query, param, validationResult } = require("express-validator");
-const logger = require("../utils/logger");
+const platformController = require('../controllers/platform-controller');
+const { auth } = require('../middleware/auth');
+const { platformServiceFactory } = require('../services/platform-factory');
+const { body, query, param, validationResult } = require('express-validator');
+const logger = require('../utils/logger');
 
 // Define validateRequest locally to avoid import issues
 const validateRequest = (req, res, next) => {
@@ -12,8 +12,8 @@ const validateRequest = (req, res, next) => {
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
-      message: "Validation failed",
-      errors: errors.array(),
+      message: 'Validation failed',
+      errors: errors.array()
     });
   }
   next();
@@ -23,36 +23,36 @@ const validateRequest = (req, res, next) => {
 router.use(auth);
 
 // Platform connection routes
-router.get("/connections", platformController.getConnections);
-router.post("/connections", platformController.createConnection);
-router.get("/connections/:id", platformController.getConnection);
-router.put("/connections/:id", platformController.updateConnection);
-router.delete("/connections/:id", platformController.deleteConnection);
-router.post("/connections/:id/test", platformController.testConnection);
+router.get('/connections', platformController.getConnections);
+router.post('/connections', platformController.createConnection);
+router.get('/connections/:id', platformController.getConnection);
+router.put('/connections/:id', platformController.updateConnection);
+router.delete('/connections/:id', platformController.deleteConnection);
+router.post('/connections/:id/test', platformController.testConnection);
 
 // Platform settings routes
 router.get(
-  "/connections/:id/settings",
+  '/connections/:id/settings',
   platformController.getConnectionSettings
 );
 router.put(
-  "/connections/:id/settings",
+  '/connections/:id/settings',
   platformController.updateConnectionSettings
 );
 
 // Platform sync routes
-router.post("/connections/:id/sync", platformController.syncPlatform);
+router.post('/connections/:id/sync', platformController.syncPlatform);
 
 // Platform analytics routes
 router.get(
-  "/connections/:id/analytics",
+  '/connections/:id/analytics',
   platformController.getPlatformAnalytics
 );
 
 // Platform sync history routes
-router.get("/connections/:id/sync-history", platformController.getSyncHistory);
+router.get('/connections/:id/sync-history', platformController.getSyncHistory);
 router.post(
-  "/connections/:id/sync-history/:syncId/retry",
+  '/connections/:id/sync-history/:syncId/retry',
   platformController.retrySyncHistory
 );
 
@@ -62,21 +62,21 @@ router.post(
  * GET /api/platforms/health
  * Get global health status of all platform services
  */
-router.get("/health", async (req, res) => {
+router.get('/health', async (req, res) => {
   try {
     const healthStatus = platformServiceFactory.getGlobalHealthStatus();
 
     res.json({
       success: true,
       data: healthStatus,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
-    logger.error("Failed to get platform health status:", error);
+    logger.error('Failed to get platform health status:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to retrieve health status",
-      error: error.message,
+      message: 'Failed to retrieve health status',
+      error: error.message
     });
   }
 });
@@ -85,21 +85,21 @@ router.get("/health", async (req, res) => {
  * GET /api/platforms/available
  * Get list of available enhanced platform integrations
  */
-router.get("/available", async (req, res) => {
+router.get('/available', async (req, res) => {
   try {
     const platforms = platformServiceFactory.getAvailablePlatforms();
 
     res.json({
       success: true,
       data: platforms,
-      total: platforms.length,
+      total: platforms.length
     });
   } catch (error) {
-    logger.error("Failed to get available platforms:", error);
+    logger.error('Failed to get available platforms:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to retrieve available platforms",
-      error: error.message,
+      message: 'Failed to retrieve available platforms',
+      error: error.message
     });
   }
 });
@@ -109,27 +109,27 @@ router.get("/available", async (req, res) => {
  * Trigger manual sync for a specific platform connection
  */
 router.post(
-  "/:platform/connections/:connectionId/sync",
+  '/:platform/connections/:connectionId/sync',
   [
-    param("platform")
-      .isIn(["trendyol", "hepsiburada", "n11"])
-      .withMessage("Invalid platform"),
-    param("connectionId").isUUID().withMessage("Invalid connection ID"),
-    body("startDate").optional().isISO8601().withMessage("Invalid start date"),
-    body("endDate").optional().isISO8601().withMessage("Invalid end date"),
-    body("pageSize")
+    param('platform')
+      .isIn(['trendyol', 'hepsiburada', 'n11'])
+      .withMessage('Invalid platform'),
+    param('connectionId').isUUID().withMessage('Invalid connection ID'),
+    body('startDate').optional().isISO8601().withMessage('Invalid start date'),
+    body('endDate').optional().isISO8601().withMessage('Invalid end date'),
+    body('pageSize')
       .optional()
       .isInt({ min: 1, max: 100 })
-      .withMessage("Page size must be between 1 and 100"),
-    body("maxPages")
+      .withMessage('Page size must be between 1 and 100'),
+    body('maxPages')
       .optional()
       .isInt({ min: 1, max: 50 })
-      .withMessage("Max pages must be between 1 and 50"),
-    body("processCompliance")
+      .withMessage('Max pages must be between 1 and 50'),
+    body('processCompliance')
       .optional()
       .isBoolean()
-      .withMessage("Process compliance must be boolean"),
-    validateRequest,
+      .withMessage('Process compliance must be boolean'),
+    validateRequest
   ],
   async (req, res) => {
     try {
@@ -137,20 +137,20 @@ router.post(
       const options = req.body;
 
       // Get connection data
-      const { PlatformConnection } = require("../models");
+      const { PlatformConnection } = require('../models');
       const connection = await PlatformConnection.findOne({
         where: {
           id: connectionId,
           userId: req.user.id,
           platformType: platform,
-          isActive: true,
-        },
+          isActive: true
+        }
       });
 
       if (!connection) {
         return res.status(404).json({
           success: false,
-          message: "Platform connection not found or inactive",
+          message: 'Platform connection not found or inactive'
         });
       }
 
@@ -159,7 +159,7 @@ router.post(
         id: connection.id,
         userId: connection.userId,
         credentials: JSON.parse(connection.credentials),
-        settings: connection.settings || {},
+        settings: connection.settings || {}
       });
 
       // Perform sync
@@ -171,15 +171,15 @@ router.post(
 
       res.json({
         success: true,
-        message: "Sync completed successfully",
-        data: result,
+        message: 'Sync completed successfully',
+        data: result
       });
     } catch (error) {
-      logger.error("Manual sync failed:", error);
+      logger.error('Manual sync failed:', error);
       res.status(500).json({
         success: false,
-        message: "Sync failed",
-        error: error.message,
+        message: 'Sync failed',
+        error: error.message
       });
     }
   }
@@ -190,21 +190,21 @@ router.post(
  * Start real-time sync for a platform connection
  */
 router.post(
-  "/:platform/connections/:connectionId/realtime/start",
+  '/:platform/connections/:connectionId/realtime/start',
   [
-    param("platform")
-      .isIn(["trendyol", "hepsiburada", "n11"])
-      .withMessage("Invalid platform"),
-    param("connectionId").isUUID().withMessage("Invalid connection ID"),
-    body("interval")
+    param('platform')
+      .isIn(['trendyol', 'hepsiburada', 'n11'])
+      .withMessage('Invalid platform'),
+    param('connectionId').isUUID().withMessage('Invalid connection ID'),
+    body('interval')
       .optional()
       .isInt({ min: 60000, max: 3600000 })
-      .withMessage("Interval must be between 1 minute and 1 hour"),
-    body("processCompliance")
+      .withMessage('Interval must be between 1 minute and 1 hour'),
+    body('processCompliance')
       .optional()
       .isBoolean()
-      .withMessage("Process compliance must be boolean"),
-    validateRequest,
+      .withMessage('Process compliance must be boolean'),
+    validateRequest
   ],
   async (req, res) => {
     try {
@@ -212,20 +212,20 @@ router.post(
       const options = req.body;
 
       // Verify connection ownership
-      const { PlatformConnection } = require("../models");
+      const { PlatformConnection } = require('../models');
       const connection = await PlatformConnection.findOne({
         where: {
           id: connectionId,
           userId: req.user.id,
           platformType: platform,
-          isActive: true,
-        },
+          isActive: true
+        }
       });
 
       if (!connection) {
         return res.status(404).json({
           success: false,
-          message: "Platform connection not found or inactive",
+          message: 'Platform connection not found or inactive'
         });
       }
 
@@ -234,7 +234,7 @@ router.post(
         id: connection.id,
         userId: connection.userId,
         credentials: JSON.parse(connection.credentials),
-        settings: connection.settings || {},
+        settings: connection.settings || {}
       });
 
       // Start real-time sync
@@ -246,15 +246,15 @@ router.post(
 
       res.json({
         success: true,
-        message: "Real-time sync started successfully",
-        data: result,
+        message: 'Real-time sync started successfully',
+        data: result
       });
     } catch (error) {
-      logger.error("Failed to start real-time sync:", error);
+      logger.error('Failed to start real-time sync:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to start real-time sync",
-        error: error.message,
+        message: 'Failed to start real-time sync',
+        error: error.message
       });
     }
   }
@@ -265,32 +265,32 @@ router.post(
  * Stop real-time sync for a platform connection
  */
 router.post(
-  "/:platform/connections/:connectionId/realtime/stop",
+  '/:platform/connections/:connectionId/realtime/stop',
   [
-    param("platform")
-      .isIn(["trendyol", "hepsiburada", "n11"])
-      .withMessage("Invalid platform"),
-    param("connectionId").isUUID().withMessage("Invalid connection ID"),
-    validateRequest,
+    param('platform')
+      .isIn(['trendyol', 'hepsiburada', 'n11'])
+      .withMessage('Invalid platform'),
+    param('connectionId').isUUID().withMessage('Invalid connection ID'),
+    validateRequest
   ],
   async (req, res) => {
     try {
       const { platform, connectionId } = req.params;
 
       // Verify connection ownership
-      const { PlatformConnection } = require("../models");
+      const { PlatformConnection } = require('../models');
       const connection = await PlatformConnection.findOne({
         where: {
           id: connectionId,
           userId: req.user.id,
-          platformType: platform,
-        },
+          platformType: platform
+        }
       });
 
       if (!connection) {
         return res.status(404).json({
           success: false,
-          message: "Platform connection not found",
+          message: 'Platform connection not found'
         });
       }
 
@@ -302,15 +302,15 @@ router.post(
 
       res.json({
         success: true,
-        message: "Real-time sync stopped successfully",
-        data: result,
+        message: 'Real-time sync stopped successfully',
+        data: result
       });
     } catch (error) {
-      logger.error("Failed to stop real-time sync:", error);
+      logger.error('Failed to stop real-time sync:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to stop real-time sync",
-        error: error.message,
+        message: 'Failed to stop real-time sync',
+        error: error.message
       });
     }
   }
@@ -321,32 +321,32 @@ router.post(
  * Get detailed status for a specific platform service
  */
 router.get(
-  "/:platform/connections/:connectionId/status",
+  '/:platform/connections/:connectionId/status',
   [
-    param("platform")
-      .isIn(["trendyol", "hepsiburada", "n11"])
-      .withMessage("Invalid platform"),
-    param("connectionId").isUUID().withMessage("Invalid connection ID"),
-    validateRequest,
+    param('platform')
+      .isIn(['trendyol', 'hepsiburada', 'n11'])
+      .withMessage('Invalid platform'),
+    param('connectionId').isUUID().withMessage('Invalid connection ID'),
+    validateRequest
   ],
   async (req, res) => {
     try {
       const { platform, connectionId } = req.params;
 
       // Verify connection ownership
-      const { PlatformConnection } = require("../models");
+      const { PlatformConnection } = require('../models');
       const connection = await PlatformConnection.findOne({
         where: {
           id: connectionId,
           userId: req.user.id,
-          platformType: platform,
-        },
+          platformType: platform
+        }
       });
 
       if (!connection) {
         return res.status(404).json({
           success: false,
-          message: "Platform connection not found",
+          message: 'Platform connection not found'
         });
       }
 
@@ -357,9 +357,9 @@ router.get(
         return res.json({
           success: true,
           data: {
-            status: "inactive",
-            message: "Service not currently running",
-          },
+            status: 'inactive',
+            message: 'Service not currently running'
+          }
         });
       }
 
@@ -367,14 +367,14 @@ router.get(
 
       res.json({
         success: true,
-        data: healthStatus,
+        data: healthStatus
       });
     } catch (error) {
-      logger.error("Failed to get service status:", error);
+      logger.error('Failed to get service status:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve service status",
-        error: error.message,
+        message: 'Failed to retrieve service status',
+        error: error.message
       });
     }
   }
@@ -384,17 +384,17 @@ router.get(
  * GET /api/platforms/user/connections
  * Get all enhanced platform connections for the authenticated user
  */
-router.get("/user/connections", async (req, res) => {
+router.get('/user/connections', async (req, res) => {
   try {
-    const { PlatformConnection } = require("../models");
+    const { PlatformConnection } = require('../models');
 
     const connections = await PlatformConnection.findAll({
       where: {
         userId: req.user.id,
-        isActive: true,
+        isActive: true
       },
-      attributes: ["id", "platformType", "settings", "createdAt", "lastSync"],
-      order: [["createdAt", "DESC"]],
+      attributes: ['id', 'platformType', 'settings', 'createdAt', 'lastSync'],
+      order: [['createdAt', 'DESC']]
     });
 
     // Enhance with service status
@@ -408,21 +408,21 @@ router.get("/user/connections", async (req, res) => {
         ...connection.toJSON(),
         serviceStatus: service
           ? service.getHealthStatus()
-          : { status: "inactive" },
+          : { status: 'inactive' }
       };
     });
 
     res.json({
       success: true,
       data: enhancedConnections,
-      total: enhancedConnections.length,
+      total: enhancedConnections.length
     });
   } catch (error) {
-    logger.error("Failed to get user connections:", error);
+    logger.error('Failed to get user connections:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to retrieve connections",
-      error: error.message,
+      message: 'Failed to retrieve connections',
+      error: error.message
     });
   }
 });
@@ -432,32 +432,32 @@ router.get("/user/connections", async (req, res) => {
  * Destroy a platform service and clean up resources
  */
 router.delete(
-  "/:platform/connections/:connectionId",
+  '/:platform/connections/:connectionId',
   [
-    param("platform")
-      .isIn(["trendyol", "hepsiburada", "n11"])
-      .withMessage("Invalid platform"),
-    param("connectionId").isUUID().withMessage("Invalid connection ID"),
-    validateRequest,
+    param('platform')
+      .isIn(['trendyol', 'hepsiburada', 'n11'])
+      .withMessage('Invalid platform'),
+    param('connectionId').isUUID().withMessage('Invalid connection ID'),
+    validateRequest
   ],
   async (req, res) => {
     try {
       const { platform, connectionId } = req.params;
 
       // Verify connection ownership
-      const { PlatformConnection } = require("../models");
+      const { PlatformConnection } = require('../models');
       const connection = await PlatformConnection.findOne({
         where: {
           id: connectionId,
           userId: req.user.id,
-          platformType: platform,
-        },
+          platformType: platform
+        }
       });
 
       if (!connection) {
         return res.status(404).json({
           success: false,
-          message: "Platform connection not found",
+          message: 'Platform connection not found'
         });
       }
 
@@ -469,15 +469,15 @@ router.delete(
 
       res.json({
         success: true,
-        message: "Platform service destroyed successfully",
-        data: result,
+        message: 'Platform service destroyed successfully',
+        data: result
       });
     } catch (error) {
-      logger.error("Failed to destroy platform service:", error);
+      logger.error('Failed to destroy platform service:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to destroy platform service",
-        error: error.message,
+        message: 'Failed to destroy platform service',
+        error: error.message
       });
     }
   }
@@ -488,32 +488,32 @@ router.delete(
  * Get compliance status for a specific order
  */
 router.get(
-  "/compliance/:orderId",
-  [param("orderId").isUUID().withMessage("Invalid order ID"), validateRequest],
+  '/compliance/:orderId',
+  [param('orderId').isUUID().withMessage('Invalid order ID'), validateRequest],
   async (req, res) => {
     try {
       const { orderId } = req.params;
 
       // Verify order ownership
-      const { Order } = require("../models");
+      const { Order } = require('../models');
       const order = await Order.findOne({
         where: {
           id: orderId,
-          userId: req.user.id,
-        },
+          userId: req.user.id
+        }
       });
 
       if (!order) {
         return res.status(404).json({
           success: false,
-          message: "Order not found",
+          message: 'Order not found'
         });
       }
 
       // Get compliance status
       const {
-        TurkishComplianceService,
-      } = require("../services/turkishComplianceService");
+        TurkishComplianceService
+      } = require('../services/turkishComplianceService');
       const complianceService = new TurkishComplianceService();
 
       const complianceStatus = await complianceService.getComplianceStatus(
@@ -522,14 +522,14 @@ router.get(
 
       res.json({
         success: true,
-        data: complianceStatus,
+        data: complianceStatus
       });
     } catch (error) {
-      logger.error("Failed to get compliance status:", error);
+      logger.error('Failed to get compliance status:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve compliance status",
-        error: error.message,
+        message: 'Failed to retrieve compliance status',
+        error: error.message
       });
     }
   }
@@ -540,11 +540,11 @@ router.get(
  * Generate compliance report for date range
  */
 router.get(
-  "/compliance/report",
+  '/compliance/report',
   [
-    query("startDate").isISO8601().withMessage("Invalid start date"),
-    query("endDate").isISO8601().withMessage("Invalid end date"),
-    validateRequest,
+    query('startDate').isISO8601().withMessage('Invalid start date'),
+    query('endDate').isISO8601().withMessage('Invalid end date'),
+    validateRequest
   ],
   async (req, res) => {
     try {
@@ -552,51 +552,51 @@ router.get(
 
       // Get compliance report
       const {
-        TurkishComplianceService,
-      } = require("../services/turkishComplianceService");
+        TurkishComplianceService
+      } = require('../services/turkishComplianceService');
       const complianceService = new TurkishComplianceService();
 
       const report = await complianceService.generateComplianceReport({
         startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        endDate: new Date(endDate)
       });
 
       res.json({
         success: true,
-        data: report,
+        data: report
       });
     } catch (error) {
-      logger.error("Failed to generate compliance report:", error);
+      logger.error('Failed to generate compliance report:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to generate compliance report",
-        error: error.message,
+        message: 'Failed to generate compliance report',
+        error: error.message
       });
     }
   }
 );
 
 // Setup global event listeners for enhanced platform factory
-platformServiceFactory.on("globalSyncComplete", (data) => {
-  logger.info("Global sync completed:", data);
+platformServiceFactory.on('globalSyncComplete', (data) => {
+  logger.info('Global sync completed:', data);
 });
 
-platformServiceFactory.on("globalCircuitOpen", (data) => {
-  logger.warn("Global circuit breaker opened:", data);
+platformServiceFactory.on('globalCircuitOpen', (data) => {
+  logger.warn('Global circuit breaker opened:', data);
 });
 
-platformServiceFactory.on("platformWideIssue", async (data) => {
-  logger.error("Platform-wide issue detected:", data);
+platformServiceFactory.on('platformWideIssue', async (data) => {
+  logger.error('Platform-wide issue detected:', data);
 
   // Send alerts to administrators
   try {
-    const alertService = require("../services/alertService");
+    const alertService = require('../services/alertService');
     await alertService.sendPlatformWideIssueAlert(data);
-    logger.info("Administrator alert sent for platform issue", {
-      platform: data.platform,
+    logger.info('Administrator alert sent for platform issue', {
+      platform: data.platform
     });
   } catch (alertError) {
-    logger.error("Failed to send administrator alert:", alertError);
+    logger.error('Failed to send administrator alert:', alertError);
   }
 });
 

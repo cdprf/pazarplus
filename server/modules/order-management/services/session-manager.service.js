@@ -38,7 +38,7 @@ class SessionManager {
   // Validate session
   validateSession(sessionId) {
     const session = this.sessions.get(sessionId);
-    if (!session) return false;
+    if (!session) {return false;}
 
     const now = Date.now();
     if (now > session.expiresAt) {

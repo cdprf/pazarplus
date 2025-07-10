@@ -1,170 +1,170 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database");
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
 /**
  * PlatformConflict Model
  * Tracks conflicts and discrepancies between platform data during synchronization
  */
 const PlatformConflict = sequelize.define(
-  "PlatformConflict",
+  'PlatformConflict',
   {
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
+      primaryKey: true
     },
     conflictType: {
       type: DataTypes.ENUM(
-        "order_mismatch",
-        "inventory_discrepancy",
-        "price_difference",
-        "status_conflict",
-        "product_missing",
-        "duplicate_order"
+        'order_mismatch',
+        'inventory_discrepancy',
+        'price_difference',
+        'status_conflict',
+        'product_missing',
+        'duplicate_order'
       ),
       allowNull: false,
-      comment: "Type of conflict detected",
+      comment: 'Type of conflict detected'
     },
     platform: {
       type: DataTypes.ENUM(
-        "trendyol",
-        "hepsiburada",
-        "n11",
-        "pazarama",
-        "amazon",
-        "csv",
-        "shopify",
-        "woocommerce",
-        "magento",
-        "etsy",
-        "ebay",
-        "lazada",
-        "jumia",
-        "shopee",
-        "aliexpress",
-        "cimri",
-        "akakce",
-        "ciceksepeti",
-        "idefix"
+        'trendyol',
+        'hepsiburada',
+        'n11',
+        'pazarama',
+        'amazon',
+        'csv',
+        'shopify',
+        'woocommerce',
+        'magento',
+        'etsy',
+        'ebay',
+        'lazada',
+        'jumia',
+        'shopee',
+        'aliexpress',
+        'cimri',
+        'akakce',
+        'ciceksepeti',
+        'idefix'
       ),
       allowNull: false,
-      comment: "Platform where conflict was detected",
+      comment: 'Platform where conflict was detected'
     },
     entityType: {
-      type: DataTypes.ENUM("order", "product", "inventory", "price"),
+      type: DataTypes.ENUM('order', 'product', 'inventory', 'price'),
       allowNull: false,
-      comment: "Type of entity involved in conflict",
+      comment: 'Type of entity involved in conflict'
     },
     entityId: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: "ID of the entity on the platform",
+      comment: 'ID of the entity on the platform'
     },
     localEntityId: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "ID of the corresponding local entity",
+      comment: 'ID of the corresponding local entity'
     },
     conflictData: {
       type: DataTypes.JSONB,
       allowNull: false,
       comment:
-        "Detailed conflict information including platform and local data",
+        'Detailed conflict information including platform and local data'
     },
     severity: {
-      type: DataTypes.ENUM("low", "medium", "high", "critical"),
-      defaultValue: "medium",
-      comment: "Severity level of the conflict",
+      type: DataTypes.ENUM('low', 'medium', 'high', 'critical'),
+      defaultValue: 'medium',
+      comment: 'Severity level of the conflict'
     },
     status: {
-      type: DataTypes.ENUM("pending", "in_review", "resolved", "ignored"),
-      defaultValue: "pending",
-      comment: "Current status of conflict resolution",
+      type: DataTypes.ENUM('pending', 'in_review', 'resolved', 'ignored'),
+      defaultValue: 'pending',
+      comment: 'Current status of conflict resolution'
     },
     autoResolvable: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-      comment: "Whether conflict can be automatically resolved",
+      comment: 'Whether conflict can be automatically resolved'
     },
     resolutionStrategy: {
       type: DataTypes.ENUM(
-        "accept_platform",
-        "keep_local",
-        "manual_merge",
-        "ignore"
+        'accept_platform',
+        'keep_local',
+        'manual_merge',
+        'ignore'
       ),
       allowNull: true,
-      comment: "Strategy used or to be used for resolution",
+      comment: 'Strategy used or to be used for resolution'
     },
     resolutionData: {
       type: DataTypes.JSONB,
       allowNull: true,
-      comment: "Data used for resolution or resolution result",
+      comment: 'Data used for resolution or resolution result'
     },
     resolvedAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: "When the conflict was resolved",
+      comment: 'When the conflict was resolved'
     },
     resolvedBy: {
       type: DataTypes.UUID,
       allowNull: true,
-      comment: "User who resolved the conflict",
+      comment: 'User who resolved the conflict'
     },
     resolutionNotes: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: "Notes about the resolution process",
+      comment: 'Notes about the resolution process'
     },
     syncSessionId: {
       type: DataTypes.UUID,
       allowNull: true,
-      comment: "ID of sync session when conflict was detected",
+      comment: 'ID of sync session when conflict was detected'
     },
     detectedAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
-      comment: "When the conflict was first detected",
+      comment: 'When the conflict was first detected'
     },
     lastUpdated: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
-      comment: "Last time conflict data was updated",
+      comment: 'Last time conflict data was updated'
     },
     metadata: {
       type: DataTypes.JSONB,
       defaultValue: {},
-      comment: "Additional metadata about the conflict",
-    },
+      comment: 'Additional metadata about the conflict'
+    }
   },
   {
-    tableName: "platform_conflicts",
+    tableName: 'platform_conflicts',
     timestamps: true,
     indexes: [
       {
-        fields: ["platform", "status"],
+        fields: ['platform', 'status']
       },
       {
-        fields: ["conflictType", "severity"],
+        fields: ['conflictType', 'severity']
       },
       {
-        fields: ["entityType", "entityId"],
+        fields: ['entityType', 'entityId']
       },
       {
-        fields: ["syncSessionId"],
+        fields: ['syncSessionId']
       },
       {
-        fields: ["detectedAt"],
+        fields: ['detectedAt']
       },
       {
-        fields: ["resolvedBy"],
-      },
+        fields: ['resolvedBy']
+      }
     ],
     hooks: {
       beforeUpdate: (conflict) => {
         conflict.lastUpdated = new Date();
-      },
-    },
+      }
+    }
   }
 );
 
@@ -174,7 +174,7 @@ PlatformConflict.getActiveConflicts = async function (
   severity = null
 ) {
   const where = {
-    status: ["pending", "in_review"],
+    status: ['pending', 'in_review']
   };
 
   if (platform) {
@@ -188,9 +188,9 @@ PlatformConflict.getActiveConflicts = async function (
   return await this.findAll({
     where,
     order: [
-      ["severity", "DESC"],
-      ["detectedAt", "ASC"],
-    ],
+      ['severity', 'DESC'],
+      ['detectedAt', 'ASC']
+    ]
   });
 };
 
@@ -213,7 +213,7 @@ PlatformConflict.getConflictStats = async function (timeRange = 24) {
   `,
     {
       replacements: { since },
-      type: sequelize.QueryTypes.SELECT,
+      type: sequelize.QueryTypes.SELECT
     }
   );
 
@@ -224,7 +224,7 @@ PlatformConflict.createConflict = async function (conflictData) {
   const conflict = await this.create({
     ...conflictData,
     detectedAt: new Date(),
-    lastUpdated: new Date(),
+    lastUpdated: new Date()
   });
 
   return conflict;
@@ -236,7 +236,7 @@ PlatformConflict.prototype.resolve = async function (
   resolvedBy,
   notes = null
 ) {
-  this.status = "resolved";
+  this.status = 'resolved';
   this.resolutionData = resolutionData;
   this.resolvedAt = new Date();
   this.resolvedBy = resolvedBy;
@@ -251,13 +251,13 @@ PlatformConflict.prototype.markForReview = async function (
   userId,
   notes = null
 ) {
-  this.status = "in_review";
+  this.status = 'in_review';
   this.resolutionNotes = notes;
   this.lastUpdated = new Date();
   this.metadata = {
     ...this.metadata,
     reviewStartedBy: userId,
-    reviewStartedAt: new Date(),
+    reviewStartedAt: new Date()
   };
 
   await this.save();
@@ -265,7 +265,7 @@ PlatformConflict.prototype.markForReview = async function (
 };
 
 PlatformConflict.prototype.ignore = async function (userId, reason = null) {
-  this.status = "ignored";
+  this.status = 'ignored';
   this.resolvedAt = new Date();
   this.resolvedBy = userId;
   this.resolutionNotes = reason;

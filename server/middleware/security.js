@@ -1,28 +1,28 @@
-const rateLimit = require("express-rate-limit");
+const rateLimit = require('express-rate-limit');
 let slowDown;
 try {
-  slowDown = require("express-slow-down");
+  slowDown = require('express-slow-down');
 } catch (error) {
-  console.warn("express-slow-down not available, using rate limit only");
+  console.warn('express-slow-down not available, using rate limit only');
   // Create a fallback that just returns a pass-through middleware
   slowDown = () => (req, res, next) => next();
 }
-const helmet = require("helmet");
-const cacheService = require("../services/cache-service");
-const logger = require("../utils/logger");
+const helmet = require('helmet');
+const cacheService = require('../services/cache-service');
+const logger = require('../utils/logger');
 
 // Development user whitelist - emails that should bypass rate limiting
 const DEV_USER_WHITELIST = [
-  "dev@pazarplus.com",
-  "admin@pazarplus.com",
-  "test@pazarplus.com",
-  "ahmed@pazarplus.com", // Add your dev email here
+  'dev@pazarplus.com',
+  'admin@pazarplus.com',
+  'test@pazarplus.com',
+  'ahmed@pazarplus.com' // Add your dev email here
 ];
 
 // Helper function to check if user should skip rate limiting
 const shouldSkipRateLimit = (req) => {
   // Always skip in development environment
-  if (process.env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === 'development') {
     return true;
   }
 
@@ -35,7 +35,7 @@ const shouldSkipRateLimit = (req) => {
   }
 
   // Skip for health checks and metrics
-  if (req.path === "/health" || req.path === "/metrics") {
+  if (req.path === '/health' || req.path === '/metrics') {
     return true;
   }
 
@@ -51,10 +51,10 @@ class RateLimitService {
   static createAPILimiter() {
     return rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: process.env.NODE_ENV === "development" ? 10000 : 1000, // Very high limit for dev
+      max: process.env.NODE_ENV === 'development' ? 10000 : 1000, // Very high limit for dev
       message: {
-        error: "Too many requests from this IP, please try again later.",
-        retryAfter: "15 minutes",
+        error: 'Too many requests from this IP, please try again later.',
+        retryAfter: '15 minutes'
       },
       standardHeaders: true,
       legacyHeaders: false,
@@ -65,7 +65,7 @@ class RateLimitService {
         // Use user ID if authenticated, otherwise IP
         return req.user?.id || req.ip;
       },
-      store: this.createRedisStore(),
+      store: this.createRedisStore()
     });
   }
 
@@ -73,11 +73,11 @@ class RateLimitService {
   static createPlatformLimiter() {
     return rateLimit({
       windowMs: 60 * 1000, // 1 minute
-      max: process.env.NODE_ENV === "development" ? 1000 : 60, // Much higher for dev
+      max: process.env.NODE_ENV === 'development' ? 1000 : 60, // Much higher for dev
       message: {
         error:
-          "Platform API rate limit exceeded. Please wait before making more requests.",
-        retryAfter: "1 minute",
+          'Platform API rate limit exceeded. Please wait before making more requests.',
+        retryAfter: '1 minute'
       },
       skip: (req) => {
         return shouldSkipRateLimit(req);
@@ -86,7 +86,7 @@ class RateLimitService {
         const connectionId = req.params.id || req.body.connectionId;
         return `platform:${connectionId}:${req.user?.id}`;
       },
-      store: this.createRedisStore(),
+      store: this.createRedisStore()
     });
   }
 
@@ -94,23 +94,23 @@ class RateLimitService {
   static createAuthLimiter() {
     return rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: process.env.NODE_ENV === "development" ? 1000 : 50, // Much higher for dev
+      max: process.env.NODE_ENV === 'development' ? 1000 : 50, // Much higher for dev
       message: {
-        error: "Too many authentication attempts, please try again later.",
-        retryAfter: "15 minutes",
+        error: 'Too many authentication attempts, please try again later.',
+        retryAfter: '15 minutes'
       },
       skipSuccessfulRequests: true,
       skip: (req) => {
         return (
           shouldSkipRateLimit(req) ||
-          (req.path === "/api/auth/me" &&
-            process.env.NODE_ENV === "development")
+          (req.path === '/api/auth/me' &&
+            process.env.NODE_ENV === 'development')
         );
       },
       keyGenerator: (req) => {
-        return req.ip + ":" + (req.body.email || req.body.username || "");
+        return req.ip + ':' + (req.body.email || req.body.username || '');
       },
-      store: this.createRedisStore(),
+      store: this.createRedisStore()
     });
   }
 
@@ -118,10 +118,10 @@ class RateLimitService {
   static createSyncLimiter() {
     return rateLimit({
       windowMs: 5 * 60 * 1000, // 5 minutes
-      max: process.env.NODE_ENV === "development" ? 1000 : 10, // Much higher for dev
+      max: process.env.NODE_ENV === 'development' ? 1000 : 10, // Much higher for dev
       message: {
-        error: "Sync rate limit exceeded. Please wait before syncing again.",
-        retryAfter: "5 minutes",
+        error: 'Sync rate limit exceeded. Please wait before syncing again.',
+        retryAfter: '5 minutes'
       },
       skip: (req) => {
         return shouldSkipRateLimit(req);
@@ -129,7 +129,7 @@ class RateLimitService {
       keyGenerator: (req) => {
         return `sync:${req.user?.id}`;
       },
-      store: this.createRedisStore(),
+      store: this.createRedisStore()
     });
   }
 
@@ -137,16 +137,16 @@ class RateLimitService {
   static createSpeedLimiter() {
     return slowDown({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      delayAfter: process.env.NODE_ENV === "development" ? 10000 : 100, // Much higher threshold for dev
+      delayAfter: process.env.NODE_ENV === 'development' ? 10000 : 100, // Much higher threshold for dev
       delayMs: (used, req) => {
         // Skip delay entirely in development
-        if (process.env.NODE_ENV === "development") {
+        if (process.env.NODE_ENV === 'development') {
           return 0;
         }
         const delayAfter = req.slowDown.limit;
         return (used - delayAfter) * 500;
       },
-      maxDelayMs: process.env.NODE_ENV === "development" ? 0 : 20000, // No delay in dev
+      maxDelayMs: process.env.NODE_ENV === 'development' ? 0 : 20000, // No delay in dev
       skip: (req) => {
         return shouldSkipRateLimit(req);
       },
@@ -154,15 +154,15 @@ class RateLimitService {
         return req.user?.id || req.ip;
       },
       validate: {
-        delayMs: false, // Disable the warning message
-      },
+        delayMs: false // Disable the warning message
+      }
     });
   }
 
   // Redis Store for Rate Limiting
   static createRedisStore() {
     if (!cacheService.isConnected) {
-      logger.warn("Redis not connected, using memory store for rate limiting");
+      logger.warn('Redis not connected, using memory store for rate limiting');
       return undefined; // Falls back to memory store
     }
 
@@ -172,10 +172,10 @@ class RateLimitService {
           const result = await cacheService.incrementRateLimit(key, 900); // 15 minutes
           return {
             totalHits: result.count,
-            resetTime: new Date(result.resetTime),
+            resetTime: new Date(result.resetTime)
           };
         } catch (error) {
-          logger.error("Rate limit store error:", error);
+          logger.error('Rate limit store error:', error);
           throw error;
         }
       },
@@ -184,7 +184,7 @@ class RateLimitService {
       },
       resetKey: async (key) => {
         await cacheService.del(`rate_limit:${key}`);
-      },
+      }
     };
   }
 
@@ -201,7 +201,7 @@ class RateLimitService {
           allowed: false,
           count: result.count,
           resetTime: result.resetTime,
-          retryAfter: Math.ceil((result.resetTime - Date.now()) / 1000),
+          retryAfter: Math.ceil((result.resetTime - Date.now()) / 1000)
         };
       }
 
@@ -209,10 +209,10 @@ class RateLimitService {
         allowed: true,
         count: result.count,
         resetTime: result.resetTime,
-        remaining: maxRequests - result.count,
+        remaining: maxRequests - result.count
       };
     } catch (error) {
-      logger.error("Custom rate limit check failed:", error);
+      logger.error('Custom rate limit check failed:', error);
       // Allow request if rate limiting fails
       return { allowed: true, count: 0, resetTime: Date.now() };
     }
@@ -227,34 +227,34 @@ class SecurityService {
     return helmet({
       contentSecurityPolicy: {
         directives: {
-          defaultSrc: ["'self'"],
+          defaultSrc: ['\'self\''],
           styleSrc: [
-            "'self'",
-            "'unsafe-inline'",
-            "https://fonts.googleapis.com",
+            '\'self\'',
+            '\'unsafe-inline\'',
+            'https://fonts.googleapis.com'
           ],
-          fontSrc: ["'self'", "https://fonts.gstatic.com"],
-          imgSrc: ["'self'", "data:", "https:"],
-          scriptSrc: ["'self'"],
+          fontSrc: ['\'self\'', 'https://fonts.gstatic.com'],
+          imgSrc: ['\'self\'', 'data:', 'https:'],
+          scriptSrc: ['\'self\''],
           connectSrc: [
-            "'self'",
-            "https://api.trendyol.com",
-            "https://api.hepsiburada.com",
+            '\'self\'',
+            'https://api.trendyol.com',
+            'https://api.hepsiburada.com'
           ],
-          frameSrc: ["'none'"],
-          objectSrc: ["'none'"],
-          baseUri: ["'self'"],
-          formAction: ["'self'"],
-        },
+          frameSrc: ['\'none\''],
+          objectSrc: ['\'none\''],
+          baseUri: ['\'self\''],
+          formAction: ['\'self\'']
+        }
       },
       hsts: {
         maxAge: 31536000, // 1 year
         includeSubDomains: true,
-        preload: true,
+        preload: true
       },
       crossOriginEmbedderPolicy: false, // Disable for API compatibility
-      crossOriginResourcePolicy: { policy: "cross-origin" },
-      referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
     });
   }
 
@@ -263,33 +263,33 @@ class SecurityService {
     return {
       origin: (origin, callback) => {
         const allowedOrigins = [
-          "http://localhost:3000",
-          "http://192.168.1.105:3000", // Your machine's IP for external device access
-          "https://app.pazarplus.com",
-          "https://dashboard.pazarplus.com",
+          'http://localhost:3000',
+          'http://192.168.1.105:3000', // Your machine's IP for external device access
+          'https://app.pazarplus.com',
+          'https://dashboard.pazarplus.com'
         ];
 
         // Allow requests with no origin (mobile apps, etc.)
-        if (!origin) return callback(null, true);
+        if (!origin) {return callback(null, true);}
 
         if (allowedOrigins.includes(origin)) {
           callback(null, true);
         } else {
           logger.warn(`CORS blocked origin: ${origin}`);
-          callback(new Error("Not allowed by CORS"));
+          callback(new Error('Not allowed by CORS'));
         }
       },
       credentials: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
       allowedHeaders: [
-        "Origin",
-        "X-Requested-With",
-        "Content-Type",
-        "Accept",
-        "Authorization",
-        "X-CSRF-Token",
+        'Origin',
+        'X-Requested-With',
+        'Content-Type',
+        'Accept',
+        'Authorization',
+        'X-CSRF-Token'
       ],
-      maxAge: 86400, // 24 hours
+      maxAge: 86400 // 24 hours
     };
   }
 
@@ -298,8 +298,8 @@ class SecurityService {
     return (req, res, next) => {
       // Remove potentially dangerous characters from query parameters
       for (const key in req.query) {
-        if (typeof req.query[key] === "string") {
-          req.query[key] = req.query[key].replace(/[<>'"]/g, "");
+        if (typeof req.query[key] === 'string') {
+          req.query[key] = req.query[key].replace(/[<>'"]/g, '');
         }
       }
 
@@ -314,7 +314,7 @@ class SecurityService {
         /expression\(/i,
         /iframe/i,
         /object/i,
-        /embed/i,
+        /embed/i
       ];
 
       const requestString =
@@ -322,11 +322,11 @@ class SecurityService {
 
       for (const pattern of suspiciousPatterns) {
         if (pattern.test(requestString)) {
-          logger.warn("Suspicious request detected", {
+          logger.warn('Suspicious request detected', {
             ip: req.ip,
-            userAgent: req.get("User-Agent"),
+            userAgent: req.get('User-Agent'),
             url: req.originalUrl,
-            body: req.body,
+            body: req.body
           });
           break;
         }
@@ -340,10 +340,10 @@ class SecurityService {
   static createSizeLimiter() {
     return (req, res, next) => {
       const maxSizes = {
-        "/api/auth": 1024, // 1KB for auth requests
-        "/api/products": 10 * 1024, // 10KB for product data
-        "/api/orders": 50 * 1024, // 50KB for order data
-        default: 5 * 1024, // 5KB default
+        '/api/auth': 1024, // 1KB for auth requests
+        '/api/products': 10 * 1024, // 10KB for product data
+        '/api/orders': 50 * 1024, // 50KB for order data
+        default: 5 * 1024 // 5KB default
       };
 
       let maxSize = maxSizes.default;
@@ -356,13 +356,13 @@ class SecurityService {
       }
 
       let size = 0;
-      req.on("data", (chunk) => {
+      req.on('data', (chunk) => {
         size += chunk.length;
         if (size > maxSize) {
           req.destroy();
           res.status(413).json({
-            error: "Request entity too large",
-            maxSize: `${maxSize} bytes`,
+            error: 'Request entity too large',
+            maxSize: `${maxSize} bytes`
           });
         }
       });
@@ -379,12 +379,12 @@ class BusinessRateLimits {
   // Platform sync rate limiting
   static async checkSyncRateLimit(userId, connectionId) {
     // Skip rate limiting in development
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === 'development') {
       return {
         allowed: true,
         count: 0,
         resetTime: Date.now(),
-        remaining: 1000,
+        remaining: 1000
       };
     }
 
@@ -395,12 +395,12 @@ class BusinessRateLimits {
   // Order creation rate limiting
   static async checkOrderCreationLimit(userId) {
     // Skip rate limiting in development
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === 'development') {
       return {
         allowed: true,
         count: 0,
         resetTime: Date.now(),
-        remaining: 1000,
+        remaining: 1000
       };
     }
 
@@ -411,12 +411,12 @@ class BusinessRateLimits {
   // Product update rate limiting
   static async checkProductUpdateLimit(userId) {
     // Skip rate limiting in development
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === 'development') {
       return {
         allowed: true,
         count: 0,
         resetTime: Date.now(),
-        remaining: 1000,
+        remaining: 1000
       };
     }
 
@@ -427,12 +427,12 @@ class BusinessRateLimits {
   // Platform API call rate limiting
   static async checkPlatformAPILimit(connectionId) {
     // Skip rate limiting in development
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === 'development') {
       return {
         allowed: true,
         count: 0,
         resetTime: Date.now(),
-        remaining: 1000,
+        remaining: 1000
       };
     }
 
@@ -447,11 +447,11 @@ class BusinessRateLimits {
 class SecurityMiddlewareFactory {
   static createSecurityStack() {
     // In development, skip rate limiting entirely
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === 'development') {
       return [
         SecurityService.createSecurityMiddleware(),
         SecurityService.sanitizeRequest(),
-        SecurityService.createSizeLimiter(),
+        SecurityService.createSizeLimiter()
         // Skip rate limiters in development
       ];
     }
@@ -461,28 +461,28 @@ class SecurityMiddlewareFactory {
       SecurityService.sanitizeRequest(),
       SecurityService.createSizeLimiter(),
       RateLimitService.createSpeedLimiter(),
-      RateLimitService.createAPILimiter(),
+      RateLimitService.createAPILimiter()
     ];
   }
 
   static createAuthStack() {
     // In development, skip rate limiting entirely
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === 'development') {
       return [
-        SecurityService.sanitizeRequest(),
+        SecurityService.sanitizeRequest()
         // Skip auth rate limiter in development
       ];
     }
 
     return [
       RateLimitService.createAuthLimiter(),
-      SecurityService.sanitizeRequest(),
+      SecurityService.sanitizeRequest()
     ];
   }
 
   static createPlatformStack() {
     // In development, skip rate limiting entirely
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === 'development') {
       return [
         // Skip platform rate limiters in development
       ];
@@ -490,7 +490,7 @@ class SecurityMiddlewareFactory {
 
     return [
       RateLimitService.createPlatformLimiter(),
-      RateLimitService.createSyncLimiter(),
+      RateLimitService.createSyncLimiter()
     ];
   }
 }
@@ -499,5 +499,5 @@ module.exports = {
   RateLimitService,
   SecurityService,
   BusinessRateLimits,
-  SecurityMiddlewareFactory,
+  SecurityMiddlewareFactory
 };

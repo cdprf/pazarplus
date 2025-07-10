@@ -1,5 +1,5 @@
-const { DataTypes, Model } = require("sequelize");
-const sequelize = require("../config/database");
+const { DataTypes, Model } = require('sequelize');
+const sequelize = require('../config/database');
 
 class ComplianceDocuments extends Model {}
 
@@ -8,139 +8,139 @@ ComplianceDocuments.init(
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
+      primaryKey: true
     },
     orderId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: "orders",
-        key: "id",
-      },
+        model: 'orders',
+        key: 'id'
+      }
     },
     documentType: {
       type: DataTypes.ENUM(
-        "e-invoice",
-        "e-archive",
-        "shipping-label",
-        "customs-declaration"
+        'e-invoice',
+        'e-archive',
+        'shipping-label',
+        'customs-declaration'
       ),
-      allowNull: false,
+      allowNull: false
     },
     documentNumber: {
       type: DataTypes.STRING(100),
-      unique: true,
+      unique: true
     },
     status: {
       type: DataTypes.ENUM(
-        "draft",
-        "generated",
-        "sent",
-        "accepted",
-        "rejected"
+        'draft',
+        'generated',
+        'sent',
+        'accepted',
+        'rejected'
       ),
-      defaultValue: "draft",
+      defaultValue: 'draft'
     },
     customerType: {
-      type: DataTypes.ENUM("INDIVIDUAL", "COMPANY"),
-      allowNull: false,
+      type: DataTypes.ENUM('INDIVIDUAL', 'COMPANY'),
+      allowNull: false
     },
     customerInfo: {
       type: DataTypes.TEXT,
       allowNull: false,
       get() {
-        const rawValue = this.getDataValue("customerInfo");
+        const rawValue = this.getDataValue('customerInfo');
         return rawValue ? JSON.parse(rawValue) : null;
       },
       set(value) {
-        this.setDataValue("customerInfo", JSON.stringify(value));
-      },
+        this.setDataValue('customerInfo', JSON.stringify(value));
+      }
     },
     orderData: {
       type: DataTypes.TEXT,
       allowNull: false,
       get() {
-        const rawValue = this.getDataValue("orderData");
+        const rawValue = this.getDataValue('orderData');
         return rawValue ? JSON.parse(rawValue) : null;
       },
       set(value) {
-        this.setDataValue("orderData", JSON.stringify(value));
-      },
+        this.setDataValue('orderData', JSON.stringify(value));
+      }
     },
     xmlContent: {
-      type: DataTypes.TEXT,
+      type: DataTypes.TEXT
     },
     pdfPath: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.STRING(255)
     },
     gibResponse: {
       type: DataTypes.TEXT,
       get() {
-        const rawValue = this.getDataValue("gibResponse");
+        const rawValue = this.getDataValue('gibResponse');
         return rawValue ? JSON.parse(rawValue) : null;
       },
       set(value) {
-        this.setDataValue("gibResponse", value ? JSON.stringify(value) : null);
-      },
+        this.setDataValue('gibResponse', value ? JSON.stringify(value) : null);
+      }
     },
     generatedAt: {
-      type: DataTypes.DATE,
+      type: DataTypes.DATE
     },
     sentAt: {
-      type: DataTypes.DATE,
+      type: DataTypes.DATE
     },
     processedAt: {
-      type: DataTypes.DATE,
+      type: DataTypes.DATE
     },
     errorMessage: {
-      type: DataTypes.TEXT,
+      type: DataTypes.TEXT
     },
     retryCount: {
       type: DataTypes.INTEGER,
-      defaultValue: 0,
+      defaultValue: 0
     },
     metadata: {
       type: DataTypes.TEXT,
       get() {
-        const rawValue = this.getDataValue("metadata");
+        const rawValue = this.getDataValue('metadata');
         return rawValue ? JSON.parse(rawValue) : {};
       },
       set(value) {
-        this.setDataValue("metadata", JSON.stringify(value || {}));
-      },
-    },
+        this.setDataValue('metadata', JSON.stringify(value || {}));
+      }
+    }
   },
   {
     sequelize,
-    modelName: "ComplianceDocuments",
-    tableName: "compliance_documents",
+    modelName: 'ComplianceDocuments',
+    tableName: 'compliance_documents',
     timestamps: true,
     indexes: [
       {
-        fields: ["orderId"],
+        fields: ['orderId']
       },
       {
-        fields: ["documentType"],
+        fields: ['documentType']
       },
       {
-        fields: ["status"],
+        fields: ['status']
       },
       {
-        fields: ["customerType"],
+        fields: ['customerType']
       },
       {
-        fields: ["createdAt"],
+        fields: ['createdAt']
       },
       {
         unique: true,
-        fields: ["documentNumber"],
+        fields: ['documentNumber'],
         where: {
           documentNumber: {
-            [require("sequelize").Op.ne]: null,
-          },
-        },
-      },
-    ],
+            [require('sequelize').Op.ne]: null
+          }
+        }
+      }
+    ]
   }
 );
 

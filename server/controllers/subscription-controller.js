@@ -1,6 +1,6 @@
-const { User, Subscription, UsageRecord, Invoice } = require("../models");
-const logger = require("../utils/logger");
-const { Op } = require("sequelize");
+const { User, Subscription, UsageRecord, Invoice } = require('../models');
+const logger = require('../utils/logger');
+const { Op } = require('sequelize');
 
 /**
  * Subscription Controller
@@ -10,71 +10,71 @@ const { Op } = require("sequelize");
 // Subscription plan definitions
 const SUBSCRIPTION_PLANS = {
   trial: {
-    id: "trial",
-    name: "Trial",
+    id: 'trial',
+    name: 'Trial',
     price: 0,
-    currency: "TRY",
+    currency: 'TRY',
     duration: 14, // days
-    features: ["basic_analytics", "single_platform", "email_support"],
+    features: ['basic_analytics', 'single_platform', 'email_support'],
     limits: {
       apiCalls: 500,
       platforms: 1,
       users: 1,
-      reports: 5,
-    },
+      reports: 5
+    }
   },
   starter: {
-    id: "starter",
-    name: "Starter",
+    id: 'starter',
+    name: 'Starter',
     price: 19900, // ₺199.00 in kuruş
-    currency: "TRY",
-    features: ["basic_analytics", "single_platform", "email_support"],
+    currency: 'TRY',
+    features: ['basic_analytics', 'single_platform', 'email_support'],
     limits: {
       apiCalls: 5000,
       platforms: 1,
       users: 1,
-      reports: 25,
-    },
+      reports: 25
+    }
   },
   professional: {
-    id: "professional",
-    name: "Professional",
+    id: 'professional',
+    name: 'Professional',
     price: 39900, // ₺399.00 in kuruş
-    currency: "TRY",
+    currency: 'TRY',
     features: [
-      "advanced_analytics",
-      "multi_platform",
-      "inventory_intelligence",
-      "email_support",
-      "priority_support",
+      'advanced_analytics',
+      'multi_platform',
+      'inventory_intelligence',
+      'email_support',
+      'priority_support'
     ],
     limits: {
       apiCalls: 25000,
       platforms: 3,
       users: 3,
-      reports: 100,
-    },
+      reports: 100
+    }
   },
   enterprise: {
-    id: "enterprise",
-    name: "Enterprise",
+    id: 'enterprise',
+    name: 'Enterprise',
     price: 79900, // ₺799.00 in kuruş
-    currency: "TRY",
+    currency: 'TRY',
     features: [
-      "all_features",
-      "unlimited_platforms",
-      "ai_insights",
-      "custom_reports",
-      "dedicated_support",
-      "api_access",
+      'all_features',
+      'unlimited_platforms',
+      'ai_insights',
+      'custom_reports',
+      'dedicated_support',
+      'api_access'
     ],
     limits: {
       apiCalls: -1, // unlimited
       platforms: -1, // unlimited
       users: 10,
-      reports: -1, // unlimited
-    },
-  },
+      reports: -1 // unlimited
+    }
+  }
 };
 
 /**
@@ -85,18 +85,18 @@ const getPlans = async (req, res) => {
     const plans = Object.values(SUBSCRIPTION_PLANS).map((plan) => ({
       ...plan,
       priceFormatted:
-        plan.price === 0 ? "Free" : `₺${(plan.price / 100).toFixed(2)}`,
+        plan.price === 0 ? 'Free' : `₺${(plan.price / 100).toFixed(2)}`
     }));
 
     res.json({
       success: true,
-      data: { plans },
+      data: { plans }
     });
   } catch (error) {
-    logger.error("Get plans error:", error);
+    logger.error('Get plans error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get subscription plans",
+      message: 'Failed to get subscription plans'
     });
   }
 };
@@ -111,25 +111,25 @@ const getCurrentSubscription = async (req, res) => {
     const subscription = await Subscription.findOne({
       where: {
         userId,
-        status: { [Op.in]: ["trial", "active"] },
+        status: { [Op.in]: ['trial', 'active'] }
       },
       include: [
         {
           model: UsageRecord,
-          as: "usageRecords",
+          as: 'usageRecords',
           where: {
-            billingPeriodEnd: { [Op.gte]: new Date() },
+            billingPeriodEnd: { [Op.gte]: new Date() }
           },
-          required: false,
-        },
+          required: false
+        }
       ],
-      order: [["createdAt", "DESC"]],
+      order: [['createdAt', 'DESC']]
     });
 
     if (!subscription) {
       return res.status(404).json({
         success: false,
-        message: "No active subscription found",
+        message: 'No active subscription found'
       });
     }
 
@@ -142,7 +142,7 @@ const getCurrentSubscription = async (req, res) => {
           limit: record.limit,
           percentage: record.getUsagePercentage(),
           isOverLimit: record.isOverLimit(),
-          isApproachingLimit: record.isApproachingLimit(),
+          isApproachingLimit: record.isApproachingLimit()
         };
       }
     }
@@ -155,15 +155,15 @@ const getCurrentSubscription = async (req, res) => {
           planDetails: SUBSCRIPTION_PLANS[subscription.planId],
           usageStats,
           daysUntilRenewal: subscription.getDaysUntilRenewal(),
-          isActive: subscription.isActive(),
-        },
-      },
+          isActive: subscription.isActive()
+        }
+      }
     });
   } catch (error) {
-    logger.error("Get current subscription error:", error);
+    logger.error('Get current subscription error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get current subscription",
+      message: 'Failed to get current subscription'
     });
   }
 };
@@ -177,13 +177,13 @@ const startTrial = async (req, res) => {
 
     // Check if user already has a subscription
     const existingSubscription = await Subscription.findOne({
-      where: { userId },
+      where: { userId }
     });
 
     if (existingSubscription) {
       return res.status(400).json({
         success: false,
-        message: "User already has a subscription",
+        message: 'User already has a subscription'
       });
     }
 
@@ -200,20 +200,20 @@ const startTrial = async (req, res) => {
       planName: trialPlan.name,
       amount: trialPlan.price,
       currency: trialPlan.currency,
-      status: "trial",
+      status: 'trial',
       startedAt: trialStartDate,
       trialStartedAt: trialStartDate,
       trialEndsAt: trialEndDate,
       endsAt: trialEndDate,
       features: trialPlan.features,
-      limits: trialPlan.limits,
+      limits: trialPlan.limits
     });
 
     // Update user trial information
     await User.update(
       {
-        subscriptionPlan: "trial",
-        subscriptionStatus: "trial",
+        subscriptionPlan: 'trial',
+        subscriptionStatus: 'trial',
         trialStartedAt: trialStartDate,
         trialEndsAt: trialEndDate,
         featuresEnabled: {
@@ -222,11 +222,11 @@ const startTrial = async (req, res) => {
           multi_platform: false,
           ai_insights: false,
           custom_reports: false,
-          api_access: false,
-        },
+          api_access: false
+        }
       },
       {
-        where: { id: userId },
+        where: { id: userId }
       }
     );
 
@@ -241,14 +241,14 @@ const startTrial = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Trial subscription started successfully",
-      data: { subscription },
+      message: 'Trial subscription started successfully',
+      data: { subscription }
     });
   } catch (error) {
-    logger.error("Start trial error:", error);
+    logger.error('Start trial error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to start trial subscription",
+      message: 'Failed to start trial subscription'
     });
   }
 };
@@ -266,7 +266,7 @@ const upgradeSubscription = async (req, res) => {
     if (!newPlan) {
       return res.status(400).json({
         success: false,
-        message: "Invalid subscription plan",
+        message: 'Invalid subscription plan'
       });
     }
 
@@ -274,14 +274,14 @@ const upgradeSubscription = async (req, res) => {
     const currentSubscription = await Subscription.findOne({
       where: {
         userId,
-        status: { [Op.in]: ["trial", "active"] },
-      },
+        status: { [Op.in]: ['trial', 'active'] }
+      }
     });
 
     if (!currentSubscription) {
       return res.status(404).json({
         success: false,
-        message: "No active subscription found",
+        message: 'No active subscription found'
       });
     }
 
@@ -297,15 +297,15 @@ const upgradeSubscription = async (req, res) => {
     if (!paymentSuccessful) {
       return res.status(400).json({
         success: false,
-        message: "Payment failed",
+        message: 'Payment failed'
       });
     }
 
     // End current subscription
     await currentSubscription.update({
-      status: "canceled",
+      status: 'canceled',
       canceledAt: new Date(),
-      cancelAtPeriodEnd: false,
+      cancelAtPeriodEnd: false
     });
 
     // Create new subscription
@@ -320,7 +320,7 @@ const upgradeSubscription = async (req, res) => {
       planName: newPlan.name,
       amount: newPlan.price,
       currency: newPlan.currency,
-      status: "active",
+      status: 'active',
       startedAt: billingStartDate,
       endsAt: billingEndDate,
       subscriptionStartedAt: billingStartDate,
@@ -331,32 +331,32 @@ const upgradeSubscription = async (req, res) => {
       limits: newPlan.limits,
       metadata: {
         upgradeFrom: currentSubscription.planId,
-        proratedAmount,
-      },
+        proratedAmount
+      }
     });
 
     // Update user subscription information
     const featuresEnabled = {
       analytics: true,
       inventory_management: true,
-      multi_platform: newPlan.features.includes("multi_platform"),
-      ai_insights: newPlan.features.includes("ai_insights"),
-      custom_reports: newPlan.features.includes("custom_reports"),
-      api_access: newPlan.features.includes("api_access"),
+      multi_platform: newPlan.features.includes('multi_platform'),
+      ai_insights: newPlan.features.includes('ai_insights'),
+      custom_reports: newPlan.features.includes('custom_reports'),
+      api_access: newPlan.features.includes('api_access')
     };
 
     await User.update(
       {
         subscriptionPlan: planId,
-        subscriptionStatus: "active",
+        subscriptionStatus: 'active',
         subscriptionStartedAt: billingStartDate,
         subscriptionEndsAt: billingEndDate,
         featuresEnabled,
         monthlyApiLimit:
-          newPlan.limits.apiCalls > 0 ? newPlan.limits.apiCalls : 100000,
+          newPlan.limits.apiCalls > 0 ? newPlan.limits.apiCalls : 100000
       },
       {
-        where: { id: userId },
+        where: { id: userId }
       }
     );
 
@@ -378,24 +378,24 @@ const upgradeSubscription = async (req, res) => {
           description: `${newPlan.name} Plan`,
           quantity: 1,
           unitPrice: newPlan.price,
-          amount: proratedAmount,
-        },
-      ],
+          amount: proratedAmount
+        }
+      ]
     });
 
     res.json({
       success: true,
-      message: "Subscription upgraded successfully",
+      message: 'Subscription upgraded successfully',
       data: {
         subscription: newSubscription,
-        proratedAmount: proratedAmount / 100, // Convert to TRY
-      },
+        proratedAmount: proratedAmount / 100 // Convert to TRY
+      }
     });
   } catch (error) {
-    logger.error("Upgrade subscription error:", error);
+    logger.error('Upgrade subscription error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to upgrade subscription",
+      message: 'Failed to upgrade subscription'
     });
   }
 };
@@ -411,25 +411,25 @@ const cancelSubscription = async (req, res) => {
     const subscription = await Subscription.findOne({
       where: {
         userId,
-        status: "active",
-      },
+        status: 'active'
+      }
     });
 
     if (!subscription) {
       return res.status(404).json({
         success: false,
-        message: "No active subscription found",
+        message: 'No active subscription found'
       });
     }
 
     // Update subscription
     const updateData = {
       cancelAtPeriodEnd,
-      cancellationReason: reason,
+      cancellationReason: reason
     };
 
     if (!cancelAtPeriodEnd) {
-      updateData.status = "canceled";
+      updateData.status = 'canceled';
       updateData.canceledAt = new Date();
     }
 
@@ -439,10 +439,10 @@ const cancelSubscription = async (req, res) => {
     if (!cancelAtPeriodEnd) {
       await User.update(
         {
-          subscriptionStatus: "canceled",
+          subscriptionStatus: 'canceled'
         },
         {
-          where: { id: userId },
+          where: { id: userId }
         }
       );
     }
@@ -450,15 +450,15 @@ const cancelSubscription = async (req, res) => {
     res.json({
       success: true,
       message: cancelAtPeriodEnd
-        ? "Subscription will be canceled at the end of the current period"
-        : "Subscription canceled successfully",
-      data: { subscription },
+        ? 'Subscription will be canceled at the end of the current period'
+        : 'Subscription canceled successfully',
+      data: { subscription }
     });
   } catch (error) {
-    logger.error("Cancel subscription error:", error);
+    logger.error('Cancel subscription error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to cancel subscription",
+      message: 'Failed to cancel subscription'
     });
   }
 };
@@ -475,9 +475,9 @@ const getBillingHistory = async (req, res) => {
 
     const { count, rows: invoices } = await Invoice.findAndCountAll({
       where: { userId },
-      order: [["issueDate", "DESC"]],
+      order: [['issueDate', 'DESC']],
       limit: parseInt(limit),
-      offset: offset,
+      offset: offset
     });
 
     res.json({
@@ -488,15 +488,15 @@ const getBillingHistory = async (req, res) => {
           total: count,
           page: parseInt(page),
           pages: Math.ceil(count / limit),
-          limit: parseInt(limit),
-        },
-      },
+          limit: parseInt(limit)
+        }
+      }
     });
   } catch (error) {
-    logger.error("Get billing history error:", error);
+    logger.error('Get billing history error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to get billing history",
+      message: 'Failed to get billing history'
     });
   }
 };
@@ -523,12 +523,12 @@ const trackUsage = async (userId, metricType, amount = 1) => {
         userId,
         metricType,
         billingPeriodStart: { [Op.lte]: currentDate },
-        billingPeriodEnd: { [Op.gte]: currentDate },
-      },
+        billingPeriodEnd: { [Op.gte]: currentDate }
+      }
     });
 
     if (usageRecord) {
-      await usageRecord.increment("currentUsage", { by: amount });
+      await usageRecord.increment('currentUsage', { by: amount });
 
       // Check for usage limit warnings
       if (usageRecord.isApproachingLimit()) {
@@ -537,12 +537,12 @@ const trackUsage = async (userId, metricType, amount = 1) => {
           metricType,
           currentUsage: usageRecord.currentUsage + amount,
           limit: usageRecord.limit,
-          percentage: usageRecord.getUsagePercentage(),
+          percentage: usageRecord.getUsagePercentage()
         });
       }
     }
   } catch (error) {
-    logger.error("Track usage error:", error);
+    logger.error('Track usage error:', error);
   }
 };
 
@@ -568,7 +568,7 @@ const createUsageRecords = async (
         currentUsage: 0,
         limit,
         billingPeriodStart: startDate,
-        billingPeriodEnd: endDate,
+        billingPeriodEnd: endDate
       });
     }
   }
@@ -591,11 +591,11 @@ const createInvoice = async (userId, subscriptionId, invoiceData) => {
     description: invoiceData.description,
     subtotal: invoiceData.amount,
     total: invoiceData.amount,
-    currency: "TRY",
-    status: "open",
+    currency: 'TRY',
+    status: 'open',
     issueDate: new Date(),
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-    lineItems: invoiceData.items || [],
+    lineItems: invoiceData.items || []
   });
 
   return invoice;
@@ -609,5 +609,5 @@ module.exports = {
   cancelSubscription,
   getBillingHistory,
   trackUsage,
-  SUBSCRIPTION_PLANS,
+  SUBSCRIPTION_PLANS
 };

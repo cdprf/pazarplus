@@ -1,6 +1,6 @@
-const axios = require("axios");
-const crypto = require("crypto");
-const debug = require("debug")("pazar:hepsiburada:questions");
+const axios = require('axios');
+const crypto = require('crypto');
+const debug = require('debug')('pazar:hepsiburada:questions');
 
 class HepsiBuradaQuestionService {
   constructor(config) {
@@ -8,15 +8,15 @@ class HepsiBuradaQuestionService {
     this.apiKey = config.apiKey; // Used for Basic auth
     this.merchantId = config.merchantId;
     this.baseURL = config.isTest
-      ? "https://oms-external-sit.hepsiburada.com/packages/merchantid"
-      : "https://oms-external.hepsiburada.com/packages/merchantid";
+      ? 'https://oms-external-sit.hepsiburada.com/packages/merchantid'
+      : 'https://oms-external.hepsiburada.com/packages/merchantid';
 
     // HepsiBurada uses specific base URL for Ask to Seller API
     // Updated per official documentation: https://developers.hepsiburada.com/hepsiburada/reference/soru-listesi
     // Authentication: User-Agent (username), merchantId, Authorization (Basic merchantId:apiKey)
     this.qaBaseURL = config.isTest
-      ? "https://api-asktoseller-merchant-sit.hepsiburada.com/api/v1.0"
-      : "https://api-asktoseller-merchant.hepsiburada.com/api/v1.0";
+      ? 'https://api-asktoseller-merchant-sit.hepsiburada.com/api/v1.0'
+      : 'https://api-asktoseller-merchant.hepsiburada.com/api/v1.0';
   }
 
   /**
@@ -24,12 +24,12 @@ class HepsiBuradaQuestionService {
    */
   getAuthHeaders() {
     return {
-      "User-Agent": this.username,
+      'User-Agent': this.username,
       merchantId: this.merchantId,
       Authorization: `Basic ${Buffer.from(
         `${this.merchantId}:${this.apiKey}`
-      ).toString("base64")}`,
-      "Content-Type": "application/json",
+      ).toString('base64')}`,
+      'Content-Type': 'application/json'
     };
   }
 
@@ -49,7 +49,7 @@ class HepsiBuradaQuestionService {
         endDate,
         orderNumber,
         issueNumber,
-        subject,
+        subject
       } = options;
 
       const params = {
@@ -57,28 +57,28 @@ class HepsiBuradaQuestionService {
         page,
         size,
         sortBy,
-        desc,
+        desc
       };
 
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
-      if (orderNumber) params.orderNumber = orderNumber;
-      if (issueNumber) params.issueNumber = issueNumber;
-      if (subject) params.subject = subject;
+      if (startDate) {params.startDate = startDate;}
+      if (endDate) {params.endDate = endDate;}
+      if (orderNumber) {params.orderNumber = orderNumber;}
+      if (issueNumber) {params.issueNumber = issueNumber;}
+      if (subject) {params.subject = subject;}
 
       const url = `${this.qaBaseURL}/issues`;
 
-      debug("Fetching questions from HepsiBurada:", { url, params });
+      debug('Fetching questions from HepsiBurada:', { url, params });
 
       const response = await axios.get(url, {
         headers: this.getAuthHeaders(),
-        params,
+        params
       });
 
       return this.normalizeQuestionsResponse(response.data);
     } catch (error) {
       debug(
-        "Error fetching questions from HepsiBurada:",
+        'Error fetching questions from HepsiBurada:',
         error.response?.data || error.message
       );
       throw new Error(
@@ -96,19 +96,19 @@ class HepsiBuradaQuestionService {
     try {
       const url = `${this.qaBaseURL}/issues/${issueNumber}`;
 
-      debug("Fetching question by number from HepsiBurada:", {
+      debug('Fetching question by number from HepsiBurada:', {
         url,
-        issueNumber,
+        issueNumber
       });
 
       const response = await axios.get(url, {
-        headers: this.getAuthHeaders(),
+        headers: this.getAuthHeaders()
       });
 
       return this.normalizeQuestionResponse(response.data);
     } catch (error) {
       debug(
-        "Error fetching question by number from HepsiBurada:",
+        'Error fetching question by number from HepsiBurada:',
         error.response?.data || error.message
       );
       throw new Error(
@@ -125,19 +125,19 @@ class HepsiBuradaQuestionService {
   async answerQuestion(issueNumber, answerText, attachments = []) {
     try {
       if (answerText.length < 10 || answerText.length > 2000) {
-        throw new Error("Answer text must be between 10 and 2000 characters");
+        throw new Error('Answer text must be between 10 and 2000 characters');
       }
 
       // Validate attachment formats
-      const allowedFormats = [".jpg", ".pdf", ".docx", ".xlsx", ".bmp", ".png"];
+      const allowedFormats = ['.jpg', '.pdf', '.docx', '.xlsx', '.bmp', '.png'];
       for (const attachment of attachments) {
         const extension = attachment
           .toLowerCase()
-          .substring(attachment.lastIndexOf("."));
+          .substring(attachment.lastIndexOf('.'));
         if (!allowedFormats.includes(extension)) {
           throw new Error(
             `Invalid attachment format: ${extension}. Allowed: ${allowedFormats.join(
-              ", "
+              ', '
             )}`
           );
         }
@@ -145,15 +145,15 @@ class HepsiBuradaQuestionService {
 
       const url = `${this.qaBaseURL}/issues/${issueNumber}/answer`;
 
-      debug("Answering question on HepsiBurada:", {
+      debug('Answering question on HepsiBurada:', {
         url,
         issueNumber,
         answerLength: answerText.length,
-        attachmentCount: attachments.length,
+        attachmentCount: attachments.length
       });
 
       const requestData = {
-        content: answerText,
+        content: answerText
       };
 
       if (attachments.length > 0) {
@@ -161,28 +161,28 @@ class HepsiBuradaQuestionService {
       }
 
       const response = await axios.post(url, requestData, {
-        headers: this.getAuthHeaders(),
+        headers: this.getAuthHeaders()
       });
 
       return {
         success: response.status === 200,
-        response: response.data,
+        response: response.data
       };
     } catch (error) {
       debug(
-        "Error answering question on HepsiBurada:",
+        'Error answering question on HepsiBurada:',
         error.response?.data || error.message
       );
 
       // Log more details for debugging
-      debug("HepsiBurada API Error Details:", {
+      debug('HepsiBurada API Error Details:', {
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
         headers: error.response?.headers,
         url: error.config?.url,
         method: error.config?.method,
-        requestData: error.config?.data,
+        requestData: error.config?.data
       });
 
       throw new Error(
@@ -202,25 +202,25 @@ class HepsiBuradaQuestionService {
     try {
       const url = `${this.qaBaseURL}/${this.merchantId}/${issueNumber}/reject`;
 
-      debug("Reporting question on HepsiBurada:", { url, issueNumber, reason });
+      debug('Reporting question on HepsiBurada:', { url, issueNumber, reason });
 
       const response = await axios.post(
         url,
         {
-          reason: reason,
+          reason: reason
         },
         {
-          headers: this.getAuthHeaders(),
+          headers: this.getAuthHeaders()
         }
       );
 
       return {
         success: response.status === 200,
-        response: response.data,
+        response: response.data
       };
     } catch (error) {
       debug(
-        "Error reporting question on HepsiBurada:",
+        'Error reporting question on HepsiBurada:',
         error.response?.data || error.message
       );
       throw new Error(
@@ -239,23 +239,23 @@ class HepsiBuradaQuestionService {
       // Use the same endpoint as getQuestions but with a count parameter
       const url = `${this.qaBaseURL}/issues/count`;
 
-      debug("Fetching questions count from HepsiBurada:", { url });
+      debug('Fetching questions count from HepsiBurada:', { url });
 
       const response = await axios.get(url, {
-        headers: this.getAuthHeaders(),
+        headers: this.getAuthHeaders()
       });
 
       return response.data;
     } catch (error) {
       debug(
-        "Error fetching questions count from HepsiBurada:",
+        'Error fetching questions count from HepsiBurada:',
         error.response?.data || error.message
       );
 
       // If count endpoint doesn't exist, calculate from regular questions endpoint
       try {
         debug(
-          "Trying alternative method: fetching questions with size=1 to get count"
+          'Trying alternative method: fetching questions with size=1 to get count'
         );
         const questionsResponse = await this.getQuestions({ page: 1, size: 1 });
 
@@ -263,7 +263,7 @@ class HepsiBuradaQuestionService {
           total_questions: questionsResponse.questions?.length || 0,
           waiting_for_answer: 0,
           answered: 0,
-          rejected: 0,
+          rejected: 0
         };
       } catch (fallbackError) {
         throw new Error(
@@ -297,7 +297,7 @@ class HepsiBuradaQuestionService {
         totalPages: data.totalPageCount || 1,
         totalItems: data.totalItemCount || 0,
         hasNext: !!data.nextPage,
-        hasPrevious: !!data.previousPage,
+        hasPrevious: !!data.previousPage
       };
     } else if (Array.isArray(data)) {
       // Legacy format: direct array
@@ -309,7 +309,7 @@ class HepsiBuradaQuestionService {
 
     return {
       questions: questionsArray.map((q) => this.normalizeQuestionData(q)),
-      pagination: paginationInfo,
+      pagination: paginationInfo
     };
   }
 
@@ -325,7 +325,7 @@ class HepsiBuradaQuestionService {
    */
   normalizeQuestionData(question) {
     // Generate question hash for similarity detection
-    const questionHash = this.generateQuestionHash(question.lastContent || "");
+    const questionHash = this.generateQuestionHash(question.lastContent || '');
 
     // Determine expire date (2 business days from creation)
     const expireDate = question.expireDate
@@ -333,12 +333,12 @@ class HepsiBuradaQuestionService {
       : this.calculateExpireDate(question.createdAt);
 
     return {
-      platform: "hepsiburada",
+      platform: 'hepsiburada',
       platform_question_id: question.issueNumber?.toString(),
       customer_id: question.customerId?.toString(),
       customer_name: this.extractCustomerName(question),
       show_customer_name: true, // HepsiBurada doesn't have this field explicitly
-      question_text: question.lastContent || "",
+      question_text: question.lastContent || '',
       status: this.mapHepsiBuradaStatus(question.status),
       product_name: question.product?.name,
       product_sku: question.product?.sku,
@@ -372,12 +372,12 @@ class HepsiBuradaQuestionService {
           platform_reply_id: conv.id?.toString(),
           reply_text: conv.content,
           from_type:
-            conv.from?.toLowerCase() === "customer" ? "customer" : "merchant",
+            conv.from?.toLowerCase() === 'customer' ? 'customer' : 'merchant',
           creation_date: new Date(conv.createdAt),
           customer_feedback: conv.customerFeedback,
           reject_reason: conv.rejectReason,
-          attachments: conv.files || [],
-        })) || [],
+          attachments: conv.files || []
+        })) || []
     };
   }
 
@@ -386,11 +386,11 @@ class HepsiBuradaQuestionService {
    */
   mapHepsiBuradaStatus(status) {
     const statusMapping = {
-      WaitingForAnswer: "WAITING_FOR_ANSWER",
-      WaitingforAnswer: "WAITING_FOR_ANSWER", // Legacy format (keep for backward compatibility)
-      Answered: "ANSWERED",
-      Rejected: "REJECTED",
-      AutoClosed: "AUTO_CLOSED",
+      WaitingForAnswer: 'WAITING_FOR_ANSWER',
+      WaitingforAnswer: 'WAITING_FOR_ANSWER', // Legacy format (keep for backward compatibility)
+      Answered: 'ANSWERED',
+      Rejected: 'REJECTED',
+      AutoClosed: 'AUTO_CLOSED'
     };
 
     return statusMapping[status] || status;
@@ -402,7 +402,7 @@ class HepsiBuradaQuestionService {
   extractCustomerName(question) {
     // Try to find customer name from conversations
     const customerConversation = question.conversations?.find(
-      (conv) => conv.from?.toLowerCase() === "customer"
+      (conv) => conv.from?.toLowerCase() === 'customer'
     );
 
     return (
@@ -417,7 +417,7 @@ class HepsiBuradaQuestionService {
    */
   getAnsweredDate(question) {
     const merchantReply = question.conversations?.find(
-      (conv) => conv.from?.toLowerCase() === "merchant"
+      (conv) => conv.from?.toLowerCase() === 'merchant'
     );
 
     return merchantReply ? new Date(merchantReply.createdAt) : null;
@@ -429,7 +429,7 @@ class HepsiBuradaQuestionService {
   calculateExpireDate(createdAt) {
     const created = new Date(createdAt);
     let businessDays = 0;
-    let currentDate = new Date(created);
+    const currentDate = new Date(created);
 
     while (businessDays < 2) {
       currentDate.setDate(currentDate.getDate() + 1);
@@ -451,15 +451,15 @@ class HepsiBuradaQuestionService {
     // Normalize text: lowercase, remove punctuation, sort words
     const normalizedText = questionText
       .toLowerCase()
-      .replace(/[^\w\s]/g, " ")
-      .replace(/\s+/g, " ")
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
       .trim()
-      .split(" ")
+      .split(' ')
       .filter((word) => word.length > 2) // Remove very short words
       .sort()
-      .join(" ");
+      .join(' ');
 
-    return crypto.createHash("md5").update(normalizedText).digest("hex");
+    return crypto.createHash('md5').update(normalizedText).digest('hex');
   }
 
   /**
@@ -467,33 +467,33 @@ class HepsiBuradaQuestionService {
    */
   async createTestQuestion(issueCount = 1) {
     try {
-      if (!this.baseURL.includes("sit")) {
+      if (!this.baseURL.includes('sit')) {
         throw new Error(
-          "Test question creation is only available in test environment"
+          'Test question creation is only available in test environment'
         );
       }
 
       const url = `${this.qaBaseURL}/${this.merchantId}/test`;
 
-      debug("Creating test question on HepsiBurada:", { url, issueCount });
+      debug('Creating test question on HepsiBurada:', { url, issueCount });
 
       const response = await axios.post(
         url,
         {
-          issueCount: issueCount,
+          issueCount: issueCount
         },
         {
-          headers: this.getAuthHeaders(),
+          headers: this.getAuthHeaders()
         }
       );
 
       return {
         success: response.status === 200,
-        response: response.data,
+        response: response.data
       };
     } catch (error) {
       debug(
-        "Error creating test question on HepsiBurada:",
+        'Error creating test question on HepsiBurada:',
         error.response?.data || error.message
       );
       throw new Error(

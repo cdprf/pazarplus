@@ -7,27 +7,27 @@ const {
   PlatformTemplate,
   CustomerQuestion,
   User,
-  sequelize,
-} = require("../models");
-const logger = require("../utils/logger");
-const ProductMergeService = require("../services/product-merge-service");
-const PlatformServiceFactory = require("../modules/order-management/services/platforms/platformServiceFactory");
-const { validationResult } = require("express-validator");
-const { Op } = require("sequelize");
-const AdvancedInventoryService = require("../services/advanced-inventory-service");
-const ProductManagementService = require("../services/product-management-service");
-const StockService = require("../services/stock-service");
-const MediaUploadService = require("../services/media-upload-service");
-const PlatformScrapingService = require("../services/platform-scraping-service");
-const VariantDetector = require("../services/variant-detector");
-const backgroundVariantDetectionService = require("../services/background-variant-detection-service");
+  sequelize
+} = require('../models');
+const logger = require('../utils/logger');
+const ProductMergeService = require('../services/product-merge-service');
+const PlatformServiceFactory = require('../modules/order-management/services/platforms/platformServiceFactory');
+const { validationResult } = require('express-validator');
+const { Op } = require('sequelize');
+const AdvancedInventoryService = require('../services/advanced-inventory-service');
+const ProductManagementService = require('../services/product-management-service');
+const StockService = require('../services/stock-service');
+const MediaUploadService = require('../services/media-upload-service');
+const PlatformScrapingService = require('../services/platform-scraping-service');
+const VariantDetector = require('../services/variant-detector');
+const backgroundVariantDetectionService = require('../services/background-variant-detection-service');
 // const SKUSystemManager = require("../../sku-system-manager"); // TEMPORARILY COMMENTED OUT - MODULE MISSING
 const {
   ProductVariant,
   InventoryMovement,
-  StockReservation,
-} = require("../models");
-const { sanitizePlatformType } = require("../utils/enum-validators");
+  StockReservation
+} = require('../models');
+const { sanitizePlatformType } = require('../utils/enum-validators');
 
 class ProductController {
   constructor() {
@@ -55,28 +55,28 @@ class ProductController {
         minQuestions,
         maxQuestions,
         hasQuestions,
-        sortBy = "updatedAt",
-        sortOrder = "DESC",
+        sortBy = 'updatedAt',
+        sortOrder = 'DESC'
       } = req.query;
 
       // Convert to 0-indexed for database (page 1 = offset 0, page 2 = offset 20, etc.)
       const pageNumber = Math.max(0, parseInt(page) - 1);
       const offset = pageNumber * parseInt(limit);
       const whereClause = {
-        userId: req.user.id,
+        userId: req.user.id
       };
 
       // Status filter - only add if specified (remove default "active")
-      if (status && status.trim() !== "") {
+      if (status && status.trim() !== '') {
         whereClause.status = status;
       }
 
       // Add search filter - Enhanced to include all relevant fields
-      if (search && search.trim() !== "") {
+      if (search && search.trim() !== '') {
         const searchConditions = [
           { name: { [Op.iLike]: `%${search}%` } },
           { sku: { [Op.iLike]: `%${search}%` } },
-          { category: { [Op.iLike]: `%${search}%` } },
+          { category: { [Op.iLike]: `%${search}%` } }
         ];
 
         // Add nullable fields with proper null checks
@@ -84,14 +84,14 @@ class ProductController {
           {
             [Op.and]: [
               { barcode: { [Op.ne]: null } },
-              { barcode: { [Op.iLike]: `%${search}%` } },
-            ],
+              { barcode: { [Op.iLike]: `%${search}%` } }
+            ]
           },
           {
             [Op.and]: [
               { description: { [Op.ne]: null } },
-              { description: { [Op.iLike]: `%${search}%` } },
-            ],
+              { description: { [Op.iLike]: `%${search}%` } }
+            ]
           }
         );
 
@@ -99,12 +99,12 @@ class ProductController {
       }
 
       // Add category filter
-      if (category && category.trim() !== "") {
+      if (category && category.trim() !== '') {
         whereClause.category = { [Op.iLike]: `%${category}%` };
       }
 
       // Add platform filter
-      if (platform && platform !== "all" && platform.trim() !== "") {
+      if (platform && platform !== 'all' && platform.trim() !== '') {
         const sanitizedPlatform = sanitizePlatformType(platform);
         if (sanitizedPlatform) {
           whereClause.sourcePlatform = sanitizedPlatform;
@@ -115,13 +115,13 @@ class ProductController {
       if (minPrice) {
         whereClause.price = {
           ...whereClause.price,
-          [Op.gte]: parseFloat(minPrice),
+          [Op.gte]: parseFloat(minPrice)
         };
       }
       if (maxPrice) {
         whereClause.price = {
           ...whereClause.price,
-          [Op.lte]: parseFloat(maxPrice),
+          [Op.lte]: parseFloat(maxPrice)
         };
       }
 
@@ -129,52 +129,52 @@ class ProductController {
       if (minStock) {
         whereClause.stockQuantity = {
           ...whereClause.stockQuantity,
-          [Op.gte]: parseInt(minStock),
+          [Op.gte]: parseInt(minStock)
         };
       }
       if (maxStock) {
         whereClause.stockQuantity = {
           ...whereClause.stockQuantity,
-          [Op.lte]: parseInt(maxStock),
+          [Op.lte]: parseInt(maxStock)
         };
       }
 
       // Add stock status filter
       if (stockStatus) {
         switch (stockStatus) {
-          case "out_of_stock":
-            // Out of stock: exactly 0 quantity
-            whereClause.stockQuantity = { [Op.eq]: 0 };
-            break;
-          case "low_stock":
-            // Low stock: between 1 and 15 (inclusive)
-            whereClause.stockQuantity = {
-              [Op.and]: [{ [Op.gte]: 1 }, { [Op.lte]: 15 }],
-            };
-            break;
-          case "pasif":
-            // Pasif: stock > 0 AND status = 'inactive'
-            whereClause.stockQuantity = { [Op.gt]: 0 };
-            whereClause.status = "inactive";
-            break;
-          case "aktif":
-            // Aktif: stock >= 1 AND status = 'active'
-            whereClause.stockQuantity = { [Op.gte]: 1 };
-            whereClause.status = "active";
-            break;
-          case "in_stock":
-            // In stock: above low stock threshold (> 15)
-            whereClause.stockQuantity = { [Op.gt]: 15 };
-            break;
+        case 'out_of_stock':
+          // Out of stock: exactly 0 quantity
+          whereClause.stockQuantity = { [Op.eq]: 0 };
+          break;
+        case 'low_stock':
+          // Low stock: between 1 and 15 (inclusive)
+          whereClause.stockQuantity = {
+            [Op.and]: [{ [Op.gte]: 1 }, { [Op.lte]: 15 }]
+          };
+          break;
+        case 'pasif':
+          // Pasif: stock > 0 AND status = 'inactive'
+          whereClause.stockQuantity = { [Op.gt]: 0 };
+          whereClause.status = 'inactive';
+          break;
+        case 'aktif':
+          // Aktif: stock >= 1 AND status = 'active'
+          whereClause.stockQuantity = { [Op.gte]: 1 };
+          whereClause.status = 'active';
+          break;
+        case 'in_stock':
+          // In stock: above low stock threshold (> 15)
+          whereClause.stockQuantity = { [Op.gt]: 15 };
+          break;
         }
       }
 
       // Handle approval status filtering through platform data
-      let platformDataWhere = {
-        entityType: "product",
+      const platformDataWhere = {
+        entityType: 'product'
       };
 
-      if (platform && platform !== "all" && platform.trim() !== "") {
+      if (platform && platform !== 'all' && platform.trim() !== '') {
         const sanitizedPlatform = sanitizePlatformType(platform);
         if (sanitizedPlatform) {
           platformDataWhere.platformType = sanitizedPlatform;
@@ -184,27 +184,27 @@ class ProductController {
       if (approvalStatus) {
         // Map approval status to platform-specific fields
         switch (approvalStatus) {
-          case "pending":
-            platformDataWhere[Op.or] = [
-              { "data.approved": false },
-              { "data.approvalStatus": "Pending" },
-              { "data.status": "pending" },
-            ];
-            break;
-          case "approved":
-            platformDataWhere[Op.or] = [
-              { "data.approved": true },
-              { "data.approvalStatus": "Approved" },
-              { "data.status": "active" },
-            ];
-            break;
-          case "rejected":
-            platformDataWhere[Op.or] = [
-              { "data.rejected": true },
-              { "data.approvalStatus": "Rejected" },
-              { "data.status": "rejected" },
-            ];
-            break;
+        case 'pending':
+          platformDataWhere[Op.or] = [
+            { 'data.approved': false },
+            { 'data.approvalStatus': 'Pending' },
+            { 'data.status': 'pending' }
+          ];
+          break;
+        case 'approved':
+          platformDataWhere[Op.or] = [
+            { 'data.approved': true },
+            { 'data.approvalStatus': 'Approved' },
+            { 'data.status': 'active' }
+          ];
+          break;
+        case 'rejected':
+          platformDataWhere[Op.or] = [
+            { 'data.rejected': true },
+            { 'data.approvalStatus': 'Rejected' },
+            { 'data.status': 'rejected' }
+          ];
+          break;
         }
       }
 
@@ -213,14 +213,14 @@ class ProductController {
 
       // Only add PlatformData include if we actually need platform or approval filtering
       if (
-        (platform && platform !== "all" && platform.trim() !== "") ||
+        (platform && platform !== 'all' && platform.trim() !== '') ||
         approvalStatus
       ) {
         const platformDataInclude = {
           model: PlatformData,
-          as: "platformData",
+          as: 'platformData',
           required: false,
-          where: platformDataWhere,
+          where: platformDataWhere
         };
         includeClause.push(platformDataInclude);
       }
@@ -230,41 +230,41 @@ class ProductController {
       if (!stockStatus) {
         includeClause.push({
           model: ProductVariant,
-          as: "variants",
+          as: 'variants',
           required: false,
           order: [
-            ["isDefault", "DESC"],
-            ["sortOrder", "ASC"],
-            ["createdAt", "ASC"],
-          ],
+            ['isDefault', 'DESC'],
+            ['sortOrder', 'ASC'],
+            ['createdAt', 'ASC']
+          ]
         });
       }
 
       // Add PlatformVariant include to fetch platform variants
       includeClause.push({
         model: PlatformVariant,
-        as: "platformVariants",
+        as: 'platformVariants',
         required: false,
         attributes: [
-          "id",
-          "platform",
-          "platformSku",
-          "isPublished",
-          "syncStatus",
-          "externalId",
-          "externalUrl",
-          "createdAt",
+          'id',
+          'platform',
+          'platformSku',
+          'isPublished',
+          'syncStatus',
+          'externalId',
+          'externalUrl',
+          'createdAt'
         ],
-        order: [["createdAt", "DESC"]],
+        order: [['createdAt', 'DESC']]
       });
 
       // Don't include CustomerQuestion directly since the association is complex
       // Instead, we'll add questions count in post-processing
 
       // Handle sorting - if sorting by questionsCount, we'll sort after getting the data
-      const isQuestionSort = sortBy === "questionsCount";
-      const dbSortBy = isQuestionSort ? "updatedAt" : sortBy;
-      const dbSortOrder = isQuestionSort ? "DESC" : sortOrder;
+      const isQuestionSort = sortBy === 'questionsCount';
+      const dbSortBy = isQuestionSort ? 'updatedAt' : sortBy;
+      const dbSortOrder = isQuestionSort ? 'DESC' : sortOrder;
 
       const { count, rows: products } = await Product.findAndCountAll({
         where: whereClause,
@@ -272,11 +272,11 @@ class ProductController {
         limit: parseInt(limit),
         offset: offset,
         order: [[dbSortBy, dbSortOrder]],
-        distinct: true,
+        distinct: true
       });
 
       // Get products with questions count in a single query for better performance
-      const productIds = products.map((p) => `'${p.id}'`).join(",");
+      const productIds = products.map((p) => `'${p.id}'`).join(',');
 
       let questionsCountMap = {};
       if (productIds) {
@@ -295,7 +295,7 @@ class ProductController {
             GROUP BY pd."entityId"
           `,
             {
-              type: sequelize.QueryTypes.SELECT,
+              type: sequelize.QueryTypes.SELECT
             }
           );
 
@@ -305,7 +305,7 @@ class ProductController {
             return map;
           }, {});
         } catch (error) {
-          logger.warn("Failed to get questions counts:", error.message);
+          logger.warn('Failed to get questions counts:', error.message);
         }
       }
 
@@ -319,7 +319,7 @@ class ProductController {
         products.sort((a, b) => {
           const aCount = a.dataValues.questionsCount || 0;
           const bCount = b.dataValues.questionsCount || 0;
-          return sortOrder === "ASC" ? aCount - bCount : bCount - aCount;
+          return sortOrder === 'ASC' ? aCount - bCount : bCount - aCount;
         });
       }
 
@@ -337,11 +337,11 @@ class ProductController {
             return false;
           }
 
-          if (hasQuestions === "true" && questionsCount === 0) {
+          if (hasQuestions === 'true' && questionsCount === 0) {
             return false;
           }
 
-          if (hasQuestions === "false" && questionsCount > 0) {
+          if (hasQuestions === 'false' && questionsCount > 0) {
             return false;
           }
 
@@ -366,16 +366,16 @@ class ProductController {
             totalItems: totalFilteredItems,
             itemsPerPage: parseInt(limit),
             hasNextPage,
-            hasPrevPage,
-          },
-        },
+            hasPrevPage
+          }
+        }
       });
     } catch (error) {
-      logger.error("Failed to fetch products:", error);
+      logger.error('Failed to fetch products:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to fetch products",
-        error: error.message,
+        message: 'Failed to fetch products',
+        error: error.message
       });
     }
   }
@@ -391,9 +391,9 @@ class ProductController {
       const userId = req.user?.id;
 
       // Handle comma-separated platforms in query string
-      if (typeof platforms === "string" && platforms.includes(",")) {
+      if (typeof platforms === 'string' && platforms.includes(',')) {
         platforms = platforms
-          .split(",")
+          .split(',')
           .map((p) => p.trim())
           .filter((p) => p.length > 0);
       }
@@ -402,8 +402,8 @@ class ProductController {
       if (!userId) {
         return res.status(401).json({
           success: false,
-          message: "User not authenticated",
-          error: "Missing user ID",
+          message: 'User not authenticated',
+          error: 'Missing user ID'
         });
       }
 
@@ -415,13 +415,13 @@ class ProductController {
         bodyKeys: Object.keys(req.body || {}),
         queryKeys: Object.keys(req.query || {}),
         platformsType: typeof platforms,
-        platformsValue: platforms,
+        platformsValue: platforms
       });
 
       // Get active platform connections
       const whereClause = {
         userId,
-        isActive: true,
+        isActive: true
       };
 
       // Only filter by platforms if specific ones are requested
@@ -434,12 +434,12 @@ class ProductController {
 
         if (validPlatforms.length > 0) {
           whereClause.platformType = { [Op.in]: validPlatforms };
-          logger.debug(`Filtering by platforms: ${validPlatforms.join(", ")}`);
+          logger.debug(`Filtering by platforms: ${validPlatforms.join(', ')}`);
         }
       } else if (
         platforms &&
-        typeof platforms === "string" &&
-        platforms.trim() !== ""
+        typeof platforms === 'string' &&
+        platforms.trim() !== ''
       ) {
         // Handle single platform as string
         const sanitizedPlatform = sanitizePlatformType(platforms);
@@ -449,12 +449,12 @@ class ProductController {
         }
       } else {
         logger.info(
-          "No platform filtering applied - syncing from all active platforms"
+          'No platform filtering applied - syncing from all active platforms'
         );
       }
 
       const connections = await PlatformConnection.findAll({
-        where: whereClause,
+        where: whereClause
       });
 
       logger.debug(
@@ -464,18 +464,18 @@ class ProductController {
       if (connections.length === 0) {
         return res.status(200).json({
           success: false,
-          message: "No active platform connections found",
-          code: "NO_PLATFORM_CONNECTIONS",
+          message: 'No active platform connections found',
+          code: 'NO_PLATFORM_CONNECTIONS',
           syncedCount: 0,
           requestedPlatforms: platforms,
           availableConnections: await PlatformConnection.count({
-            where: { userId },
+            where: { userId }
           }),
           debug: {
             whereClause,
             platformsProvided: platforms,
-            userId,
-          },
+            userId
+          }
         });
       }
 
@@ -488,8 +488,8 @@ class ProductController {
       if (!result.success) {
         return res.status(500).json({
           success: false,
-          message: "Failed to fetch products from platforms",
-          error: result.error,
+          message: 'Failed to fetch products from platforms',
+          error: result.error
         });
       }
 
@@ -518,15 +518,15 @@ class ProductController {
           totalMerged: mergedProducts.length,
           totalSaved: savedProducts.length,
           platformResults: result.platformResults,
-          products: savedProducts,
-        },
+          products: savedProducts
+        }
       });
     } catch (error) {
-      logger.error("Product sync failed:", error);
+      logger.error('Product sync failed:', error);
       res.status(500).json({
         success: false,
-        message: "Product sync failed",
-        error: error.message,
+        message: 'Product sync failed',
+        error: error.message
       });
     }
   }
@@ -545,14 +545,14 @@ class ProductController {
           id: connectionId,
           userId: req.user.id,
           platformType,
-          isActive: true,
-        },
+          isActive: true
+        }
       });
 
       if (!connection) {
         return res.status(404).json({
           success: false,
-          message: "Platform connection not found or inactive",
+          message: 'Platform connection not found or inactive'
         });
       }
 
@@ -570,15 +570,15 @@ class ProductController {
       if (!connectionTest.success) {
         return res.status(400).json({
           success: false,
-          message: "Platform connection test failed",
-          error: connectionTest.error,
+          message: 'Platform connection test failed',
+          error: connectionTest.error
         });
       }
 
       // Fetch products
       const result = await platformService.fetchProducts({
         page: parseInt(page),
-        size: parseInt(size),
+        size: parseInt(size)
       });
 
       res.json({
@@ -590,8 +590,8 @@ class ProductController {
           connectionTest: connectionTest.data,
           products: result.data,
           pagination: result.pagination,
-          productCount: result.data ? result.data.length : 0,
-        },
+          productCount: result.data ? result.data.length : 0
+        }
       });
     } catch (error) {
       logger.error(
@@ -601,7 +601,7 @@ class ProductController {
       res.status(500).json({
         success: false,
         message: `Failed to test product fetching from ${platformType}`,
-        error: error.message,
+        error: error.message
       });
     }
   }
@@ -621,17 +621,17 @@ class ProductController {
         include: [
           {
             model: PlatformData,
-            as: "platformData",
+            as: 'platformData',
             where: {
               platformType,
-              entityType: "product",
+              entityType: 'product'
             },
-            required: true,
-          },
+            required: true
+          }
         ],
         limit: parseInt(limit),
         offset: parseInt(page) * parseInt(limit),
-        order: [["updatedAt", "DESC"]],
+        order: [['updatedAt', 'DESC']]
       });
 
       res.json({
@@ -642,16 +642,16 @@ class ProductController {
             currentPage: parseInt(page),
             totalItems: products.count,
             itemsPerPage: parseInt(limit),
-            totalPages: Math.ceil(products.count / parseInt(limit)),
-          },
-        },
+            totalPages: Math.ceil(products.count / parseInt(limit))
+          }
+        }
       });
     } catch (error) {
       logger.error(`Failed to fetch ${platformType} products:`, error);
       res.status(500).json({
         success: false,
         message: `Failed to fetch ${platformType} products`,
-        error: error.message,
+        error: error.message
       });
     }
   }
@@ -665,7 +665,7 @@ class ProductController {
 
       // Get platform connections
       const connections = await PlatformConnection.findAll({
-        where: { userId, isActive: true },
+        where: { userId, isActive: true }
       });
 
       // Get product counts per platform
@@ -674,15 +674,15 @@ class ProductController {
           const productCount = await PlatformData.count({
             where: {
               platformType: connection.platformType,
-              entityType: "product",
+              entityType: 'product'
             },
             include: [
               {
                 model: Product,
-                as: "product",
-                where: { userId },
-              },
-            ],
+                as: 'product',
+                where: { userId }
+              }
+            ]
           });
 
           return {
@@ -690,14 +690,14 @@ class ProductController {
             connectionId: connection.id,
             connectionName: connection.name,
             productCount,
-            lastSyncedAt: connection.lastSync,
+            lastSyncedAt: connection.lastSync
           };
         })
       );
 
       // Get total product count
       const totalProducts = await Product.count({
-        where: { userId },
+        where: { userId }
       });
 
       res.json({
@@ -707,15 +707,15 @@ class ProductController {
           platformStats,
           lastSyncAt: Math.max(
             ...platformStats.map((p) => new Date(p.lastSyncedAt || 0).getTime())
-          ),
-        },
+          )
+        }
       });
     } catch (error) {
-      logger.error("Failed to get sync status:", error);
+      logger.error('Failed to get sync status:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get sync status",
-        error: error.message,
+        message: 'Failed to get sync status',
+        error: error.message
       });
     }
   }
@@ -730,13 +730,13 @@ class ProductController {
       const userId = req.user.id;
 
       const product = await Product.findOne({
-        where: { id, userId },
+        where: { id, userId }
       });
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: "Product not found",
+          message: 'Product not found'
         });
       }
 
@@ -756,15 +756,15 @@ class ProductController {
 
       res.json({
         success: true,
-        message: "Product updated successfully",
-        data: product,
+        message: 'Product updated successfully',
+        data: product
       });
     } catch (error) {
-      logger.error("Failed to update product:", error);
+      logger.error('Failed to update product:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to update product",
-        error: error.message,
+        message: 'Failed to update product',
+        error: error.message
       });
     }
   }
@@ -787,8 +787,8 @@ class ProductController {
         weight,
         dimensions,
         images = [],
-        status = "active",
-        tags = [],
+        status = 'active',
+        tags = []
       } = req.body;
 
       const userId = req.user.id;
@@ -797,14 +797,14 @@ class ProductController {
       const existingProduct = await Product.findOne({
         where: {
           userId,
-          sku,
-        },
+          sku
+        }
       });
 
       if (existingProduct) {
         return res.status(409).json({
           success: false,
-          message: "A product with this SKU already exists",
+          message: 'A product with this SKU already exists'
         });
       }
 
@@ -825,8 +825,8 @@ class ProductController {
         images,
         status,
         tags,
-        sourcePlatform: "manual", // Mark as manually created
-        lastSyncedAt: new Date(),
+        sourcePlatform: 'manual', // Mark as manually created
+        lastSyncedAt: new Date()
       });
 
       logger.info(`Product created: ${product.sku} by user ${userId}`);
@@ -845,15 +845,15 @@ class ProductController {
 
       res.status(201).json({
         success: true,
-        message: "Product created successfully",
-        data: product,
+        message: 'Product created successfully',
+        data: product
       });
     } catch (error) {
-      logger.error("Error creating product:", error);
+      logger.error('Error creating product:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to create product",
-        error: error.message,
+        message: 'Failed to create product',
+        error: error.message
       });
     }
   }
@@ -869,21 +869,21 @@ class ProductController {
       const product = await Product.findOne({
         where: {
           id,
-          userId,
+          userId
         },
         include: [
           {
             model: PlatformData,
-            as: "platformData",
-            required: false,
-          },
-        ],
+            as: 'platformData',
+            required: false
+          }
+        ]
       });
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: "Product not found",
+          message: 'Product not found'
         });
       }
 
@@ -901,7 +901,7 @@ class ProductController {
       `,
         {
           replacements: { productId: product.id },
-          type: sequelize.QueryTypes.SELECT,
+          type: sequelize.QueryTypes.SELECT
         }
       );
 
@@ -911,14 +911,14 @@ class ProductController {
 
       res.json({
         success: true,
-        data: product,
+        data: product
       });
     } catch (error) {
-      logger.error("Error getting product:", error);
+      logger.error('Error getting product:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get product",
-        error: error.message,
+        message: 'Failed to get product',
+        error: error.message
       });
     }
   }
@@ -934,23 +934,23 @@ class ProductController {
       const product = await Product.findOne({
         where: {
           id,
-          userId,
-        },
+          userId
+        }
       });
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: "Product not found",
+          message: 'Product not found'
         });
       }
 
       // Delete associated platform data first
       await PlatformData.destroy({
         where: {
-          entityType: "product",
-          entityId: id,
-        },
+          entityType: 'product',
+          entityId: id
+        }
       });
 
       // Delete the product
@@ -960,14 +960,14 @@ class ProductController {
 
       res.json({
         success: true,
-        message: "Product deleted successfully",
+        message: 'Product deleted successfully'
       });
     } catch (error) {
-      logger.error("Error deleting product:", error);
+      logger.error('Error deleting product:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to delete product",
-        error: error.message,
+        message: 'Failed to delete product',
+        error: error.message
       });
     }
   }
@@ -984,31 +984,31 @@ class ProductController {
       const products = await Product.findAll({
         where: {
           id: { [Op.in]: productIds },
-          userId,
-        },
+          userId
+        }
       });
 
       if (products.length !== productIds.length) {
         return res.status(400).json({
           success: false,
-          message: "Some products not found or don't belong to you",
+          message: 'Some products not found or don\'t belong to you'
         });
       }
 
       // Delete associated platform data first
       await PlatformData.destroy({
         where: {
-          entityType: "product",
-          entityId: { [Op.in]: productIds },
-        },
+          entityType: 'product',
+          entityId: { [Op.in]: productIds }
+        }
       });
 
       // Delete the products
       const deletedCount = await Product.destroy({
         where: {
           id: { [Op.in]: productIds },
-          userId,
-        },
+          userId
+        }
       });
 
       logger.info(`Bulk deleted ${deletedCount} products by user ${userId}`);
@@ -1018,15 +1018,15 @@ class ProductController {
         message: `Successfully deleted ${deletedCount} products`,
         data: {
           deletedCount,
-          deletedIds: productIds,
-        },
+          deletedIds: productIds
+        }
       });
     } catch (error) {
-      logger.error("Error bulk deleting products:", error);
+      logger.error('Error bulk deleting products:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to delete products",
-        error: error.message,
+        message: 'Failed to delete products',
+        error: error.message
       });
     }
   }
@@ -1043,14 +1043,14 @@ class ProductController {
       const products = await Product.findAll({
         where: {
           id: { [Op.in]: productIds },
-          userId,
-        },
+          userId
+        }
       });
 
       if (products.length !== productIds.length) {
         return res.status(400).json({
           success: false,
-          message: "Some products not found or don't belong to you",
+          message: 'Some products not found or don\'t belong to you'
         });
       }
 
@@ -1060,8 +1060,8 @@ class ProductController {
         {
           where: {
             id: { [Op.in]: productIds },
-            userId,
-          },
+            userId
+          }
         }
       );
 
@@ -1075,15 +1075,15 @@ class ProductController {
         data: {
           updatedCount,
           status,
-          updatedIds: productIds,
-        },
+          updatedIds: productIds
+        }
       });
     } catch (error) {
-      logger.error("Error bulk updating product status:", error);
+      logger.error('Error bulk updating product status:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to update product status",
-        error: error.message,
+        message: 'Failed to update product status',
+        error: error.message
       });
     }
   }
@@ -1101,14 +1101,14 @@ class ProductController {
       const products = await Product.findAll({
         where: {
           id: { [Op.in]: productIds },
-          userId,
-        },
+          userId
+        }
       });
 
       if (products.length !== productIds.length) {
         return res.status(400).json({
           success: false,
-          message: "Some products not found or don't belong to you",
+          message: 'Some products not found or don\'t belong to you'
         });
       }
 
@@ -1117,13 +1117,13 @@ class ProductController {
         Product.update(
           {
             stockQuantity: update.stockQuantity,
-            lastSyncedAt: new Date(),
+            lastSyncedAt: new Date()
           },
           {
             where: {
               id: update.productId,
-              userId,
-            },
+              userId
+            }
           }
         )
       );
@@ -1139,15 +1139,15 @@ class ProductController {
         message: `Successfully updated stock for ${updates.length} products`,
         data: {
           updatedCount: updates.length,
-          updates,
-        },
+          updates
+        }
       });
     } catch (error) {
-      logger.error("Error bulk updating product stock:", error);
+      logger.error('Error bulk updating product stock:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to update product stock",
-        error: error.message,
+        message: 'Failed to update product stock',
+        error: error.message
       });
     }
   }
@@ -1161,49 +1161,49 @@ class ProductController {
 
       // Get basic counts
       const totalProducts = await Product.count({
-        where: { userId },
+        where: { userId }
       });
 
       const activeProducts = await Product.count({
         where: {
           userId,
-          status: "active",
-        },
+          status: 'active'
+        }
       });
 
       const inactiveProducts = await Product.count({
         where: {
           userId,
-          status: "inactive",
-        },
+          status: 'inactive'
+        }
       });
 
       const draftProducts = await Product.count({
-        where: { userId, status: "draft" },
+        where: { userId, status: 'draft' }
       });
 
       // Get stock status counts using the same logic as filtering
       const outOfStockProducts = await Product.count({
         where: {
           userId,
-          stockQuantity: { [Op.eq]: 0 },
-        },
+          stockQuantity: { [Op.eq]: 0 }
+        }
       });
 
       const lowStockProducts = await Product.count({
         where: {
           userId,
           stockQuantity: {
-            [Op.and]: [{ [Op.gte]: 1 }, { [Op.lte]: 15 }],
-          },
-        },
+            [Op.and]: [{ [Op.gte]: 1 }, { [Op.lte]: 15 }]
+          }
+        }
       });
 
       const inStockProducts = await Product.count({
         where: {
           userId,
-          stockQuantity: { [Op.gt]: 15 },
-        },
+          stockQuantity: { [Op.gt]: 15 }
+        }
       });
 
       // Get status-based counts
@@ -1211,16 +1211,16 @@ class ProductController {
         where: {
           userId,
           stockQuantity: { [Op.gt]: 0 },
-          status: "inactive",
-        },
+          status: 'inactive'
+        }
       });
 
       const aktifProducts = await Product.count({
         where: {
           userId,
           stockQuantity: { [Op.gte]: 1 },
-          status: "active",
-        },
+          status: 'active'
+        }
       });
 
       // Get approval status counts through platform data
@@ -1232,39 +1232,39 @@ class ProductController {
       try {
         pendingProducts = await PlatformData.count({
           where: {
-            entityType: "product",
+            entityType: 'product',
             [Op.or]: [
-              { "data.approvalStatus": "Pending" },
-              { "data.status": "pending" },
-              { platformStatus: "pending" },
-            ],
-          },
+              { 'data.approvalStatus': 'Pending' },
+              { 'data.status': 'pending' },
+              { platformStatus: 'pending' }
+            ]
+          }
         });
       } catch (error) {
-        logger.warn("Could not fetch pending products count:", error.message);
+        logger.warn('Could not fetch pending products count:', error.message);
       }
 
       try {
         rejectedProducts = await PlatformData.count({
           where: {
-            entityType: "product",
+            entityType: 'product',
             [Op.or]: [
-              { "data.rejected": true },
-              { "data.approvalStatus": "Rejected" },
-              { "data.status": "rejected" },
-            ],
+              { 'data.rejected': true },
+              { 'data.approvalStatus': 'Rejected' },
+              { 'data.status': 'rejected' }
+            ]
           },
           include: [
             {
               model: Product,
-              as: "product",
+              as: 'product',
               where: { userId },
-              attributes: [],
-            },
-          ],
+              attributes: []
+            }
+          ]
         });
       } catch (error) {
-        logger.warn("Could not fetch rejected products count:", error.message);
+        logger.warn('Could not fetch rejected products count:', error.message);
       }
 
       // Get products by category with error handling
@@ -1273,28 +1273,28 @@ class ProductController {
         categoryCounts = await Product.findAll({
           where: { userId },
           attributes: [
-            "category",
+            'category',
             [
-              Product.sequelize.fn("COUNT", Product.sequelize.col("id")),
-              "count",
-            ],
+              Product.sequelize.fn('COUNT', Product.sequelize.col('id')),
+              'count'
+            ]
           ],
-          group: ["category"],
-          raw: true,
+          group: ['category'],
+          raw: true
         });
       } catch (error) {
-        logger.warn("Could not fetch category counts:", error.message);
+        logger.warn('Could not fetch category counts:', error.message);
       }
 
       // Get total inventory value with error handling
       let inventoryValue = 0;
       try {
         inventoryValue =
-          (await Product.sum("price", {
-            where: { userId, status: "active" },
+          (await Product.sum('price', {
+            where: { userId, status: 'active' }
           })) || 0;
       } catch (error) {
-        logger.warn("Could not calculate inventory value:", error.message);
+        logger.warn('Could not calculate inventory value:', error.message);
       }
 
       // Get platform distribution with error handling
@@ -1302,29 +1302,29 @@ class ProductController {
       try {
         platformCounts = await PlatformData.findAll({
           attributes: [
-            "platformType",
+            'platformType',
             [
               PlatformData.sequelize.fn(
-                "COUNT",
-                PlatformData.sequelize.col("PlatformData.id")
+                'COUNT',
+                PlatformData.sequelize.col('PlatformData.id')
               ),
-              "count",
-            ],
+              'count'
+            ]
           ],
           include: [
             {
               model: Product,
-              as: "product",
+              as: 'product',
               where: { userId },
-              attributes: [],
-            },
+              attributes: []
+            }
           ],
-          where: { entityType: "product" },
-          group: ["platformType"],
-          raw: true,
+          where: { entityType: 'product' },
+          group: ['platformType'],
+          raw: true
         });
       } catch (error) {
-        logger.warn("Could not fetch platform counts:", error.message);
+        logger.warn('Could not fetch platform counts:', error.message);
       }
 
       res.json({
@@ -1342,14 +1342,14 @@ class ProductController {
             inStockProducts,
             pasifProducts,
             aktifProducts,
-            inventoryValue: parseFloat(inventoryValue).toFixed(2),
+            inventoryValue: parseFloat(inventoryValue).toFixed(2)
           },
           categories: categoryCounts,
-          platforms: platformCounts,
-        },
+          platforms: platformCounts
+        }
       });
     } catch (error) {
-      logger.error("Error getting product statistics:", error);
+      logger.error('Error getting product statistics:', error);
 
       // Return graceful error response instead of 500
       res.status(200).json({
@@ -1367,16 +1367,16 @@ class ProductController {
             inStockProducts: 0,
             pasifProducts: 0,
             aktifProducts: 0,
-            inventoryValue: "0.00",
+            inventoryValue: '0.00'
           },
           categories: [],
-          platforms: [],
+          platforms: []
         },
         error: {
-          message: "Failed to get product statistics due to system error",
+          message: 'Failed to get product statistics due to system error',
           details: error.message,
-          errorType: "DATABASE_ERROR",
-        },
+          errorType: 'DATABASE_ERROR'
+        }
       });
     }
   }
@@ -1392,22 +1392,22 @@ class ProductController {
       const lowStockProducts = await Product.findAll({
         where: {
           userId,
-          status: "active",
+          status: 'active',
           [Op.or]: [
             // Stock is below minimum level
             {
               stockQuantity: {
-                [Op.lte]: Product.sequelize.col("minStockLevel"),
-              },
+                [Op.lte]: Product.sequelize.col('minStockLevel')
+              }
             },
             // Stock is below threshold if no minimum level set
             {
               minStockLevel: { [Op.or]: [null, 0] },
-              stockQuantity: { [Op.lte]: threshold },
-            },
-          ],
+              stockQuantity: { [Op.lte]: threshold }
+            }
+          ]
         },
-        order: [["stockQuantity", "ASC"]],
+        order: [['stockQuantity', 'ASC']]
       });
 
       res.json({
@@ -1415,15 +1415,15 @@ class ProductController {
         data: lowStockProducts,
         meta: {
           threshold,
-          count: lowStockProducts.length,
-        },
+          count: lowStockProducts.length
+        }
       });
     } catch (error) {
-      logger.error("Error getting low stock products:", error);
+      logger.error('Error getting low stock products:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get low stock products",
-        error: error.message,
+        message: 'Failed to get low stock products',
+        error: error.message
       });
     }
   }
@@ -1438,30 +1438,30 @@ class ProductController {
 
       // Verify product belongs to user
       const product = await Product.findOne({
-        where: { id, userId },
+        where: { id, userId }
       });
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: "Product not found",
+          message: 'Product not found'
         });
       }
 
       const variants = await ProductVariant.findAll({
         where: { productId: id },
         order: [
-          ["sortOrder", "ASC"],
-          ["isDefault", "DESC"],
-          ["createdAt", "ASC"],
+          ['sortOrder', 'ASC'],
+          ['isDefault', 'DESC'],
+          ['createdAt', 'ASC']
         ],
         include: [
           {
             model: PlatformData,
-            as: "platformData",
-            required: false,
-          },
-        ],
+            as: 'platformData',
+            required: false
+          }
+        ]
       });
 
       res.json({
@@ -1469,15 +1469,15 @@ class ProductController {
         data: variants,
         meta: {
           productId: id,
-          totalVariants: variants.length,
-        },
+          totalVariants: variants.length
+        }
       });
     } catch (error) {
-      logger.error("Error getting product variants:", error);
+      logger.error('Error getting product variants:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get product variants",
-        error: error.message,
+        message: 'Failed to get product variants',
+        error: error.message
       });
     }
   }
@@ -1502,30 +1502,30 @@ class ProductController {
         dimensions,
         images = [],
         isDefault = false,
-        sortOrder = 0,
+        sortOrder = 0
       } = req.body;
 
       // Verify product belongs to user
       const product = await Product.findOne({
-        where: { id, userId },
+        where: { id, userId }
       });
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: "Product not found",
+          message: 'Product not found'
         });
       }
 
       // Check if variant SKU already exists for this product
       const existingVariant = await ProductVariant.findOne({
-        where: { productId: id, sku },
+        where: { productId: id, sku }
       });
 
       if (existingVariant) {
         return res.status(409).json({
           success: false,
-          message: "A variant with this SKU already exists for this product",
+          message: 'A variant with this SKU already exists for this product'
         });
       }
 
@@ -1544,7 +1544,7 @@ class ProductController {
         dimensions,
         images,
         isDefault,
-        sortOrder: parseInt(sortOrder),
+        sortOrder: parseInt(sortOrder)
       });
 
       // Record initial stock movement if stock quantity > 0
@@ -1552,11 +1552,11 @@ class ProductController {
         await AdvancedInventoryService.recordMovement({
           variantId: variant.id,
           sku: variant.sku,
-          movementType: "IN_STOCK",
+          movementType: 'IN_STOCK',
           quantity: stockQuantity,
-          reason: "Initial stock for new variant",
+          reason: 'Initial stock for new variant',
           userId,
-          metadata: { variantCreation: true },
+          metadata: { variantCreation: true }
         });
       }
 
@@ -1566,15 +1566,15 @@ class ProductController {
 
       res.status(201).json({
         success: true,
-        message: "Product variant created successfully",
-        data: variant,
+        message: 'Product variant created successfully',
+        data: variant
       });
     } catch (error) {
-      logger.error("Error creating product variant:", error);
+      logger.error('Error creating product variant:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to create product variant",
-        error: error.message,
+        message: 'Failed to create product variant',
+        error: error.message
       });
     }
   }
@@ -1594,16 +1594,16 @@ class ProductController {
         include: [
           {
             model: Product,
-            as: "product",
-            where: { userId },
-          },
-        ],
+            as: 'product',
+            where: { userId }
+          }
+        ]
       });
 
       if (!variant) {
         return res.status(404).json({
           success: false,
-          message: "Product variant not found",
+          message: 'Product variant not found'
         });
       }
 
@@ -1621,15 +1621,15 @@ class ProductController {
         await AdvancedInventoryService.recordMovement({
           variantId: variant.id,
           sku: variant.sku,
-          movementType: "ADJUSTMENT",
+          movementType: 'ADJUSTMENT',
           quantity: adjustment,
-          reason: "Manual stock adjustment via variant update",
+          reason: 'Manual stock adjustment via variant update',
           userId,
           metadata: {
             variantUpdate: true,
             oldQuantity: oldStockQuantity,
-            newQuantity: updateData.stockQuantity,
-          },
+            newQuantity: updateData.stockQuantity
+          }
         });
       }
 
@@ -1637,15 +1637,15 @@ class ProductController {
 
       res.json({
         success: true,
-        message: "Product variant updated successfully",
-        data: variant,
+        message: 'Product variant updated successfully',
+        data: variant
       });
     } catch (error) {
-      logger.error("Error updating product variant:", error);
+      logger.error('Error updating product variant:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to update product variant",
-        error: error.message,
+        message: 'Failed to update product variant',
+        error: error.message
       });
     }
   }
@@ -1664,16 +1664,16 @@ class ProductController {
         include: [
           {
             model: Product,
-            as: "product",
-            where: { userId },
-          },
-        ],
+            as: 'product',
+            where: { userId }
+          }
+        ]
       });
 
       if (!variant) {
         return res.status(404).json({
           success: false,
-          message: "Product variant not found",
+          message: 'Product variant not found'
         });
       }
 
@@ -1681,23 +1681,23 @@ class ProductController {
       const activeReservations = await StockReservation.count({
         where: {
           variantId: variant.id,
-          status: "active",
-        },
+          status: 'active'
+        }
       });
 
       if (activeReservations > 0) {
         return res.status(400).json({
           success: false,
-          message: "Cannot delete variant with active stock reservations",
+          message: 'Cannot delete variant with active stock reservations'
         });
       }
 
       // Delete associated data first
       await PlatformData.destroy({
         where: {
-          entityType: "variant",
-          entityId: variantId,
-        },
+          entityType: 'variant',
+          entityId: variantId
+        }
       });
 
       // Delete the variant
@@ -1707,14 +1707,14 @@ class ProductController {
 
       res.json({
         success: true,
-        message: "Product variant deleted successfully",
+        message: 'Product variant deleted successfully'
       });
     } catch (error) {
-      logger.error("Error deleting product variant:", error);
+      logger.error('Error deleting product variant:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to delete product variant",
-        error: error.message,
+        message: 'Failed to delete product variant',
+        error: error.message
       });
     }
   }
@@ -1732,18 +1732,18 @@ class ProductController {
         page = 0,
         limit = 50,
         startDate,
-        endDate,
+        endDate
       } = req.query;
 
       // Verify ownership if productId is provided
       if (productId) {
         const product = await Product.findOne({
-          where: { id: productId, userId },
+          where: { id: productId, userId }
         });
         if (!product) {
           return res.status(404).json({
             success: false,
-            message: "Product not found",
+            message: 'Product not found'
           });
         }
       }
@@ -1755,15 +1755,15 @@ class ProductController {
           include: [
             {
               model: Product,
-              as: "product",
-              where: { userId },
-            },
-          ],
+              as: 'product',
+              where: { userId }
+            }
+          ]
         });
         if (!variant) {
           return res.status(404).json({
             success: false,
-            message: "Product variant not found",
+            message: 'Product variant not found'
           });
         }
       }
@@ -1776,17 +1776,17 @@ class ProductController {
           limit: parseInt(limit),
           movementType,
           startDate: startDate ? new Date(startDate) : undefined,
-          endDate: endDate ? new Date(endDate) : undefined,
+          endDate: endDate ? new Date(endDate) : undefined
         }
       );
 
       res.json(result);
     } catch (error) {
-      logger.error("Error getting inventory movements:", error);
+      logger.error('Error getting inventory movements:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get inventory movements",
-        error: error.message,
+        message: 'Failed to get inventory movements',
+        error: error.message
       });
     }
   }
@@ -1802,12 +1802,12 @@ class ProductController {
       // Verify ownership
       if (productId) {
         const product = await Product.findOne({
-          where: { id: productId, userId },
+          where: { id: productId, userId }
         });
         if (!product) {
           return res.status(404).json({
             success: false,
-            message: "Product not found",
+            message: 'Product not found'
           });
         }
       }
@@ -1818,15 +1818,15 @@ class ProductController {
           include: [
             {
               model: Product,
-              as: "product",
-              where: { userId },
-            },
-          ],
+              as: 'product',
+              where: { userId }
+            }
+          ]
         });
         if (!variant) {
           return res.status(404).json({
             success: false,
-            message: "Product variant not found",
+            message: 'Product variant not found'
           });
         }
       }
@@ -1837,7 +1837,7 @@ class ProductController {
         sku,
         adjustment: parseInt(adjustment),
         reason,
-        userId,
+        userId
       });
 
       logger.info(
@@ -1846,15 +1846,15 @@ class ProductController {
 
       res.json({
         success: true,
-        message: "Inventory adjusted successfully",
-        data: result,
+        message: 'Inventory adjusted successfully',
+        data: result
       });
     } catch (error) {
-      logger.error("Error adjusting inventory:", error);
+      logger.error('Error adjusting inventory:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to adjust inventory",
-        error: error.message,
+        message: 'Failed to adjust inventory',
+        error: error.message
       });
     }
   }
@@ -1874,18 +1874,18 @@ class ProductController {
         orderId,
         platformType,
         expiresAt,
-        reason = "Order stock reservation",
+        reason = 'Order stock reservation'
       } = req.body;
 
       // Verify ownership
       if (productId) {
         const product = await Product.findOne({
-          where: { id: productId, userId },
+          where: { id: productId, userId }
         });
         if (!product) {
           return res.status(404).json({
             success: false,
-            message: "Product not found",
+            message: 'Product not found'
           });
         }
       }
@@ -1896,15 +1896,15 @@ class ProductController {
           include: [
             {
               model: Product,
-              as: "product",
-              where: { userId },
-            },
-          ],
+              as: 'product',
+              where: { userId }
+            }
+          ]
         });
         if (!variant) {
           return res.status(404).json({
             success: false,
-            message: "Product variant not found",
+            message: 'Product variant not found'
           });
         }
       }
@@ -1919,7 +1919,7 @@ class ProductController {
         platformType,
         userId,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
-        reason,
+        reason
       });
 
       logger.info(
@@ -1928,15 +1928,15 @@ class ProductController {
 
       res.status(201).json({
         success: true,
-        message: "Stock reserved successfully",
-        data: result,
+        message: 'Stock reserved successfully',
+        data: result
       });
     } catch (error) {
-      logger.error("Error reserving stock:", error);
+      logger.error('Error reserving stock:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to reserve stock",
-        error: error.message,
+        message: 'Failed to reserve stock',
+        error: error.message
       });
     }
   }
@@ -1947,18 +1947,18 @@ class ProductController {
   async confirmStockReservation(req, res) {
     try {
       const { reservationId } = req.params;
-      const { reason = "Order confirmed" } = req.body;
+      const { reason = 'Order confirmed' } = req.body;
       const userId = req.user.id;
 
       // Verify ownership of reservation
       const reservation = await StockReservation.findOne({
-        where: { id: reservationId, userId },
+        where: { id: reservationId, userId }
       });
 
       if (!reservation) {
         return res.status(404).json({
           success: false,
-          message: "Stock reservation not found",
+          message: 'Stock reservation not found'
         });
       }
 
@@ -1973,15 +1973,15 @@ class ProductController {
 
       res.json({
         success: true,
-        message: "Stock reservation confirmed successfully",
-        data: result,
+        message: 'Stock reservation confirmed successfully',
+        data: result
       });
     } catch (error) {
-      logger.error("Error confirming stock reservation:", error);
+      logger.error('Error confirming stock reservation:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to confirm stock reservation",
-        error: error.message,
+        message: 'Failed to confirm stock reservation',
+        error: error.message
       });
     }
   }
@@ -2002,25 +2002,25 @@ class ProductController {
           include: [
             {
               model: Product,
-              as: "product",
-              where: { userId },
-            },
-          ],
+              as: 'product',
+              where: { userId }
+            }
+          ]
         });
         if (!variant) {
           return res.status(404).json({
             success: false,
-            message: "Product variant not found",
+            message: 'Product variant not found'
           });
         }
       } else {
         const product = await Product.findOne({
-          where: { id: productId, userId },
+          where: { id: productId, userId }
         });
         if (!product) {
           return res.status(404).json({
             success: false,
-            message: "Product not found",
+            message: 'Product not found'
           });
         }
       }
@@ -2035,15 +2035,15 @@ class ProductController {
         data: {
           productId,
           variantId,
-          availableStock,
-        },
+          availableStock
+        }
       });
     } catch (error) {
-      logger.error("Error getting available stock:", error);
+      logger.error('Error getting available stock:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get available stock",
-        error: error.message,
+        message: 'Failed to get available stock',
+        error: error.message
       });
     }
   }
@@ -2056,7 +2056,7 @@ class ProductController {
       const userId = req.user.id;
       const { status, productId, variantId, page = 0, limit = 50 } = req.query;
 
-      let whereClause = { userId };
+      const whereClause = { userId };
 
       if (status) {
         whereClause.status = status;
@@ -2075,16 +2075,16 @@ class ProductController {
         productId,
         variantId,
         page: parseInt(page),
-        limit: parseInt(limit),
+        limit: parseInt(limit)
       });
 
       res.json(result);
     } catch (error) {
-      logger.error("Error getting stock reservations:", error);
+      logger.error('Error getting stock reservations:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get stock reservations",
-        error: error.message,
+        message: 'Failed to get stock reservations',
+        error: error.message
       });
     }
   }
@@ -2095,18 +2095,18 @@ class ProductController {
   async releaseStockReservation(req, res) {
     try {
       const { reservationId } = req.params;
-      const { reason = "Manual release" } = req.body;
+      const { reason = 'Manual release' } = req.body;
       const userId = req.user.id;
 
       // Verify ownership of reservation
       const reservation = await StockReservation.findOne({
-        where: { id: reservationId, userId },
+        where: { id: reservationId, userId }
       });
 
       if (!reservation) {
         return res.status(404).json({
           success: false,
-          message: "Stock reservation not found",
+          message: 'Stock reservation not found'
         });
       }
 
@@ -2121,15 +2121,15 @@ class ProductController {
 
       res.json({
         success: true,
-        message: "Stock reservation released successfully",
-        data: result,
+        message: 'Stock reservation released successfully',
+        data: result
       });
     } catch (error) {
-      logger.error("Error releasing stock reservation:", error);
+      logger.error('Error releasing stock reservation:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to release stock reservation",
-        error: error.message,
+        message: 'Failed to release stock reservation',
+        error: error.message
       });
     }
   }
@@ -2149,25 +2149,25 @@ class ProductController {
       const userProducts = await Product.findAll({
         where: {
           id: allProductIds,
-          userId,
-        },
+          userId
+        }
       });
 
       if (userProducts.length !== allProductIds.length) {
         return res.status(403).json({
           success: false,
-          message: "Some products do not belong to the user",
+          message: 'Some products do not belong to the user'
         });
       }
 
       // Start a transaction for the variant group creation
-      const { sequelize } = require("../models");
+      const { sequelize } = require('../models');
       const transaction = await sequelize.transaction();
 
       try {
         // Update the base product name if needed
         const updatedBaseProduct = await Product.findByPk(baseProduct.id, {
-          transaction,
+          transaction
         });
         if (updatedBaseProduct.name !== groupName) {
           await updatedBaseProduct.update({ name: groupName }, { transaction });
@@ -2183,7 +2183,7 @@ class ProductController {
           // Check if SKU already exists as a variant for the base product
           const existingVariant = await ProductVariant.findOne({
             where: { productId: baseProduct.id, sku: variantSku },
-            transaction,
+            transaction
           });
 
           if (existingVariant) {
@@ -2201,7 +2201,7 @@ class ProductController {
                 originalProductId: variantProduct.id,
                 convertedFromProduct: true,
                 confidence,
-                reason,
+                reason
               },
               price: variantProduct.price,
               costPrice: variantProduct.costPrice,
@@ -2211,7 +2211,7 @@ class ProductController {
               dimensions: variantProduct.dimensions,
               images: variantProduct.images || [],
               isDefault: false,
-              sortOrder: createdVariants.length + 1,
+              sortOrder: createdVariants.length + 1
             },
             { transaction }
           );
@@ -2224,14 +2224,14 @@ class ProductController {
               {
                 variantId: variant.id,
                 sku: variant.sku,
-                movementType: "IN_STOCK",
+                movementType: 'IN_STOCK',
                 quantity: variantProduct.stockQuantity,
-                reason: "Stock transfer from converted product",
+                reason: 'Stock transfer from converted product',
                 userId,
                 metadata: {
                   variantGroupCreation: true,
-                  originalProductId: variantProduct.id,
-                },
+                  originalProductId: variantProduct.id
+                }
               },
               { transaction }
             );
@@ -2240,10 +2240,10 @@ class ProductController {
           // Transfer platform data if exists
           const platformData = await PlatformData.findAll({
             where: {
-              entityType: "product",
-              entityId: variantProduct.id,
+              entityType: 'product',
+              entityId: variantProduct.id
             },
-            transaction,
+            transaction
           });
 
           for (const platformDataItem of platformData) {
@@ -2251,13 +2251,13 @@ class ProductController {
               {
                 ...platformDataItem.dataValues,
                 id: undefined, // Let it generate a new ID
-                entityType: "variant",
+                entityType: 'variant',
                 entityId: variant.id,
                 metadata: {
                   ...platformDataItem.metadata,
                   convertedFromProduct: true,
-                  originalProductId: variantProduct.id,
-                },
+                  originalProductId: variantProduct.id
+                }
               },
               { transaction }
             );
@@ -2266,17 +2266,17 @@ class ProductController {
           // Mark the original product as converted/inactive
           await Product.update(
             {
-              status: "converted_to_variant",
+              status: 'converted_to_variant',
               metadata: {
                 ...(variantProduct.metadata || {}),
                 convertedToVariant: true,
                 variantGroupId: baseProduct.id,
-                variantId: variant.id,
-              },
+                variantId: variant.id
+              }
             },
             {
               where: { id: variantProduct.id },
-              transaction,
+              transaction
             }
           );
         }
@@ -2289,24 +2289,24 @@ class ProductController {
 
         res.status(201).json({
           success: true,
-          message: "Variant group created successfully",
+          message: 'Variant group created successfully',
           data: {
             baseProduct: updatedBaseProduct,
             variants: createdVariants,
             groupName,
-            variantCount: createdVariants.length,
-          },
+            variantCount: createdVariants.length
+          }
         });
       } catch (error) {
         await transaction.rollback();
         throw error;
       }
     } catch (error) {
-      logger.error("Error creating variant group:", error);
+      logger.error('Error creating variant group:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to create variant group",
-        error: error.message,
+        message: 'Failed to create variant group',
+        error: error.message
       });
     }
   }
@@ -2322,13 +2322,13 @@ class ProductController {
 
       // Verify the base product (group) belongs to the user
       const baseProduct = await Product.findOne({
-        where: { id: groupId, userId },
+        where: { id: groupId, userId }
       });
 
       if (!baseProduct) {
         return res.status(404).json({
           success: false,
-          message: "Variant group not found",
+          message: 'Variant group not found'
         });
       }
 
@@ -2342,7 +2342,7 @@ class ProductController {
         for (const variantData of variants) {
           if (variantData.id) {
             const variant = await ProductVariant.findOne({
-              where: { id: variantData.id, productId: groupId },
+              where: { id: variantData.id, productId: groupId }
             });
 
             if (variant) {
@@ -2356,14 +2356,14 @@ class ProductController {
 
       res.json({
         success: true,
-        message: "Variant group updated successfully",
+        message: 'Variant group updated successfully'
       });
     } catch (error) {
-      logger.error("Error updating variant group:", error);
+      logger.error('Error updating variant group:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to update variant group",
-        error: error.message,
+        message: 'Failed to update variant group',
+        error: error.message
       });
     }
   }
@@ -2378,22 +2378,22 @@ class ProductController {
 
       // Verify the base product (group) belongs to the user
       const baseProduct = await Product.findOne({
-        where: { id: groupId, userId },
+        where: { id: groupId, userId }
       });
 
       if (!baseProduct) {
         return res.status(404).json({
           success: false,
-          message: "Variant group not found",
+          message: 'Variant group not found'
         });
       }
 
       // Get all variants in the group
       const variants = await ProductVariant.findAll({
-        where: { productId: groupId },
+        where: { productId: groupId }
       });
 
-      const { sequelize } = require("../models");
+      const { sequelize } = require('../models');
       const transaction = await sequelize.transaction();
 
       try {
@@ -2402,10 +2402,10 @@ class ProductController {
           // Delete platform data for variant
           await PlatformData.destroy({
             where: {
-              entityType: "variant",
-              entityId: variant.id,
+              entityType: 'variant',
+              entityId: variant.id
             },
-            transaction,
+            transaction
           });
 
           // Delete the variant
@@ -2415,10 +2415,10 @@ class ProductController {
         // Delete platform data for base product
         await PlatformData.destroy({
           where: {
-            entityType: "product",
-            entityId: groupId,
+            entityType: 'product',
+            entityId: groupId
           },
-          transaction,
+          transaction
         });
 
         // Delete the base product
@@ -2430,18 +2430,18 @@ class ProductController {
 
         res.json({
           success: true,
-          message: "Variant group deleted successfully",
+          message: 'Variant group deleted successfully'
         });
       } catch (error) {
         await transaction.rollback();
         throw error;
       }
     } catch (error) {
-      logger.error("Error deleting variant group:", error);
+      logger.error('Error deleting variant group:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to delete variant group",
-        error: error.message,
+        message: 'Failed to delete variant group',
+        error: error.message
       });
     }
   }
@@ -2459,8 +2459,8 @@ class ProductController {
         ProductTemplate,
         ProductMedia,
         PlatformCategory,
-        BulkOperation,
-      } = require("../models");
+        BulkOperation
+      } = require('../models');
 
       // Get product with all related data
       const product = await Product.findOne({
@@ -2468,35 +2468,35 @@ class ProductController {
         include: [
           {
             model: ProductVariant,
-            as: "variants",
+            as: 'variants',
             order: [
-              ["isDefault", "DESC"],
-              ["sortOrder", "ASC"],
-            ],
+              ['isDefault', 'DESC'],
+              ['sortOrder', 'ASC']
+            ]
           },
           {
             model: ProductMedia,
-            as: "media",
+            as: 'media',
             order: [
-              ["isPrimary", "DESC"],
-              ["sortOrder", "ASC"],
-            ],
+              ['isPrimary', 'DESC'],
+              ['sortOrder', 'ASC']
+            ]
           },
           {
             model: ProductTemplate,
-            as: "template",
+            as: 'template'
           },
           {
             model: PlatformData,
-            as: "platformData",
-          },
-        ],
+            as: 'platformData'
+          }
+        ]
       });
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: "Product not found",
+          message: 'Product not found'
         });
       }
 
@@ -2505,10 +2505,10 @@ class ProductController {
       if (product.platformData) {
         product.platformData.forEach((pd) => {
           publishingStatus[pd.platformType] = {
-            status: pd.data.status || "unknown",
+            status: pd.data.status || 'unknown',
             approved: pd.data.approved || false,
             lastSync: pd.updatedAt,
-            errors: pd.data.errors || [],
+            errors: pd.data.errors || []
           };
         });
       }
@@ -2517,10 +2517,10 @@ class ProductController {
       const recentOperations = await BulkOperation.findAll({
         where: {
           userId,
-          "configuration.productIds": { [Op.contains]: [productId] },
+          'configuration.productIds': { [Op.contains]: [productId] }
         },
-        order: [["createdAt", "DESC"]],
-        limit: 5,
+        order: [['createdAt', 'DESC']],
+        limit: 5
       });
 
       res.json({
@@ -2533,16 +2533,16 @@ class ProductController {
             totalVariants: product.variants?.length || 0,
             totalMedia: product.media?.length || 0,
             platformsPublished: Object.keys(publishingStatus).length,
-            lastUpdated: product.updatedAt,
-          },
-        },
+            lastUpdated: product.updatedAt
+          }
+        }
       });
     } catch (error) {
-      logger.error("Error fetching product dashboard:", error);
+      logger.error('Error fetching product dashboard:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to fetch product dashboard",
-        error: error.message,
+        message: 'Failed to fetch product dashboard',
+        error: error.message
       });
     }
   }
@@ -2554,7 +2554,7 @@ class ProductController {
     try {
       const { productIds, platforms, publishingSettings } = req.body;
       const userId = req.user.id;
-      const { BulkOperation } = require("../models");
+      const { BulkOperation } = require('../models');
 
       // Validate input
       if (
@@ -2564,28 +2564,28 @@ class ProductController {
       ) {
         return res.status(400).json({
           success: false,
-          message: "Product IDs are required",
+          message: 'Product IDs are required'
         });
       }
 
       if (!platforms || !Array.isArray(platforms) || platforms.length === 0) {
         return res.status(400).json({
           success: false,
-          message: "At least one platform must be selected",
+          message: 'At least one platform must be selected'
         });
       }
 
       // Create bulk operation record
       const bulkOperation = await BulkOperation.create({
-        type: "platform_publish",
-        status: "pending",
+        type: 'platform_publish',
+        status: 'pending',
         totalItems: productIds.length * platforms.length,
         configuration: {
           productIds,
           platforms,
-          publishingSettings: publishingSettings || {},
+          publishingSettings: publishingSettings || {}
         },
-        userId,
+        userId
       });
 
       // Queue the bulk operation for processing
@@ -2598,18 +2598,18 @@ class ProductController {
         success: true,
         data: {
           operationId: bulkOperation.id,
-          message: "Bulk publishing operation started",
+          message: 'Bulk publishing operation started',
           estimatedTime: `${Math.ceil(
             (productIds.length * platforms.length) / 10
-          )} minutes`,
-        },
+          )} minutes`
+        }
       });
     } catch (error) {
-      logger.error("Error starting bulk publish:", error);
+      logger.error('Error starting bulk publish:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to start bulk publishing",
-        error: error.message,
+        message: 'Failed to start bulk publishing',
+        error: error.message
       });
     }
   }
@@ -2621,29 +2621,29 @@ class ProductController {
     try {
       const { operationId } = req.params;
       const userId = req.user.id;
-      const { BulkOperation } = require("../models");
+      const { BulkOperation } = require('../models');
 
       const operation = await BulkOperation.findOne({
-        where: { id: operationId, userId },
+        where: { id: operationId, userId }
       });
 
       if (!operation) {
         return res.status(404).json({
           success: false,
-          message: "Operation not found",
+          message: 'Operation not found'
         });
       }
 
       res.json({
         success: true,
-        data: operation,
+        data: operation
       });
     } catch (error) {
-      logger.error("Error fetching operation status:", error);
+      logger.error('Error fetching operation status:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to fetch operation status",
-        error: error.message,
+        message: 'Failed to fetch operation status',
+        error: error.message
       });
     }
   }
@@ -2657,17 +2657,17 @@ class ProductController {
       const { variantId, type, isPrimary, sortOrder, altText, caption, tags } =
         req.body;
       const userId = req.user.id;
-      const { ProductMedia } = require("../models");
+      const { ProductMedia } = require('../models');
 
       // Validate product ownership
       const product = await Product.findOne({
-        where: { id: productId, userId },
+        where: { id: productId, userId }
       });
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: "Product not found",
+          message: 'Product not found'
         });
       }
 
@@ -2675,7 +2675,7 @@ class ProductController {
       if (!req.file) {
         return res.status(400).json({
           success: false,
-          message: "No file uploaded",
+          message: 'No file uploaded'
         });
       }
 
@@ -2686,8 +2686,8 @@ class ProductController {
           {
             where: {
               productId,
-              ...(variantId ? { variantId } : { variantId: null }),
-            },
+              ...(variantId ? { variantId } : { variantId: null })
+            }
           }
         );
       }
@@ -2696,7 +2696,7 @@ class ProductController {
       const media = await ProductMedia.create({
         productId,
         variantId: variantId || null,
-        type: type || "image",
+        type: type || 'image',
         url: req.file.location || req.file.path, // Assuming S3 or local storage
         filename: req.file.filename,
         originalName: req.file.originalname,
@@ -2704,23 +2704,23 @@ class ProductController {
         size: req.file.size,
         isPrimary: isPrimary || false,
         sortOrder: sortOrder || 0,
-        altText: altText || "",
-        caption: caption || "",
+        altText: altText || '',
+        caption: caption || '',
         tags: tags ? JSON.parse(tags) : [],
-        userId,
+        userId
       });
 
       res.json({
         success: true,
         data: media,
-        message: "Media uploaded successfully",
+        message: 'Media uploaded successfully'
       });
     } catch (error) {
-      logger.error("Error uploading media:", error);
+      logger.error('Error uploading media:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to upload media",
-        error: error.message,
+        message: 'Failed to upload media',
+        error: error.message
       });
     }
   }
@@ -2733,7 +2733,7 @@ class ProductController {
       const { productId } = req.params;
       const { detectionRules } = req.body;
       const userId = req.user.id;
-      const VariantDetectionService = require("../services/variant-detection-service");
+      const VariantDetectionService = require('../services/variant-detection-service');
 
       // Validate product ownership
       const product = await Product.findOne({
@@ -2741,15 +2741,15 @@ class ProductController {
         include: [
           {
             model: PlatformData,
-            as: "platformData",
-          },
-        ],
+            as: 'platformData'
+          }
+        ]
       });
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: "Product not found",
+          message: 'Product not found'
         });
       }
 
@@ -2762,14 +2762,14 @@ class ProductController {
       res.json({
         success: true,
         data: detectionResult,
-        message: `Detected ${detectionResult.variants.length} potential variants`,
+        message: `Detected ${detectionResult.variants.length} potential variants`
       });
     } catch (error) {
-      logger.error("Error detecting variants:", error);
+      logger.error('Error detecting variants:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to detect variants",
-        error: error.message,
+        message: 'Failed to detect variants',
+        error: error.message
       });
     }
   }
@@ -2781,7 +2781,7 @@ class ProductController {
     try {
       const { platformType } = req.params;
       const userId = req.user.id;
-      const PlatformCategoryService = require("../services/platform-category-service");
+      const PlatformCategoryService = require('../services/platform-category-service');
 
       // Start category sync
       const syncResult = await PlatformCategoryService.syncCategories(
@@ -2792,14 +2792,14 @@ class ProductController {
       res.json({
         success: true,
         data: syncResult,
-        message: `Category sync started for ${platformType}`,
+        message: `Category sync started for ${platformType}`
       });
     } catch (error) {
-      logger.error("Error syncing categories:", error);
+      logger.error('Error syncing categories:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to sync categories",
-        error: error.message,
+        message: 'Failed to sync categories',
+        error: error.message
       });
     }
   }
@@ -2809,15 +2809,15 @@ class ProductController {
    */
   async processBulkPublishing(operationId) {
     try {
-      const { BulkOperation } = require("../models");
+      const { BulkOperation } = require('../models');
       const operation = await BulkOperation.findByPk(operationId);
 
-      if (!operation) return;
+      if (!operation) {return;}
 
       // Update status to processing
       await operation.update({
-        status: "processing",
-        startedAt: new Date(),
+        status: 'processing',
+        startedAt: new Date()
       });
 
       const { productIds, platforms, publishingSettings } =
@@ -2843,7 +2843,7 @@ class ProductController {
             errors.push({
               productId,
               platform,
-              error: error.message,
+              error: error.message
             });
             logger.error(
               `Failed to publish ${productId} to ${platform}:`,
@@ -2860,7 +2860,7 @@ class ProductController {
             successfulItems,
             failedItems,
             progress: Math.round(progress * 100) / 100,
-            errors,
+            errors
           });
         }
       }
@@ -2868,9 +2868,9 @@ class ProductController {
       // Mark as completed
       await operation.update({
         status:
-          processedItems === operation.totalItems ? "completed" : "partial",
+          processedItems === operation.totalItems ? 'completed' : 'partial',
         completedAt: new Date(),
-        processingTimeMs: Date.now() - new Date(operation.startedAt).getTime(),
+        processingTimeMs: Date.now() - new Date(operation.startedAt).getTime()
       });
 
       logger.info(`Bulk publishing completed for operation ${operationId}`);
@@ -2878,12 +2878,12 @@ class ProductController {
       logger.error(`Error processing bulk operation ${operationId}:`, error);
 
       // Mark as failed
-      const { BulkOperation } = require("../models");
+      const { BulkOperation } = require('../models');
       await BulkOperation.update(
         {
-          status: "failed",
+          status: 'failed',
           errors: [{ error: error.message }],
-          completedAt: new Date(),
+          completedAt: new Date()
         },
         { where: { id: operationId } }
       );
@@ -2910,19 +2910,19 @@ class ProductController {
         hasVariants,
         sortBy: sortByQuery,
         sortField, // Frontend sends sortField instead of sortBy
-        sortOrder = "DESC",
+        sortOrder = 'DESC',
         stockStatus,
         minPrice,
         maxPrice,
         minStock,
         maxStock,
-        platform,
+        platform
       } = req.query;
 
       // Handle parameter mapping and normalization
-      const sortBy = sortField || sortByQuery || "updatedAt";
+      const sortBy = sortField || sortByQuery || 'updatedAt';
       const normalizedSortOrder = sortOrder.toUpperCase();
-      const normalizedStatus = status === "" ? undefined : status;
+      const normalizedStatus = status === '' ? undefined : status;
 
       const offset = (page - 1) * limit;
       const where = { userId };
@@ -2931,26 +2931,26 @@ class ProductController {
       if (search) {
         where[Op.or] = [
           { name: { [Op.iLike]: `%${search}%` } },
-          { sku: { [Op.iLike]: `%${search}%` } },
+          { sku: { [Op.iLike]: `%${search}%` } }
         ];
       }
 
-      if (category && category !== "") where.category = category;
-      if (normalizedStatus) where.status = normalizedStatus;
+      if (category && category !== '') {where.category = category;}
+      if (normalizedStatus) {where.status = normalizedStatus;}
 
       // Price filters
-      if (minPrice && minPrice !== "") {
+      if (minPrice && minPrice !== '') {
         where.price = { ...where.price, [Op.gte]: parseFloat(minPrice) };
       }
-      if (maxPrice && maxPrice !== "") {
+      if (maxPrice && maxPrice !== '') {
         where.price = { ...where.price, [Op.lte]: parseFloat(maxPrice) };
       }
 
       // Stock filters
-      if (minStock && minStock !== "") {
+      if (minStock && minStock !== '') {
         where.stock = { ...where.stock, [Op.gte]: parseInt(minStock) };
       }
-      if (maxStock && maxStock !== "") {
+      if (maxStock && maxStock !== '') {
         where.stock = { ...where.stock, [Op.lte]: parseInt(maxStock) };
       }
 
@@ -2959,24 +2959,24 @@ class ProductController {
       let includeConfig = [
         {
           model: ProductVariant,
-          as: "variants",
+          as: 'variants',
           required: false,
-          attributes: ["id", "sku", "price", "stockQuantity"],
+          attributes: ['id', 'sku', 'price', 'stockQuantity'],
           include: [
             {
               model: PlatformData,
-              as: "platformData",
+              as: 'platformData',
               required: false,
               attributes: [
-                "id",
-                "platformType",
-                "platformEntityId",
-                "status",
-                "lastSyncedAt",
-              ],
-            },
-          ],
-        },
+                'id',
+                'platformType',
+                'platformEntityId',
+                'status',
+                'lastSyncedAt'
+              ]
+            }
+          ]
+        }
       ];
 
       // Check if MainProduct model is available and has data
@@ -2984,7 +2984,7 @@ class ProductController {
         if (MainProduct) {
           const testQuery = await MainProduct.findOne({
             where: { userId },
-            limit: 1,
+            limit: 1
           });
           if (testQuery || true) {
             // Use MainProduct structure
@@ -2992,23 +2992,23 @@ class ProductController {
             includeConfig = [
               {
                 model: PlatformVariant,
-                as: "platformVariants",
+                as: 'platformVariants',
                 required: false,
                 attributes: [
-                  "id",
-                  "platform",
-                  "isPublished",
-                  "syncStatus",
-                  "platformSku",
-                  "platformPrice",
-                ],
-              },
+                  'id',
+                  'platform',
+                  'isPublished',
+                  'syncStatus',
+                  'platformSku',
+                  'platformPrice'
+                ]
+              }
             ];
           }
         }
       } catch (error) {
         logger.warn(
-          "MainProduct model not available, using Product model",
+          'MainProduct model not available, using Product model',
           error.message
         );
       }
@@ -3019,7 +3019,7 @@ class ProductController {
           include: includeConfig,
           limit: parseInt(limit),
           offset,
-          order: [[sortBy, normalizedSortOrder]],
+          order: [[sortBy, normalizedSortOrder]]
         });
 
       // Transform products to enhanced format
@@ -3039,7 +3039,7 @@ class ProductController {
                 platformEntityId: variant.platformEntityId || null,
                 variantSku: variant.platformSku,
                 variantPrice: variant.platformPrice,
-                lastSyncedAt: variant.lastSyncedAt || variant.updatedAt,
+                lastSyncedAt: variant.lastSyncedAt || variant.updatedAt
               });
             });
           } else if (product.variants) {
@@ -3050,25 +3050,25 @@ class ProductController {
                   platformVariants.push({
                     id: variant.id,
                     platform: platformData.platformType,
-                    isPublished: platformData.status === "active",
+                    isPublished: platformData.status === 'active',
                     syncStatus: platformData.status,
                     platformEntityId: platformData.platformEntityId,
                     variantSku: variant.sku,
                     variantPrice: variant.price,
-                    lastSyncedAt: platformData.lastSyncedAt,
+                    lastSyncedAt: platformData.lastSyncedAt
                   });
                 });
               } else {
                 // Variant without platform data
                 platformVariants.push({
                   id: variant.id,
-                  platform: "local",
+                  platform: 'local',
                   isPublished: false,
-                  syncStatus: "local",
+                  syncStatus: 'local',
                   platformEntityId: null,
                   variantSku: variant.sku,
                   variantPrice: variant.price,
-                  lastSyncedAt: null,
+                  lastSyncedAt: null
                 });
               }
             });
@@ -3079,20 +3079,20 @@ class ProductController {
           try {
             if (
               StockService &&
-              typeof StockService.getStockStatus === "function"
+              typeof StockService.getStockStatus === 'function'
             ) {
               stockStatus = await StockService.getStockStatus(product.id);
             }
           } catch (error) {
-            logger.debug("Enhanced stock service not available", error.message);
+            logger.debug('Enhanced stock service not available', error.message);
             stockStatus = {
               available: product.stock || product.stockQuantity || 0,
               reserved: 0,
               total: product.stock || product.stockQuantity || 0,
               status:
                 (product.stock || product.stockQuantity || 0) > 0
-                  ? "in_stock"
-                  : "out_of_stock",
+                  ? 'in_stock'
+                  : 'out_of_stock'
             };
           }
 
@@ -3112,11 +3112,11 @@ class ProductController {
             lastSyncedAt:
               platformVariants.length > 0
                 ? Math.max(
-                    ...platformVariants
-                      .filter((v) => v.lastSyncedAt)
-                      .map((v) => new Date(v.lastSyncedAt).getTime())
-                  )
-                : null,
+                  ...platformVariants
+                    .filter((v) => v.lastSyncedAt)
+                    .map((v) => new Date(v.lastSyncedAt).getTime())
+                )
+                : null
           };
         })
       );
@@ -3130,15 +3130,15 @@ class ProductController {
             total: Math.ceil(total / limit),
             totalRecords: total,
             hasNext: offset + limit < total,
-            hasPrev: page > 1,
-          },
-        },
+            hasPrev: page > 1
+          }
+        }
       });
     } catch (error) {
-      logger.error("Error getting main products:", error);
+      logger.error('Error getting main products:', error);
       res.status(500).json({
         success: false,
-        error: error.message,
+        error: error.message
       });
     }
   }
@@ -3152,17 +3152,17 @@ class ProductController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          errors: errors.array(),
+          errors: errors.array()
         });
       }
 
       const userId = req.user.id;
-      let productData = req.body;
+      const productData = req.body;
 
       // Transform enhanced product data to standard product format
       const standardProductData = {
         name: productData.name,
-        description: productData.description || "",
+        description: productData.description || '',
         sku: productData.baseSku || productData.sku,
         price: parseFloat(productData.basePrice) || 0,
         originalPrice:
@@ -3171,17 +3171,17 @@ class ProductController {
           0,
         stock: parseInt(productData.stockQuantity) || 0,
         category: productData.category,
-        brand: productData.brand || "",
+        brand: productData.brand || '',
         weight: parseFloat(productData.weight) || 0,
-        status: productData.status || "active",
+        status: productData.status || 'active',
         userId,
-        sourcePlatform: "manual", // Mark as manually created
+        sourcePlatform: 'manual', // Mark as manually created
         // Add enhanced fields
-        productType: productData.productType || "simple",
+        productType: productData.productType || 'simple',
         minStockLevel: parseInt(productData.minStockLevel) || 5,
         attributes: productData.attributes || {},
         tags: productData.tags || [],
-        media: productData.media || [],
+        media: productData.media || []
       };
 
       const product = await Product.create(standardProductData);
@@ -3192,15 +3192,15 @@ class ProductController {
           ...product.toJSON(),
           baseSku: product.sku,
           basePrice: product.price,
-          stockQuantity: product.stock,
+          stockQuantity: product.stock
         },
-        message: "Main product created successfully",
+        message: 'Main product created successfully'
       });
     } catch (error) {
-      logger.error("Error creating main product:", error);
+      logger.error('Error creating main product:', error);
       res.status(500).json({
         success: false,
-        error: error.message,
+        error: error.message
       });
     }
   }
@@ -3214,7 +3214,7 @@ class ProductController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          errors: errors.array(),
+          errors: errors.array()
         });
       }
 
@@ -3223,38 +3223,38 @@ class ProductController {
       const updateData = req.body;
 
       const product = await Product.findOne({
-        where: { id, userId },
+        where: { id, userId }
       });
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          error: "Product not found",
+          error: 'Product not found'
         });
       }
 
       // Transform enhanced update data to standard format
       const standardUpdateData = {};
-      if (updateData.name) standardUpdateData.name = updateData.name;
+      if (updateData.name) {standardUpdateData.name = updateData.name;}
       if (updateData.description)
-        standardUpdateData.description = updateData.description;
-      if (updateData.baseSku) standardUpdateData.sku = updateData.baseSku;
+      {standardUpdateData.description = updateData.description;}
+      if (updateData.baseSku) {standardUpdateData.sku = updateData.baseSku;}
       if (updateData.basePrice)
-        standardUpdateData.price = parseFloat(updateData.basePrice);
+      {standardUpdateData.price = parseFloat(updateData.basePrice);}
       if (updateData.baseCostPrice)
-        standardUpdateData.originalPrice = parseFloat(updateData.baseCostPrice);
+      {standardUpdateData.originalPrice = parseFloat(updateData.baseCostPrice);}
       if (updateData.stockQuantity)
-        standardUpdateData.stock = parseInt(updateData.stockQuantity);
+      {standardUpdateData.stock = parseInt(updateData.stockQuantity);}
       if (updateData.category)
-        standardUpdateData.category = updateData.category;
-      if (updateData.brand) standardUpdateData.brand = updateData.brand;
+      {standardUpdateData.category = updateData.category;}
+      if (updateData.brand) {standardUpdateData.brand = updateData.brand;}
       if (updateData.weight)
-        standardUpdateData.weight = parseFloat(updateData.weight);
-      if (updateData.status) standardUpdateData.status = updateData.status;
+      {standardUpdateData.weight = parseFloat(updateData.weight);}
+      if (updateData.status) {standardUpdateData.status = updateData.status;}
       if (updateData.attributes)
-        standardUpdateData.attributes = updateData.attributes;
-      if (updateData.tags) standardUpdateData.tags = updateData.tags;
-      if (updateData.media) standardUpdateData.media = updateData.media;
+      {standardUpdateData.attributes = updateData.attributes;}
+      if (updateData.tags) {standardUpdateData.tags = updateData.tags;}
+      if (updateData.media) {standardUpdateData.media = updateData.media;}
 
       await product.update(standardUpdateData);
 
@@ -3264,15 +3264,15 @@ class ProductController {
           ...product.toJSON(),
           baseSku: product.sku,
           basePrice: product.price,
-          stockQuantity: product.stock,
+          stockQuantity: product.stock
         },
-        message: "Main product updated successfully",
+        message: 'Main product updated successfully'
       });
     } catch (error) {
-      logger.error("Error updating main product:", error);
+      logger.error('Error updating main product:', error);
       res.status(500).json({
         success: false,
-        error: error.message,
+        error: error.message
       });
     }
   }
@@ -3290,15 +3290,15 @@ class ProductController {
         include: [
           {
             model: ProductVariant,
-            as: "variants",
-          },
-        ],
+            as: 'variants'
+          }
+        ]
       });
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          error: "Product not found",
+          error: 'Product not found'
         });
       }
 
@@ -3311,11 +3311,11 @@ class ProductController {
         return res.status(400).json({
           success: false,
           error:
-            "Cannot delete product with published variants. Unpublish variants first.",
+            'Cannot delete product with published variants. Unpublish variants first.',
           publishedVariants: publishedVariants.map((v) => ({
             platform: v.platform,
-            platformSku: v.platformSku || v.sku,
-          })),
+            platformSku: v.platformSku || v.sku
+          }))
         });
       }
 
@@ -3323,13 +3323,13 @@ class ProductController {
 
       res.json({
         success: true,
-        message: "Main product deleted successfully",
+        message: 'Main product deleted successfully'
       });
     } catch (error) {
-      logger.error("Error deleting main product:", error);
+      logger.error('Error deleting main product:', error);
       res.status(500).json({
         success: false,
-        error: error.message,
+        error: error.message
       });
     }
   }
@@ -3343,8 +3343,8 @@ class ProductController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -3366,7 +3366,7 @@ class ProductController {
             results.push({
               success: false,
               productId,
-              error: "Product not found",
+              error: 'Product not found'
             });
           }
         } catch (error) {
@@ -3379,14 +3379,14 @@ class ProductController {
       res.json({
         success: true,
         message: `${successCount} of ${productIds.length} products marked as main products`,
-        data: { results, successCount, totalCount: productIds.length },
+        data: { results, successCount, totalCount: productIds.length }
       });
     } catch (error) {
-      logger.error("Error in bulkMarkAsMainProducts:", error);
+      logger.error('Error in bulkMarkAsMainProducts:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to mark products as main products",
-        error: error.message,
+        message: 'Failed to mark products as main products',
+        error: error.message
       });
     }
   }
@@ -3405,7 +3405,7 @@ class ProductController {
       try {
         if (
           ProductManagementService &&
-          typeof ProductManagementService.getProductWithVariants === "function"
+          typeof ProductManagementService.getProductWithVariants === 'function'
         ) {
           product = await ProductManagementService.getProductWithVariants(
             id,
@@ -3414,7 +3414,7 @@ class ProductController {
         }
       } catch (error) {
         logger.debug(
-          "Enhanced service not available, using direct query",
+          'Enhanced service not available, using direct query',
           error.message
         );
       }
@@ -3427,29 +3427,29 @@ class ProductController {
           include: [
             {
               model: PlatformVariant,
-              as: "platformVariants",
-              required: false,
-            },
-          ],
+              as: 'platformVariants',
+              required: false
+            }
+          ]
         });
       }
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          error: "Product not found",
+          error: 'Product not found'
         });
       }
 
       res.json({
         success: true,
-        data: product,
+        data: product
       });
     } catch (error) {
-      logger.error("Error getting main product:", error);
-      res.status(error.message.includes("not found") ? 404 : 500).json({
+      logger.error('Error getting main product:', error);
+      res.status(error.message.includes('not found') ? 404 : 500).json({
         success: false,
-        error: error.message,
+        error: error.message
       });
     }
   }
@@ -3463,7 +3463,7 @@ class ProductController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          errors: errors.array(),
+          errors: errors.array()
         });
       }
 
@@ -3477,7 +3477,7 @@ class ProductController {
       try {
         if (
           ProductManagementService &&
-          typeof ProductManagementService.createPlatformVariant === "function"
+          typeof ProductManagementService.createPlatformVariant === 'function'
         ) {
           variant = await ProductManagementService.createPlatformVariant(
             mainProductId,
@@ -3487,7 +3487,7 @@ class ProductController {
         }
       } catch (error) {
         logger.debug(
-          "Enhanced service not available, using direct creation",
+          'Enhanced service not available, using direct creation',
           error.message
         );
       }
@@ -3497,20 +3497,20 @@ class ProductController {
         variant = await PlatformVariant.create({
           ...variantData,
           mainProductId,
-          userId,
+          userId
         });
       }
 
       res.status(201).json({
         success: true,
         data: variant,
-        message: "Platform variant created successfully",
+        message: 'Platform variant created successfully'
       });
     } catch (error) {
-      logger.error("Error creating platform variant:", error);
+      logger.error('Error creating platform variant:', error);
       res.status(500).json({
         success: false,
-        error: error.message,
+        error: error.message
       });
     }
   }
@@ -3524,7 +3524,7 @@ class ProductController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          errors: errors.array(),
+          errors: errors.array()
         });
       }
 
@@ -3537,16 +3537,16 @@ class ProductController {
         include: [
           {
             model: MainProduct,
-            as: "mainProduct",
-            where: { userId },
-          },
-        ],
+            as: 'mainProduct',
+            where: { userId }
+          }
+        ]
       });
 
       if (!variant) {
         return res.status(404).json({
           success: false,
-          error: "Platform variant not found",
+          error: 'Platform variant not found'
         });
       }
 
@@ -3555,13 +3555,13 @@ class ProductController {
       res.json({
         success: true,
         data: variant,
-        message: "Platform variant updated successfully",
+        message: 'Platform variant updated successfully'
       });
     } catch (error) {
-      logger.error("Error updating platform variant:", error);
+      logger.error('Error updating platform variant:', error);
       res.status(500).json({
         success: false,
-        error: error.message,
+        error: error.message
       });
     }
   }
@@ -3579,23 +3579,23 @@ class ProductController {
         include: [
           {
             model: MainProduct,
-            as: "mainProduct",
-            where: { userId },
-          },
-        ],
+            as: 'mainProduct',
+            where: { userId }
+          }
+        ]
       });
 
       if (!variant) {
         return res.status(404).json({
           success: false,
-          error: "Platform variant not found",
+          error: 'Platform variant not found'
         });
       }
 
       if (variant.isPublished) {
         return res.status(400).json({
           success: false,
-          error: "Cannot delete published variant. Unpublish first.",
+          error: 'Cannot delete published variant. Unpublish first.'
         });
       }
 
@@ -3603,13 +3603,13 @@ class ProductController {
 
       res.json({
         success: true,
-        message: "Platform variant deleted successfully",
+        message: 'Platform variant deleted successfully'
       });
     } catch (error) {
-      logger.error("Error deleting platform variant:", error);
+      logger.error('Error deleting platform variant:', error);
       res.status(500).json({
         success: false,
-        error: error.message,
+        error: error.message
       });
     }
   }
@@ -3623,11 +3623,11 @@ class ProductController {
 
       let stockStatus;
       try {
-        if (StockService && typeof StockService.getStockStatus === "function") {
+        if (StockService && typeof StockService.getStockStatus === 'function') {
           stockStatus = await StockService.getStockStatus(id);
         }
       } catch (error) {
-        logger.debug("Enhanced stock service not available", error.message);
+        logger.debug('Enhanced stock service not available', error.message);
 
         // Fallback to basic stock info
         const ProductModel = MainProduct || Product;
@@ -3638,20 +3638,20 @@ class ProductController {
           total: product?.stock || product?.stockQuantity || 0,
           status:
             (product?.stock || product?.stockQuantity || 0) > 0
-              ? "in_stock"
-              : "out_of_stock",
+              ? 'in_stock'
+              : 'out_of_stock'
         };
       }
 
       res.json({
         success: true,
-        data: stockStatus,
+        data: stockStatus
       });
     } catch (error) {
-      logger.error("Error getting stock status:", error);
+      logger.error('Error getting stock status:', error);
       res.status(500).json({
         success: false,
-        error: error.message,
+        error: error.message
       });
     }
   }
@@ -3662,19 +3662,19 @@ class ProductController {
   async updateStock(req, res) {
     try {
       const { id } = req.params;
-      const { quantity, reason = "Manual update" } = req.body;
+      const { quantity, reason = 'Manual update' } = req.body;
       const userId = req.user.id;
 
-      if (typeof quantity !== "number" || quantity < 0) {
+      if (typeof quantity !== 'number' || quantity < 0) {
         return res.status(400).json({
           success: false,
-          error: "Invalid quantity provided",
+          error: 'Invalid quantity provided'
         });
       }
 
       let stockStatus;
       try {
-        if (StockService && typeof StockService.updateStock === "function") {
+        if (StockService && typeof StockService.updateStock === 'function') {
           stockStatus = await StockService.updateStock(
             id,
             quantity,
@@ -3684,7 +3684,7 @@ class ProductController {
         }
       } catch (error) {
         logger.debug(
-          "Enhanced stock service not available, using direct update",
+          'Enhanced stock service not available, using direct update',
           error.message
         );
 
@@ -3695,34 +3695,34 @@ class ProductController {
         if (!product) {
           return res.status(404).json({
             success: false,
-            error: "Product not found",
+            error: 'Product not found'
           });
         }
 
         await product.update({
           stock: quantity,
           stockQuantity: quantity,
-          updatedAt: new Date(),
+          updatedAt: new Date()
         });
 
         stockStatus = {
           available: quantity,
           reserved: 0,
           total: quantity,
-          status: quantity > 0 ? "in_stock" : "out_of_stock",
+          status: quantity > 0 ? 'in_stock' : 'out_of_stock'
         };
       }
 
       res.json({
         success: true,
         data: stockStatus,
-        message: "Stock updated successfully",
+        message: 'Stock updated successfully'
       });
     } catch (error) {
-      logger.error("Error updating stock:", error);
+      logger.error('Error updating stock:', error);
       res.status(500).json({
         success: false,
-        error: error.message,
+        error: error.message
       });
     }
   }
@@ -3738,7 +3738,7 @@ class ProductController {
       if (!Array.isArray(platforms) || platforms.length === 0) {
         return res.status(400).json({
           success: false,
-          error: "Platforms array is required",
+          error: 'Platforms array is required'
         });
       }
 
@@ -3746,7 +3746,7 @@ class ProductController {
       try {
         if (
           ProductManagementService &&
-          typeof ProductManagementService.publishToPlatforms === "function"
+          typeof ProductManagementService.publishToPlatforms === 'function'
         ) {
           results = await ProductManagementService.publishToPlatforms(
             id,
@@ -3755,7 +3755,7 @@ class ProductController {
         }
       } catch (error) {
         logger.debug(
-          "Enhanced service not available, using basic publishing",
+          'Enhanced service not available, using basic publishing',
           error.message
         );
 
@@ -3763,20 +3763,20 @@ class ProductController {
         results = platforms.map((platform) => ({
           platform,
           success: true,
-          message: "Publishing initiated (basic mode)",
+          message: 'Publishing initiated (basic mode)'
         }));
       }
 
       res.json({
         success: true,
         data: results,
-        message: "Product publishing initiated",
+        message: 'Product publishing initiated'
       });
     } catch (error) {
-      logger.error("Error publishing to platforms:", error);
+      logger.error('Error publishing to platforms:', error);
       res.status(500).json({
         success: false,
-        error: error.message,
+        error: error.message
       });
     }
   }
@@ -3790,8 +3790,8 @@ class ProductController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -3800,7 +3800,7 @@ class ProductController {
       if (!url) {
         return res.status(400).json({
           success: false,
-          message: "URL is required",
+          message: 'URL is required'
         });
       }
 
@@ -3820,7 +3820,7 @@ class ProductController {
         return res.status(400).json({
           success: false,
           message:
-            "Failed to extract product data from the URL. The page might not contain valid product information or the platform may be blocking requests.",
+            'Failed to extract product data from the URL. The page might not contain valid product information or the platform may be blocking requests.'
         });
       }
 
@@ -3830,7 +3830,7 @@ class ProductController {
           name: scrapedData.name,
           price: scrapedData.basePrice,
           platform: detectedPlatform,
-          hasExtras: !!scrapedData.platformExtras,
+          hasExtras: !!scrapedData.platformExtras
         }
       );
 
@@ -3838,15 +3838,15 @@ class ProductController {
         success: true,
         message: `Platform data scraped successfully from ${detectedPlatform}`,
         data: scrapedData,
-        platform: detectedPlatform,
+        platform: detectedPlatform
       });
     } catch (error) {
-      logger.error("Error in scrapePlatformData:", error);
+      logger.error('Error in scrapePlatformData:', error);
       res.status(500).json({
         success: false,
-        message: error.message || "Failed to scrape platform data",
+        message: error.message || 'Failed to scrape platform data',
         error:
-          process.env.NODE_ENV === "development" ? error.message : undefined,
+          process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
@@ -3860,8 +3860,8 @@ class ProductController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -3885,7 +3885,7 @@ class ProductController {
         if (!productData || !productData.name) {
           return res.status(400).json({
             success: false,
-            message: "Failed to scrape product data from the provided URL.",
+            message: 'Failed to scrape product data from the provided URL.'
           });
         }
       }
@@ -3893,7 +3893,7 @@ class ProductController {
       if (!productData) {
         return res.status(400).json({
           success: false,
-          message: "Either platformData or url must be provided.",
+          message: 'Either platformData or url must be provided.'
         });
       }
 
@@ -3914,7 +3914,7 @@ class ProductController {
       if (!mappedData.baseSku && !mappedData.sku) {
         // TEMPORARY FALLBACK SKU GENERATION - REPLACE WHEN SKU SYSTEM IS AVAILABLE
         const timestamp = Date.now().toString().slice(-6);
-        const nameSlug = (mappedData.name || "PRODUCT")
+        const nameSlug = (mappedData.name || 'PRODUCT')
           .substring(0, 3)
           .toUpperCase();
         mappedData.sku = `${nameSlug}-${timestamp}`;
@@ -3926,27 +3926,27 @@ class ProductController {
       const mainProduct = await ProductModel.create({
         ...mappedData,
         userId,
-        importedFrom: productData.platform || "unknown",
+        importedFrom: productData.platform || 'unknown',
         importedAt: new Date(),
         createdAt: new Date(),
-        updatedAt: new Date(),
+        updatedAt: new Date()
       });
 
       res.json({
         success: true,
-        message: "Product imported from platform successfully",
+        message: 'Product imported from platform successfully',
         data: {
           product: mainProduct,
           originalData: productData,
-          mappedData,
-        },
+          mappedData
+        }
       });
     } catch (error) {
-      logger.error("Error in importFromPlatform:", error);
+      logger.error('Error in importFromPlatform:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to import from platform",
-        error: error.message,
+        message: 'Failed to import from platform',
+        error: error.message
       });
     }
   }
@@ -3965,15 +3965,15 @@ class ProductController {
       const products = await ProductModel.findAll({
         where: {
           userId,
-          status: { [Op.in]: ["active", "draft"] },
+          status: { [Op.in]: ['active', 'draft'] }
         },
         include: [
           {
             model: PlatformVariant,
-            as: "platformVariants",
-            required: false,
-          },
-        ],
+            as: 'platformVariants',
+            required: false
+          }
+        ]
       });
 
       let matchedCount = 0;
@@ -3995,7 +3995,7 @@ class ProductController {
               productId: product.id,
               productName: product.name,
               matchType: autoMatchResult.matchType,
-              confidence: autoMatchResult.confidence,
+              confidence: autoMatchResult.confidence
             });
           }
         } catch (productError) {
@@ -4006,7 +4006,7 @@ class ProductController {
           results.push({
             productId: product.id,
             productName: product.name,
-            error: productError.message,
+            error: productError.message
           });
         }
       }
@@ -4018,15 +4018,15 @@ class ProductController {
         data: {
           matchedCount,
           totalProcessed: products.length,
-          results,
+          results
         },
-        message: `${matchedCount} ürün otomatik olarak eşleştirildi`,
+        message: `${matchedCount} ürün otomatik olarak eşleştirildi`
       });
     } catch (error) {
-      logger.error("Error in auto-match operation:", error);
+      logger.error('Error in auto-match operation:', error);
       res.status(500).json({
         success: false,
-        error: error.message,
+        error: error.message
       });
     }
   }
@@ -4038,32 +4038,32 @@ class ProductController {
     try {
       // Basic auto-matching logic - this can be enhanced with ML/AI later
       const productName = product.name.toLowerCase();
-      const baseSku = (product.baseSku || product.sku || "").toLowerCase();
+      const baseSku = (product.baseSku || product.sku || '').toLowerCase();
 
       // Simple pattern matching for common e-commerce platforms
       let matchType = null;
       let confidence = 0;
 
       // Check for common patterns in product names/SKUs
-      if (productName.includes("trendyol") || baseSku.includes("ty")) {
-        matchType = "trendyol";
+      if (productName.includes('trendyol') || baseSku.includes('ty')) {
+        matchType = 'trendyol';
         confidence = 0.8;
       } else if (
-        productName.includes("hepsiburada") ||
-        baseSku.includes("hb")
+        productName.includes('hepsiburada') ||
+        baseSku.includes('hb')
       ) {
-        matchType = "hepsiburada";
+        matchType = 'hepsiburada';
         confidence = 0.8;
-      } else if (productName.includes("n11") || baseSku.includes("n11")) {
-        matchType = "n11";
+      } else if (productName.includes('n11') || baseSku.includes('n11')) {
+        matchType = 'n11';
         confidence = 0.8;
-      } else if (productName.includes("amazon") || baseSku.includes("amz")) {
-        matchType = "amazon";
+      } else if (productName.includes('amazon') || baseSku.includes('amz')) {
+        matchType = 'amazon';
         confidence = 0.7;
       } else {
         // Generic matching based on product characteristics
         if (product.category && (product.basePrice || product.price)) {
-          matchType = "generic";
+          matchType = 'generic';
           confidence = 0.6;
         }
       }
@@ -4074,13 +4074,13 @@ class ProductController {
         return {
           matched: true,
           matchType,
-          confidence,
+          confidence
         };
       }
 
       return {
         matched: false,
-        reason: "No suitable match found",
+        reason: 'No suitable match found'
       };
     } catch (error) {
       logger.error(
@@ -4089,7 +4089,7 @@ class ProductController {
       );
       return {
         matched: false,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -4108,16 +4108,16 @@ class ProductController {
         include: [
           {
             model: PlatformData,
-            as: "platformData",
-            required: false,
-          },
-        ],
+            as: 'platformData',
+            required: false
+          }
+        ]
       });
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: "Product not found",
+          message: 'Product not found'
         });
       }
 
@@ -4129,14 +4129,14 @@ class ProductController {
       res.json({
         success: true,
         data: result,
-        message: "Product variant classification completed",
+        message: 'Product variant classification completed'
       });
     } catch (error) {
-      logger.error("Error classifying product variant status:", error);
+      logger.error('Error classifying product variant status:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to classify product variant status",
-        error: error.message,
+        message: 'Failed to classify product variant status',
+        error: error.message
       });
     }
   }
@@ -4152,13 +4152,13 @@ class ProductController {
 
       // Verify product belongs to user
       const product = await Product.findOne({
-        where: { id, userId },
+        where: { id, userId }
       });
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: "Product not found",
+          message: 'Product not found'
         });
       }
 
@@ -4171,14 +4171,14 @@ class ProductController {
       res.json({
         success: true,
         data: result,
-        message: "Product variant status updated successfully",
+        message: 'Product variant status updated successfully'
       });
     } catch (error) {
-      logger.error("Error updating product variant status:", error);
+      logger.error('Error updating product variant status:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to update product variant status",
-        error: error.message,
+        message: 'Failed to update product variant status',
+        error: error.message
       });
     }
   }
@@ -4193,13 +4193,13 @@ class ProductController {
 
       // Verify product belongs to user
       const product = await Product.findOne({
-        where: { id, userId },
+        where: { id, userId }
       });
 
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: "Product not found",
+          message: 'Product not found'
         });
       }
       // Remove variant status
@@ -4208,14 +4208,14 @@ class ProductController {
       res.json({
         success: true,
         data: result,
-        message: "Product variant status removed successfully",
+        message: 'Product variant status removed successfully'
       });
     } catch (error) {
-      logger.error("Error removing product variant status:", error);
+      logger.error('Error removing product variant status:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to remove product variant status",
-        error: error.message,
+        message: 'Failed to remove product variant status',
+        error: error.message
       });
     }
   }
@@ -4230,20 +4230,20 @@ class ProductController {
 
       // Get products for batch processing
       const whereClause = { userId };
-      if (category) whereClause.category = category;
-      if (status) whereClause.status = status;
+      if (category) {whereClause.category = category;}
+      if (status) {whereClause.status = status;}
 
       const products = await Product.findAll({
         where: whereClause,
         include: [
           {
             model: PlatformData,
-            as: "platformData",
-            required: false,
-          },
+            as: 'platformData',
+            required: false
+          }
         ],
         limit: parseInt(limit),
-        order: [["updatedAt", "DESC"]],
+        order: [['updatedAt', 'DESC']]
       });
 
       // Import the enhanced variant detector
@@ -4253,14 +4253,14 @@ class ProductController {
       res.json({
         success: true,
         data: result,
-        message: `Batch variant detection completed. Processed: ${result.processed}, Updated: ${result.updated}, Errors: ${result.errors}`,
+        message: `Batch variant detection completed. Processed: ${result.processed}, Updated: ${result.updated}, Errors: ${result.errors}`
       });
     } catch (error) {
-      logger.error("Error running batch variant detection:", error);
+      logger.error('Error running batch variant detection:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to run batch variant detection",
-        error: error.message,
+        message: 'Failed to run batch variant detection',
+        error: error.message
       });
     }
   }
@@ -4274,14 +4274,14 @@ class ProductController {
       res.json({
         success: true,
         data: status,
-        message: "Background variant detection service status retrieved",
+        message: 'Background variant detection service status retrieved'
       });
     } catch (error) {
-      logger.error("Error getting background variant detection status:", error);
+      logger.error('Error getting background variant detection status:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get service status",
-        error: error.message,
+        message: 'Failed to get service status',
+        error: error.message
       });
     }
   }
@@ -4295,14 +4295,14 @@ class ProductController {
       res.json({
         success: true,
         data: config,
-        message: "Background variant detection service configuration retrieved",
+        message: 'Background variant detection service configuration retrieved'
       });
     } catch (error) {
-      logger.error("Error getting background variant detection config:", error);
+      logger.error('Error getting background variant detection config:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get service configuration",
-        error: error.message,
+        message: 'Failed to get service configuration',
+        error: error.message
       });
     }
   }
@@ -4316,24 +4316,24 @@ class ProductController {
       const config = req.body;
       if (config && Object.keys(config).length > 0) {
         backgroundVariantDetectionService.updateConfig(config);
-        logger.info("Configuration updated before starting service", config);
+        logger.info('Configuration updated before starting service', config);
       }
 
       backgroundVariantDetectionService.start();
       res.json({
         success: true,
-        message: "Background variant detection service started",
-        data: backgroundVariantDetectionService.getStatus(),
+        message: 'Background variant detection service started',
+        data: backgroundVariantDetectionService.getStatus()
       });
     } catch (error) {
       logger.error(
-        "Error starting background variant detection service:",
+        'Error starting background variant detection service:',
         error
       );
       res.status(500).json({
         success: false,
-        message: "Failed to start background variant detection service",
-        error: error.message,
+        message: 'Failed to start background variant detection service',
+        error: error.message
       });
     }
   }
@@ -4346,18 +4346,18 @@ class ProductController {
       backgroundVariantDetectionService.stop();
       res.json({
         success: true,
-        message: "Background variant detection service stopped",
-        data: backgroundVariantDetectionService.getStatus(),
+        message: 'Background variant detection service stopped',
+        data: backgroundVariantDetectionService.getStatus()
       });
     } catch (error) {
       logger.error(
-        "Error stopping background variant detection service:",
+        'Error stopping background variant detection service:',
         error
       );
       res.status(500).json({
         success: false,
-        message: "Failed to stop background variant detection service",
-        error: error.message,
+        message: 'Failed to stop background variant detection service',
+        error: error.message
       });
     }
   }
@@ -4369,10 +4369,10 @@ class ProductController {
     try {
       const { config } = req.body;
 
-      if (!config || typeof config !== "object") {
+      if (!config || typeof config !== 'object') {
         return res.status(400).json({
           success: false,
-          message: "Valid configuration object is required",
+          message: 'Valid configuration object is required'
         });
       }
 
@@ -4380,18 +4380,18 @@ class ProductController {
 
       res.json({
         success: true,
-        message: "Background variant detection service configuration updated",
-        data: backgroundVariantDetectionService.getStatus(),
+        message: 'Background variant detection service configuration updated',
+        data: backgroundVariantDetectionService.getStatus()
       });
     } catch (error) {
       logger.error(
-        "Error updating background variant detection config:",
+        'Error updating background variant detection config:',
         error
       );
       res.status(500).json({
         success: false,
-        message: "Failed to update service configuration",
-        error: error.message,
+        message: 'Failed to update service configuration',
+        error: error.message
       });
     }
   }
@@ -4401,112 +4401,112 @@ class ProductController {
    */
   async getModelStructure(req, res) {
     try {
-      logger.info("📋 Fetching product model structure for field mapping");
+      logger.info('📋 Fetching product model structure for field mapping');
 
       // Define the product model structure based on your Product model
       const modelStructure = {
         fields: [
           {
-            name: "name",
-            type: "string",
+            name: 'name',
+            type: 'string',
             required: true,
-            description: "Product name/title",
-            category: "basic",
+            description: 'Product name/title',
+            category: 'basic'
           },
           {
-            name: "description",
-            type: "text",
+            name: 'description',
+            type: 'text',
             required: false,
-            description: "Product description",
-            category: "basic",
+            description: 'Product description',
+            category: 'basic'
           },
           {
-            name: "price",
-            type: "decimal",
+            name: 'price',
+            type: 'decimal',
             required: true,
-            description: "Product price",
-            category: "pricing",
+            description: 'Product price',
+            category: 'pricing'
           },
           {
-            name: "stockQuantity",
-            type: "integer",
+            name: 'stockQuantity',
+            type: 'integer',
             required: false,
-            description: "Stock quantity",
-            category: "inventory",
+            description: 'Stock quantity',
+            category: 'inventory'
           },
           {
-            name: "sku",
-            type: "string",
+            name: 'sku',
+            type: 'string',
             required: false,
-            description: "Stock Keeping Unit",
-            category: "basic",
+            description: 'Stock Keeping Unit',
+            category: 'basic'
           },
           {
-            name: "barcode",
-            type: "string",
+            name: 'barcode',
+            type: 'string',
             required: false,
-            description: "Product barcode",
-            category: "basic",
+            description: 'Product barcode',
+            category: 'basic'
           },
           {
-            name: "brand",
-            type: "string",
+            name: 'brand',
+            type: 'string',
             required: false,
-            description: "Product brand",
-            category: "basic",
+            description: 'Product brand',
+            category: 'basic'
           },
           {
-            name: "category",
-            type: "string",
+            name: 'category',
+            type: 'string',
             required: false,
-            description: "Product category",
-            category: "basic",
+            description: 'Product category',
+            category: 'basic'
           },
           {
-            name: "weight",
-            type: "decimal",
+            name: 'weight',
+            type: 'decimal',
             required: false,
-            description: "Product weight",
-            category: "physical",
+            description: 'Product weight',
+            category: 'physical'
           },
           {
-            name: "dimensions",
-            type: "object",
+            name: 'dimensions',
+            type: 'object',
             required: false,
-            description: "Product dimensions (length, width, height)",
-            category: "physical",
+            description: 'Product dimensions (length, width, height)',
+            category: 'physical'
           },
           {
-            name: "images",
-            type: "array",
+            name: 'images',
+            type: 'array',
             required: false,
-            description: "Product images",
-            category: "media",
+            description: 'Product images',
+            category: 'media'
           },
           {
-            name: "tags",
-            type: "array",
+            name: 'tags',
+            type: 'array',
             required: false,
-            description: "Product tags",
-            category: "meta",
+            description: 'Product tags',
+            category: 'meta'
           },
           {
-            name: "status",
-            type: "enum",
+            name: 'status',
+            type: 'enum',
             required: false,
-            description: "Product status (active, inactive, draft)",
-            category: "meta",
-            options: ["active", "inactive", "draft"],
-          },
+            description: 'Product status (active, inactive, draft)',
+            category: 'meta',
+            options: ['active', 'inactive', 'draft']
+          }
         ],
         categories: [
-          { id: "basic", name: "Basic Information" },
-          { id: "pricing", name: "Pricing" },
-          { id: "inventory", name: "Inventory" },
-          { id: "physical", name: "Physical Properties" },
-          { id: "media", name: "Media" },
-          { id: "meta", name: "Meta Information" },
-        ],
+          { id: 'basic', name: 'Basic Information' },
+          { id: 'pricing', name: 'Pricing' },
+          { id: 'inventory', name: 'Inventory' },
+          { id: 'physical', name: 'Physical Properties' },
+          { id: 'media', name: 'Media' },
+          { id: 'meta', name: 'Meta Information' }
+        ]
       };
 
       logger.info(
@@ -4515,18 +4515,18 @@ class ProductController {
 
       res.json({
         success: true,
-        data: modelStructure,
+        data: modelStructure
       });
     } catch (error) {
-      logger.error("❌ Error fetching product model structure:", {
+      logger.error('❌ Error fetching product model structure:', {
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
       });
 
       res.status(500).json({
         success: false,
-        message: "Failed to fetch product model structure",
-        error: error.message,
+        message: 'Failed to fetch product model structure',
+        error: error.message
       });
     }
   }
@@ -4542,24 +4542,24 @@ class ProductController {
         sampleSize = 50,
         includeNames = true,
         includeSKUs = true,
-        includeDescriptions = false,
+        includeDescriptions = false
       } = req.body;
 
-      logger.info("🔍 Analyzing products for pattern suggestions", {
+      logger.info('🔍 Analyzing products for pattern suggestions', {
         userId,
         patternType,
         sampleSize,
         includeNames,
         includeSKUs,
-        includeDescriptions,
+        includeDescriptions
       });
 
       // Get recent products for the user
       const products = await Product.findAll({
         where: { userId },
         limit: sampleSize,
-        order: [["createdAt", "DESC"]],
-        attributes: ["id", "name", "sku", "description"],
+        order: [['createdAt', 'DESC']],
+        attributes: ['id', 'name', 'sku', 'description']
       });
 
       if (products.length === 0) {
@@ -4567,21 +4567,21 @@ class ProductController {
           success: true,
           data: {
             recordCount: 0,
-            error: "No products found in database",
+            error: 'No products found in database',
             examples: [],
             suggestedPattern: null,
-            commonPatterns: [],
-          },
+            commonPatterns: []
+          }
         });
       }
 
       // Collect text data from products
       const textData = [];
       products.forEach((product) => {
-        if (includeNames && product.name) textData.push(product.name);
-        if (includeSKUs && product.sku) textData.push(product.sku);
+        if (includeNames && product.name) {textData.push(product.name);}
+        if (includeSKUs && product.sku) {textData.push(product.sku);}
         if (includeDescriptions && product.description)
-          textData.push(product.description);
+        {textData.push(product.description);}
       });
 
       // Analyze patterns based on type
@@ -4589,30 +4589,30 @@ class ProductController {
       let commonPatterns = [];
       let examples = textData.slice(0, 10); // First 10 examples for testing
 
-      if (patternType === "color") {
+      if (patternType === 'color') {
         // Look for color patterns
         const colorKeywords = [
-          "color",
-          "colour",
-          "renk",
-          "black",
-          "white",
-          "red",
-          "blue",
-          "green",
-          "yellow",
-          "pink",
-          "purple",
-          "orange",
-          "gray",
-          "grey",
-          "brown",
-          "siyah",
-          "beyaz",
-          "kırmızı",
-          "mavi",
-          "yeşil",
-          "sarı",
+          'color',
+          'colour',
+          'renk',
+          'black',
+          'white',
+          'red',
+          'blue',
+          'green',
+          'yellow',
+          'pink',
+          'purple',
+          'orange',
+          'gray',
+          'grey',
+          'brown',
+          'siyah',
+          'beyaz',
+          'kırmızı',
+          'mavi',
+          'yeşil',
+          'sarı'
         ];
         const colorMatches = textData.filter((text) =>
           colorKeywords.some((keyword) =>
@@ -4622,21 +4622,21 @@ class ProductController {
 
         if (colorMatches.length > 0) {
           suggestedPattern =
-            "(?:color|colour|renk):\\s*([^,;\\s]+)|(?:^|\\s)(black|white|red|blue|green|yellow|pink|purple|orange|gray|grey|brown|siyah|beyaz|kırmızı|mavi|yeşil|sarı)(?:\\s|$)";
+            '(?:color|colour|renk):\\s*([^,;\\s]+)|(?:^|\\s)(black|white|red|blue|green|yellow|pink|purple|orange|gray|grey|brown|siyah|beyaz|kırmızı|mavi|yeşil|sarı)(?:\\s|$)';
           examples = colorMatches.slice(0, 10);
         }
-      } else if (patternType === "size") {
+      } else if (patternType === 'size') {
         // Look for size patterns
         const sizeKeywords = [
-          "size",
-          "beden",
-          "xs",
-          "s",
-          "m",
-          "l",
-          "xl",
-          "xxl",
-          "xxxl",
+          'size',
+          'beden',
+          'xs',
+          's',
+          'm',
+          'l',
+          'xl',
+          'xxl',
+          'xxxl'
         ];
         const sizeRegex = /\b(xs|s|m|l|xl|xxl|xxxl|\d{1,3})\b/gi;
         const sizeMatches = textData.filter(
@@ -4648,19 +4648,19 @@ class ProductController {
 
         if (sizeMatches.length > 0) {
           suggestedPattern =
-            "(?:size|beden):\\s*([^,;\\s]+)|(?:^|\\s)(xs|s|m|l|xl|xxl|xxxl|\\d{1,3})(?:\\s|$)";
+            '(?:size|beden):\\s*([^,;\\s]+)|(?:^|\\s)(xs|s|m|l|xl|xxl|xxxl|\\d{1,3})(?:\\s|$)';
           examples = sizeMatches.slice(0, 10);
         }
-      } else if (patternType === "model") {
+      } else if (patternType === 'model') {
         // Look for model patterns
         const modelKeywords = [
-          "model",
-          "tip",
-          "type",
-          "pro",
-          "plus",
-          "max",
-          "mini",
+          'model',
+          'tip',
+          'type',
+          'pro',
+          'plus',
+          'max',
+          'mini'
         ];
         const modelMatches = textData.filter((text) =>
           modelKeywords.some((keyword) =>
@@ -4670,21 +4670,21 @@ class ProductController {
 
         if (modelMatches.length > 0) {
           suggestedPattern =
-            "(?:model|tip|type):\\s*([^,;\\s]+)|(?:^|\\s)(pro|plus|max|mini|\\w+\\d+)(?:\\s|$)";
+            '(?:model|tip|type):\\s*([^,;\\s]+)|(?:^|\\s)(pro|plus|max|mini|\\w+\\d+)(?:\\s|$)';
           examples = modelMatches.slice(0, 10);
         }
-      } else if (patternType === "structured") {
+      } else if (patternType === 'structured') {
         // Analyze structured patterns
         const structuredMatches = textData.filter(
           (text) =>
-            text.includes(":") || text.includes("-") || /\w+\d+/.test(text)
+            text.includes(':') || text.includes('-') || /\w+\d+/.test(text)
         );
 
         if (structuredMatches.length > 0) {
           // Try to detect common structures
           const patterns = structuredMatches.map((text) => {
             // Replace alphanumeric sequences with placeholders
-            return text.replace(/[A-Za-z]{2,}/g, "TEXT").replace(/\d+/g, "NUM");
+            return text.replace(/[A-Za-z]{2,}/g, 'TEXT').replace(/\d+/g, 'NUM');
           });
 
           // Count pattern frequencies
@@ -4708,9 +4708,9 @@ class ProductController {
         // Basic pattern analysis - find repeating structures
         const basicPatterns = textData.map((text) => {
           return text
-            .replace(/[A-Za-z]+/g, "WORD")
-            .replace(/\d+/g, "NUM")
-            .replace(/[^A-Za-z0-9]/g, "SEP");
+            .replace(/[A-Za-z]+/g, 'WORD')
+            .replace(/\d+/g, 'NUM')
+            .replace(/[^A-Za-z0-9]/g, 'SEP');
         });
 
         const patternCounts = {};
@@ -4732,20 +4732,20 @@ class ProductController {
           suggestedPattern,
           commonPatterns,
           examples,
-          patternType,
-        },
+          patternType
+        }
       });
     } catch (error) {
-      logger.error("❌ Error analyzing patterns:", {
+      logger.error('❌ Error analyzing patterns:', {
         error: error.message,
         stack: error.stack,
-        userId: req.user?.id,
+        userId: req.user?.id
       });
 
       res.status(500).json({
         success: false,
-        message: "Failed to analyze patterns",
-        error: error.message,
+        message: 'Failed to analyze patterns',
+        error: error.message
       });
     }
   }
@@ -4759,26 +4759,26 @@ class ProductController {
       const {
         pattern,
         searchFields = { name: true, sku: true, description: false },
-        maxResults = 50,
+        maxResults = 50
       } = req.body;
 
       if (!pattern) {
         return res.status(400).json({
           success: false,
-          message: "Pattern is required",
+          message: 'Pattern is required'
         });
       }
 
-      logger.info("🔍 Searching products by pattern", {
+      logger.info('🔍 Searching products by pattern', {
         userId,
         pattern,
         searchFields,
-        maxResults,
+        maxResults
       });
 
       // First, get the total count of products for this user
       const totalProductCount = await Product.count({
-        where: { userId },
+        where: { userId }
       });
 
       if (totalProductCount === 0) {
@@ -4790,24 +4790,24 @@ class ProductController {
             totalProducts: 0,
             totalSearched: 0,
             pattern,
-            searchFields,
-          },
+            searchFields
+          }
         });
       }
 
       // Create regex from pattern
       let regex;
       try {
-        regex = new RegExp(pattern, "gi");
+        regex = new RegExp(pattern, 'gi');
       } catch (error) {
         return res.status(400).json({
           success: false,
-          message: "Invalid regex pattern: " + error.message,
+          message: 'Invalid regex pattern: ' + error.message
         });
       }
 
       // Use database-level search with SQL REGEXP for better performance
-      const { Op } = require("sequelize");
+      const { Op } = require('sequelize');
       const sequelize = Product.sequelize;
 
       // Build the where conditions for database-level regex search
@@ -4817,7 +4817,7 @@ class ProductController {
         // For PostgreSQL, use ~ operator for regex, for MySQL use REGEXP
         whereConditions.push(
           sequelize.where(
-            sequelize.fn("LOWER", sequelize.col("name")),
+            sequelize.fn('LOWER', sequelize.col('name')),
             Op.regexp,
             pattern.toLowerCase()
           )
@@ -4827,7 +4827,7 @@ class ProductController {
       if (searchFields.sku) {
         whereConditions.push(
           sequelize.where(
-            sequelize.fn("LOWER", sequelize.col("sku")),
+            sequelize.fn('LOWER', sequelize.col('sku')),
             Op.regexp,
             pattern.toLowerCase()
           )
@@ -4837,7 +4837,7 @@ class ProductController {
       if (searchFields.description) {
         whereConditions.push(
           sequelize.where(
-            sequelize.fn("LOWER", sequelize.col("description")),
+            sequelize.fn('LOWER', sequelize.col('description')),
             Op.regexp,
             pattern.toLowerCase()
           )
@@ -4848,7 +4848,7 @@ class ProductController {
       if (whereConditions.length === 0) {
         whereConditions.push(
           sequelize.where(
-            sequelize.fn("LOWER", sequelize.col("name")),
+            sequelize.fn('LOWER', sequelize.col('name')),
             Op.regexp,
             pattern.toLowerCase()
           )
@@ -4859,10 +4859,10 @@ class ProductController {
       const matchingProducts = await Product.findAll({
         where: {
           userId,
-          [Op.or]: whereConditions,
+          [Op.or]: whereConditions
         },
-        attributes: ["id", "name", "sku", "description"],
-        limit: maxResults * 3, // Get more than needed to have variety in results
+        attributes: ['id', 'name', 'sku', 'description'],
+        limit: maxResults * 3 // Get more than needed to have variety in results
       });
 
       const matches = [];
@@ -4879,9 +4879,9 @@ class ProductController {
                 matches.push({
                   productId: product.id,
                   productName: product.name,
-                  field: "name",
+                  field: 'name',
                   matchedText: match.trim(),
-                  fullText: product.name,
+                  fullText: product.name
                 });
               }
               totalMatches++;
@@ -4898,9 +4898,9 @@ class ProductController {
                 matches.push({
                   productId: product.id,
                   productName: product.name,
-                  field: "sku",
+                  field: 'sku',
                   matchedText: match.trim(),
-                  fullText: product.sku,
+                  fullText: product.sku
                 });
               }
               totalMatches++;
@@ -4917,11 +4917,11 @@ class ProductController {
                 matches.push({
                   productId: product.id,
                   productName: product.name,
-                  field: "description",
+                  field: 'description',
                   matchedText: match.trim(),
                   fullText:
                     product.description.substring(0, 100) +
-                    (product.description.length > 100 ? "..." : ""),
+                    (product.description.length > 100 ? '...' : '')
                 });
               }
               totalMatches++;
@@ -4939,8 +4939,8 @@ class ProductController {
       const totalMatchingCount = await Product.count({
         where: {
           userId,
-          [Op.or]: whereConditions,
-        },
+          [Op.or]: whereConditions
+        }
       });
 
       res.json({
@@ -4954,19 +4954,19 @@ class ProductController {
           pattern,
           searchFields,
           limitReached: matches.length >= maxResults,
-          hasMoreMatches: totalMatchingCount > matches.length,
-        },
+          hasMoreMatches: totalMatchingCount > matches.length
+        }
       });
     } catch (error) {
-      logger.error("❌ Error searching by pattern:", {
+      logger.error('❌ Error searching by pattern:', {
         error: error.message,
         stack: error.stack,
-        userId: req.user?.id,
+        userId: req.user?.id
       });
 
       // Fallback to the original method if database regex fails
       logger.warn(
-        "Database regex search failed, falling back to JavaScript regex"
+        'Database regex search failed, falling back to JavaScript regex'
       );
       return this.searchByPatternFallback(req, res);
     }
@@ -4981,10 +4981,10 @@ class ProductController {
       const {
         pattern,
         searchFields = { name: true, sku: true, description: false },
-        maxResults = 50,
+        maxResults = 50
       } = req.body;
 
-      logger.info("🔍 Using fallback pattern search", { userId, pattern });
+      logger.info('🔍 Using fallback pattern search', { userId, pattern });
 
       // Get ALL products for the user (no limit)
       const totalProductCount = await Product.count({ where: { userId } });
@@ -4996,14 +4996,14 @@ class ProductController {
       let totalProcessed = 0;
 
       // Create regex from pattern
-      const regex = new RegExp(pattern, "gi");
+      const regex = new RegExp(pattern, 'gi');
 
       for (let offset = 0; offset < totalProductCount; offset += batchSize) {
         const products = await Product.findAll({
           where: { userId },
-          attributes: ["id", "name", "sku", "description"],
+          attributes: ['id', 'name', 'sku', 'description'],
           offset: offset,
-          limit: batchSize,
+          limit: batchSize
         });
 
         for (const product of products) {
@@ -5018,9 +5018,9 @@ class ProductController {
                   matches.push({
                     productId: product.id,
                     productName: product.name,
-                    field: "name",
+                    field: 'name',
                     matchedText: match.trim(),
-                    fullText: product.name,
+                    fullText: product.name
                   });
                 }
                 totalMatches++;
@@ -5037,9 +5037,9 @@ class ProductController {
                   matches.push({
                     productId: product.id,
                     productName: product.name,
-                    field: "sku",
+                    field: 'sku',
                     matchedText: match.trim(),
-                    fullText: product.sku,
+                    fullText: product.sku
                   });
                 }
                 totalMatches++;
@@ -5056,11 +5056,11 @@ class ProductController {
                   matches.push({
                     productId: product.id,
                     productName: product.name,
-                    field: "description",
+                    field: 'description',
                     matchedText: match.trim(),
                     fullText:
                       product.description.substring(0, 100) +
-                      (product.description.length > 100 ? "..." : ""),
+                      (product.description.length > 100 ? '...' : '')
                   });
                 }
                 totalMatches++;
@@ -5088,20 +5088,20 @@ class ProductController {
           searchFields,
           limitReached: matches.length >= maxResults,
           hasMoreMatches: totalMatches > matches.length,
-          usedFallback: true,
-        },
+          usedFallback: true
+        }
       });
     } catch (error) {
-      logger.error("❌ Error in fallback pattern search:", {
+      logger.error('❌ Error in fallback pattern search:', {
         error: error.message,
         stack: error.stack,
-        userId: req.user?.id,
+        userId: req.user?.id
       });
 
       res.status(500).json({
         success: false,
-        message: "Failed to search by pattern",
-        error: error.message,
+        message: 'Failed to search by pattern',
+        error: error.message
       });
     }
   }
@@ -5114,14 +5114,14 @@ class ProductController {
       // TODO: Implement CSV import functionality
       res.status(501).json({
         success: false,
-        message: "CSV import functionality not yet implemented",
+        message: 'CSV import functionality not yet implemented'
       });
     } catch (error) {
-      logger.error("Error importing products from CSV:", error);
+      logger.error('Error importing products from CSV:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to import products from CSV",
-        error: error.message,
+        message: 'Failed to import products from CSV',
+        error: error.message
       });
     }
   }
@@ -5134,14 +5134,14 @@ class ProductController {
       // TODO: Implement CSV template generation
       res.status(501).json({
         success: false,
-        message: "CSV template functionality not yet implemented",
+        message: 'CSV template functionality not yet implemented'
       });
     } catch (error) {
-      logger.error("Error getting CSV template:", error);
+      logger.error('Error getting CSV template:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get CSV template",
-        error: error.message,
+        message: 'Failed to get CSV template',
+        error: error.message
       });
     }
   }
@@ -5163,14 +5163,14 @@ class ProductController {
     try {
       res.status(501).json({
         success: false,
-        message: "Variant media upload functionality not yet implemented",
+        message: 'Variant media upload functionality not yet implemented'
       });
     } catch (error) {
-      logger.error("Error uploading variant media:", error);
+      logger.error('Error uploading variant media:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to upload variant media",
-        error: error.message,
+        message: 'Failed to upload variant media',
+        error: error.message
       });
     }
   }
@@ -5179,14 +5179,14 @@ class ProductController {
     try {
       res.status(501).json({
         success: false,
-        message: "Media deletion functionality not yet implemented",
+        message: 'Media deletion functionality not yet implemented'
       });
     } catch (error) {
-      logger.error("Error deleting media:", error);
+      logger.error('Error deleting media:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to delete media",
-        error: error.message,
+        message: 'Failed to delete media',
+        error: error.message
       });
     }
   }
@@ -5195,14 +5195,14 @@ class ProductController {
     try {
       res.status(501).json({
         success: false,
-        message: "Media metadata update functionality not yet implemented",
+        message: 'Media metadata update functionality not yet implemented'
       });
     } catch (error) {
-      logger.error("Error updating media metadata:", error);
+      logger.error('Error updating media metadata:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to update media metadata",
-        error: error.message,
+        message: 'Failed to update media metadata',
+        error: error.message
       });
     }
   }
@@ -5211,14 +5211,14 @@ class ProductController {
     try {
       res.status(501).json({
         success: false,
-        message: "Bulk operation functionality not yet implemented",
+        message: 'Bulk operation functionality not yet implemented'
       });
     } catch (error) {
-      logger.error("Error performing bulk operation:", error);
+      logger.error('Error performing bulk operation:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to perform bulk operation",
-        error: error.message,
+        message: 'Failed to perform bulk operation',
+        error: error.message
       });
     }
   }
@@ -5227,14 +5227,14 @@ class ProductController {
     try {
       res.status(501).json({
         success: false,
-        message: "Bulk publish variants functionality not yet implemented",
+        message: 'Bulk publish variants functionality not yet implemented'
       });
     } catch (error) {
-      logger.error("Error bulk publishing variants:", error);
+      logger.error('Error bulk publishing variants:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to bulk publish variants",
-        error: error.message,
+        message: 'Failed to bulk publish variants',
+        error: error.message
       });
     }
   }
@@ -5243,14 +5243,14 @@ class ProductController {
     try {
       res.status(501).json({
         success: false,
-        message: "Bulk update prices functionality not yet implemented",
+        message: 'Bulk update prices functionality not yet implemented'
       });
     } catch (error) {
-      logger.error("Error bulk updating prices:", error);
+      logger.error('Error bulk updating prices:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to bulk update prices",
-        error: error.message,
+        message: 'Failed to bulk update prices',
+        error: error.message
       });
     }
   }
@@ -5259,14 +5259,14 @@ class ProductController {
     try {
       res.status(501).json({
         success: false,
-        message: "Bulk create variants functionality not yet implemented",
+        message: 'Bulk create variants functionality not yet implemented'
       });
     } catch (error) {
-      logger.error("Error bulk creating variants:", error);
+      logger.error('Error bulk creating variants:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to bulk create variants",
-        error: error.message,
+        message: 'Failed to bulk create variants',
+        error: error.message
       });
     }
   }
@@ -5275,14 +5275,14 @@ class ProductController {
     try {
       res.status(501).json({
         success: false,
-        message: "Scrape and import functionality not yet implemented",
+        message: 'Scrape and import functionality not yet implemented'
       });
     } catch (error) {
-      logger.error("Error scraping and importing from platform:", error);
+      logger.error('Error scraping and importing from platform:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to scrape and import from platform",
-        error: error.message,
+        message: 'Failed to scrape and import from platform',
+        error: error.message
       });
     }
   }
@@ -5291,14 +5291,14 @@ class ProductController {
     try {
       res.status(501).json({
         success: false,
-        message: "Field mappings functionality not yet implemented",
+        message: 'Field mappings functionality not yet implemented'
       });
     } catch (error) {
-      logger.error("Error getting field mappings:", error);
+      logger.error('Error getting field mappings:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get field mappings",
-        error: error.message,
+        message: 'Failed to get field mappings',
+        error: error.message
       });
     }
   }
@@ -5307,14 +5307,14 @@ class ProductController {
     try {
       res.status(501).json({
         success: false,
-        message: "Field mapping save functionality not yet implemented",
+        message: 'Field mapping save functionality not yet implemented'
       });
     } catch (error) {
-      logger.error("Error saving field mapping:", error);
+      logger.error('Error saving field mapping:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to save field mapping",
-        error: error.message,
+        message: 'Failed to save field mapping',
+        error: error.message
       });
     }
   }
@@ -5323,14 +5323,14 @@ class ProductController {
     try {
       res.status(501).json({
         success: false,
-        message: "JSON import functionality not yet implemented",
+        message: 'JSON import functionality not yet implemented'
       });
     } catch (error) {
-      logger.error("Error importing from JSON:", error);
+      logger.error('Error importing from JSON:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to import from JSON",
-        error: error.message,
+        message: 'Failed to import from JSON',
+        error: error.message
       });
     }
   }
@@ -5339,14 +5339,14 @@ class ProductController {
     try {
       res.status(501).json({
         success: false,
-        message: "Mark as main product functionality not yet implemented",
+        message: 'Mark as main product functionality not yet implemented'
       });
     } catch (error) {
-      logger.error("Error marking as main product:", error);
+      logger.error('Error marking as main product:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to mark as main product",
-        error: error.message,
+        message: 'Failed to mark as main product',
+        error: error.message
       });
     }
   }
@@ -5364,11 +5364,11 @@ class ProductController {
         maxPrice,
         minStock,
         maxStock,
-        platform = "all",
-        format = "csv",
+        platform = 'all',
+        format = 'csv',
         productIds,
         columns,
-        exportType = "all",
+        exportType = 'all'
       } = req.query;
 
       const userId = req.user.id;
@@ -5381,13 +5381,13 @@ class ProductController {
         try {
           // Handle both string and array formats
           let parsedIds;
-          if (typeof productIds === "string") {
+          if (typeof productIds === 'string') {
             // Try to parse as JSON array if it's a string
             try {
               parsedIds = JSON.parse(productIds);
             } catch (e) {
               // If not valid JSON, split by comma
-              parsedIds = productIds.split(",");
+              parsedIds = productIds.split(',');
             }
           } else {
             parsedIds = productIds;
@@ -5397,73 +5397,73 @@ class ProductController {
             whereConditions.id = { [Op.in]: parsedIds };
           }
         } catch (error) {
-          logger.warn("Error parsing productIds for export", {
-            error: error.message,
+          logger.warn('Error parsing productIds for export', {
+            error: error.message
           });
           // Continue without the productIds filter if parsing fails
         }
       }
 
       // Apply filters - strict checking to avoid empty strings
-      if (category && category.trim() !== "") {
+      if (category && category.trim() !== '') {
         whereConditions.category = category.trim();
       }
 
-      if (status && status.trim() !== "") {
+      if (status && status.trim() !== '') {
         whereConditions.status = status.trim();
       }
 
       // Handle price filters
       if (
-        (minPrice && minPrice.trim() !== "") ||
-        (maxPrice && maxPrice.trim() !== "")
+        (minPrice && minPrice.trim() !== '') ||
+        (maxPrice && maxPrice.trim() !== '')
       ) {
         whereConditions.price = {};
-        if (minPrice && minPrice.trim() !== "") {
+        if (minPrice && minPrice.trim() !== '') {
           whereConditions.price[Op.gte] = parseFloat(minPrice);
         }
-        if (maxPrice && maxPrice.trim() !== "") {
+        if (maxPrice && maxPrice.trim() !== '') {
           whereConditions.price[Op.lte] = parseFloat(maxPrice);
         }
       }
 
       // Handle stock filters
       if (
-        (minStock && minStock.trim() !== "") ||
-        (maxStock && maxStock.trim() !== "")
+        (minStock && minStock.trim() !== '') ||
+        (maxStock && maxStock.trim() !== '')
       ) {
         whereConditions.stockQuantity = {};
-        if (minStock && minStock.trim() !== "") {
+        if (minStock && minStock.trim() !== '') {
           whereConditions.stockQuantity[Op.gte] = parseInt(minStock);
         }
-        if (maxStock && maxStock.trim() !== "") {
+        if (maxStock && maxStock.trim() !== '') {
           whereConditions.stockQuantity[Op.lte] = parseInt(maxStock);
         }
       }
 
       // Handle stock status filter
-      if (stockStatus && stockStatus.trim() !== "") {
+      if (stockStatus && stockStatus.trim() !== '') {
         switch (stockStatus) {
-          case "in_stock":
-            whereConditions.stockQuantity = { [Op.gt]: 0 };
-            break;
-          case "out_of_stock":
-            whereConditions.stockQuantity = { [Op.eq]: 0 };
-            break;
-          case "low_stock":
-            // Use minStockLevel for low stock comparison
-            whereConditions[Op.and] = [
-              { stockQuantity: { [Op.gt]: 0 } },
-              sequelize.where(sequelize.col("stockQuantity"), {
-                [Op.lte]: sequelize.col("minStockLevel"),
-              }),
-            ];
-            break;
+        case 'in_stock':
+          whereConditions.stockQuantity = { [Op.gt]: 0 };
+          break;
+        case 'out_of_stock':
+          whereConditions.stockQuantity = { [Op.eq]: 0 };
+          break;
+        case 'low_stock':
+          // Use minStockLevel for low stock comparison
+          whereConditions[Op.and] = [
+            { stockQuantity: { [Op.gt]: 0 } },
+            sequelize.where(sequelize.col('stockQuantity'), {
+              [Op.lte]: sequelize.col('minStockLevel')
+            })
+          ];
+          break;
         }
       }
 
       // Handle platform filter (special handling for JSON platforms field)
-      if (platform && platform.trim() !== "" && platform !== "all") {
+      if (platform && platform.trim() !== '' && platform !== 'all') {
         // Need to check if the platform exists in the JSON platforms field
         whereConditions.platforms = sequelize.literal(
           `platforms->>'${platform}' IS NOT NULL AND platforms->'${platform}'->>'enabled' = 'true'`
@@ -5473,13 +5473,13 @@ class ProductController {
       // Fetch products
       const products = await Product.findAll({
         where: whereConditions,
-        order: [["createdAt", "DESC"]],
+        order: [['createdAt', 'DESC']]
       });
 
       if (products.length === 0) {
         return res.status(404).json({
           success: false,
-          message: "No products found matching the criteria",
+          message: 'No products found matching the criteria'
         });
       }
 
@@ -5488,24 +5488,24 @@ class ProductController {
         id: product.id,
         name: product.name,
         sku: product.sku,
-        barcode: product.barcode || "",
-        description: product.description || "",
-        category: product.category || "",
+        barcode: product.barcode || '',
+        description: product.description || '',
+        category: product.category || '',
         price: product.price,
-        costPrice: product.costPrice || "",
-        currency: "TRY", // Default currency
+        costPrice: product.costPrice || '',
+        currency: 'TRY', // Default currency
         stockQuantity: product.stockQuantity,
         minStockLevel: product.minStockLevel,
         status: product.status,
         platforms: JSON.stringify(product.platforms || {}),
         createdAt: product.createdAt,
-        updatedAt: product.updatedAt,
+        updatedAt: product.updatedAt
       }));
 
       // Filter data based on selected columns
       let exportData = allProductData;
       if (columns && columns.trim()) {
-        const selectedColumns = columns.split(",").map((col) => col.trim());
+        const selectedColumns = columns.split(',').map((col) => col.trim());
         exportData = allProductData.map((product) => {
           const filteredProduct = {};
           selectedColumns.forEach((col) => {
@@ -5519,51 +5519,51 @@ class ProductController {
 
       // All available field definitions
       const allFields = [
-        { label: "ID", value: "id" },
-        { label: "Name", value: "name" },
-        { label: "SKU", value: "sku" },
-        { label: "Barcode", value: "barcode" },
-        { label: "Description", value: "description" },
-        { label: "Category", value: "category" },
-        { label: "Price", value: "price" },
-        { label: "Cost Price", value: "costPrice" },
-        { label: "Currency", value: "currency" },
-        { label: "Stock Quantity", value: "stockQuantity" },
-        { label: "Min Stock Level", value: "minStockLevel" },
-        { label: "Status", value: "status" },
-        { label: "Platforms", value: "platforms" },
-        { label: "Created At", value: "createdAt" },
-        { label: "Updated At", value: "updatedAt" },
+        { label: 'ID', value: 'id' },
+        { label: 'Name', value: 'name' },
+        { label: 'SKU', value: 'sku' },
+        { label: 'Barcode', value: 'barcode' },
+        { label: 'Description', value: 'description' },
+        { label: 'Category', value: 'category' },
+        { label: 'Price', value: 'price' },
+        { label: 'Cost Price', value: 'costPrice' },
+        { label: 'Currency', value: 'currency' },
+        { label: 'Stock Quantity', value: 'stockQuantity' },
+        { label: 'Min Stock Level', value: 'minStockLevel' },
+        { label: 'Status', value: 'status' },
+        { label: 'Platforms', value: 'platforms' },
+        { label: 'Created At', value: 'createdAt' },
+        { label: 'Updated At', value: 'updatedAt' }
       ];
 
       // Filter fields based on selected columns
       let fields = allFields;
       if (columns && columns.trim()) {
-        const selectedColumns = columns.split(",").map((col) => col.trim());
+        const selectedColumns = columns.split(',').map((col) => col.trim());
         fields = allFields.filter((field) =>
           selectedColumns.includes(field.value)
         );
       }
 
       // Handle different export formats
-      if (format === "csv") {
-        const { Parser } = require("json2csv");
+      if (format === 'csv') {
+        const { Parser } = require('json2csv');
         const json2csvParser = new Parser({ fields });
         const csv = json2csvParser.parse(exportData);
 
-        res.setHeader("Content-Type", "text/csv");
+        res.setHeader('Content-Type', 'text/csv');
         res.setHeader(
-          "Content-Disposition",
+          'Content-Disposition',
           `attachment; filename=products-${
-            new Date().toISOString().split("T")[0]
+            new Date().toISOString().split('T')[0]
           }.csv`
         );
         res.send(csv);
-      } else if (format === "xlsx") {
+      } else if (format === 'xlsx') {
         // Handle Excel export
-        const ExcelJS = require("exceljs");
+        const ExcelJS = require('exceljs');
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet("Products");
+        const worksheet = workbook.addWorksheet('Products');
 
         // Add headers
         const headers = fields.map((field) => field.label);
@@ -5572,9 +5572,9 @@ class ProductController {
         // Style the header row
         worksheet.getRow(1).font = { bold: true };
         worksheet.getRow(1).fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "FFE6E6FA" },
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE6E6FA' }
         };
 
         // Add data rows
@@ -5582,7 +5582,7 @@ class ProductController {
           const row = fields.map((field) => {
             const value = product[field.value];
             // Format dates
-            if (field.value.includes("At") && value) {
+            if (field.value.includes('At') && value) {
               return new Date(value).toLocaleDateString();
             }
             return value;
@@ -5596,24 +5596,24 @@ class ProductController {
         });
 
         res.setHeader(
-          "Content-Type",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          'Content-Type',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         );
         res.setHeader(
-          "Content-Disposition",
+          'Content-Disposition',
           `attachment; filename=products-${
-            new Date().toISOString().split("T")[0]
+            new Date().toISOString().split('T')[0]
           }.xlsx`
         );
 
         await workbook.xlsx.write(res);
         res.end();
-      } else if (format === "json") {
-        res.setHeader("Content-Type", "application/json");
+      } else if (format === 'json') {
+        res.setHeader('Content-Type', 'application/json');
         res.setHeader(
-          "Content-Disposition",
+          'Content-Disposition',
           `attachment; filename=products-${
-            new Date().toISOString().split("T")[0]
+            new Date().toISOString().split('T')[0]
           }.json`
         );
         res.json({
@@ -5622,21 +5622,21 @@ class ProductController {
           data: exportData,
           exported_at: new Date().toISOString(),
           columns: columns
-            ? columns.split(",")
-            : Object.keys(allProductData[0] || {}),
+            ? columns.split(',')
+            : Object.keys(allProductData[0] || {})
         });
       } else {
         return res.status(400).json({
           success: false,
-          message: "Invalid export format. Supported formats: csv, xlsx, json",
+          message: 'Invalid export format. Supported formats: csv, xlsx, json'
         });
       }
     } catch (error) {
-      logger.error("Error exporting products:", error);
+      logger.error('Error exporting products:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to export products",
-        error: error.message,
+        message: 'Failed to export products',
+        error: error.message
       });
     }
   }

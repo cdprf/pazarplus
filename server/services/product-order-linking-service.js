@@ -5,10 +5,10 @@ const {
   TrendyolProduct,
   HepsiburadaProduct,
   N11Product,
-  sequelize,
-} = require("../models");
-const { Op } = require("sequelize");
-const logger = require("../utils/logger");
+  sequelize
+} = require('../models');
+const { Op } = require('sequelize');
+const logger = require('../utils/logger');
 
 /**
  * Product-Order Linking Service
@@ -17,12 +17,12 @@ const logger = require("../utils/logger");
 class ProductOrderLinkingService {
   constructor() {
     this.matchingStrategies = [
-      "exactSKU",
-      "exactBarcode",
-      "platformProductId",
-      "fuzzyTitle",
-      "partialSKU",
-      "barcodeVariations",
+      'exactSKU',
+      'exactBarcode',
+      'platformProductId',
+      'fuzzyTitle',
+      'partialSKU',
+      'barcodeVariations'
     ];
 
     this.matchingStats = {
@@ -32,7 +32,7 @@ class ProductOrderLinkingService {
       fuzzyTitle: 0,
       partialSKU: 0,
       barcodeVariations: 0,
-      unmatched: 0,
+      unmatched: 0
     };
 
     this.lastMatchStrategy = null;
@@ -49,7 +49,7 @@ class ProductOrderLinkingService {
       connectionId = null,
       platform = null,
       batchSize = 100,
-      dryRun = false,
+      dryRun = false
     } = options;
 
     try {
@@ -57,22 +57,22 @@ class ProductOrderLinkingService {
         userId,
         connectionId,
         platform,
-        dryRun,
+        dryRun
       });
 
       // Get unlinked order items
       const unlinkedItems = await this.getUnlinkedOrderItems(userId, {
         connectionId,
-        platform,
+        platform
       });
 
       if (unlinkedItems.length === 0) {
         return {
           success: true,
-          message: "No unlinked order items found",
+          message: 'No unlinked order items found',
           totalProcessed: 0,
           linked: 0,
-          stats: this.matchingStats,
+          stats: this.matchingStats
         };
       }
 
@@ -84,10 +84,10 @@ class ProductOrderLinkingService {
       if (userProducts.length === 0) {
         return {
           success: true,
-          message: "No products found for user",
+          message: 'No products found for user',
           totalProcessed: unlinkedItems.length,
           linked: 0,
-          stats: this.matchingStats,
+          stats: this.matchingStats
         };
       }
 
@@ -119,10 +119,10 @@ class ProductOrderLinkingService {
         totalProcessed,
         linked: totalLinked,
         unlinked: totalProcessed - totalLinked,
-        stats: this.matchingStats,
+        stats: this.matchingStats
       };
     } catch (error) {
-      logger.error("Error in linkExistingOrders:", error);
+      logger.error('Error in linkExistingOrders:', error);
       throw error;
     }
   }
@@ -175,7 +175,7 @@ class ProductOrderLinkingService {
       );
       return enhancedItems;
     } catch (error) {
-      logger.error("Error in linkIncomingOrderItems:", error);
+      logger.error('Error in linkIncomingOrderItems:', error);
       // Return original items if linking fails
       return orderItems;
     }
@@ -194,11 +194,11 @@ class ProductOrderLinkingService {
       let userId;
       let linkingOptions = {};
 
-      if (typeof userIdOrOptions === "string") {
+      if (typeof userIdOrOptions === 'string') {
         userId = userIdOrOptions;
         linkingOptions = options;
       } else if (
-        typeof userIdOrOptions === "object" &&
+        typeof userIdOrOptions === 'object' &&
         userIdOrOptions !== null
       ) {
         // If first parameter after orderItems is an options object
@@ -215,17 +215,17 @@ class ProductOrderLinkingService {
       }
 
       if (!userId) {
-        logger.warn("No userId provided for product linking", {
-          orderItemsCount: orderItems?.length || 0,
+        logger.warn('No userId provided for product linking', {
+          orderItemsCount: orderItems?.length || 0
         });
         return {
           success: false,
-          error: "User ID is required for product linking",
+          error: 'User ID is required for product linking',
           stats: {
             total: orderItems?.length || 0,
             linked: 0,
-            unlinked: orderItems?.length || 0,
-          },
+            unlinked: orderItems?.length || 0
+          }
         };
       }
 
@@ -239,7 +239,7 @@ class ProductOrderLinkingService {
         {
           userId,
           dryRun,
-          hasTransaction: !!transaction,
+          hasTransaction: !!transaction
         }
       );
 
@@ -253,11 +253,11 @@ class ProductOrderLinkingService {
           stats: {
             total: orderItems.length,
             linked: 0,
-            unlinked: orderItems.length,
+            unlinked: orderItems.length
           },
           linkedItems: [],
           unlinkedItems: orderItems,
-          message: "No products available for linking",
+          message: 'No products available for linking'
         };
       }
 
@@ -278,8 +278,8 @@ class ProductOrderLinkingService {
                 id: matchedProduct.id,
                 name: matchedProduct.name,
                 sku: matchedProduct.sku,
-                barcode: matchedProduct.barcode,
-              },
+                barcode: matchedProduct.barcode
+              }
             };
 
             linkedItems.push(linkedItem);
@@ -290,7 +290,7 @@ class ProductOrderLinkingService {
               {
                 orderItemId: orderItem.id,
                 productId: matchedProduct.id,
-                strategy: this.lastMatchStrategy, // Track which strategy worked
+                strategy: this.lastMatchStrategy // Track which strategy worked
               }
             );
           } else {
@@ -304,7 +304,7 @@ class ProductOrderLinkingService {
                 orderItemId: orderItem.id,
                 sku: orderItem.sku,
                 barcode: orderItem.barcode,
-                platformProductId: orderItem.platformProductId,
+                platformProductId: orderItem.platformProductId
               }
             );
           }
@@ -326,7 +326,7 @@ class ProductOrderLinkingService {
             logger.warn(`Skipping update for order item without ID:`, {
               title: item.title,
               sku: item.sku,
-              productId: item.productId,
+              productId: item.productId
             });
             return Promise.resolve();
           }
@@ -352,7 +352,7 @@ class ProductOrderLinkingService {
         {
           userId,
           dryRun,
-          stats,
+          stats
         }
       );
 
@@ -362,18 +362,18 @@ class ProductOrderLinkingService {
         linkedItems,
         unlinkedItems,
         linkingRate: Math.round(linkingRate * 100) / 100,
-        message: `Successfully linked ${stats.linked} out of ${stats.total} order items`,
+        message: `Successfully linked ${stats.linked} out of ${stats.total} order items`
       };
     } catch (error) {
-      logger.error("Error in linkProductsToOrderItems:", error);
+      logger.error('Error in linkProductsToOrderItems:', error);
       return {
         success: false,
         error: error.message,
         stats: {
           total: orderItems?.length || 0,
           linked: 0,
-          unlinked: orderItems?.length || 0,
-        },
+          unlinked: orderItems?.length || 0
+        }
       };
     }
   }
@@ -386,11 +386,11 @@ class ProductOrderLinkingService {
    */
   async getUnlinkedOrderItems(userId, filters = {}) {
     const where = {
-      productId: null, // Items without product links
+      productId: null // Items without product links
     };
 
     const orderWhere = {
-      userId,
+      userId
     };
 
     if (filters.connectionId) {
@@ -406,23 +406,23 @@ class ProductOrderLinkingService {
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           where: orderWhere,
-          attributes: ["id", "userId", "platform", "connectionId"],
-        },
+          attributes: ['id', 'userId', 'platform', 'connectionId']
+        }
       ],
       attributes: [
-        "id",
-        "orderId",
-        "productId",
-        "platformProductId",
-        "sku",
-        "barcode",
-        "title",
-        "quantity",
-        "price",
+        'id',
+        'orderId',
+        'productId',
+        'platformProductId',
+        'sku',
+        'barcode',
+        'title',
+        'quantity',
+        'price'
       ],
-      order: [["createdAt", "DESC"]],
+      order: [['createdAt', 'DESC']]
     });
 
     return orderItems;
@@ -436,28 +436,28 @@ class ProductOrderLinkingService {
   async getUserProducts(userId) {
     const products = await Product.findAll({
       where: { userId },
-      attributes: ["id", "name", "sku", "barcode", "category", "stockQuantity"],
+      attributes: ['id', 'name', 'sku', 'barcode', 'category', 'stockQuantity'],
       include: [
         {
           model: TrendyolProduct,
-          as: "trendyolProduct",
-          attributes: ["trendyolProductId", "stockCode", "barcode"],
-          required: false,
+          as: 'trendyolProduct',
+          attributes: ['trendyolProductId', 'stockCode', 'barcode'],
+          required: false
         },
         {
           model: HepsiburadaProduct,
-          as: "hepsiburadaProduct",
-          attributes: ["merchantSku", "barcode"],
-          required: false,
+          as: 'hepsiburadaProduct',
+          attributes: ['merchantSku', 'barcode'],
+          required: false
         },
         {
           model: N11Product,
-          as: "n11Product",
-          attributes: ["n11ProductId", "sellerId", "barcode"],
-          required: false,
-        },
+          as: 'n11Product',
+          attributes: ['n11ProductId', 'sellerId', 'barcode'],
+          required: false
+        }
       ],
-      order: [["updatedAt", "DESC"]],
+      order: [['updatedAt', 'DESC']]
     });
 
     return products;
@@ -484,13 +484,13 @@ class ProductOrderLinkingService {
         if (!dryRun) {
           updates.push({
             id: orderItem.id,
-            productId: matchedProduct.id,
+            productId: matchedProduct.id
           });
         }
         linked++;
 
         logger.debug(
-          `${dryRun ? "[DRY RUN] " : ""}Matched order item "${
+          `${dryRun ? '[DRY RUN] ' : ''}Matched order item "${
             orderItem.title
           }" to product "${matchedProduct.name}"`
         );
@@ -508,7 +508,7 @@ class ProductOrderLinkingService {
             { productId: update.productId },
             {
               where: { id: update.id },
-              transaction,
+              transaction
             }
           );
         }
@@ -521,7 +521,7 @@ class ProductOrderLinkingService {
 
     return {
       processed: orderItems.length,
-      linked,
+      linked
     };
   }
 
@@ -541,7 +541,7 @@ class ProductOrderLinkingService {
       );
       if (match) {
         this.matchingStats.exactSKU++;
-        this.lastMatchStrategy = "exactSKU";
+        this.lastMatchStrategy = 'exactSKU';
         return match;
       }
     }
@@ -553,7 +553,7 @@ class ProductOrderLinkingService {
       );
       if (match) {
         this.matchingStats.exactBarcode++;
-        this.lastMatchStrategy = "exactBarcode";
+        this.lastMatchStrategy = 'exactBarcode';
         return match;
       }
     }
@@ -588,7 +588,7 @@ class ProductOrderLinkingService {
 
       if (match) {
         this.matchingStats.platformProductId++;
-        this.lastMatchStrategy = "platformProductId";
+        this.lastMatchStrategy = 'platformProductId';
         return match;
       }
     }
@@ -598,7 +598,7 @@ class ProductOrderLinkingService {
       const match = this.findByFuzzyTitle(orderItem.title, products);
       if (match) {
         this.matchingStats.fuzzyTitle++;
-        this.lastMatchStrategy = "fuzzyTitle";
+        this.lastMatchStrategy = 'fuzzyTitle';
         return match;
       }
     }
@@ -608,7 +608,7 @@ class ProductOrderLinkingService {
       const match = this.findByPartialSKU(orderItem.sku, products);
       if (match) {
         this.matchingStats.partialSKU++;
-        this.lastMatchStrategy = "partialSKU";
+        this.lastMatchStrategy = 'partialSKU';
         return match;
       }
     }
@@ -618,7 +618,7 @@ class ProductOrderLinkingService {
       const match = this.findByBarcodeVariations(orderItem.barcode, products);
       if (match) {
         this.matchingStats.barcodeVariations++;
-        this.lastMatchStrategy = "barcodeVariations";
+        this.lastMatchStrategy = 'barcodeVariations';
         return match;
       }
     }
@@ -633,16 +633,16 @@ class ProductOrderLinkingService {
    * @returns {Object|null} Matched product or null
    */
   findByFuzzyTitle(orderTitle, products) {
-    if (!orderTitle) return null;
+    if (!orderTitle) {return null;}
 
     const normalizedOrderTitle = this.normalizeTitle(orderTitle);
 
     // First try exact normalized match
-    let match = products.find(
+    const match = products.find(
       (p) => p.name && this.normalizeTitle(p.name) === normalizedOrderTitle
     );
 
-    if (match) return match;
+    if (match) {return match;}
 
     // Then try similarity-based matching
     let bestMatch = null;
@@ -650,7 +650,7 @@ class ProductOrderLinkingService {
     const minScore = 0.8; // 80% similarity threshold
 
     for (const product of products) {
-      if (!product.name) continue;
+      if (!product.name) {continue;}
 
       const score = this.calculateSimilarity(
         normalizedOrderTitle,
@@ -672,14 +672,14 @@ class ProductOrderLinkingService {
    * @returns {Object|null} Matched product or null
    */
   findByPartialSKU(orderSku, products) {
-    if (!orderSku) return null;
+    if (!orderSku) {return null;}
 
-    const cleanOrderSku = orderSku.replace(/[-_\s]/g, "").toLowerCase();
+    const cleanOrderSku = orderSku.replace(/[-_\s]/g, '').toLowerCase();
 
     return products.find((p) => {
-      if (!p.sku) return false;
+      if (!p.sku) {return false;}
 
-      const cleanProductSku = p.sku.replace(/[-_\s]/g, "").toLowerCase();
+      const cleanProductSku = p.sku.replace(/[-_\s]/g, '').toLowerCase();
 
       // Check if one SKU contains the other
       return (
@@ -696,14 +696,14 @@ class ProductOrderLinkingService {
    * @returns {Object|null} Matched product or null
    */
   findByBarcodeVariations(orderBarcode, products) {
-    if (!orderBarcode) return null;
+    if (!orderBarcode) {return null;}
 
     // Generate barcode variations
     const variations = this.generateBarcodeVariations(orderBarcode);
 
     for (const variation of variations) {
       const match = products.find((p) => p.barcode === variation);
-      if (match) return match;
+      if (match) {return match;}
     }
 
     return null;
@@ -718,13 +718,13 @@ class ProductOrderLinkingService {
     const variations = [barcode];
 
     // Remove leading zeros
-    variations.push(barcode.replace(/^0+/, ""));
+    variations.push(barcode.replace(/^0+/, ''));
 
     // Add leading zeros for different lengths
-    variations.push(barcode.padStart(8, "0"));
-    variations.push(barcode.padStart(12, "0"));
-    variations.push(barcode.padStart(13, "0"));
-    variations.push(barcode.padStart(14, "0"));
+    variations.push(barcode.padStart(8, '0'));
+    variations.push(barcode.padStart(12, '0'));
+    variations.push(barcode.padStart(13, '0'));
+    variations.push(barcode.padStart(14, '0'));
 
     // Remove last digit (possible check digit)
     if (barcode.length > 1) {
@@ -747,8 +747,8 @@ class ProductOrderLinkingService {
   normalizeTitle(title) {
     return title
       .toLowerCase()
-      .replace(/[^\w\s]/g, "") // Remove special characters
-      .replace(/\s+/g, " ") // Normalize whitespace
+      .replace(/[^\w\s]/g, '') // Remove special characters
+      .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();
   }
 
@@ -760,7 +760,7 @@ class ProductOrderLinkingService {
    */
   calculateSimilarity(str1, str2) {
     const maxLength = Math.max(str1.length, str2.length);
-    if (maxLength === 0) return 1;
+    if (maxLength === 0) {return 1;}
 
     const distance = this.levenshteinDistance(str1, str2);
     return (maxLength - distance) / maxLength;
@@ -830,17 +830,17 @@ class ProductOrderLinkingService {
         unlinkedOrderItems,
         totalProducts,
         ordersWithoutProducts,
-        productsWithoutOrders,
+        productsWithoutOrders
       ] = await Promise.all([
         // Total order items for user
         OrderItem.count({
           include: [
             {
               model: Order,
-              as: "order",
-              where: { userId },
-            },
-          ],
+              as: 'order',
+              where: { userId }
+            }
+          ]
         }),
 
         // Linked order items
@@ -849,10 +849,10 @@ class ProductOrderLinkingService {
           include: [
             {
               model: Order,
-              as: "order",
-              where: { userId },
-            },
-          ],
+              as: 'order',
+              where: { userId }
+            }
+          ]
         }),
 
         // Unlinked order items
@@ -861,10 +861,10 @@ class ProductOrderLinkingService {
           include: [
             {
               model: Order,
-              as: "order",
-              where: { userId },
-            },
-          ],
+              as: 'order',
+              where: { userId }
+            }
+          ]
         }),
 
         // Total products
@@ -874,32 +874,32 @@ class ProductOrderLinkingService {
         Order.count({
           where: {
             userId,
-            "$items.productId$": null,
+            '$items.productId$': null
           },
           include: [
             {
               model: OrderItem,
-              as: "items",
-              attributes: [],
-            },
-          ],
+              as: 'items',
+              attributes: []
+            }
+          ]
         }),
 
         // Products without any order items
         Product.count({
           where: {
             userId,
-            "$orderItems.id$": null,
+            '$orderItems.id$': null
           },
           include: [
             {
               model: OrderItem,
-              as: "orderItems",
+              as: 'orderItems',
               attributes: [],
-              required: false,
-            },
-          ],
-        }),
+              required: false
+            }
+          ]
+        })
       ]);
 
       const linkingRate =
@@ -913,7 +913,7 @@ class ProductOrderLinkingService {
           linkingRate: Math.round(linkingRate * 100) / 100,
           totalProducts,
           ordersWithoutProducts,
-          productsWithoutOrders,
+          productsWithoutOrders
         },
         stats: this.getStats(),
         recommendations: this.generateRecommendations({
@@ -923,11 +923,11 @@ class ProductOrderLinkingService {
           totalProducts,
           ordersWithoutProducts,
           productsWithoutOrders,
-          linkingRate,
-        }),
+          linkingRate
+        })
       };
     } catch (error) {
-      logger.error("Error generating linking report:", error);
+      logger.error('Error generating linking report:', error);
       throw error;
     }
   }
@@ -942,28 +942,28 @@ class ProductOrderLinkingService {
 
     if (reportData.linkingRate < 50) {
       recommendations.push({
-        type: "warning",
-        title: "Low Product Linking Rate",
+        type: 'warning',
+        title: 'Low Product Linking Rate',
         message: `Only ${reportData.linkingRate}% of order items are linked to products. Consider improving product data quality.`,
-        action: "Review and standardize SKU and barcode data",
+        action: 'Review and standardize SKU and barcode data'
       });
     }
 
     if (reportData.unlinkedOrderItems > 100) {
       recommendations.push({
-        type: "action",
-        title: "Many Unlinked Order Items",
+        type: 'action',
+        title: 'Many Unlinked Order Items',
         message: `${reportData.unlinkedOrderItems} order items are not linked to products.`,
-        action: "Run automated product linking process",
+        action: 'Run automated product linking process'
       });
     }
 
     if (reportData.productsWithoutOrders > reportData.totalProducts * 0.3) {
       recommendations.push({
-        type: "info",
-        title: "Products Without Sales",
+        type: 'info',
+        title: 'Products Without Sales',
         message: `${reportData.productsWithoutOrders} products have no associated orders.`,
-        action: "Review product catalog and remove obsolete products",
+        action: 'Review product catalog and remove obsolete products'
       });
     }
 
@@ -991,14 +991,14 @@ class ProductOrderLinkingService {
       }
 
       if (!userId) {
-        logger.warn("Cannot find userId for order item", {
-          orderItemId: orderItem.id,
+        logger.warn('Cannot find userId for order item', {
+          orderItemId: orderItem.id
         });
         return [];
       }
 
       const products = await Product.findAll({
-        where: { userId },
+        where: { userId }
       });
 
       if (!products || products.length === 0) {
@@ -1013,9 +1013,9 @@ class ProductOrderLinkingService {
         exactSKUMatches.forEach((match) => {
           matches.push({
             ...match.toJSON(),
-            matchStrategy: "exactSKU",
+            matchStrategy: 'exactSKU',
             confidence: 1.0,
-            score: 1.0,
+            score: 1.0
           });
         });
       }
@@ -1028,9 +1028,9 @@ class ProductOrderLinkingService {
         exactBarcodeMatches.forEach((match) => {
           matches.push({
             ...match.toJSON(),
-            matchStrategy: "exactBarcode",
+            matchStrategy: 'exactBarcode',
             confidence: 0.95,
-            score: 1.0,
+            score: 1.0
           });
         });
       }
@@ -1066,9 +1066,9 @@ class ProductOrderLinkingService {
         platformMatches.forEach((match) => {
           matches.push({
             ...match.toJSON(),
-            matchStrategy: "platformProductId",
+            matchStrategy: 'platformProductId',
             confidence: 0.9,
-            score: 1.0,
+            score: 1.0
           });
         });
       }
@@ -1082,9 +1082,9 @@ class ProductOrderLinkingService {
         fuzzyMatches.forEach((match) => {
           matches.push({
             ...match.product.toJSON(),
-            matchStrategy: "fuzzyTitle",
+            matchStrategy: 'fuzzyTitle',
             confidence: Math.min(match.score, 0.85),
-            score: match.score,
+            score: match.score
           });
         });
       }
@@ -1098,9 +1098,9 @@ class ProductOrderLinkingService {
         partialSKUMatches.forEach((match) => {
           matches.push({
             ...match.product.toJSON(),
-            matchStrategy: "partialSKU",
+            matchStrategy: 'partialSKU',
             confidence: Math.min(match.score * 0.7, 0.7),
-            score: match.score,
+            score: match.score
           });
         });
       }
@@ -1114,9 +1114,9 @@ class ProductOrderLinkingService {
         barcodeVariationMatches.forEach((match) => {
           matches.push({
             ...match.toJSON(),
-            matchStrategy: "barcodeVariations",
+            matchStrategy: 'barcodeVariations',
             confidence: 0.8,
-            score: 1.0,
+            score: 1.0
           });
         });
       }
@@ -1127,7 +1127,7 @@ class ProductOrderLinkingService {
         .sort((a, b) => b.confidence - a.confidence)
         .slice(0, 10); // Return top 10 matches
     } catch (error) {
-      logger.error("Error finding product matches:", error);
+      logger.error('Error finding product matches:', error);
       return [];
     }
   }
@@ -1154,7 +1154,7 @@ class ProductOrderLinkingService {
           // Only include matches with 70%+ similarity
           matches.push({
             product,
-            score,
+            score
           });
         }
       }
@@ -1190,7 +1190,7 @@ class ProductOrderLinkingService {
             // Only include matches with 60%+ overlap
             matches.push({
               product,
-              score,
+              score
             });
           }
         }
@@ -1232,7 +1232,7 @@ class ProductOrderLinkingService {
       platformProductId: 0.9,
       fuzzyTitle: Math.min(score, 0.85),
       partialSKU: Math.min(score * 0.7, 0.7),
-      barcodeVariations: 0.8,
+      barcodeVariations: 0.8
     };
 
     return strategyWeights[strategy] || 0.5;
@@ -1244,10 +1244,10 @@ class ProductOrderLinkingService {
    * @returns {string} Normalized SKU
    */
   normalizeSKU(sku) {
-    if (!sku || typeof sku !== "string") {
-      return "";
+    if (!sku || typeof sku !== 'string') {
+      return '';
     }
-    return sku.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return sku.toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 
   /**

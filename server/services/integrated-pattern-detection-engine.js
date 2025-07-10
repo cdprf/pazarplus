@@ -29,9 +29,9 @@ class IntegratedPatternDetectionEngine {
         name_similarity: true,
         feature_clustering: true,
         hierarchical_patterns: true,
-        classification_patterns: true,
+        classification_patterns: true
       },
-      ...config,
+      ...config
     };
 
     this.statistics = {
@@ -40,7 +40,7 @@ class IntegratedPatternDetectionEngine {
       similarity_groups: 0,
       feature_clusters: 0,
       classification_patterns: 0,
-      processing_time: 0,
+      processing_time: 0
     };
   }
 
@@ -65,8 +65,8 @@ class IntegratedPatternDetectionEngine {
         statistics: {},
         metadata: {
           config_used: this.config,
-          timestamp: new Date().toISOString(),
-        },
+          timestamp: new Date().toISOString()
+        }
       };
 
       // Step 1: SKU Variant Pattern Detection
@@ -135,14 +135,14 @@ class IntegratedPatternDetectionEngine {
 
       return {
         success: true,
-        results,
+        results
       };
     } catch (error) {
-      console.error("Pattern detection failed:", error);
+      console.error('Pattern detection failed:', error);
       return {
         success: false,
         error: error.message,
-        processing_time: Date.now() - startTime,
+        processing_time: Date.now() - startTime
       };
     }
   }
@@ -158,10 +158,10 @@ class IntegratedPatternDetectionEngine {
     const basePatterns = new Map();
 
     products.forEach((product) => {
-      if (processed.has(product.id)) return;
+      if (processed.has(product.id)) {return;}
 
       const sku = this.extractSKU(product);
-      if (!sku) return;
+      if (!sku) {return;}
 
       // Get classification data if available
       const classification = classificationData?.classifications?.get(
@@ -171,7 +171,7 @@ class IntegratedPatternDetectionEngine {
       // Only process if classified as SKU or high confidence
       if (
         classification &&
-        classification.type !== "sku" &&
+        classification.type !== 'sku' &&
         classification.confidence < 0.7
       ) {
         return;
@@ -202,8 +202,8 @@ class IntegratedPatternDetectionEngine {
             products: groupProducts,
             variants: variantAnalysis.variants,
             confidence: variantAnalysis.confidence,
-            pattern_type: "sku_variant",
-            characteristics: variantAnalysis.characteristics,
+            pattern_type: 'sku_variant',
+            characteristics: variantAnalysis.characteristics
           });
 
           // Mark products as processed
@@ -224,20 +224,20 @@ class IntegratedPatternDetectionEngine {
 
     for (let i = 0; i < products.length; i++) {
       const product1 = products[i];
-      if (processed.has(product1.id)) continue;
+      if (processed.has(product1.id)) {continue;}
 
       const similarProducts = [product1];
       processed.add(product1.id);
 
       const name1 = this.extractName(product1);
-      if (!name1) continue;
+      if (!name1) {continue;}
 
       for (let j = i + 1; j < products.length; j++) {
         const product2 = products[j];
-        if (processed.has(product2.id)) continue;
+        if (processed.has(product2.id)) {continue;}
 
         const name2 = this.extractName(product2);
-        if (!name2) continue;
+        if (!name2) {continue;}
 
         const similarity = this.calculateNameSimilarity(name1, name2);
 
@@ -253,9 +253,9 @@ class IntegratedPatternDetectionEngine {
           baseProduct: product1,
           products: similarProducts,
           similarity: this.calculateGroupAverageSimilarity(similarProducts),
-          pattern_type: "name_similarity",
+          pattern_type: 'name_similarity',
           confidence: this.calculateNameSimilarityConfidence(similarProducts),
-          characteristics: this.analyzeNameCharacteristics(similarProducts),
+          characteristics: this.analyzeNameCharacteristics(similarProducts)
         });
       }
     }
@@ -283,9 +283,9 @@ class IntegratedPatternDetectionEngine {
           products: cluster.products,
           centroid: cluster.centroid,
           features: cluster.features,
-          pattern_type: "feature_clustering",
+          pattern_type: 'feature_clustering',
           confidence: cluster.confidence,
-          characteristics: this.analyzeFeatureCharacteristics(cluster),
+          characteristics: this.analyzeFeatureCharacteristics(cluster)
         });
       }
     });
@@ -309,31 +309,31 @@ class IntegratedPatternDetectionEngine {
 
       if (classification) {
         switch (classification.type) {
-          case "sku":
-            skuProducts.push({ product, classification });
-            break;
-          case "barcode":
-            barcodeProducts.push({ product, classification });
-            break;
-          default:
-            unknownProducts.push({ product, classification });
+        case 'sku':
+          skuProducts.push({ product, classification });
+          break;
+        case 'barcode':
+          barcodeProducts.push({ product, classification });
+          break;
+        default:
+          unknownProducts.push({ product, classification });
         }
       }
     });
 
     // Analyze SKU patterns
     if (skuProducts.length > 1) {
-      const skuPatterns = this.analyzeClassificationGroup(skuProducts, "sku");
-      patterns.set("sku_classification_patterns", skuPatterns);
+      const skuPatterns = this.analyzeClassificationGroup(skuProducts, 'sku');
+      patterns.set('sku_classification_patterns', skuPatterns);
     }
 
     // Analyze barcode patterns
     if (barcodeProducts.length > 1) {
       const barcodePatterns = this.analyzeClassificationGroup(
         barcodeProducts,
-        "barcode"
+        'barcode'
       );
-      patterns.set("barcode_classification_patterns", barcodePatterns);
+      patterns.set('barcode_classification_patterns', barcodePatterns);
     }
 
     return patterns;
@@ -350,13 +350,13 @@ class IntegratedPatternDetectionEngine {
 
     products.forEach((product) => {
       const sku = this.extractSKU(product);
-      if (!sku) return;
+      if (!sku) {return;}
 
       // Check if classified as SKU
       const classification = classificationData?.classifications?.get(
         product.id
       );
-      if (classification?.type !== "sku") return;
+      if (classification?.type !== 'sku') {return;}
 
       const hierarchicalPattern = this.extractHierarchicalPattern(sku);
 
@@ -367,7 +367,7 @@ class IntegratedPatternDetectionEngine {
 
         hierarchicalGroups.get(hierarchicalPattern.pattern).push({
           product,
-          hierarchical_data: hierarchicalPattern,
+          hierarchical_data: hierarchicalPattern
         });
       }
     });
@@ -379,9 +379,9 @@ class IntegratedPatternDetectionEngine {
           pattern,
           products: group.map((g) => g.product),
           hierarchy_data: group.map((g) => g.hierarchical_data),
-          pattern_type: "hierarchical",
+          pattern_type: 'hierarchical',
           confidence: this.calculateHierarchicalConfidence(group),
-          characteristics: this.analyzeHierarchicalCharacteristics(group),
+          characteristics: this.analyzeHierarchicalCharacteristics(group)
         });
       }
     });
@@ -407,7 +407,7 @@ class IntegratedPatternDetectionEngine {
       /^(.+)[-_]\d+$/, // name-123, name_123
       /^(.+)[-_][a-z]+$/i, // name-xl, name_red
       /^(.+)[-_]v\d+$/i, // name-v1, name-v2
-      /^(.+)\d{1,3}$/, // name123, name01
+      /^(.+)\d{1,3}$/ // name123, name01
     ];
 
     for (const pattern of patterns) {
@@ -431,7 +431,7 @@ class IntegratedPatternDetectionEngine {
         level1: match[1],
         level2: match[2],
         level3: match[3],
-        full_pattern: sku,
+        full_pattern: sku
       };
     }
 
@@ -440,12 +440,12 @@ class IntegratedPatternDetectionEngine {
 
   extractProductFeatures(product) {
     return {
-      nameLength: (product.name || "").length,
-      skuLength: (this.extractSKU(product) || "").length,
+      nameLength: (product.name || '').length,
+      skuLength: (this.extractSKU(product) || '').length,
       priceRange: this.getPriceRange(product.price),
-      categoryHash: this.hashString(product.category || ""),
-      brandHash: this.hashString(product.brand || ""),
-      nameTokens: (product.name || "").toLowerCase().split(/\s+/),
+      categoryHash: this.hashString(product.category || ''),
+      brandHash: this.hashString(product.brand || ''),
+      nameTokens: (product.name || '').toLowerCase().split(/\s+/)
     };
   }
 
@@ -455,12 +455,12 @@ class IntegratedPatternDetectionEngine {
   }
 
   calculateStringSimilarity(str1, str2) {
-    if (!str1 || !str2) return 0;
+    if (!str1 || !str2) {return 0;}
 
     const longer = str1.length > str2.length ? str1 : str2;
     const shorter = str1.length > str2.length ? str2 : str1;
 
-    if (longer.length === 0) return 1;
+    if (longer.length === 0) {return 1;}
 
     const distance = this.levenshteinDistance(longer, shorter);
     return (longer.length - distance) / longer.length;
@@ -471,8 +471,8 @@ class IntegratedPatternDetectionEngine {
       .fill()
       .map(() => Array(str1.length + 1).fill(0));
 
-    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
-    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+    for (let i = 0; i <= str1.length; i++) {matrix[0][i] = i;}
+    for (let j = 0; j <= str2.length; j++) {matrix[j][0] = j;}
 
     for (let j = 1; j <= str2.length; j++) {
       for (let i = 1; i <= str1.length; i++) {
@@ -490,11 +490,11 @@ class IntegratedPatternDetectionEngine {
 
   getPriceRange(price) {
     const p = parseFloat(price) || 0;
-    if (p === 0) return "no_price";
-    if (p < 10) return "low";
-    if (p < 100) return "medium";
-    if (p < 1000) return "high";
-    return "premium";
+    if (p === 0) {return 'no_price';}
+    if (p < 10) {return 'low';}
+    if (p < 100) {return 'medium';}
+    if (p < 1000) {return 'high';}
+    return 'premium';
   }
 
   hashString(str) {
@@ -510,14 +510,14 @@ class IntegratedPatternDetectionEngine {
   // Placeholder methods for complex analysis (to be implemented)
   analyzeVariantGroup(products, basePattern) {
     return {
-      variants: products.map((p) => ({ product: p, variant_type: "detected" })),
+      variants: products.map((p) => ({ product: p, variant_type: 'detected' })),
       confidence: 0.8,
-      characteristics: { base_pattern: basePattern },
+      characteristics: { base_pattern: basePattern }
     };
   }
 
   calculateGroupAverageSimilarity(products) {
-    if (products.length < 2) return 1;
+    if (products.length < 2) {return 1;}
 
     let totalSimilarity = 0;
     let comparisons = 0;
@@ -547,18 +547,18 @@ class IntegratedPatternDetectionEngine {
     const processed = new Set();
 
     for (let i = 0; i < features.length; i++) {
-      if (processed.has(i)) continue;
+      if (processed.has(i)) {continue;}
 
       const cluster = {
         centroid: features[i],
         products: [products[i]],
         features: [features[i]],
-        confidence: 0.5,
+        confidence: 0.5
       };
 
       // Find similar products
       for (let j = i + 1; j < features.length; j++) {
-        if (processed.has(j)) continue;
+        if (processed.has(j)) {continue;}
 
         const similarity = this.calculateFeatureSimilarity(
           features[i],

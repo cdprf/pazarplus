@@ -1,8 +1,8 @@
-const logger = require("../utils/logger");
-const { PlatformConnection, BackgroundTask, Order } = require("../models");
-const PlatformServiceFactory = require("../modules/order-management/services/platforms/platformServiceFactory");
-const { Op, literal } = require("sequelize");
-const cron = require("node-cron");
+const logger = require('../utils/logger');
+const { PlatformConnection, BackgroundTask, Order } = require('../models');
+const PlatformServiceFactory = require('../modules/order-management/services/platforms/platformServiceFactory');
+const { Op, literal } = require('sequelize');
+const cron = require('node-cron');
 
 /**
  * Platform Operations Controller
@@ -23,21 +23,21 @@ class PlatformOperationsController {
       const { status, platform, limit = 50, offset = 0 } = req.query;
 
       const whereClause = { userId };
-      if (status) whereClause.status = status;
-      if (platform) whereClause.platform = platform;
+      if (status) {whereClause.status = status;}
+      if (platform) {whereClause.platform = platform;}
 
       const tasks = await BackgroundTask.findAndCountAll({
         where: whereClause,
         limit: parseInt(limit),
         offset: parseInt(offset),
-        order: [["createdAt", "DESC"]],
+        order: [['createdAt', 'DESC']],
         include: [
           {
             model: PlatformConnection,
-            as: "platformConnection",
-            attributes: ["id", "name", "platformType", "isActive"],
-          },
-        ],
+            as: 'platformConnection',
+            attributes: ['id', 'name', 'platformType', 'isActive']
+          }
+        ]
       });
 
       res.json({
@@ -45,15 +45,15 @@ class PlatformOperationsController {
         data: {
           tasks: tasks.rows,
           total: tasks.count,
-          activeTasks: Array.from(this.activeTasks.keys()),
-        },
+          activeTasks: Array.from(this.activeTasks.keys())
+        }
       });
     } catch (error) {
-      logger.error("Error getting background tasks:", error);
+      logger.error('Error getting background tasks:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get background tasks",
-        error: error.message,
+        message: 'Failed to get background tasks',
+        error: error.message
       });
     }
   }
@@ -66,20 +66,20 @@ class PlatformOperationsController {
       const { id: userId } = req.user;
       const {
         platformConnectionId,
-        mode = "auto", // 'auto' or 'duration'
+        mode = 'auto', // 'auto' or 'duration'
         duration = 30, // days for duration mode
-        stopAtFirst = true, // stop when reaching first orders on platform
+        stopAtFirst = true // stop when reaching first orders on platform
       } = req.body;
 
       // Validate platform connection
       const connection = await PlatformConnection.findOne({
-        where: { id: platformConnectionId, userId, isActive: true },
+        where: { id: platformConnectionId, userId, isActive: true }
       });
 
       if (!connection) {
         return res.status(404).json({
           success: false,
-          message: "Platform connection not found or inactive",
+          message: 'Platform connection not found or inactive'
         });
       }
 
@@ -88,15 +88,15 @@ class PlatformOperationsController {
         where: {
           userId,
           platformConnectionId,
-          status: ["pending", "running"],
-          taskType: "order_fetching",
-        },
+          status: ['pending', 'running'],
+          taskType: 'order_fetching'
+        }
       });
 
       if (existingTask) {
         return res.status(400).json({
           success: false,
-          message: "Order fetching task is already running for this platform",
+          message: 'Order fetching task is already running for this platform'
         });
       }
 
@@ -106,69 +106,69 @@ class PlatformOperationsController {
         platformConnectionId,
         mode,
         duration,
-        userId,
+        userId
       });
 
-      const BackgroundTaskService = require("../services/BackgroundTaskService");
+      const BackgroundTaskService = require('../services/BackgroundTaskService');
 
       // Ensure TaskQueueManager is running (will be a no-op if already running)
-      const { taskQueueManager } = require("../services/TaskQueueManager");
+      const { taskQueueManager } = require('../services/TaskQueueManager');
       if (!taskQueueManager.getStatus().isProcessing) {
-        logger.info("Starting TaskQueueManager as it was not running");
+        logger.info('Starting TaskQueueManager as it was not running');
         taskQueueManager.start();
       }
 
       const task = await BackgroundTaskService.createTask({
         userId,
-        taskType: "order_fetching",
-        priority: "normal",
+        taskType: 'order_fetching',
+        priority: 'normal',
         config: {
           mode,
           duration,
           stopAtFirst,
           startDate: new Date(),
           batchSize: 100,
-          maxOrders: mode === "auto" ? 1000 : 5000, // Limit for auto mode
+          maxOrders: mode === 'auto' ? 1000 : 5000 // Limit for auto mode
         },
         platformConnectionId,
         metadata: {
-          source: "platform_operations",
-          automaticMode: mode === "auto",
-          createdBy: "platform_operations_controller",
-          createdAt: new Date(),
-        },
+          source: 'platform_operations',
+          automaticMode: mode === 'auto',
+          createdBy: 'platform_operations_controller',
+          createdAt: new Date()
+        }
       });
 
       // Add initial logs to task immediately
       await BackgroundTaskService.addLog(
         task.id,
-        "info",
+        'info',
         `Order fetching task created via Platform Operations UI`,
         {
           mode,
           duration,
           stopAtFirst,
-          platformType: connection.platformType,
+          platformType: connection.platformType
         }
       );
 
       logger.info(`Order fetching task created successfully`, {
         taskId: task.id,
         platformConnectionId,
-        mode,
+        mode
       });
 
       res.json({
         success: true,
-        message: "Background order fetching task started",
-        data: { taskId: task.id },
+        message: 'Background order fetching task started',
+        data: { taskId: task.id }
       });
     } catch (error) {
-      logger.error("Error starting background order fetching:", error);
+      logger.error('Error starting background order fetching:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to start background order fetching",
-        error: error.message,
+        message: 'Failed to start background order fetching',
+        error: error.message
       });
     }
   }
@@ -182,20 +182,20 @@ class PlatformOperationsController {
       const { id: userId } = req.user;
 
       const task = await BackgroundTask.findOne({
-        where: { id: taskId, userId },
+        where: { id: taskId, userId }
       });
 
       if (!task) {
         return res.status(404).json({
           success: false,
-          message: "Task not found",
+          message: 'Task not found'
         });
       }
 
       // Update task status
       await task.update({
-        status: "stopped",
-        stoppedAt: new Date(),
+        status: 'stopped',
+        stoppedAt: new Date()
       });
 
       // Stop the active task
@@ -213,14 +213,14 @@ class PlatformOperationsController {
 
       res.json({
         success: true,
-        message: "Background task stopped",
+        message: 'Background task stopped'
       });
     } catch (error) {
-      logger.error("Error stopping background task:", error);
+      logger.error('Error stopping background task:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to stop background task",
-        error: error.message,
+        message: 'Failed to stop background task',
+        error: error.message
       });
     }
   }
@@ -234,19 +234,19 @@ class PlatformOperationsController {
 
       const connections = await PlatformConnection.findAll({
         where: { userId, isActive: true },
-        attributes: ["id", "name", "platformType", "isActive", "createdAt"],
+        attributes: ['id', 'name', 'platformType', 'isActive', 'createdAt']
       });
 
       res.json({
         success: true,
-        data: connections,
+        data: connections
       });
     } catch (error) {
-      logger.error("Error getting platform connections:", error);
+      logger.error('Error getting platform connections:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get platform connections",
-        error: error.message,
+        message: 'Failed to get platform connections',
+        error: error.message
       });
     }
   }
@@ -261,37 +261,37 @@ class PlatformOperationsController {
 
       const whereClause = { userId };
       if (platformConnectionId)
-        whereClause.platformConnectionId = platformConnectionId;
+      {whereClause.platformConnectionId = platformConnectionId;}
 
       // Get oldest and newest orders
       const orderStats = await Order.findAll({
         where: whereClause,
         attributes: [
-          [literal('MIN("Order"."orderDate")'), "oldestOrder"],
-          [literal('MAX("Order"."orderDate")'), "newestOrder"],
-          [literal("COUNT(*)"), "totalOrders"],
+          [literal('MIN("Order"."orderDate")'), 'oldestOrder'],
+          [literal('MAX("Order"."orderDate")'), 'newestOrder'],
+          [literal('COUNT(*)'), 'totalOrders']
         ],
         include: [
           {
             model: PlatformConnection,
-            as: "platformConnection",
-            attributes: ["platformType"],
-          },
+            as: 'platformConnection',
+            attributes: ['platformType']
+          }
         ],
-        group: ["platformConnection.platformType"],
-        raw: true,
+        group: ['platformConnection.platformType'],
+        raw: true
       });
 
       res.json({
         success: true,
-        data: orderStats,
+        data: orderStats
       });
     } catch (error) {
-      logger.error("Error getting order statistics:", error);
+      logger.error('Error getting order statistics:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to get order statistics",
-        error: error.message,
+        message: 'Failed to get order statistics',
+        error: error.message
       });
     }
   }
@@ -314,7 +314,7 @@ class PlatformOperationsController {
         `Starting order fetching task for ${connection.platformType}`,
         {
           taskId,
-          connectionId: connection.id,
+          connectionId: connection.id
         }
       );
 
@@ -326,7 +326,7 @@ class PlatformOperationsController {
       await platformService.initialize();
 
       const config = task.config;
-      let currentDate = new Date();
+      const currentDate = new Date();
       let monthsProcessed = 0;
       let totalOrdersProcessed = 0;
       let hasReachedFirstOrders = false;
@@ -346,7 +346,7 @@ class PlatformOperationsController {
           const result = await platformService.fetchOrders({
             startDate: startDate.toISOString(),
             endDate: endDate.toISOString(),
-            limit: 100,
+            limit: 100
           });
 
           if (result.success && result.data && result.data.length > 0) {
@@ -364,9 +364,9 @@ class PlatformOperationsController {
                   ...task.progress,
                   currentMonth: monthsProcessed + 1,
                   ordersProcessed: totalOrdersProcessed,
-                  lastProcessedDate: startDate.toISOString(),
+                  lastProcessedDate: startDate.toISOString()
                 },
-                updatedAt: new Date(),
+                updatedAt: new Date()
               });
 
               logger.info(
@@ -387,7 +387,7 @@ class PlatformOperationsController {
           monthsProcessed++;
 
           // Check if we should stop based on mode
-          if (config.mode === "duration") {
+          if (config.mode === 'duration') {
             const maxMonths = Math.ceil(config.duration / 30);
             if (monthsProcessed >= maxMonths) {
               break;
@@ -411,30 +411,30 @@ class PlatformOperationsController {
             month: monthsProcessed + 1,
             date: startDate.toISOString(),
             error: monthError.message,
-            timestamp: new Date(),
+            timestamp: new Date()
           });
 
           await task.update({
-            progress: updatedProgress,
+            progress: updatedProgress
           });
         }
       }
 
       // Mark task as completed
       await task.update({
-        status: taskController.stop ? "stopped" : "completed",
+        status: taskController.stop ? 'stopped' : 'completed',
         completedAt: new Date(),
         progress: {
           ...task.progress,
           totalMonths: monthsProcessed,
-          ordersProcessed: totalOrdersProcessed,
-        },
+          ordersProcessed: totalOrdersProcessed
+        }
       });
 
       logger.info(`Order fetching task completed`, {
         taskId,
         monthsProcessed,
-        totalOrdersProcessed,
+        totalOrdersProcessed
       });
     } catch (error) {
       logger.error(`Error in order fetching task ${taskId}:`, error);
@@ -442,9 +442,9 @@ class PlatformOperationsController {
       // Mark task as failed
       await BackgroundTask.update(
         {
-          status: "failed",
+          status: 'failed',
           error: error.message,
-          completedAt: new Date(),
+          completedAt: new Date()
         },
         { where: { id: taskId } }
       );

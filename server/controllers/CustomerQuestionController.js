@@ -1,9 +1,9 @@
 // Import necessary modules
-const { Op } = require("sequelize");
-const { CustomerQuestion, ReplyTemplate } = require("../models");
-const CustomerQuestionService = require("../services/CustomerQuestionService");
-const { validationResult } = require("express-validator");
-const debug = require("debug")("pazar:controller:questions");
+const { Op } = require('sequelize');
+const { CustomerQuestion, ReplyTemplate } = require('../models');
+const CustomerQuestionService = require('../services/CustomerQuestionService');
+const { validationResult } = require('express-validator');
+const debug = require('debug')('pazar:controller:questions');
 
 class CustomerQuestionController {
   constructor() {
@@ -21,16 +21,16 @@ class CustomerQuestionController {
 
     try {
       // Get platform configurations from database
-      debug("Loading platform configurations from database...");
+      debug('Loading platform configurations from database...');
       const platformConfigs = await this.questionService.loadPlatformConfigs();
-      debug("Platform configurations loaded:", Object.keys(platformConfigs));
+      debug('Platform configurations loaded:', Object.keys(platformConfigs));
 
       await this.questionService.initialize(platformConfigs);
-      debug("Customer question service initialized successfully");
+      debug('Customer question service initialized successfully');
       this.initialized = true;
       return true;
     } catch (error) {
-      debug("Error initializing customer question service:", error.message);
+      debug('Error initializing customer question service:', error.message);
       // Don't throw error - allow service to work without platform configs
       this.initialized = true;
       return false;
@@ -41,7 +41,7 @@ class CustomerQuestionController {
    * Get questions with filters and pagination
    */
   async getQuestions(req, res) {
-    debug("Getting questions with filters and pagination");
+    debug('Getting questions with filters and pagination');
     try {
       await this.ensureInitialized();
 
@@ -49,8 +49,8 @@ class CustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -64,8 +64,8 @@ class CustomerQuestionController {
         end_date,
         page = 1,
         limit = 20,
-        sort_by = "creation_date",
-        sort_order = "DESC",
+        sort_by = 'creation_date',
+        sort_order = 'DESC'
       } = req.query;
 
       const options = {
@@ -79,7 +79,7 @@ class CustomerQuestionController {
         page: parseInt(page),
         limit: parseInt(limit),
         sortBy: sort_by,
-        sortOrder: sort_order,
+        sortOrder: sort_order
       };
 
       const result = await this.questionService.getQuestions(options);
@@ -87,14 +87,14 @@ class CustomerQuestionController {
       res.json({
         success: true,
         data: result.questions,
-        pagination: result.pagination,
+        pagination: result.pagination
       });
     } catch (error) {
-      debug("Error getting questions:", error.message);
+      debug('Error getting questions:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get questions",
-        error: error.message,
+        message: 'Failed to get questions',
+        error: error.message
       });
     }
   }
@@ -109,22 +109,22 @@ class CustomerQuestionController {
 
       res.json({
         success: true,
-        data: question,
+        data: question
       });
     } catch (error) {
-      debug("Error getting question by ID:", error.message);
+      debug('Error getting question by ID:', error.message);
 
-      if (error.message === "Question not found") {
+      if (error.message === 'Question not found') {
         return res.status(404).json({
           success: false,
-          message: "Question not found",
+          message: 'Question not found'
         });
       }
 
       res.status(500).json({
         success: false,
-        message: "Failed to get question",
-        error: error.message,
+        message: 'Failed to get question',
+        error: error.message
       });
     }
   }
@@ -140,20 +140,20 @@ class CustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
       const { id } = req.params;
-      const { text, type = "answer", template_id, attachments } = req.body;
+      const { text, type = 'answer', template_id, attachments } = req.body;
       const userId = req.user?.id || null; // Handle case where user is not authenticated
 
       const replyData = {
         text,
         type,
         template_id: template_id ? parseInt(template_id) : undefined,
-        attachments,
+        attachments
       };
 
       const reply = await this.questionService.replyToQuestion(
@@ -164,15 +164,15 @@ class CustomerQuestionController {
 
       res.json({
         success: true,
-        message: "Reply sent successfully",
-        data: reply,
+        message: 'Reply sent successfully',
+        data: reply
       });
     } catch (error) {
-      debug("Error replying to question:", error.message);
+      debug('Error replying to question:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to send reply",
-        error: error.message,
+        message: 'Failed to send reply',
+        error: error.message
       });
     }
   }
@@ -187,25 +187,25 @@ class CustomerQuestionController {
       const { platforms, start_date, end_date } = req.body;
 
       const options = {};
-      if (start_date) options.startDate = new Date(start_date);
-      if (end_date) options.endDate = new Date(end_date);
-      if (platforms) options.platforms = platforms;
+      if (start_date) {options.startDate = new Date(start_date);}
+      if (end_date) {options.endDate = new Date(end_date);}
+      if (platforms) {options.platforms = platforms;}
 
-      debug("Starting question sync with options:", options);
+      debug('Starting question sync with options:', options);
 
       const result = await this.questionService.syncAllQuestions(options);
 
       res.json({
         success: result.success,
         message: `Synced ${result.totalSynced} questions`,
-        data: result,
+        data: result
       });
     } catch (error) {
-      debug("Error syncing questions:", error.message);
+      debug('Error syncing questions:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to sync questions",
-        error: error.message,
+        message: 'Failed to sync questions',
+        error: error.message
       });
     }
   }
@@ -220,21 +220,21 @@ class CustomerQuestionController {
       const options = {
         platform,
         startDate: start_date ? new Date(start_date) : undefined,
-        endDate: end_date ? new Date(end_date) : undefined,
+        endDate: end_date ? new Date(end_date) : undefined
       };
 
       const stats = await this.questionService.getQuestionStats(options);
 
       res.json({
         success: true,
-        data: stats,
+        data: stats
       });
     } catch (error) {
-      debug("Error getting question stats:", error.message);
+      debug('Error getting question stats:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get question statistics",
-        error: error.message,
+        message: 'Failed to get question statistics',
+        error: error.message
       });
     }
   }
@@ -250,14 +250,14 @@ class CustomerQuestionController {
 
       res.json({
         success: true,
-        data: templates,
+        data: templates
       });
     } catch (error) {
-      debug("Error getting reply templates:", error.message);
+      debug('Error getting reply templates:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get reply templates",
-        error: error.message,
+        message: 'Failed to get reply templates',
+        error: error.message
       });
     }
   }
@@ -271,8 +271,8 @@ class CustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -287,16 +287,16 @@ class CustomerQuestionController {
       res.json({
         success: true,
         message: templateData.id
-          ? "Template updated successfully"
-          : "Template created successfully",
-        data: template,
+          ? 'Template updated successfully'
+          : 'Template created successfully',
+        data: template
       });
     } catch (error) {
-      debug("Error saving reply template:", error.message);
+      debug('Error saving reply template:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to save reply template",
-        error: error.message,
+        message: 'Failed to save reply template',
+        error: error.message
       });
     }
   }
@@ -312,7 +312,7 @@ class CustomerQuestionController {
       if (!template) {
         return res.status(404).json({
           success: false,
-          message: "Template not found",
+          message: 'Template not found'
         });
       }
 
@@ -320,14 +320,14 @@ class CustomerQuestionController {
 
       res.json({
         success: true,
-        message: "Template deleted successfully",
+        message: 'Template deleted successfully'
       });
     } catch (error) {
-      debug("Error deleting reply template:", error.message);
+      debug('Error deleting reply template:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to delete reply template",
-        error: error.message,
+        message: 'Failed to delete reply template',
+        error: error.message
       });
     }
   }
@@ -350,14 +350,14 @@ class CustomerQuestionController {
 
       res.json({
         success: true,
-        data: suggestions,
+        data: suggestions
       });
     } catch (error) {
-      debug("Error getting template suggestions:", error.message);
+      debug('Error getting template suggestions:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get template suggestions",
-        error: error.message,
+        message: 'Failed to get template suggestions',
+        error: error.message
       });
     }
   }
@@ -374,25 +374,25 @@ class CustomerQuestionController {
       if (!question) {
         return res.status(404).json({
           success: false,
-          message: "Question not found",
+          message: 'Question not found'
         });
       }
 
       await question.update({
-        assigned_to: assigned_to ? parseInt(assigned_to) : null,
+        assigned_to: assigned_to ? parseInt(assigned_to) : null
       });
 
       res.json({
         success: true,
-        message: "Question assigned successfully",
-        data: question,
+        message: 'Question assigned successfully',
+        data: question
       });
     } catch (error) {
-      debug("Error assigning question:", error.message);
+      debug('Error assigning question:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to assign question",
-        error: error.message,
+        message: 'Failed to assign question',
+        error: error.message
       });
     }
   }
@@ -409,7 +409,7 @@ class CustomerQuestionController {
       if (!question) {
         return res.status(404).json({
           success: false,
-          message: "Question not found",
+          message: 'Question not found'
         });
       }
 
@@ -417,15 +417,15 @@ class CustomerQuestionController {
 
       res.json({
         success: true,
-        message: "Question priority updated successfully",
-        data: question,
+        message: 'Question priority updated successfully',
+        data: question
       });
     } catch (error) {
-      debug("Error updating question priority:", error.message);
+      debug('Error updating question priority:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to update question priority",
-        error: error.message,
+        message: 'Failed to update question priority',
+        error: error.message
       });
     }
   }
@@ -443,11 +443,11 @@ class CustomerQuestionController {
       if (!question) {
         return res.status(404).json({
           success: false,
-          message: "Question not found",
+          message: 'Question not found'
         });
       }
 
-      const currentNotes = question.internal_notes || "";
+      const currentNotes = question.internal_notes || '';
       const timestamp = new Date().toISOString();
       const userName = req.user.name || req.user.email;
       const newNote = `[${timestamp}] ${userName}: ${note}`;
@@ -459,15 +459,15 @@ class CustomerQuestionController {
 
       res.json({
         success: true,
-        message: "Internal note added successfully",
-        data: question,
+        message: 'Internal note added successfully',
+        data: question
       });
     } catch (error) {
-      debug("Error adding internal note:", error.message);
+      debug('Error adding internal note:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to add internal note",
-        error: error.message,
+        message: 'Failed to add internal note',
+        error: error.message
       });
     }
   }
@@ -486,24 +486,24 @@ class CustomerQuestionController {
       // Get stats for the period
       const stats = await this.questionService.getQuestionStats({
         startDate,
-        endDate,
+        endDate
       });
 
       // Get urgent questions
       const urgentQuestions = await this.questionService.getQuestions({
-        priority: "urgent",
-        status: "WAITING_FOR_ANSWER",
-        limit: 10,
+        priority: 'urgent',
+        status: 'WAITING_FOR_ANSWER',
+        limit: 10
       });
 
       // Get overdue questions (expire_date passed)
       const overdueQuestions = await CustomerQuestion.findAll({
         where: {
-          status: "WAITING_FOR_ANSWER",
-          expire_date: { [Op.lt]: new Date() },
+          status: 'WAITING_FOR_ANSWER',
+          expire_date: { [Op.lt]: new Date() }
         },
         limit: 10,
-        order: [["expire_date", "ASC"]],
+        order: [['expire_date', 'ASC']]
       });
 
       res.json({
@@ -515,16 +515,16 @@ class CustomerQuestionController {
           summary: {
             totalQuestions: stats.totalQuestions,
             pendingCount: urgentQuestions.pagination.totalItems,
-            overdueCount: overdueQuestions.length,
-          },
-        },
+            overdueCount: overdueQuestions.length
+          }
+        }
       });
     } catch (error) {
-      debug("Error getting dashboard data:", error.message);
+      debug('Error getting dashboard data:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get dashboard data",
-        error: error.message,
+        message: 'Failed to get dashboard data',
+        error: error.message
       });
     }
   }
@@ -538,14 +538,14 @@ class CustomerQuestionController {
       const {
         page = 1,
         limit = 10,
-        sort_by = "creation_date",
-        sort_order = "DESC",
+        sort_by = 'creation_date',
+        sort_order = 'DESC'
       } = req.query;
 
       if (!email) {
         return res.status(400).json({
           success: false,
-          message: "Customer email is required",
+          message: 'Customer email is required'
         });
       }
 
@@ -554,7 +554,7 @@ class CustomerQuestionController {
         page: parseInt(page),
         limit: parseInt(limit),
         sortBy: sort_by,
-        sortOrder: sort_order,
+        sortOrder: sort_order
       };
 
       const result = await this.questionService.getQuestions(options);
@@ -562,14 +562,14 @@ class CustomerQuestionController {
       res.json({
         success: true,
         data: result.questions,
-        pagination: result.pagination,
+        pagination: result.pagination
       });
     } catch (error) {
-      debug("Error getting questions by customer:", error.message);
+      debug('Error getting questions by customer:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get customer questions",
-        error: error.message,
+        message: 'Failed to get customer questions',
+        error: error.message
       });
     }
   }

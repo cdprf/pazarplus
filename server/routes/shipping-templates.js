@@ -1,8 +1,8 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const shippingTemplatesController = require("../controllers/shipping-templates-controller");
-const { auth } = require("../middleware/auth");
-const { body, param } = require("express-validator");
+const shippingTemplatesController = require('../controllers/shipping-templates-controller');
+const { auth } = require('../middleware/auth');
+const { body, param } = require('express-validator');
 
 // Apply authentication middleware
 router.use(auth);
@@ -23,7 +23,7 @@ router.use(auth);
  *       500:
  *         description: Server error
  */
-router.get("/default", (req, res) =>
+router.get('/default', (req, res) =>
   shippingTemplatesController.getDefaultTemplate(req, res)
 );
 
@@ -55,7 +55,7 @@ router.get("/default", (req, res) =>
  *       500:
  *         description: Server error
  */
-router.post("/default", body("templateId").optional().isString(), (req, res) =>
+router.post('/default', body('templateId').optional().isString(), (req, res) =>
   shippingTemplatesController.setDefaultTemplate(req, res)
 );
 
@@ -95,9 +95,9 @@ router.post("/default", body("templateId").optional().isString(), (req, res) =>
  *         description: Server error
  */
 router.post(
-  "/generate-slip",
-  body("orderId").isInt().withMessage("Order ID must be an integer"),
-  body("templateId").optional().isString(),
+  '/generate-slip',
+  body('orderId').isInt().withMessage('Order ID must be an integer'),
+  body('templateId').optional().isString(),
   (req, res) => shippingTemplatesController.generatePDF(req, res)
 );
 
@@ -137,9 +137,9 @@ router.post(
  *         description: Server error
  */
 router.post(
-  "/generate-pdf",
-  body("orderId").notEmpty().withMessage("Order ID is required"),
-  body("templateId").optional().isString(),
+  '/generate-pdf',
+  body('orderId').notEmpty().withMessage('Order ID is required'),
+  body('templateId').optional().isString(),
   (req, res) => {
     return shippingTemplatesController.generatePDF(req, res);
   }
@@ -161,7 +161,7 @@ router.post(
  *       500:
  *         description: Server error
  */
-router.get("/", (req, res) =>
+router.get('/', (req, res) =>
   shippingTemplatesController.getTemplates(req, res)
 );
 
@@ -191,8 +191,8 @@ router.get("/", (req, res) =>
  *         description: Server error
  */
 router.get(
-  "/:id",
-  param("id").notEmpty().withMessage("Template ID is required"),
+  '/:id',
+  param('id').notEmpty().withMessage('Template ID is required'),
   (req, res) => shippingTemplatesController.getTemplate(req, res)
 );
 
@@ -245,13 +245,13 @@ router.get(
  *         description: Server error
  */
 router.post(
-  "/",
-  body("name").notEmpty().withMessage("Template name is required"),
-  body("elements")
+  '/',
+  body('name').notEmpty().withMessage('Template name is required'),
+  body('elements')
     .optional()
     .isArray()
-    .withMessage("Elements must be an array"),
-  body("config").optional().isObject().withMessage("Config must be an object"),
+    .withMessage('Elements must be an array'),
+  body('config').optional().isObject().withMessage('Config must be an object'),
   (req, res) => shippingTemplatesController.saveTemplate(req, res)
 );
 
@@ -300,17 +300,17 @@ router.post(
  *         description: Server error
  */
 router.put(
-  "/:id",
-  param("id").notEmpty().withMessage("Template ID is required"),
-  body("name")
+  '/:id',
+  param('id').notEmpty().withMessage('Template ID is required'),
+  body('name')
     .optional()
     .notEmpty()
-    .withMessage("Template name cannot be empty"),
-  body("elements")
+    .withMessage('Template name cannot be empty'),
+  body('elements')
     .optional()
     .isArray()
-    .withMessage("Elements must be an array"),
-  body("config").optional().isObject().withMessage("Config must be an object"),
+    .withMessage('Elements must be an array'),
+  body('config').optional().isObject().withMessage('Config must be an object'),
   (req, res) => {
     // For PUT requests, add the ID from params to the body
     req.body.id = req.params.id;
@@ -344,8 +344,8 @@ router.put(
  *         description: Server error
  */
 router.delete(
-  "/:id",
-  param("id").notEmpty().withMessage("Template ID is required"),
+  '/:id',
+  param('id').notEmpty().withMessage('Template ID is required'),
   (req, res) => shippingTemplatesController.deleteTemplate(req, res)
 );
 
@@ -389,10 +389,10 @@ router.delete(
  *         description: Server error
  */
 router.post(
-  "/link-order",
-  body("orderId").notEmpty().withMessage("Order ID is required"),
-  body("templateId").notEmpty().withMessage("Template ID is required"),
-  body("autoMap").optional().isBoolean(),
+  '/link-order',
+  body('orderId').notEmpty().withMessage('Order ID is required'),
+  body('templateId').notEmpty().withMessage('Template ID is required'),
+  body('autoMap').optional().isBoolean(),
   (req, res) => shippingTemplatesController.linkOrderTemplate(req, res)
 );
 

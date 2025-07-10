@@ -1,6 +1,6 @@
 // Simplified Customer Question Controller without async initialization
-const { validationResult } = require("express-validator");
-const debug = require("debug")("pazar:controller:questions");
+const { validationResult } = require('express-validator');
+const debug = require('debug')('pazar:controller:questions');
 
 class SimpleCustomerQuestionController {
   constructor() {
@@ -11,16 +11,16 @@ class SimpleCustomerQuestionController {
   async getQuestions(req, res) {
     try {
       // Lazy load models only when needed
-      const { CustomerQuestion } = require("../models");
+      const { CustomerQuestion } = require('../models');
 
-      debug("Getting questions with filters and pagination");
+      debug('Getting questions with filters and pagination');
 
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -32,15 +32,15 @@ class SimpleCustomerQuestionController {
           page: 1,
           limit: 20,
           totalItems: 0,
-          totalPages: 0,
-        },
+          totalPages: 0
+        }
       });
     } catch (error) {
-      debug("Error getting questions:", error.message);
+      debug('Error getting questions:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get questions",
-        error: error.message,
+        message: 'Failed to get questions',
+        error: error.message
       });
     }
   }
@@ -56,15 +56,15 @@ class SimpleCustomerQuestionController {
           page: 1,
           limit: 10,
           totalItems: 0,
-          totalPages: 0,
-        },
+          totalPages: 0
+        }
       });
     } catch (error) {
-      debug("Error getting questions by customer:", error.message);
+      debug('Error getting questions by customer:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get questions by customer",
-        error: error.message,
+        message: 'Failed to get questions by customer',
+        error: error.message
       });
     }
   }
@@ -73,15 +73,15 @@ class SimpleCustomerQuestionController {
     try {
       res.json({
         success: true,
-        message: "Sync functionality will be implemented",
-        data: { totalSynced: 0 },
+        message: 'Sync functionality will be implemented',
+        data: { totalSynced: 0 }
       });
     } catch (error) {
-      debug("Error syncing questions:", error.message);
+      debug('Error syncing questions:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to sync questions",
-        error: error.message,
+        message: 'Failed to sync questions',
+        error: error.message
       });
     }
   }
@@ -94,15 +94,15 @@ class SimpleCustomerQuestionController {
           totalQuestions: 0,
           byStatus: {},
           byPlatform: {},
-          byPriority: {},
-        },
+          byPriority: {}
+        }
       });
     } catch (error) {
-      debug("Error getting question stats:", error.message);
+      debug('Error getting question stats:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get question stats",
-        error: error.message,
+        message: 'Failed to get question stats',
+        error: error.message
       });
     }
   }
@@ -118,16 +118,16 @@ class SimpleCustomerQuestionController {
           summary: {
             totalQuestions: 0,
             pendingCount: 0,
-            overdueCount: 0,
-          },
-        },
+            overdueCount: 0
+          }
+        }
       });
     } catch (error) {
-      debug("Error getting dashboard data:", error.message);
+      debug('Error getting dashboard data:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get dashboard data",
-        error: error.message,
+        message: 'Failed to get dashboard data',
+        error: error.message
       });
     }
   }
@@ -136,14 +136,14 @@ class SimpleCustomerQuestionController {
     try {
       res.json({
         success: true,
-        data: [],
+        data: []
       });
     } catch (error) {
-      debug("Error getting reply templates:", error.message);
+      debug('Error getting reply templates:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get reply templates",
-        error: error.message,
+        message: 'Failed to get reply templates',
+        error: error.message
       });
     }
   }
@@ -152,14 +152,14 @@ class SimpleCustomerQuestionController {
     try {
       res.json({
         success: true,
-        message: "Template save functionality will be implemented",
+        message: 'Template save functionality will be implemented'
       });
     } catch (error) {
-      debug("Error saving reply template:", error.message);
+      debug('Error saving reply template:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to save reply template",
-        error: error.message,
+        message: 'Failed to save reply template',
+        error: error.message
       });
     }
   }
@@ -168,14 +168,14 @@ class SimpleCustomerQuestionController {
     try {
       res.json({
         success: true,
-        message: "Template deleted successfully",
+        message: 'Template deleted successfully'
       });
     } catch (error) {
-      debug("Error deleting reply template:", error.message);
+      debug('Error deleting reply template:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to delete reply template",
-        error: error.message,
+        message: 'Failed to delete reply template',
+        error: error.message
       });
     }
   }
@@ -184,14 +184,14 @@ class SimpleCustomerQuestionController {
     try {
       res.json({
         success: true,
-        data: null,
+        data: null
       });
     } catch (error) {
-      debug("Error getting question by ID:", error.message);
+      debug('Error getting question by ID:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get question",
-        error: error.message,
+        message: 'Failed to get question',
+        error: error.message
       });
     }
   }
@@ -200,14 +200,14 @@ class SimpleCustomerQuestionController {
     try {
       res.json({
         success: true,
-        message: "Reply functionality will be implemented",
+        message: 'Reply functionality will be implemented'
       });
     } catch (error) {
-      debug("Error replying to question:", error.message);
+      debug('Error replying to question:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to reply to question",
-        error: error.message,
+        message: 'Failed to reply to question',
+        error: error.message
       });
     }
   }
@@ -216,14 +216,14 @@ class SimpleCustomerQuestionController {
     try {
       res.json({
         success: true,
-        data: [],
+        data: []
       });
     } catch (error) {
-      debug("Error getting template suggestions:", error.message);
+      debug('Error getting template suggestions:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get template suggestions",
-        error: error.message,
+        message: 'Failed to get template suggestions',
+        error: error.message
       });
     }
   }
@@ -232,14 +232,14 @@ class SimpleCustomerQuestionController {
     try {
       res.json({
         success: true,
-        message: "Question assignment functionality will be implemented",
+        message: 'Question assignment functionality will be implemented'
       });
     } catch (error) {
-      debug("Error assigning question:", error.message);
+      debug('Error assigning question:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to assign question",
-        error: error.message,
+        message: 'Failed to assign question',
+        error: error.message
       });
     }
   }
@@ -248,14 +248,14 @@ class SimpleCustomerQuestionController {
     try {
       res.json({
         success: true,
-        message: "Priority update functionality will be implemented",
+        message: 'Priority update functionality will be implemented'
       });
     } catch (error) {
-      debug("Error updating question priority:", error.message);
+      debug('Error updating question priority:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to update question priority",
-        error: error.message,
+        message: 'Failed to update question priority',
+        error: error.message
       });
     }
   }
@@ -264,14 +264,14 @@ class SimpleCustomerQuestionController {
     try {
       res.json({
         success: true,
-        message: "Internal note functionality will be implemented",
+        message: 'Internal note functionality will be implemented'
       });
     } catch (error) {
-      debug("Error adding internal note:", error.message);
+      debug('Error adding internal note:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to add internal note",
-        error: error.message,
+        message: 'Failed to add internal note',
+        error: error.message
       });
     }
   }

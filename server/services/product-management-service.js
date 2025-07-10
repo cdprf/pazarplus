@@ -4,16 +4,16 @@
  * Consolidated from enhanced-product-management-service.js
  */
 
-const logger = require("../utils/logger");
+const logger = require('../utils/logger');
 const {
   MainProduct,
   PlatformVariant,
   PlatformTemplate,
   PlatformData,
-  sequelize,
-} = require("../models");
-const { Op } = require("sequelize");
-const StockService = require("./stock-service");
+  sequelize
+} = require('../models');
+const { Op } = require('sequelize');
+const StockService = require('./stock-service');
 // const SKUSystemManager = require("../../sku-system-manager"); // Temporarily disabled - missing module
 
 class ProductManagementService {
@@ -44,8 +44,8 @@ class ProductManagementService {
           stockCodePattern: patternInfo.pattern,
           patternConfidence: patternInfo.confidence,
           userId,
-          status: productData.status || "draft",
-          hasVariants: false,
+          status: productData.status || 'draft',
+          hasVariants: false
         },
         { transaction }
       );
@@ -55,7 +55,7 @@ class ProductManagementService {
         await StockService.updateStock(
           mainProduct.id,
           productData.stockQuantity,
-          "Initial stock",
+          'Initial stock',
           userId,
           { initialCreation: true }
         );
@@ -67,7 +67,7 @@ class ProductManagementService {
       return mainProduct;
     } catch (error) {
       await transaction.rollback();
-      logger.error("Error creating main product:", error);
+      logger.error('Error creating main product:', error);
       throw error;
     }
   }
@@ -80,10 +80,10 @@ class ProductManagementService {
 
     try {
       const mainProduct = await MainProduct.findByPk(mainProductId, {
-        transaction,
+        transaction
       });
       if (!mainProduct) {
-        throw new Error("Main product not found");
+        throw new Error('Main product not found');
       }
 
       // Generate platform SKU if not provided
@@ -98,7 +98,7 @@ class ProductManagementService {
       let template = null;
       if (variantData.templateId) {
         template = await PlatformTemplate.findByPk(variantData.templateId, {
-          transaction,
+          transaction
         });
       } else {
         template = await PlatformTemplate.findBestTemplate(
@@ -114,7 +114,7 @@ class ProductManagementService {
           mainProductId,
           platformSku,
           templateId: template?.id,
-          status: variantData.status || "draft",
+          status: variantData.status || 'draft'
         },
         { transaction }
       );
@@ -137,7 +137,7 @@ class ProductManagementService {
       return platformVariant;
     } catch (error) {
       await transaction.rollback();
-      logger.error("Error creating platform variant:", error);
+      logger.error('Error creating platform variant:', error);
       throw error;
     }
   }
@@ -160,7 +160,7 @@ class ProductManagementService {
       const fallbackSKU = this.generateFallbackSKU(productData);
       return { sku: fallbackSKU, isGenerated: true };
     } catch (error) {
-      logger.error("Error generating base SKU:", error);
+      logger.error('Error generating base SKU:', error);
       // Fallback to simple generation
       const timestamp = Date.now().toString().slice(-6);
       return `PROD-${timestamp}`;
@@ -171,8 +171,8 @@ class ProductManagementService {
    * Generate a simple fallback SKU when the SKU manager is not available
    */
   generateFallbackSKU(productData) {
-    const brand = (productData.brand || "UNK").substring(0, 3).toUpperCase();
-    const category = (productData.category || "CAT")
+    const brand = (productData.brand || 'UNK').substring(0, 3).toUpperCase();
+    const category = (productData.category || 'CAT')
       .substring(0, 3)
       .toUpperCase();
     const timestamp = Date.now().toString().slice(-6);
@@ -188,19 +188,19 @@ class ProductManagementService {
       const patterns = [
         {
           regex: /^([A-Z]{1,4})-([A-Z]{2,6}\d{3})-?(ORJ|[A-Z]{2,4})?$/,
-          type: "structured_v1",
-          confidence: 0.9,
+          type: 'structured_v1',
+          confidence: 0.9
         },
         {
           regex: /^([A-Z]{2,3})-([A-Z]{3,6}\d{2,4})-?(.+)?$/,
-          type: "structured_v2",
-          confidence: 0.8,
+          type: 'structured_v2',
+          confidence: 0.8
         },
         {
           regex: /^([A-Z]+\d+)-?(.+)?$/,
-          type: "simple_alphanumeric",
-          confidence: 0.6,
-        },
+          type: 'simple_alphanumeric',
+          confidence: 0.6
+        }
       ];
 
       for (const pattern of patterns) {
@@ -212,26 +212,26 @@ class ProductManagementService {
             components: {
               prefix: match[1],
               brand: match[2],
-              variant: match[3] || null,
+              variant: match[3] || null
             },
-            isStructured: pattern.confidence > 0.7,
+            isStructured: pattern.confidence > 0.7
           };
         }
       }
 
       return {
-        pattern: "unstructured",
+        pattern: 'unstructured',
         confidence: 0.3,
         components: null,
-        isStructured: false,
+        isStructured: false
       };
     } catch (error) {
-      logger.error("Error analyzing stock code pattern:", error);
+      logger.error('Error analyzing stock code pattern:', error);
       return {
-        pattern: "unknown",
+        pattern: 'unknown',
         confidence: 0.1,
         components: null,
-        isStructured: false,
+        isStructured: false
       };
     }
   }
@@ -242,7 +242,7 @@ class ProductManagementService {
   async matchSyncedProduct(syncedProduct, userId) {
     try {
       const sku = syncedProduct.sku || syncedProduct.stockCode;
-      if (!sku) return null;
+      if (!sku) {return null;}
 
       // Analyze the SKU pattern
       const patternInfo = this.analyzeStockCodePattern(sku);
@@ -259,8 +259,8 @@ class ProductManagementService {
       const existingProduct = await MainProduct.findOne({
         where: {
           baseSku,
-          userId,
-        },
+          userId
+        }
       });
 
       if (existingProduct) {
@@ -271,7 +271,7 @@ class ProductManagementService {
           mainProduct: existingProduct,
           isVariant: sku !== baseSku,
           suggestedVariantSuffix: this.extractVariantSuffix(sku, baseSku),
-          confidence: patternInfo.confidence,
+          confidence: patternInfo.confidence
         };
       }
 
@@ -282,13 +282,13 @@ class ProductManagementService {
         return {
           similarProducts,
           suggestedBaseSku: baseSku,
-          confidence: patternInfo.confidence * 0.8, // Reduce confidence for similar matches
+          confidence: patternInfo.confidence * 0.8 // Reduce confidence for similar matches
         };
       }
 
       return null;
     } catch (error) {
-      logger.error("Error matching synced product:", error);
+      logger.error('Error matching synced product:', error);
       return null;
     }
   }
@@ -297,7 +297,7 @@ class ProductManagementService {
    * Extract base SKU from full SKU
    */
   extractBaseSKU(fullSku, patternInfo) {
-    if (!patternInfo.components) return fullSku;
+    if (!patternInfo.components) {return fullSku;}
 
     const { prefix, brand } = patternInfo.components;
     return `${prefix}-${brand}`;
@@ -307,7 +307,7 @@ class ProductManagementService {
    * Extract variant suffix from full SKU
    */
   extractVariantSuffix(fullSku, baseSku) {
-    return fullSku.replace(baseSku, "").replace(/^-/, "");
+    return fullSku.replace(baseSku, '').replace(/^-/, '');
   }
 
   /**
@@ -316,8 +316,8 @@ class ProductManagementService {
   async findSimilarProducts(baseSku, userId, limit = 5) {
     try {
       // Extract components for similarity matching
-      const parts = baseSku.split("-");
-      if (parts.length < 2) return [];
+      const parts = baseSku.split('-');
+      if (parts.length < 2) {return [];}
 
       const [prefix, brand] = parts;
 
@@ -327,16 +327,16 @@ class ProductManagementService {
           [Op.or]: [
             { baseSku: { [Op.like]: `${prefix}-%` } },
             { baseSku: { [Op.like]: `%-${brand}` } },
-            { brand: brand.replace(/\d+$/, "") }, // Remove numbers from brand
-          ],
+            { brand: brand.replace(/\d+$/, '') } // Remove numbers from brand
+          ]
         },
         limit,
-        order: [["createdAt", "DESC"]],
+        order: [['createdAt', 'DESC']]
       });
 
       return similarProducts;
     } catch (error) {
-      logger.error("Error finding similar products:", error);
+      logger.error('Error finding similar products:', error);
       return [];
     }
   }
@@ -363,8 +363,8 @@ class ProductManagementService {
         media: this.extractMediaFromSync(syncedProduct),
         attributes: syncedProduct.attributes || {},
         learnedFields: {
-          [platformInfo.platform]: syncedProduct,
-        },
+          [platformInfo.platform]: syncedProduct
+        }
       };
 
       const mainProduct = await this.createMainProduct(productData, userId);
@@ -385,9 +385,9 @@ class ProductManagementService {
         useMainPrice: true,
         useMainMedia: true,
         isPublished: true,
-        syncStatus: "success",
+        syncStatus: 'success',
         externalId: syncedProduct.externalId,
-        externalUrl: syncedProduct.externalUrl,
+        externalUrl: syncedProduct.externalUrl
       };
 
       const platformVariant = await this.createPlatformVariant(
@@ -402,10 +402,10 @@ class ProductManagementService {
       return {
         mainProduct,
         platformVariant,
-        isNew: true,
+        isNew: true
       };
     } catch (error) {
-      logger.error("Error creating main product from sync:", error);
+      logger.error('Error creating main product from sync:', error);
       throw error;
     }
   }
@@ -416,9 +416,9 @@ class ProductManagementService {
   extractBrandFromSKU(sku) {
     const patternInfo = this.analyzeStockCodePattern(sku);
     if (patternInfo.components && patternInfo.components.brand) {
-      return patternInfo.components.brand.replace(/\d+$/, "");
+      return patternInfo.components.brand.replace(/\d+$/, '');
     }
-    return "Unknown";
+    return 'Unknown';
   }
 
   /**
@@ -430,10 +430,10 @@ class ProductManagementService {
     if (syncedProduct.images && Array.isArray(syncedProduct.images)) {
       syncedProduct.images.forEach((image, index) => {
         media.push({
-          type: "image",
+          type: 'image',
           url: image.url || image,
           alt: image.alt || `Product image ${index + 1}`,
-          isPrimary: index === 0,
+          isPrimary: index === 0
         });
       });
     }
@@ -441,10 +441,10 @@ class ProductManagementService {
     if (syncedProduct.videos && Array.isArray(syncedProduct.videos)) {
       syncedProduct.videos.forEach((video) => {
         media.push({
-          type: "video",
+          type: 'video',
           url: video.url || video,
           thumbnail: video.thumbnail,
-          isPrimary: false,
+          isPrimary: false
         });
       });
     }
@@ -459,7 +459,7 @@ class ProductManagementService {
     try {
       // Update template usage statistics
       if (template) {
-        await template.increment("usageCount", { transaction });
+        await template.increment('usageCount', { transaction });
         await template.update({ lastUsedAt: new Date() }, { transaction });
       }
 
@@ -470,12 +470,12 @@ class ProductManagementService {
         attributes: platformVariant.platformAttributes,
         pricing: {
           useMainPrice: platformVariant.useMainPrice,
-          priceMultiplier: platformVariant.priceMultiplier,
+          priceMultiplier: platformVariant.priceMultiplier
         },
         media: {
-          useMainMedia: platformVariant.useMainMedia,
+          useMainMedia: platformVariant.useMainMedia
         },
-        success: true,
+        success: true
       };
 
       // Store learning data for future recommendations
@@ -485,7 +485,7 @@ class ProductManagementService {
         `Learned from variant creation: ${platformVariant.platformSku}`
       );
     } catch (error) {
-      logger.error("Error learning from variant:", error);
+      logger.error('Error learning from variant:', error);
       // Don't throw - learning is optional
     }
   }
@@ -502,17 +502,17 @@ class ProductManagementService {
         skuPattern: this.analyzeStockCodePattern(syncedProduct.sku),
         priceRange: {
           min: parseFloat(syncedProduct.price) || 0,
-          max: parseFloat(syncedProduct.price) || 0,
+          max: parseFloat(syncedProduct.price) || 0
         },
         success: true,
-        userId,
+        userId
       };
 
       await this.storeLearnedPattern(learningData);
 
       logger.debug(`Learned from synced product: ${syncedProduct.sku}`);
     } catch (error) {
-      logger.error("Error learning from synced product:", error);
+      logger.error('Error learning from synced product:', error);
       // Don't throw - learning is optional
     }
   }
@@ -524,9 +524,9 @@ class ProductManagementService {
     try {
       // For now, just log the pattern
       // In future, this could be stored in a dedicated learning table
-      logger.debug("Stored learned pattern:", learningData);
+      logger.debug('Stored learned pattern:', learningData);
     } catch (error) {
-      logger.error("Error storing learned pattern:", error);
+      logger.error('Error storing learned pattern:', error);
     }
   }
 
@@ -539,46 +539,46 @@ class ProductManagementService {
       const analysis = {
         category: productData.category,
         brand: productData.brand,
-        skuPattern: this.analyzeStockCodePattern(productData.sku || ""),
+        skuPattern: this.analyzeStockCodePattern(productData.sku || ''),
         priceRange: productData.price
           ? {
-              min: productData.price * 0.8,
-              max: productData.price * 1.2,
-            }
-          : null,
+            min: productData.price * 0.8,
+            max: productData.price * 1.2
+          }
+          : null
       };
 
       // Find similar successful products
       const similarProducts = await MainProduct.findAll({
         where: {
           userId,
-          [Op.or]: [{ category: analysis.category }, { brand: analysis.brand }],
+          [Op.or]: [{ category: analysis.category }, { brand: analysis.brand }]
         },
         include: [
           {
             model: PlatformVariant,
-            as: "variants",
-            where: { syncStatus: "success" },
-            required: false,
-          },
+            as: 'variants',
+            where: { syncStatus: 'success' },
+            required: false
+          }
         ],
-        limit: 5,
+        limit: 5
       });
 
       // Generate recommendations
       const recommendations = {
         platforms: this.recommendPlatforms(analysis, similarProducts),
         templates: await this.recommendTemplates(analysis),
-        pricing: this.recommendPricing(analysis, similarProducts),
+        pricing: this.recommendPricing(analysis, similarProducts)
       };
 
       return recommendations;
     } catch (error) {
-      logger.error("Error getting recommendations:", error);
+      logger.error('Error getting recommendations:', error);
       return {
         platforms: [],
         templates: [],
-        pricing: null,
+        pricing: null
       };
     }
   }
@@ -604,7 +604,7 @@ class ProductManagementService {
       .map(([platform, count]) => ({
         platform,
         confidence: Math.min(count / similarProducts.length, 1),
-        reason: `${count} similar products found on ${platform}`,
+        reason: `${count} similar products found on ${platform}`
       }));
   }
 
@@ -617,11 +617,11 @@ class ProductManagementService {
         where: {
           [Op.or]: [
             { category: analysis.category },
-            { tags: { [Op.contains]: [analysis.category] } },
-          ],
+            { tags: { [Op.contains]: [analysis.category] } }
+          ]
         },
-        order: [["usageCount", "DESC"]],
-        limit: 3,
+        order: [['usageCount', 'DESC']],
+        limit: 3
       });
 
       return templates.map((template) => ({
@@ -632,10 +632,10 @@ class ProductManagementService {
         reason:
           template.usageCount > 0
             ? `Used ${template.usageCount} times successfully`
-            : "Matches category",
+            : 'Matches category'
       }));
     } catch (error) {
-      logger.error("Error recommending templates:", error);
+      logger.error('Error recommending templates:', error);
       return [];
     }
   }
@@ -665,7 +665,7 @@ class ProductManagementService {
       suggested: avgPrice,
       range: { min: minPrice, max: maxPrice },
       confidence: prices.length / similarProducts.length,
-      reason: `Based on ${prices.length} similar products`,
+      reason: `Based on ${prices.length} similar products`
     };
   }
 
@@ -686,7 +686,7 @@ class ProductManagementService {
           results.push({
             success: false,
             error: error.message,
-            productData: productData.name,
+            productData: productData.name
           });
         }
       }
@@ -695,7 +695,7 @@ class ProductManagementService {
       return results;
     } catch (error) {
       await transaction.rollback();
-      logger.error("Error in bulk operation:", error);
+      logger.error('Error in bulk operation:', error);
       throw error;
     }
   }
@@ -706,10 +706,10 @@ class ProductManagementService {
   async publishToPlatforms(mainProductId, platforms, transaction = null) {
     try {
       const mainProduct = await MainProduct.findByPk(mainProductId, {
-        transaction,
+        transaction
       });
       if (!mainProduct) {
-        throw new Error("Main product not found");
+        throw new Error('Main product not found');
       }
 
       const results = [];
@@ -719,9 +719,9 @@ class ProductManagementService {
         let variant = await PlatformVariant.findOne({
           where: {
             mainProductId,
-            platform: platformData.platform,
+            platform: platformData.platform
           },
-          transaction,
+          transaction
         });
 
         if (!variant) {
@@ -730,7 +730,7 @@ class ProductManagementService {
             mainProductId,
             {
               ...platformData,
-              status: "active",
+              status: 'active'
             },
             mainProduct.userId
           );
@@ -741,7 +741,7 @@ class ProductManagementService {
           {
             isPublished: true,
             publishedAt: new Date(),
-            syncStatus: "pending",
+            syncStatus: 'pending'
           },
           { transaction }
         );
@@ -749,13 +749,13 @@ class ProductManagementService {
         results.push({
           platform: platformData.platform,
           variant: variant.toJSON(),
-          success: true,
+          success: true
         });
       }
 
       return results;
     } catch (error) {
-      logger.error("Error publishing to platforms:", error);
+      logger.error('Error publishing to platforms:', error);
       throw error;
     }
   }
@@ -766,10 +766,10 @@ class ProductManagementService {
   async updateProductPrice(mainProductId, newPrice, transaction = null) {
     try {
       const mainProduct = await MainProduct.findByPk(mainProductId, {
-        transaction,
+        transaction
       });
       if (!mainProduct) {
-        throw new Error("Main product not found");
+        throw new Error('Main product not found');
       }
 
       // Update main product price
@@ -777,19 +777,19 @@ class ProductManagementService {
 
       // Update variants that inherit price
       await PlatformVariant.update(
-        { syncStatus: "pending" }, // Mark for sync
+        { syncStatus: 'pending' }, // Mark for sync
         {
           where: {
             mainProductId,
-            useMainPrice: true,
+            useMainPrice: true
           },
-          transaction,
+          transaction
         }
       );
 
       return { success: true, newPrice };
     } catch (error) {
-      logger.error("Error updating product price:", error);
+      logger.error('Error updating product price:', error);
       throw error;
     }
   }

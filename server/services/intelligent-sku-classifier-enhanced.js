@@ -18,50 +18,50 @@ class IntelligentSKUClassifier {
       ean13: {
         regex: /^\d{13}$/,
         confidence: 0.95,
-        description: "EAN-13 standard barcode",
+        description: 'EAN-13 standard barcode'
       },
       ean8: {
         regex: /^\d{8}$/,
         confidence: 0.95,
-        description: "EAN-8 standard barcode",
+        description: 'EAN-8 standard barcode'
       },
       upc: {
         regex: /^\d{12}$/,
         confidence: 0.95,
-        description: "UPC standard barcode",
+        description: 'UPC standard barcode'
       },
       isbn: {
         regex: /^97[89]\d{10}$/,
         confidence: 0.98,
-        description: "ISBN barcode format",
+        description: 'ISBN barcode format'
       },
       // Platform-specific patterns from data analysis
       turkishEan: {
         regex: /^8690\d{9}$/,
         confidence: 0.96,
-        description: "Turkish EAN-13 barcode",
+        description: 'Turkish EAN-13 barcode'
       },
       platformGenerated: {
         regex: /^MX8SL\d+$/,
         confidence: 0.92,
-        description: "Platform-generated barcode",
+        description: 'Platform-generated barcode'
       },
       systemGenerated: {
         regex: /^TY[A-Z0-9]{10,}$/,
         confidence: 0.88,
-        description: "System-generated barcode",
+        description: 'System-generated barcode'
       },
       // Generic patterns
       longNumeric: {
         regex: /^\d{10,15}$/,
         confidence: 0.75,
-        description: "Long numeric code (likely barcode)",
+        description: 'Long numeric code (likely barcode)'
       },
       numericOnly8Plus: {
         regex: /^\d{8,}$/,
         confidence: 0.7,
-        description: "8+ digit numeric code",
-      },
+        description: '8+ digit numeric code'
+      }
     };
 
     // Enhanced SKU patterns based on real data analysis
@@ -70,35 +70,35 @@ class IntelligentSKUClassifier {
       notewarePattern: {
         regex: /^NW[A-Z]+-[A-Z0-9]+-[A-Z0-9]+$/i,
         confidence: 0.92,
-        description: "Noteware product SKU pattern",
+        description: 'Noteware product SKU pattern'
       },
       hyphenatedStandard: {
         regex: /^[A-Z]{2,6}-[A-Z0-9]{2,6}-[A-Z0-9]{1,8}$/i,
         confidence: 0.85,
-        description: "Standard hyphenated SKU pattern",
+        description: 'Standard hyphenated SKU pattern'
       },
       // CRITICAL: Pattern for codes like "nwadas003orj"
       alphaNumericMixed: {
         regex: /^[a-z]+[0-9]{2,}[a-z]*$/i,
         confidence: 0.75,
-        description: "Mixed alphanumeric SKU without separators",
+        description: 'Mixed alphanumeric SKU without separators'
       },
       prefixedVariant: {
         regex: /^(KASA|ETIK|NWAD|NWK|NWHD)-.*$/i,
         confidence: 0.88,
-        description: "Product category prefixed SKU",
+        description: 'Product category prefixed SKU'
       },
       companyBranded: {
         regex: /^(COMP|BRAND|NIKE|ASUS|HP|LENOVO)-.*$/i,
         confidence: 0.82,
-        description: "Brand-prefixed SKU",
+        description: 'Brand-prefixed SKU'
       },
       // General SKU characteristics
       mixedAlphaNumeric: {
         regex: /^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z0-9\-_\.]{4,30}$/,
         confidence: 0.65,
-        description: "Mixed alphanumeric with possible separators",
-      },
+        description: 'Mixed alphanumeric with possible separators'
+      }
     };
 
     // Character composition analysis rules
@@ -109,14 +109,14 @@ class IntelligentSKUClassifier {
       hasRepeatedInitials: (code) => this.hasRepeatedInitials(code),
       hasTypicalSKULength: (code) => code.length >= 4 && code.length <= 30,
       hasVariantSuffix: (code) =>
-        /-(A|B|TR|UK|RGB|LED|SYH|BEYAZ|KIRMIZI|V\d+)$/i.test(code),
+        /-(A|B|TR|UK|RGB|LED|SYH|BEYAZ|KIRMIZI|V\d+)$/i.test(code)
     };
   }
 
   hasRepeatedInitials(code) {
     // Check for repeated 2-3 letter patterns that might indicate brand/type codes
     const matches = code.match(/([A-Z]{2,3})/gi);
-    if (!matches || matches.length < 2) return false;
+    if (!matches || matches.length < 2) {return false;}
 
     const uniqueMatches = [...new Set(matches.map((m) => m.toUpperCase()))];
     return matches.length > uniqueMatches.length;
@@ -135,7 +135,7 @@ class IntelligentSKUClassifier {
       alphaNumericRatio: this.calculateAlphaNumericRatio(code),
       separatorCount: (code.match(/[-_\.]/g) || []).length,
       consecutiveNumbers: this.getConsecutiveNumberLength(code),
-      consecutiveLetters: this.getConsecutiveLetterLength(code),
+      consecutiveLetters: this.getConsecutiveLetterLength(code)
     };
 
     return characteristics;
@@ -146,7 +146,7 @@ class IntelligentSKUClassifier {
     const numbers = (code.match(/\d/g) || []).length;
     const total = letters + numbers;
 
-    if (total === 0) return 0;
+    if (total === 0) {return 0;}
     return letters / total;
   }
 
@@ -161,15 +161,15 @@ class IntelligentSKUClassifier {
   }
 
   classify(code, context = {}) {
-    if (!code || typeof code !== "string") {
+    if (!code || typeof code !== 'string') {
       return {
-        type: "unknown",
+        type: 'unknown',
         confidence: 0,
-        reason: "Invalid input",
+        reason: 'Invalid input',
         original: code,
-        normalized: "",
+        normalized: '',
         characteristics: {},
-        patterns: [],
+        patterns: []
       };
     }
 
@@ -181,7 +181,7 @@ class IntelligentSKUClassifier {
       this.classifyByBarcodePatterns(normalized),
       this.classifyBySKUPatterns(normalized),
       this.classifyByCharacteristics(normalized, characteristics),
-      this.classifyByContext(normalized, context),
+      this.classifyByContext(normalized, context)
     ];
 
     // Weighted scoring
@@ -194,9 +194,9 @@ class IntelligentSKUClassifier {
       const weight = weights[index];
       totalWeight += weight;
 
-      if (classification.type === "barcode") {
+      if (classification.type === 'barcode') {
         barcodeScore += classification.confidence * weight;
-      } else if (classification.type === "sku") {
+      } else if (classification.type === 'sku') {
         skuScore += classification.confidence * weight;
       }
     });
@@ -224,27 +224,27 @@ class IntelligentSKUClassifier {
       patterns: classifications.filter((c) => c.confidence > 0.3),
       scores: {
         barcode: barcodeScore,
-        sku: skuScore,
-      },
+        sku: skuScore
+      }
     };
   }
 
   classifyByBarcodePatterns(code) {
     let bestMatch = {
-      type: "unknown",
+      type: 'unknown',
       confidence: 0,
       pattern: null,
-      description: "",
+      description: ''
     };
 
     for (const [patternName, pattern] of Object.entries(this.barcodePatterns)) {
       if (pattern.regex.test(code)) {
         if (pattern.confidence > bestMatch.confidence) {
           bestMatch = {
-            type: "barcode",
+            type: 'barcode',
             confidence: pattern.confidence,
             pattern: patternName,
-            description: pattern.description,
+            description: pattern.description
           };
         }
       }
@@ -255,20 +255,20 @@ class IntelligentSKUClassifier {
 
   classifyBySKUPatterns(code) {
     let bestMatch = {
-      type: "unknown",
+      type: 'unknown',
       confidence: 0,
       pattern: null,
-      description: "",
+      description: ''
     };
 
     for (const [patternName, pattern] of Object.entries(this.skuPatterns)) {
       if (pattern.regex.test(code)) {
         if (pattern.confidence > bestMatch.confidence) {
           bestMatch = {
-            type: "sku",
+            type: 'sku',
             confidence: pattern.confidence,
             pattern: patternName,
-            description: pattern.description,
+            description: pattern.description
           };
         }
       }
@@ -285,17 +285,17 @@ class IntelligentSKUClassifier {
     // SKU indicators
     if (characteristics.hasLetters && characteristics.hasNumbers) {
       skuScore += 0.4;
-      features.push("Mixed alphanumeric (favors SKU)");
+      features.push('Mixed alphanumeric (favors SKU)');
     }
 
     if (characteristics.hasSeparators) {
       skuScore += 0.3;
-      features.push("Contains separators (typical for SKUs)");
+      features.push('Contains separators (typical for SKUs)');
     }
 
     if (characteristics.startsWithLetter) {
       skuScore += 0.2;
-      features.push("Starts with letter (common in SKUs)");
+      features.push('Starts with letter (common in SKUs)');
     }
 
     if (
@@ -303,23 +303,23 @@ class IntelligentSKUClassifier {
       characteristics.alphaNumericRatio < 0.8
     ) {
       skuScore += 0.2;
-      features.push("Balanced alpha-numeric ratio");
+      features.push('Balanced alpha-numeric ratio');
     }
 
     // Barcode indicators
     if (characteristics.isNumericOnly) {
       if (characteristics.length >= 8) {
         barcodeScore += 0.6;
-        features.push("Pure numeric 8+ digits (typical barcode)");
+        features.push('Pure numeric 8+ digits (typical barcode)');
       } else {
         barcodeScore += 0.3;
-        features.push("Pure numeric but short");
+        features.push('Pure numeric but short');
       }
     }
 
     if (characteristics.consecutiveNumbers >= 8) {
       barcodeScore += 0.4;
-      features.push("Long consecutive number sequence");
+      features.push('Long consecutive number sequence');
     }
 
     // CRITICAL: Special case for codes like "nwadas003orj"
@@ -332,17 +332,17 @@ class IntelligentSKUClassifier {
       characteristics.consecutiveNumbers <= 4
     ) {
       skuScore += 0.5;
-      features.push("Alphanumeric without separators (likely SKU)");
+      features.push('Alphanumeric without separators (likely SKU)');
     }
 
     const finalScore = Math.max(skuScore, barcodeScore);
-    const type = skuScore > barcodeScore ? "sku" : "barcode";
+    const type = skuScore > barcodeScore ? 'sku' : 'barcode';
 
     return {
-      type: finalScore > 0.3 ? type : "unknown",
+      type: finalScore > 0.3 ? type : 'unknown',
       confidence: Math.min(finalScore, 0.85),
       features: features,
-      description: "Character-based analysis",
+      description: 'Character-based analysis'
     };
   }
 
@@ -350,26 +350,26 @@ class IntelligentSKUClassifier {
     let adjustment = 0;
     const features = [];
 
-    if (context.source === "barcode_scanner") {
+    if (context.source === 'barcode_scanner') {
       adjustment += 0.3; // Favor barcode
-      features.push("Scanned from barcode scanner");
+      features.push('Scanned from barcode scanner');
     }
 
-    if (context.source === "manual_entry") {
+    if (context.source === 'manual_entry') {
       adjustment -= 0.2; // Favor SKU
-      features.push("Manually entered (likely SKU)");
+      features.push('Manually entered (likely SKU)');
     }
 
-    if (context.productName && context.productName.includes("barcode")) {
+    if (context.productName && context.productName.includes('barcode')) {
       adjustment += 0.2;
-      features.push("Product name mentions barcode");
+      features.push('Product name mentions barcode');
     }
 
     return {
-      type: adjustment > 0 ? "barcode" : "sku",
+      type: adjustment > 0 ? 'barcode' : 'sku',
       confidence: Math.abs(adjustment),
       features: features,
-      description: "Context-based analysis",
+      description: 'Context-based analysis'
     };
   }
 
@@ -388,7 +388,7 @@ class IntelligentSKUClassifier {
         return {
           type: classification.type,
           confidence: classification.confidence,
-          reason: `Exact pattern match: ${classification.description}`,
+          reason: `Exact pattern match: ${classification.description}`
         };
       }
     }
@@ -396,18 +396,18 @@ class IntelligentSKUClassifier {
     // Rule 1: High confidence barcode patterns
     if (barcodeScore > 0.8) {
       return {
-        type: "barcode",
+        type: 'barcode',
         confidence: barcodeScore,
-        reason: "High confidence barcode pattern detected",
+        reason: 'High confidence barcode pattern detected'
       };
     }
 
     // Rule 2: High confidence SKU patterns
     if (skuScore > 0.7) {
       return {
-        type: "sku",
+        type: 'sku',
         confidence: skuScore,
-        reason: "High confidence SKU pattern detected",
+        reason: 'High confidence SKU pattern detected'
       };
     }
 
@@ -421,9 +421,9 @@ class IntelligentSKUClassifier {
       !characteristics.isNumericOnly
     ) {
       return {
-        type: "sku",
+        type: 'sku',
         confidence: Math.max(0.6, skuScore),
-        reason: "Alphanumeric without separators pattern (typical SKU format)",
+        reason: 'Alphanumeric without separators pattern (typical SKU format)'
       };
     }
 
@@ -431,15 +431,15 @@ class IntelligentSKUClassifier {
     if (characteristics.isNumericOnly) {
       if (characteristics.length >= 10) {
         return {
-          type: "barcode",
+          type: 'barcode',
           confidence: Math.max(0.75, barcodeScore),
-          reason: "Long numeric sequence indicates barcode",
+          reason: 'Long numeric sequence indicates barcode'
         };
       } else if (characteristics.length >= 8) {
         return {
-          type: "barcode",
+          type: 'barcode',
           confidence: Math.max(0.65, barcodeScore),
-          reason: "Numeric sequence of barcode length",
+          reason: 'Numeric sequence of barcode length'
         };
       }
     }
@@ -447,23 +447,23 @@ class IntelligentSKUClassifier {
     // Rule 5: Default decision based on scores
     if (barcodeScore > skuScore && barcodeScore > 0.4) {
       return {
-        type: "barcode",
+        type: 'barcode',
         confidence: barcodeScore,
-        reason: "Pattern analysis favors barcode",
+        reason: 'Pattern analysis favors barcode'
       };
     } else if (skuScore > barcodeScore && skuScore > 0.3) {
       return {
-        type: "sku",
+        type: 'sku',
         confidence: skuScore,
-        reason: "Pattern analysis favors SKU",
+        reason: 'Pattern analysis favors SKU'
       };
     }
 
     // Rule 6: Final fallback - default to SKU for ambiguous cases
     return {
-      type: "sku",
+      type: 'sku',
       confidence: Math.max(0.4, skuScore),
-      reason: "Ambiguous pattern, defaulting to SKU (safer assumption)",
+      reason: 'Ambiguous pattern, defaulting to SKU (safer assumption)'
     };
   }
 
@@ -479,7 +479,7 @@ class IntelligentSKUClassifier {
       pattern: pattern,
       confidence: confidence,
       timestamp: Date.now(),
-      code: code,
+      code: code
     });
 
     console.log(
@@ -492,7 +492,7 @@ class IntelligentSKUClassifier {
    * Used by unified product intelligence service
    */
   async learnFromClassification(code, classification) {
-    if (!code || !classification) return;
+    if (!code || !classification) {return;}
 
     // Only learn from high-confidence classifications
     if (classification.confidence && classification.confidence > 0.8) {
@@ -515,7 +515,7 @@ class IntelligentSKUClassifier {
       startsWithLetter: characteristics.startsWithLetter,
       alphaNumericRatio:
         Math.round(characteristics.alphaNumericRatio * 10) / 10,
-      type: type,
+      type: type
     };
   }
 
@@ -526,27 +526,27 @@ class IntelligentSKUClassifier {
       return {
         code: code,
         classification: classification,
-        features: classification.characteristics,
+        features: classification.characteristics
       };
     });
 
     return {
       total: codes.length,
-      barcodes: results.filter((r) => r.classification.type === "barcode"),
-      skus: results.filter((r) => r.classification.type === "sku"),
+      barcodes: results.filter((r) => r.classification.type === 'barcode'),
+      skus: results.filter((r) => r.classification.type === 'sku'),
       patterns: this.discoverPatterns(results),
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     };
   }
 
   discoverPatterns(results) {
     const patterns = {
       barcode: this.findCommonPatterns(
-        results.filter((r) => r.classification.type === "barcode")
+        results.filter((r) => r.classification.type === 'barcode')
       ),
       sku: this.findCommonPatterns(
-        results.filter((r) => r.classification.type === "sku")
-      ),
+        results.filter((r) => r.classification.type === 'sku')
+      )
     };
 
     return patterns;
@@ -557,7 +557,7 @@ class IntelligentSKUClassifier {
       lengthDistribution: {},
       prefixPatterns: {},
       suffixPatterns: {},
-      characterComposition: {},
+      characterComposition: {}
     };
 
     typeResults.forEach((result) => {
@@ -577,12 +577,12 @@ class IntelligentSKUClassifier {
 
       // Character composition
       const composition = result.features.isNumericOnly
-        ? "numeric"
+        ? 'numeric'
         : result.features.hasLetters && result.features.hasNumbers
-        ? "mixed"
-        : result.features.hasLetters
-        ? "alpha"
-        : "other";
+          ? 'mixed'
+          : result.features.hasLetters
+            ? 'alpha'
+            : 'other';
       patterns.characterComposition[composition] =
         (patterns.characterComposition[composition] || 0) + 1;
     });
@@ -596,8 +596,8 @@ class IntelligentSKUClassifier {
   provideFeedback(feedbackData) {
     const { code, expectedType, wasCorrect, comment } = feedbackData;
 
-    if (!code || !expectedType || typeof wasCorrect !== "boolean") {
-      throw new Error("Code, expectedType, and wasCorrect are required");
+    if (!code || !expectedType || typeof wasCorrect !== 'boolean') {
+      throw new Error('Code, expectedType, and wasCorrect are required');
     }
 
     // Get current classification for comparison
@@ -612,15 +612,15 @@ class IntelligentSKUClassifier {
       wasCorrect,
       comment,
       timestamp: new Date(),
-      characteristics: currentClassification.characteristics,
+      characteristics: currentClassification.characteristics
     };
 
     // Log feedback for analysis
-    console.log("Classification feedback received:", {
+    console.log('Classification feedback received:', {
       code,
       was: currentClassification.type,
       should_be: expectedType,
-      correct: wasCorrect,
+      correct: wasCorrect
     });
 
     // In a production system, this would:
@@ -632,7 +632,7 @@ class IntelligentSKUClassifier {
     return {
       processed: true,
       feedback,
-      adjustments: this.suggestAdjustments(feedback, currentClassification),
+      adjustments: this.suggestAdjustments(feedback, currentClassification)
     };
   }
 
@@ -644,24 +644,24 @@ class IntelligentSKUClassifier {
 
     if (!feedback.wasCorrect) {
       if (
-        feedback.expectedType === "sku" &&
-        classification.type === "barcode"
+        feedback.expectedType === 'sku' &&
+        classification.type === 'barcode'
       ) {
         suggestions.push({
-          type: "pattern_adjustment",
+          type: 'pattern_adjustment',
           message:
-            "Consider adjusting SKU patterns to better match this format",
-          pattern: classification.characteristics,
+            'Consider adjusting SKU patterns to better match this format',
+          pattern: classification.characteristics
         });
       } else if (
-        feedback.expectedType === "barcode" &&
-        classification.type === "sku"
+        feedback.expectedType === 'barcode' &&
+        classification.type === 'sku'
       ) {
         suggestions.push({
-          type: "pattern_adjustment",
+          type: 'pattern_adjustment',
           message:
-            "Consider adjusting barcode patterns to better match this format",
-          pattern: classification.characteristics,
+            'Consider adjusting barcode patterns to better match this format',
+          pattern: classification.characteristics
         });
       }
     }

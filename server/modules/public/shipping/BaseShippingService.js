@@ -157,14 +157,14 @@ class BaseShippingService {
     const unit = packageInfo.weightUnit || 'g';
     
     switch (unit.toLowerCase()) {
-      case 'kg':
-        return weight * 1000;
-      case 'lb':
-        return weight * 453.592;
-      case 'oz':
-        return weight * 28.3495;
-      default:
-        return weight; // Assume grams
+    case 'kg':
+      return weight * 1000;
+    case 'lb':
+      return weight * 453.592;
+    case 'oz':
+      return weight * 28.3495;
+    default:
+      return weight; // Assume grams
     }
   }
 
@@ -179,14 +179,14 @@ class BaseShippingService {
     
     let volumeCm3;
     switch (unit.toLowerCase()) {
-      case 'in':
-        volumeCm3 = length * width * height * 16.387; // Convert cubic inches to cm³
-        break;
-      case 'm':
-        volumeCm3 = length * width * height * 1000000; // Convert cubic meters to cm³
-        break;
-      default:
-        volumeCm3 = length * width * height; // Assume cm³
+    case 'in':
+      volumeCm3 = length * width * height * 16.387; // Convert cubic inches to cm³
+      break;
+    case 'm':
+      volumeCm3 = length * width * height * 1000000; // Convert cubic meters to cm³
+      break;
+    default:
+      volumeCm3 = length * width * height; // Assume cm³
     }
     
     return Math.ceil(volumeCm3 / divisor);

@@ -2,20 +2,20 @@
  * Product Merge Service - Enhanced with Database Transaction Management
  * Handles fetching and merging products across multiple platforms with user-controlled database transaction management
  */
-const logger = require("../utils/logger");
+const logger = require('../utils/logger');
 const {
   Product,
   PlatformData,
   PlatformConnection,
-  sequelize,
-} = require("../models");
-const { Op } = require("sequelize");
-const PlatformServiceFactory = require("../modules/order-management/services/platforms/platformServiceFactory");
-const dbTransactionManager = require("./database-transaction-manager");
+  sequelize
+} = require('../models');
+const { Op } = require('sequelize');
+const PlatformServiceFactory = require('../modules/order-management/services/platforms/platformServiceFactory');
+const dbTransactionManager = require('./database-transaction-manager');
 
 class ProductMergeService {
   constructor() {
-    this.platformTypes = ["trendyol", "hepsiburada", "n11"];
+    this.platformTypes = ['trendyol', 'hepsiburada', 'n11'];
   }
 
   /**
@@ -27,15 +27,15 @@ class ProductMergeService {
       const connections = await PlatformConnection.findAll({
         where: {
           userId,
-          isActive: true,
-        },
+          isActive: true
+        }
       });
 
       if (connections.length === 0) {
         return {
           success: true,
-          message: "No active platform connections found",
-          data: [],
+          message: 'No active platform connections found',
+          data: []
         };
       }
 
@@ -68,14 +68,14 @@ class ProductMergeService {
                     ...product,
                     sourcePlatform: connection.platformType,
                     connectionId: connection.id,
-                    connectionName: connection.name,
+                    connectionName: connection.name
                   })
                 );
 
                 platformResults.push({
                   platform: connection.platformType,
                   success: result.success,
-                  count: productsWithSource.length,
+                  count: productsWithSource.length
                 });
 
                 allProducts.push(...productsWithSource);
@@ -83,18 +83,18 @@ class ProductMergeService {
                 platformResults.push({
                   platform: connection.platformType,
                   success: false,
-                  error: "Platform does not support product fetching",
+                  error: 'Platform does not support product fetching'
                 });
               }
             } catch (initError) {
               // Check if this is a credentials error
               if (
-                initError.message.includes("Missing required") ||
-                initError.message.includes("credentials") ||
-                initError.message.includes("App key") ||
-                initError.message.includes("app secret") ||
-                initError.message.includes("appKey") ||
-                initError.message.includes("appSecret")
+                initError.message.includes('Missing required') ||
+                initError.message.includes('credentials') ||
+                initError.message.includes('App key') ||
+                initError.message.includes('app secret') ||
+                initError.message.includes('appKey') ||
+                initError.message.includes('appSecret')
               ) {
                 logger.warn(
                   `Skipping ${connection.platformType} due to missing credentials: ${initError.message}`,
@@ -105,7 +105,7 @@ class ProductMergeService {
                   platform: connection.platformType,
                   success: false,
                   error: `Missing required credentials for ${connection.platformType}`,
-                  skipped: true,
+                  skipped: true
                 });
               } else {
                 // Re-throw for other types of errors
@@ -119,13 +119,13 @@ class ProductMergeService {
             );
             errors.push({
               platform: connection.platformType,
-              error: error.message,
+              error: error.message
             });
 
             platformResults.push({
               platform: connection.platformType,
               success: false,
-              error: error.message,
+              error: error.message
             });
           }
         })
@@ -139,14 +139,14 @@ class ProductMergeService {
         } platforms`,
         data: allProducts,
         platformResults,
-        errors: errors.length > 0 ? errors : undefined,
+        errors: errors.length > 0 ? errors : undefined
       };
     } catch (error) {
-      logger.error("Failed to fetch products from integrations:", error);
+      logger.error('Failed to fetch products from integrations:', error);
       return {
         success: false,
         message: `Failed to fetch products: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -182,7 +182,7 @@ class ProductMergeService {
     products.forEach((product) => {
       // Skip products already grouped by SKU
       const sku = this.extractSku(product);
-      if (sku && productGroups[sku].length > 1) return;
+      if (sku && productGroups[sku].length > 1) {return;}
 
       // Try to group by barcode
       const barcode = this.extractBarcode(product);
@@ -191,7 +191,7 @@ class ProductMergeService {
         let found = false;
         Object.keys(productGroups).forEach((key) => {
           // Skip if this is the product's own SKU group
-          if (key === sku) return;
+          if (key === sku) {return;}
 
           const firstProductInGroup = productGroups[key][0];
           const groupBarcode = this.extractBarcode(firstProductInGroup);
@@ -214,7 +214,7 @@ class ProductMergeService {
     // Third pass - try to group by name similarity for products not grouped by SKU or barcode
     ungroupedByBarcode.forEach((product) => {
       const name = this.extractName(product);
-      if (!name) return;
+      if (!name) {return;}
 
       let bestMatch = null;
       let bestSimilarity = 0.7; // Threshold for name similarity
@@ -257,7 +257,7 @@ class ProductMergeService {
    */
   createMergedProduct(productGroup) {
     // Start with the product that has the most complete information
-    let bestProduct = productGroup.reduce((best, current) => {
+    const bestProduct = productGroup.reduce((best, current) => {
       const bestScore = this.calculateProductCompleteness(best);
       const currentScore = this.calculateProductCompleteness(current);
       return currentScore > bestScore ? current : best;
@@ -318,8 +318,8 @@ class ProductMergeService {
         stockQuantity: this.extractStockQuantity(p),
         platformProductId: this.extractPlatformProductId(p),
         stockCode: this.extractStockCode(p),
-        metadata: this.extractMetadata(p),
-      })),
+        metadata: this.extractMetadata(p)
+      }))
     };
 
     // Merge additional images from all products in the group
@@ -354,13 +354,13 @@ class ProductMergeService {
     const allAttributes = {};
     productGroup.forEach((product) => {
       const attributes = this.extractAttributes(product);
-      if (attributes && typeof attributes === "object") {
+      if (attributes && typeof attributes === 'object') {
         Object.assign(allAttributes, attributes);
       }
     });
     // Override with best product's attributes last to give them priority
     const bestAttributes = this.extractAttributes(bestProduct);
-    if (bestAttributes && typeof bestAttributes === "object") {
+    if (bestAttributes && typeof bestAttributes === 'object') {
       Object.assign(allAttributes, bestAttributes);
     }
     if (Object.keys(allAttributes).length > 0) {
@@ -383,11 +383,11 @@ class ProductMergeService {
 
     // Register the operation with the transaction manager
     await dbTransactionManager.registerTransaction(operationId, {
-      operationType: "product_merge",
+      operationType: 'product_merge',
       userId,
       totalProducts: mergedProducts.length,
       batchSize,
-      description: `Merging ${mergedProducts.length} products from multiple platforms`,
+      description: `Merging ${mergedProducts.length} products from multiple platforms`
     });
 
     logger.info(
@@ -407,7 +407,7 @@ class ProductMergeService {
         },
         {
           userControlled: true,
-          pausable: true,
+          pausable: true
         }
       );
 
@@ -433,13 +433,13 @@ class ProductMergeService {
       const totalBatches = Math.ceil(mergedProducts.length / batchSize);
 
       // Emit progress update
-      dbTransactionManager.emit("operationProgress", {
+      dbTransactionManager.emit('operationProgress', {
         operationId,
         batchNumber,
         totalBatches,
         processedProducts: i,
         totalProducts: mergedProducts.length,
-        progress: Math.round((i / mergedProducts.length) * 100),
+        progress: Math.round((i / mergedProducts.length) * 100)
       });
 
       logger.info(
@@ -450,10 +450,10 @@ class ProductMergeService {
         // Process batch with transaction control
         const batchOperationId = `${operationId}_batch_${batchNumber}`;
         await dbTransactionManager.registerTransaction(batchOperationId, {
-          operationType: "product_batch",
+          operationType: 'product_batch',
           parentOperationId: operationId,
           batchNumber,
-          batchSize: batch.length,
+          batchSize: batch.length
         });
 
         const batchResults =
@@ -464,7 +464,7 @@ class ProductMergeService {
             },
             {
               userControlled: false, // Don't prompt user for each batch
-              pausable: true,
+              pausable: true
             }
           );
 
@@ -488,8 +488,8 @@ class ProductMergeService {
           // Mark all products in this batch as failed
           batch.forEach((product) => {
             errors.push({
-              product: product.sku || product.name || "unknown",
-              error: "Failed to process - database transaction error",
+              product: product.sku || product.name || 'unknown',
+              error: 'Failed to process - database transaction error'
             });
           });
         }
@@ -502,14 +502,14 @@ class ProductMergeService {
     }
 
     // Final progress update
-    dbTransactionManager.emit("operationProgress", {
+    dbTransactionManager.emit('operationProgress', {
       operationId,
       batchNumber: Math.ceil(mergedProducts.length / batchSize),
       totalBatches: Math.ceil(mergedProducts.length / batchSize),
       processedProducts: mergedProducts.length,
       totalProducts: mergedProducts.length,
       progress: 100,
-      completed: true,
+      completed: true
     });
 
     if (errors.length > 0) {
@@ -554,7 +554,7 @@ class ProductMergeService {
           ); // Check if this is a PostgreSQL transaction abort error
           if (this.isTransactionAbortError(productError)) {
             logger.error(
-              "Transaction aborted due to error, rolling back and switching to individual processing"
+              'Transaction aborted due to error, rolling back and switching to individual processing'
             );
 
             try {
@@ -562,7 +562,7 @@ class ProductMergeService {
                 await transaction.rollback();
               }
             } catch (rollbackError) {
-              logger.error("Error during transaction rollback:", rollbackError);
+              logger.error('Error during transaction rollback:', rollbackError);
             }
 
             // Switch to individual product processing for remaining products
@@ -570,8 +570,8 @@ class ProductMergeService {
           }
 
           errors.push({
-            product: mergedProduct.sku || mergedProduct.name || "unknown",
-            error: productError.message,
+            product: mergedProduct.sku || mergedProduct.name || 'unknown',
+            error: productError.message
           });
 
           // Continue processing other products instead of failing the entire batch
@@ -592,19 +592,19 @@ class ProductMergeService {
         try {
           await transaction.rollback();
         } catch (rollbackError) {
-          logger.error("Error during transaction rollback:", rollbackError);
+          logger.error('Error during transaction rollback:', rollbackError);
         }
       }
 
       // Check if this is a transaction abort error and switch to individual processing
       if (this.isTransactionAbortError(error)) {
         logger.info(
-          "Batch failed due to transaction abort, switching to individual processing"
+          'Batch failed due to transaction abort, switching to individual processing'
         );
         return await this.processIndividualProducts(batch, userId);
       }
 
-      logger.error("Batch processing failed:", error);
+      logger.error('Batch processing failed:', error);
       throw error;
     }
   }
@@ -614,15 +614,15 @@ class ProductMergeService {
    */
   async processSingleProduct(mergedProduct, userId, transaction) {
     // Validate required fields before attempting to save
-    if (!mergedProduct.name || mergedProduct.name.trim() === "") {
-      throw new Error("Product name is required");
+    if (!mergedProduct.name || mergedProduct.name.trim() === '') {
+      throw new Error('Product name is required');
     }
 
     // Generate SKU if missing
-    if (!mergedProduct.sku || mergedProduct.sku.trim() === "") {
+    if (!mergedProduct.sku || mergedProduct.sku.trim() === '') {
       const namePrefix = mergedProduct.name
         .toLowerCase()
-        .replace(/[^a-z0-9]/g, "")
+        .replace(/[^a-z0-9]/g, '')
         .substring(0, 10);
       mergedProduct.sku = `${namePrefix}-${Date.now()}-${Math.random()
         .toString(36)
@@ -651,12 +651,12 @@ class ProductMergeService {
             include: [
               {
                 model: PlatformData,
-                as: "platformData",
-                where: { entityType: "product" },
-                required: false,
-              },
+                as: 'platformData',
+                where: { entityType: 'product' },
+                required: false
+              }
             ],
-            transaction: tx,
+            transaction: tx
           });
         },
         transaction,
@@ -673,12 +673,12 @@ class ProductMergeService {
             include: [
               {
                 model: PlatformData,
-                as: "platformData",
-                where: { entityType: "product" },
-                required: false,
-              },
+                as: 'platformData',
+                where: { entityType: 'product' },
+                required: false
+              }
             ],
-            transaction: tx,
+            transaction: tx
           });
         },
         transaction,
@@ -724,7 +724,7 @@ class ProductMergeService {
         shippingInfo:
           mergedProduct.shippingInfo || existingProduct.shippingInfo,
         errorInfo: mergedProduct.errorInfo || existingProduct.errorInfo,
-        lastSyncedAt: new Date(),
+        lastSyncedAt: new Date()
       };
 
       await this.executeWithTransactionFallback(
@@ -743,13 +743,13 @@ class ProductMergeService {
         userId,
         sku: mergedProduct.sku,
         name: mergedProduct.name,
-        description: mergedProduct.description || "",
+        description: mergedProduct.description || '',
         price: parseFloat(mergedProduct.price) || 0,
         stockQuantity: parseInt(mergedProduct.stockQuantity) || 0,
         minStockLevel: parseInt(mergedProduct.minStockLevel) || 0,
-        category: mergedProduct.category || "Uncategorized",
+        category: mergedProduct.category || 'Uncategorized',
         images: Array.isArray(mergedProduct.images) ? mergedProduct.images : [],
-        status: "active",
+        status: 'active',
         platforms: mergedProduct.platforms || {},
         attributes: mergedProduct.attributes || {},
         tags: Array.isArray(mergedProduct.tags) ? mergedProduct.tags : [],
@@ -776,11 +776,11 @@ class ProductMergeService {
         metadata: mergedProduct.metadata || null,
         shippingInfo: mergedProduct.shippingInfo || null,
         errorInfo: mergedProduct.errorInfo || null,
-        lastSyncedAt: new Date(),
+        lastSyncedAt: new Date()
       };
 
       // Only add barcode if it exists and is not empty
-      if (mergedProduct.barcode && mergedProduct.barcode.trim() !== "") {
+      if (mergedProduct.barcode && mergedProduct.barcode.trim() !== '') {
         productData.barcode = mergedProduct.barcode;
       }
 
@@ -844,8 +844,8 @@ class ProductMergeService {
           error
         );
         errors.push({
-          product: mergedProduct.sku || mergedProduct.name || "unknown",
-          error: error.message,
+          product: mergedProduct.sku || mergedProduct.name || 'unknown',
+          error: error.message
         });
       }
     }
@@ -866,18 +866,18 @@ class ProductMergeService {
               async (tx) => {
                 return await PlatformData.findOne({
                   where: {
-                    entityType: "product",
+                    entityType: 'product',
                     platformType: source.platform,
-                    platformEntityId: source.externalId,
+                    platformEntityId: source.externalId
                   },
                   include: [
                     {
                       model: Product,
-                      as: "product",
-                      where: { userId },
-                    },
+                      as: 'product',
+                      where: { userId }
+                    }
                   ],
-                  transaction: tx,
+                  transaction: tx
                 });
               },
               transaction,
@@ -909,7 +909,7 @@ class ProductMergeService {
     try {
       // Prepare platform data
       const platformDataValues = {
-        entityType: "product",
+        entityType: 'product',
         entityId: product.id,
         platformType: source.platform,
         platformEntityId: source.externalId,
@@ -917,12 +917,12 @@ class ProductMergeService {
         platformPrice: parseFloat(source.price) || 0,
         platformQuantity: parseInt(source.stockQuantity) || 0,
         lastSyncedAt: new Date(),
-        status: "active",
+        status: 'active',
         data: {
           source,
           connectionId: source.connectionId,
-          connectionName: source.connectionName,
-        },
+          connectionName: source.connectionName
+        }
       };
 
       // Use upsert for better concurrency handling with transaction fallback
@@ -930,7 +930,7 @@ class ProductMergeService {
         async (tx) => {
           return await PlatformData.upsert(platformDataValues, {
             transaction: tx,
-            conflictFields: ["entityType", "entityId", "platformType"],
+            conflictFields: ['entityType', 'entityId', 'platformType']
           });
         },
         transaction,
@@ -938,7 +938,7 @@ class ProductMergeService {
       );
 
       logger.debug(
-        `${created ? "Created" : "Updated"} platform data for ${
+        `${created ? 'Created' : 'Updated'} platform data for ${
           source.platform
         }: ${source.externalId}`
       );
@@ -946,7 +946,7 @@ class ProductMergeService {
       return platformData;
     } catch (platformError) {
       // Handle unique constraint violations gracefully
-      if (platformError.name === "SequelizeUniqueConstraintError") {
+      if (platformError.name === 'SequelizeUniqueConstraintError') {
         logger.warn(
           `Constraint violation for product ${product.sku} on ${source.platform}, attempting manual update:`,
           platformError.message
@@ -957,11 +957,11 @@ class ProductMergeService {
           async (tx) => {
             return await PlatformData.findOne({
               where: {
-                entityType: "product",
+                entityType: 'product',
                 entityId: product.id,
-                platformType: source.platform,
+                platformType: source.platform
               },
-              transaction: tx,
+              transaction: tx
             });
           },
           transaction,
@@ -978,12 +978,12 @@ class ProductMergeService {
                   platformPrice: parseFloat(source.price) || 0,
                   platformQuantity: parseInt(source.stockQuantity) || 0,
                   lastSyncedAt: new Date(),
-                  status: "active",
+                  status: 'active',
                   data: {
                     source,
                     connectionId: source.connectionId,
-                    connectionName: source.connectionName,
-                  },
+                    connectionName: source.connectionName
+                  }
                 },
                 { transaction: tx }
               );
@@ -1006,25 +1006,25 @@ class ProductMergeService {
    * Check if error is a PostgreSQL transaction abort error
    */
   isTransactionAbortError(error) {
-    if (!error) return false;
+    if (!error) {return false;}
 
     // PostgreSQL error code 25P02: current transaction is aborted
     const code25P02 =
-      error.code === "25P02" ||
-      error.original?.code === "25P02" ||
-      error.parent?.code === "25P02";
+      error.code === '25P02' ||
+      error.original?.code === '25P02' ||
+      error.parent?.code === '25P02';
 
     const messageCheck =
       (error.message &&
-        error.message.includes("current transaction is aborted")) ||
+        error.message.includes('current transaction is aborted')) ||
       (error.original?.message &&
-        error.original.message.includes("current transaction is aborted")) ||
+        error.original.message.includes('current transaction is aborted')) ||
       (error.parent?.message &&
-        error.parent.message.includes("current transaction is aborted"));
+        error.parent.message.includes('current transaction is aborted'));
 
     // Also check for SequelizeDatabaseError name which often contains these errors
     const isSequelizeDbError =
-      error.name === "SequelizeDatabaseError" && (code25P02 || messageCheck);
+      error.name === 'SequelizeDatabaseError' && (code25P02 || messageCheck);
 
     const result = code25P02 || messageCheck || isSequelizeDbError;
 
@@ -1049,7 +1049,7 @@ class ProductMergeService {
 
     try {
       // Test if the transaction connection is still valid
-      await transaction.connection.query("SELECT 1");
+      await transaction.connection.query('SELECT 1');
       return true;
     } catch (error) {
       // If any error occurs (including 25P02), the transaction is invalid
@@ -1104,13 +1104,13 @@ class ProductMergeService {
    */
   calculateProductCompleteness(product) {
     let score = 0;
-    if (this.extractName(product)) score += 10;
-    if (this.extractSku(product)) score += 10;
-    if (this.extractBarcode(product)) score += 8;
-    if (this.extractDescription(product)) score += 6;
-    if (this.extractPrice(product) > 0) score += 8;
-    if (this.extractStockQuantity(product) > 0) score += 8;
-    if (this.extractCategory(product)) score += 6;
+    if (this.extractName(product)) {score += 10;}
+    if (this.extractSku(product)) {score += 10;}
+    if (this.extractBarcode(product)) {score += 8;}
+    if (this.extractDescription(product)) {score += 6;}
+    if (this.extractPrice(product) > 0) {score += 8;}
+    if (this.extractStockQuantity(product) > 0) {score += 8;}
+    if (this.extractCategory(product)) {score += 6;}
     const images = this.extractImages(product);
     if (images && Array.isArray(images)) {
       score += Math.min(images.length * 5, 20);
@@ -1122,14 +1122,14 @@ class ProductMergeService {
    * Calculate string similarity
    */
   calculateStringSimilarity(str1, str2) {
-    const normalize = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const normalize = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
     const s1 = normalize(str1);
     const s2 = normalize(str2);
-    if (s1 === s2) return 1;
-    if (s1.includes(s2) || s2.includes(s1)) return 0.8;
+    if (s1 === s2) {return 1;}
+    if (s1.includes(s2) || s2.includes(s1)) {return 0.8;}
     let matches = 0;
     for (let i = 0; i < s1.length; i++) {
-      if (s2.includes(s1[i])) matches++;
+      if (s2.includes(s1[i])) {matches++;}
     }
     const avgLength = (s1.length + s2.length) / 2;
     return matches / avgLength;
@@ -1190,13 +1190,13 @@ class ProductMergeService {
   }
 
   extractImages(product) {
-    if (product.images && Array.isArray(product.images)) return product.images;
-    if (product.image) return [product.image];
-    if (product.imageUrl) return [product.imageUrl];
+    if (product.images && Array.isArray(product.images)) {return product.images;}
+    if (product.image) {return [product.image];}
+    if (product.imageUrl) {return [product.imageUrl];}
     if (product.imageUrls && Array.isArray(product.imageUrls))
-      return product.imageUrls;
+    {return product.imageUrls;}
     if (product.rawData && product.rawData.images)
-      return product.rawData.images;
+    {return product.rawData.images;}
     return [];
   }
 
@@ -1233,40 +1233,40 @@ class ProductMergeService {
 
   extractVariants(product) {
     if (product.variants && Array.isArray(product.variants))
-      return product.variants;
+    {return product.variants;}
     if (
       product.rawData &&
       product.rawData.variants &&
       Array.isArray(product.rawData.variants)
     )
-      return product.rawData.variants;
-    if (product.variant) return [product.variant];
+    {return product.rawData.variants;}
+    if (product.variant) {return [product.variant];}
     return [];
   }
 
   extractVariantAttributes(product) {
     const attributes = {};
-    if (product.color) attributes.color = product.color;
-    if (product.size) attributes.size = product.size;
-    if (product.material) attributes.material = product.material;
-    if (product.pattern) attributes.pattern = product.pattern;
+    if (product.color) {attributes.color = product.color;}
+    if (product.size) {attributes.size = product.size;}
+    if (product.material) {attributes.material = product.material;}
+    if (product.pattern) {attributes.pattern = product.pattern;}
     if (product.rawData) {
-      if (product.rawData.color) attributes.color = product.rawData.color;
-      if (product.rawData.size) attributes.size = product.rawData.size;
+      if (product.rawData.color) {attributes.color = product.rawData.color;}
+      if (product.rawData.size) {attributes.size = product.rawData.size;}
       if (product.rawData.material)
-        attributes.material = product.rawData.material;
-      if (product.rawData.pattern) attributes.pattern = product.rawData.pattern;
+      {attributes.material = product.rawData.material;}
+      if (product.rawData.pattern) {attributes.pattern = product.rawData.pattern;}
       if (product.rawData.attributes)
-        Object.assign(attributes, product.rawData.attributes);
+      {Object.assign(attributes, product.rawData.attributes);}
     }
     if (product.variantAttributes)
-      Object.assign(attributes, product.variantAttributes);
+    {Object.assign(attributes, product.variantAttributes);}
     return Object.keys(attributes).length > 0 ? attributes : null;
   }
 
   extractAttributes(product) {
     const attributes = {};
-    if (product.attributes && typeof product.attributes === "object") {
+    if (product.attributes && typeof product.attributes === 'object') {
       Object.assign(attributes, product.attributes);
     }
     if (product.rawData && product.rawData.attributes) {
@@ -1280,7 +1280,7 @@ class ProductMergeService {
       sourcePlatform: product.sourcePlatform,
       connectionId: product.connectionId,
       connectionName: product.connectionName,
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: new Date().toISOString()
     };
   }
 
@@ -1295,21 +1295,21 @@ class ProductMergeService {
 
   extractDimensions(product) {
     const dimensions = {};
-    if (product.width) dimensions.width = parseFloat(product.width);
-    if (product.height) dimensions.height = parseFloat(product.height);
-    if (product.length) dimensions.length = parseFloat(product.length);
-    if (product.depth) dimensions.depth = parseFloat(product.depth);
+    if (product.width) {dimensions.width = parseFloat(product.width);}
+    if (product.height) {dimensions.height = parseFloat(product.height);}
+    if (product.length) {dimensions.length = parseFloat(product.length);}
+    if (product.depth) {dimensions.depth = parseFloat(product.depth);}
     if (product.rawData) {
       if (product.rawData.width)
-        dimensions.width = parseFloat(product.rawData.width);
+      {dimensions.width = parseFloat(product.rawData.width);}
       if (product.rawData.height)
-        dimensions.height = parseFloat(product.rawData.height);
+      {dimensions.height = parseFloat(product.rawData.height);}
       if (product.rawData.length)
-        dimensions.length = parseFloat(product.rawData.length);
+      {dimensions.length = parseFloat(product.rawData.length);}
       if (product.rawData.depth)
-        dimensions.depth = parseFloat(product.rawData.depth);
+      {dimensions.depth = parseFloat(product.rawData.depth);}
     }
-    if (product.dimensions && typeof product.dimensions === "object") {
+    if (product.dimensions && typeof product.dimensions === 'object') {
       Object.assign(dimensions, product.dimensions);
     }
     return Object.keys(dimensions).length > 0 ? dimensions : null;
@@ -1347,19 +1347,19 @@ class ProductMergeService {
   }
 
   extractApprovalStatus(product) {
-    if (product.approved !== undefined) return product.approved;
+    if (product.approved !== undefined) {return product.approved;}
     if (product.status) {
       const status = product.status.toLowerCase();
-      if (status === "approved" || status === "active") return true;
-      if (status === "rejected" || status === "inactive") return false;
+      if (status === 'approved' || status === 'active') {return true;}
+      if (status === 'rejected' || status === 'inactive') {return false;}
     }
     if (product.rawData) {
       if (product.rawData.approved !== undefined)
-        return product.rawData.approved;
+      {return product.rawData.approved;}
       if (product.rawData.status) {
         const status = product.rawData.status.toLowerCase();
-        if (status === "approved" || status === "active") return true;
-        if (status === "rejected" || status === "inactive") return false;
+        if (status === 'approved' || status === 'active') {return true;}
+        if (status === 'rejected' || status === 'inactive') {return false;}
       }
     }
     return null;
@@ -1376,18 +1376,18 @@ class ProductMergeService {
 
   extractErrorInfo(product) {
     const errorInfo = {};
-    if (product.error) errorInfo.error = product.error;
-    if (product.errorMessage) errorInfo.errorMessage = product.errorMessage;
-    if (product.errorCode) errorInfo.errorCode = product.errorCode;
-    if (product.hasError) errorInfo.hasError = product.hasError;
+    if (product.error) {errorInfo.error = product.error;}
+    if (product.errorMessage) {errorInfo.errorMessage = product.errorMessage;}
+    if (product.errorCode) {errorInfo.errorCode = product.errorCode;}
+    if (product.hasError) {errorInfo.hasError = product.hasError;}
     if (product.rawData) {
-      if (product.rawData.error) errorInfo.error = product.rawData.error;
+      if (product.rawData.error) {errorInfo.error = product.rawData.error;}
       if (product.rawData.errorMessage)
-        errorInfo.errorMessage = product.rawData.errorMessage;
+      {errorInfo.errorMessage = product.rawData.errorMessage;}
       if (product.rawData.errorCode)
-        errorInfo.errorCode = product.rawData.errorCode;
+      {errorInfo.errorCode = product.rawData.errorCode;}
       if (product.rawData.hasError)
-        errorInfo.hasError = product.rawData.hasError;
+      {errorInfo.hasError = product.rawData.hasError;}
     }
     if (product.sourcePlatform && product.failureReasons) {
       errorInfo.failureReasons = product.failureReasons;
@@ -1403,15 +1403,15 @@ class ProductMergeService {
 
   extractUrls(product) {
     const urls = {};
-    if (product.productUrl) urls.productUrl = product.productUrl;
-    if (product.platformUrl) urls.platformUrl = product.platformUrl;
-    if (product.detailUrl) urls.detailUrl = product.detailUrl;
+    if (product.productUrl) {urls.productUrl = product.productUrl;}
+    if (product.platformUrl) {urls.platformUrl = product.platformUrl;}
+    if (product.detailUrl) {urls.detailUrl = product.detailUrl;}
     if (product.rawData) {
       if (product.rawData.productUrl)
-        urls.productUrl = product.rawData.productUrl;
+      {urls.productUrl = product.rawData.productUrl;}
       if (product.rawData.platformUrl)
-        urls.platformUrl = product.rawData.platformUrl;
-      if (product.rawData.detailUrl) urls.detailUrl = product.rawData.detailUrl;
+      {urls.platformUrl = product.rawData.platformUrl;}
+      if (product.rawData.detailUrl) {urls.detailUrl = product.rawData.detailUrl;}
     }
     return Object.keys(urls).length > 0 ? urls : null;
   }
@@ -1419,17 +1419,17 @@ class ProductMergeService {
   extractShippingInfo(product) {
     const shipping = {};
     if (product.shippingWeight)
-      shipping.weight = parseFloat(product.shippingWeight);
+    {shipping.weight = parseFloat(product.shippingWeight);}
     if (product.freeShipping !== undefined)
-      shipping.freeShipping = product.freeShipping;
-    if (product.shippingTemplate) shipping.template = product.shippingTemplate;
+    {shipping.freeShipping = product.freeShipping;}
+    if (product.shippingTemplate) {shipping.template = product.shippingTemplate;}
     if (product.rawData) {
       if (product.rawData.shippingWeight)
-        shipping.weight = parseFloat(product.rawData.shippingWeight);
+      {shipping.weight = parseFloat(product.rawData.shippingWeight);}
       if (product.rawData.freeShipping !== undefined)
-        shipping.freeShipping = product.rawData.freeShipping;
+      {shipping.freeShipping = product.rawData.freeShipping;}
       if (product.rawData.shippingTemplate)
-        shipping.template = product.rawData.shippingTemplate;
+      {shipping.template = product.rawData.shippingTemplate;}
     }
     return Object.keys(shipping).length > 0 ? shipping : null;
   }
@@ -1447,15 +1447,15 @@ class ProductMergeService {
   }
 
   derivePlatformFromConnectionName(connectionName) {
-    if (!connectionName) return null;
+    if (!connectionName) {return null;}
 
     const name = connectionName.toLowerCase();
-    if (name.includes("hepsiburada") || name.includes("hb"))
-      return "hepsiburada";
-    if (name.includes("trendyol") || name.includes("ty")) return "trendyol";
-    if (name.includes("n11")) return "n11";
-    if (name.includes("amazon")) return "amazon";
-    if (name.includes("gittigidiyor")) return "gittigidiyor";
+    if (name.includes('hepsiburada') || name.includes('hb'))
+    {return 'hepsiburada';}
+    if (name.includes('trendyol') || name.includes('ty')) {return 'trendyol';}
+    if (name.includes('n11')) {return 'n11';}
+    if (name.includes('amazon')) {return 'amazon';}
+    if (name.includes('gittigidiyor')) {return 'gittigidiyor';}
 
     return null;
   }

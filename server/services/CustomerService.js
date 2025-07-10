@@ -1,6 +1,6 @@
-const { Customer, Order, OrderItem } = require("../models");
-const { Op } = require("sequelize");
-const logger = require("../utils/logger");
+const { Customer, Order, OrderItem } = require('../models');
+const { Op } = require('sequelize');
+const logger = require('../utils/logger');
 
 class CustomerService {
   /**
@@ -8,38 +8,38 @@ class CustomerService {
    */
   static async extractAndSaveCustomersFromOrders() {
     try {
-      logger.info("Starting customer extraction from orders");
+      logger.info('Starting customer extraction from orders');
 
       // Get all orders with customer information
       const orders = await Order.findAll({
         attributes: [
-          "customerEmail",
-          "customerName",
-          "customerPhone",
-          "orderDate",
-          "totalAmount",
-          "platform",
-          "shippingAddress",
-          "createdAt",
+          'customerEmail',
+          'customerName',
+          'customerPhone',
+          'orderDate',
+          'totalAmount',
+          'platform',
+          'shippingAddress',
+          'createdAt'
         ],
         where: {
           customerEmail: {
             [Op.ne]: null,
-            [Op.ne]: "",
-          },
+            [Op.ne]: ''
+          }
         },
         include: [
           {
             model: OrderItem,
-            as: "items",
-            attributes: ["title", "sku", "quantity", "price"],
-          },
+            as: 'items',
+            attributes: ['title', 'sku', 'quantity', 'price']
+          }
         ],
-        order: [["orderDate", "DESC"]],
+        order: [['orderDate', 'DESC']]
       });
 
       if (!orders.length) {
-        logger.info("No orders with customer information found");
+        logger.info('No orders with customer information found');
         return { extracted: 0, updated: 0 };
       }
 
@@ -52,13 +52,13 @@ class CustomerService {
         if (!customerMap.has(email)) {
           customerMap.set(email, {
             email: email,
-            name: order.customerName || "Unknown Customer",
+            name: order.customerName || 'Unknown Customer',
             phone: order.customerPhone,
             orders: [],
             addresses: new Set(),
             platforms: new Map(),
             products: new Map(),
-            categories: new Set(),
+            categories: new Set()
           });
         }
 
@@ -66,7 +66,7 @@ class CustomerService {
         customerData.orders.push(order);
 
         // Update name if current one is better
-        if (order.customerName && order.customerName !== "Unknown Customer") {
+        if (order.customerName && order.customerName !== 'Unknown Customer') {
           customerData.name = order.customerName;
         }
 
@@ -81,7 +81,7 @@ class CustomerService {
           customerData.addresses.add(
             JSON.stringify({
               ...order.shippingAddress,
-              _key: addressKey,
+              _key: addressKey
             })
           );
         }
@@ -105,7 +105,7 @@ class CustomerService {
                 sku: item.sku,
                 count:
                   (customerData.products.get(productKey)?.count || 0) +
-                  item.quantity,
+                  item.quantity
               });
             }
           });
@@ -137,12 +137,12 @@ class CustomerService {
             shippingAddresses: analytics.shippingAddresses,
             favoriteProducts: analytics.favoriteProducts,
             favoriteCategories: [], // Will be enhanced later
-            lastUpdated: new Date(),
+            lastUpdated: new Date()
           };
 
           // Use upsert to create or update customer
           const [customer, created] = await Customer.upsert(customerRecord, {
-            returning: true,
+            returning: true
           });
 
           if (created) {
@@ -160,7 +160,7 @@ class CustomerService {
       );
       return { extracted: extractedCount, updated: updatedCount };
     } catch (error) {
-      logger.error("Error in customer extraction:", error);
+      logger.error('Error in customer extraction:', error);
       throw error;
     }
   }
@@ -209,19 +209,19 @@ class CustomerService {
     // Risk assessment
     const daysSinceLastOrder =
       (new Date() - lastOrderDate) / (1000 * 60 * 60 * 24);
-    let riskLevel = "low";
-    if (daysSinceLastOrder > 90) riskLevel = "high";
-    else if (daysSinceLastOrder > 30) riskLevel = "medium";
+    let riskLevel = 'low';
+    if (daysSinceLastOrder > 90) {riskLevel = 'high';}
+    else if (daysSinceLastOrder > 30) {riskLevel = 'medium';}
 
     // Customer type
-    let customerType = "new";
-    if (loyaltyScore >= 70) customerType = "vip";
-    else if (loyaltyScore >= 40) customerType = "loyal";
+    let customerType = 'new';
+    if (loyaltyScore >= 70) {customerType = 'vip';}
+    else if (loyaltyScore >= 40) {customerType = 'loyal';}
 
     // Primary platform
     const primaryPlatform =
       Object.entries(platformUsage).sort(([, a], [, b]) => b - a)[0]?.[0] ||
-      "unknown";
+      'unknown';
 
     // Shipping addresses
     const shippingAddresses = Array.from(customerData.addresses)
@@ -235,7 +235,7 @@ class CustomerService {
       .map(([key, product]) => ({
         name: product.name,
         sku: product.sku,
-        purchaseCount: product.count,
+        purchaseCount: product.count
       }));
 
     return {
@@ -250,7 +250,7 @@ class CustomerService {
       primaryPlatform,
       platformUsage,
       shippingAddresses,
-      favoriteProducts,
+      favoriteProducts
     };
   }
 
@@ -261,11 +261,11 @@ class CustomerService {
     const {
       page = 1,
       limit = 20,
-      search = "",
-      customerType = "all",
-      riskLevel = "all",
-      sortBy = "totalSpent",
-      sortOrder = "desc",
+      search = '',
+      customerType = 'all',
+      riskLevel = 'all',
+      sortBy = 'totalSpent',
+      sortOrder = 'desc'
     } = options;
 
     const whereClause = {};
@@ -273,15 +273,15 @@ class CustomerService {
     if (search) {
       whereClause[Op.or] = [
         { name: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } }
       ];
     }
 
-    if (customerType !== "all") {
+    if (customerType !== 'all') {
       whereClause.customerType = customerType;
     }
 
-    if (riskLevel !== "all") {
+    if (riskLevel !== 'all') {
       whereClause.riskLevel = riskLevel;
     }
 
@@ -296,13 +296,13 @@ class CustomerService {
       include: [
         {
           model: Order,
-          as: "orders",
-          attributes: ["id", "orderDate", "totalAmount", "platform"],
+          as: 'orders',
+          attributes: ['id', 'orderDate', 'totalAmount', 'platform'],
           limit: 5,
-          order: [["orderDate", "DESC"]],
-          required: false,
-        },
-      ],
+          order: [['orderDate', 'DESC']],
+          required: false
+        }
+      ]
     });
 
     return {
@@ -313,8 +313,8 @@ class CustomerService {
         totalPages: Math.ceil(count / limit),
         limit: parseInt(limit),
         hasNext: page * limit < count,
-        hasPrev: page > 1,
-      },
+        hasPrev: page > 1
+      }
     };
   }
 
@@ -325,21 +325,21 @@ class CustomerService {
     const totalCustomers = await Customer.count();
 
     const vipCustomers = await Customer.count({
-      where: { customerType: "vip" },
+      where: { customerType: 'vip' }
     });
 
     const atRiskCustomers = await Customer.count({
-      where: { riskLevel: "high" },
+      where: { riskLevel: 'high' }
     });
 
-    const totalRevenueResult = await Customer.sum("totalSpent");
+    const totalRevenueResult = await Customer.sum('totalSpent');
     const totalRevenue = totalRevenueResult || 0;
 
     return {
       totalCustomers,
       vipCustomers,
       atRiskCustomers,
-      totalRevenue: parseFloat(totalRevenue),
+      totalRevenue: parseFloat(totalRevenue)
     };
   }
 
@@ -352,16 +352,16 @@ class CustomerService {
       include: [
         {
           model: Order,
-          as: "orders",
+          as: 'orders',
           include: [
             {
               model: OrderItem,
-              as: "items",
-            },
+              as: 'items'
+            }
           ],
-          order: [["orderDate", "DESC"]],
-        },
-      ],
+          order: [['orderDate', 'DESC']]
+        }
+      ]
     });
   }
 
@@ -374,37 +374,37 @@ class CustomerService {
       const orders = await Order.findAll({
         where: {
           customerEmail: {
-            [Op.iLike]: email.toLowerCase().trim(),
-          },
+            [Op.iLike]: email.toLowerCase().trim()
+          }
         },
         include: [
           {
             model: OrderItem,
-            as: "items",
-          },
+            as: 'items'
+          }
         ],
-        order: [["orderDate", "DESC"]],
+        order: [['orderDate', 'DESC']]
       });
 
       if (!orders.length) {
-        throw new Error("No orders found for customer");
+        throw new Error('No orders found for customer');
       }
 
       // Create temporary customer data structure
       const customerData = {
         email: email.toLowerCase().trim(),
-        name: orders[0].customerName || "Unknown Customer",
+        name: orders[0].customerName || 'Unknown Customer',
         phone: orders[0].customerPhone,
         orders: orders,
         addresses: new Set(),
         platforms: new Map(),
-        products: new Map(),
+        products: new Map()
       };
 
       // Process orders
       orders.forEach((order) => {
         // Update name and phone
-        if (order.customerName && order.customerName !== "Unknown Customer") {
+        if (order.customerName && order.customerName !== 'Unknown Customer') {
           customerData.name = order.customerName;
         }
         if (order.customerPhone && !customerData.phone) {
@@ -431,7 +431,7 @@ class CustomerService {
                 sku: item.sku,
                 count:
                   (customerData.products.get(productKey)?.count || 0) +
-                  item.quantity,
+                  item.quantity
               });
             }
           });
@@ -447,7 +447,7 @@ class CustomerService {
         name: customerData.name,
         phone: customerData.phone,
         ...analytics,
-        lastUpdated: new Date(),
+        lastUpdated: new Date()
       });
 
       return customer;

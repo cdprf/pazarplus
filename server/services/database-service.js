@@ -1,6 +1,6 @@
-const { Op } = require("sequelize");
-const pLimit = require("p-limit");
-const logger = require("../utils/logger");
+const { Op } = require('sequelize');
+const pLimit = require('p-limit');
+const logger = require('../utils/logger');
 
 // Limit concurrent database operations to prevent overwhelming the database
 const dbConcurrencyLimit = pLimit(10);
@@ -10,7 +10,7 @@ class DatabaseService {
     this.retryOptions = {
       maxAttempts: 3,
       delay: 1000, // 1 second
-      backoff: 2, // exponential backoff
+      backoff: 2 // exponential backoff
     };
   }
 
@@ -23,7 +23,7 @@ class DatabaseService {
   async executeWithRetry(operation, options = {}) {
     const { maxAttempts, delay, backoff } = {
       ...this.retryOptions,
-      ...options,
+      ...options
     };
 
     return dbConcurrencyLimit(async () => {
@@ -43,7 +43,7 @@ class DatabaseService {
               {
                 error: error.message,
                 attempt,
-                waitTime,
+                waitTime
               }
             );
 
@@ -66,17 +66,17 @@ class DatabaseService {
    * @returns {boolean} True if the error is retryable
    */
   isRetryableError(error) {
-    if (!error) return false;
+    if (!error) {return false;}
 
     const retryableMessages = [
-      "SQLITE_BUSY",
-      "database is locked",
-      "ECONNRESET",
-      "Connection terminated",
-      "Connection lost",
-      "deadlock detected",
-      "Lock wait timeout",
-      "connection pool exhausted",
+      'SQLITE_BUSY',
+      'database is locked',
+      'ECONNRESET',
+      'Connection terminated',
+      'Connection lost',
+      'deadlock detected',
+      'Lock wait timeout',
+      'connection pool exhausted'
     ];
 
     const errorMessage = error.message || error.toString();
@@ -99,7 +99,7 @@ class DatabaseService {
         const [instance, created] = await Model.findOrCreate({
           where: options.where || { id: data.id },
           defaults: data,
-          ...options,
+          ...options
         });
 
         if (!created && options.updateOnConflict !== false) {
@@ -110,18 +110,18 @@ class DatabaseService {
         return [instance, created];
       } catch (error) {
         // If findOrCreate fails, try a manual upsert approach
-        if (error.name === "SequelizeUniqueConstraintError") {
+        if (error.name === 'SequelizeUniqueConstraintError') {
           logger.warn(
-            "Unique constraint error in upsert, attempting manual update",
+            'Unique constraint error in upsert, attempting manual update',
             {
               model: Model.tableName,
-              error: error.message,
+              error: error.message
             }
           );
 
           // Try to find and update
           const existing = await Model.findOne({
-            where: options.where || { id: data.id },
+            where: options.where || { id: data.id }
           });
           if (existing) {
             await existing.update(data);
@@ -150,19 +150,19 @@ class DatabaseService {
         return await Model.bulkCreate(data, {
           ignoreDuplicates: true,
           updateOnDuplicate: options.updateOnDuplicate || [],
-          ...options,
+          ...options
         });
       } catch (error) {
         // Fallback to individual creates if bulk fails
         if (
-          error.name === "SequelizeUniqueConstraintError" ||
-          error.message.includes("UNIQUE constraint failed")
+          error.name === 'SequelizeUniqueConstraintError' ||
+          error.message.includes('UNIQUE constraint failed')
         ) {
           logger.warn(
-            "Bulk create failed, falling back to individual operations",
+            'Bulk create failed, falling back to individual operations',
             {
               model: Model.tableName,
-              count: data.length,
+              count: data.length
             }
           );
 
@@ -172,10 +172,10 @@ class DatabaseService {
               const [instance] = await this.safeUpsert(Model, item, options);
               results.push(instance);
             } catch (itemError) {
-              logger.error("Failed to create individual item", {
+              logger.error('Failed to create individual item', {
                 model: Model.tableName,
                 item,
-                error: itemError.message,
+                error: itemError.message
               });
             }
           }

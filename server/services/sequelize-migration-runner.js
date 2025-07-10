@@ -1,6 +1,6 @@
-const { Sequelize } = require("sequelize");
-const path = require("path");
-const fs = require("fs").promises;
+const { Sequelize } = require('sequelize');
+const path = require('path');
+const fs = require('fs').promises;
 
 /**
  * Sequelize Migration Runner
@@ -9,11 +9,11 @@ const fs = require("fs").promises;
 class SequelizeMigrationRunner {
   constructor(sequelize) {
     this.sequelize = sequelize;
-    this.migrationsPath = path.join(__dirname, "../migrations");
+    this.migrationsPath = path.join(__dirname, '../migrations');
     this.logger =
-      process.env.NODE_ENV === "production"
-        ? require("../utils/logger-simple")
-        : require("../utils/logger");
+      process.env.NODE_ENV === 'production'
+        ? require('../utils/logger-simple')
+        : require('../utils/logger');
   }
 
   /**
@@ -24,21 +24,21 @@ class SequelizeMigrationRunner {
 
     try {
       // Check if SequelizeMeta table exists
-      const tableExists = await this.tableExists("SequelizeMeta");
+      const tableExists = await this.tableExists('SequelizeMeta');
 
       if (!tableExists) {
-        await queryInterface.createTable("SequelizeMeta", {
+        await queryInterface.createTable('SequelizeMeta', {
           name: {
             type: Sequelize.STRING,
             allowNull: false,
             unique: true,
-            primaryKey: true,
-          },
+            primaryKey: true
+          }
         });
-        this.logger.info("Created SequelizeMeta table for tracking migrations");
+        this.logger.info('Created SequelizeMeta table for tracking migrations');
       }
     } catch (error) {
-      this.logger.warn("Error creating SequelizeMeta table:", error.message);
+      this.logger.warn('Error creating SequelizeMeta table:', error.message);
     }
   }
 
@@ -50,7 +50,7 @@ class SequelizeMigrationRunner {
       // Handle different database dialects
       const dialect = this.sequelize.getDialect();
 
-      if (dialect === "postgres") {
+      if (dialect === 'postgres') {
         const [results] = await this.sequelize.query(`
           SELECT EXISTS (
             SELECT FROM information_schema.tables 
@@ -59,7 +59,7 @@ class SequelizeMigrationRunner {
           );
         `);
         return results[0].exists;
-      } else if (dialect === "sqlite") {
+      } else if (dialect === 'sqlite') {
         const [results] = await this.sequelize.query(`
           SELECT name FROM sqlite_master 
           WHERE type='table' AND name='${tableName}';
@@ -83,9 +83,9 @@ class SequelizeMigrationRunner {
   async getMigrationFiles() {
     try {
       const files = await fs.readdir(this.migrationsPath);
-      return files.filter((file) => file.endsWith(".js")).sort(); // Sort to ensure proper execution order
+      return files.filter((file) => file.endsWith('.js')).sort(); // Sort to ensure proper execution order
     } catch (error) {
-      this.logger.error("Error reading migrations directory:", error.message);
+      this.logger.error('Error reading migrations directory:', error.message);
       return [];
     }
   }
@@ -97,11 +97,11 @@ class SequelizeMigrationRunner {
     try {
       // Handle both production mock database and real database
       if (
-        this.sequelize.getDialect() === "sqlite" &&
-        this.sequelize.config?.storage === ":memory:"
+        this.sequelize.getDialect() === 'sqlite' &&
+        this.sequelize.config?.storage === ':memory:'
       ) {
         this.logger.info(
-          "Using in-memory database, no migration tracking available"
+          'Using in-memory database, no migration tracking available'
         );
         return [];
       }
@@ -111,7 +111,7 @@ class SequelizeMigrationRunner {
       );
       return results.map((row) => row.name);
     } catch (error) {
-      this.logger.warn("Error getting executed migrations:", error.message);
+      this.logger.warn('Error getting executed migrations:', error.message);
       return [];
     }
   }
@@ -123,8 +123,8 @@ class SequelizeMigrationRunner {
     try {
       // Skip marking for in-memory databases
       if (
-        this.sequelize.getDialect() === "sqlite" &&
-        this.sequelize.config?.storage === ":memory:"
+        this.sequelize.getDialect() === 'sqlite' &&
+        this.sequelize.config?.storage === ':memory:'
       ) {
         return;
       }
@@ -133,12 +133,12 @@ class SequelizeMigrationRunner {
         'INSERT INTO "SequelizeMeta" (name) VALUES (?)',
         {
           replacements: [migrationName],
-          type: Sequelize.QueryTypes.INSERT,
+          type: Sequelize.QueryTypes.INSERT
         }
       );
     } catch (error) {
       // Ignore duplicate key errors (migration already marked as executed)
-      if (error.name === "SequelizeUniqueConstraintError") {
+      if (error.name === 'SequelizeUniqueConstraintError') {
         this.logger.debug(
           `Migration ${migrationName} already marked as executed`
         );
@@ -176,9 +176,9 @@ class SequelizeMigrationRunner {
     } catch (error) {
       // Check if error is due to table already existing
       if (
-        error.name === "SequelizeDatabaseError" &&
-        (error.original?.code === "42P07" ||
-          error.message.includes("already exists"))
+        error.name === 'SequelizeDatabaseError' &&
+        (error.original?.code === '42P07' ||
+          error.message.includes('already exists'))
       ) {
         this.logger.info(
           `⏭️  Migration skipped (table already exists): ${migrationFile}`
@@ -198,7 +198,7 @@ class SequelizeMigrationRunner {
    */
   async runMigrations() {
     try {
-      this.logger.info("Starting database migrations...");
+      this.logger.info('Starting database migrations...');
 
       // Ensure meta table exists
       await this.createMetaTable();
@@ -206,7 +206,7 @@ class SequelizeMigrationRunner {
       // Get all migration files
       const migrationFiles = await this.getMigrationFiles();
       if (migrationFiles.length === 0) {
-        this.logger.info("No migration files found");
+        this.logger.info('No migration files found');
         return true;
       }
 
@@ -219,7 +219,7 @@ class SequelizeMigrationRunner {
       );
 
       if (pendingMigrations.length === 0) {
-        this.logger.info("All migrations are up to date");
+        this.logger.info('All migrations are up to date');
         return true;
       }
 
@@ -237,7 +237,7 @@ class SequelizeMigrationRunner {
       );
       return true;
     } catch (error) {
-      this.logger.error("Database migrations failed:", error);
+      this.logger.error('Database migrations failed:', error);
       throw error;
     }
   }
@@ -247,7 +247,7 @@ class SequelizeMigrationRunner {
    */
   async runComprehensiveMigration() {
     const comprehensiveMigrationFile =
-      "20250621000001-create-all-tables-complete.js";
+      '20250621000001-create-all-tables-complete.js';
     const migrationFiles = await this.getMigrationFiles();
 
     if (migrationFiles.includes(comprehensiveMigrationFile)) {

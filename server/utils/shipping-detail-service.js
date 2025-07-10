@@ -3,9 +3,9 @@
  * Handles safe operations on shipping details with proper constraint handling
  */
 
-const { ShippingDetail, Order, sequelize } = require("../models");
-const { Op } = require("sequelize");
-const logger = require("./logger");
+const { ShippingDetail, Order, sequelize } = require('../models');
+const { Op } = require('sequelize');
+const logger = require('./logger');
 
 class ShippingDetailService {
   /**
@@ -30,29 +30,29 @@ class ShippingDetailService {
 
       logger.debug(`Successfully updated shipping detail ${shippingDetailId}`, {
         shippingDetailId,
-        updateData: Object.keys(updateData),
+        updateData: Object.keys(updateData)
       });
 
       return { success: true, data: result };
     } catch (error) {
       if (
-        error.name === "SequelizeForeignKeyConstraintError" &&
-        error.parent?.constraint === "orders_shippingDetailId_fkey"
+        error.name === 'SequelizeForeignKeyConstraintError' &&
+        error.parent?.constraint === 'orders_shippingDetailId_fkey'
       ) {
         logger.warn(
           `Foreign key constraint violation when updating shipping detail ${shippingDetailId}`,
           {
             error: error.message,
             shippingDetailId,
-            constraint: error.parent.constraint,
+            constraint: error.parent.constraint
           }
         );
 
         return {
           success: false,
-          error: "FOREIGN_KEY_CONSTRAINT",
+          error: 'FOREIGN_KEY_CONSTRAINT',
           message:
-            "Cannot update shipping detail: it is referenced by orders that prevent the update",
+            'Cannot update shipping detail: it is referenced by orders that prevent the update'
         };
       }
 
@@ -75,8 +75,8 @@ class ShippingDetailService {
       // Check if there are any orders referencing this shipping detail
       const referencingOrders = await Order.findAll({
         where: { shippingDetailId },
-        attributes: ["id", "orderNumber"],
-        ...options,
+        attributes: ['id', 'orderNumber'],
+        ...options
       });
 
       if (referencingOrders.length > 0) {
@@ -86,32 +86,32 @@ class ShippingDetailService {
             shippingDetailId,
             referencingOrders: referencingOrders.map((o) => ({
               id: o.id,
-              orderNumber: o.orderNumber,
-            })),
+              orderNumber: o.orderNumber
+            }))
           }
         );
 
         return {
           success: false,
-          error: "REFERENCED_BY_ORDERS",
+          error: 'REFERENCED_BY_ORDERS',
           message: `Cannot delete shipping detail: it is referenced by ${referencingOrders.length} orders`,
           referencingOrders: referencingOrders.map((o) => ({
             id: o.id,
-            orderNumber: o.orderNumber,
-          })),
+            orderNumber: o.orderNumber
+          }))
         };
       }
 
       const deleteCount = await ShippingDetail.destroy({
         where: { id: shippingDetailId },
-        ...options,
+        ...options
       });
 
       if (deleteCount === 0) {
         return {
           success: false,
-          error: "NOT_FOUND",
-          message: `ShippingDetail with ID ${shippingDetailId} not found`,
+          error: 'NOT_FOUND',
+          message: `ShippingDetail with ID ${shippingDetailId} not found`
         };
       }
 
@@ -120,23 +120,23 @@ class ShippingDetailService {
       return { success: true, deletedCount: deleteCount };
     } catch (error) {
       if (
-        error.name === "SequelizeForeignKeyConstraintError" &&
-        error.parent?.constraint === "orders_shippingDetailId_fkey"
+        error.name === 'SequelizeForeignKeyConstraintError' &&
+        error.parent?.constraint === 'orders_shippingDetailId_fkey'
       ) {
         logger.warn(
           `Foreign key constraint violation when deleting shipping detail ${shippingDetailId}`,
           {
             error: error.message,
             shippingDetailId,
-            constraint: error.parent.constraint,
+            constraint: error.parent.constraint
           }
         );
 
         return {
           success: false,
-          error: "FOREIGN_KEY_CONSTRAINT",
+          error: 'FOREIGN_KEY_CONSTRAINT',
           message:
-            "Cannot delete shipping detail: it is referenced by orders that prevent the deletion",
+            'Cannot delete shipping detail: it is referenced by orders that prevent the deletion'
         };
       }
 
@@ -167,7 +167,7 @@ class ShippingDetailService {
           {
             where: { shippingDetailId },
             transaction,
-            returning: true,
+            returning: true
           }
         );
 
@@ -178,7 +178,7 @@ class ShippingDetailService {
         // Now delete the shipping detail
         const deleteCount = await ShippingDetail.destroy({
           where: { id: shippingDetailId },
-          transaction,
+          transaction
         });
 
         if (shouldCommit) {
@@ -192,7 +192,7 @@ class ShippingDetailService {
         return {
           success: true,
           deletedCount: deleteCount,
-          updatedOrdersCount: updateResult[0],
+          updatedOrdersCount: updateResult[0]
         };
       } catch (error) {
         if (shouldCommit) {

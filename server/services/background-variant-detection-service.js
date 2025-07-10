@@ -5,12 +5,12 @@
  * It processes products periodically and detects variants automatically.
  */
 
-const logger = require("../utils/logger");
-const { Product, PlatformData } = require("../models");
-const { Op } = require("sequelize");
-const VariantDetector = require("./variant-detector");
-const fs = require("fs");
-const path = require("path");
+const logger = require('../utils/logger');
+const { Product, PlatformData } = require('../models');
+const { Op } = require('sequelize');
+const VariantDetector = require('./variant-detector');
+const fs = require('fs');
+const path = require('path');
 
 class BackgroundVariantDetectionService {
   constructor() {
@@ -31,7 +31,7 @@ class BackgroundVariantDetectionService {
     // Configuration file path
     this.configPath = path.join(
       __dirname,
-      "../data/variant-detection-config.json"
+      '../data/variant-detection-config.json'
     );
 
     // Load configuration from file or use defaults
@@ -50,17 +50,17 @@ class BackgroundVariantDetectionService {
       }
 
       if (fs.existsSync(this.configPath)) {
-        const configData = fs.readFileSync(this.configPath, "utf8");
+        const configData = fs.readFileSync(this.configPath, 'utf8');
         const savedConfig = JSON.parse(configData);
         logger.info(
-          "Loaded variant detection configuration from file",
+          'Loaded variant detection configuration from file',
           savedConfig
         );
         return savedConfig;
       }
     } catch (error) {
       logger.warn(
-        "Failed to load configuration from file, using defaults",
+        'Failed to load configuration from file, using defaults',
         error
       );
     }
@@ -77,16 +77,16 @@ class BackgroundVariantDetectionService {
       enablePlatformDataAnalysis: true,
       enableTextAnalysis: true,
       colorPatterns: [
-        "(?:color|colour|renk):\\s*([^,;]+)",
-        "(?:^|\\s)(black|white|red|blue|green|yellow|pink|purple|orange|gray|grey|brown)(?:\\s|$)",
+        '(?:color|colour|renk):\\s*([^,;]+)',
+        '(?:^|\\s)(black|white|red|blue|green|yellow|pink|purple|orange|gray|grey|brown)(?:\\s|$)'
       ],
       sizePatterns: [
-        "(?:size|beden):\\s*([^,;]+)",
-        "(?:^|\\s)(xs|s|m|l|xl|xxl|xxxl|\\d+)(?:\\s|$)",
+        '(?:size|beden):\\s*([^,;]+)',
+        '(?:^|\\s)(xs|s|m|l|xl|xxl|xxxl|\\d+)(?:\\s|$)'
       ],
-      modelPatterns: ["(?:model|tip):\\s*([^,;]+)"],
+      modelPatterns: ['(?:model|tip):\\s*([^,;]+)'],
       structuredPatterns: [],
-      customPatterns: [],
+      customPatterns: []
     };
   }
 
@@ -101,9 +101,9 @@ class BackgroundVariantDetectionService {
       }
 
       fs.writeFileSync(this.configPath, JSON.stringify(this.config, null, 2));
-      logger.info("Saved variant detection configuration to file");
+      logger.info('Saved variant detection configuration to file');
     } catch (error) {
-      logger.error("Failed to save configuration to file", error);
+      logger.error('Failed to save configuration to file', error);
     }
   }
 
@@ -112,7 +112,7 @@ class BackgroundVariantDetectionService {
    */
   start() {
     if (this.isRunning) {
-      logger.warn("Background variant detection service is already running");
+      logger.warn('Background variant detection service is already running');
       return;
     }
 
@@ -120,16 +120,16 @@ class BackgroundVariantDetectionService {
     this.startTime = Date.now();
     this.lastError = null;
 
-    logger.info("Starting background variant detection service", {
+    logger.info('Starting background variant detection service', {
       interval: this.processInterval,
       batchSize: this.batchSize,
-      confidenceThreshold: this.config.minConfidenceThreshold,
+      confidenceThreshold: this.config.minConfidenceThreshold
     });
 
     // Start periodic processing
     this.intervalId = setInterval(() => {
       this.processProductBatch().catch((error) => {
-        logger.error("Error in background variant detection batch:", error);
+        logger.error('Error in background variant detection batch:', error);
         this.lastError = error.message;
         this.processingErrors++;
       });
@@ -138,7 +138,7 @@ class BackgroundVariantDetectionService {
     // Process any pending products immediately
     setTimeout(() => {
       this.processProductBatch().catch((error) => {
-        logger.error("Error in initial variant detection batch:", error);
+        logger.error('Error in initial variant detection batch:', error);
       });
     }, 5000); // Wait 5 seconds after startup
   }
@@ -159,7 +159,7 @@ class BackgroundVariantDetectionService {
       this.intervalId = null;
     }
 
-    logger.info("Background variant detection service stopped");
+    logger.info('Background variant detection service stopped');
   }
 
   /**
@@ -171,14 +171,14 @@ class BackgroundVariantDetectionService {
     }
 
     const startTime = Date.now();
-    logger.debug("Starting background variant detection batch");
+    logger.debug('Starting background variant detection batch');
 
     try {
       // Find products that need variant detection
       const products = await this.findProductsNeedingDetection();
 
       if (products.length === 0) {
-        logger.debug("No products found needing variant detection");
+        logger.debug('No products found needing variant detection');
         return;
       }
 
@@ -190,7 +190,7 @@ class BackgroundVariantDetectionService {
         processed: 0,
         updated: 0,
         errors: 0,
-        skipped: 0,
+        skipped: 0
       };
 
       // Process products in smaller chunks to avoid overwhelming the system
@@ -211,7 +211,7 @@ class BackgroundVariantDetectionService {
           // Check if we've been processing too long
           if (Date.now() - startTime > this.maxProcessingTime) {
             logger.warn(
-              "Background variant detection batch timeout, stopping current batch"
+              'Background variant detection batch timeout, stopping current batch'
             );
             break;
           }
@@ -231,12 +231,12 @@ class BackgroundVariantDetectionService {
       this.totalProcessed += results.processed;
       this.lastBatchSize = results.processed;
 
-      logger.info("Background variant detection batch completed", {
+      logger.info('Background variant detection batch completed', {
         duration: `${duration}ms`,
-        ...results,
+        ...results
       });
     } catch (error) {
-      logger.error("Error in background variant detection batch:", error);
+      logger.error('Error in background variant detection batch:', error);
     }
   }
 
@@ -259,46 +259,46 @@ class BackgroundVariantDetectionService {
               [Op.and]: [
                 {
                   variantDetectionConfidence: {
-                    [Op.lt]: this.config.minConfidenceThreshold,
-                  },
+                    [Op.lt]: this.config.minConfidenceThreshold
+                  }
                 },
                 {
                   lastVariantDetectionAt: {
-                    [Op.lt]: new Date(Date.now() - 60 * 60 * 1000),
-                  },
-                }, // At least 1 hour ago
-              ],
-            },
-          ],
+                    [Op.lt]: new Date(Date.now() - 60 * 60 * 1000)
+                  }
+                } // At least 1 hour ago
+              ]
+            }
+          ]
         },
         include: [
           {
             model: PlatformData,
-            as: "platformData",
-            required: false,
-          },
+            as: 'platformData',
+            required: false
+          }
         ],
         limit: this.batchSize,
         order: [
-          ["lastVariantDetectionAt", "ASC NULLS FIRST"], // Process never-processed first
-          ["updatedAt", "DESC"], // Then most recently updated
-        ],
+          ['lastVariantDetectionAt', 'ASC NULLS FIRST'], // Process never-processed first
+          ['updatedAt', 'DESC'] // Then most recently updated
+        ]
       });
 
       return products;
     } catch (error) {
       // Handle specific database errors gracefully
       if (
-        error.name === "SequelizeDatabaseError" &&
-        error.original?.code === "42P01"
+        error.name === 'SequelizeDatabaseError' &&
+        error.original?.code === '42P01'
       ) {
         logger.warn(
-          "Database tables not yet created, skipping variant detection"
+          'Database tables not yet created, skipping variant detection'
         );
         return [];
       }
 
-      logger.error("Error finding products needing variant detection:", error);
+      logger.error('Error finding products needing variant detection:', error);
       return [];
     }
   }
@@ -320,7 +320,7 @@ class BackgroundVariantDetectionService {
         return {
           updated: false,
           skipped: false,
-          error: "Classification failed",
+          error: 'Classification failed'
         };
       }
 
@@ -338,7 +338,7 @@ class BackgroundVariantDetectionService {
           { where: { id: product.id } }
         );
 
-        return { updated: false, skipped: true, reason: "Low confidence" };
+        return { updated: false, skipped: true, reason: 'Low confidence' };
       }
 
       // Check if the classification has actually changed
@@ -355,7 +355,7 @@ class BackgroundVariantDetectionService {
           { where: { id: product.id } }
         );
 
-        return { updated: false, skipped: true, reason: "No changes" };
+        return { updated: false, skipped: true, reason: 'No changes' };
       }
 
       // Update the product with new variant status
@@ -369,7 +369,7 @@ class BackgroundVariantDetectionService {
         isVariant: classification.isVariant,
         isMainProduct: classification.isMainProduct,
         variantType: classification.variantType,
-        confidence: classification.confidence,
+        confidence: classification.confidence
       });
 
       return { updated: true, skipped: false };
@@ -388,7 +388,7 @@ class BackgroundVariantDetectionService {
       isMainProduct: product.isMainProduct || false,
       variantType: product.variantType,
       variantValue: product.variantValue,
-      confidence: product.variantDetectionConfidence || 0,
+      confidence: product.variantDetectionConfidence || 0
     };
 
     const new_ = {
@@ -396,7 +396,7 @@ class BackgroundVariantDetectionService {
       isMainProduct: newClassification.isMainProduct || false,
       variantType: newClassification.variantType,
       variantValue: newClassification.variantValue,
-      confidence: newClassification.confidence || 0,
+      confidence: newClassification.confidence || 0
     };
 
     // Check for significant changes
@@ -425,10 +425,10 @@ class BackgroundVariantDetectionService {
         include: [
           {
             model: PlatformData,
-            as: "platformData",
-            required: false,
-          },
-        ],
+            as: 'platformData',
+            required: false
+          }
+        ]
       });
 
       if (!product) {
@@ -475,7 +475,7 @@ class BackgroundVariantDetectionService {
       nextRunEstimate:
         this.isRunning && this.lastRunTime
           ? this.lastRunTime + this.processInterval
-          : null,
+          : null
     };
   }
 
@@ -493,7 +493,7 @@ class BackgroundVariantDetectionService {
     this.config = { ...this.config, ...newConfig };
     this.saveConfigToFile(); // Save to file immediately
     logger.info(
-      "Background variant detection service configuration updated and saved",
+      'Background variant detection service configuration updated and saved',
       this.config
     );
   }

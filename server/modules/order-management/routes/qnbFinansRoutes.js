@@ -1,28 +1,28 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const qnbFinansInvoiceController = require("../../../controllers/qnbFinansInvoiceController");
-const { auth } = require("../../../middleware/auth");
+const qnbFinansInvoiceController = require('../../../controllers/qnbFinansInvoiceController');
+const { auth } = require('../../../middleware/auth');
 
 // Apply authentication middleware
 router.use(auth);
 
 // QNB Finans invoice routes
 router.post(
-  "/orders/:orderId/qnb-einvoice",
+  '/orders/:orderId/qnb-einvoice',
   qnbFinansInvoiceController.generateEInvoice
 );
 router.post(
-  "/orders/:orderId/qnb-earsiv",
+  '/orders/:orderId/qnb-earsiv',
   qnbFinansInvoiceController.generateEArchive
 );
 router.get(
-  "/invoices/:invoiceId/status",
+  '/invoices/:invoiceId/status',
   qnbFinansInvoiceController.getInvoiceStatus
 );
 router.post(
-  "/invoices/:invoiceId/cancel",
+  '/invoices/:invoiceId/cancel',
   qnbFinansInvoiceController.cancelInvoice
 );
-router.post("/test-connection", qnbFinansInvoiceController.testConnection);
+router.post('/test-connection', qnbFinansInvoiceController.testConnection);
 
 module.exports = router;

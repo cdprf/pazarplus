@@ -1,6 +1,6 @@
-const axios = require("axios");
-const axiosRetry = require("axios-retry");
-const logger = require("../utils/logger");
+const axios = require('axios');
+const axiosRetry = require('axios-retry');
+const logger = require('../utils/logger');
 
 class ApiService {
   constructor() {
@@ -16,7 +16,7 @@ class ApiService {
           error.response?.status === 503 || // Service Unavailable
           error.response?.status === 504
         ); // Gateway Timeout
-      },
+      }
     };
   }
 
@@ -32,7 +32,7 @@ class ApiService {
     if (!this.clients.has(clientKey)) {
       const client = axios.create({
         timeout: 30000, // 30 seconds timeout
-        ...config,
+        ...config
       });
 
       // Add retry logic
@@ -43,24 +43,24 @@ class ApiService {
             platform,
             url: requestConfig.url,
             error: error.message,
-            status: error.response?.status,
+            status: error.response?.status
           });
-        },
+        }
       });
 
       // Add request interceptor for logging
       client.interceptors.request.use(
         (config) => {
-          logger.debug("API request", {
+          logger.debug('API request', {
             platform,
             method: config.method?.toUpperCase(),
             url: config.url,
-            headers: this.sanitizeHeaders(config.headers),
+            headers: this.sanitizeHeaders(config.headers)
           });
           return config;
         },
         (error) => {
-          logger.error("API request error", { platform, error: error.message });
+          logger.error('API request error', { platform, error: error.message });
           return Promise.reject(error);
         }
       );
@@ -68,11 +68,11 @@ class ApiService {
       // Add response interceptor for logging and error handling
       client.interceptors.response.use(
         (response) => {
-          logger.debug("API response", {
+          logger.debug('API response', {
             platform,
             status: response.status,
             url: response.config.url,
-            dataSize: JSON.stringify(response.data).length,
+            dataSize: JSON.stringify(response.data).length
           });
           return response;
         },
@@ -101,74 +101,74 @@ class ApiService {
       const { status, data } = response;
 
       switch (status) {
-        case 401:
-          logger.error(`Authentication failed for ${platform}`, {
-            platform,
-            status,
-            url: response.config.url,
-            suggestion: "Check API credentials and tokens",
-          });
-          break;
+      case 401:
+        logger.error(`Authentication failed for ${platform}`, {
+          platform,
+          status,
+          url: response.config.url,
+          suggestion: 'Check API credentials and tokens'
+        });
+        break;
 
-        case 403:
-          logger.error(`Authorization failed for ${platform}`, {
-            platform,
-            status,
-            url: response.config.url,
-            data: this.sanitizeErrorData(data),
-            suggestion: "Check API permissions and refresh tokens",
-          });
-          break;
+      case 403:
+        logger.error(`Authorization failed for ${platform}`, {
+          platform,
+          status,
+          url: response.config.url,
+          data: this.sanitizeErrorData(data),
+          suggestion: 'Check API permissions and refresh tokens'
+        });
+        break;
 
-        case 404:
-          logger.warn(`Resource not found on ${platform}`, {
-            platform,
-            status,
-            url: response.config.url,
-          });
-          break;
+      case 404:
+        logger.warn(`Resource not found on ${platform}`, {
+          platform,
+          status,
+          url: response.config.url
+        });
+        break;
 
-        case 429:
-          logger.warn(`Rate limit exceeded for ${platform}`, {
-            platform,
-            status,
-            retryAfter: response.headers["retry-after"],
-            suggestion: "Implement rate limiting or increase delays",
-          });
-          break;
+      case 429:
+        logger.warn(`Rate limit exceeded for ${platform}`, {
+          platform,
+          status,
+          retryAfter: response.headers['retry-after'],
+          suggestion: 'Implement rate limiting or increase delays'
+        });
+        break;
 
-        case 500:
-        case 502:
-        case 503:
-        case 504:
-          logger.error(`Server error from ${platform}`, {
-            platform,
-            status,
-            url: response.config.url,
-            suggestion: "Platform may be experiencing issues",
-          });
-          break;
+      case 500:
+      case 502:
+      case 503:
+      case 504:
+        logger.error(`Server error from ${platform}`, {
+          platform,
+          status,
+          url: response.config.url,
+          suggestion: 'Platform may be experiencing issues'
+        });
+        break;
 
-        default:
-          logger.error(`API error from ${platform}`, {
-            platform,
-            status,
-            url: response.config.url,
-            data: this.sanitizeErrorData(data),
-          });
+      default:
+        logger.error(`API error from ${platform}`, {
+          platform,
+          status,
+          url: response.config.url,
+          data: this.sanitizeErrorData(data)
+        });
       }
     } else if (request) {
       // Request was made but no response received
       logger.error(`Network error for ${platform}`, {
         platform,
         error: message,
-        suggestion: "Check network connectivity",
+        suggestion: 'Check network connectivity'
       });
     } else {
       // Something else happened
       logger.error(`Request setup error for ${platform}`, {
         platform,
-        error: message,
+        error: message
       });
     }
   }
@@ -180,16 +180,16 @@ class ApiService {
    */
   sanitizeHeaders(headers) {
     const sensitiveHeaders = [
-      "authorization",
-      "x-api-key",
-      "x-api-secret",
-      "cookie",
+      'authorization',
+      'x-api-key',
+      'x-api-secret',
+      'cookie'
     ];
     const sanitized = { ...headers };
 
     sensitiveHeaders.forEach((header) => {
       if (sanitized[header]) {
-        sanitized[header] = "[REDACTED]";
+        sanitized[header] = '[REDACTED]';
       }
     });
 
@@ -202,8 +202,8 @@ class ApiService {
    * @returns {Object} Sanitized data
    */
   sanitizeErrorData(data) {
-    if (typeof data === "string") {
-      return data.length > 500 ? data.substring(0, 500) + "..." : data;
+    if (typeof data === 'string') {
+      return data.length > 500 ? data.substring(0, 500) + '...' : data;
     }
     return data;
   }
@@ -245,7 +245,7 @@ class ApiService {
       this.clients.clear();
     }
 
-    logger.info("API client cache cleared", { platform: platform || "all" });
+    logger.info('API client cache cleared', { platform: platform || 'all' });
   }
 }
 

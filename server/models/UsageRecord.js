@@ -1,5 +1,5 @@
-const { DataTypes, Model } = require("sequelize");
-const sequelize = require("../config/database");
+const { DataTypes, Model } = require('sequelize');
+const sequelize = require('../config/database');
 
 class UsageRecord extends Model {
   // Check if usage exceeds limit
@@ -9,7 +9,7 @@ class UsageRecord extends Model {
 
   // Get usage percentage
   getUsagePercentage() {
-    if (this.limit === 0) return 100;
+    if (this.limit === 0) {return 100;}
     return Math.min(100, (this.currentUsage / this.limit) * 100);
   }
 
@@ -24,122 +24,122 @@ UsageRecord.init(
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
+      primaryKey: true
     },
 
     userId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: "users",
-        key: "id",
+        model: 'users',
+        key: 'id'
       },
-      onDelete: "CASCADE",
+      onDelete: 'CASCADE'
     },
 
     subscriptionId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: "subscriptions",
-        key: "id",
+        model: 'subscriptions',
+        key: 'id'
       },
-      onDelete: "CASCADE",
+      onDelete: 'CASCADE'
     },
 
     // Usage tracking
     metricType: {
       type: DataTypes.ENUM(
-        "api_calls",
-        "platforms",
-        "users",
-        "reports",
-        "storage"
+        'api_calls',
+        'platforms',
+        'users',
+        'reports',
+        'storage'
       ),
       allowNull: false,
-      comment: "Type of usage metric being tracked",
+      comment: 'Type of usage metric being tracked'
     },
 
     currentUsage: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
       allowNull: false,
-      comment: "Current usage count for this metric",
+      comment: 'Current usage count for this metric'
     },
 
     limit: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      comment: "Usage limit for this metric based on subscription plan",
+      comment: 'Usage limit for this metric based on subscription plan'
     },
 
     // Billing period
     billingPeriodStart: {
       type: DataTypes.DATE,
       allowNull: false,
-      comment: "Start of current billing period",
+      comment: 'Start of current billing period'
     },
 
     billingPeriodEnd: {
       type: DataTypes.DATE,
       allowNull: false,
-      comment: "End of current billing period",
+      comment: 'End of current billing period'
     },
 
     // Overage tracking
     overageAllowed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-      comment: "Whether overage is allowed for this metric",
+      comment: 'Whether overage is allowed for this metric'
     },
 
     overageRate: {
       type: DataTypes.DECIMAL(10, 4),
       defaultValue: 0,
-      comment: "Cost per unit over limit (in minor currency units)",
+      comment: 'Cost per unit over limit (in minor currency units)'
     },
 
     // Last reset
     lastResetAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
-      comment: "When usage was last reset",
+      comment: 'When usage was last reset'
     },
 
     // Metadata
     metadata: {
       type: DataTypes.JSON,
       defaultValue: {},
-      comment: "Additional usage tracking metadata",
-    },
+      comment: 'Additional usage tracking metadata'
+    }
   },
   {
     sequelize,
-    modelName: "UsageRecord",
-    tableName: "usage_records",
+    modelName: 'UsageRecord',
+    tableName: 'usage_records',
     timestamps: true,
     indexes: [
       {
-        fields: ["userId"],
+        fields: ['userId']
       },
       {
-        fields: ["subscriptionId"],
+        fields: ['subscriptionId']
       },
       {
-        fields: ["metricType"],
+        fields: ['metricType']
       },
       {
         unique: true,
-        fields: ["userId", "metricType", "billingPeriodStart"],
-        name: "unique_user_metric_period",
+        fields: ['userId', 'metricType', 'billingPeriodStart'],
+        name: 'unique_user_metric_period'
       },
       {
-        fields: ["billingPeriodStart"],
+        fields: ['billingPeriodStart']
       },
       {
-        fields: ["billingPeriodEnd"],
-      },
-    ],
+        fields: ['billingPeriodEnd']
+      }
+    ]
   }
 );
 

@@ -1,5 +1,5 @@
-const { DataTypes, Model } = require("sequelize");
-const sequelize = require("../config/database");
+const { DataTypes, Model } = require('sequelize');
+const sequelize = require('../config/database');
 
 class ShippingDetail extends Model {}
 
@@ -8,63 +8,63 @@ ShippingDetail.init(
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
-      autoIncrement: true,
+      autoIncrement: true
     },
     orderId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: "orders",
-        key: "id",
-      },
+        model: 'orders',
+        key: 'id'
+      }
     },
     recipientName: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     address: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     city: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     state: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     postalCode: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     country: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "Turkey",
+      defaultValue: 'Turkey'
     },
     phone: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     email: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     shippingMethod: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     carrierId: {
       type: DataTypes.STRING,
-      allowNull: true,
-    },
+      allowNull: true
+    }
   },
   {
     sequelize,
-    modelName: "ShippingDetail",
-    tableName: "shipping_details",
-    timestamps: true,
+    modelName: 'ShippingDetail',
+    tableName: 'shipping_details',
+    timestamps: true
   }
 );
 

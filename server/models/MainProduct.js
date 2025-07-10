@@ -1,5 +1,5 @@
-const { DataTypes, Model } = require("sequelize");
-const sequelize = require("../config/database");
+const { DataTypes, Model } = require('sequelize');
+const sequelize = require('../config/database');
 
 /**
  * Enhanced Main Product Model
@@ -12,15 +12,15 @@ MainProduct.init(
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
+      primaryKey: true
     },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
         notEmpty: true,
-        len: [1, 255],
-      },
+        len: [1, 255]
+      }
     },
     baseSku: {
       type: DataTypes.STRING,
@@ -28,29 +28,29 @@ MainProduct.init(
       unique: true,
       validate: {
         notEmpty: true,
-        len: [1, 100],
+        len: [1, 100]
       },
-      comment: "Base SKU pattern for generating variants",
+      comment: 'Base SKU pattern for generating variants'
     },
     description: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     category: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
-        notEmpty: true,
-      },
+        notEmpty: true
+      }
     },
     brand: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     productType: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Product type code for SKU generation",
+      comment: 'Product type code for SKU generation'
     },
 
     // Shared Stock Management
@@ -59,32 +59,32 @@ MainProduct.init(
       allowNull: false,
       defaultValue: 0,
       validate: {
-        min: 0,
+        min: 0
       },
-      comment: "Shared stock across all platform variants",
+      comment: 'Shared stock across all platform variants'
     },
     minStockLevel: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
       validate: {
-        min: 0,
-      },
+        min: 0
+      }
     },
     reservedStock: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
       validate: {
-        min: 0,
+        min: 0
       },
-      comment: "Stock reserved for orders/variants",
+      comment: 'Stock reserved for orders/variants'
     },
     availableStock: {
       type: DataTypes.VIRTUAL,
       get() {
         return this.stockQuantity - this.reservedStock;
-      },
+      }
     },
 
     // Default Pricing
@@ -92,16 +92,16 @@ MainProduct.init(
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       validate: {
-        min: 0,
+        min: 0
       },
-      comment: "Default price inherited by variants",
+      comment: 'Default price inherited by variants'
     },
     baseCostPrice: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
       validate: {
-        min: 0,
-      },
+        min: 0
+      }
     },
 
     // Media Management - Now handled by EnhancedProductMedia association
@@ -112,13 +112,13 @@ MainProduct.init(
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: {},
-      comment: "Track which platforms this product is published to",
+      comment: 'Track which platforms this product is published to'
     },
     platformTemplates: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: {},
-      comment: "Platform-specific template assignments",
+      comment: 'Platform-specific template assignments'
     },
 
     // Auto-Learning Features
@@ -126,25 +126,25 @@ MainProduct.init(
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: {},
-      comment: "Fields learned from platform integrations",
+      comment: 'Fields learned from platform integrations'
     },
     categoryMappings: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: {},
-      comment: "Category mappings per platform",
+      comment: 'Category mappings per platform'
     },
 
     // Product Attributes
     attributes: {
       type: DataTypes.JSON,
       allowNull: true,
-      defaultValue: {},
+      defaultValue: {}
     },
     tags: {
       type: DataTypes.JSON,
       allowNull: true,
-      defaultValue: [],
+      defaultValue: []
     },
     // Platform-specific extra fields for comprehensive product data
     platformExtras: {
@@ -152,41 +152,41 @@ MainProduct.init(
       allowNull: true,
       defaultValue: {},
       comment:
-        "Platform-specific extra fields (e.g., Trendyol seller info, Hepsiburada merchant details, etc.)",
+        'Platform-specific extra fields (e.g., Trendyol seller info, Hepsiburada merchant details, etc.)'
     },
     // Scraping metadata
     scrapedFrom: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "URL from which product was scraped",
+      comment: 'URL from which product was scraped'
     },
     scrapedAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: "When the product was scraped",
+      comment: 'When the product was scraped'
     },
     importedFrom: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Platform from which product was imported",
+      comment: 'Platform from which product was imported'
     },
     importedAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: "When the product was imported",
+      comment: 'When the product was imported'
     },
 
     weight: {
       type: DataTypes.DECIMAL(8, 3),
       allowNull: true,
       validate: {
-        min: 0,
-      },
+        min: 0
+      }
     },
     dimensions: {
       type: DataTypes.JSON,
       allowNull: true,
-      defaultValue: null,
+      defaultValue: null
     },
 
     // Status Management
@@ -194,131 +194,131 @@ MainProduct.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-      comment: "Whether this product has platform variants",
+      comment: 'Whether this product has platform variants'
     },
     status: {
-      type: DataTypes.ENUM("active", "inactive", "draft", "archived"),
+      type: DataTypes.ENUM('active', 'inactive', 'draft', 'archived'),
       allowNull: false,
-      defaultValue: "draft",
+      defaultValue: 'draft'
     },
 
     // Stock Code Pattern Recognition
     stockCodePattern: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Detected or assigned stock code pattern",
+      comment: 'Detected or assigned stock code pattern'
     },
     patternConfidence: {
       type: DataTypes.DECIMAL(3, 2),
       allowNull: true,
       validate: {
         min: 0,
-        max: 1,
+        max: 1
       },
-      comment: "Confidence score for pattern detection",
+      comment: 'Confidence score for pattern detection'
     },
 
     userId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: "users",
-        key: "id",
+        model: 'users',
+        key: 'id'
       },
-      onUpdate: "CASCADE",
-      onDelete: "CASCADE",
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE'
     },
 
     // Timestamps
     lastStockUpdate: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: "Last time stock was updated",
+      comment: 'Last time stock was updated'
     },
     lastSyncedAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: "Last time this product was synced with platforms",
-    },
+      comment: 'Last time this product was synced with platforms'
+    }
   },
   {
     sequelize,
-    modelName: "MainProduct",
-    tableName: "main_products",
+    modelName: 'MainProduct',
+    tableName: 'main_products',
     timestamps: true,
     indexes: [
       {
         unique: true,
-        fields: ["baseSku"],
+        fields: ['baseSku']
       },
       {
-        fields: ["userId"],
+        fields: ['userId']
       },
       {
-        fields: ["category"],
+        fields: ['category']
       },
       {
-        fields: ["brand"],
+        fields: ['brand']
       },
       {
-        fields: ["productType"],
+        fields: ['productType']
       },
       {
-        fields: ["status"],
+        fields: ['status']
       },
       {
-        fields: ["stockQuantity"],
+        fields: ['stockQuantity']
       },
       {
-        fields: ["stockCodePattern"],
+        fields: ['stockCodePattern']
       },
       {
-        fields: ["hasVariants"],
-      },
+        fields: ['hasVariants']
+      }
     ],
     hooks: {
       beforeUpdate: async (mainProduct) => {
         // Update lastStockUpdate when stock changes
         if (
-          mainProduct.changed("stockQuantity") ||
-          mainProduct.changed("reservedStock")
+          mainProduct.changed('stockQuantity') ||
+          mainProduct.changed('reservedStock')
         ) {
           mainProduct.lastStockUpdate = new Date();
         }
-      },
-    },
+      }
+    }
   }
 );
 
 // MainProduct associations
 MainProduct.associate = function (models) {
   MainProduct.belongsTo(models.User, {
-    foreignKey: "userId",
-    as: "user",
+    foreignKey: 'userId',
+    as: 'user'
   });
 
   MainProduct.hasMany(models.PlatformVariant, {
-    foreignKey: "mainProductId",
-    as: "platformVariants",
+    foreignKey: 'mainProductId',
+    as: 'platformVariants'
   });
 
   MainProduct.hasMany(models.InventoryMovement, {
-    foreignKey: "mainProductId",
-    as: "inventoryMovements",
+    foreignKey: 'mainProductId',
+    as: 'inventoryMovements'
   });
 
   MainProduct.hasMany(models.StockReservation, {
-    foreignKey: "mainProductId",
-    as: "stockReservations",
+    foreignKey: 'mainProductId',
+    as: 'stockReservations'
   });
 
   MainProduct.hasMany(models.PlatformData, {
-    foreignKey: "entityId",
+    foreignKey: 'entityId',
     constraints: false,
     scope: {
-      entityType: "main_product",
+      entityType: 'main_product'
     },
-    as: "platformData",
+    as: 'platformData'
   });
 };
 

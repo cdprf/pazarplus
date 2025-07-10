@@ -1,5 +1,5 @@
-const { DataTypes, Model } = require("sequelize");
-const sequelize = require("../config/database");
+const { DataTypes, Model } = require('sequelize');
+const sequelize = require('../config/database');
 
 class OrderItem extends Model {}
 
@@ -8,180 +8,180 @@ OrderItem.init(
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
+      primaryKey: true
     },
     orderId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: "Orders",
-        key: "id",
-      },
+        model: 'Orders',
+        key: 'id'
+      }
     },
     productId: {
       type: DataTypes.INTEGER,
       allowNull: true, // Made optional since some orders might not have matching products
       references: {
-        model: "Products",
-        key: "id",
-      },
+        model: 'Products',
+        key: 'id'
+      }
     },
     platformProductId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     sku: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     barcode: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: true
     },
     title: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: false
     },
     quantity: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 1,
+      defaultValue: 1
     },
     price: {
       type: DataTypes.FLOAT(10, 2),
       allowNull: false,
-      defaultValue: 0,
+      defaultValue: 0
     },
     totalPrice: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       defaultValue: 0,
-      comment: "Total price for this line item (price * quantity)",
+      comment: 'Total price for this line item (price * quantity)'
     },
     taxAmount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
       defaultValue: 0,
-      comment: "Tax amount for this line item",
+      comment: 'Tax amount for this line item'
     },
     discountAmount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
       defaultValue: 0,
-      comment: "Discount amount for this line item",
+      comment: 'Discount amount for this line item'
     },
     discount: {
       type: DataTypes.FLOAT(10, 2),
       allowNull: true,
-      defaultValue: 0,
+      defaultValue: 0
     },
     platformDiscount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       defaultValue: 0,
-      comment: "Platform discount (Trendyol tyDiscount)",
+      comment: 'Platform discount (Trendyol tyDiscount)'
     },
     merchantDiscount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       defaultValue: 0,
-      comment: "Merchant discount (separate from platform discount)",
+      comment: 'Merchant discount (separate from platform discount)'
     },
     invoiceTotal: {
       type: DataTypes.FLOAT(10, 2),
       allowNull: false,
-      defaultValue: 0,
+      defaultValue: 0
     },
     currency: {
       type: DataTypes.STRING(3),
       allowNull: false,
-      defaultValue: "TRY",
+      defaultValue: 'TRY'
     },
 
     // Enhanced product information from Trendyol API
     productSize: {
       type: DataTypes.STRING(100),
       allowNull: true,
-      comment: "Product size from Trendyol API",
+      comment: 'Product size from Trendyol API'
     },
     productColor: {
       type: DataTypes.STRING(100),
       allowNull: true,
-      comment: "Product color from Trendyol API",
+      comment: 'Product color from Trendyol API'
     },
     productCategoryId: {
       type: DataTypes.INTEGER,
       allowNull: true,
-      comment: "Product category ID from Trendyol API",
+      comment: 'Product category ID from Trendyol API'
     },
     productOrigin: {
       type: DataTypes.STRING(10),
       allowNull: true,
-      comment: "Product origin (important for micro export orders)",
+      comment: 'Product origin (important for micro export orders)'
     },
     salesCampaignId: {
       type: DataTypes.INTEGER,
       allowNull: true,
-      comment: "Sales campaign ID from Trendyol API",
+      comment: 'Sales campaign ID from Trendyol API'
     },
     lineItemStatus: {
       type: DataTypes.STRING(100),
       allowNull: true,
-      comment: "Individual line item status (orderLineItemStatusName)",
+      comment: 'Individual line item status (orderLineItemStatusName)'
     },
     vatBaseAmount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       defaultValue: 0,
-      comment: "VAT base amount",
+      comment: 'VAT base amount'
     },
     laborCost: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       defaultValue: 0,
-      comment: "Labor cost",
+      comment: 'Labor cost'
     },
     fastDeliveryOptions: {
       type: DataTypes.JSON,
       allowNull: true,
-      comment: "Fast delivery options array from Trendyol API",
+      comment: 'Fast delivery options array from Trendyol API'
     },
     discountDetails: {
       type: DataTypes.JSON,
       allowNull: true,
-      comment: "Detailed discount breakdown from Trendyol API",
+      comment: 'Detailed discount breakdown from Trendyol API'
     },
     variantInfo: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     rawData: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }
   },
   {
     sequelize,
-    modelName: "OrderItem",
-    tableName: "order_items",
+    modelName: 'OrderItem',
+    tableName: 'order_items',
     timestamps: true,
     indexes: [
       {
-        fields: ["orderId"],
+        fields: ['orderId']
       },
       {
-        fields: ["sku"],
+        fields: ['sku']
       },
       {
-        fields: ["barcode"],
+        fields: ['barcode']
       },
       {
-        fields: ["productOrigin"], // Added: For export order queries
+        fields: ['productOrigin'] // Added: For export order queries
       },
       {
-        fields: ["salesCampaignId"], // Added: For campaign tracking
-      },
-    ],
+        fields: ['salesCampaignId'] // Added: For campaign tracking
+      }
+    ]
   }
 );
 

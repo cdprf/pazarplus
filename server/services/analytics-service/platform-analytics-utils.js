@@ -1,4 +1,4 @@
-const logger = require("../../utils/logger");
+const logger = require('../../utils/logger');
 
 /**
  * Calculate platform price differences
@@ -7,8 +7,8 @@ function calculatePlatformPriceDifferences(pricingData) {
   const platformPrices = new Map();
 
   pricingData.forEach((item) => {
-    const platform = item.order?.platform || "Unknown";
-    const price = parseFloat(item.get("avgPrice") || 0);
+    const platform = item.order?.platform || 'Unknown';
+    const price = parseFloat(item.get('avgPrice') || 0);
 
     if (!platformPrices.has(platform)) {
       platformPrices.set(platform, []);
@@ -38,7 +38,7 @@ function calculatePlatformPriceDifferences(pricingData) {
         platform2,
         avgPrice1: avg1.toFixed(2),
         avgPrice2: avg2.toFixed(2),
-        difference: difference.toFixed(2),
+        difference: difference.toFixed(2)
       });
     }
   }
@@ -56,7 +56,7 @@ function analyzePlatformPricing(pricingData) {
     const platformBreakdown = {};
 
     pricingData.forEach((item) => {
-      const platform = item.order?.platform || "unknown";
+      const platform = item.order?.platform || 'unknown';
       const price = parseFloat(item.price) || 0;
       const productId = item.productId;
 
@@ -66,7 +66,7 @@ function analyzePlatformPricing(pricingData) {
           products: {},
           averagePrice: 0,
           totalSales: 0,
-          count: 0,
+          count: 0
         };
       }
 
@@ -74,7 +74,7 @@ function analyzePlatformPricing(pricingData) {
         platformBreakdown[platform].products[productId] = {
           prices: [],
           avgPrice: 0,
-          totalSold: 0,
+          totalSold: 0
         };
       }
 
@@ -101,12 +101,12 @@ function analyzePlatformPricing(pricingData) {
 
     return Object.values(platformBreakdown);
   } catch (error) {
-    logger.error("Error analyzing platform pricing:", error);
+    logger.error('Error analyzing platform pricing:', error);
     return [];
   }
 }
 
 module.exports = {
   calculatePlatformPriceDifferences,
-  analyzePlatformPricing,
+  analyzePlatformPricing
 };

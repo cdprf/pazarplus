@@ -9,5 +9,5 @@ function getPlatformService() {
 }
 
 module.exports = {
-  getPlatformService,
+  getPlatformService
 };

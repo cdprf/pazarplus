@@ -4,7 +4,14 @@
  */
 
 const axios = require("axios");
-const cheerio = require("cheerio");
+// Safe import with fallback for missing dependencies
+let cheerio;
+try {
+  cheerio = require("cheerio");
+} catch (error) {
+  console.log("cheerio not available, web scraping disabled");
+  cheerio = null;
+}
 const logger = require("../utils/logger");
 
 class PlatformScrapingService {
@@ -19,6 +26,16 @@ class PlatformScrapingService {
    */
   async scrapeProductData(url, platform) {
     try {
+      // Check if cheerio is available
+      if (!cheerio) {
+        logger.warn("Web scraping not available - cheerio dependency missing");
+        return {
+          success: false,
+          error: "Web scraping functionality is not available",
+          data: null,
+        };
+      }
+
       logger.info(`Scraping product data from ${platform}: ${url}`);
 
       // Validate URL
@@ -294,7 +311,9 @@ class PlatformScrapingService {
   extractText($, selectors) {
     for (const selector of selectors) {
       const text = $(selector).first().text().trim();
-      if (text) return text;
+      if (text) {
+        return text;
+      }
     }
     return null;
   }
@@ -309,7 +328,9 @@ class PlatformScrapingService {
         // Extract numeric value from price text
         const price = priceText.replace(/[^\d,.-]/g, "").replace(",", ".");
         const numericPrice = parseFloat(price);
-        if (!isNaN(numericPrice)) return numericPrice;
+        if (!isNaN(numericPrice)) {
+          return numericPrice;
+        }
       }
     }
     return null;
@@ -341,7 +362,9 @@ class PlatformScrapingService {
     const attributes = {};
     for (const [key, selectors] of Object.entries(attributeMap)) {
       const value = this.extractText($, selectors);
-      if (value) attributes[key] = value;
+      if (value) {
+        attributes[key] = value;
+      }
     }
     return attributes;
   }
@@ -385,16 +408,22 @@ class PlatformScrapingService {
       // Try data attributes first
       const dataRating =
         element.attr("data-rating") || element.attr("data-score");
-      if (dataRating) return parseFloat(dataRating);
+      if (dataRating) {
+        return parseFloat(dataRating);
+      }
 
       // Try text content
       const text = element.text().trim();
       const match = text.match(/(\d+(?:[.,]\d+)?)/);
-      if (match) return parseFloat(match[1].replace(",", "."));
+      if (match) {
+        return parseFloat(match[1].replace(",", "."));
+      }
 
       // Try counting stars
       const stars = element.find(".star, .filled-star").length;
-      if (stars > 0) return stars;
+      if (stars > 0) {
+        return stars;
+      }
     }
     return null;
   }
@@ -588,14 +617,27 @@ class PlatformScrapingService {
     try {
       const domain = new URL(url).hostname.toLowerCase();
 
-      if (domain.includes("trendyol.com")) return "trendyol";
-      if (domain.includes("hepsiburada.com")) return "hepsiburada";
-      if (domain.includes("n11.com")) return "n11";
-      if (domain.includes("gittigidiyor.com")) return "gittigidiyor";
-      if (domain.includes("amazon.com") || domain.includes("amazon.tr"))
+      if (domain.includes("trendyol.com")) {
+        return "trendyol";
+      }
+      if (domain.includes("hepsiburada.com")) {
+        return "hepsiburada";
+      }
+      if (domain.includes("n11.com")) {
+        return "n11";
+      }
+      if (domain.includes("gittigidiyor.com")) {
+        return "gittigidiyor";
+      }
+      if (domain.includes("amazon.com") || domain.includes("amazon.tr")) {
         return "amazon";
-      if (domain.includes("ciceksepeti.com")) return "ciceksepeti";
-      if (domain.includes("markafoni.com")) return "markafoni";
+      }
+      if (domain.includes("ciceksepeti.com")) {
+        return "ciceksepeti";
+      }
+      if (domain.includes("markafoni.com")) {
+        return "markafoni";
+      }
 
       return "generic";
     } catch (error) {

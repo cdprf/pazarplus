@@ -1,105 +1,105 @@
-const { DataTypes } = require("sequelize");
+const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
   const StockReservation = sequelize.define(
-    "StockReservation",
+    'StockReservation',
     {
       id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
-        primaryKey: true,
+        primaryKey: true
       },
       productId: {
         type: DataTypes.UUID,
         allowNull: true,
         references: {
-          model: "products",
-          key: "id",
-        },
+          model: 'products',
+          key: 'id'
+        }
       },
       variantId: {
         type: DataTypes.UUID,
         allowNull: true,
         references: {
-          model: "product_variants",
-          key: "id",
-        },
+          model: 'product_variants',
+          key: 'id'
+        }
       },
       sku: {
         type: DataTypes.STRING(100),
-        allowNull: false,
+        allowNull: false
       },
       quantity: {
         type: DataTypes.INTEGER,
         allowNull: false,
         validate: {
-          min: 1,
-        },
+          min: 1
+        }
       },
       orderNumber: {
         type: DataTypes.STRING,
-        allowNull: true,
+        allowNull: true
       },
       orderId: {
         type: DataTypes.UUID,
-        allowNull: true,
+        allowNull: true
       },
       platformType: {
         type: DataTypes.STRING,
-        allowNull: true,
+        allowNull: true
       },
       status: {
-        type: DataTypes.ENUM("active", "confirmed", "released", "expired"),
+        type: DataTypes.ENUM('active', 'confirmed', 'released', 'expired'),
         allowNull: false,
-        defaultValue: "active",
+        defaultValue: 'active'
       },
       expiresAt: {
         type: DataTypes.DATE,
         allowNull: true,
-        comment: "When the reservation expires",
+        comment: 'When the reservation expires'
       },
       userId: {
         type: DataTypes.UUID,
         allowNull: false,
         references: {
-          model: "users",
-          key: "id",
-        },
+          model: 'users',
+          key: 'id'
+        }
       },
       reason: {
         type: DataTypes.TEXT,
-        allowNull: true,
+        allowNull: true
       },
       metadata: {
         type: DataTypes.JSON,
         allowNull: true,
-        defaultValue: {},
-      },
+        defaultValue: {}
+      }
     },
     {
-      tableName: "stock_reservations",
+      tableName: 'stock_reservations',
       indexes: [
         {
-          fields: ["productId"],
+          fields: ['productId']
         },
         {
-          fields: ["variantId"],
+          fields: ['variantId']
         },
         {
-          fields: ["sku"],
+          fields: ['sku']
         },
         {
-          fields: ["status"],
+          fields: ['status']
         },
         {
-          fields: ["userId"],
+          fields: ['userId']
         },
         {
-          fields: ["orderNumber"],
+          fields: ['orderNumber']
         },
         {
-          fields: ["expiresAt"],
-        },
+          fields: ['expiresAt']
+        }
       ],
       hooks: {
         beforeCreate: (reservation) => {
@@ -107,25 +107,25 @@ module.exports = (sequelize) => {
           if (!reservation.expiresAt) {
             reservation.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
           }
-        },
-      },
+        }
+      }
     }
   );
 
   StockReservation.associate = function (models) {
     StockReservation.belongsTo(models.Product, {
-      foreignKey: "productId",
-      as: "product",
+      foreignKey: 'productId',
+      as: 'product'
     });
 
     StockReservation.belongsTo(models.ProductVariant, {
-      foreignKey: "variantId",
-      as: "variant",
+      foreignKey: 'variantId',
+      as: 'variant'
     });
 
     StockReservation.belongsTo(models.User, {
-      foreignKey: "userId",
-      as: "user",
+      foreignKey: 'userId',
+      as: 'user'
     });
   };
 
@@ -143,11 +143,11 @@ module.exports = (sequelize) => {
   StockReservation.findExpired = function () {
     return this.findAll({
       where: {
-        status: "active",
+        status: 'active',
         expiresAt: {
-          [sequelize.Sequelize.Op.lt]: new Date(),
-        },
-      },
+          [sequelize.Sequelize.Op.lt]: new Date()
+        }
+      }
     });
   };
 

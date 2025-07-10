@@ -3,16 +3,16 @@
  * Handles shipping-related API endpoints for Turkish carriers
  */
 
-const shippingFactory = require("../modules/public/shipping/ShippingServiceFactory");
-const logger = require("../utils/logger");
+const shippingFactory = require('../modules/public/shipping/ShippingServiceFactory');
+const logger = require('../utils/logger');
 const {
   Order,
   ShippingDetail,
   ShippingCarrier,
   ShippingRate,
-  OrderItem,
-} = require("../models");
-const { Op } = require("sequelize");
+  OrderItem
+} = require('../models');
+const { Op } = require('sequelize');
 
 class ShippingController {
   /**
@@ -25,7 +25,7 @@ class ShippingController {
       try {
         const dbCarriers = await ShippingCarrier.findAll({
           where: { isActive: true },
-          order: [["name", "ASC"]],
+          order: [['name', 'ASC']]
         });
 
         carriers = dbCarriers.map((carrier) => ({
@@ -35,24 +35,24 @@ class ShippingController {
           website: carrier.apiEndpoint,
           trackingUrlTemplate: carrier.trackingUrlTemplate,
           supportedServices: carrier.supportedServices || [
-            "STANDARD",
-            "EXPRESS",
+            'STANDARD',
+            'EXPRESS'
           ],
           coverage: carrier.coverage || {
-            country: "Turkey",
-            international: false,
+            country: 'Turkey',
+            international: false
           },
           estimatedDeliveryDays:
-            carrier.deliveryTimeRange || "1-3 business days",
+            carrier.deliveryTimeRange || '1-3 business days',
           features: {
             cashOnDelivery: carrier.cashOnDeliverySupported || false,
             insurance: carrier.insuranceSupported || false,
-            returns: carrier.returnSupported || false,
-          },
+            returns: carrier.returnSupported || false
+          }
         }));
       } catch (dbError) {
         logger.warn(
-          "Failed to fetch carriers from database, using factory fallback:",
+          'Failed to fetch carriers from database, using factory fallback:',
           dbError.message
         );
       }
@@ -65,18 +65,18 @@ class ShippingController {
       res.json({
         success: true,
         data: carriers,
-        message: "Supported carriers retrieved successfully",
+        message: 'Supported carriers retrieved successfully'
       });
     } catch (error) {
       logger.error(`Failed to get supported carriers: ${error.message}`, {
-        error,
+        error
       });
       res.status(500).json({
         success: false,
         error: {
-          message: "Failed to retrieve supported carriers",
-          code: "CARRIERS_FETCH_ERROR",
-        },
+          message: 'Failed to retrieve supported carriers',
+          code: 'CARRIERS_FETCH_ERROR'
+        }
       });
     }
   }
@@ -93,9 +93,9 @@ class ShippingController {
         return res.status(400).json({
           success: false,
           error: {
-            message: "Package info, from address, and to address are required",
-            code: "MISSING_REQUIRED_FIELDS",
-          },
+            message: 'Package info, from address, and to address are required',
+            code: 'MISSING_REQUIRED_FIELDS'
+          }
         });
       }
 
@@ -115,16 +115,16 @@ class ShippingController {
       res.json({
         success: true,
         data: comparison,
-        message: "Shipping rates calculated successfully",
+        message: 'Shipping rates calculated successfully'
       });
     } catch (error) {
       logger.error(`Failed to get shipping rates: ${error.message}`, { error });
       res.status(500).json({
         success: false,
         error: {
-          message: "Failed to calculate shipping rates",
-          code: "RATE_CALCULATION_ERROR",
-        },
+          message: 'Failed to calculate shipping rates',
+          code: 'RATE_CALCULATION_ERROR'
+        }
       });
     }
   }
@@ -141,9 +141,9 @@ class ShippingController {
         return res.status(400).json({
           success: false,
           error: {
-            message: "Shipment data and carrier are required",
-            code: "MISSING_REQUIRED_FIELDS",
-          },
+            message: 'Shipment data and carrier are required',
+            code: 'MISSING_REQUIRED_FIELDS'
+          }
         });
       }
 
@@ -156,8 +156,8 @@ class ShippingController {
           success: false,
           error: {
             message: `No credentials found for carrier: ${carrier}`,
-            code: "MISSING_CARRIER_CREDENTIALS",
-          },
+            code: 'MISSING_CARRIER_CREDENTIALS'
+          }
         });
       }
 
@@ -171,18 +171,18 @@ class ShippingController {
       res.json({
         success: true,
         data: result.data,
-        message: "Shipping label created successfully",
+        message: 'Shipping label created successfully'
       });
     } catch (error) {
       logger.error(`Failed to create shipping label: ${error.message}`, {
-        error,
+        error
       });
       res.status(500).json({
         success: false,
         error: {
-          message: "Failed to create shipping label",
-          code: "LABEL_CREATION_ERROR",
-        },
+          message: 'Failed to create shipping label',
+          code: 'LABEL_CREATION_ERROR'
+        }
       });
     }
   }
@@ -199,9 +199,9 @@ class ShippingController {
         return res.status(400).json({
           success: false,
           error: {
-            message: "Tracking number and carrier are required",
-            code: "MISSING_REQUIRED_FIELDS",
-          },
+            message: 'Tracking number and carrier are required',
+            code: 'MISSING_REQUIRED_FIELDS'
+          }
         });
       }
 
@@ -214,8 +214,8 @@ class ShippingController {
           success: false,
           error: {
             message: `No credentials found for carrier: ${carrier}`,
-            code: "MISSING_CARRIER_CREDENTIALS",
-          },
+            code: 'MISSING_CARRIER_CREDENTIALS'
+          }
         });
       }
 
@@ -229,16 +229,16 @@ class ShippingController {
       res.json({
         success: true,
         data: result.data,
-        message: "Package tracking retrieved successfully",
+        message: 'Package tracking retrieved successfully'
       });
     } catch (error) {
       logger.error(`Failed to track package: ${error.message}`, { error });
       res.status(500).json({
         success: false,
         error: {
-          message: "Failed to track package",
-          code: "TRACKING_ERROR",
-        },
+          message: 'Failed to track package',
+          code: 'TRACKING_ERROR'
+        }
       });
     }
   }
@@ -255,9 +255,9 @@ class ShippingController {
         return res.status(400).json({
           success: false,
           error: {
-            message: "Tracking number and carrier are required",
-            code: "MISSING_REQUIRED_FIELDS",
-          },
+            message: 'Tracking number and carrier are required',
+            code: 'MISSING_REQUIRED_FIELDS'
+          }
         });
       }
 
@@ -270,8 +270,8 @@ class ShippingController {
           success: false,
           error: {
             message: `No credentials found for carrier: ${carrier}`,
-            code: "MISSING_CARRIER_CREDENTIALS",
-          },
+            code: 'MISSING_CARRIER_CREDENTIALS'
+          }
         });
       }
 
@@ -285,16 +285,16 @@ class ShippingController {
       res.json({
         success: true,
         data: result.data,
-        message: "Shipment cancelled successfully",
+        message: 'Shipment cancelled successfully'
       });
     } catch (error) {
       logger.error(`Failed to cancel shipment: ${error.message}`, { error });
       res.status(500).json({
         success: false,
         error: {
-          message: "Failed to cancel shipment",
-          code: "CANCELLATION_ERROR",
-        },
+          message: 'Failed to cancel shipment',
+          code: 'CANCELLATION_ERROR'
+        }
       });
     }
   }
@@ -311,9 +311,9 @@ class ShippingController {
         return res.status(400).json({
           success: false,
           error: {
-            message: "Address is required",
-            code: "MISSING_REQUIRED_FIELDS",
-          },
+            message: 'Address is required',
+            code: 'MISSING_REQUIRED_FIELDS'
+          }
         });
       }
 
@@ -331,18 +331,18 @@ class ShippingController {
       res.json({
         success: true,
         data: result,
-        message: "Delivery availability checked successfully",
+        message: 'Delivery availability checked successfully'
       });
     } catch (error) {
       logger.error(`Failed to check delivery availability: ${error.message}`, {
-        error,
+        error
       });
       res.status(500).json({
         success: false,
         error: {
-          message: "Failed to check delivery availability",
-          code: "AVAILABILITY_CHECK_ERROR",
-        },
+          message: 'Failed to check delivery availability',
+          code: 'AVAILABILITY_CHECK_ERROR'
+        }
       });
     }
   }
@@ -359,9 +359,9 @@ class ShippingController {
         return res.status(400).json({
           success: false,
           error: {
-            message: "Carrier is required",
-            code: "MISSING_REQUIRED_FIELDS",
-          },
+            message: 'Carrier is required',
+            code: 'MISSING_REQUIRED_FIELDS'
+          }
         });
       }
 
@@ -375,18 +375,18 @@ class ShippingController {
       res.json({
         success: true,
         data: services,
-        message: "Carrier services retrieved successfully",
+        message: 'Carrier services retrieved successfully'
       });
     } catch (error) {
       logger.error(`Failed to get carrier services: ${error.message}`, {
-        error,
+        error
       });
       res.status(500).json({
         success: false,
         error: {
-          message: "Failed to retrieve carrier services",
-          code: "SERVICES_FETCH_ERROR",
-        },
+          message: 'Failed to retrieve carrier services',
+          code: 'SERVICES_FETCH_ERROR'
+        }
       });
     }
   }
@@ -403,9 +403,9 @@ class ShippingController {
         return res.status(400).json({
           success: false,
           error: {
-            message: "Carrier and credentials are required",
-            code: "MISSING_REQUIRED_FIELDS",
-          },
+            message: 'Carrier and credentials are required',
+            code: 'MISSING_REQUIRED_FIELDS'
+          }
         });
       }
 
@@ -418,18 +418,18 @@ class ShippingController {
       res.json({
         success: result.success,
         data: result,
-        message: result.message,
+        message: result.message
       });
     } catch (error) {
       logger.error(`Failed to validate credentials: ${error.message}`, {
-        error,
+        error
       });
       res.status(500).json({
         success: false,
         error: {
-          message: "Failed to validate credentials",
-          code: "CREDENTIAL_VALIDATION_ERROR",
-        },
+          message: 'Failed to validate credentials',
+          code: 'CREDENTIAL_VALIDATION_ERROR'
+        }
       });
     }
   }
@@ -453,34 +453,34 @@ class ShippingController {
         const includeConditions = [
           {
             model: Order,
-            as: "order",
+            as: 'order',
             where: orderWhereConditions,
             include: [
               {
                 model: ShippingDetail,
-                as: "shippingDetail",
-                required: false,
+                as: 'shippingDetail',
+                required: false
               },
               {
                 model: OrderItem,
-                as: "items",
-                required: false,
-              },
-            ],
+                as: 'items',
+                required: false
+              }
+            ]
           },
           {
             model: ShippingCarrier,
-            as: "carrier",
-            required: false,
-          },
+            as: 'carrier',
+            required: false
+          }
         ];
 
         // Apply search filter
         if (search) {
           whereConditions[Op.or] = [
             { trackingNumber: { [Op.iLike]: `%${search}%` } },
-            { "$order.orderNumber$": { [Op.iLike]: `%${search}%` } },
-            { "$order.customerName$": { [Op.iLike]: `%${search}%` } },
+            { '$order.orderNumber$': { [Op.iLike]: `%${search}%` } },
+            { '$order.customerName$': { [Op.iLike]: `%${search}%` } }
           ];
         }
 
@@ -491,7 +491,7 @@ class ShippingController {
 
         // Apply carrier filter
         if (carrier) {
-          whereConditions["$carrier.code$"] = carrier;
+          whereConditions['$carrier.code$'] = carrier;
         }
 
         // Query database for shipping rates (which represent shipments)
@@ -500,8 +500,8 @@ class ShippingController {
           include: includeConditions,
           limit: parseInt(limit),
           offset: (parseInt(page) - 1) * parseInt(limit),
-          order: [["createdAt", "DESC"]],
-          distinct: true,
+          order: [['createdAt', 'DESC']],
+          distinct: true
         });
 
         // Transform database results to shipment format
@@ -515,29 +515,29 @@ class ShippingController {
             trackingNumber:
               shippingDetail?.trackingNumber ||
               `${rate.serviceType}_${rate.id}`,
-            carrier: carrier?.code || "unknown",
-            carrierName: carrier?.name || "Unknown Carrier",
+            carrier: carrier?.code || 'unknown',
+            carrierName: carrier?.name || 'Unknown Carrier',
             status: this.determineShipmentStatus(order?.status, shippingDetail),
             orderNumber: order?.orderNumber || `ORD-${order?.id}`,
             recipientName:
-              shippingDetail?.recipientName || order?.customerName || "Unknown",
-            recipientCity: shippingDetail?.city || "Unknown",
+              shippingDetail?.recipientName || order?.customerName || 'Unknown',
+            recipientCity: shippingDetail?.city || 'Unknown',
             shippingAddress: {
               address: shippingDetail?.address,
               city: shippingDetail?.city,
               state: shippingDetail?.state,
               postalCode: shippingDetail?.postalCode,
-              country: shippingDetail?.country || "Turkey",
+              country: shippingDetail?.country || 'Turkey'
             },
             createdAt: rate.calculatedAt || rate.createdAt,
             estimatedDelivery:
               rate.deliveryDate ||
               this.calculateEstimatedDelivery(rate.serviceType),
-            deliveredAt: order?.status === "delivered" ? order.updatedAt : null,
+            deliveredAt: order?.status === 'delivered' ? order.updatedAt : null,
             cost: parseFloat(rate.totalPrice) || 0,
             serviceType: rate.serviceType,
             weight: rate.weight,
-            dimensions: rate.dimensions,
+            dimensions: rate.dimensions
           };
         });
 
@@ -549,13 +549,13 @@ class ShippingController {
             page: parseInt(page),
             limit: parseInt(limit),
             totalPages: Math.ceil(dbShipments.count / parseInt(limit)),
-            filtered: !!(search || status || carrier),
+            filtered: !!(search || status || carrier)
           },
-          message: "Shipments retrieved successfully",
+          message: 'Shipments retrieved successfully'
         });
       } catch (dbError) {
         logger.warn(
-          "Failed to fetch shipments from database, using fallback:",
+          'Failed to fetch shipments from database, using fallback:',
           dbError.message
         );
 
@@ -597,9 +597,9 @@ class ShippingController {
           meta: {
             total: filteredShipments.length,
             filtered: filteredShipments.length !== mockShipments.length,
-            fallback: true,
+            fallback: true
           },
-          message: "Shipments retrieved successfully (fallback data)",
+          message: 'Shipments retrieved successfully (fallback data)'
         });
       }
     } catch (error) {
@@ -607,9 +607,9 @@ class ShippingController {
       res.status(500).json({
         success: false,
         error: {
-          message: "Failed to retrieve shipments",
-          code: "SHIPMENTS_FETCH_ERROR",
-        },
+          message: 'Failed to retrieve shipments',
+          code: 'SHIPMENTS_FETCH_ERROR'
+        }
       });
     }
   }
@@ -619,7 +619,7 @@ class ShippingController {
    */
   async createShipment(req, res) {
     try {
-      const { orderIds, carrier, serviceType = "STANDARD" } = req.body;
+      const { orderIds, carrier, serviceType = 'STANDARD' } = req.body;
       const userId = req.user?.id;
 
       // Validate required fields
@@ -627,9 +627,9 @@ class ShippingController {
         return res.status(400).json({
           success: false,
           error: {
-            message: "Order IDs array is required",
-            code: "MISSING_ORDER_IDS",
-          },
+            message: 'Order IDs array is required',
+            code: 'MISSING_ORDER_IDS'
+          }
         });
       }
 
@@ -637,16 +637,16 @@ class ShippingController {
         return res.status(400).json({
           success: false,
           error: {
-            message: "Carrier is required",
-            code: "MISSING_CARRIER",
-          },
+            message: 'Carrier is required',
+            code: 'MISSING_CARRIER'
+          }
         });
       }
 
       try {
         // Find the carrier in database
         const carrierRecord = await ShippingCarrier.findOne({
-          where: { code: carrier, isActive: true },
+          where: { code: carrier, isActive: true }
         });
 
         if (!carrierRecord) {
@@ -654,8 +654,8 @@ class ShippingController {
             success: false,
             error: {
               message: `Carrier ${carrier} not found or inactive`,
-              code: "CARRIER_NOT_FOUND",
-            },
+              code: 'CARRIER_NOT_FOUND'
+            }
           });
         }
 
@@ -664,23 +664,23 @@ class ShippingController {
           where: {
             id: orderIds,
             ...(userId && { userId }),
-            status: { [Op.in]: ["paid", "processing", "confirmed"] },
+            status: { [Op.in]: ['paid', 'processing', 'confirmed'] }
           },
           include: [
             {
               model: ShippingDetail,
-              as: "shippingDetail",
-            },
-          ],
+              as: 'shippingDetail'
+            }
+          ]
         });
 
         if (orders.length === 0) {
           return res.status(400).json({
             success: false,
             error: {
-              message: "No eligible orders found for shipping",
-              code: "NO_ELIGIBLE_ORDERS",
-            },
+              message: 'No eligible orders found for shipping',
+              code: 'NO_ELIGIBLE_ORDERS'
+            }
           });
         }
 
@@ -710,20 +710,20 @@ class ShippingController {
             carrierId: carrierRecord.id,
             orderId: order.id,
             serviceType: serviceType,
-            fromCity: "İstanbul", // Default from city - should be configurable
-            fromPostalCode: "34000",
-            toCity: shippingDetail.city || "Unknown",
+            fromCity: 'İstanbul', // Default from city - should be configurable
+            fromPostalCode: '34000',
+            toCity: shippingDetail.city || 'Unknown',
             toPostalCode: shippingDetail.postalCode,
             weight: weight,
             dimensions: this.getDefaultDimensions(),
             basePrice: estimatedCost * 0.85, // Base price without tax
             taxAmount: estimatedCost * 0.15, // 18% KDV
             totalPrice: estimatedCost,
-            currency: "TRY",
+            currency: 'TRY',
             deliveryTime:
-              carrierRecord.deliveryTimeRange || "1-3 business days",
+              carrierRecord.deliveryTimeRange || '1-3 business days',
             deliveryDate: new Date(estimatedDelivery),
-            isSelected: true,
+            isSelected: true
           });
 
           // Generate tracking number
@@ -737,13 +737,13 @@ class ShippingController {
               carrierRecord,
               trackingNumber
             ),
-            status: "shipped",
+            status: 'shipped'
           });
 
           // Update order status
           await order.update({
-            status: "shipped",
-            lastSyncedAt: new Date(),
+            status: 'shipped',
+            lastSyncedAt: new Date()
           });
 
           createdShipments.push({
@@ -751,13 +751,13 @@ class ShippingController {
             trackingNumber: trackingNumber,
             carrier: carrier,
             carrierName: carrierRecord.name,
-            status: "shipped",
+            status: 'shipped',
             orderId: order.id,
             orderNumber: order.orderNumber,
             serviceType: serviceType,
             createdAt: new Date().toISOString(),
             estimatedDelivery: estimatedDelivery,
-            cost: estimatedCost,
+            cost: estimatedCost
           });
         }
 
@@ -765,20 +765,20 @@ class ShippingController {
           return res.status(400).json({
             success: false,
             error: {
-              message: "No shipments could be created",
-              code: "SHIPMENT_CREATION_FAILED",
-            },
+              message: 'No shipments could be created',
+              code: 'SHIPMENT_CREATION_FAILED'
+            }
           });
         }
 
         res.json({
           success: true,
           data: createdShipments,
-          message: `${createdShipments.length} shipment(s) created successfully`,
+          message: `${createdShipments.length} shipment(s) created successfully`
         });
       } catch (dbError) {
         logger.warn(
-          "Database shipment creation failed, using mock response:",
+          'Database shipment creation failed, using mock response:',
           dbError.message
         );
 
@@ -789,7 +789,7 @@ class ShippingController {
           trackingNumber,
           carrier,
           carrierName: this.getCarrierName(carrier),
-          status: "pending",
+          status: 'pending',
           orderIds,
           serviceType,
           createdAt: new Date().toISOString(),
@@ -798,13 +798,13 @@ class ShippingController {
             orderIds.length,
             carrier,
             serviceType
-          ),
+          )
         };
 
         res.json({
           success: true,
           data: [newShipment],
-          message: "Shipment created successfully (mock mode)",
+          message: 'Shipment created successfully (mock mode)'
         });
       }
     } catch (error) {
@@ -812,30 +812,30 @@ class ShippingController {
       res.status(500).json({
         success: false,
         error: {
-          message: "Failed to create shipment",
-          code: "SHIPMENT_CREATION_ERROR",
-        },
+          message: 'Failed to create shipment',
+          code: 'SHIPMENT_CREATION_ERROR'
+        }
       });
     }
   }
 
   // Helper methods
   determineShipmentStatus(orderStatus, shippingDetail) {
-    if (!orderStatus) return "pending";
+    if (!orderStatus) {return 'pending';}
 
     switch (orderStatus) {
-      case "shipped":
-        return "in_transit";
-      case "delivered":
-        return "delivered";
-      case "cancelled":
-        return "cancelled";
-      case "paid":
-      case "processing":
-      case "confirmed":
-        return shippingDetail?.trackingNumber ? "in_transit" : "pending";
-      default:
-        return "pending";
+    case 'shipped':
+      return 'in_transit';
+    case 'delivered':
+      return 'delivered';
+    case 'cancelled':
+      return 'cancelled';
+    case 'paid':
+    case 'processing':
+    case 'confirmed':
+      return shippingDetail?.trackingNumber ? 'in_transit' : 'pending';
+    default:
+      return 'pending';
     }
   }
 
@@ -849,7 +849,7 @@ class ShippingController {
     return {
       length: 20,
       width: 15,
-      height: 10,
+      height: 10
     };
   }
 
@@ -862,7 +862,7 @@ class ShippingController {
   generateTrackingUrl(carrier, trackingNumber) {
     if (carrier.trackingUrlTemplate) {
       return carrier.trackingUrlTemplate.replace(
-        "{trackingNumber}",
+        '{trackingNumber}',
         trackingNumber
       );
     }
@@ -872,7 +872,7 @@ class ShippingController {
       aras: `https://www.araskargo.com.tr/takip?kod=${trackingNumber}`,
       yurtici: `https://www.yurticikargo.com/tr/takip?code=${trackingNumber}`,
       ptt: `https://gonderitakip.ptt.gov.tr/Track?barcode=${trackingNumber}`,
-      mng: `https://www.mngkargo.com.tr/takip?kod=${trackingNumber}`,
+      mng: `https://www.mngkargo.com.tr/takip?kod=${trackingNumber}`
     };
 
     return trackingUrls[carrier.code] || `#tracking-${trackingNumber}`;
@@ -881,45 +881,45 @@ class ShippingController {
   getMockShipments() {
     return [
       {
-        id: "SHP_001",
-        trackingNumber: "ARAS123456789",
-        carrier: "aras",
-        carrierName: "Aras Kargo",
-        status: "in_transit",
-        orderNumber: "ORD-2025-001",
-        recipientName: "Ahmet Yılmaz",
-        recipientCity: "Ankara",
-        createdAt: "2025-06-01T10:00:00Z",
-        estimatedDelivery: "2025-06-03",
-        cost: 25.5,
+        id: 'SHP_001',
+        trackingNumber: 'ARAS123456789',
+        carrier: 'aras',
+        carrierName: 'Aras Kargo',
+        status: 'in_transit',
+        orderNumber: 'ORD-2025-001',
+        recipientName: 'Ahmet Yılmaz',
+        recipientCity: 'Ankara',
+        createdAt: '2025-06-01T10:00:00Z',
+        estimatedDelivery: '2025-06-03',
+        cost: 25.5
       },
       {
-        id: "SHP_002",
-        trackingNumber: "YK987654321",
-        carrier: "yurtici",
-        carrierName: "Yurtiçi Kargo",
-        status: "delivered",
-        orderNumber: "ORD-2025-002",
-        recipientName: "Fatma Demir",
-        recipientCity: "İstanbul",
-        createdAt: "2025-05-30T14:30:00Z",
-        estimatedDelivery: "2025-06-01",
-        deliveredAt: "2025-06-01T16:45:00Z",
-        cost: 18.75,
+        id: 'SHP_002',
+        trackingNumber: 'YK987654321',
+        carrier: 'yurtici',
+        carrierName: 'Yurtiçi Kargo',
+        status: 'delivered',
+        orderNumber: 'ORD-2025-002',
+        recipientName: 'Fatma Demir',
+        recipientCity: 'İstanbul',
+        createdAt: '2025-05-30T14:30:00Z',
+        estimatedDelivery: '2025-06-01',
+        deliveredAt: '2025-06-01T16:45:00Z',
+        cost: 18.75
       },
       {
-        id: "SHP_003",
-        trackingNumber: "PTT555888999",
-        carrier: "ptt",
-        carrierName: "PTT Kargo",
-        status: "pending",
-        orderNumber: "ORD-2025-003",
-        recipientName: "Mehmet Özkan",
-        recipientCity: "İzmir",
-        createdAt: "2025-06-01T09:15:00Z",
-        estimatedDelivery: "2025-06-04",
-        cost: 22.0,
-      },
+        id: 'SHP_003',
+        trackingNumber: 'PTT555888999',
+        carrier: 'ptt',
+        carrierName: 'PTT Kargo',
+        status: 'pending',
+        orderNumber: 'ORD-2025-003',
+        recipientName: 'Mehmet Özkan',
+        recipientCity: 'İzmir',
+        createdAt: '2025-06-01T09:15:00Z',
+        estimatedDelivery: '2025-06-04',
+        cost: 22.0
+      }
     ];
   }
 
@@ -933,16 +933,16 @@ class ShippingController {
       res.json({
         success: true,
         data: stats,
-        message: "Cache statistics retrieved successfully",
+        message: 'Cache statistics retrieved successfully'
       });
     } catch (error) {
       logger.error(`Failed to get cache stats: ${error.message}`, { error });
       res.status(500).json({
         success: false,
         error: {
-          message: "Failed to retrieve cache statistics",
-          code: "CACHE_STATS_ERROR",
-        },
+          message: 'Failed to retrieve cache statistics',
+          code: 'CACHE_STATS_ERROR'
+        }
       });
     }
   }
@@ -960,16 +960,16 @@ class ShippingController {
         success: true,
         message: carrier
           ? `Cache cleared for carrier: ${carrier}`
-          : "All shipping service cache cleared",
+          : 'All shipping service cache cleared'
       });
     } catch (error) {
       logger.error(`Failed to clear cache: ${error.message}`, { error });
       res.status(500).json({
         success: false,
         error: {
-          message: "Failed to clear cache",
-          code: "CACHE_CLEAR_ERROR",
-        },
+          message: 'Failed to clear cache',
+          code: 'CACHE_CLEAR_ERROR'
+        }
       });
     }
   }

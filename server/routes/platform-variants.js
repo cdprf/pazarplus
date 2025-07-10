@@ -1,17 +1,17 @@
-const express = require("express");
-const { body, param, query } = require("express-validator");
+const express = require('express');
+const { body, param, query } = require('express-validator');
 const router = express.Router();
-const { auth } = require("../middleware/auth");
-const PlatformVariantController = require("../controllers/platform-variant-controller");
+const { auth } = require('../middleware/auth');
+const PlatformVariantController = require('../controllers/platform-variant-controller');
 
 /**
  * Get platform field definitions
  */
 router.get(
-  "/platforms/:platform/fields",
+  '/platforms/:platform/fields',
   auth,
-  param("platform").isIn(["trendyol", "hepsiburada", "n11"]),
-  query("categoryId").optional().isString(),
+  param('platform').isIn(['trendyol', 'hepsiburada', 'n11']),
+  query('categoryId').optional().isString(),
   PlatformVariantController.getPlatformFields
 );
 
@@ -19,9 +19,9 @@ router.get(
  * Get platform categories
  */
 router.get(
-  "/platforms/:platform/categories",
+  '/platforms/:platform/categories',
   auth,
-  param("platform").isIn(["trendyol", "hepsiburada", "n11"]),
+  param('platform').isIn(['trendyol', 'hepsiburada', 'n11']),
   PlatformVariantController.getPlatformCategories
 );
 
@@ -29,9 +29,9 @@ router.get(
  * Get product variants
  */
 router.get(
-  "/products/:productId/variants",
+  '/products/:productId/variants',
   auth,
-  param("productId").isUUID(),
+  param('productId').isUUID(),
   PlatformVariantController.getProductVariants
 );
 
@@ -39,12 +39,12 @@ router.get(
  * Create platform variant
  */
 router.post(
-  "/products/:productId/variants",
+  '/products/:productId/variants',
   auth,
-  param("productId").isUUID(),
-  body("platform").isIn(["trendyol", "hepsiburada", "n11"]),
-  body("platformSku").isString().isLength({ min: 1, max: 100 }),
-  body("platformFields").isObject(),
+  param('productId').isUUID(),
+  body('platform').isIn(['trendyol', 'hepsiburada', 'n11']),
+  body('platformSku').isString().isLength({ min: 1, max: 100 }),
+  body('platformFields').isObject(),
   PlatformVariantController.createPlatformVariant
 );
 
@@ -52,11 +52,11 @@ router.post(
  * Update platform variant
  */
 router.put(
-  "/variants/:variantId",
+  '/variants/:variantId',
   auth,
-  param("variantId").isUUID(),
-  body("platformFields").optional().isObject(),
-  body("isPublished").optional().isBoolean(),
+  param('variantId').isUUID(),
+  body('platformFields').optional().isObject(),
+  body('isPublished').optional().isBoolean(),
   PlatformVariantController.updatePlatformVariant
 );
 
@@ -64,9 +64,9 @@ router.put(
  * Delete platform variant
  */
 router.delete(
-  "/variants/:variantId",
+  '/variants/:variantId',
   auth,
-  param("variantId").isUUID(),
+  param('variantId').isUUID(),
   PlatformVariantController.deletePlatformVariant
 );
 
@@ -74,9 +74,9 @@ router.delete(
  * Publish variant to platform
  */
 router.post(
-  "/variants/:variantId/publish",
+  '/variants/:variantId/publish',
   auth,
-  param("variantId").isUUID(),
+  param('variantId').isUUID(),
   PlatformVariantController.publishVariant
 );
 
@@ -84,9 +84,9 @@ router.post(
  * Sync variant with platform
  */
 router.post(
-  "/variants/:variantId/sync",
+  '/variants/:variantId/sync',
   auth,
-  param("variantId").isUUID(),
+  param('variantId').isUUID(),
   PlatformVariantController.syncVariant
 );
 
@@ -94,18 +94,18 @@ router.post(
  * Bulk operations
  */
 router.post(
-  "/variants/bulk/publish",
+  '/variants/bulk/publish',
   auth,
-  body("variantIds").isArray().notEmpty(),
-  body("variantIds.*").isUUID(),
+  body('variantIds').isArray().notEmpty(),
+  body('variantIds.*').isUUID(),
   PlatformVariantController.bulkPublishVariants
 );
 
 router.post(
-  "/variants/bulk/sync",
+  '/variants/bulk/sync',
   auth,
-  body("variantIds").isArray().notEmpty(),
-  body("variantIds.*").isUUID(),
+  body('variantIds').isArray().notEmpty(),
+  body('variantIds.*').isUUID(),
   PlatformVariantController.bulkSyncVariants
 );
 
@@ -113,24 +113,24 @@ router.post(
  * Seed platform categories for testing
  */
 router.post(
-  "/platforms/:platform/categories/seed",
+  '/platforms/:platform/categories/seed',
   auth,
-  param("platform").isIn(["trendyol", "hepsiburada", "n11", "all"]),
+  param('platform').isIn(['trendyol', 'hepsiburada', 'n11', 'all']),
   async (req, res) => {
     try {
       const { platform } = req.params;
       const userId = req.user.id;
 
-      const PlatformCategorySeedService = require("../services/platform-category-seed-service");
+      const PlatformCategorySeedService = require('../services/platform-category-seed-service');
 
-      if (platform === "all") {
+      if (platform === 'all') {
         const result = await PlatformCategorySeedService.reseedCategories(
           userId
         );
         res.json({
           success: true,
-          message: "Platform kategorileri başarıyla oluşturuldu",
-          data: result,
+          message: 'Platform kategorileri başarıyla oluşturuldu',
+          data: result
         });
       } else {
         // For specific platform, we'll just seed all for now
@@ -138,15 +138,15 @@ router.post(
         res.json({
           success: true,
           message: `${platform} kategorileri başarıyla oluşturuldu`,
-          data: result,
+          data: result
         });
       }
     } catch (error) {
-      console.error("Seed categories error:", error);
+      console.error('Seed categories error:', error);
       res.status(500).json({
         success: false,
-        message: "Kategoriler oluşturulamadı",
-        error: error.message,
+        message: 'Kategoriler oluşturulamadı',
+        error: error.message
       });
     }
   }

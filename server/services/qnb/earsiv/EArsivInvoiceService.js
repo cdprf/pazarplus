@@ -5,12 +5,12 @@
  * Based on QNB Finans e-Arşiv Entegrasyon Kılavuzu
  */
 
-const QNBAuthManager = require("./auth/QNBAuthManager");
-const SOAPClient = require("./soap/SOAPClient");
-const UBLGenerator = require("./xml/UBLGenerator");
-const QNBConfig = require("./config/QNBConfig");
-const QNBHelpers = require("./utils/QNBHelpers");
-const logger = require("../../utils/logger");
+const QNBAuthManager = require('./auth/QNBAuthManager');
+const SOAPClient = require('./soap/SOAPClient');
+const UBLGenerator = require('./xml/UBLGenerator');
+const QNBConfig = require('./config/QNBConfig');
+const QNBHelpers = require('./utils/QNBHelpers');
+const logger = require('../../utils/logger');
 
 class InvoiceService {
   constructor() {
@@ -36,17 +36,17 @@ class InvoiceService {
 
       return {
         success: true,
-        message: "QNB Finans connection successful",
-        data: { authenticated: true },
+        message: 'QNB Finans connection successful',
+        data: { authenticated: true }
       };
     } catch (error) {
       logger.error(`QNB Finans connection test error: ${error.message}`, {
-        error,
+        error
       });
       return {
         success: false,
         message: `Connection test failed: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -65,9 +65,9 @@ class InvoiceService {
         return {
           success: false,
           message: `Configuration validation failed: ${validation.errors.join(
-            ", "
+            ', '
           )}`,
-          error: "INVALID_CONFIG",
+          error: 'INVALID_CONFIG'
         };
       }
 
@@ -81,23 +81,23 @@ class InvoiceService {
       const inputData = {
         islemId:
           invoiceData.transactionId || QNBHelpers.generateTransactionId(),
-        vkn: config.companyInfo?.taxNumber || "",
+        vkn: config.companyInfo?.taxNumber || '',
         sube: invoiceData.branch || QNBConfig.DEFAULT_BRANCH,
         kasa: invoiceData.register || QNBConfig.DEFAULT_REGISTER,
-        tarih: QNBHelpers.formatDateForQNB(new Date()),
+        tarih: QNBHelpers.formatDateForQNB(new Date())
       };
 
       // Create SOAP envelope
       const soapEnvelope = this.soapClient.createSOAPEnvelope({
-        "ser:faturaNoUret": {
-          input: JSON.stringify(inputData),
-        },
+        'ser:faturaNoUret': {
+          input: JSON.stringify(inputData)
+        }
       });
 
       // Make SOAP request
       const response = await this.soapClient.makeRequest(
         soapEnvelope,
-        config.environment || "test"
+        config.environment || 'test'
       );
 
       // Logout
@@ -107,13 +107,13 @@ class InvoiceService {
       if (response.success && response.resultCode === QNBConfig.SUCCESS_CODE) {
         return {
           success: true,
-          message: "Invoice number generated successfully",
+          message: 'Invoice number generated successfully',
           data: {
             invoiceNumber: response.output,
             url: response.resultExtra?.url,
             transactionId: inputData.islemId,
-            resultCode: response.resultCode,
-          },
+            resultCode: response.resultCode
+          }
         };
       } else {
         const errorMessage =
@@ -125,7 +125,7 @@ class InvoiceService {
         `QNB Finans invoice number generation error: ${error.message}`,
         {
           error,
-          invoiceData: invoiceData.transactionId,
+          invoiceData: invoiceData.transactionId
         }
       );
 
@@ -135,7 +135,7 @@ class InvoiceService {
       return {
         success: false,
         message: `Failed to generate invoice number: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -154,9 +154,9 @@ class InvoiceService {
         return {
           success: false,
           message: `Configuration validation failed: ${validation.errors.join(
-            ", "
+            ', '
           )}`,
-          error: "INVALID_CONFIG",
+          error: 'INVALID_CONFIG'
         };
       }
 
@@ -166,9 +166,9 @@ class InvoiceService {
         return {
           success: false,
           message: `Order validation failed: ${orderValidation.errors.join(
-            ", "
+            ', '
           )}`,
-          error: "INVALID_ORDER_DATA",
+          error: 'INVALID_ORDER_DATA'
         };
       }
 
@@ -182,13 +182,13 @@ class InvoiceService {
       const inputData = {
         donenBelgeFormati: 3, // PDF format
         islemId: order.transactionId || QNBHelpers.generateTransactionId(),
-        vkn: config.companyInfo?.taxNumber || "",
+        vkn: config.companyInfo?.taxNumber || '',
         sube: order.branch || QNBConfig.DEFAULT_BRANCH,
         kasa: order.register || QNBConfig.DEFAULT_REGISTER,
         numaraVerilsinMi: config.autoGenerateNumber !== false ? 1 : 0,
         gzip: 0, // No compression
         taslagaYonlendir: config.sendToDraft ? 1 : 0,
-        yerelFaturaNo: order.localInvoiceNumber || "",
+        yerelFaturaNo: order.localInvoiceNumber || ''
       };
 
       // Generate UBL invoice XML
@@ -196,20 +196,20 @@ class InvoiceService {
 
       // Create SOAP envelope with invoice data
       const soapEnvelope = this.soapClient.createSOAPEnvelope({
-        "ser:faturaOlustur": {
+        'ser:faturaOlustur': {
           input: JSON.stringify(inputData),
           fatura: {
             belgeFormati: 0, // UBL format
-            belgeIcerigi: Buffer.from(ublInvoiceXML).toString("base64"),
+            belgeIcerigi: Buffer.from(ublInvoiceXML).toString('base64')
           },
-          output: {}, // Holder type for output
-        },
+          output: {} // Holder type for output
+        }
       });
 
       // Make SOAP request
       const response = await this.soapClient.makeRequest(
         soapEnvelope,
-        config.environment || "test"
+        config.environment || 'test'
       );
 
       // Logout
@@ -219,15 +219,15 @@ class InvoiceService {
       if (response.success && response.resultCode === QNBConfig.SUCCESS_CODE) {
         return {
           success: true,
-          message: "E-archive invoice created successfully",
+          message: 'E-archive invoice created successfully',
           data: {
             invoiceNumber: response.resultExtra?.faturaNo,
             invoiceId: response.resultExtra?.uuid,
             pdfUrl: response.resultExtra?.faturaURL,
-            status: "CREATED",
+            status: 'CREATED',
             transactionId: inputData.islemId,
-            resultCode: response.resultCode,
-          },
+            resultCode: response.resultCode
+          }
         };
       } else {
         const errorMessage =
@@ -237,7 +237,7 @@ class InvoiceService {
     } catch (error) {
       logger.error(`QNB Finans e-archive creation error: ${error.message}`, {
         error,
-        orderId: order.id,
+        orderId: order.id
       });
 
       // Ensure logout on error
@@ -246,7 +246,7 @@ class InvoiceService {
       return {
         success: false,
         message: `Failed to create e-archive invoice: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -265,9 +265,9 @@ class InvoiceService {
         return {
           success: false,
           message: `Configuration validation failed: ${validation.errors.join(
-            ", "
+            ', '
           )}`,
-          error: "INVALID_CONFIG",
+          error: 'INVALID_CONFIG'
         };
       }
 
@@ -280,23 +280,23 @@ class InvoiceService {
       // Prepare input data
       const inputData = {
         uuid: invoiceId,
-        vkn: config.companyInfo?.taxNumber || "",
+        vkn: config.companyInfo?.taxNumber || '',
         donenBelgeFormati: 3, // PDF format
-        saklamadakiFaturalar: 1, // Include stored invoices
+        saklamadakiFaturalar: 1 // Include stored invoices
       };
 
       // Create SOAP envelope
       const soapEnvelope = this.soapClient.createSOAPEnvelope({
-        "ser:faturaSorgula": {
+        'ser:faturaSorgula': {
           input: JSON.stringify(inputData),
-          output: {}, // Holder type for output
-        },
+          output: {} // Holder type for output
+        }
       });
 
       // Make SOAP request
       const response = await this.soapClient.makeRequest(
         soapEnvelope,
-        config.environment || "test"
+        config.environment || 'test'
       );
 
       // Logout
@@ -307,7 +307,7 @@ class InvoiceService {
         return {
           success: true,
           data: response.output,
-          resultCode: response.resultCode,
+          resultCode: response.resultCode
         };
       } else {
         const errorMessage =
@@ -317,7 +317,7 @@ class InvoiceService {
     } catch (error) {
       logger.error(`QNB Finans invoice query error: ${error.message}`, {
         error,
-        invoiceId,
+        invoiceId
       });
 
       // Ensure logout on error
@@ -326,7 +326,7 @@ class InvoiceService {
       return {
         success: false,
         message: `Failed to query invoice: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -338,7 +338,7 @@ class InvoiceService {
    * @param {string} reason - Cancellation reason
    * @returns {Object} Cancellation result
    */
-  async faturaIptalEt(invoiceId, config, reason = "İptal") {
+  async faturaIptalEt(invoiceId, config, reason = 'İptal') {
     try {
       // Validate configuration
       const validation = QNBHelpers.validateConfiguration(config);
@@ -346,9 +346,9 @@ class InvoiceService {
         return {
           success: false,
           message: `Configuration validation failed: ${validation.errors.join(
-            ", "
+            ', '
           )}`,
-          error: "INVALID_CONFIG",
+          error: 'INVALID_CONFIG'
         };
       }
 
@@ -361,21 +361,21 @@ class InvoiceService {
       // Prepare input data
       const inputData = {
         uuid: invoiceId,
-        vkn: config.companyInfo?.taxNumber || "",
-        iptalNedeni: reason,
+        vkn: config.companyInfo?.taxNumber || '',
+        iptalNedeni: reason
       };
 
       // Create SOAP envelope
       const soapEnvelope = this.soapClient.createSOAPEnvelope({
-        "ser:faturaIptalEt": {
-          input: JSON.stringify(inputData),
-        },
+        'ser:faturaIptalEt': {
+          input: JSON.stringify(inputData)
+        }
       });
 
       // Make SOAP request
       const response = await this.soapClient.makeRequest(
         soapEnvelope,
-        config.environment || "test"
+        config.environment || 'test'
       );
 
       // Logout
@@ -385,9 +385,9 @@ class InvoiceService {
       if (response.success && response.resultCode === QNBConfig.SUCCESS_CODE) {
         return {
           success: true,
-          message: "Invoice cancelled successfully",
+          message: 'Invoice cancelled successfully',
           data: response.data,
-          resultCode: response.resultCode,
+          resultCode: response.resultCode
         };
       } else {
         const errorMessage =
@@ -397,7 +397,7 @@ class InvoiceService {
     } catch (error) {
       logger.error(`QNB Finans invoice cancellation error: ${error.message}`, {
         error,
-        invoiceId,
+        invoiceId
       });
 
       // Ensure logout on error
@@ -406,7 +406,7 @@ class InvoiceService {
       return {
         success: false,
         message: `Failed to cancel invoice: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -425,9 +425,9 @@ class InvoiceService {
         return {
           success: false,
           message: `Configuration validation failed: ${validation.errors.join(
-            ", "
+            ', '
           )}`,
-          error: "INVALID_CONFIG",
+          error: 'INVALID_CONFIG'
         };
       }
 
@@ -440,20 +440,20 @@ class InvoiceService {
       // Prepare input data
       const inputData = {
         uuid: invoiceId,
-        vkn: config.companyInfo?.taxNumber || "",
+        vkn: config.companyInfo?.taxNumber || ''
       };
 
       // Create SOAP envelope
       const soapEnvelope = this.soapClient.createSOAPEnvelope({
-        "ser:faturaIptaliKaldir": {
-          input: JSON.stringify(inputData),
-        },
+        'ser:faturaIptaliKaldir': {
+          input: JSON.stringify(inputData)
+        }
       });
 
       // Make SOAP request
       const response = await this.soapClient.makeRequest(
         soapEnvelope,
-        config.environment || "test"
+        config.environment || 'test'
       );
 
       // Logout
@@ -463,9 +463,9 @@ class InvoiceService {
       if (response.success && response.resultCode === QNBConfig.SUCCESS_CODE) {
         return {
           success: true,
-          message: "Invoice cancellation removed successfully",
+          message: 'Invoice cancellation removed successfully',
           data: response.data,
-          resultCode: response.resultCode,
+          resultCode: response.resultCode
         };
       } else {
         const errorMessage =
@@ -477,7 +477,7 @@ class InvoiceService {
         `QNB Finans invoice cancellation removal error: ${error.message}`,
         {
           error,
-          invoiceId,
+          invoiceId
         }
       );
 
@@ -487,7 +487,7 @@ class InvoiceService {
       return {
         success: false,
         message: `Failed to remove invoice cancellation: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -507,9 +507,9 @@ class InvoiceService {
         return {
           success: false,
           message: `Configuration validation failed: ${validation.errors.join(
-            ", "
+            ', '
           )}`,
-          error: "INVALID_CONFIG",
+          error: 'INVALID_CONFIG'
         };
       }
 
@@ -522,21 +522,21 @@ class InvoiceService {
       // Prepare input data
       const inputData = {
         uuid: invoiceId,
-        vkn: config.companyInfo?.taxNumber || "",
-        ePosta: email,
+        vkn: config.companyInfo?.taxNumber || '',
+        ePosta: email
       };
 
       // Create SOAP envelope
       const soapEnvelope = this.soapClient.createSOAPEnvelope({
-        "ser:ePostaGonder": {
-          input: JSON.stringify(inputData),
-        },
+        'ser:ePostaGonder': {
+          input: JSON.stringify(inputData)
+        }
       });
 
       // Make SOAP request
       const response = await this.soapClient.makeRequest(
         soapEnvelope,
-        config.environment || "test"
+        config.environment || 'test'
       );
 
       // Logout
@@ -546,9 +546,9 @@ class InvoiceService {
       if (response.success && response.resultCode === QNBConfig.SUCCESS_CODE) {
         return {
           success: true,
-          message: "Email sent successfully",
+          message: 'Email sent successfully',
           data: response.data,
-          resultCode: response.resultCode,
+          resultCode: response.resultCode
         };
       } else {
         const errorMessage =
@@ -559,7 +559,7 @@ class InvoiceService {
       logger.error(`QNB Finans email sending error: ${error.message}`, {
         error,
         invoiceId,
-        email,
+        email
       });
 
       // Ensure logout on error
@@ -568,7 +568,7 @@ class InvoiceService {
       return {
         success: false,
         message: `Failed to send email: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -587,9 +587,9 @@ class InvoiceService {
         return {
           success: false,
           message: `Configuration validation failed: ${validation.errors.join(
-            ", "
+            ', '
           )}`,
-          error: "INVALID_CONFIG",
+          error: 'INVALID_CONFIG'
         };
       }
 
@@ -598,9 +598,9 @@ class InvoiceService {
         return {
           success: false,
           message: `Order validation failed: ${orderValidation.errors.join(
-            ", "
+            ', '
           )}`,
-          error: "INVALID_ORDER_DATA",
+          error: 'INVALID_ORDER_DATA'
         };
       }
 
@@ -613,9 +613,9 @@ class InvoiceService {
       // Prepare input data
       const inputData = {
         islemId: order.transactionId || QNBHelpers.generateTransactionId(),
-        vkn: config.companyInfo?.taxNumber || "",
+        vkn: config.companyInfo?.taxNumber || '',
         sube: order.branch || QNBConfig.DEFAULT_BRANCH,
-        kasa: order.register || QNBConfig.DEFAULT_REGISTER,
+        kasa: order.register || QNBConfig.DEFAULT_REGISTER
       };
 
       // Generate UBL invoice XML
@@ -623,20 +623,20 @@ class InvoiceService {
 
       // Create SOAP envelope
       const soapEnvelope = this.soapClient.createSOAPEnvelope({
-        "ser:faturaTaslakOlustur": {
+        'ser:faturaTaslakOlustur': {
           input: JSON.stringify(inputData),
           fatura: {
             belgeFormati: 0, // UBL format
-            belgeIcerigi: Buffer.from(ublInvoiceXML).toString("base64"),
+            belgeIcerigi: Buffer.from(ublInvoiceXML).toString('base64')
           },
-          output: {}, // Holder type for output
-        },
+          output: {} // Holder type for output
+        }
       });
 
       // Make SOAP request
       const response = await this.soapClient.makeRequest(
         soapEnvelope,
-        config.environment || "test"
+        config.environment || 'test'
       );
 
       // Logout
@@ -646,12 +646,12 @@ class InvoiceService {
       if (response.success && response.resultCode === QNBConfig.SUCCESS_CODE) {
         return {
           success: true,
-          message: "Draft invoice created successfully",
+          message: 'Draft invoice created successfully',
           data: {
             draftId: response.output,
             transactionId: inputData.islemId,
-            resultCode: response.resultCode,
-          },
+            resultCode: response.resultCode
+          }
         };
       } else {
         const errorMessage =
@@ -661,7 +661,7 @@ class InvoiceService {
     } catch (error) {
       logger.error(`QNB Finans draft creation error: ${error.message}`, {
         error,
-        orderId: order.id,
+        orderId: order.id
       });
 
       // Ensure logout on error
@@ -670,7 +670,7 @@ class InvoiceService {
       return {
         success: false,
         message: `Failed to create draft invoice: ${error.message}`,
-        error: error.message,
+        error: error.message
       };
     }
   }
@@ -688,7 +688,7 @@ class InvoiceService {
     return await this.faturaSorgula(invoiceId, config);
   }
 
-  async cancelInvoice(invoiceId, config, reason = "") {
+  async cancelInvoice(invoiceId, config, reason = '') {
     return await this.faturaIptalEt(invoiceId, config, reason);
   }
 }

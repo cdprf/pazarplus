@@ -1,10 +1,10 @@
-const express = require("express");
-const { body, query, param } = require("express-validator");
+const express = require('express');
+const { body, query, param } = require('express-validator');
 // Re-enable auth middleware now that we have the reply method implemented
-const auth = require("../middleware/auth");
+const auth = require('../middleware/auth');
 
 // Import the proper controller class
-const CustomerQuestionController = require("../controllers/CustomerQuestionController");
+const CustomerQuestionController = require('../controllers/CustomerQuestionController');
 
 // Create controller instance lazily
 let controllerInstance = null;
@@ -19,55 +19,55 @@ const router = express.Router();
 
 // Validation middleware
 const validateQuestionQuery = [
-  query("platform").optional().isIn(["trendyol", "hepsiburada", "n11"]),
-  query("status")
+  query('platform').optional().isIn(['trendyol', 'hepsiburada', 'n11']),
+  query('status')
     .optional()
-    .isIn(["WAITING_FOR_ANSWER", "ANSWERED", "REJECTED", "AUTO_CLOSED"]),
-  query("priority").optional().isIn(["low", "medium", "high", "urgent"]),
-  query("page").optional().isInt({ min: 1 }),
-  query("limit").optional().isInt({ min: 1, max: 100 }),
-  query("sort_by")
+    .isIn(['WAITING_FOR_ANSWER', 'ANSWERED', 'REJECTED', 'AUTO_CLOSED']),
+  query('priority').optional().isIn(['low', 'medium', 'high', 'urgent']),
+  query('page').optional().isInt({ min: 1 }),
+  query('limit').optional().isInt({ min: 1, max: 100 }),
+  query('sort_by')
     .optional()
     .isIn([
-      "creation_date",
-      "status",
-      "priority",
-      "customer_name",
-      "expire_date",
+      'creation_date',
+      'status',
+      'priority',
+      'customer_name',
+      'expire_date'
     ]),
-  query("sort_order").optional().isIn(["ASC", "DESC", "asc", "desc"]),
-  query("search").optional().isString().isLength({ min: 1, max: 255 }),
+  query('sort_order').optional().isIn(['ASC', 'DESC', 'asc', 'desc']),
+  query('search').optional().isString().isLength({ min: 1, max: 255 })
 ];
 
 const validateReply = [
-  body("text")
+  body('text')
     .notEmpty()
     .isLength({ min: 10, max: 2000 })
-    .withMessage("Reply text must be between 10 and 2000 characters"),
-  body("type").optional().isIn(["answer", "reject"]),
-  body("template_id").optional().isInt(),
-  body("attachments").optional().isArray(),
+    .withMessage('Reply text must be between 10 and 2000 characters'),
+  body('type').optional().isIn(['answer', 'reject']),
+  body('template_id').optional().isInt(),
+  body('attachments').optional().isArray()
 ];
 
 const validateTemplate = [
-  body("title")
+  body('title')
     .notEmpty()
     .isLength({ min: 1, max: 255 })
-    .withMessage("Template title is required"),
-  body("content")
+    .withMessage('Template title is required'),
+  body('content')
     .notEmpty()
     .isLength({ min: 10, max: 5000 })
-    .withMessage("Template content must be between 10 and 5000 characters"),
-  body("category").optional().isLength({ max: 100 }),
-  body("platforms").optional().isArray(),
-  body("keywords").optional().isArray(),
-  body("variables").optional().isArray(),
+    .withMessage('Template content must be between 10 and 5000 characters'),
+  body('category').optional().isLength({ max: 100 }),
+  body('platforms').optional().isArray(),
+  body('keywords').optional().isArray(),
+  body('variables').optional().isArray()
 ];
 
 const validateSync = [
-  body("platforms").optional().isArray(),
-  body("start_date").optional().isISO8601(),
-  body("end_date").optional().isISO8601(),
+  body('platforms').optional().isArray(),
+  body('start_date').optional().isISO8601(),
+  body('end_date').optional().isISO8601()
 ];
 
 // Apply authentication to all routes (temporarily disabled for debugging)
@@ -78,7 +78,7 @@ const validateSync = [
  * @desc Get customer questions with filters and pagination
  * @access Private
  */
-router.get("/", validateQuestionQuery, (req, res) =>
+router.get('/', validateQuestionQuery, (req, res) =>
   getController().getQuestions(req, res)
 );
 
@@ -88,14 +88,14 @@ router.get("/", validateQuestionQuery, (req, res) =>
  * @access Private
  */
 router.get(
-  "/by-customer/:email",
-  param("email").isEmail().withMessage("Valid email is required"),
-  query("page").optional().isInt({ min: 1 }),
-  query("limit").optional().isInt({ min: 1, max: 100 }),
-  query("sort_by")
+  '/by-customer/:email',
+  param('email').isEmail().withMessage('Valid email is required'),
+  query('page').optional().isInt({ min: 1 }),
+  query('limit').optional().isInt({ min: 1, max: 100 }),
+  query('sort_by')
     .optional()
-    .isIn(["creation_date", "status", "priority", "expire_date"]),
-  query("sort_order").optional().isIn(["ASC", "DESC"]),
+    .isIn(['creation_date', 'status', 'priority', 'expire_date']),
+  query('sort_order').optional().isIn(['ASC', 'DESC']),
   (req, res) => getController().getQuestionsByCustomer(req, res)
 );
 
@@ -105,11 +105,11 @@ router.get(
  * @access Private
  */
 router.get(
-  "/stats",
+  '/stats',
   [
-    query("platform").optional().isIn(["trendyol", "hepsiburada", "n11"]),
-    query("start_date").optional().isISO8601(),
-    query("end_date").optional().isISO8601(),
+    query('platform').optional().isIn(['trendyol', 'hepsiburada', 'n11']),
+    query('start_date').optional().isISO8601(),
+    query('end_date').optional().isISO8601()
   ],
   (req, res) => getController().getQuestionStats(req, res)
 );
@@ -120,8 +120,8 @@ router.get(
  * @access Private
  */
 router.get(
-  "/dashboard",
-  [query("days").optional().isInt({ min: 1, max: 365 })],
+  '/dashboard',
+  [query('days').optional().isInt({ min: 1, max: 365 })],
   (req, res) => getController().getDashboardData(req, res)
 );
 
@@ -130,7 +130,7 @@ router.get(
  * @desc Sync questions from platforms
  * @access Private
  */
-router.post("/sync", validateSync, (req, res) =>
+router.post('/sync', validateSync, (req, res) =>
   getController().syncQuestions(req, res)
 );
 
@@ -140,8 +140,8 @@ router.post("/sync", validateSync, (req, res) =>
  * @access Private
  */
 router.get(
-  "/templates",
-  [query("category").optional().isLength({ max: 100 })],
+  '/templates',
+  [query('category').optional().isLength({ max: 100 })],
   (req, res) => getController().getReplyTemplates(req, res)
 );
 
@@ -150,7 +150,7 @@ router.get(
  * @desc Create reply template
  * @access Private
  */
-router.post("/templates", validateTemplate, (req, res) =>
+router.post('/templates', validateTemplate, (req, res) =>
   getController().saveReplyTemplate(req, res)
 );
 
@@ -160,8 +160,8 @@ router.post("/templates", validateTemplate, (req, res) =>
  * @access Private
  */
 router.put(
-  "/templates/:id",
-  [param("id").isInt(), ...validateTemplate],
+  '/templates/:id',
+  [param('id').isInt(), ...validateTemplate],
   (req, res) => getController().saveReplyTemplate(req, res)
 );
 
@@ -170,7 +170,7 @@ router.put(
  * @desc Delete reply template
  * @access Private
  */
-router.delete("/templates/:id", [param("id").isInt()], (req, res) =>
+router.delete('/templates/:id', [param('id').isInt()], (req, res) =>
   getController().deleteReplyTemplate(req, res)
 );
 
@@ -179,7 +179,7 @@ router.delete("/templates/:id", [param("id").isInt()], (req, res) =>
  * @desc Get specific question by ID
  * @access Private
  */
-router.get("/:id", [param("id").isInt()], (req, res) =>
+router.get('/:id', [param('id').isInt()], (req, res) =>
   getController().getQuestionById(req, res)
 );
 
@@ -188,7 +188,7 @@ router.get("/:id", [param("id").isInt()], (req, res) =>
  * @desc Reply to a question
  * @access Private
  */
-router.post("/:id/reply", [param("id").isInt(), ...validateReply], (req, res) =>
+router.post('/:id/reply', [param('id').isInt(), ...validateReply], (req, res) =>
   getController().replyToQuestion(req, res)
 );
 
@@ -198,8 +198,8 @@ router.post("/:id/reply", [param("id").isInt(), ...validateReply], (req, res) =>
  * @access Private
  */
 router.get(
-  "/:id/template-suggestions",
-  [param("id").isInt(), query("limit").optional().isInt({ min: 1, max: 10 })],
+  '/:id/template-suggestions',
+  [param('id').isInt(), query('limit').optional().isInt({ min: 1, max: 10 })],
   (req, res) => getController().getTemplateSuggestions(req, res)
 );
 
@@ -209,8 +209,8 @@ router.get(
  * @access Private
  */
 router.put(
-  "/:id/assign",
-  [param("id").isInt(), body("assigned_to").optional().isInt()],
+  '/:id/assign',
+  [param('id').isInt(), body('assigned_to').optional().isInt()],
   (req, res) => getController().assignQuestion(req, res)
 );
 
@@ -220,10 +220,10 @@ router.put(
  * @access Private
  */
 router.put(
-  "/:id/priority",
+  '/:id/priority',
   [
-    param("id").isInt(),
-    body("priority").isIn(["low", "medium", "high", "urgent"]),
+    param('id').isInt(),
+    body('priority').isIn(['low', 'medium', 'high', 'urgent'])
   ],
   (req, res) => getController().updateQuestionPriority(req, res)
 );
@@ -234,13 +234,13 @@ router.put(
  * @access Private
  */
 router.post(
-  "/:id/note",
+  '/:id/note',
   [
-    param("id").isInt(),
-    body("note")
+    param('id').isInt(),
+    body('note')
       .notEmpty()
       .isLength({ min: 1, max: 1000 })
-      .withMessage("Note must be between 1 and 1000 characters"),
+      .withMessage('Note must be between 1 and 1000 characters')
   ],
   (req, res) => getController().addInternalNote(req, res)
 );
@@ -251,12 +251,12 @@ router.post(
  * @access Private
  */
 router.post(
-  "/initialize-platforms",
+  '/initialize-platforms',
   [
-    body("level")
+    body('level')
       .optional()
       .isInt({ min: 1, max: 3 })
-      .withMessage("Level must be between 1 and 3"),
+      .withMessage('Level must be between 1 and 3')
   ],
   (req, res) => getController().initializePlatforms(req, res)
 );
@@ -267,11 +267,11 @@ router.post(
  * @access Private
  */
 router.get(
-  "/test-connectivity/:platform",
+  '/test-connectivity/:platform',
   [
-    param("platform")
-      .isIn(["trendyol", "hepsiburada", "n11"])
-      .withMessage("Platform must be trendyol, hepsiburada, or n11"),
+    param('platform')
+      .isIn(['trendyol', 'hepsiburada', 'n11'])
+      .withMessage('Platform must be trendyol, hepsiburada, or n11')
   ],
   (req, res) => getController().testPlatformConnectivity(req, res)
 );

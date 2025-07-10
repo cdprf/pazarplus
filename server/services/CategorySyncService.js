@@ -1,10 +1,10 @@
-const { PlatformCategory } = require("../models");
-const TrendyolService = require("../modules/order-management/services/platforms/trendyol/trendyol-service");
-const HepsiburadaService = require("../modules/order-management/services/platforms/hepsiburada/hepsiburada-service");
-const N11Service = require("../modules/order-management/services/platforms/n11/n11-service");
-const logger = require("../utils/logger");
-const { Op } = require("sequelize");
-const { sanitizePlatformType } = require("../utils/enum-validators");
+const { PlatformCategory } = require('../models');
+const TrendyolService = require('../modules/order-management/services/platforms/trendyol/trendyol-service');
+const HepsiburadaService = require('../modules/order-management/services/platforms/hepsiburada/hepsiburada-service');
+const N11Service = require('../modules/order-management/services/platforms/n11/n11-service');
+const logger = require('../utils/logger');
+const { Op } = require('sequelize');
+const { sanitizePlatformType } = require('../utils/enum-validators');
 
 /**
  * Service for synchronizing platform categories
@@ -12,7 +12,7 @@ const { sanitizePlatformType } = require("../utils/enum-validators");
 class CategorySyncService {
   constructor() {
     this.logger = logger;
-    this.supportedPlatforms = ["trendyol", "hepsiburada", "n11"];
+    this.supportedPlatforms = ['trendyol', 'hepsiburada', 'n11'];
   }
 
   /**
@@ -24,7 +24,7 @@ class CategorySyncService {
    */
   async getPlatformService(platform, userId, connectionId) {
     try {
-      const { PlatformConnection } = require("../models");
+      const { PlatformConnection } = require('../models');
 
       let actualConnectionId = connectionId;
 
@@ -34,8 +34,8 @@ class CategorySyncService {
           where: {
             userId: userId,
             platformType: platform,
-            isActive: true,
-          },
+            isActive: true
+          }
         });
 
         if (!connection) {
@@ -45,24 +45,24 @@ class CategorySyncService {
         actualConnectionId = connection.id;
         this.logger.debug(`Found connection for ${platform}`, {
           userId,
-          connectionId: actualConnectionId,
+          connectionId: actualConnectionId
         });
       }
 
       let ServiceClass;
 
       switch (platform.toLowerCase()) {
-        case "trendyol":
-          ServiceClass = TrendyolService;
-          break;
-        case "hepsiburada":
-          ServiceClass = HepsiburadaService;
-          break;
-        case "n11":
-          ServiceClass = N11Service;
-          break;
-        default:
-          throw new Error(`Unsupported platform: ${platform}`);
+      case 'trendyol':
+        ServiceClass = TrendyolService;
+        break;
+      case 'hepsiburada':
+        ServiceClass = HepsiburadaService;
+        break;
+      case 'n11':
+        ServiceClass = N11Service;
+        break;
+      default:
+        throw new Error(`Unsupported platform: ${platform}`);
       }
 
       // Pass the connection ID (integer) as the first parameter, not userId
@@ -99,7 +99,7 @@ class CategorySyncService {
       this.logger.info(`Starting category sync for ${sanitizedPlatform}`, {
         userId,
         connectionId,
-        forceRefresh,
+        forceRefresh
       });
 
       // Check if we need to sync (avoid too frequent syncs)
@@ -108,31 +108,31 @@ class CategorySyncService {
           where: {
             platformType: sanitizedPlatform,
             updatedAt: {
-              [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000), // 24 hours ago
-            },
+              [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) // 24 hours ago
+            }
           },
-          order: [["updatedAt", "DESC"]],
+          order: [['updatedAt', 'DESC']]
         });
 
         if (recentSync) {
           this.logger.info(
             `Categories for ${sanitizedPlatform} were synced recently, skipping`,
             {
-              lastSync: recentSync.updatedAt,
+              lastSync: recentSync.updatedAt
             }
           );
 
           const existingCategories = await PlatformCategory.findAll({
             where: { platformType: sanitizedPlatform, isActive: true },
-            order: [["name", "ASC"]],
+            order: [['name', 'ASC']]
           });
 
           return {
             success: true,
-            message: "Categories are up to date",
+            message: 'Categories are up to date',
             categoriesCount: existingCategories.length,
             lastSync: recentSync.updatedAt,
-            categories: existingCategories,
+            categories: existingCategories
           };
         }
       }
@@ -154,7 +154,7 @@ class CategorySyncService {
       this.logger.info(
         `Received ${platformCategories.length} categories from ${sanitizedPlatform}`,
         {
-          sampleCategory: platformCategories[0],
+          sampleCategory: platformCategories[0]
         }
       );
 
@@ -174,8 +174,8 @@ class CategorySyncService {
             {
               where: {
                 platformType: sanitizedPlatform,
-                platformCategoryId: categoryData.platformCategoryId,
-              },
+                platformCategoryId: categoryData.platformCategoryId
+              }
             }
           );
 
@@ -195,7 +195,7 @@ class CategorySyncService {
             }:`,
             {
               error: categoryError.message,
-              category: platformCategory,
+              category: platformCategory
             }
           );
         }
@@ -205,7 +205,7 @@ class CategorySyncService {
         `Successfully synced ${savedCategories.length} categories for ${platform}`,
         {
           userId,
-          platform,
+          platform
         }
       );
 
@@ -214,14 +214,14 @@ class CategorySyncService {
         message: `Successfully synced ${savedCategories.length} categories`,
         categoriesCount: savedCategories.length,
         lastSync: new Date(),
-        categories: savedCategories,
+        categories: savedCategories
       };
     } catch (error) {
       this.logger.error(`Failed to sync categories for ${platform}:`, {
         error: error.message,
         stack: error.stack,
         userId,
-        platform,
+        platform
       });
 
       throw error;
@@ -245,8 +245,8 @@ class CategorySyncService {
       parentId:
         platformCategory.parentId || platformCategory.parentCategoryId
           ? String(
-              platformCategory.parentId || platformCategory.parentCategoryId
-            )
+            platformCategory.parentId || platformCategory.parentCategoryId
+          )
           : null,
       isActive: true,
       userId: userId, // Add userId to base data to satisfy database constraint
@@ -256,45 +256,45 @@ class CategorySyncService {
       requiredFields: [],
       restrictions: {},
       metadata: {},
-      syncStatus: "completed",
-      lastSyncAt: new Date(),
+      syncStatus: 'completed',
+      lastSyncAt: new Date()
     };
 
     // Platform-specific transformations (only use fields that exist)
     switch (platform) {
-      case "trendyol":
-        return {
-          ...baseData,
-          path: platformCategory.path || null,
-          level: platformCategory.level || 0,
-          isLeaf: platformCategory.leaf || false,
-          fieldDefinitions: platformCategory.attributes || {},
-          requiredFields: platformCategory.requiredAttributes || [],
-          commissionRate: platformCategory.commissionRate || null,
-        };
+    case 'trendyol':
+      return {
+        ...baseData,
+        path: platformCategory.path || null,
+        level: platformCategory.level || 0,
+        isLeaf: platformCategory.leaf || false,
+        fieldDefinitions: platformCategory.attributes || {},
+        requiredFields: platformCategory.requiredAttributes || [],
+        commissionRate: platformCategory.commissionRate || null
+      };
 
-      case "hepsiburada":
-        return {
-          ...baseData,
-          path: platformCategory.categoryPath || null,
-          level: platformCategory.level || 0,
-          isLeaf: !platformCategory.hasChildren,
-          fieldDefinitions: platformCategory.attributes || {},
-          requiredFields: platformCategory.mandatoryAttributes || [],
-        };
+    case 'hepsiburada':
+      return {
+        ...baseData,
+        path: platformCategory.categoryPath || null,
+        level: platformCategory.level || 0,
+        isLeaf: !platformCategory.hasChildren,
+        fieldDefinitions: platformCategory.attributes || {},
+        requiredFields: platformCategory.mandatoryAttributes || []
+      };
 
-      case "n11":
-        return {
-          ...baseData,
-          path: platformCategory.fullPath || platformCategory.fullName || null,
-          level: platformCategory.level || 0,
-          isLeaf: platformCategory.isLeaf || !platformCategory.hasChildren,
-          fieldDefinitions: platformCategory.attributes || {},
-          requiredFields: platformCategory.requiredAttributes || [],
-        };
+    case 'n11':
+      return {
+        ...baseData,
+        path: platformCategory.fullPath || platformCategory.fullName || null,
+        level: platformCategory.level || 0,
+        isLeaf: platformCategory.isLeaf || !platformCategory.hasChildren,
+        fieldDefinitions: platformCategory.attributes || {},
+        requiredFields: platformCategory.requiredAttributes || []
+      };
 
-      default:
-        return baseData;
+    default:
+      return baseData;
     }
   }
 
@@ -315,7 +315,7 @@ class CategorySyncService {
          WHERE "platformType" = :platform AND "isActive" = true 
          ORDER BY name ASC`,
         {
-          replacements: { platform },
+          replacements: { platform }
         }
       );
 
@@ -363,14 +363,14 @@ class CategorySyncService {
           results[platform] = {
             success: false,
             message: error.message,
-            error: error.message,
+            error: error.message
           };
         }
       } else {
         results[platform] = {
           success: false,
           message: `No connection configured for ${platform}`,
-          skipped: true,
+          skipped: true
         };
       }
     }
@@ -395,7 +395,7 @@ class CategorySyncService {
          ORDER BY "updatedAt" DESC 
          LIMIT 1`,
         {
-          replacements: { platform },
+          replacements: { platform }
         }
       );
 
@@ -404,7 +404,7 @@ class CategorySyncService {
          FROM platform_categories 
          WHERE "platformType" = :platform AND "isActive" = true`,
         {
-          replacements: { platform },
+          replacements: { platform }
         }
       );
 
@@ -412,13 +412,13 @@ class CategorySyncService {
       const categoryCount = parseInt(categoryCountArray[0].count);
 
       status[platform] = {
-        syncStatus: latestSync ? "completed" : "pending",
+        syncStatus: latestSync ? 'completed' : 'pending',
         lastSyncAt: latestSync?.updatedAt || null,
         categoryCount,
         needsSync:
           !latestSync ||
           new Date(latestSync.updatedAt) <
-            new Date(Date.now() - 24 * 60 * 60 * 1000),
+            new Date(Date.now() - 24 * 60 * 60 * 1000)
       };
     }
 
@@ -465,8 +465,8 @@ class CategorySyncService {
               platform: platform,
               platformCategoryId:
                 categoryData.platformCategoryId || categoryData.id,
-              userId: userId,
-            },
+              userId: userId
+            }
           });
 
           if (existingCategory) {
@@ -492,9 +492,9 @@ class CategorySyncService {
             metadata: {
               ...mappedData,
               fieldMappings: fieldMappings,
-              importedAt: new Date(),
+              importedAt: new Date()
             },
-            userId: userId,
+            userId: userId
           });
 
           importedCategories.push(newCategory);
@@ -506,7 +506,7 @@ class CategorySyncService {
           );
           errors.push({
             category: categoryData.name,
-            error: categoryError.message,
+            error: categoryError.message
           });
         }
       }
@@ -519,7 +519,7 @@ class CategorySyncService {
         imported: importedCategories.length,
         errors: errors.length,
         categories: importedCategories,
-        errorDetails: errors,
+        errorDetails: errors
       };
     } catch (error) {
       this.logger.error(

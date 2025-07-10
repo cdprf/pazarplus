@@ -1,65 +1,65 @@
-const { Op } = require("sequelize");
-const { Order, OrderItem, Product } = require("../../models");
-const cacheService = require("../cache-service");
-const logger = require("../../utils/logger");
+const { Op } = require('sequelize');
+const { Order, OrderItem, Product } = require('../../models');
+const cacheService = require('../cache-service');
+const logger = require('../../utils/logger');
 
 // Analytics configuration
-const cachePrefix = "analytics:";
+const cachePrefix = 'analytics:';
 const defaultCacheTTL = 1800; // Reduced from 3600 to 1800 (30 minutes) to prevent stale data
 
 // Import utility functions
-const { calculateGrowthRate } = require("./analytic-calculation-utils");
-const { getOrderSummary, getOrderTrends } = require("./orders-analytic-utils");
-const { getTopProducts } = require("./product-analysis-utils");
-const { getCustomerMetrics } = require("./customer-analysis-utils");
+const { calculateGrowthRate } = require('./analytic-calculation-utils');
+const { getOrderSummary, getOrderTrends } = require('./orders-analytic-utils');
+const { getTopProducts } = require('./product-analysis-utils');
+const { getCustomerMetrics } = require('./customer-analysis-utils');
 
 // Functions that need to be available (these might be in the main service)
 async function getPlatformComparison(userId, dateRange) {
-  const { Order } = require("../../models");
-  const { Op } = require("sequelize");
+  const { Order } = require('../../models');
+  const { Op } = require('sequelize');
 
   try {
     // Valid statuses for revenue calculation (exclude returned/cancelled)
-    const validRevenueStatuses = ["new", "processing", "shipped", "delivered"];
+    const validRevenueStatuses = ['new', 'processing', 'shipped', 'delivered'];
 
     const whereClause = {
       userId,
       createdAt: {
-        [Op.between]: [dateRange.start, dateRange.end],
+        [Op.between]: [dateRange.start, dateRange.end]
       },
-      orderStatus: { [Op.in]: validRevenueStatuses },
+      orderStatus: { [Op.in]: validRevenueStatuses }
     };
 
     const platformStats = await Order.findAll({
       where: whereClause,
       attributes: [
-        "platform",
-        [Order.sequelize.fn("COUNT", Order.sequelize.col("id")), "totalOrders"],
+        'platform',
+        [Order.sequelize.fn('COUNT', Order.sequelize.col('id')), 'totalOrders'],
         [
-          Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")),
-          "totalRevenue",
+          Order.sequelize.fn('SUM', Order.sequelize.col('totalAmount')),
+          'totalRevenue'
         ],
         [
-          Order.sequelize.fn("AVG", Order.sequelize.col("totalAmount")),
-          "avgOrderValue",
+          Order.sequelize.fn('AVG', Order.sequelize.col('totalAmount')),
+          'avgOrderValue'
         ],
         [
           Order.sequelize.fn(
-            "SUM",
+            'SUM',
             Order.sequelize.literal(
               'CASE WHEN "Order"."orderStatus" = \'delivered\' THEN 1 ELSE 0 END'
             )
           ),
-          "completedOrders",
-        ],
+          'completedOrders'
+        ]
       ],
-      group: ["platform"],
+      group: ['platform']
     });
 
     return platformStats.map((stat) => {
-      const totalOrders = parseInt(stat.get("totalOrders"));
-      const completedOrders = parseInt(stat.get("completedOrders"));
-      const totalRevenue = parseFloat(stat.get("totalRevenue") || 0);
+      const totalOrders = parseInt(stat.get('totalOrders'));
+      const completedOrders = parseInt(stat.get('completedOrders'));
+      const totalRevenue = parseFloat(stat.get('totalRevenue') || 0);
 
       return {
         name: stat.platform,
@@ -68,64 +68,64 @@ async function getPlatformComparison(userId, dateRange) {
         totalOrders,
         revenue: totalRevenue,
         totalRevenue,
-        avgOrderValue: parseFloat(stat.get("avgOrderValue") || 0),
+        avgOrderValue: parseFloat(stat.get('avgOrderValue') || 0),
         completionRate: totalOrders ? (completedOrders / totalOrders) * 100 : 0,
         conversionRate: totalOrders ? (completedOrders / totalOrders) * 100 : 0,
         completedOrders,
-        percentage: 0,
+        percentage: 0
       };
     });
   } catch (error) {
-    console.error("Error in getPlatformComparison:", error);
+    console.error('Error in getPlatformComparison:', error);
     return [];
   }
 }
 
 async function getPerformanceMetrics(userId, dateRange) {
-  const { Order } = require("../../models");
-  const { Op } = require("sequelize");
+  const { Order } = require('../../models');
+  const { Op } = require('sequelize');
 
   try {
     const whereClause = {
       userId,
       createdAt: {
-        [Op.between]: [dateRange.start, dateRange.end],
-      },
+        [Op.between]: [dateRange.start, dateRange.end]
+      }
     };
 
     const metrics = await Order.findOne({
       where: whereClause,
       attributes: [
-        [Order.sequelize.fn("COUNT", Order.sequelize.col("id")), "totalOrders"],
+        [Order.sequelize.fn('COUNT', Order.sequelize.col('id')), 'totalOrders'],
         [
-          Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")),
-          "totalRevenue",
+          Order.sequelize.fn('SUM', Order.sequelize.col('totalAmount')),
+          'totalRevenue'
         ],
         [
           Order.sequelize.fn(
-            "SUM",
+            'SUM',
             Order.sequelize.literal(
               'CASE WHEN "Order"."orderStatus" = \'delivered\' THEN 1 ELSE 0 END'
             )
           ),
-          "deliveredOrders",
+          'deliveredOrders'
         ],
         [
           Order.sequelize.fn(
-            "SUM",
+            'SUM',
             Order.sequelize.literal(
               'CASE WHEN "Order"."orderStatus" = \'cancelled\' THEN 1 ELSE 0 END'
             )
           ),
-          "cancelledOrders",
-        ],
-      ],
+          'cancelledOrders'
+        ]
+      ]
     });
 
-    const totalOrders = parseInt(metrics?.get("totalOrders") || 0);
-    const deliveredOrders = parseInt(metrics?.get("deliveredOrders") || 0);
-    const cancelledOrders = parseInt(metrics?.get("cancelledOrders") || 0);
-    const totalRevenue = parseFloat(metrics?.get("totalRevenue") || 0);
+    const totalOrders = parseInt(metrics?.get('totalOrders') || 0);
+    const deliveredOrders = parseInt(metrics?.get('deliveredOrders') || 0);
+    const cancelledOrders = parseInt(metrics?.get('cancelledOrders') || 0);
+    const totalRevenue = parseFloat(metrics?.get('totalRevenue') || 0);
 
     // Calculate performance metrics
     const efficiency =
@@ -140,31 +140,31 @@ async function getPerformanceMetrics(userId, dateRange) {
       profitability: Math.round(profitability * 100) / 100,
       deliveryRate: efficiency,
       cancellationRate:
-        totalOrders > 0 ? (cancelledOrders / totalOrders) * 100 : 0,
+        totalOrders > 0 ? (cancelledOrders / totalOrders) * 100 : 0
     };
   } catch (error) {
-    console.error("Error in getPerformanceMetrics:", error);
+    console.error('Error in getPerformanceMetrics:', error);
     return {
       efficiency: 0,
       growth: 0,
       profitability: 0,
       deliveryRate: 0,
-      cancellationRate: 0,
+      cancellationRate: 0
     };
   }
 }
 
 async function getFinancialKPIs(userId, dateRange) {
-  const { Order, OrderItem } = require("../../models");
-  const { Op } = require("sequelize");
+  const { Order, OrderItem } = require('../../models');
+  const { Op } = require('sequelize');
 
   try {
     const whereClause = {
       userId,
       createdAt: {
-        [Op.between]: [dateRange.start, dateRange.end],
+        [Op.between]: [dateRange.start, dateRange.end]
       },
-      orderStatus: { [Op.notIn]: ["cancelled", "returned"] },
+      orderStatus: { [Op.notIn]: ['cancelled', 'returned'] }
     };
 
     // Get revenue data using OrderItems for accuracy
@@ -172,30 +172,30 @@ async function getFinancialKPIs(userId, dateRange) {
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           where: whereClause,
-          attributes: [],
-        },
+          attributes: []
+        }
       ],
       attributes: [
         [
           OrderItem.sequelize.fn(
-            "SUM",
+            'SUM',
             OrderItem.sequelize.literal(
               'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
             )
           ),
-          "totalRevenue",
+          'totalRevenue'
         ],
         [
-          OrderItem.sequelize.fn("COUNT", OrderItem.sequelize.col("id")),
-          "totalItems",
-        ],
-      ],
+          OrderItem.sequelize.fn('COUNT', OrderItem.sequelize.col('id')),
+          'totalItems'
+        ]
+      ]
     });
 
-    const totalRevenue = parseFloat(revenueData?.get("totalRevenue") || 0);
-    const totalItems = parseInt(revenueData?.get("totalItems") || 0);
+    const totalRevenue = parseFloat(revenueData?.get('totalRevenue') || 0);
+    const totalItems = parseInt(revenueData?.get('totalItems') || 0);
 
     // Calculate estimated costs and profit (would need real cost data in production)
     const estimatedCosts = totalRevenue * 0.7; // Assume 70% costs
@@ -208,17 +208,17 @@ async function getFinancialKPIs(userId, dateRange) {
       margins: Math.round(margins * 100) / 100,
       totalItems,
       avgItemValue: totalItems > 0 ? totalRevenue / totalItems : 0,
-      growthRate: 0, // Would need historical comparison
+      growthRate: 0 // Would need historical comparison
     };
   } catch (error) {
-    console.error("Error in getFinancialKPIs:", error);
+    console.error('Error in getFinancialKPIs:', error);
     return {
       revenue: 0,
       profit: 0,
       margins: 0,
       totalItems: 0,
       avgItemValue: 0,
-      growthRate: 0,
+      growthRate: 0
     };
   }
 }
@@ -229,20 +229,20 @@ function getDateRange(timeframe) {
   const start = new Date();
 
   switch (timeframe) {
-    case "7d":
-      start.setDate(start.getDate() - 7);
-      break;
-    case "30d":
-      start.setDate(start.getDate() - 30);
-      break;
-    case "90d":
-      start.setDate(start.getDate() - 90);
-      break;
-    case "365d":
-      start.setDate(start.getDate() - 365);
-      break;
-    default:
-      start.setDate(start.getDate() - 30);
+  case '7d':
+    start.setDate(start.getDate() - 7);
+    break;
+  case '30d':
+    start.setDate(start.getDate() - 30);
+    break;
+  case '90d':
+    start.setDate(start.getDate() - 90);
+    break;
+  case '365d':
+    start.setDate(start.getDate() - 365);
+    break;
+  default:
+    start.setDate(start.getDate() - 30);
   }
 
   return { start, end };
@@ -261,7 +261,7 @@ function getPreviousPeriod(dateRange) {
  * Get accurate analytics that properly handle returns and cancellations
  * This provides a comprehensive view of business performance with clean data
  */
-async function getAccurateAnalytics(userId, timeframe = "30d") {
+async function getAccurateAnalytics(userId, timeframe = '30d') {
   const cacheKey = `${cachePrefix}accurate:${userId}:${timeframe}`;
 
   try {
@@ -281,7 +281,7 @@ async function getAccurateAnalytics(userId, timeframe = "30d") {
       orderTrends,
       performanceMetrics,
       customerMetrics,
-      financialKPIs,
+      financialKPIs
     ] = await Promise.all([
       getOrderSummary(userId, dateRange),
       getRevenueAnalytics(userId, dateRange),
@@ -290,7 +290,7 @@ async function getAccurateAnalytics(userId, timeframe = "30d") {
       getOrderTrends(userId, dateRange),
       getPerformanceMetrics(userId, dateRange),
       getCustomerMetrics(userId, dateRange),
-      getFinancialKPIs(userId, dateRange),
+      getFinancialKPIs(userId, dateRange)
     ]);
 
     // Calculate accuracy metrics
@@ -303,10 +303,10 @@ async function getAccurateAnalytics(userId, timeframe = "30d") {
         dataAccuracy:
           orderSummary.totalOrders > 0
             ? (
-                (orderSummary.validOrders / orderSummary.totalOrders) *
+              (orderSummary.validOrders / orderSummary.totalOrders) *
                 100
-              ).toFixed(2)
-            : 100,
+            ).toFixed(2)
+            : 100
       },
       revenueAccuracy: {
         grossRevenue: revenueAnalytics.totalRevenue || 0,
@@ -314,14 +314,14 @@ async function getAccurateAnalytics(userId, timeframe = "30d") {
           (revenueAnalytics.totalRevenue || 0) -
           (revenueAnalytics.refundedAmount || 0),
         returnImpact: orderSummary.returnRate,
-        cancellationImpact: orderSummary.cancellationRate,
-      },
+        cancellationImpact: orderSummary.cancellationRate
+      }
     };
 
     const result = {
       summary: {
         ...orderSummary,
-        accuracy: accuracyMetrics,
+        accuracy: accuracyMetrics
       },
       revenue: revenueAnalytics,
       platforms: platformComparison,
@@ -336,15 +336,15 @@ async function getAccurateAnalytics(userId, timeframe = "30d") {
         dataExclusions: {
           cancelledOrders: orderSummary.cancelledOrders,
           returnedOrders: orderSummary.returnedOrders,
-          note: "Revenue calculations exclude returned, cancelled, and refunded orders for accurate business insights",
-        },
-      },
+          note: 'Revenue calculations exclude returned, cancelled, and refunded orders for accurate business insights'
+        }
+      }
     };
 
     await cacheService.set(cacheKey, result, defaultCacheTTL);
     return result;
   } catch (error) {
-    logger.error("Accurate analytics error:", error);
+    logger.error('Accurate analytics error:', error);
     throw error;
   }
 }
@@ -352,7 +352,7 @@ async function getAccurateAnalytics(userId, timeframe = "30d") {
 /**
  * Get comprehensive dashboard analytics with advanced insights
  */
-async function getDashboardAnalytics(userId, timeframe = "30d") {
+async function getDashboardAnalytics(userId, timeframe = '30d') {
   const cacheKey = `${cachePrefix}dashboard:${userId}:${timeframe}`;
 
   try {
@@ -374,23 +374,23 @@ async function getDashboardAnalytics(userId, timeframe = "30d") {
       getPerformanceMetrics(userId, dateRange),
       getPredictiveInsights(userId, dateRange),
       getMarketIntelligence(userId, dateRange),
-      getFinancialKPIs(userId, dateRange),
+      getFinancialKPIs(userId, dateRange)
     ];
 
     // Add timeout wrapper to prevent hanging requests
     const timeoutPromise = new Promise(
       (_, reject) =>
-        setTimeout(() => reject(new Error("Analytics timeout")), 15000) // 15 second timeout
+        setTimeout(() => reject(new Error('Analytics timeout')), 15000) // 15 second timeout
     );
 
     const analyticsResults = await Promise.race([
       Promise.allSettled(analyticsPromises),
-      timeoutPromise,
+      timeoutPromise
     ]);
 
     // Process results, using fallback data for failed promises
     const analytics = analyticsResults.map((result, index) => {
-      if (result.status === "fulfilled") {
+      if (result.status === 'fulfilled') {
         return result.value;
       } else {
         logger.warn(`Analytics component ${index} failed:`, result.reason);
@@ -409,14 +409,14 @@ async function getDashboardAnalytics(userId, timeframe = "30d") {
       marketIntelligence: analytics[7],
       financialKPIs: analytics[8],
       generatedAt: new Date(),
-      timeframe,
+      timeframe
     };
 
     // Cache with shorter TTL for dashboard data
     await cacheService.set(cacheKey, result, 900); // 15 minutes for dashboard data
     return result;
   } catch (error) {
-    logger.error("Dashboard analytics error:", error);
+    logger.error('Dashboard analytics error:', error);
     // Return fallback data instead of throwing error
     return {
       summary: getFallbackData(0),
@@ -429,7 +429,7 @@ async function getDashboardAnalytics(userId, timeframe = "30d") {
       marketIntelligence: getFallbackData(7),
       financialKPIs: getFallbackData(8),
       generatedAt: new Date(),
-      timeframe,
+      timeframe
     };
   }
 }
@@ -441,11 +441,11 @@ async function getRevenueAnalytics(userId, dateRange) {
   const whereClause = {
     userId,
     createdAt: {
-      [Op.between]: [dateRange.start, dateRange.end],
-    },
+      [Op.between]: [dateRange.start, dateRange.end]
+    }
   };
 
-  console.log("Revenue Analytics - Starting daily revenue calculation");
+  console.log('Revenue Analytics - Starting daily revenue calculation');
 
   try {
     // Daily revenue breakdown using OrderItems for accurate revenue calculation
@@ -453,194 +453,194 @@ async function getRevenueAnalytics(userId, dateRange) {
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           where: whereClause,
-          attributes: [],
-        },
+          attributes: []
+        }
       ],
       attributes: [
         [
           OrderItem.sequelize.fn(
-            "DATE",
-            OrderItem.sequelize.col("order.createdAt")
+            'DATE',
+            OrderItem.sequelize.col('order.createdAt')
           ),
-          "date",
+          'date'
         ],
         [
           OrderItem.sequelize.fn(
-            "SUM",
+            'SUM',
             OrderItem.sequelize.literal(
               'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
             )
           ),
-          "revenue",
+          'revenue'
         ],
         [
           OrderItem.sequelize.fn(
-            "COUNT",
+            'COUNT',
             OrderItem.sequelize.fn(
-              "DISTINCT",
-              OrderItem.sequelize.col("order.id")
+              'DISTINCT',
+              OrderItem.sequelize.col('order.id')
             )
           ),
-          "orders",
-        ],
+          'orders'
+        ]
       ],
       group: [
         OrderItem.sequelize.fn(
-          "DATE",
-          OrderItem.sequelize.col("order.createdAt")
-        ),
+          'DATE',
+          OrderItem.sequelize.col('order.createdAt')
+        )
       ],
       order: [
         [
           OrderItem.sequelize.fn(
-            "DATE",
-            OrderItem.sequelize.col("order.createdAt")
+            'DATE',
+            OrderItem.sequelize.col('order.createdAt')
           ),
-          "ASC",
-        ],
-      ],
+          'ASC'
+        ]
+      ]
     });
 
-    console.log("Revenue Analytics - Daily revenue calculation complete");
-    console.log("Revenue Analytics - Starting platform revenue calculation");
+    console.log('Revenue Analytics - Daily revenue calculation complete');
+    console.log('Revenue Analytics - Starting platform revenue calculation');
 
     // Revenue by platform using OrderItems
     const platformRevenue = await OrderItem.findAll({
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           where: whereClause,
-          attributes: [],
-        },
+          attributes: []
+        }
       ],
       attributes: [
-        [OrderItem.sequelize.col("order.platform"), "platform"],
+        [OrderItem.sequelize.col('order.platform'), 'platform'],
         [
           OrderItem.sequelize.fn(
-            "SUM",
+            'SUM',
             OrderItem.sequelize.literal(
               'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
             )
           ),
-          "revenue",
+          'revenue'
         ],
         [
           OrderItem.sequelize.fn(
-            "COUNT",
+            'COUNT',
             OrderItem.sequelize.fn(
-              "DISTINCT",
-              OrderItem.sequelize.col("order.id")
+              'DISTINCT',
+              OrderItem.sequelize.col('order.id')
             )
           ),
-          "orders",
-        ],
+          'orders'
+        ]
       ],
-      group: [OrderItem.sequelize.col("order.platform")],
+      group: [OrderItem.sequelize.col('order.platform')]
     });
 
-    console.log("Revenue Analytics - Platform revenue calculation complete");
-    console.log("Revenue Analytics - Starting previous period calculation");
+    console.log('Revenue Analytics - Platform revenue calculation complete');
+    console.log('Revenue Analytics - Starting previous period calculation');
 
     // Growth calculation using OrderItems
     const previousPeriod = getPreviousPeriod(dateRange);
 
-    console.log("Revenue Analytics - Calculating previous revenue");
+    console.log('Revenue Analytics - Calculating previous revenue');
 
     // Fix: Replace OrderItem.sum with a more standard approach using findAll and SUM
     const previousRevenueResult = await OrderItem.findAll({
       attributes: [
         [
           OrderItem.sequelize.fn(
-            "SUM",
+            'SUM',
             OrderItem.sequelize.literal(
               'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
             )
           ),
-          "totalRevenue",
-        ],
+          'totalRevenue'
+        ]
       ],
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           where: {
             userId,
             createdAt: {
-              [Op.between]: [previousPeriod.start, previousPeriod.end],
-            },
+              [Op.between]: [previousPeriod.start, previousPeriod.end]
+            }
           },
-          attributes: [],
-        },
+          attributes: []
+        }
       ],
-      raw: true,
+      raw: true
     });
 
     const previousRevenue = previousRevenueResult[0]?.totalRevenue || 0;
 
-    console.log("Revenue Analytics - Calculating current revenue");
+    console.log('Revenue Analytics - Calculating current revenue');
 
     // Fix: Replace OrderItem.sum with a more standard approach using findAll and SUM
     const currentRevenueResult = await OrderItem.findAll({
       attributes: [
         [
           OrderItem.sequelize.fn(
-            "SUM",
+            'SUM',
             OrderItem.sequelize.literal(
               'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
             )
           ),
-          "totalRevenue",
-        ],
+          'totalRevenue'
+        ]
       ],
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           where: whereClause,
-          attributes: [],
-        },
+          attributes: []
+        }
       ],
-      raw: true,
+      raw: true
     });
 
     const currentRevenue = currentRevenueResult[0]?.totalRevenue || 0;
 
-    console.log("Revenue Analytics - Calculating growth rate");
+    console.log('Revenue Analytics - Calculating growth rate');
     const growthRate = previousRevenue
       ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
       : 0;
 
-    console.log("Revenue Analytics - Preparing return data");
+    console.log('Revenue Analytics - Preparing return data');
     const result = {
       daily: dailyRevenue.map((item) => ({
-        date: item.get("date"),
-        revenue: parseFloat(item.get("revenue") || 0),
-        orders: parseInt(item.get("orders")),
+        date: item.get('date'),
+        revenue: parseFloat(item.get('revenue') || 0),
+        orders: parseInt(item.get('orders'))
       })),
       platforms: platformRevenue.map((item) => ({
-        platform: item.get("platform"),
-        revenue: parseFloat(item.get("revenue") || 0),
-        orders: parseInt(item.get("orders")),
+        platform: item.get('platform'),
+        revenue: parseFloat(item.get('revenue') || 0),
+        orders: parseInt(item.get('orders'))
       })),
       growth: {
         current: currentRevenue || 0,
         previous: previousRevenue || 0,
-        rate: growthRate,
+        rate: growthRate
       },
       total: currentRevenue || 0,
       trends: dailyRevenue.map((item) => ({
-        date: item.get("date"),
-        value: parseFloat(item.get("revenue") || 0),
-      })),
+        date: item.get('date'),
+        value: parseFloat(item.get('revenue') || 0)
+      }))
     };
-    console.log("Revenue Analytics - Complete");
+    console.log('Revenue Analytics - Complete');
     return result;
   } catch (error) {
-    console.error("Revenue Analytics Error:", error.message);
-    console.error("Error location:", error.stack);
+    console.error('Revenue Analytics Error:', error.message);
+    console.error('Error location:', error.stack);
     throw error;
   }
 }
@@ -658,8 +658,8 @@ async function getPredictiveInsights(userId, dateRange) {
       return cached;
     }
 
-    const { Order, OrderItem } = require("../../models");
-    const { Op } = require("sequelize");
+    const { Order, OrderItem } = require('../../models');
+    const { Op } = require('sequelize');
 
     // Limit historical data to prevent timeout - use 30 days instead of 60
     const extendedStart = new Date(dateRange.start);
@@ -669,61 +669,61 @@ async function getPredictiveInsights(userId, dateRange) {
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           where: {
             userId,
             createdAt: {
-              [Op.between]: [extendedStart, dateRange.end],
+              [Op.between]: [extendedStart, dateRange.end]
             },
-            orderStatus: { [Op.notIn]: ["cancelled", "returned"] },
+            orderStatus: { [Op.notIn]: ['cancelled', 'returned'] }
           },
-          attributes: [],
-        },
+          attributes: []
+        }
       ],
       attributes: [
         [
           OrderItem.sequelize.fn(
-            "DATE",
-            OrderItem.sequelize.col("order.createdAt")
+            'DATE',
+            OrderItem.sequelize.col('order.createdAt')
           ),
-          "date",
+          'date'
         ],
         [
           OrderItem.sequelize.fn(
-            "SUM",
+            'SUM',
             OrderItem.sequelize.literal(
               'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
             )
           ),
-          "revenue",
+          'revenue'
         ],
         [
           OrderItem.sequelize.fn(
-            "COUNT",
+            'COUNT',
             OrderItem.sequelize.fn(
-              "DISTINCT",
-              OrderItem.sequelize.col("order.id")
+              'DISTINCT',
+              OrderItem.sequelize.col('order.id')
             )
           ),
-          "orders",
-        ],
+          'orders'
+        ]
       ],
       group: [
         OrderItem.sequelize.fn(
-          "DATE",
-          OrderItem.sequelize.col("order.createdAt")
-        ),
+          'DATE',
+          OrderItem.sequelize.col('order.createdAt')
+        )
       ],
       order: [
         [
           OrderItem.sequelize.fn(
-            "DATE",
-            OrderItem.sequelize.col("order.createdAt")
+            'DATE',
+            OrderItem.sequelize.col('order.createdAt')
           ),
-          "ASC",
-        ],
+          'ASC'
+        ]
       ],
-      limit: 100, // Add limit to prevent excessive data
+      limit: 100 // Add limit to prevent excessive data
     });
 
     // Early return if no data to prevent processing empty arrays
@@ -735,10 +735,10 @@ async function getPredictiveInsights(userId, dateRange) {
           nextWeekRevenue: 0,
           nextMonthRevenue: 0,
           growthRate: 0,
-          trend: "stable",
+          trend: 'stable'
         },
         confidence: 0,
-        recommendations: [],
+        recommendations: []
       };
       await cacheService.set(cacheKey, result, defaultCacheTTL);
       return result;
@@ -746,9 +746,9 @@ async function getPredictiveInsights(userId, dateRange) {
 
     // Calculate trends and forecast
     const dailyData = historicalData.map((item) => ({
-      date: item.get("date"),
-      revenue: parseFloat(item.get("revenue") || 0),
-      orders: parseInt(item.get("orders") || 0),
+      date: item.get('date'),
+      revenue: parseFloat(item.get('revenue') || 0),
+      orders: parseInt(item.get('orders') || 0)
     }));
 
     // Optimize calculations - use smaller windows and limit data processing
@@ -778,8 +778,8 @@ async function getPredictiveInsights(userId, dateRange) {
         nextWeekRevenue:
           forecast.length >= 7
             ? forecast
-                .slice(0, 7)
-                .reduce((sum, day) => sum + day.predictedRevenue, 0)
+              .slice(0, 7)
+              .reduce((sum, day) => sum + day.predictedRevenue, 0)
             : 0,
         nextMonthRevenue: forecast.reduce(
           (sum, day) => sum + day.predictedRevenue,
@@ -788,23 +788,23 @@ async function getPredictiveInsights(userId, dateRange) {
         growthRate: weeklyGrowthRate,
         trend:
           weeklyGrowthRate > 5
-            ? "increasing"
+            ? 'increasing'
             : weeklyGrowthRate < -5
-            ? "decreasing"
-            : "stable",
+              ? 'decreasing'
+              : 'stable'
       },
       confidence: calculateForecastConfidence(dailyData),
       recommendations: generateRevenueRecommendations(
         weeklyGrowthRate,
         recentRevenue
-      ),
+      )
     };
 
     // Cache the result
     await cacheService.set(cacheKey, result, defaultCacheTTL);
     return result;
   } catch (error) {
-    console.error("Error in getPredictiveInsights:", error);
+    console.error('Error in getPredictiveInsights:', error);
     return {
       trends: [],
       forecast: [],
@@ -812,10 +812,10 @@ async function getPredictiveInsights(userId, dateRange) {
         nextWeekRevenue: 0,
         nextMonthRevenue: 0,
         growthRate: 0,
-        trend: "stable",
+        trend: 'stable'
       },
       confidence: 0,
-      recommendations: [],
+      recommendations: []
     };
   }
 }
@@ -833,80 +833,80 @@ async function getMarketIntelligence(userId, dateRange) {
       return cached;
     }
 
-    const { Order, OrderItem, Product } = require("../../models");
-    const { Op } = require("sequelize");
+    const { Order, OrderItem, Product } = require('../../models');
+    const { Op } = require('sequelize');
 
     // Get top performing products with detailed analytics - limit to 10 to improve performance
     const topProductsData = await OrderItem.findAll({
       include: [
         {
           model: Order,
-          as: "order",
+          as: 'order',
           where: {
             userId,
             createdAt: {
-              [Op.between]: [dateRange.start, dateRange.end],
+              [Op.between]: [dateRange.start, dateRange.end]
             },
-            orderStatus: { [Op.notIn]: ["cancelled", "returned"] },
+            orderStatus: { [Op.notIn]: ['cancelled', 'returned'] }
           },
-          attributes: [],
+          attributes: []
         },
         {
           model: Product,
-          as: "product",
-          attributes: ["id", "name", "category", "price"],
-          required: false,
-        },
+          as: 'product',
+          attributes: ['id', 'name', 'category', 'price'],
+          required: false
+        }
       ],
       attributes: [
-        "productId",
+        'productId',
         [
           OrderItem.sequelize.fn(
-            "SUM",
+            'SUM',
             OrderItem.sequelize.literal(
               'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
             )
           ),
-          "totalRevenue",
+          'totalRevenue'
         ],
         [
-          OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
-          "totalQuantity",
+          OrderItem.sequelize.fn('SUM', OrderItem.sequelize.col('quantity')),
+          'totalQuantity'
         ],
         [
-          OrderItem.sequelize.fn("AVG", OrderItem.sequelize.col("price")),
-          "avgPrice",
+          OrderItem.sequelize.fn('AVG', OrderItem.sequelize.col('price')),
+          'avgPrice'
         ],
         [
           OrderItem.sequelize.fn(
-            "COUNT",
+            'COUNT',
             OrderItem.sequelize.fn(
-              "DISTINCT",
-              OrderItem.sequelize.col("order.id")
+              'DISTINCT',
+              OrderItem.sequelize.col('order.id')
             )
           ),
-          "orderCount",
-        ],
+          'orderCount'
+        ]
       ],
       group: [
-        "productId",
-        "product.id",
-        "product.name",
-        "product.category",
-        "product.price",
+        'productId',
+        'product.id',
+        'product.name',
+        'product.category',
+        'product.price'
       ],
       order: [
         [
           OrderItem.sequelize.fn(
-            "SUM",
+            'SUM',
             OrderItem.sequelize.literal(
               'CAST("OrderItem"."price" AS DECIMAL) * CAST("OrderItem"."quantity" AS INTEGER)'
             )
           ),
-          "DESC",
-        ],
+          'DESC'
+        ]
       ],
-      limit: 10, // Reduced from 20 to 10 for better performance
+      limit: 10 // Reduced from 20 to 10 for better performance
     });
 
     // Early return if no data
@@ -915,12 +915,12 @@ async function getMarketIntelligence(userId, dateRange) {
         topProducts: [],
         categoryPerformance: [],
         insights: {
-          topCategory: "Unknown",
-          topProduct: "None",
+          topCategory: 'Unknown',
+          topProduct: 'None',
           diversityIndex: 0,
-          concentrationRisk: 0,
+          concentrationRisk: 0
         },
-        recommendations: [],
+        recommendations: []
       };
       await cacheService.set(cacheKey, result, defaultCacheTTL);
       return result;
@@ -928,17 +928,17 @@ async function getMarketIntelligence(userId, dateRange) {
 
     // Process top products data
     const topProducts = topProductsData.map((item, index) => {
-      const revenue = parseFloat(item.get("totalRevenue") || 0);
-      const quantity = parseInt(item.get("totalQuantity") || 0);
-      const avgPrice = parseFloat(item.get("avgPrice") || 0);
-      const orderCount = parseInt(item.get("orderCount") || 0);
+      const revenue = parseFloat(item.get('totalRevenue') || 0);
+      const quantity = parseInt(item.get('totalQuantity') || 0);
+      const avgPrice = parseFloat(item.get('avgPrice') || 0);
+      const orderCount = parseInt(item.get('orderCount') || 0);
 
       return {
         id: item.productId,
         productId: item.productId,
         name: item.product?.name || `Product ${item.productId}`,
-        sku: item.product?.sku || "N/A",
-        category: item.product?.category || "Uncategorized",
+        sku: item.product?.sku || 'N/A',
+        category: item.product?.category || 'Uncategorized',
         revenue: isNaN(revenue) ? 0 : revenue,
         totalRevenue: isNaN(revenue) ? 0 : revenue, // Add totalRevenue for frontend compatibility
         quantity: isNaN(quantity) ? 0 : quantity,
@@ -948,7 +948,7 @@ async function getMarketIntelligence(userId, dateRange) {
         rank: index + 1,
         revenueShare: 0, // Will be calculated below
         performance:
-          revenue > 1000 ? "excellent" : revenue > 500 ? "good" : "average",
+          revenue > 1000 ? 'excellent' : revenue > 500 ? 'good' : 'average'
       };
     });
 
@@ -969,7 +969,7 @@ async function getMarketIntelligence(userId, dateRange) {
         categoryPerformance[product.category] = {
           revenue: 0,
           quantity: 0,
-          products: 0,
+          products: 0
         };
       }
       categoryPerformance[product.category].revenue += product.revenue;
@@ -982,7 +982,7 @@ async function getMarketIntelligence(userId, dateRange) {
         category,
         ...data,
         avgRevenuePerProduct:
-          data.products > 0 ? data.revenue / data.products : 0,
+          data.products > 0 ? data.revenue / data.products : 0
       }))
       .sort((a, b) => b.revenue - a.revenue);
 
@@ -990,32 +990,32 @@ async function getMarketIntelligence(userId, dateRange) {
       topProducts: topProducts.slice(0, 10),
       categoryPerformance: categoryData,
       insights: {
-        topCategory: categoryData[0]?.category || "Unknown",
-        topProduct: topProducts[0]?.name || "None",
+        topCategory: categoryData[0]?.category || 'Unknown',
+        topProduct: topProducts[0]?.name || 'None',
         diversityIndex: calculateProductDiversityIndex(topProducts),
-        concentrationRisk: topProducts[0]?.revenueShare || 0,
+        concentrationRisk: topProducts[0]?.revenueShare || 0
       },
       recommendations: generateProductRecommendations(
         topProducts,
         categoryData
-      ),
+      )
     };
 
     // Cache the result
     await cacheService.set(cacheKey, result, defaultCacheTTL);
     return result;
   } catch (error) {
-    console.error("Error in getMarketIntelligence:", error);
+    console.error('Error in getMarketIntelligence:', error);
     return {
       topProducts: [],
       categoryPerformance: [],
       insights: {
-        topCategory: "Unknown",
-        topProduct: "None",
+        topCategory: 'Unknown',
+        topProduct: 'None',
         diversityIndex: 0,
-        concentrationRisk: 0,
+        concentrationRisk: 0
       },
-      recommendations: [],
+      recommendations: []
     };
   }
 }
@@ -1031,7 +1031,7 @@ function getFallbackData(index) {
       platforms: [],
       growth: { current: 0, previous: 0, rate: 0 },
       total: 0,
-      trends: [],
+      trends: []
     },
     // 2: platformComparison
     [],
@@ -1045,7 +1045,7 @@ function getFallbackData(index) {
       growth: 0,
       profitability: 0,
       deliveryRate: 0,
-      cancellationRate: 0,
+      cancellationRate: 0
     },
     // 6: predictiveInsights
     {
@@ -1055,22 +1055,22 @@ function getFallbackData(index) {
         nextWeekRevenue: 0,
         nextMonthRevenue: 0,
         growthRate: 0,
-        trend: "stable",
+        trend: 'stable'
       },
       confidence: 0,
-      recommendations: [],
+      recommendations: []
     },
     // 7: marketIntelligence
     {
       topProducts: [],
       categoryPerformance: [],
       insights: {
-        topCategory: "Unknown",
-        topProduct: "None",
+        topCategory: 'Unknown',
+        topProduct: 'None',
         diversityIndex: 0,
-        concentrationRisk: 0,
+        concentrationRisk: 0
       },
-      recommendations: [],
+      recommendations: []
     },
     // 8: financialKPIs
     {
@@ -1081,17 +1081,17 @@ function getFallbackData(index) {
       profitMargins: {
         gross: 0,
         net: 0,
-        operating: 0,
+        operating: 0
       },
       growthRates: {
         revenue: 0,
         orders: 0,
-        customers: 0,
+        customers: 0
       },
       cashFlow: {
         inflow: 0,
         outflow: 0,
-        net: 0,
+        net: 0
       },
       customerLifetimeValue: 0,
       customerAcquisitionCost: 0,
@@ -1101,10 +1101,10 @@ function getFallbackData(index) {
         operatingMargin: 0,
         revenueGrowth: 0,
         customerRetention: 0,
-        churnRate: 0,
+        churnRate: 0
       },
-      generatedAt: new Date(),
-    },
+      generatedAt: new Date()
+    }
   ];
 
   return fallbacks[index] || {};
@@ -1112,7 +1112,7 @@ function getFallbackData(index) {
 
 // Helper functions for calculations
 function calculateMovingAverage(data, window) {
-  if (!data || data.length < window) return [];
+  if (!data || data.length < window) {return [];}
 
   const result = [];
   // Optimize by limiting the calculation to avoid performance issues
@@ -1129,9 +1129,9 @@ function calculateMovingAverage(data, window) {
       trend:
         i > window && result.length > 0
           ? avg > result[result.length - 1]?.movingAverage
-            ? "up"
-            : "down"
-          : "stable",
+            ? 'up'
+            : 'down'
+          : 'stable'
     });
   }
   return result;
@@ -1147,7 +1147,7 @@ function generateSimpleForecast(trendData, days) {
       .map((_, i) => ({
         date: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000),
         predictedRevenue: 0,
-        confidence: 0,
+        confidence: 0
       }));
   }
 
@@ -1156,11 +1156,11 @@ function generateSimpleForecast(trendData, days) {
   const avgGrowth =
     recentTrend.length > 1
       ? recentTrend.reduce((sum, item, index) => {
-          if (index === 0) return 0;
-          return (
-            sum + ((item.revenue || 0) - (recentTrend[index - 1].revenue || 0))
-          );
-        }, 0) /
+        if (index === 0) {return 0;}
+        return (
+          sum + ((item.revenue || 0) - (recentTrend[index - 1].revenue || 0))
+        );
+      }, 0) /
         (recentTrend.length - 1)
       : 0;
 
@@ -1171,19 +1171,19 @@ function generateSimpleForecast(trendData, days) {
     .map((_, i) => ({
       date: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000),
       predictedRevenue: Math.max(0, lastRevenue + avgGrowth * (i + 1)),
-      confidence: Math.max(0.1, 0.8 - i * 0.03), // Faster confidence decrease
+      confidence: Math.max(0.1, 0.8 - i * 0.03) // Faster confidence decrease
     }));
 }
 
 function calculateForecastConfidence(data) {
-  if (!data || data.length < 7) return 0.2; // Reduced minimum requirements
+  if (!data || data.length < 7) {return 0.2;} // Reduced minimum requirements
 
   // Use smaller sample for confidence calculation to improve performance
   const recent = data.slice(-Math.min(10, data.length)); // Reduced from 14 to 10
   const revenues = recent.map((item) => item.revenue || 0);
   const avg = revenues.reduce((sum, rev) => sum + rev, 0) / revenues.length;
 
-  if (avg === 0) return 0.1;
+  if (avg === 0) {return 0.1;}
 
   const variance =
     revenues.reduce((sum, rev) => sum + Math.pow(rev - avg, 2), 0) /
@@ -1199,28 +1199,28 @@ function generateRevenueRecommendations(growthRate, recentRevenue) {
 
   if (growthRate > 10) {
     recommendations.push({
-      type: "opportunity",
-      title: "Strong Growth Detected",
+      type: 'opportunity',
+      title: 'Strong Growth Detected',
       description:
-        "Revenue is growing rapidly. Consider scaling marketing efforts.",
-      priority: "high",
+        'Revenue is growing rapidly. Consider scaling marketing efforts.',
+      priority: 'high'
     });
   } else if (growthRate < -10) {
     recommendations.push({
-      type: "warning",
-      title: "Revenue Decline Alert",
+      type: 'warning',
+      title: 'Revenue Decline Alert',
       description:
-        "Revenue is declining. Review pricing and marketing strategies.",
-      priority: "high",
+        'Revenue is declining. Review pricing and marketing strategies.',
+      priority: 'high'
     });
   }
 
   if (recentRevenue < 1000) {
     recommendations.push({
-      type: "improvement",
-      title: "Revenue Optimization",
-      description: "Consider promotional campaigns to boost sales.",
-      priority: "medium",
+      type: 'improvement',
+      title: 'Revenue Optimization',
+      description: 'Consider promotional campaigns to boost sales.',
+      priority: 'medium'
     });
   }
 
@@ -1228,10 +1228,10 @@ function generateRevenueRecommendations(growthRate, recentRevenue) {
 }
 
 function calculateProductDiversityIndex(products) {
-  if (products.length <= 1) return 0;
+  if (products.length <= 1) {return 0;}
 
   const totalRevenue = products.reduce((sum, p) => sum + p.revenue, 0);
-  if (totalRevenue === 0) return 0;
+  if (totalRevenue === 0) {return 0;}
 
   // Calculate Herfindahl index
   const herfindahl = products.reduce((sum, p) => {
@@ -1248,24 +1248,24 @@ function generateProductRecommendations(topProducts, categoryData) {
 
   if (topProducts.length > 0 && topProducts[0].revenueShare > 50) {
     recommendations.push({
-      type: "risk",
-      title: "Revenue Concentration Risk",
+      type: 'risk',
+      title: 'Revenue Concentration Risk',
       description: `${
         topProducts[0].name
       } accounts for ${topProducts[0].revenueShare.toFixed(
         1
       )}% of revenue. Consider diversifying.`,
-      priority: "medium",
+      priority: 'medium'
     });
   }
 
   if (categoryData.length > 0) {
     const topCategory = categoryData[0];
     recommendations.push({
-      type: "insight",
-      title: "Top Category Performance",
+      type: 'insight',
+      title: 'Top Category Performance',
       description: `${topCategory.category} is your best performing category with ${topCategory.products} products.`,
-      priority: "low",
+      priority: 'low'
     });
   }
 
@@ -1281,5 +1281,5 @@ module.exports = {
   getDateRange,
   getPlatformComparison,
   getPerformanceMetrics,
-  getFinancialKPIs,
+  getFinancialKPIs
 };

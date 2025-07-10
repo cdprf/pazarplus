@@ -1,5 +1,5 @@
-const analyticsService = require("../services/analytics-service");
-const logger = require("../utils/logger");
+const analyticsService = require('../services/analytics-service');
+const logger = require('../utils/logger');
 
 // Analytics timeout configuration
 const ANALYTICS_TIMEOUT = 30000; // 30 seconds
@@ -14,7 +14,7 @@ const withTimeout = (promise, timeout = ANALYTICS_TIMEOUT) => {
         () => reject(new Error(`Operation timeout after ${timeout}ms`)),
         timeout
       )
-    ),
+    )
   ]);
 };
 
@@ -22,7 +22,7 @@ const withTimeout = (promise, timeout = ANALYTICS_TIMEOUT) => {
 const safeJsonResponse = (data) => {
   try {
     // If data is a Sequelize instance, convert to plain object
-    if (data && typeof data.get === "function") {
+    if (data && typeof data.get === 'function') {
       data = data.get({ plain: true });
     }
 
@@ -32,29 +32,29 @@ const safeJsonResponse = (data) => {
     }
 
     // If data is an object, process recursively
-    if (data && typeof data === "object") {
+    if (data && typeof data === 'object') {
       const serialized = {};
       for (const [key, value] of Object.entries(data)) {
         // Skip circular reference properties and sensitive data
         if (
-          key === "user" ||
-          key === "User" ||
-          key === "dataValues" ||
-          key === "_previousDataValues" ||
-          key === "password" ||
-          key === "token"
+          key === 'user' ||
+          key === 'User' ||
+          key === 'dataValues' ||
+          key === '_previousDataValues' ||
+          key === 'password' ||
+          key === 'token'
         ) {
           continue;
         }
 
-        if (value && typeof value === "object") {
-          if (typeof value.get === "function") {
+        if (value && typeof value === 'object') {
+          if (typeof value.get === 'function') {
             // Sequelize instance
             serialized[key] = value.get({ plain: true });
           } else if (Array.isArray(value)) {
             // Array of potentially Sequelize instances
             serialized[key] = value.map((item) =>
-              item && typeof item.get === "function"
+              item && typeof item.get === 'function'
                 ? item.get({ plain: true })
                 : item
             );
@@ -71,8 +71,8 @@ const safeJsonResponse = (data) => {
 
     return data;
   } catch (error) {
-    logger.error("Error serializing data for JSON response:", error);
-    return { error: "Failed to serialize data", type: typeof data };
+    logger.error('Error serializing data for JSON response:', error);
+    return { error: 'Failed to serialize data', type: typeof data };
   }
 };
 
@@ -84,23 +84,23 @@ function generateInventoryOptimization(predictions, topProducts) {
   const optimization = {
     actions: [],
     priorities: [],
-    estimatedSavings: 0,
+    estimatedSavings: 0
   };
 
   if (predictions?.lowStockItems?.length > 0) {
     optimization.actions.push(
-      "Implement automated reorder system for fast-moving items"
+      'Implement automated reorder system for fast-moving items'
     );
     optimization.priorities.push({
-      action: "Restock critical items",
+      action: 'Restock critical items',
       items: predictions.lowStockItems.length,
-      urgency: "high",
+      urgency: 'high'
     });
   }
 
   if (predictions?.overstockItems?.length > 0) {
     optimization.actions.push(
-      "Create promotional campaigns for overstocked items"
+      'Create promotional campaigns for overstocked items'
     );
     optimization.estimatedSavings += predictions.overstockItems.length * 50; // Estimated savings per item
   }
@@ -118,10 +118,10 @@ class AnalyticsController {
    */
   async getDashboardAnalytics(req, res) {
     try {
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
       const userId = req.user.id;
 
-      logger.info("Dashboard analytics request", { userId, timeframe });
+      logger.info('Dashboard analytics request', { userId, timeframe });
 
       // Add timeout protection for analytics operations
       const analytics = await withTimeout(
@@ -130,7 +130,7 @@ class AnalyticsController {
       );
 
       // Debug logging
-      logger.info("Dashboard analytics response", {
+      logger.info('Dashboard analytics response', {
         userId,
         timeframe,
         orderSummaryTotal: analytics?.orderSummary?.total || 0,
@@ -140,33 +140,33 @@ class AnalyticsController {
         hasRevenueData: !!analytics?.revenue,
         hasTrendsData: !!(
           analytics?.revenue?.trends && analytics.revenue.trends.length > 0
-        ),
+        )
       });
 
       res.json({
         success: true,
-        message: "Dashboard analytics retrieved successfully",
+        message: 'Dashboard analytics retrieved successfully',
         data: safeJsonResponse(analytics),
         timeframe,
-        generatedAt: new Date(),
+        generatedAt: new Date()
       });
     } catch (error) {
-      logger.error("Dashboard analytics error:", error);
+      logger.error('Dashboard analytics error:', error);
 
       // Handle timeout errors specifically
-      if (error.message.includes("timeout")) {
+      if (error.message.includes('timeout')) {
         res.status(504).json({
           success: false,
           message:
-            "Analytics request timeout - please try again or contact support",
-          error: "TIMEOUT",
-          timeframe: req.query.timeframe || "30d",
+            'Analytics request timeout - please try again or contact support',
+          error: 'TIMEOUT',
+          timeframe: req.query.timeframe || '30d'
         });
       } else {
         res.status(500).json({
           success: false,
-          message: "Failed to retrieve dashboard analytics",
-          error: error.message,
+          message: 'Failed to retrieve dashboard analytics',
+          error: error.message
         });
       }
     }
@@ -177,7 +177,7 @@ class AnalyticsController {
    */
   async getBusinessIntelligence(req, res) {
     try {
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
       const userId = req.user.id;
 
       const dateRange = analyticsService.getDateRange(timeframe);
@@ -185,34 +185,34 @@ class AnalyticsController {
       const insights = await Promise.all([
         analyticsService.getPredictiveInsights(userId, dateRange),
         analyticsService.getMarketIntelligence(userId, dateRange),
-        analyticsService.getFinancialKPIs(userId, dateRange),
+        analyticsService.getFinancialKPIs(userId, dateRange)
       ]);
 
       const businessIntelligence = {
         insights: {
           predictiveInsights: insights[0],
           marketIntelligence: insights[1],
-          financialKPIs: insights[2],
+          financialKPIs: insights[2]
         },
         predictions: insights[0], // Main predictions data
         predictiveInsights: insights[0], // Keep backward compatibility
         marketIntelligence: insights[1], // Keep backward compatibility
         financialKPIs: insights[2], // Keep backward compatibility
         recommendations: this.generateActionableRecommendations(insights),
-        generatedAt: new Date(),
+        generatedAt: new Date()
       };
 
       res.json({
         success: true,
-        message: "Business intelligence insights retrieved successfully",
-        data: safeJsonResponse(businessIntelligence),
+        message: 'Business intelligence insights retrieved successfully',
+        data: safeJsonResponse(businessIntelligence)
       });
     } catch (error) {
-      logger.error("Business intelligence error:", error);
+      logger.error('Business intelligence error:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve business intelligence",
-        error: error.message,
+        message: 'Failed to retrieve business intelligence',
+        error: error.message
       });
     }
   }
@@ -222,7 +222,7 @@ class AnalyticsController {
    */
   async getRevenueAnalytics(req, res) {
     try {
-      const { timeframe = "30d", breakdown = "daily" } = req.query;
+      const { timeframe = '30d', breakdown = 'daily' } = req.query;
       const userId = req.user.id;
       const dateRange = analyticsService.getDateRange(timeframe);
 
@@ -240,23 +240,23 @@ class AnalyticsController {
         forecast: salesForecast,
         growth: {
           rate: revenueData.growth.rate,
-          trend: revenueData.growth.rate > 0 ? "positive" : "negative",
-          confidence: salesForecast?.confidence || "medium",
+          trend: revenueData.growth.rate > 0 ? 'positive' : 'negative',
+          confidence: salesForecast?.confidence || 'medium'
         },
-        insights: this.generateRevenueInsights(revenueData, salesForecast),
+        insights: this.generateRevenueInsights(revenueData, salesForecast)
       };
 
       res.json({
         success: true,
-        message: "Revenue analytics retrieved successfully",
-        data: safeJsonResponse(analytics),
+        message: 'Revenue analytics retrieved successfully',
+        data: safeJsonResponse(analytics)
       });
     } catch (error) {
-      logger.error("Revenue analytics error:", error);
+      logger.error('Revenue analytics error:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve revenue analytics",
-        error: error.message,
+        message: 'Failed to retrieve revenue analytics',
+        error: error.message
       });
     }
   }
@@ -266,7 +266,7 @@ class AnalyticsController {
    */
   async getPlatformPerformance(req, res) {
     try {
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
       const userId = req.user.id;
       const dateRange = analyticsService.getDateRange(timeframe);
 
@@ -291,12 +291,12 @@ class AnalyticsController {
               100
             : 0,
         performanceScore: this.calculatePerformanceScore(platform),
-        recommendations: this.generatePlatformRecommendations(platform),
+        recommendations: this.generatePlatformRecommendations(platform)
       }));
 
       res.json({
         success: true,
-        message: "Platform performance analysis retrieved successfully",
+        message: 'Platform performance analysis retrieved successfully',
         data: {
           platforms: safeJsonResponse(enhancedPlatforms),
           comparison: safeJsonResponse(enhancedPlatforms), // Add comparison key
@@ -313,16 +313,16 @@ class AnalyticsController {
             ),
             avgCompletionRate:
               enhancedPlatforms.reduce((sum, p) => sum + p.completionRate, 0) /
-              enhancedPlatforms.length,
-          },
-        },
+              enhancedPlatforms.length
+          }
+        }
       });
     } catch (error) {
-      logger.error("Platform performance error:", error);
+      logger.error('Platform performance error:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve platform performance",
-        error: error.message,
+        message: 'Failed to retrieve platform performance',
+        error: error.message
       });
     }
   }
@@ -333,7 +333,7 @@ class AnalyticsController {
   async getInventoryInsights(req, res) {
     const self = this; // Create a reference to maintain context
     try {
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
       const userId = req.user.id;
       const dateRange = analyticsService.getDateRange(timeframe);
 
@@ -351,25 +351,25 @@ class AnalyticsController {
         alerts: {
           lowStock: inventoryPredictions?.lowStockItems || [],
           overstock: inventoryPredictions?.overstockItems || [],
-          reorderNeeded: inventoryPredictions?.reorderSuggestions || [],
+          reorderNeeded: inventoryPredictions?.reorderSuggestions || []
         },
         optimization: generateInventoryOptimization(
           inventoryPredictions,
           topProducts
-        ),
+        )
       };
 
       res.json({
         success: true,
-        message: "Inventory insights retrieved successfully",
-        data: safeJsonResponse(insights),
+        message: 'Inventory insights retrieved successfully',
+        data: safeJsonResponse(insights)
       });
     } catch (error) {
-      logger.error("Inventory insights error:", error);
+      logger.error('Inventory insights error:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve inventory insights",
-        error: error.message,
+        message: 'Failed to retrieve inventory insights',
+        error: error.message
       });
     }
   }
@@ -379,7 +379,7 @@ class AnalyticsController {
    */
   async getMarketAnalysis(req, res) {
     try {
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
       const userId = req.user.id;
       const dateRange = analyticsService.getDateRange(timeframe);
 
@@ -399,20 +399,20 @@ class AnalyticsController {
         opportunities: this.identifyGrowthOpportunities(
           marketIntelligence,
           seasonalTrends
-        ),
+        )
       };
 
       res.json({
         success: true,
-        message: "Market analysis retrieved successfully",
-        data: safeJsonResponse(analysis),
+        message: 'Market analysis retrieved successfully',
+        data: safeJsonResponse(analysis)
       });
     } catch (error) {
-      logger.error("Market analysis error:", error);
+      logger.error('Market analysis error:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve market analysis",
-        error: error.message,
+        message: 'Failed to retrieve market analysis',
+        error: error.message
       });
     }
   }
@@ -427,15 +427,15 @@ class AnalyticsController {
 
       res.json({
         success: true,
-        message: "Real-time updates retrieved successfully",
-        data: safeJsonResponse(updates),
+        message: 'Real-time updates retrieved successfully',
+        data: safeJsonResponse(updates)
       });
     } catch (error) {
-      logger.error("Real-time updates error:", error);
+      logger.error('Real-time updates error:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve real-time updates",
-        error: error.message,
+        message: 'Failed to retrieve real-time updates',
+        error: error.message
       });
     }
   }
@@ -446,9 +446,9 @@ class AnalyticsController {
   async exportAnalyticsData(req, res) {
     try {
       const {
-        timeframe = "30d",
-        format = "json",
-        type = "dashboard",
+        timeframe = '30d',
+        format = 'json',
+        type = 'dashboard'
       } = req.query;
       const userId = req.user.id;
 
@@ -459,27 +459,27 @@ class AnalyticsController {
         timeframe
       );
 
-      if (format === "csv") {
-        res.setHeader("Content-Type", "text/csv");
+      if (format === 'csv') {
+        res.setHeader('Content-Type', 'text/csv');
         res.setHeader(
-          "Content-Disposition",
+          'Content-Disposition',
           `attachment; filename=analytics-${timeframe}.csv`
         );
         res.send(data);
       } else {
         res.json({
           success: true,
-          message: "Analytics data exported successfully",
+          message: 'Analytics data exported successfully',
           data: safeJsonResponse(data),
-          format,
+          format
         });
       }
     } catch (error) {
-      logger.error("Export analytics error:", error);
+      logger.error('Export analytics error:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to export analytics data",
-        error: error.message,
+        message: 'Failed to export analytics data',
+        error: error.message
       });
     }
   }
@@ -490,16 +490,16 @@ class AnalyticsController {
   async getProductAnalytics(req, res) {
     try {
       const {
-        timeframe = "30d",
+        timeframe = '30d',
         productId = null,
-        limit = "20",
-        all = false,
+        limit = '20',
+        all = false
       } = req.query;
       const userId = req.user.id;
       const dateRange = analyticsService.getDateRange(timeframe);
 
       // If 'all' parameter is true, set limit to 0 (no limit)
-      const productLimit = all === "true" ? 0 : parseInt(limit);
+      const productLimit = all === 'true' ? 0 : parseInt(limit);
 
       const productAnalytics = await analyticsService.getProductAnalytics(
         userId,
@@ -510,18 +510,18 @@ class AnalyticsController {
 
       res.json({
         success: true,
-        message: "Product analytics retrieved successfully",
+        message: 'Product analytics retrieved successfully',
         data: safeJsonResponse(productAnalytics),
         timeframe,
         productId,
-        generatedAt: new Date(),
+        generatedAt: new Date()
       });
     } catch (error) {
-      logger.error("Product analytics error:", error);
+      logger.error('Product analytics error:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve product analytics",
-        error: error.message,
+        message: 'Failed to retrieve product analytics',
+        error: error.message
       });
     }
   }
@@ -531,7 +531,7 @@ class AnalyticsController {
    */
   async getProductPerformanceComparison(req, res) {
     try {
-      const { timeframe = "30d", limit = 20 } = req.query;
+      const { timeframe = '30d', limit = 20 } = req.query;
       const userId = req.user.id;
       const dateRange = analyticsService.getDateRange(timeframe);
 
@@ -560,14 +560,14 @@ class AnalyticsController {
               product.totalSold,
               dateRange
             ),
-            performanceScore: this.calculateProductPerformanceScore(product),
+            performanceScore: this.calculateProductPerformanceScore(product)
           };
         })
       );
 
       res.json({
         success: true,
-        message: "Product performance comparison retrieved successfully",
+        message: 'Product performance comparison retrieved successfully',
         data: {
           products: safeJsonResponse(enhancedProducts),
           summary: {
@@ -579,18 +579,18 @@ class AnalyticsController {
             totalRevenue: enhancedProducts.reduce(
               (sum, p) => sum + p.totalRevenue,
               0
-            ),
-          },
+            )
+          }
         },
         timeframe,
-        generatedAt: new Date(),
+        generatedAt: new Date()
       });
     } catch (error) {
-      logger.error("Product performance comparison error:", error);
+      logger.error('Product performance comparison error:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve product performance comparison",
-        error: error.message,
+        message: 'Failed to retrieve product performance comparison',
+        error: error.message
       });
     }
   }
@@ -600,7 +600,7 @@ class AnalyticsController {
    */
   async getProductInsights(req, res) {
     try {
-      const { timeframe = "30d", productId = null } = req.query;
+      const { timeframe = '30d', productId = null } = req.query;
       const userId = req.user.id;
       const dateRange = analyticsService.getDateRange(timeframe);
 
@@ -621,25 +621,25 @@ class AnalyticsController {
         marketContext: {
           categoryPerformance: marketIntelligence?.categoryPerformance || [],
           seasonalTrends: marketIntelligence?.seasonalTrends || [],
-          competitivePosition: "متوسط", // Would be calculated based on market data
+          competitivePosition: 'متوسط' // Would be calculated based on market data
         },
-        actionableRecommendations: this.generateProductActionables(insights),
+        actionableRecommendations: this.generateProductActionables(insights)
       };
 
       res.json({
         success: true,
-        message: "Product insights retrieved successfully",
+        message: 'Product insights retrieved successfully',
         data: safeJsonResponse(enhancedInsights),
         timeframe,
         productId,
-        generatedAt: new Date(),
+        generatedAt: new Date()
       });
     } catch (error) {
-      logger.error("Product insights error:", error);
+      logger.error('Product insights error:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve product insights",
-        error: error.message,
+        message: 'Failed to retrieve product insights',
+        error: error.message
       });
     }
   }
@@ -677,22 +677,22 @@ class AnalyticsController {
 
       res.json({
         success: true,
-        message: "Real-time product metrics retrieved successfully",
+        message: 'Real-time product metrics retrieved successfully',
         data: {
           todaySummary: realtimeData.summary,
           hourlyTrends: hourlyBreakdown,
           inventoryAlerts,
           lastUpdated: new Date(),
-          refreshInterval: 60000, // 1 minute
+          refreshInterval: 60000 // 1 minute
         },
-        productId,
+        productId
       });
     } catch (error) {
-      logger.error("Real-time product metrics error:", error);
+      logger.error('Real-time product metrics error:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve real-time product metrics",
-        error: error.message,
+        message: 'Failed to retrieve real-time product metrics',
+        error: error.message
       });
     }
   }
@@ -702,7 +702,7 @@ class AnalyticsController {
    */
   async getTrends(req, res) {
     try {
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
       const userId = req.user.id;
       const dateRange = analyticsService.getDateRange(timeframe);
 
@@ -710,17 +710,17 @@ class AnalyticsController {
 
       res.json({
         success: true,
-        message: "Trends data retrieved successfully",
+        message: 'Trends data retrieved successfully',
         data: trends.daily || trends, // Return daily trends array
         timeframe,
-        generatedAt: new Date(),
+        generatedAt: new Date()
       });
     } catch (error) {
-      logger.error("Trends error:", error);
+      logger.error('Trends error:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve trends data",
-        error: error.message,
+        message: 'Failed to retrieve trends data',
+        error: error.message
       });
     }
   }
@@ -730,7 +730,7 @@ class AnalyticsController {
    */
   async getAccurateAnalytics(req, res) {
     try {
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
       const userId = req.user.id;
 
       const analytics = await analyticsService.getAccurateAnalytics(
@@ -740,18 +740,18 @@ class AnalyticsController {
 
       res.json({
         success: true,
-        message: "Accurate analytics retrieved successfully",
+        message: 'Accurate analytics retrieved successfully',
         data: safeJsonResponse(analytics),
         timeframe,
-        note: "Revenue calculations exclude returned, cancelled, and refunded orders",
-        generatedAt: new Date(),
+        note: 'Revenue calculations exclude returned, cancelled, and refunded orders',
+        generatedAt: new Date()
       });
     } catch (error) {
-      logger.error("Accurate analytics error:", error);
+      logger.error('Accurate analytics error:', error);
       res.status(500).json({
         success: false,
-        message: "Failed to retrieve accurate analytics",
-        error: error.message,
+        message: 'Failed to retrieve accurate analytics',
+        error: error.message
       });
     }
   }
@@ -762,7 +762,7 @@ class AnalyticsController {
   async getAlerts(req, res) {
     try {
       const userId = req.user.id;
-      const { type = "all", severity = "all", limit = 50 } = req.query;
+      const { type = 'all', severity = 'all', limit = 50 } = req.query;
 
       // Get different types of alerts
       const alerts = [];
@@ -773,12 +773,12 @@ class AnalyticsController {
 
       // Filter by type if specified
       let filteredAlerts = alerts;
-      if (type !== "all") {
+      if (type !== 'all') {
         filteredAlerts = alerts.filter((alert) => alert.type === type);
       }
 
       // Filter by severity if specified
-      if (severity !== "all") {
+      if (severity !== 'all') {
         filteredAlerts = filteredAlerts.filter(
           (alert) => alert.severity === severity
         );
@@ -801,23 +801,23 @@ class AnalyticsController {
           alerts: filteredAlerts,
           total: filteredAlerts.length,
           summary: {
-            high: filteredAlerts.filter((a) => a.severity === "high").length,
-            medium: filteredAlerts.filter((a) => a.severity === "medium")
+            high: filteredAlerts.filter((a) => a.severity === 'high').length,
+            medium: filteredAlerts.filter((a) => a.severity === 'medium')
               .length,
-            low: filteredAlerts.filter((a) => a.severity === "low").length,
-          },
+            low: filteredAlerts.filter((a) => a.severity === 'low').length
+          }
         },
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Analytics alerts error:", error);
+      logger.error('Analytics alerts error:', error);
       res.status(500).json({
         success: false,
-        error: "Internal server error",
+        error: 'Internal server error',
         message:
-          process.env.NODE_ENV === "development"
+          process.env.NODE_ENV === 'development'
             ? error.message
-            : "Failed to fetch alerts",
+            : 'Failed to fetch alerts'
       });
     }
   }
@@ -834,37 +834,37 @@ class AnalyticsController {
     // Revenue optimization recommendations
     if (financial?.growthRates?.revenue < 5) {
       recommendations.push({
-        category: "revenue",
-        priority: "high",
-        title: "Revenue Growth Optimization",
+        category: 'revenue',
+        priority: 'high',
+        title: 'Revenue Growth Optimization',
         description:
-          "Revenue growth is below 5%. Consider expanding marketing efforts or exploring new sales channels.",
+          'Revenue growth is below 5%. Consider expanding marketing efforts or exploring new sales channels.',
         actions: [
-          "Launch targeted marketing campaigns",
-          "Explore new platform integrations",
-          "Implement dynamic pricing strategies",
-          "Focus on high-margin products",
+          'Launch targeted marketing campaigns',
+          'Explore new platform integrations',
+          'Implement dynamic pricing strategies',
+          'Focus on high-margin products'
         ],
-        estimatedImpact: "+15-25% revenue increase",
-        timeframe: "2-3 months",
+        estimatedImpact: '+15-25% revenue increase',
+        timeframe: '2-3 months'
       });
     }
 
     // Inventory optimization recommendations
     if (predictive?.inventoryPredictions?.lowStockItems?.length > 0) {
       recommendations.push({
-        category: "inventory",
-        priority: "medium",
-        title: "Inventory Management Optimization",
+        category: 'inventory',
+        priority: 'medium',
+        title: 'Inventory Management Optimization',
         description: `${predictive.inventoryPredictions.lowStockItems.length} products are predicted to have low stock soon.`,
         actions: [
-          "Set up automated reorder alerts",
-          "Optimize safety stock levels",
-          "Negotiate better supplier terms",
-          "Implement just-in-time inventory",
+          'Set up automated reorder alerts',
+          'Optimize safety stock levels',
+          'Negotiate better supplier terms',
+          'Implement just-in-time inventory'
         ],
-        estimatedImpact: "-20% inventory costs",
-        timeframe: "1-2 months",
+        estimatedImpact: '-20% inventory costs',
+        timeframe: '1-2 months'
       });
     }
 
@@ -872,18 +872,18 @@ class AnalyticsController {
     if (market?.categoryPerformance?.length > 0) {
       const topCategory = market.categoryPerformance[0];
       recommendations.push({
-        category: "expansion",
-        priority: "medium",
-        title: "Market Expansion Opportunity",
+        category: 'expansion',
+        priority: 'medium',
+        title: 'Market Expansion Opportunity',
         description: `${topCategory.category} is your top-performing category. Consider expanding product range.`,
         actions: [
           `Source more ${topCategory.category} products`,
-          "Analyze competitor offerings in this category",
-          "Optimize pricing for category products",
-          "Create category-specific marketing campaigns",
+          'Analyze competitor offerings in this category',
+          'Optimize pricing for category products',
+          'Create category-specific marketing campaigns'
         ],
-        estimatedImpact: "+10-20% category revenue",
-        timeframe: "1-3 months",
+        estimatedImpact: '+10-20% category revenue',
+        timeframe: '1-3 months'
       });
     }
 
@@ -899,23 +899,23 @@ class AnalyticsController {
     // Growth trend analysis
     if (revenueData.growth.rate > 10) {
       insights.push({
-        type: "positive",
-        title: "Strong Revenue Growth",
+        type: 'positive',
+        title: 'Strong Revenue Growth',
         message: `Revenue has grown by ${revenueData.growth.rate.toFixed(
           1
         )}% compared to the previous period.`,
         recommendation:
-          "Maintain current strategies and consider scaling successful initiatives.",
+          'Maintain current strategies and consider scaling successful initiatives.'
       });
     } else if (revenueData.growth.rate < -5) {
       insights.push({
-        type: "warning",
-        title: "Revenue Decline Alert",
+        type: 'warning',
+        title: 'Revenue Decline Alert',
         message: `Revenue has decreased by ${Math.abs(
           revenueData.growth.rate
         ).toFixed(1)}% compared to the previous period.`,
         recommendation:
-          "Review current strategies and consider implementing promotional campaigns.",
+          'Review current strategies and consider implementing promotional campaigns.'
       });
     }
 
@@ -926,15 +926,15 @@ class AnalyticsController {
 
     if (topPlatform) {
       insights.push({
-        type: "info",
-        title: "Top Performing Platform",
+        type: 'info',
+        title: 'Top Performing Platform',
         message: `${topPlatform.platform} generated ${(
           (topPlatform.revenue /
             revenueData.platforms.reduce((sum, p) => sum + p.revenue, 0)) *
           100
         ).toFixed(1)}% of total revenue.`,
         recommendation:
-          "Focus optimization efforts on this platform and analyze what makes it successful.",
+          'Focus optimization efforts on this platform and analyze what makes it successful.'
       });
     }
 
@@ -969,19 +969,19 @@ class AnalyticsController {
 
     if (platform.completionRate < 80) {
       recommendations.push(
-        "Improve order fulfillment processes to increase completion rate"
+        'Improve order fulfillment processes to increase completion rate'
       );
     }
 
     if (platform.avgOrderValue < 100) {
       recommendations.push(
-        "Implement upselling strategies to increase average order value"
+        'Implement upselling strategies to increase average order value'
       );
     }
 
     if (platform.totalOrders < 50) {
       recommendations.push(
-        "Focus marketing efforts to increase order volume on this platform"
+        'Focus marketing efforts to increase order volume on this platform'
       );
     }
 
@@ -994,13 +994,13 @@ class AnalyticsController {
   assessMarketPosition(marketIntelligence) {
     // Simplified market position assessment
     return {
-      position: "growing",
+      position: 'growing',
       strengths: [
-        "Strong category performance",
-        "Diversified platform presence",
+        'Strong category performance',
+        'Diversified platform presence'
       ],
-      challenges: ["Price optimization needed", "Inventory management"],
-      score: 75, // Out of 100
+      challenges: ['Price optimization needed', 'Inventory management'],
+      score: 75 // Out of 100
     };
   }
 
@@ -1013,13 +1013,13 @@ class AnalyticsController {
     // Seasonal opportunities
     if (seasonalTrends?.peakMonths?.length > 0) {
       opportunities.push({
-        type: "seasonal",
-        title: "Seasonal Peak Preparation",
+        type: 'seasonal',
+        title: 'Seasonal Peak Preparation',
         description: `Prepare for peak sales in months: ${seasonalTrends.peakMonths.join(
-          ", "
+          ', '
         )}`,
-        timeline: "Next 2 months",
-        potential: "High",
+        timeline: 'Next 2 months',
+        potential: 'High'
       });
     }
 
@@ -1028,11 +1028,11 @@ class AnalyticsController {
       const topCategories = marketIntelligence.categoryPerformance.slice(0, 2);
       topCategories.forEach((category) => {
         opportunities.push({
-          type: "expansion",
+          type: 'expansion',
           title: `Expand in ${category.category}`,
           description: `High-performing category with ${category.productCount} products generating significant revenue`,
-          timeline: "Next 3 months",
-          potential: "Medium",
+          timeline: 'Next 3 months',
+          potential: 'Medium'
         });
       });
     }
@@ -1063,8 +1063,8 @@ class AnalyticsController {
       breakdown: {
         revenue: Math.round(revenueScore),
         sales: Math.round(salesScore),
-        velocity: Math.round(velocityScore),
-      },
+        velocity: Math.round(velocityScore)
+      }
     };
   }
 
@@ -1079,7 +1079,7 @@ class AnalyticsController {
         ...rec,
         actions: this.generateSpecificActions(rec),
         timeline: this.getRecommendationTimeline(rec.priority),
-        resources: this.getRequiredResources(rec.category),
+        resources: this.getRequiredResources(rec.category)
       };
       actionables.push(actionable);
     });
@@ -1093,37 +1093,37 @@ class AnalyticsController {
   generateSpecificActions(recommendation) {
     const actionMap = {
       inventory: [
-        "Mevcut stok seviyelerini gözden geçirin",
-        "Tedarikçilerle iletişime geçin",
-        "Otomatik sipariş noktaları belirleyin",
-        "Güvenlik stoku hesaplayın",
+        'Mevcut stok seviyelerini gözden geçirin',
+        'Tedarikçilerle iletişime geçin',
+        'Otomatik sipariş noktaları belirleyin',
+        'Güvenlik stoku hesaplayın'
       ],
       pricing: [
-        "Rakip fiyatlarını analiz edin",
-        "A/B test için farklı fiyatlar deneyin",
-        "Dinamik fiyatlandırma stratejisi uygulayın",
-        "Kar marjı hedeflerini belirleyin",
+        'Rakip fiyatlarını analiz edin',
+        'A/B test için farklı fiyatlar deneyin',
+        'Dinamik fiyatlandırma stratejisi uygulayın',
+        'Kar marjı hedeflerini belirleyin'
       ],
       marketing: [
-        "Hedefli reklam kampanyaları oluşturun",
-        "Sosyal medya stratejisi geliştirin",
-        "E-posta pazarlama kampanyaları başlatın",
-        "İçerik pazarlama planı yapın",
+        'Hedefli reklam kampanyaları oluşturun',
+        'Sosyal medya stratejisi geliştirin',
+        'E-posta pazarlama kampanyaları başlatın',
+        'İçerik pazarlama planı yapın'
       ],
       platform: [
-        "Platform performansını karşılaştırın",
-        "Düşük performanslı platformları optimize edin",
-        "Yeni platform entegrasyonları değerlendirin",
-        "Platform özel stratejiler geliştirin",
-      ],
+        'Platform performansını karşılaştırın',
+        'Düşük performanslı platformları optimize edin',
+        'Yeni platform entegrasyonları değerlendirin',
+        'Platform özel stratejiler geliştirin'
+      ]
     };
 
     return (
       actionMap[recommendation.category] || [
-        "Detaylı analiz yapın",
-        "Stratejik plan oluşturun",
-        "Uygulama takvimine alın",
-        "Sonuçları takip edin",
+        'Detaylı analiz yapın',
+        'Stratejik plan oluşturun',
+        'Uygulama takvimine alın',
+        'Sonuçları takip edin'
       ]
     );
   }
@@ -1133,11 +1133,11 @@ class AnalyticsController {
    */
   getRecommendationTimeline(priority) {
     const timelineMap = {
-      high: "1-2 hafta",
-      medium: "2-4 hafta",
-      low: "1-3 ay",
+      high: '1-2 hafta',
+      medium: '2-4 hafta',
+      low: '1-3 ay'
     };
-    return timelineMap[priority] || "Belirsiz";
+    return timelineMap[priority] || 'Belirsiz';
   }
 
   /**
@@ -1145,12 +1145,12 @@ class AnalyticsController {
    */
   getRequiredResources(category) {
     const resourceMap = {
-      inventory: ["Satın alma ekibi", "Depo yönetimi", "Tedarikçi ilişkileri"],
-      pricing: ["Fiyatlandırma ekibi", "Pazar araştırması", "Analitik araçlar"],
-      marketing: ["Pazarlama ekibi", "Kreatif ekip", "Reklam bütçesi"],
-      platform: ["E-ticaret ekibi", "Teknik destek", "Platform yöneticileri"],
+      inventory: ['Satın alma ekibi', 'Depo yönetimi', 'Tedarikçi ilişkileri'],
+      pricing: ['Fiyatlandırma ekibi', 'Pazar araştırması', 'Analitik araçlar'],
+      marketing: ['Pazarlama ekibi', 'Kreatif ekip', 'Reklam bütçesi'],
+      platform: ['E-ticaret ekibi', 'Teknik destek', 'Platform yöneticileri']
     };
-    return resourceMap[category] || ["Genel ekip desteği"];
+    return resourceMap[category] || ['Genel ekip desteği'];
   }
 
   /**
@@ -1165,49 +1165,49 @@ class AnalyticsController {
         include: [
           {
             model: Order,
-            as: "order",
+            as: 'order',
             where: {
               userId,
-              createdAt: { [Op.gte]: startOfDay },
+              createdAt: { [Op.gte]: startOfDay }
             },
-            attributes: [],
-          },
+            attributes: []
+          }
         ],
         attributes: [
           [
             OrderItem.sequelize.fn(
-              "HOUR",
-              OrderItem.sequelize.col("order.createdAt")
+              'HOUR',
+              OrderItem.sequelize.col('order.createdAt')
             ),
-            "hour",
+            'hour'
           ],
           [
-            OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
-            "soldQuantity",
+            OrderItem.sequelize.fn('SUM', OrderItem.sequelize.col('quantity')),
+            'soldQuantity'
           ],
           [
             OrderItem.sequelize.fn(
-              "SUM",
-              OrderItem.sequelize.literal("quantity * price")
+              'SUM',
+              OrderItem.sequelize.literal('quantity * price')
             ),
-            "revenue",
-          ],
+            'revenue'
+          ]
         ],
         group: [
           OrderItem.sequelize.fn(
-            "HOUR",
-            OrderItem.sequelize.col("order.createdAt")
-          ),
+            'HOUR',
+            OrderItem.sequelize.col('order.createdAt')
+          )
         ],
         order: [
           [
             OrderItem.sequelize.fn(
-              "HOUR",
-              OrderItem.sequelize.col("order.createdAt")
+              'HOUR',
+              OrderItem.sequelize.col('order.createdAt')
             ),
-            "ASC",
-          ],
-        ],
+            'ASC'
+          ]
+        ]
       };
 
       if (productId) {
@@ -1219,22 +1219,22 @@ class AnalyticsController {
       // Fill in missing hours with zero values
       const hourlyBreakdown = Array.from({ length: 24 }, (_, hour) => {
         const data = hourlyData.find(
-          (item) => parseInt(item.get("hour")) === hour
+          (item) => parseInt(item.get('hour')) === hour
         );
         return {
           hour,
-          soldQuantity: data ? parseInt(data.get("soldQuantity")) : 0,
-          revenue: data ? parseFloat(data.get("revenue")) : 0,
+          soldQuantity: data ? parseInt(data.get('soldQuantity')) : 0,
+          revenue: data ? parseFloat(data.get('revenue')) : 0
         };
       });
 
       return hourlyBreakdown;
     } catch (error) {
-      logger.error("Hourly breakdown error:", error);
+      logger.error('Hourly breakdown error:', error);
       return Array.from({ length: 24 }, (_, hour) => ({
         hour,
         soldQuantity: 0,
-        revenue: 0,
+        revenue: 0
       }));
     }
   }
@@ -1249,7 +1249,7 @@ class AnalyticsController {
       if (productId) {
         // Get specific product alerts
         const product = await Product.findOne({
-          where: { id: productId, userId },
+          where: { id: productId, userId }
         });
 
         if (product) {
@@ -1264,23 +1264,23 @@ class AnalyticsController {
 
           if (daysUntilStockout < 7) {
             alerts.push({
-              type: "stockout_warning",
-              severity: daysUntilStockout < 3 ? "high" : "medium",
+              type: 'stockout_warning',
+              severity: daysUntilStockout < 3 ? 'high' : 'medium',
               productId,
               productName: product.name,
               message: `${daysUntilStockout} gün içinde stok tükenmesi bekleniyor`,
-              recommendedAction: "Acil stok siparişi verin",
+              recommendedAction: 'Acil stok siparişi verin'
             });
           }
 
           if (product.stockQuantity === 0) {
             alerts.push({
-              type: "out_of_stock",
-              severity: "high",
+              type: 'out_of_stock',
+              severity: 'high',
               productId,
               productName: product.name,
-              message: "Ürün stokta yok",
-              recommendedAction: "Acil stok temini gerekli",
+              message: 'Ürün stokta yok',
+              recommendedAction: 'Acil stok temini gerekli'
             });
           }
         }
@@ -1289,27 +1289,27 @@ class AnalyticsController {
         const lowStockProducts = await Product.findAll({
           where: {
             userId,
-            stockQuantity: { [Op.lt]: 10 }, // Assuming 10 is low stock threshold
+            stockQuantity: { [Op.lt]: 10 } // Assuming 10 is low stock threshold
           },
-          limit: 10,
+          limit: 10
         });
 
         lowStockProducts.forEach((product) => {
           alerts.push({
-            type: "low_stock",
-            severity: "medium",
+            type: 'low_stock',
+            severity: 'medium',
             productId: product.id,
             productName: product.name,
             currentStock: product.stockQuantity,
             message: `Düşük stok seviyesi: ${product.stockQuantity} adet`,
-            recommendedAction: "Stok sipariş etmeyi değerlendirin",
+            recommendedAction: 'Stok sipariş etmeyi değerlendirin'
           });
         });
       }
 
       return alerts;
     } catch (error) {
-      logger.error("Live inventory alerts error:", error);
+      logger.error('Live inventory alerts error:', error);
       return [];
     }
   }
@@ -1321,7 +1321,7 @@ class AnalyticsController {
   async getCustomerAnalytics(req, res) {
     try {
       const userId = req.user.id;
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
 
       logger.info(
         `Getting customer analytics for user ${userId}, timeframe: ${timeframe}`
@@ -1335,14 +1335,14 @@ class AnalyticsController {
       res.json({
         success: true,
         data: safeJsonResponse(customerAnalytics),
-        generatedAt: new Date().toISOString(),
+        generatedAt: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Error getting customer analytics:", error);
+      logger.error('Error getting customer analytics:', error);
       res.status(500).json({
         success: false,
-        error: "Failed to get customer analytics",
-        details: error.message,
+        error: 'Failed to get customer analytics',
+        details: error.message
       });
     }
   }
@@ -1354,7 +1354,7 @@ class AnalyticsController {
   async getCohortAnalysis(req, res) {
     try {
       const userId = req.user.id;
-      const { timeframe = "90d" } = req.query;
+      const { timeframe = '90d' } = req.query;
 
       logger.info(
         `Getting cohort analysis for user ${userId}, timeframe: ${timeframe}`
@@ -1368,14 +1368,14 @@ class AnalyticsController {
       res.json({
         success: true,
         data: safeJsonResponse(cohortData),
-        generatedAt: new Date().toISOString(),
+        generatedAt: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Error getting cohort analysis:", error);
+      logger.error('Error getting cohort analysis:', error);
       res.status(500).json({
         success: false,
-        error: "Failed to get cohort analysis",
-        details: error.message,
+        error: 'Failed to get cohort analysis',
+        details: error.message
       });
     }
   }
@@ -1387,7 +1387,7 @@ class AnalyticsController {
   async getCompetitiveAnalysis(req, res) {
     try {
       const userId = req.user.id;
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
 
       logger.info(
         `Getting competitive analysis for user ${userId}, timeframe: ${timeframe}`
@@ -1401,14 +1401,14 @@ class AnalyticsController {
       res.json({
         success: true,
         data: safeJsonResponse(competitiveData),
-        generatedAt: new Date().toISOString(),
+        generatedAt: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Error getting competitive analysis:", error);
+      logger.error('Error getting competitive analysis:', error);
       res.status(500).json({
         success: false,
-        error: "Failed to get competitive analysis",
-        details: error.message,
+        error: 'Failed to get competitive analysis',
+        details: error.message
       });
     }
   }
@@ -1420,7 +1420,7 @@ class AnalyticsController {
   async getFunnelAnalysis(req, res) {
     try {
       const userId = req.user.id;
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
 
       logger.info(
         `Getting funnel analysis for user ${userId}, timeframe: ${timeframe}`
@@ -1434,14 +1434,14 @@ class AnalyticsController {
       res.json({
         success: true,
         data: safeJsonResponse(funnelData),
-        generatedAt: new Date().toISOString(),
+        generatedAt: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Error getting funnel analysis:", error);
+      logger.error('Error getting funnel analysis:', error);
       res.status(500).json({
         success: false,
-        error: "Failed to get funnel analysis",
-        details: error.message,
+        error: 'Failed to get funnel analysis',
+        details: error.message
       });
     }
   }
@@ -1462,14 +1462,14 @@ class AnalyticsController {
         success: true,
         data: safeJsonResponse(realTimeData),
         generatedAt: new Date().toISOString(),
-        isRealTime: true,
+        isRealTime: true
       });
     } catch (error) {
-      logger.error("Error getting real-time analytics:", error);
+      logger.error('Error getting real-time analytics:', error);
       res.status(500).json({
         success: false,
-        error: "Failed to get real-time analytics",
-        details: error.message,
+        error: 'Failed to get real-time analytics',
+        details: error.message
       });
     }
   }
@@ -1481,7 +1481,7 @@ class AnalyticsController {
   async getAttributionAnalysis(req, res) {
     try {
       const userId = req.user.id;
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
 
       logger.info(
         `Getting attribution analysis for user ${userId}, timeframe: ${timeframe}`
@@ -1495,14 +1495,14 @@ class AnalyticsController {
       res.json({
         success: true,
         data: safeJsonResponse(attributionData),
-        generatedAt: new Date().toISOString(),
+        generatedAt: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Error getting attribution analysis:", error);
+      logger.error('Error getting attribution analysis:', error);
       res.status(500).json({
         success: false,
-        error: "Failed to get attribution analysis",
-        details: error.message,
+        error: 'Failed to get attribution analysis',
+        details: error.message
       });
     }
   }
@@ -1514,7 +1514,7 @@ class AnalyticsController {
   async getAnomalyDetection(req, res) {
     try {
       const userId = req.user.id;
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
 
       logger.info(
         `Getting anomaly detection for user ${userId}, timeframe: ${timeframe}`
@@ -1528,14 +1528,14 @@ class AnalyticsController {
       res.json({
         success: true,
         data: safeJsonResponse(anomalies),
-        generatedAt: new Date().toISOString(),
+        generatedAt: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Error getting anomaly detection:", error);
+      logger.error('Error getting anomaly detection:', error);
       res.status(500).json({
         success: false,
-        error: "Failed to get anomaly detection",
-        details: error.message,
+        error: 'Failed to get anomaly detection',
+        details: error.message
       });
     }
   }
@@ -1547,12 +1547,12 @@ class AnalyticsController {
   async generateCustomReport(req, res) {
     try {
       const userId = req.user.id;
-      const { metrics, dimensions, filters, timeframe = "30d" } = req.body;
+      const { metrics, dimensions, filters, timeframe = '30d' } = req.body;
 
       if (!metrics || !Array.isArray(metrics) || metrics.length === 0) {
         return res.status(400).json({
           success: false,
-          error: "Metrics array is required and cannot be empty",
+          error: 'Metrics array is required and cannot be empty'
         });
       }
 
@@ -1560,28 +1560,28 @@ class AnalyticsController {
         metrics,
         dimensions,
         filters,
-        timeframe,
+        timeframe
       });
 
       const customReport = await analyticsService.generateCustomReport(userId, {
         metrics,
         dimensions,
         filters,
-        timeframe,
+        timeframe
       });
 
       res.json({
         success: true,
         data: safeJsonResponse(customReport),
         generatedAt: new Date().toISOString(),
-        reportConfig: { metrics, dimensions, filters, timeframe },
+        reportConfig: { metrics, dimensions, filters, timeframe }
       });
     } catch (error) {
-      logger.error("Error generating custom report:", error);
+      logger.error('Error generating custom report:', error);
       res.status(500).json({
         success: false,
-        error: "Failed to generate custom report",
-        details: error.message,
+        error: 'Failed to generate custom report',
+        details: error.message
       });
     }
   }
@@ -1596,40 +1596,40 @@ class AnalyticsController {
       // Test database connection
       const dbTest = await Order.findOne({
         limit: 1,
-        attributes: ["id"],
+        attributes: ['id']
       });
 
       // Test cache service
-      const cacheTest = (await cacheService.get("health_check")) || "ok";
-      await cacheService.set("health_check", "ok", 60);
+      const cacheTest = (await cacheService.get('health_check')) || 'ok';
+      await cacheService.set('health_check', 'ok', 60);
 
       // Test analytics service
       const userId = req.user?.id || 1;
       const testAnalytics = await analyticsService.getOrderSummary(userId, {
         start: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        end: new Date(),
+        end: new Date()
       });
 
       const responseTime = Date.now() - startTime;
 
       res.json({
         success: true,
-        status: "healthy",
+        status: 'healthy',
         checks: {
-          database: dbTest ? "ok" : "error",
-          cache: cacheTest ? "ok" : "error",
-          analytics: testAnalytics ? "ok" : "error",
+          database: dbTest ? 'ok' : 'error',
+          cache: cacheTest ? 'ok' : 'error',
+          analytics: testAnalytics ? 'ok' : 'error'
         },
         responseTime: `${responseTime}ms`,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
-      logger.error("Analytics health check failed:", error);
+      logger.error('Analytics health check failed:', error);
       res.status(500).json({
         success: false,
-        status: "unhealthy",
+        status: 'unhealthy',
         error: error.message,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
     }
   }

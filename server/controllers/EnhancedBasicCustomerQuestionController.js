@@ -1,13 +1,13 @@
 // Enhanced Simple Customer Question Controller with basic functionality
-const { validationResult } = require("express-validator");
-const debug = require("debug")("pazar:controller:questions:enhanced-basic");
+const { validationResult } = require('express-validator');
+const debug = require('debug')('pazar:controller:questions:enhanced-basic');
 
 class EnhancedBasicCustomerQuestionController {
   constructor() {
     // No async initialization - completely basic
     this.initialized = false;
     debug(
-      "EnhancedBasicCustomerQuestionController instantiated without any async operations"
+      'EnhancedBasicCustomerQuestionController instantiated without any async operations'
     );
   }
 
@@ -16,39 +16,39 @@ class EnhancedBasicCustomerQuestionController {
    */
   async getQuestions(req, res) {
     try {
-      debug("Getting questions - basic version");
+      debug('Getting questions - basic version');
 
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
       const { platform, status, page = 1, limit = 20 } = req.query;
 
-      debug("Query parameters:", { platform, status, page, limit });
+      debug('Query parameters:', { platform, status, page, limit });
 
       // Return mock data for now
       const mockData = [
         {
           id: 1,
-          platform: "trendyol",
-          status: "open",
-          customer_name: "Test Customer",
-          question_text: "Test question about product",
-          creation_date: new Date().toISOString(),
+          platform: 'trendyol',
+          status: 'open',
+          customer_name: 'Test Customer',
+          question_text: 'Test question about product',
+          creation_date: new Date().toISOString()
         },
         {
           id: 2,
-          platform: "hepsiburada",
-          status: "answered",
-          customer_name: "Another Customer",
-          question_text: "Another test question",
-          creation_date: new Date().toISOString(),
-        },
+          platform: 'hepsiburada',
+          status: 'answered',
+          customer_name: 'Another Customer',
+          question_text: 'Another test question',
+          creation_date: new Date().toISOString()
+        }
       ];
 
       // Apply basic filtering
@@ -72,15 +72,15 @@ class EnhancedBasicCustomerQuestionController {
           page: parseInt(page),
           limit: parseInt(limit),
           totalItems,
-          totalPages,
-        },
+          totalPages
+        }
       });
     } catch (error) {
-      debug("Error getting questions:", error.message);
+      debug('Error getting questions:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get questions",
-        error: error.message,
+        message: 'Failed to get questions',
+        error: error.message
       });
     }
   }
@@ -97,8 +97,8 @@ class EnhancedBasicCustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -107,11 +107,11 @@ class EnhancedBasicCustomerQuestionController {
         {
           id: 1,
           customer_email: email,
-          platform: "trendyol",
-          status: "open",
+          platform: 'trendyol',
+          status: 'open',
           question_text: `Question from ${email}`,
-          creation_date: new Date().toISOString(),
-        },
+          creation_date: new Date().toISOString()
+        }
       ];
 
       res.json({
@@ -121,15 +121,15 @@ class EnhancedBasicCustomerQuestionController {
           page: 1,
           limit: 20,
           totalItems: mockData.length,
-          totalPages: 1,
-        },
+          totalPages: 1
+        }
       });
     } catch (error) {
-      debug("Error getting questions by customer:", error.message);
+      debug('Error getting questions by customer:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get questions for customer",
-        error: error.message,
+        message: 'Failed to get questions for customer',
+        error: error.message
       });
     }
   }
@@ -146,31 +146,31 @@ class EnhancedBasicCustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
       // Mock single question
       const mockQuestion = {
         id: parseInt(id),
-        platform: "trendyol",
-        status: "open",
-        customer_name: "Test Customer",
-        question_text: "Mock question text",
-        creation_date: new Date().toISOString(),
+        platform: 'trendyol',
+        status: 'open',
+        customer_name: 'Test Customer',
+        question_text: 'Mock question text',
+        creation_date: new Date().toISOString()
       };
 
       res.json({
         success: true,
-        data: mockQuestion,
+        data: mockQuestion
       });
     } catch (error) {
-      debug("Error getting question:", error.message);
+      debug('Error getting question:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get question",
-        error: error.message,
+        message: 'Failed to get question',
+        error: error.message
       });
     }
   }
@@ -189,8 +189,8 @@ class EnhancedBasicCustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -198,20 +198,20 @@ class EnhancedBasicCustomerQuestionController {
       const updatedQuestion = {
         id: parseInt(id),
         status,
-        updated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
       res.json({
         success: true,
-        message: "Question status updated successfully",
-        data: updatedQuestion,
+        message: 'Question status updated successfully',
+        data: updatedQuestion
       });
     } catch (error) {
-      debug("Error updating question status:", error.message);
+      debug('Error updating question status:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to update question status",
-        error: error.message,
+        message: 'Failed to update question status',
+        error: error.message
       });
     }
   }
@@ -222,7 +222,7 @@ class EnhancedBasicCustomerQuestionController {
   async createReply(req, res) {
     try {
       const { id } = req.params;
-      const { message, reply_type = "manual" } = req.body;
+      const { message, reply_type = 'manual' } = req.body;
 
       debug(`Creating reply for question ${id}`);
 
@@ -230,8 +230,8 @@ class EnhancedBasicCustomerQuestionController {
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
@@ -241,20 +241,20 @@ class EnhancedBasicCustomerQuestionController {
         question_id: parseInt(id),
         message,
         reply_type,
-        created_at: new Date().toISOString(),
+        created_at: new Date().toISOString()
       };
 
       res.status(201).json({
         success: true,
-        message: "Reply created successfully",
-        data: reply,
+        message: 'Reply created successfully',
+        data: reply
       });
     } catch (error) {
-      debug("Error creating reply:", error.message);
+      debug('Error creating reply:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to create reply",
-        error: error.message,
+        message: 'Failed to create reply',
+        error: error.message
       });
     }
   }
@@ -264,18 +264,18 @@ class EnhancedBasicCustomerQuestionController {
    */
   async getQuestionStats(req, res) {
     try {
-      debug("Getting question statistics");
+      debug('Getting question statistics');
 
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({
           success: false,
-          message: "Validation errors",
-          errors: errors.array(),
+          message: 'Validation errors',
+          errors: errors.array()
         });
       }
 
-      const { timeframe = "30d" } = req.query;
+      const { timeframe = '30d' } = req.query;
 
       // Mock statistics
       const stats = {
@@ -283,29 +283,29 @@ class EnhancedBasicCustomerQuestionController {
         totalQuestions: 15,
         openQuestions: 5,
         answeredQuestions: 10,
-        responseRate: "66.67",
+        responseRate: '66.67',
         platformDistribution: [
-          { platform: "trendyol", count: 8 },
-          { platform: "hepsiburada", count: 5 },
-          { platform: "n11", count: 2 },
+          { platform: 'trendyol', count: 8 },
+          { platform: 'hepsiburada', count: 5 },
+          { platform: 'n11', count: 2 }
         ],
         priorityDistribution: [
-          { priority: "high", count: 3 },
-          { priority: "medium", count: 8 },
-          { priority: "low", count: 4 },
-        ],
+          { priority: 'high', count: 3 },
+          { priority: 'medium', count: 8 },
+          { priority: 'low', count: 4 }
+        ]
       };
 
       res.json({
         success: true,
-        data: stats,
+        data: stats
       });
     } catch (error) {
-      debug("Error getting question statistics:", error.message);
+      debug('Error getting question statistics:', error.message);
       res.status(500).json({
         success: false,
-        message: "Failed to get question statistics",
-        error: error.message,
+        message: 'Failed to get question statistics',
+        error: error.message
       });
     }
   }
