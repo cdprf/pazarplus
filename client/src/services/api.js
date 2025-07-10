@@ -38,7 +38,7 @@ const getApiBaseUrl = () => {
     // Use relative path in development to let setupProxy.js handle routing
     return "/api";
   }
-  return process.env.REACT_APP_API_URL || "/api";
+  return process.env.REACT_APP_API_URL || "https://pazarplus.onrender.com/api";
 };
 
 // Create axios instance with proper configuration

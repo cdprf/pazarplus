@@ -279,13 +279,37 @@ class HepsiBuradaQuestionService {
    * Normalize questions list response from HepsiBurada API
    */
   normalizeQuestionsResponse(data) {
-    if (!data || !Array.isArray(data)) {
+    // Handle new API response format with data field and pagination
+    if (!data) {
+      return { questions: [], pagination: null };
+    }
+
+    // Check if data has the new format with 'data' field
+    let questionsArray = [];
+    let paginationInfo = null;
+
+    if (data.data && Array.isArray(data.data)) {
+      // New API format: { data: [...], currentPage, totalPageCount, etc. }
+      questionsArray = data.data;
+      paginationInfo = {
+        currentPage: data.currentPage || 1,
+        pageSize: data.currentPageSize || 50,
+        totalPages: data.totalPageCount || 1,
+        totalItems: data.totalItemCount || 0,
+        hasNext: !!data.nextPage,
+        hasPrevious: !!data.previousPage,
+      };
+    } else if (Array.isArray(data)) {
+      // Legacy format: direct array
+      questionsArray = data;
+    } else {
+      // Unknown format
       return { questions: [], pagination: null };
     }
 
     return {
-      questions: data.map((q) => this.normalizeQuestionData(q)),
-      pagination: null, // HepsiBurada might not provide pagination info in this format
+      questions: questionsArray.map((q) => this.normalizeQuestionData(q)),
+      pagination: paginationInfo,
     };
   }
 
@@ -361,7 +385,8 @@ class HepsiBuradaQuestionService {
    */
   mapHepsiBuradaStatus(status) {
     const statusMapping = {
-      WaitingforAnswer: "WAITING_FOR_ANSWER",
+      WaitingForAnswer: "WAITING_FOR_ANSWER",
+      WaitingforAnswer: "WAITING_FOR_ANSWER", // Legacy format (keep for backward compatibility)
       Answered: "ANSWERED",
       Rejected: "REJECTED",
       AutoClosed: "AUTO_CLOSED",

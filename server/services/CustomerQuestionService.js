@@ -212,7 +212,8 @@ class CustomerQuestionService {
     }
 
     const { startDate, endDate } = options;
-    let page = 0;
+    // HepsiBurada uses 1-based pagination, others use 0-based
+    let page = platform === "hepsiburada" ? 1 : 0;
     let hasMore = true;
     let totalSynced = 0;
 
@@ -265,9 +266,15 @@ class CustomerQuestionService {
           hasMore = page < response.totalPages - 1;
           page++;
         } else if (response.pagination) {
-          // Other platforms: {pagination: {page, totalPages, ...}}
-          hasMore = page < response.pagination.totalPages - 1;
-          page++;
+          // HepsiBurada and other platforms: {pagination: {currentPage, totalPages, hasNext, ...}}
+          if (platform === "hepsiburada") {
+            hasMore = response.pagination.hasNext;
+            page = response.pagination.currentPage + 1;
+          } else {
+            // N11 and other platforms
+            hasMore = page < response.pagination.totalPages - 1;
+            page++;
+          }
         } else {
           hasMore = false;
         }
