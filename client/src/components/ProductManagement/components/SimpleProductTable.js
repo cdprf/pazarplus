@@ -15,9 +15,8 @@ import {
   Layers,
   AlertCircle,
 } from "lucide-react";
-import { Badge, Button } from "../../ui";
+import { Badge, Button, SafeImage } from "../../ui";
 import { EnhancedPlatformBadges } from "../utils/enhancedPlatformBadges";
-import SafeImage from "../../ui/SafeImage";
 
 const SimpleProductTable = ({
   products = [],

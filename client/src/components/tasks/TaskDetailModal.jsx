@@ -25,10 +25,15 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Modal } from "../ui/Modal";
-import { Button } from "../ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/Card";
-import { Badge } from "../ui/Badge";
+import {
+  Modal,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+} from "../ui";
 import { useAlert } from "../../contexts/AlertContext";
 import { useErrorHandler } from "../../hooks/useErrorHandler";
 import api from "../../services/api";

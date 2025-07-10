@@ -37,8 +37,18 @@ import {
   QrCode as QRCode,
   X,
 } from "lucide-react";
-import { Modal, Button, Tooltip, Tabs, TabsContent, TabsList, TabsTrigger, Input, Select } from "../../../ui";
-import { Switch } from "../../../ui/Switch";
+import {
+  Modal,
+  Button,
+  Tooltip,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Input,
+  Select,
+  Switch,
+} from "../../../ui";
 import BarcodeRenderer from "./BarcodeRenderer";
 
 // Constants

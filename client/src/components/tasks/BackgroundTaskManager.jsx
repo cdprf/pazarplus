@@ -26,9 +26,7 @@ import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import api from "../../services/api";
 import { useAlert } from "../../contexts/AlertContext";
-import { Button } from "../ui/Button";
-import { Card, CardContent } from "../ui/Card";
-import { Badge } from "../ui/Badge";
+import { Button, Card, CardContent, Badge } from "../ui";
 import { useErrorHandler } from "../../hooks/useErrorHandler";
 import TaskDetailModal from "./TaskDetailModal";
 

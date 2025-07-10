@@ -16,7 +16,7 @@ import {
 import { useAlert } from "../../contexts/AlertContext";
 import PlatformVariantsAPI from "../../services/platformVariantsAPI";
 import PlatformVariantModal from "./PlatformVariantModal";
-import Button from "../ui/Button";
+import { Button } from "../ui";
 
 /**
  * Platform Icons Component

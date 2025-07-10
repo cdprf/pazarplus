@@ -22,9 +22,7 @@ import {
   Calendar,
   Timer,
 } from "lucide-react";
-import { Button } from "../components/ui/Button";
-import { Card, CardContent } from "../components/ui/Card";
-import { Badge } from "../components/ui/Badge";
+import { Button, Card, CardContent, Badge } from "../components/ui";
 import api from "../services/api";
 import { useAlert } from "../contexts/AlertContext";
 

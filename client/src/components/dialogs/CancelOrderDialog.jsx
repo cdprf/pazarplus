@@ -6,10 +6,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../ui/Dialog";
-import { Button } from "../ui/Button";
-import { Label } from "../ui/Label";
-import { Textarea } from "../ui/Textarea";
+} from "../ui";
+import { Button, Label, Textarea } from "../ui";
 import { X } from "lucide-react";
 
 const CancelOrderDialog = ({
@@ -36,10 +34,8 @@ const CancelOrderDialog = ({
   return (
     <>
       {/* Trigger element */}
-      <div onClick={() => setOpen(true)}>
-        {children}
-      </div>
-      
+      <div onClick={() => setOpen(true)}>{children}</div>
+
       {/* Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[425px]">
@@ -49,8 +45,9 @@ const CancelOrderDialog = ({
               Siparişi İptal Et
             </DialogTitle>
             <DialogDescription>
-              <span className="font-medium">{orderNumber}</span> numaralı siparişi
-              iptal etmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+              <span className="font-medium">{orderNumber}</span> numaralı
+              siparişi iptal etmek istediğinizden emin misiniz? Bu işlem geri
+              alınamaz.
             </DialogDescription>
           </DialogHeader>
 
@@ -73,11 +70,7 @@ const CancelOrderDialog = ({
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={loading}
-            >
+            <Button variant="outline" onClick={handleCancel} disabled={loading}>
               Vazgeç
             </Button>
             <Button

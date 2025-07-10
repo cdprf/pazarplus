@@ -43,6 +43,7 @@ import {
 import { Switch } from "./Switch.jsx";
 import { Slider } from "./Slider.jsx";
 import { Separator } from "./Separator.jsx";
+import SafeImage from "./SafeImage";
 
 export {
   Button,
@@ -87,6 +88,7 @@ export {
   Switch,
   Slider,
   Separator,
+  SafeImage,
 };
 
 export { Textarea } from "./Textarea";

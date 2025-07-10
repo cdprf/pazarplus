@@ -5,7 +5,7 @@ import AdvancedSidebar from "../sidebar/AdvancedSidebar";
 import Footer from "./Footer";
 import { useWebSocketConnection } from "../../hooks/useWebSocketConnection";
 import { useAuth } from "../../hooks/useAuth";
-import { Button } from "../ui/Button";
+import { Button } from "../ui";
 import { WifiOff } from "lucide-react";
 
 const Layout = () => {
@@ -63,7 +63,7 @@ const Layout = () => {
             <Outlet />
           </main>
         </div>
-        
+
         {/* Footer spans full width below content area */}
         <Footer />
       </div>

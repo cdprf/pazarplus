@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Modal } from "../ui/Modal";
-import Button from "../ui/Button";
+import { Modal, Button } from "../ui";
 import { useAlert } from "../../contexts/AlertContext";
 import {
   ArrowLeft,

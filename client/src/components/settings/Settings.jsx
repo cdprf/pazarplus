@@ -19,9 +19,17 @@ import {
 } from "@heroicons/react/24/outline";
 import { AuthContext } from "../../contexts/AuthContext";
 import { useAlert } from "../../contexts/AlertContext";
-import { Button } from "../ui/Button";
-import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/Tabs";
+import { Button } from "../ui";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../ui";
 import InvoiceSettings from "./InvoiceSettings";
 import api from "../../services/api";
 

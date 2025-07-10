@@ -13,7 +13,7 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { Button } from "../ui/Button";
+import { Button } from "../ui";
 import { useOrderTrends } from "../../hooks/useOrders";
 import useWebSocketQuery from "../../hooks/useWebSocketQuery";
 
