@@ -8,6 +8,9 @@ check.js
 check.ts
 diagnose*
 *.sh
+!render*.sh
+!client-render-build.sh
+!client-build.sh
 *.pdf
 *summary*
 *report*
