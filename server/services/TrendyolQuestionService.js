@@ -240,6 +240,18 @@ class TrendyolQuestionService {
     // Generate question hash for similarity detection
     const questionHash = this.generateQuestionHash(question.text);
 
+    // Map Trendyol status to our enum
+    const statusMapping = {
+      WAITING_FOR_ANSWER: "WAITING_FOR_ANSWER",
+      UNANSWERED: "WAITING_FOR_ANSWER",
+      ANSWERED: "ANSWERED",
+      REJECTED: "REJECTED",
+      AUTO_CLOSED: "AUTO_CLOSED",
+    };
+
+    const normalizedStatus =
+      statusMapping[question.status] || "WAITING_FOR_ANSWER";
+
     return {
       platform: "trendyol",
       platform_question_id: question.id?.toString(),
@@ -249,7 +261,8 @@ class TrendyolQuestionService {
         (question.customerId ? `Müşteri-${question.customerId}` : ""),
       show_customer_name: question.showUserName,
       question_text: question.text,
-      status: question.status,
+      question_date: new Date(question.creationDate), // Map creation_date to question_date
+      status: normalizedStatus,
       product_name: question.productName,
       product_main_id: question.productMainId?.toString(),
       product_image_url: question.imageUrl,

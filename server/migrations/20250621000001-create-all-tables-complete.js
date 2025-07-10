@@ -3,14 +3,26 @@
 /**
  * Complete Database Schema Migration for Pazar+ Platform
  *
- * UPDATED: July 4, 2025
- * - Updated ComplianceDocuments table to match current model (order-based documents)
- * - Ensured TurkishCompliance table has all required fields including orderId
- * - Fixed duplicate complianceStatus field definitions
- * - Updated indexes to match new schema requirements
+ * UPDATED: July 10, 2025
+ * - CONSOLIDATED all duplicate table definitions (removed 9 duplicates)
+ * - Removed duplicate tables: usage_records, turkish_compliance, subscriptions,
+ *   shipping_carriers, reply_templates, customers, customer_replies,
+ *   customer_questions, compliance_documents
+ * - Kept the most complete and up-to-date version of each table
+ * - Updated all tables with missing columns from recent migrations
+ * - Added missing customer_email field to customer_questions
+ * - Updated customer_replies with all missing fields from migrations
+ * - Updated reply_templates with missing fields (keywords, lastUsed, isAutoSuggest, rating, ratingCount)
+ * - Updated background_tasks table to match BackgroundTask model completely
+ * - Updated taskType enum with all supported values
+ * - Added missing fields: resumedAt, tags, dependencies to background_tasks
+ * - Consolidated turkish_compliance into comprehensive table with both e-invoice and product compliance fields
+ * - Ensured all foreign key relationships and constraints are properly defined
+ * - Migration now contains 39 unique tables without duplicates
  *
- * This migration creates all tables and relationships needed for the N11 order
- * processing system with Turkish compliance and document management.
+ * This migration creates all tables and relationships needed for the complete
+ * Pazar+ platform including order processing, customer service, compliance,
+ * background tasks, and all recent feature additions.
  */
 
 module.exports = {
@@ -2340,59 +2352,56 @@ module.exports = {
         onUpdate: "CASCADE",
         onDelete: "CASCADE",
       },
-      type: {
+      operationType: {
         type: Sequelize.ENUM(
-          "platform_publish",
-          "inventory_update",
-          "price_update",
-          "status_update",
-          "data_export",
-          "data_import"
+          "PRODUCT_SYNC",
+          "ORDER_SYNC",
+          "INVENTORY_UPDATE",
+          "PRICE_UPDATE",
+          "PRODUCT_UPLOAD",
+          "ORDER_STATUS_UPDATE",
+          "BULK_DELETE",
+          "BULK_UPDATE",
+          "IMPORT",
+          "EXPORT"
         ),
         allowNull: false,
       },
       status: {
         type: Sequelize.ENUM(
-          "pending",
-          "processing",
-          "completed",
-          "failed",
-          "cancelled"
+          "PENDING",
+          "RUNNING",
+          "COMPLETED",
+          "FAILED",
+          "CANCELLED"
         ),
-        defaultValue: "pending",
+        allowNull: false,
+        defaultValue: "PENDING",
       },
       totalItems: {
         type: Sequelize.INTEGER,
+        allowNull: false,
         defaultValue: 0,
       },
       processedItems: {
         type: Sequelize.INTEGER,
+        allowNull: false,
         defaultValue: 0,
       },
-      successfulItems: {
+      successItems: {
         type: Sequelize.INTEGER,
+        allowNull: false,
         defaultValue: 0,
       },
       failedItems: {
         type: Sequelize.INTEGER,
-        defaultValue: 0,
-      },
-      progress: {
-        type: Sequelize.DECIMAL(5, 2),
-        defaultValue: 0,
-      },
-      configuration: {
-        type: JsonType,
         allowNull: false,
-        defaultValue: {},
+        defaultValue: 0,
       },
-      results: {
-        type: JsonType,
-        allowNull: true,
-      },
-      errors: {
-        type: JsonType,
-        defaultValue: [],
+      progressPercentage: {
+        type: Sequelize.DECIMAL(5, 2),
+        allowNull: false,
+        defaultValue: 0.0,
       },
       startedAt: {
         type: Sequelize.DATE,
@@ -2402,9 +2411,640 @@ module.exports = {
         type: Sequelize.DATE,
         allowNull: true,
       },
-      processingTimeMs: {
+      estimatedDuration: {
         type: Sequelize.INTEGER,
         allowNull: true,
+        comment: "Estimated duration in seconds",
+      },
+      actualDuration: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        comment: "Actual duration in seconds",
+      },
+      errorMessage: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      errorDetails: {
+        type: JsonType,
+        allowNull: true,
+      },
+      config: {
+        type: JsonType,
+        allowNull: false,
+        defaultValue: {},
+        comment: "Operation configuration and parameters",
+      },
+      results: {
+        type: JsonType,
+        allowNull: true,
+        comment: "Operation results and summary",
+      },
+      platform: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: "Target platform for the operation",
+      },
+      batchSize: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 100,
+        comment: "Number of items processed per batch",
+      },
+      priority: {
+        type: Sequelize.ENUM("LOW", "NORMAL", "HIGH", "URGENT"),
+        allowNull: false,
+        defaultValue: "NORMAL",
+      },
+      retryCount: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+      maxRetries: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 3,
+      },
+      lastRetryAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      logFile: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: "Path to detailed operation log file",
+      },
+      tags: {
+        type: JsonType,
+        allowNull: false,
+        defaultValue: [],
+        comment: "Tags for categorizing operations",
+      },
+      metadata: {
+        type: JsonType,
+        allowNull: false,
+        defaultValue: {},
+        comment: "Additional metadata",
+      },
+      createdAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW,
+      },
+      updatedAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW,
+      },
+    });
+
+    // Create Customer Questions table
+    await queryInterface.createTable("customer_questions", {
+      id: {
+        type: Sequelize.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      platform: {
+        type: Sequelize.ENUM("trendyol", "hepsiburada", "n11"),
+        allowNull: false,
+      },
+      platform_question_id: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        comment: "Original question ID from the platform",
+      },
+      customer_id: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      customer_name: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      show_customer_name: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: true,
+      },
+      question_text: {
+        type: Sequelize.TEXT,
+        allowNull: false,
+      },
+      question_date: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        field: "question_date",
+      },
+      status: {
+        type: Sequelize.ENUM(
+          "WAITING_FOR_ANSWER",
+          "ANSWERED",
+          "REJECTED",
+          "AUTO_CLOSED"
+        ),
+        allowNull: false,
+        defaultValue: "WAITING_FOR_ANSWER",
+        comment: "WAITING_FOR_ANSWER, ANSWERED, REJECTED, AUTO_CLOSED, etc.",
+      },
+      product_name: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      product_main_id: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      product_sku: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      product_stock_code: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      product_image_url: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      product_web_url: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      order_number: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      line_item_id: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      public: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: true,
+      },
+      creation_date: {
+        type: Sequelize.DATE,
+        allowNull: false,
+      },
+      answered_date: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      answered_date_message: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      expire_date: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      last_modified_at: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      subject_id: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      subject_description: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      merchant_id: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      merchant_name: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      reported_date: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      report_reason: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      rejected_date: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      reason: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      question_hash: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      similar_questions_count: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
+      },
+      assigned_to: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      priority: {
+        type: Sequelize.ENUM("low", "medium", "high", "urgent"),
+        defaultValue: "medium",
+      },
+      tags: {
+        type: JsonType,
+        defaultValue: [],
+      },
+      internal_notes: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      raw_data: {
+        type: JsonType,
+        allowNull: true,
+      },
+      customer_email: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: "Customer email address for contact",
+      },
+      createdAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW,
+      },
+      updatedAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW,
+      },
+    });
+
+    // Create Customer Replies table
+    await queryInterface.createTable("customer_replies", {
+      id: {
+        type: Sequelize.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      question_id: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: "customer_questions",
+          key: "id",
+        },
+        onDelete: "CASCADE",
+      },
+      platform: {
+        type: Sequelize.ENUM("trendyol", "hepsiburada", "n11"),
+        allowNull: false,
+      },
+      platform_reply_id: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      reply_text: {
+        type: Sequelize.TEXT,
+        allowNull: false,
+      },
+      reply_type: {
+        type: Sequelize.ENUM("answer", "reject", "internal_note"),
+        allowNull: false,
+        defaultValue: "answer",
+      },
+      from_type: {
+        type: Sequelize.ENUM("merchant", "customer", "admin"),
+        allowNull: false,
+        defaultValue: "merchant",
+      },
+      merchant_id: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      author_name: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      author_email: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      attachment_urls: {
+        type: JsonType,
+        allowNull: true,
+      },
+      submission_status: {
+        type: Sequelize.ENUM("pending", "sent", "failed", "rejected"),
+        allowNull: false,
+        defaultValue: "pending",
+      },
+      sent_at: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      error_message: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      },
+      retry_count: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+      last_retry_at: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
+      platform_response: {
+        type: JsonType,
+        allowNull: true,
+      },
+      template_id: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        references: {
+          model: "reply_templates",
+          key: "id",
+        },
+        onDelete: "SET NULL",
+      },
+      created_by: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: "users",
+          key: "id",
+        },
+        comment: "User who created this reply",
+      },
+      creation_date: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW,
+        comment: "When the reply was created",
+      },
+      sent_date: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        comment: "When the reply was sent to the platform",
+      },
+      has_private_info: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+        comment: "Whether the reply contains private information",
+      },
+      customer_feedback: {
+        type: Sequelize.BOOLEAN,
+        allowNull: true,
+        comment:
+          "Customer feedback on the reply (true=positive, false=negative)",
+      },
+      reject_reason: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+        comment: "Reason for rejecting the reply",
+      },
+      attachments: {
+        type: JsonType,
+        defaultValue: [],
+        comment: "File attachments for the reply",
+      },
+      customer_feedback: {
+        type: Sequelize.BOOLEAN,
+        allowNull: true,
+        comment:
+          "Customer feedback on the reply (true=positive, false=negative)",
+      },
+      reject_reason: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+        comment: "Reason for rejecting the reply",
+      },
+      is_auto_generated: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+      },
+      confidence_score: {
+        type: Sequelize.DECIMAL(3, 2),
+        allowNull: true,
+      },
+      raw_data: {
+        type: JsonType,
+        allowNull: true,
+      },
+      createdAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW,
+      },
+      updatedAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW,
+      },
+    });
+
+    // Create Reply Templates table
+    await queryInterface.createTable("reply_templates", {
+      id: {
+        type: Sequelize.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      name: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        comment: "Template name for easy identification",
+      },
+      content: {
+        type: Sequelize.TEXT,
+        allowNull: false,
+        comment: "Template reply text with placeholders",
+      },
+      category: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: 'Category like "shipping", "returns", "product_info", etc.',
+      },
+      platforms: {
+        type: JsonType,
+        defaultValue: ["trendyol", "hepsiburada", "n11"],
+        comment: "Array of platforms this template can be used for",
+      },
+      keywords: {
+        type: JsonType,
+        defaultValue: [],
+        comment: "Keywords that trigger this template suggestion",
+      },
+      variables: {
+        type: JsonType,
+        defaultValue: [],
+        comment: "Available variables/placeholders in the template",
+      },
+      usage_count: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
+        comment: "Number of times this template has been used",
+      },
+      last_used: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        comment: "Last time this template was used",
+      },
+      is_active: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: true,
+        comment: "Whether the template is active and can be used",
+      },
+      is_default: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+        comment: "Whether this is a default template for the category",
+      },
+      auto_suggest: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: true,
+        comment: "Whether to auto-suggest this template based on keywords",
+      },
+      confidence_threshold: {
+        type: Sequelize.DECIMAL(3, 2),
+        defaultValue: 0.7,
+        comment: "Minimum confidence score to auto-suggest this template",
+      },
+      language: {
+        type: Sequelize.STRING(5),
+        defaultValue: "tr",
+        comment: "Template language (tr, en, etc.)",
+      },
+      priority: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
+        comment: "Priority for auto-suggestion (higher = more priority)",
+      },
+      tags: {
+        type: JsonType,
+        defaultValue: [],
+        comment: "Tags for organizing templates",
+      },
+      validation_rules: {
+        type: JsonType,
+        defaultValue: {},
+        comment: "Rules for validating template usage",
+      },
+      created_by: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: "users",
+          key: "id",
+        },
+        onDelete: "SET NULL",
+        comment: "User who created this template",
+      },
+      updated_by: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: "users",
+          key: "id",
+        },
+        onDelete: "SET NULL",
+        comment: "User who last updated this template",
+      },
+      lastUsed: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        comment: "When this template was last used (alternative field name)",
+      },
+      isAutoSuggest: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+        comment: "Whether to auto-suggest this template based on keywords",
+      },
+      rating: {
+        type: Sequelize.DECIMAL(3, 2),
+        allowNull: true,
+        comment: "Average rating of this template effectiveness",
+      },
+      ratingCount: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
+        comment: "Number of ratings for this template",
+      },
+      createdAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW,
+      },
+      updatedAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW,
+      },
+    });
+
+    // Create Shipping Carriers table
+    await queryInterface.createTable("shipping_carriers", {
+      id: {
+        type: Sequelize.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      name: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        unique: true,
+      },
+      code: {
+        type: Sequelize.STRING(10),
+        allowNull: false,
+        unique: true,
+      },
+      website: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      trackingUrl: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: "URL template for tracking, use {trackingNumber} placeholder",
+      },
+      apiEndpoint: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      apiKey: {
+        type: Sequelize.STRING,
+        allowNull: true,
+      },
+      isActive: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: true,
+      },
+      supportedServices: {
+        type: JsonType,
+        defaultValue: [],
+        comment: "Supported shipping services",
+      },
+      pricingRules: {
+        type: JsonType,
+        defaultValue: {},
+        comment: "Pricing calculation rules",
+      },
+      deliveryTimes: {
+        type: JsonType,
+        defaultValue: {},
+        comment: "Estimated delivery times by service",
+      },
+      restrictions: {
+        type: JsonType,
+        defaultValue: {},
+        comment: "Size, weight, and location restrictions",
+      },
+      metadata: {
+        type: JsonType,
+        defaultValue: {},
       },
       createdAt: {
         type: Sequelize.DATE,
@@ -2791,7 +3431,13 @@ module.exports = {
           "order_fetching",
           "product_sync",
           "inventory_sync",
-          "bulk_operation"
+          "bulk_operation",
+          "analytics_update",
+          "customer_sync",
+          "shipping_label_generation",
+          "report_generation",
+          "data_export",
+          "data_import"
         ),
         allowNull: false,
       },
@@ -2874,6 +3520,11 @@ module.exports = {
         type: Sequelize.DATE,
         allowNull: true,
       },
+      resumedAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        comment: "Task resume timestamp",
+      },
       cancelledAt: {
         type: Sequelize.DATE,
         allowNull: true,
@@ -2913,6 +3564,17 @@ module.exports = {
         type: Sequelize.INTEGER,
         defaultValue: 3,
       },
+      tags: {
+        type: JsonType,
+        allowNull: true,
+        comment: "Task tags for organization and filtering",
+        defaultValue: [],
+      },
+      dependencies: {
+        type: JsonType,
+        allowNull: true,
+        comment: "Task dependencies configuration",
+      },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
@@ -2930,7 +3592,7 @@ module.exports = {
       },
     });
 
-    // Create Subscriptions table
+    // Create Settings table
     await queryInterface.createTable("subscriptions", {
       id: {
         type: Sequelize.UUID,
@@ -3299,46 +3961,6 @@ module.exports = {
       metadata: {
         type: JsonType,
         defaultValue: {},
-      },
-      createdAt: {
-        type: Sequelize.DATE,
-        allowNull: false,
-        defaultValue: Sequelize.NOW,
-      },
-      updatedAt: {
-        type: Sequelize.DATE,
-        allowNull: false,
-        defaultValue: Sequelize.NOW,
-      },
-    });
-
-    // Create Shipping Carriers table
-    await queryInterface.createTable("shipping_carriers", {
-      id: {
-        type: Sequelize.UUID,
-        defaultValue: Sequelize.UUIDV4,
-        primaryKey: true,
-      },
-      name: {
-        type: Sequelize.STRING,
-        allowNull: false,
-      },
-      code: {
-        type: Sequelize.STRING,
-        allowNull: false,
-        unique: true,
-      },
-      apiEndpoint: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      isActive: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: true,
-      },
-      supportedServices: {
-        type: JsonType,
-        defaultValue: [],
       },
       createdAt: {
         type: Sequelize.DATE,
@@ -3827,178 +4449,6 @@ module.exports = {
       firstOrderDate: {
         type: Sequelize.DATE,
         allowNull: true,
-      },
-      userId: {
-        type: Sequelize.UUID,
-        allowNull: true,
-        references: {
-          model: "users",
-          key: "id",
-        },
-        onUpdate: "CASCADE",
-        onDelete: "SET NULL",
-      },
-      createdAt: {
-        type: Sequelize.DATE,
-        allowNull: false,
-        defaultValue: Sequelize.NOW,
-      },
-      updatedAt: {
-        type: Sequelize.DATE,
-        allowNull: false,
-        defaultValue: Sequelize.NOW,
-      },
-    });
-
-    // Create Customer Questions table
-    await queryInterface.createTable("customer_questions", {
-      id: {
-        type: Sequelize.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-      },
-      platform: {
-        type: Sequelize.ENUM("trendyol", "hepsiburada", "n11"),
-        allowNull: false,
-      },
-      platform_question_id: {
-        type: Sequelize.STRING,
-        allowNull: false,
-      },
-      customer_id: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      customer_name: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      show_customer_name: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: true,
-      },
-      question_text: {
-        type: Sequelize.TEXT,
-        allowNull: false,
-      },
-      question_date: {
-        type: Sequelize.DATE,
-        allowNull: false,
-      },
-      product_id: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      product_name: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      barcode: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      reply_text: {
-        type: Sequelize.TEXT,
-        allowNull: true,
-      },
-      reply_date: {
-        type: Sequelize.DATE,
-        allowNull: true,
-      },
-      reply_user: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      is_answered: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false,
-      },
-      status: {
-        type: Sequelize.ENUM("new", "answered", "ignored", "pending"),
-        defaultValue: "new",
-      },
-      priority: {
-        type: Sequelize.ENUM("low", "medium", "high", "urgent"),
-        defaultValue: "medium",
-      },
-      platform_specific_data: {
-        type: JsonType,
-        allowNull: true,
-      },
-      internal_notes: {
-        type: Sequelize.TEXT,
-        allowNull: true,
-      },
-      auto_reply_used: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false,
-      },
-      reply_template_id: {
-        type: Sequelize.INTEGER,
-        allowNull: true,
-      },
-      userId: {
-        type: Sequelize.UUID,
-        allowNull: true,
-        references: {
-          model: "users",
-          key: "id",
-        },
-        onUpdate: "CASCADE",
-        onDelete: "SET NULL",
-      },
-      createdAt: {
-        type: Sequelize.DATE,
-        allowNull: false,
-        defaultValue: Sequelize.NOW,
-      },
-      updatedAt: {
-        type: Sequelize.DATE,
-        allowNull: false,
-        defaultValue: Sequelize.NOW,
-      },
-    });
-
-    // Create Customer Replies table
-    await queryInterface.createTable("customer_replies", {
-      id: {
-        type: Sequelize.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-      },
-      question_id: {
-        type: Sequelize.INTEGER,
-        allowNull: false,
-        references: {
-          model: "customer_questions",
-          key: "id",
-        },
-        onUpdate: "CASCADE",
-        onDelete: "CASCADE",
-      },
-      reply_text: {
-        type: Sequelize.TEXT,
-        allowNull: false,
-      },
-      reply_date: {
-        type: Sequelize.DATE,
-        allowNull: false,
-      },
-      reply_user: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      is_from_customer: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false,
-      },
-      platform_reply_id: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      status: {
-        type: Sequelize.ENUM("sent", "delivered", "failed"),
-        defaultValue: "sent",
       },
       userId: {
         type: Sequelize.UUID,
@@ -4602,71 +5052,6 @@ module.exports = {
         allowNull: true,
       },
       autoRepliesUsed: {
-        type: Sequelize.INTEGER,
-        defaultValue: 0,
-      },
-      userId: {
-        type: Sequelize.UUID,
-        allowNull: true,
-        references: {
-          model: "users",
-          key: "id",
-        },
-        onUpdate: "CASCADE",
-        onDelete: "SET NULL",
-      },
-      createdAt: {
-        type: Sequelize.DATE,
-        allowNull: false,
-        defaultValue: Sequelize.NOW,
-      },
-      updatedAt: {
-        type: Sequelize.DATE,
-        allowNull: false,
-        defaultValue: Sequelize.NOW,
-      },
-    });
-
-    // Create Reply Templates table
-    await queryInterface.createTable("reply_templates", {
-      id: {
-        type: Sequelize.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-      },
-      name: {
-        type: Sequelize.STRING,
-        allowNull: false,
-      },
-      content: {
-        type: Sequelize.TEXT,
-        allowNull: false,
-      },
-      category: {
-        type: Sequelize.STRING,
-        allowNull: true,
-      },
-      platforms: {
-        type: JsonType,
-        allowNull: true,
-      },
-      isActive: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: true,
-      },
-      isDefault: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false,
-      },
-      tags: {
-        type: JsonType,
-        allowNull: true,
-      },
-      variables: {
-        type: JsonType,
-        allowNull: true,
-      },
-      usageCount: {
         type: Sequelize.INTEGER,
         defaultValue: 0,
       },
@@ -5569,6 +5954,7 @@ module.exports = {
         "platform_question_id",
       ]);
       await queryInterface.addIndex("customer_questions", ["customer_id"]);
+      await queryInterface.addIndex("customer_questions", ["customer_email"]);
       await queryInterface.addIndex("customer_questions", ["is_answered"]);
       await queryInterface.addIndex("customer_questions", ["status"]);
       await queryInterface.addIndex("customer_questions", ["priority"]);

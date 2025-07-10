@@ -257,6 +257,11 @@ class CustomerQuestionService {
               `Error saving question ${questionData.platform_question_id}:`,
               error.message
             );
+            // Log the full error for debugging
+            console.error(
+              `Failed to save question ${questionData.platform_question_id} from ${platform}:`,
+              error
+            );
           }
         }
 

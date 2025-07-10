@@ -353,6 +353,7 @@ class HepsiBuradaQuestionService {
       line_item_id: question.lineItemId,
       public: true, // Default to public
       creation_date: new Date(question.createdAt),
+      question_date: new Date(question.createdAt), // Set same as creation_date
       answered_date: this.getAnsweredDate(question),
       expire_date: expireDate,
       last_modified_at: question.lastModifiedAt

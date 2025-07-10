@@ -83,7 +83,11 @@ export const PlatformIcons = {
 };
 
 // API Base Configuration
-export const API_BASE_URL = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? 'https://pazarplus.onrender.com/api' : '/api');
+export const API_BASE_URL =
+  process.env.REACT_APP_API_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://pazarplus.onrender.com/api"
+    : "/api");
 
 // Core Status Options - Enhanced with better display names
 export const STATUS_OPTIONS = [

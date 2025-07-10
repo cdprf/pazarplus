@@ -1,6 +1,10 @@
 import axios from "axios";
 
-const API_URL = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? 'https://pazarplus.onrender.com/api' : '/api');
+const API_URL =
+  process.env.REACT_APP_API_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://pazarplus.onrender.com/api"
+    : "/api");
 
 // Create axios instance
 const api = axios.create({
