@@ -3982,7 +3982,7 @@ module.exports = {
         primaryKey: true,
       },
       carrierId: {
-        type: Sequelize.UUID,
+        type: Sequelize.INTEGER,
         allowNull: false,
         references: {
           model: "shipping_carriers",
