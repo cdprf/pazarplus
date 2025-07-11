@@ -1,14 +1,14 @@
 let prometheus;
 try {
-  prometheus = require('prom-client');
+  prometheus = require("prom-client");
 } catch (error) {
   console.warn(
-    'prom-client module not available, performance monitoring disabled'
+    "prom-client module not available, performance monitoring disabled"
   );
   prometheus = null;
 }
-const logger = require('../utils/logger');
-const cacheService = require('./cache-service');
+const logger = require("../utils/logger");
+const cacheService = require("./cache-service");
 
 /**
  * Performance Monitoring Service
@@ -16,12 +16,22 @@ const cacheService = require('./cache-service');
  */
 class PerformanceMonitor {
   constructor() {
-    this.isEnabled = prometheus !== null;
+    // Check if performance monitoring is disabled via environment variable
+    const isDisabledByEnv =
+      process.env.DISABLE_PERFORMANCE_MONITORING === "true";
+    this.isEnabled = prometheus !== null && !isDisabledByEnv;
 
     if (!this.isEnabled) {
-      logger.info(
-        'Performance monitoring disabled - prom-client not available'
-      );
+      if (isDisabledByEnv) {
+        logger.info(
+          "Performance monitoring disabled via DISABLE_PERFORMANCE_MONITORING environment variable"
+        );
+      } else {
+        logger.info(
+          "Performance monitoring disabled - prom-client not available"
+        );
+      }
+      this.createNoOpMetrics();
       return;
     }
 
@@ -31,13 +41,15 @@ class PerformanceMonitor {
   }
 
   setupDefaultMetrics() {
-    if (!this.isEnabled) {return;}
+    if (!this.isEnabled) {
+      return;
+    }
 
     // Collect default Node.js metrics
     prometheus.collectDefaultMetrics({
       register: this.register,
-      prefix: 'pazar_plus_',
-      gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5]
+      prefix: "pazar_plus_",
+      gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5],
     });
   }
 
@@ -50,112 +62,112 @@ class PerformanceMonitor {
 
     // HTTP Request metrics
     this.httpRequestDuration = new prometheus.Histogram({
-      name: 'pazar_plus_http_request_duration_seconds',
-      help: 'Duration of HTTP requests in seconds',
-      labelNames: ['method', 'route', 'status_code', 'user_id'],
-      buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+      name: "pazar_plus_http_request_duration_seconds",
+      help: "Duration of HTTP requests in seconds",
+      labelNames: ["method", "route", "status_code", "user_id"],
+      buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
     });
 
     this.httpRequestTotal = new prometheus.Counter({
-      name: 'pazar_plus_http_requests_total',
-      help: 'Total number of HTTP requests',
-      labelNames: ['method', 'route', 'status_code']
+      name: "pazar_plus_http_requests_total",
+      help: "Total number of HTTP requests",
+      labelNames: ["method", "route", "status_code"],
     });
 
     // Database metrics
     this.dbQueryDuration = new prometheus.Histogram({
-      name: 'pazar_plus_db_query_duration_seconds',
-      help: 'Database query execution time',
-      labelNames: ['operation', 'table', 'user_id'],
-      buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5]
+      name: "pazar_plus_db_query_duration_seconds",
+      help: "Database query execution time",
+      labelNames: ["operation", "table", "user_id"],
+      buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5],
     });
 
     this.dbConnectionPool = new prometheus.Gauge({
-      name: 'pazar_plus_db_connections_active',
-      help: 'Number of active database connections'
+      name: "pazar_plus_db_connections_active",
+      help: "Number of active database connections",
     });
 
     this.dbPoolSize = new prometheus.Gauge({
-      name: 'pazar_plus_db_pool_size',
-      help: 'Database connection pool size'
+      name: "pazar_plus_db_pool_size",
+      help: "Database connection pool size",
     });
 
     // Platform integration metrics
     this.platformApiCalls = new prometheus.Counter({
-      name: 'pazar_plus_platform_api_calls_total',
-      help: 'Total platform API calls',
-      labelNames: ['platform', 'endpoint', 'status', 'user_id']
+      name: "pazar_plus_platform_api_calls_total",
+      help: "Total platform API calls",
+      labelNames: ["platform", "endpoint", "status", "user_id"],
     });
 
     this.platformApiDuration = new prometheus.Histogram({
-      name: 'pazar_plus_platform_api_duration_seconds',
-      help: 'Platform API call duration',
-      labelNames: ['platform', 'endpoint'],
-      buckets: [0.5, 1, 2, 5, 10, 30, 60]
+      name: "pazar_plus_platform_api_duration_seconds",
+      help: "Platform API call duration",
+      labelNames: ["platform", "endpoint"],
+      buckets: [0.5, 1, 2, 5, 10, 30, 60],
     });
 
     this.platformSyncSuccess = new prometheus.Counter({
-      name: 'pazar_plus_platform_sync_success_total',
-      help: 'Successful platform synchronizations',
-      labelNames: ['platform', 'user_id']
+      name: "pazar_plus_platform_sync_success_total",
+      help: "Successful platform synchronizations",
+      labelNames: ["platform", "user_id"],
     });
 
     this.platformSyncErrors = new prometheus.Counter({
-      name: 'pazar_plus_platform_sync_errors_total',
-      help: 'Failed platform synchronizations',
-      labelNames: ['platform', 'error_type', 'user_id']
+      name: "pazar_plus_platform_sync_errors_total",
+      help: "Failed platform synchronizations",
+      labelNames: ["platform", "error_type", "user_id"],
     });
 
     // Business metrics
     this.ordersProcessed = new prometheus.Counter({
-      name: 'pazar_plus_orders_processed_total',
-      help: 'Total orders processed',
-      labelNames: ['platform', 'status', 'user_id']
+      name: "pazar_plus_orders_processed_total",
+      help: "Total orders processed",
+      labelNames: ["platform", "status", "user_id"],
     });
 
     this.orderValue = new prometheus.Histogram({
-      name: 'pazar_plus_order_value_try',
-      help: 'Order values in Turkish Lira',
-      labelNames: ['platform', 'user_id'],
-      buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000]
+      name: "pazar_plus_order_value_try",
+      help: "Order values in Turkish Lira",
+      labelNames: ["platform", "user_id"],
+      buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000],
     });
 
     this.activeUsers = new prometheus.Gauge({
-      name: 'pazar_plus_active_users',
-      help: 'Number of active users in the last 24 hours'
+      name: "pazar_plus_active_users",
+      help: "Number of active users in the last 24 hours",
     });
 
     this.platformConnections = new prometheus.Gauge({
-      name: 'pazar_plus_platform_connections_active',
-      help: 'Number of active platform connections',
-      labelNames: ['platform']
+      name: "pazar_plus_platform_connections_active",
+      help: "Number of active platform connections",
+      labelNames: ["platform"],
     });
 
     // Cache metrics
     this.cacheHits = new prometheus.Counter({
-      name: 'pazar_plus_cache_hits_total',
-      help: 'Cache hit count',
-      labelNames: ['cache_type']
+      name: "pazar_plus_cache_hits_total",
+      help: "Cache hit count",
+      labelNames: ["cache_type"],
     });
 
     this.cacheMisses = new prometheus.Counter({
-      name: 'pazar_plus_cache_misses_total',
-      help: 'Cache miss count',
-      labelNames: ['cache_type']
+      name: "pazar_plus_cache_misses_total",
+      help: "Cache miss count",
+      labelNames: ["cache_type"],
     });
 
     // Rate limiting metrics
     this.rateLimitHits = new prometheus.Counter({
-      name: 'pazar_plus_rate_limit_hits_total',
-      help: 'Rate limit violations',
-      labelNames: ['limiter_type', 'user_id']
+      name: "pazar_plus_rate_limit_hits_total",
+      help: "Rate limit violations",
+      labelNames: ["limiter_type", "user_id"],
     });
 
     // Error metrics
     this.errorCount = new prometheus.Counter({
-      name: 'pazar_plus_errors_total',
-      help: 'Total application errors',
-      labelNames: ['error_type', 'endpoint', 'user_id']
+      name: "pazar_plus_errors_total",
+      help: "Total application errors",
+      labelNames: ["error_type", "endpoint", "user_id"],
     });
 
     // Register all metrics
@@ -187,10 +199,10 @@ class PerformanceMonitor {
 
       const start = Date.now();
 
-      res.on('finish', () => {
+      res.on("finish", () => {
         const duration = (Date.now() - start) / 1000;
         const route = req.route?.path || req.path;
-        const userId = req.user?.id || 'anonymous';
+        const userId = req.user?.id || "anonymous";
 
         this.httpRequestDuration
           .labels(req.method, route, res.statusCode.toString(), userId)
@@ -202,12 +214,12 @@ class PerformanceMonitor {
 
         // Log slow requests
         if (duration > 2) {
-          logger.warn('Slow request detected', {
+          logger.warn("Slow request detected", {
             method: req.method,
             path: req.path,
             duration: `${duration}s`,
             userId,
-            statusCode: res.statusCode
+            statusCode: res.statusCode,
           });
         }
       });
@@ -218,16 +230,20 @@ class PerformanceMonitor {
 
   // Database query monitoring
   trackDbQuery(operation, table, userId, duration) {
-    if (!this.isEnabled) {return;}
+    if (!this.isEnabled) {
+      return;
+    }
 
     this.dbQueryDuration
-      .labels(operation, table, userId || 'system')
+      .labels(operation, table, userId || "system")
       .observe(duration);
   }
 
   // Platform API monitoring
   trackPlatformApiCall(platform, endpoint, status, userId, duration) {
-    if (!this.isEnabled) {return;}
+    if (!this.isEnabled) {
+      return;
+    }
 
     this.platformApiCalls.labels(platform, endpoint, status, userId).inc();
 
@@ -240,7 +256,7 @@ class PerformanceMonitor {
       this.platformSyncSuccess.labels(platform, userId).inc();
     } else {
       this.platformSyncErrors
-        .labels(platform, errorType || 'unknown', userId)
+        .labels(platform, errorType || "unknown", userId)
         .inc();
     }
   }
@@ -265,87 +281,126 @@ class PerformanceMonitor {
 
   // Rate limiting monitoring
   trackRateLimitHit(limiterType, userId) {
-    this.rateLimitHits.labels(limiterType, userId || 'anonymous').inc();
+    this.rateLimitHits.labels(limiterType, userId || "anonymous").inc();
   }
 
   // Error tracking
   trackError(errorType, endpoint, userId) {
-    this.errorCount.labels(errorType, endpoint, userId || 'anonymous').inc();
+    this.errorCount.labels(errorType, endpoint, userId || "anonymous").inc();
   }
 
   // Update real-time gauges
   async updateGauges() {
+    if (!this.isEnabled) {
+      return; // Skip gauge updates when monitoring is disabled
+    }
+
     try {
       // Database connection pool metrics
       try {
-        const { sequelize } = require('../models');
-        const pool = sequelize?.connectionManager?.pool;
-        if (pool) {
-          this.dbConnectionPool.set(pool.used?.length || 0);
-          this.dbPoolSize.set(pool.size || 0);
+        const { sequelize } = require("../models");
+
+        // Check if sequelize is properly initialized
+        if (sequelize && sequelize.connectionManager) {
+          const pool = sequelize.connectionManager.pool;
+          if (pool && typeof pool === "object") {
+            const used = Array.isArray(pool.used) ? pool.used.length : 0;
+            const size = typeof pool.size === "number" ? pool.size : 0;
+            this.dbConnectionPool.set(used);
+            this.dbPoolSize.set(size);
+          } else {
+            this.dbConnectionPool.set(0);
+            this.dbPoolSize.set(0);
+          }
         } else {
+          logger.debug("Database connection manager not available");
           this.dbConnectionPool.set(0);
           this.dbPoolSize.set(0);
         }
       } catch (dbError) {
         logger.warn(
-          'Could not access database connection pool:',
+          "Could not access database connection pool:",
           dbError.message
         );
-        this.dbConnectionPool.set(0);
-        this.dbPoolSize.set(0);
+        if (
+          this.dbConnectionPool &&
+          typeof this.dbConnectionPool.set === "function"
+        ) {
+          this.dbConnectionPool.set(0);
+        }
+        if (this.dbPoolSize && typeof this.dbPoolSize.set === "function") {
+          this.dbPoolSize.set(0);
+        }
       }
 
       // Active users (last 24 hours)
-      const activeUserCount = await this.getActiveUserCount();
-      this.activeUsers.set(activeUserCount);
+      try {
+        const activeUserCount = await this.getActiveUserCount();
+        if (this.activeUsers && typeof this.activeUsers.set === "function") {
+          this.activeUsers.set(activeUserCount);
+        }
+      } catch (userError) {
+        logger.debug("Could not get active user count:", userError.message);
+      }
 
       // Platform connections
-      const connectionCounts = await this.getPlatformConnectionCounts();
-      for (const [platform, count] of Object.entries(connectionCounts)) {
-        this.platformConnections.labels(platform).set(count);
+      try {
+        const connectionCounts = await this.getPlatformConnectionCounts();
+        for (const [platform, count] of Object.entries(connectionCounts)) {
+          if (
+            this.platformConnections &&
+            typeof this.platformConnections.labels === "function"
+          ) {
+            this.platformConnections.labels(platform).set(count);
+          }
+        }
+      } catch (platformError) {
+        logger.debug(
+          "Could not get platform connection counts:",
+          platformError.message
+        );
       }
     } catch (error) {
-      logger.error('Error updating performance gauges:', error);
+      logger.error("Error updating performance gauges:", error);
     }
   }
 
   async getActiveUserCount() {
     try {
-      const { User } = require('../models');
-      const { Op } = require('sequelize');
+      const { User } = require("../models");
+      const { Op } = require("sequelize");
 
       const count = await User.count({
         where: {
           lastLogin: {
-            [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000)
-          }
-        }
+            [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          },
+        },
       });
 
       return count;
     } catch (error) {
-      logger.error('Error getting active user count:', error);
+      logger.error("Error getting active user count:", error);
       return 0;
     }
   }
 
   async getPlatformConnectionCounts() {
     try {
-      const { PlatformConnection } = require('../models');
-      const { Op } = require('sequelize');
+      const { PlatformConnection } = require("../models");
+      const { Op } = require("sequelize");
 
       const counts = await PlatformConnection.findAll({
         attributes: [
-          'platformType',
-          [PlatformConnection.sequelize.fn('COUNT', '*'), 'count']
+          "platformType",
+          [PlatformConnection.sequelize.fn("COUNT", "*"), "count"],
         ],
         where: {
           isActive: true,
-          status: 'active'
+          status: "active",
         },
-        group: ['platformType'],
-        raw: true
+        group: ["platformType"],
+        raw: true,
       });
 
       const result = {};
@@ -355,7 +410,7 @@ class PerformanceMonitor {
 
       return result;
     } catch (error) {
-      logger.error('Error getting platform connection counts:', error);
+      logger.error("Error getting platform connection counts:", error);
       return {};
     }
   }
@@ -373,11 +428,11 @@ class PerformanceMonitor {
         summary: {
           httpRequests: await this.httpRequestTotal.get(),
           errors: await this.errorCount.get(),
-          rateLimitHits: await this.rateLimitHits.get()
-        }
+          rateLimitHits: await this.rateLimitHits.get(),
+        },
       };
     } catch (error) {
-      logger.error('Error generating performance report:', error);
+      logger.error("Error generating performance report:", error);
       return null;
     }
   }
@@ -388,39 +443,46 @@ class PerformanceMonitor {
       const cacheHealth = await cacheService.healthCheck();
 
       return {
-        status: 'healthy',
+        status: "healthy",
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         memory: process.memoryUsage(),
         cache: cacheHealth,
-        activeConnections: this.dbConnectionPool.get()?.values?.[0]?.value || 0
+        activeConnections: this.dbConnectionPool.get()?.values?.[0]?.value || 0,
       };
     } catch (error) {
-      logger.error('Error getting health metrics:', error);
+      logger.error("Error getting health metrics:", error);
       return {
-        status: 'unhealthy',
+        status: "unhealthy",
         error: error.message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
     }
   }
 
   // Start periodic updates
   startPeriodicUpdates() {
+    if (!this.isEnabled) {
+      logger.info(
+        "Performance monitoring disabled - skipping periodic updates"
+      );
+      return;
+    }
+
     // Update gauges every 30 seconds
     setInterval(() => {
       this.updateGauges().catch((error) => {
-        logger.error('Error in periodic gauge update:', error);
+        logger.error("Error in periodic gauge update:", error);
       });
     }, 30000);
 
-    logger.info('Performance monitoring started with periodic updates');
+    logger.info("Performance monitoring started with periodic updates");
   }
 
   // Get metrics for Prometheus scraping
   async getMetrics() {
     if (!this.isEnabled) {
-      return '';
+      return "";
     }
     return await this.register.metrics();
   }
@@ -431,7 +493,7 @@ class PerformanceMonitor {
       labels: () => noOpMetric, // Return self to allow chaining
       observe: () => {},
       inc: () => {},
-      set: () => {}
+      set: () => {},
     };
 
     this.httpRequestDuration = noOpMetric;

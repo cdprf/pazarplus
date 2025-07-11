@@ -1,16 +1,16 @@
-const EventEmitter = require('events');
-const PlatformServiceFactory = require('../modules/order-management/services/platforms/platformServiceFactory');
-const { mapOrderStatus } = require('../utils/enum-validators');
-const logger = require('../utils/logger');
-const cacheService = require('./cache-service');
+const EventEmitter = require("events");
+const PlatformServiceFactory = require("../modules/order-management/services/platforms/platformServiceFactory");
+const { mapOrderStatus } = require("../utils/enum-validators");
+const logger = require("../utils/logger");
+const cacheService = require("./cache-service");
 const {
   Order,
   OrderItem,
   PlatformConnection,
   Product,
-  ShippingDetail
-} = require('../models');
-const { Op } = require('sequelize');
+  ShippingDetail,
+} = require("../models");
+const { Op } = require("sequelize");
 
 class PlatformServiceManager extends EventEmitter {
   constructor() {
@@ -38,7 +38,7 @@ class PlatformServiceManager extends EventEmitter {
   // Enhanced method to get service by platform type
   getService(platformType, connectionId = null, directCredentials = null) {
     const serviceKey = `${platformType.toLowerCase()}-${
-      connectionId || 'default'
+      connectionId || "default"
     }`;
 
     if (!this.serviceInstances.has(serviceKey)) {
@@ -73,7 +73,7 @@ class PlatformServiceManager extends EventEmitter {
         limit: options.limit || 200,
         offset: options.offset || 0,
         status: options.status || null,
-        ...options
+        ...options,
       };
 
       console.log(
@@ -95,7 +95,7 @@ class PlatformServiceManager extends EventEmitter {
         data: normalizedOrders,
         total: platformOrders.length,
         platform: connection.platformType,
-        connectionId: connection.id
+        connectionId: connection.id,
       };
     } catch (error) {
       console.error(
@@ -109,7 +109,7 @@ class PlatformServiceManager extends EventEmitter {
         data: [],
         total: 0,
         platform: connection.platformType,
-        connectionId: connection.id
+        connectionId: connection.id,
       };
     }
   }
@@ -158,7 +158,7 @@ class PlatformServiceManager extends EventEmitter {
 
       // Financial information
       totalAmount: this.extractTotalAmount(order, platformType),
-      currency: this.extractCurrency(order, platformType) || 'TRY',
+      currency: this.extractCurrency(order, platformType) || "TRY",
       taxAmount: this.extractTaxAmount(order, platformType) || 0,
       discountAmount: this.extractDiscountAmount(order, platformType) || 0,
       shippingAmount: this.extractShippingAmount(order, platformType) || 0,
@@ -171,8 +171,8 @@ class PlatformServiceManager extends EventEmitter {
       metadata: {
         originalData: order,
         syncedAt: new Date(),
-        platformSpecific: this.extractPlatformSpecific(order, platformType)
-      }
+        platformSpecific: this.extractPlatformSpecific(order, platformType),
+      },
     };
 
     // Extract shipping address
@@ -205,27 +205,27 @@ class PlatformServiceManager extends EventEmitter {
   // Platform-specific field extraction methods
   extractPlatformOrderId(order, platform) {
     switch (platform) {
-    case 'trendyol':
-      return order.orderNumber || order.id;
-    case 'hepsiburada':
-      return order.orderNumber || order.id;
-    case 'n11':
-      return order.orderNumber || order.id;
-    default:
-      return order.id || order.orderNumber;
+      case "trendyol":
+        return order.orderNumber || order.id;
+      case "hepsiburada":
+        return order.orderNumber || order.id;
+      case "n11":
+        return order.orderNumber || order.id;
+      default:
+        return order.id || order.orderNumber;
     }
   }
 
   extractOrderNumber(order, platform) {
     switch (platform) {
-    case 'trendyol':
-      return order.orderNumber || order.id?.toString();
-    case 'hepsiburada':
-      return order.orderNumber || order.id?.toString();
-    case 'n11':
-      return order.orderNumber || order.id?.toString();
-    default:
-      return order.orderNumber || order.id?.toString();
+      case "trendyol":
+        return order.orderNumber || order.id?.toString();
+      case "hepsiburada":
+        return order.orderNumber || order.id?.toString();
+      case "n11":
+        return order.orderNumber || order.id?.toString();
+      default:
+        return order.orderNumber || order.id?.toString();
     }
   }
 
@@ -233,27 +233,29 @@ class PlatformServiceManager extends EventEmitter {
     let dateField;
 
     switch (platform) {
-    case 'trendyol':
-      dateField = order.orderDate || order.createdDate || order.createDate;
-      break;
-    case 'hepsiburada':
-      dateField = order.orderDate || order.createdDate;
-      break;
-    case 'n11':
-      dateField = order.orderDate || order.createDate;
-      break;
-    default:
-      dateField = order.orderDate || order.createdDate || order.createDate;
+      case "trendyol":
+        dateField = order.orderDate || order.createdDate || order.createDate;
+        break;
+      case "hepsiburada":
+        dateField = order.orderDate || order.createdDate;
+        break;
+      case "n11":
+        dateField = order.orderDate || order.createDate;
+        break;
+      default:
+        dateField = order.orderDate || order.createdDate || order.createDate;
     }
 
-    if (!dateField) {return new Date();}
+    if (!dateField) {
+      return new Date();
+    }
 
     // Handle different date formats
-    if (typeof dateField === 'string') {
+    if (typeof dateField === "string") {
       return new Date(dateField);
     }
 
-    if (typeof dateField === 'number') {
+    if (typeof dateField === "number") {
       // Assume timestamp
       return new Date(dateField);
     }
@@ -263,31 +265,33 @@ class PlatformServiceManager extends EventEmitter {
 
   extractStatus(order, platform) {
     switch (platform) {
-    case 'trendyol':
-      return order.orderStatus || order.orderStatus || order.state;
-    case 'hepsiburada':
-      return order.orderStatus || order.orderStatus;
-    case 'n11':
-      return order.orderStatus || order.orderStatus;
-    default:
-      return order.orderStatus || order.orderStatus;
+      case "trendyol":
+        return order.orderStatus || order.orderStatus || order.state;
+      case "hepsiburada":
+        return order.orderStatus || order.orderStatus;
+      case "n11":
+        return order.orderStatus || order.orderStatus;
+      default:
+        return order.orderStatus || order.orderStatus;
     }
   }
 
   // Enhanced status normalization - delegates to platform services for consistency
   normalizeStatus(platformStatus, platform) {
-    if (!platformStatus) {return 'pending';}
+    if (!platformStatus) {
+      return "pending";
+    }
 
     // Use our centralized status mapping utility first
     const mappedStatus = mapOrderStatus(platformStatus, platform);
-    if (mappedStatus && mappedStatus !== 'unknown') {
+    if (mappedStatus && mappedStatus !== "unknown") {
       return mappedStatus;
     }
 
     // Use platform-specific service mappings for consistency
     try {
       const service = this.getService(platform);
-      if (service && typeof service.mapOrderStatus === 'function') {
+      if (service && typeof service.mapOrderStatus === "function") {
         const serviceResult = service.mapOrderStatus(platformStatus);
         return mapOrderStatus(serviceResult, platform); // Ensure result is valid
       }
@@ -299,75 +303,75 @@ class PlatformServiceManager extends EventEmitter {
     }
 
     // If all else fails, return unknown (which is a valid enum value)
-    return 'unknown';
+    return "unknown";
   }
 
   extractCustomerName(order, platform) {
     switch (platform) {
-    case 'trendyol':
-      if (order.customer) {
-        return `${order.customer.firstName || ''} ${
-          order.customer.lastName || ''
-        }`.trim();
-      }
-      if (order.shippingAddress) {
-        return `${order.shippingAddress.firstName || ''} ${
-          order.shippingAddress.lastName || ''
-        }`.trim();
-      }
-      return order.customerName || 'Unknown Customer';
+      case "trendyol":
+        if (order.customer) {
+          return `${order.customer.firstName || ""} ${
+            order.customer.lastName || ""
+          }`.trim();
+        }
+        if (order.shippingAddress) {
+          return `${order.shippingAddress.firstName || ""} ${
+            order.shippingAddress.lastName || ""
+          }`.trim();
+        }
+        return order.customerName || "Unknown Customer";
 
-    case 'hepsiburada':
-      if (order.customer) {
-        return `${order.customer.firstName || ''} ${
-          order.customer.lastName || ''
-        }`.trim();
-      }
-      return order.customerName || 'Unknown Customer';
+      case "hepsiburada":
+        if (order.customer) {
+          return `${order.customer.firstName || ""} ${
+            order.customer.lastName || ""
+          }`.trim();
+        }
+        return order.customerName || "Unknown Customer";
 
-    case 'n11':
-      if (order.buyer) {
-        return (
-          order.buyer.fullName ||
-            `${order.buyer.firstName || ''} ${
-              order.buyer.lastName || ''
+      case "n11":
+        if (order.buyer) {
+          return (
+            order.buyer.fullName ||
+            `${order.buyer.firstName || ""} ${
+              order.buyer.lastName || ""
             }`.trim()
-        );
-      }
-      return order.customerName || 'Unknown Customer';
+          );
+        }
+        return order.customerName || "Unknown Customer";
 
-    default:
-      return order.customerName || 'Unknown Customer';
+      default:
+        return order.customerName || "Unknown Customer";
     }
   }
 
   extractCustomerEmail(order, platform) {
     switch (platform) {
-    case 'trendyol':
-      return order.customer?.email || order.customerEmail;
-    case 'hepsiburada':
-      return order.customer?.email || order.customerEmail;
-    case 'n11':
-      return order.buyer?.email || order.customerEmail;
-    default:
-      return order.customerEmail;
+      case "trendyol":
+        return order.customer?.email || order.customerEmail;
+      case "hepsiburada":
+        return order.customer?.email || order.customerEmail;
+      case "n11":
+        return order.buyer?.email || order.customerEmail;
+      default:
+        return order.customerEmail;
     }
   }
 
   extractCustomerPhone(order, platform) {
     switch (platform) {
-    case 'trendyol':
-      return (
-        order.customer?.phone ||
+      case "trendyol":
+        return (
+          order.customer?.phone ||
           order.shippingAddress?.phone ||
           order.customerPhone
-      );
-    case 'hepsiburada':
-      return order.customer?.phone || order.customerPhone;
-    case 'n11':
-      return order.buyer?.phone || order.customerPhone;
-    default:
-      return order.customerPhone;
+        );
+      case "hepsiburada":
+        return order.customer?.phone || order.customerPhone;
+      case "n11":
+        return order.buyer?.phone || order.customerPhone;
+      default:
+        return order.customerPhone;
     }
   }
 
@@ -375,17 +379,17 @@ class PlatformServiceManager extends EventEmitter {
     let amount;
 
     switch (platform) {
-    case 'trendyol':
-      amount = order.totalPrice || order.totalAmount || order.amount;
-      break;
-    case 'hepsiburada':
-      amount = order.totalAmount || order.totalPrice;
-      break;
-    case 'n11':
-      amount = order.totalAmount || order.totalPrice;
-      break;
-    default:
-      amount = order.totalAmount || order.totalPrice;
+      case "trendyol":
+        amount = order.totalPrice || order.totalAmount || order.amount;
+        break;
+      case "hepsiburada":
+        amount = order.totalAmount || order.totalPrice;
+        break;
+      case "n11":
+        amount = order.totalAmount || order.totalPrice;
+        break;
+      default:
+        amount = order.totalAmount || order.totalPrice;
     }
 
     return parseFloat(amount) || 0;
@@ -393,14 +397,14 @@ class PlatformServiceManager extends EventEmitter {
 
   extractCurrency(order, platform) {
     switch (platform) {
-    case 'trendyol':
-      return order.currency || order.currencyCode || 'TRY';
-    case 'hepsiburada':
-      return order.currency || 'TRY';
-    case 'n11':
-      return order.currency || 'TRY';
-    default:
-      return order.currency || 'TRY';
+      case "trendyol":
+        return order.currency || order.currencyCode || "TRY";
+      case "hepsiburada":
+        return order.currency || "TRY";
+      case "n11":
+        return order.currency || "TRY";
+      default:
+        return order.currency || "TRY";
     }
   }
 
@@ -408,35 +412,37 @@ class PlatformServiceManager extends EventEmitter {
     let address;
 
     switch (platform) {
-    case 'trendyol':
-      address = order.shippingAddress || order.deliveryAddress;
-      break;
-    case 'hepsiburada':
-      address = order.shippingAddress;
-      break;
-    case 'n11':
-      address = order.shippingAddress || order.deliveryAddress;
-      break;
-    default:
-      address = order.shippingAddress;
+      case "trendyol":
+        address = order.shippingAddress || order.deliveryAddress;
+        break;
+      case "hepsiburada":
+        address = order.shippingAddress;
+        break;
+      case "n11":
+        address = order.shippingAddress || order.deliveryAddress;
+        break;
+      default:
+        address = order.shippingAddress;
     }
 
-    if (!address) {return null;}
+    if (!address) {
+      return null;
+    }
 
     return {
-      firstName: address.firstName || '',
-      lastName: address.lastName || '',
-      company: address.company || '',
+      firstName: address.firstName || "",
+      lastName: address.lastName || "",
+      company: address.company || "",
       address1:
-        address.address1 || address.street || address.addressLine1 || '',
-      address2: address.address2 || address.addressLine2 || '',
-      city: address.city || '',
-      district: address.district || address.state || '',
-      neighborhood: address.neighborhood || '',
-      postalCode: address.postalCode || address.zipCode || '',
-      country: address.country || address.countryCode || 'TR',
-      phone: address.phone || '',
-      fullName: `${address.firstName || ''} ${address.lastName || ''}`.trim()
+        address.address1 || address.street || address.addressLine1 || "",
+      address2: address.address2 || address.addressLine2 || "",
+      city: address.city || "",
+      district: address.district || address.state || "",
+      neighborhood: address.neighborhood || "",
+      postalCode: address.postalCode || address.zipCode || "",
+      country: address.country || address.countryCode || "TR",
+      phone: address.phone || "",
+      fullName: `${address.firstName || ""} ${address.lastName || ""}`.trim(),
     };
   }
 
@@ -444,20 +450,22 @@ class PlatformServiceManager extends EventEmitter {
     let items;
 
     switch (platform) {
-    case 'trendyol':
-      items = order.lines || order.orderLines || order.items;
-      break;
-    case 'hepsiburada':
-      items = order.items || order.orderLines;
-      break;
-    case 'n11':
-      items = order.items || order.orderItems;
-      break;
-    default:
-      items = order.items || order.lines;
+      case "trendyol":
+        items = order.lines || order.orderLines || order.items;
+        break;
+      case "hepsiburada":
+        items = order.items || order.orderLines;
+        break;
+      case "n11":
+        items = order.items || order.orderItems;
+        break;
+      default:
+        items = order.items || order.lines;
     }
 
-    if (!items || !Array.isArray(items)) {return [];}
+    if (!items || !Array.isArray(items)) {
+      return [];
+    }
 
     return items.map((item) => this.normalizeOrderItem(item, platform));
   }
@@ -472,28 +480,28 @@ class PlatformServiceManager extends EventEmitter {
       quantity: parseInt(item.quantity) || 1,
       unitPrice: parseFloat(item.unitPrice || item.price) || 0,
       totalPrice: parseFloat(item.totalPrice || item.amount) || 0,
-      currency: item.currency || item.currencyCode || 'TRY'
+      currency: item.currency || item.currencyCode || "TRY",
     };
 
     // Platform-specific item fields
     switch (platform) {
-    case 'trendyol':
-      normalized.merchantSku = item.merchantSku;
-      normalized.productCode = item.productCode;
-      normalized.productColor = item.productColor;
-      normalized.productSize = item.productSize;
-      normalized.discount = parseFloat(item.discount) || 0;
-      normalized.status = item.orderLineItemStatusName;
-      break;
+      case "trendyol":
+        normalized.merchantSku = item.merchantSku;
+        normalized.productCode = item.productCode;
+        normalized.productColor = item.productColor;
+        normalized.productSize = item.productSize;
+        normalized.discount = parseFloat(item.discount) || 0;
+        normalized.status = item.orderLineItemStatusName;
+        break;
 
-    case 'hepsiburada':
-      normalized.hepsiburadaSku = item.hepsiburadaSku;
-      normalized.merchantSku = item.merchantSku;
-      break;
+      case "hepsiburada":
+        normalized.hepsiburadaSku = item.hepsiburadaSku;
+        normalized.merchantSku = item.merchantSku;
+        break;
 
-    case 'n11':
-      normalized.productSellerCode = item.productSellerCode;
-      break;
+      case "n11":
+        normalized.productSellerCode = item.productSellerCode;
+        break;
     }
 
     return normalized;
@@ -501,34 +509,34 @@ class PlatformServiceManager extends EventEmitter {
 
   extractTrackingInfo(order, platform) {
     switch (platform) {
-    case 'trendyol':
-      if (order.shipmentPackageStatus) {
-        return {
-          trackingNumber: order.shipmentPackageStatus.trackingNumber,
-          trackingUrl: order.shipmentPackageStatus.trackingUrl,
-          carrier: order.shipmentPackageStatus.carrier,
-          status: order.shipmentPackageStatus.status
-        };
-      }
-      break;
+      case "trendyol":
+        if (order.shipmentPackageStatus) {
+          return {
+            trackingNumber: order.shipmentPackageStatus.trackingNumber,
+            trackingUrl: order.shipmentPackageStatus.trackingUrl,
+            carrier: order.shipmentPackageStatus.carrier,
+            status: order.shipmentPackageStatus.status,
+          };
+        }
+        break;
 
-    case 'hepsiburada':
-      if (order.tracking) {
-        return {
-          trackingNumber: order.tracking.trackingNumber,
-          carrier: order.tracking.carrier
-        };
-      }
-      break;
+      case "hepsiburada":
+        if (order.tracking) {
+          return {
+            trackingNumber: order.tracking.trackingNumber,
+            carrier: order.tracking.carrier,
+          };
+        }
+        break;
 
-    case 'n11':
-      if (order.shippingInfo) {
-        return {
-          trackingNumber: order.shippingInfo.trackingNumber,
-          carrier: order.shippingInfo.shippingCompany
-        };
-      }
-      break;
+      case "n11":
+        if (order.shippingInfo) {
+          return {
+            trackingNumber: order.shippingInfo.trackingNumber,
+            carrier: order.shippingInfo.shippingCompany,
+          };
+        }
+        break;
     }
 
     return null;
@@ -539,22 +547,22 @@ class PlatformServiceManager extends EventEmitter {
     const specific = {};
 
     switch (platform) {
-    case 'trendyol':
-      specific.fastDelivery = order.fastDelivery;
-      specific.scheduled = order.scheduled;
-      specific.invoiceRequested = order.invoiceRequested;
-      specific.giftMessage = order.giftMessage;
-      break;
+      case "trendyol":
+        specific.fastDelivery = order.fastDelivery;
+        specific.scheduled = order.scheduled;
+        specific.invoiceRequested = order.invoiceRequested;
+        specific.giftMessage = order.giftMessage;
+        break;
 
-    case 'hepsiburada':
-      specific.isFastDelivery = order.isFastDelivery;
-      specific.isGift = order.isGift;
-      break;
+      case "hepsiburada":
+        specific.isFastDelivery = order.isFastDelivery;
+        specific.isGift = order.isGift;
+        break;
 
-    case 'n11':
-      specific.paymentType = order.paymentType;
-      specific.installment = order.installment;
-      break;
+      case "n11":
+        specific.paymentType = order.paymentType;
+        specific.installment = order.installment;
+        break;
     }
 
     return specific;
@@ -569,29 +577,29 @@ class PlatformServiceManager extends EventEmitter {
     const platform = connection.platformType.toLowerCase();
 
     switch (platform) {
-    case 'trendyol':
-      return !!(
-        connection.credentials?.apiKey &&
+      case "trendyol":
+        return !!(
+          connection.credentials?.apiKey &&
           connection.credentials?.apiSecret &&
           connection.credentials?.supplierId
-      );
+        );
 
-    case 'hepsiburada':
-      return !!(
-        connection.credentials?.username &&
+      case "hepsiburada":
+        return !!(
+          connection.credentials?.username &&
           connection.credentials?.password &&
           connection.credentials?.merchantId
-      );
+        );
 
-    case 'n11':
-      return !!(
-        connection.credentials?.apiKey &&
+      case "n11":
+        return !!(
+          connection.credentials?.apiKey &&
           (connection.credentials?.secretKey ||
             connection.credentials?.apiSecret)
-      );
+        );
 
-    default:
-      return false;
+      default:
+        return false;
     }
   }
 
@@ -603,7 +611,7 @@ class PlatformServiceManager extends EventEmitter {
       if (!this.validateConnection(connection)) {
         return {
           success: false,
-          message: 'Invalid connection credentials'
+          message: "Invalid connection credentials",
         };
       }
 
@@ -612,14 +620,14 @@ class PlatformServiceManager extends EventEmitter {
 
       return {
         success: true,
-        message: 'Connection successful',
-        data: result
+        message: "Connection successful",
+        data: result,
       };
     } catch (error) {
       return {
         success: false,
         message: error.message,
-        error: error
+        error: error,
       };
     }
   }
@@ -648,14 +656,14 @@ class PlatformServiceManager extends EventEmitter {
         {
           success: result.success,
           totalOrders: result.total,
-          platform: result.platform
+          platform: result.platform,
         }
       );
 
       return {
         ...result,
         syncDuration: duration,
-        syncedAt: new Date(endTime)
+        syncedAt: new Date(endTime),
       };
     } catch (error) {
       console.error(`Order sync failed for ${connection.platformType}:`, error);
@@ -668,7 +676,7 @@ class PlatformServiceManager extends EventEmitter {
         platform: connection.platformType,
         connectionId: connection.id,
         syncDuration: Date.now() - startTime,
-        syncedAt: new Date()
+        syncedAt: new Date(),
       };
     }
   }
@@ -676,53 +684,53 @@ class PlatformServiceManager extends EventEmitter {
   // Helper methods for extracting additional fields
   extractCustomerId(order, platform) {
     switch (platform) {
-    case 'trendyol':
-      return order.customer?.id || order.customerId;
-    case 'hepsiburada':
-      return order.customer?.id || order.customerId;
-    case 'n11':
-      return order.buyer?.id || order.customerId;
-    default:
-      return order.customerId;
+      case "trendyol":
+        return order.customer?.id || order.customerId;
+      case "hepsiburada":
+        return order.customer?.id || order.customerId;
+      case "n11":
+        return order.buyer?.id || order.customerId;
+      default:
+        return order.customerId;
     }
   }
 
   extractTaxAmount(order, platform) {
     switch (platform) {
-    case 'trendyol':
-      return parseFloat(order.taxAmount || order.tax) || 0;
-    case 'hepsiburada':
-      return parseFloat(order.taxAmount) || 0;
-    case 'n11':
-      return parseFloat(order.taxAmount) || 0;
-    default:
-      return parseFloat(order.taxAmount || order.tax) || 0;
+      case "trendyol":
+        return parseFloat(order.taxAmount || order.tax) || 0;
+      case "hepsiburada":
+        return parseFloat(order.taxAmount) || 0;
+      case "n11":
+        return parseFloat(order.taxAmount) || 0;
+      default:
+        return parseFloat(order.taxAmount || order.tax) || 0;
     }
   }
 
   extractDiscountAmount(order, platform) {
     switch (platform) {
-    case 'trendyol':
-      return parseFloat(order.discountAmount || order.discount) || 0;
-    case 'hepsiburada':
-      return parseFloat(order.discountAmount) || 0;
-    case 'n11':
-      return parseFloat(order.discountAmount) || 0;
-    default:
-      return parseFloat(order.discountAmount || order.discount) || 0;
+      case "trendyol":
+        return parseFloat(order.discountAmount || order.discount) || 0;
+      case "hepsiburada":
+        return parseFloat(order.discountAmount) || 0;
+      case "n11":
+        return parseFloat(order.discountAmount) || 0;
+      default:
+        return parseFloat(order.discountAmount || order.discount) || 0;
     }
   }
 
   extractShippingAmount(order, platform) {
     switch (platform) {
-    case 'trendyol':
-      return parseFloat(order.shippingAmount || order.cargoPrice) || 0;
-    case 'hepsiburada':
-      return parseFloat(order.shippingAmount) || 0;
-    case 'n11':
-      return parseFloat(order.shippingAmount) || 0;
-    default:
-      return parseFloat(order.shippingAmount) || 0;
+      case "trendyol":
+        return parseFloat(order.shippingAmount || order.cargoPrice) || 0;
+      case "hepsiburada":
+        return parseFloat(order.shippingAmount) || 0;
+      case "n11":
+        return parseFloat(order.shippingAmount) || 0;
+      default:
+        return parseFloat(order.shippingAmount) || 0;
     }
   }
 
@@ -730,34 +738,36 @@ class PlatformServiceManager extends EventEmitter {
     let address;
 
     switch (platform) {
-    case 'trendyol':
-      address = order.billingAddress || order.invoiceAddress;
-      break;
-    case 'hepsiburada':
-      address = order.billingAddress;
-      break;
-    case 'n11':
-      address = order.billingAddress;
-      break;
-    default:
-      address = order.billingAddress;
+      case "trendyol":
+        address = order.billingAddress || order.invoiceAddress;
+        break;
+      case "hepsiburada":
+        address = order.billingAddress;
+        break;
+      case "n11":
+        address = order.billingAddress;
+        break;
+      default:
+        address = order.billingAddress;
     }
 
-    if (!address) {return null;}
+    if (!address) {
+      return null;
+    }
 
     return {
-      firstName: address.firstName || '',
-      lastName: address.lastName || '',
-      company: address.company || '',
-      address1: address.address1 || address.street || '',
-      address2: address.address2 || '',
-      city: address.city || '',
-      district: address.district || address.state || '',
-      postalCode: address.postalCode || address.zipCode || '',
-      country: address.country || address.countryCode || 'TR',
-      phone: address.phone || '',
-      taxNumber: address.taxNumber || '',
-      taxOffice: address.taxOffice || ''
+      firstName: address.firstName || "",
+      lastName: address.lastName || "",
+      company: address.company || "",
+      address1: address.address1 || address.street || "",
+      address2: address.address2 || "",
+      city: address.city || "",
+      district: address.district || address.state || "",
+      postalCode: address.postalCode || address.zipCode || "",
+      country: address.country || address.countryCode || "TR",
+      phone: address.phone || "",
+      taxNumber: address.taxNumber || "",
+      taxOffice: address.taxOffice || "",
     };
   }
 
@@ -773,23 +783,23 @@ class PlatformServiceManager extends EventEmitter {
     this.platformPriority = {
       trendyol: 1,
       hepsiburada: 2,
-      n11: 3
+      n11: 3,
     };
 
     // Conflict resolution strategies
-    this.conflictResolutionStrategies.set('ORDER_STATUS_CONFLICT', {
-      strategy: 'PLATFORM_PRIORITY',
-      fallback: 'LATEST_TIMESTAMP'
+    this.conflictResolutionStrategies.set("ORDER_STATUS_CONFLICT", {
+      strategy: "PLATFORM_PRIORITY",
+      fallback: "LATEST_TIMESTAMP",
     });
 
-    this.conflictResolutionStrategies.set('PRICE_CONFLICT', {
-      strategy: 'MANUAL_REVIEW',
-      fallback: 'PLATFORM_PRIORITY'
+    this.conflictResolutionStrategies.set("PRICE_CONFLICT", {
+      strategy: "MANUAL_REVIEW",
+      fallback: "PLATFORM_PRIORITY",
     });
 
-    this.conflictResolutionStrategies.set('INVENTORY_CONFLICT', {
-      strategy: 'CONSERVATIVE_MINIMUM',
-      fallback: 'REAL_TIME_SYNC'
+    this.conflictResolutionStrategies.set("INVENTORY_CONFLICT", {
+      strategy: "CONSERVATIVE_MINIMUM",
+      fallback: "REAL_TIME_SYNC",
     });
   }
 
@@ -803,19 +813,19 @@ class PlatformServiceManager extends EventEmitter {
         successful: [],
         failed: [],
         conflicts: [],
-        totalProcessed: 0
+        totalProcessed: 0,
       };
 
       // If no specific connections provided, get all active connections
       if (platformConnections.length === 0) {
         platformConnections = await PlatformConnection.findAll({
-          where: { isActive: true }
+          where: { isActive: true },
         });
       }
 
       // If no active connections, return early
       if (platformConnections.length === 0) {
-        logger.debug('No active platform connections found for sync');
+        logger.debug("No active platform connections found for sync");
         return results;
       }
 
@@ -844,7 +854,7 @@ class PlatformServiceManager extends EventEmitter {
               platform: connection.platformType,
               connectionId: connection.id,
               ordersProcessed: ordersProcessed,
-              conflicts: 0 // Simplified for now
+              conflicts: 0, // Simplified for now
             });
 
             // Update last sync time
@@ -853,7 +863,7 @@ class PlatformServiceManager extends EventEmitter {
             results.failed.push({
               platform: connection.platformType,
               connectionId: connection.id,
-              error: orderResult?.message || 'Unknown sync error'
+              error: orderResult?.message || "Unknown sync error",
             });
           }
         } catch (error) {
@@ -864,7 +874,7 @@ class PlatformServiceManager extends EventEmitter {
           results.failed.push({
             platform: connection.platformType,
             connectionId: connection.id,
-            error: error.message
+            error: error.message,
           });
         }
       });
@@ -887,18 +897,18 @@ class PlatformServiceManager extends EventEmitter {
             platform: r.platform,
             connectionId: r.connectionId,
             ordersProcessed: r.ordersProcessed,
-            conflicts: r.conflicts
+            conflicts: r.conflicts,
           })),
           failed: results.failed.map((f) => ({
             platform: f.platform,
             connectionId: f.connectionId,
-            error: f.error
+            error: f.error,
           })),
           totalProcessed: results.totalProcessed,
-          syncDuration: results.syncDuration
+          syncDuration: results.syncDuration,
         };
 
-        this.emit('syncCompleted', {
+        this.emit("syncCompleted", {
           timestamp: new Date(),
           results: safeResults,
           performance: {
@@ -906,21 +916,21 @@ class PlatformServiceManager extends EventEmitter {
             ordersPerSecond:
               results.totalProcessed > 0
                 ? results.totalProcessed / (syncDuration / 1000)
-                : 0
-          }
+                : 0,
+          },
         });
 
-        logger.info('Enhanced platform sync completed', {
+        logger.info("Enhanced platform sync completed", {
           totalProcessed: results.totalProcessed,
           successful: results.successful.length,
           failed: results.failed.length,
-          duration: syncDuration
+          duration: syncDuration,
         });
       }
 
       return results;
     } catch (error) {
-      logger.error('Enhanced platform sync failed:', error);
+      logger.error("Enhanced platform sync failed:", error);
       throw error;
     }
   }
@@ -938,13 +948,13 @@ class PlatformServiceManager extends EventEmitter {
           where: {
             [Op.or]: [
               { externalOrderId: orderData.orderNumber },
-              { orderNumber: orderData.orderNumber }
-            ]
+              { orderNumber: orderData.orderNumber },
+            ],
           },
           include: [
-            { model: PlatformConnection, as: 'platformConnection' },
-            { model: OrderItem, as: 'items' }
-          ]
+            { model: PlatformConnection, as: "platformConnection" },
+            { model: OrderItem, as: "items" },
+          ],
         });
 
         if (existingOrders.length > 1) {
@@ -958,17 +968,17 @@ class PlatformServiceManager extends EventEmitter {
             orderData,
             hasConflict: true,
             conflictResolution: conflict,
-            processed: conflict.resolved
+            processed: conflict.resolved,
           });
 
           // Emit conflict event for real-time notifications
-          this.emit('orderConflict', {
+          this.emit("orderConflict", {
             orderNumber: orderData.orderNumber,
             platforms: existingOrders.map(
               (o) => o.platformConnection.platformType
             ),
             conflictType: conflict.type,
-            resolution: conflict.resolution
+            resolution: conflict.resolution,
           });
         } else {
           // No conflict, process normally
@@ -980,7 +990,7 @@ class PlatformServiceManager extends EventEmitter {
             orderData,
             hasConflict: false,
             processed: true,
-            orderId: processedOrder?.id || null
+            orderId: processedOrder?.id || null,
           });
         }
       } catch (error) {
@@ -992,7 +1002,7 @@ class PlatformServiceManager extends EventEmitter {
           orderData,
           hasConflict: false,
           processed: false,
-          error: error.message
+          error: error.message,
         });
       }
     }
@@ -1013,11 +1023,11 @@ class PlatformServiceManager extends EventEmitter {
         this.mapOrderStatus(newOrderData.status) !== existingOrder.orderStatus
       ) {
         conflicts.push({
-          type: 'ORDER_STATUS_CONFLICT',
+          type: "ORDER_STATUS_CONFLICT",
           newValue: this.mapOrderStatus(newOrderData.status),
           existingValue: existingOrder.orderStatus,
           platform: connection.platformType,
-          existingPlatform: existingOrder.platformConnection.platformType
+          existingPlatform: existingOrder.platformConnection.platformType,
         });
       }
 
@@ -1026,11 +1036,11 @@ class PlatformServiceManager extends EventEmitter {
         Math.abs(newOrderData.totalPrice - existingOrder.totalAmount) > 0.01
       ) {
         conflicts.push({
-          type: 'PRICE_CONFLICT',
+          type: "PRICE_CONFLICT",
           newValue: newOrderData.totalPrice,
           existingValue: existingOrder.totalAmount,
           platform: connection.platformType,
-          existingPlatform: existingOrder.platformConnection.platformType
+          existingPlatform: existingOrder.platformConnection.platformType,
         });
       }
 
@@ -1045,12 +1055,12 @@ class PlatformServiceManager extends EventEmitter {
 
           if (existingItem && existingItem.quantity !== newItem.quantity) {
             conflicts.push({
-              type: 'INVENTORY_CONFLICT',
+              type: "INVENTORY_CONFLICT",
               newValue: newItem.quantity,
               existingValue: existingItem.quantity,
               sku: newItem.merchantSku,
               platform: connection.platformType,
-              existingPlatform: existingOrder.platformConnection.platformType
+              existingPlatform: existingOrder.platformConnection.platformType,
             });
           }
         }
@@ -1068,8 +1078,8 @@ class PlatformServiceManager extends EventEmitter {
     return {
       conflicts,
       resolutions,
-      resolved: resolutions.every((r) => r.status === 'resolved'),
-      type: conflicts.map((c) => c.type).join(', ')
+      resolved: resolutions.every((r) => r.status === "resolved"),
+      type: conflicts.map((c) => c.type).join(", "),
     };
   }
 
@@ -1084,51 +1094,51 @@ class PlatformServiceManager extends EventEmitter {
       let resolution;
 
       switch (strategy.strategy) {
-      case 'PLATFORM_PRIORITY':
-        resolution = await this.resolvByPlatformPriority(
-          conflict,
-          newOrderData,
-          existingOrders,
-          connection
-        );
-        break;
+        case "PLATFORM_PRIORITY":
+          resolution = await this.resolvByPlatformPriority(
+            conflict,
+            newOrderData,
+            existingOrders,
+            connection
+          );
+          break;
 
-      case 'LATEST_TIMESTAMP':
-        resolution = await this.resolveByLatestTimestamp(
-          conflict,
-          newOrderData,
-          existingOrders
-        );
-        break;
+        case "LATEST_TIMESTAMP":
+          resolution = await this.resolveByLatestTimestamp(
+            conflict,
+            newOrderData,
+            existingOrders
+          );
+          break;
 
-      case 'CONSERVATIVE_MINIMUM':
-        resolution = await this.resolveByConservativeMinimum(
-          conflict,
-          newOrderData,
-          existingOrders
-        );
-        break;
+        case "CONSERVATIVE_MINIMUM":
+          resolution = await this.resolveByConservativeMinimum(
+            conflict,
+            newOrderData,
+            existingOrders
+          );
+          break;
 
-      case 'MANUAL_REVIEW':
-        resolution = await this.flagForManualReview(
-          conflict,
-          newOrderData,
-          existingOrders
-        );
-        break;
+        case "MANUAL_REVIEW":
+          resolution = await this.flagForManualReview(
+            conflict,
+            newOrderData,
+            existingOrders
+          );
+          break;
 
-      default:
-        resolution = {
-          status: 'unresolved',
-          reason: 'No strategy configured'
-        };
+        default:
+          resolution = {
+            status: "unresolved",
+            reason: "No strategy configured",
+          };
       }
 
       resolutions.push({
         conflict,
         resolution,
         strategy: strategy.strategy,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     }
 
@@ -1157,17 +1167,17 @@ class PlatformServiceManager extends EventEmitter {
       await this.updateOrderWithNewData(targetOrder, newOrderData, conflict);
 
       return {
-        status: 'resolved',
-        action: 'updated_existing',
+        status: "resolved",
+        action: "updated_existing",
         reason: `${connection.platformType} has higher priority than ${conflict.existingPlatform}`,
-        updatedOrderId: targetOrder.id
+        updatedOrderId: targetOrder.id,
       };
     } else {
       // Existing platform has higher priority, ignore new data
       return {
-        status: 'resolved',
-        action: 'ignored_new',
-        reason: `${conflict.existingPlatform} has higher priority than ${connection.platformType}`
+        status: "resolved",
+        action: "ignored_new",
+        reason: `${conflict.existingPlatform} has higher priority than ${connection.platformType}`,
       };
     }
   }
@@ -1195,15 +1205,15 @@ class PlatformServiceManager extends EventEmitter {
       // New data is more recent
       await this.updateOrderWithNewData(latestOrder, newOrderData, conflict);
       return {
-        status: 'resolved',
-        action: 'updated_with_latest',
-        reason: 'New data has more recent timestamp'
+        status: "resolved",
+        action: "updated_with_latest",
+        reason: "New data has more recent timestamp",
       };
     } else {
       return {
-        status: 'resolved',
-        action: 'kept_existing',
-        reason: 'Existing data has more recent timestamp'
+        status: "resolved",
+        action: "kept_existing",
+        reason: "Existing data has more recent timestamp",
       };
     }
   }
@@ -1212,7 +1222,7 @@ class PlatformServiceManager extends EventEmitter {
    * Resolve inventory conflict by taking conservative minimum
    */
   async resolveByConservativeMinimum(conflict, newOrderData, existingOrders) {
-    if (conflict.type === 'INVENTORY_CONFLICT') {
+    if (conflict.type === "INVENTORY_CONFLICT") {
       const minQuantity = Math.min(conflict.newValue, conflict.existingValue);
 
       // Update all orders to use minimum quantity
@@ -1224,14 +1234,14 @@ class PlatformServiceManager extends EventEmitter {
       }
 
       return {
-        status: 'resolved',
-        action: 'set_minimum_quantity',
+        status: "resolved",
+        action: "set_minimum_quantity",
         reason: `Set quantity to conservative minimum: ${minQuantity}`,
-        resolvedValue: minQuantity
+        resolvedValue: minQuantity,
       };
     }
 
-    return { status: 'unresolved', reason: 'Not an inventory conflict' };
+    return { status: "unresolved", reason: "Not an inventory conflict" };
   }
 
   /**
@@ -1250,24 +1260,24 @@ class PlatformServiceManager extends EventEmitter {
         newOrderData,
         existingOrderIds: existingOrders.map((o) => o.id),
         flaggedAt: new Date(),
-        status: 'pending_review'
+        status: "pending_review",
       },
       24 * 60 * 60
     ); // 24 hours TTL
 
     // Emit event for notification system
-    this.emit('manualReviewRequired', {
+    this.emit("manualReviewRequired", {
       conflictId,
       conflict,
       orderNumber: newOrderData.orderNumber,
-      platforms: existingOrders.map((o) => o.platformConnection.platformType)
+      platforms: existingOrders.map((o) => o.platformConnection.platformType),
     });
 
     return {
-      status: 'flagged_for_review',
-      action: 'manual_review_required',
+      status: "flagged_for_review",
+      action: "manual_review_required",
       conflictId,
-      reason: 'Conflict requires manual intervention'
+      reason: "Conflict requires manual intervention",
     };
   }
 
@@ -1278,12 +1288,12 @@ class PlatformServiceManager extends EventEmitter {
     const updateData = {};
 
     switch (conflict.type) {
-    case 'ORDER_STATUS_CONFLICT':
-      updateData.orderStatus = this.mapOrderStatus(newOrderData.status);
-      break;
-    case 'PRICE_CONFLICT':
-      updateData.totalAmount = newOrderData.totalPrice;
-      break;
+      case "ORDER_STATUS_CONFLICT":
+        updateData.orderStatus = this.mapOrderStatus(newOrderData.status);
+        break;
+      case "PRICE_CONFLICT":
+        updateData.totalAmount = newOrderData.totalPrice;
+        break;
     }
 
     updateData.lastSyncedAt = new Date();
@@ -1303,7 +1313,9 @@ class PlatformServiceManager extends EventEmitter {
       const syncResults = [];
 
       for (const connection of productConnections) {
-        if (connection.platformType === originPlatform) {continue;} // Skip origin platform
+        if (connection.platformType === originPlatform) {
+          continue;
+        } // Skip origin platform
 
         try {
           const platformService = this.getPlatformService(
@@ -1320,7 +1332,7 @@ class PlatformServiceManager extends EventEmitter {
             syncResults.push({
               platform: connection.platformType,
               success: result.success,
-              message: result.message
+              message: result.message,
             });
           }
         } catch (error) {
@@ -1331,7 +1343,7 @@ class PlatformServiceManager extends EventEmitter {
           syncResults.push({
             platform: connection.platformType,
             success: false,
-            error: error.message
+            error: error.message,
           });
         }
       }
@@ -1340,21 +1352,21 @@ class PlatformServiceManager extends EventEmitter {
       this.inventoryCache.set(sku, {
         quantity: newQuantity,
         lastUpdated: new Date(),
-        originPlatform
+        originPlatform,
       });
 
       // Emit inventory sync event
-      this.emit('inventorySynced', {
+      this.emit("inventorySynced", {
         sku,
         newQuantity,
         originPlatform,
         syncResults,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
 
       return syncResults;
     } catch (error) {
-      logger.error('Inventory sync failed:', error);
+      logger.error("Inventory sync failed:", error);
       throw error;
     }
   }
@@ -1364,43 +1376,43 @@ class PlatformServiceManager extends EventEmitter {
    */
   setupRealTimeNotifications() {
     // Order status changes
-    this.on('orderStatusChanged', (data) => {
-      this.broadcastNotification('order_status_change', {
+    this.on("orderStatusChanged", (data) => {
+      this.broadcastNotification("order_status_change", {
         orderNumber: data.orderNumber,
         platform: data.platform,
         oldStatus: data.oldStatus,
         newStatus: data.newStatus,
-        timestamp: data.timestamp
+        timestamp: data.timestamp,
       });
     });
 
     // Inventory alerts
-    this.on('lowInventoryAlert', (data) => {
-      this.broadcastNotification('low_inventory', {
+    this.on("lowInventoryAlert", (data) => {
+      this.broadcastNotification("low_inventory", {
         sku: data.sku,
         currentQuantity: data.quantity,
         threshold: data.threshold,
-        platforms: data.platforms
+        platforms: data.platforms,
       });
     });
 
     // Sync completion notifications
-    this.on('syncCompleted', (data) => {
-      this.broadcastNotification('sync_completed', {
+    this.on("syncCompleted", (data) => {
+      this.broadcastNotification("sync_completed", {
         totalProcessed: data.results.totalProcessed,
         duration: data.performance.duration,
         conflicts: data.results.conflicts.length,
-        timestamp: data.timestamp
+        timestamp: data.timestamp,
       });
     });
 
     // Conflict notifications
-    this.on('orderConflict', (data) => {
-      this.broadcastNotification('order_conflict', {
+    this.on("orderConflict", (data) => {
+      this.broadcastNotification("order_conflict", {
         orderNumber: data.orderNumber,
         platforms: data.platforms,
         conflictType: data.conflictType,
-        requiresAttention: data.resolution === 'manual_review'
+        requiresAttention: data.resolution === "manual_review",
       });
     });
   }
@@ -1418,7 +1430,7 @@ class PlatformServiceManager extends EventEmitter {
       {
         type,
         data,
-        timestamp: new Date()
+        timestamp: new Date(),
       },
       24 * 60 * 60
     ); // 24 hours TTL
@@ -1430,7 +1442,7 @@ class PlatformServiceManager extends EventEmitter {
   getPlatformService(platformType, connectionId) {
     // Try to get from existing service instances first
     const serviceKey = `${platformType.toLowerCase()}-${
-      connectionId || 'default'
+      connectionId || "default"
     }`;
 
     if (this.serviceInstances.has(serviceKey)) {
@@ -1439,23 +1451,23 @@ class PlatformServiceManager extends EventEmitter {
 
     // Create new service instance
     switch (platformType.toLowerCase()) {
-    case 'trendyol':
-      const TrendyolService = require('../modules/order-management/services/platforms/trendyol/trendyol-service');
-      const trendyolService = new TrendyolService(connectionId);
-      this.serviceInstances.set(serviceKey, trendyolService);
-      return trendyolService;
-    case 'hepsiburada':
-      const HepsiburadaService = require('../modules/order-management/services/platforms/hepsiburada/hepsiburada-service');
-      const hepsiburadaService = new HepsiburadaService(connectionId);
-      this.serviceInstances.set(serviceKey, hepsiburadaService);
-      return hepsiburadaService;
-    case 'n11':
-      const N11Service = require('../modules/order-management/services/platforms/n11/n11-service');
-      const n11Service = new N11Service(connectionId);
-      this.serviceInstances.set(serviceKey, n11Service);
-      return n11Service;
-    default:
-      throw new Error(`Unsupported platform type: ${platformType}`);
+      case "trendyol":
+        const TrendyolService = require("../modules/order-management/services/platforms/trendyol/trendyol-service");
+        const trendyolService = new TrendyolService(connectionId);
+        this.serviceInstances.set(serviceKey, trendyolService);
+        return trendyolService;
+      case "hepsiburada":
+        const HepsiburadaService = require("../modules/order-management/services/platforms/hepsiburada/hepsiburada-service");
+        const hepsiburadaService = new HepsiburadaService(connectionId);
+        this.serviceInstances.set(serviceKey, hepsiburadaService);
+        return hepsiburadaService;
+      case "n11":
+        const N11Service = require("../modules/order-management/services/platforms/n11/n11-service");
+        const n11Service = new N11Service(connectionId);
+        this.serviceInstances.set(serviceKey, n11Service);
+        return n11Service;
+      default:
+        throw new Error(`Unsupported platform type: ${platformType}`);
     }
   }
 
@@ -1466,33 +1478,33 @@ class PlatformServiceManager extends EventEmitter {
   mapOrderStatus(platformStatus) {
     const statusMap = {
       // Trendyol mappings (consistent with TrendyolService)
-      Created: 'new',
-      Picking: 'processing',
-      Invoiced: 'processing',
-      Shipped: 'shipped',
-      AtCollectionPoint: 'shipped',
-      Delivered: 'delivered',
-      Cancelled: 'cancelled',
-      UnDelivered: 'failed',
-      Returned: 'returned',
+      Created: "new",
+      Picking: "processing",
+      Invoiced: "processing",
+      Shipped: "shipped",
+      AtCollectionPoint: "shipped",
+      Delivered: "delivered",
+      Cancelled: "cancelled",
+      UnDelivered: "failed",
+      Returned: "returned",
 
       // Hepsiburada mappings (consistent with HepsiburadaService)
-      Open: 'pending',
-      PaymentCompleted: 'processing',
-      Packaged: 'shipped',
-      InTransit: 'shipped',
-      CancelledByMerchant: 'cancelled',
-      CancelledByCustomer: 'cancelled',
-      CancelledBySap: 'cancelled',
-      ReadyToShip: 'processing',
-      ClaimCreated: 'claim_created',
+      Open: "pending",
+      PaymentCompleted: "processing",
+      Packaged: "shipped",
+      InTransit: "shipped",
+      CancelledByMerchant: "cancelled",
+      CancelledByCustomer: "cancelled",
+      CancelledBySap: "cancelled",
+      ReadyToShip: "processing",
+      ClaimCreated: "claim_created",
 
       // N11 mappings (consistent with N11Service)
-      Approved: 'pending',
-      New: 'new'
+      Approved: "pending",
+      New: "new",
     };
 
-    return statusMap[platformStatus] || 'unknown';
+    return statusMap[platformStatus] || "unknown";
   }
 
   /**
@@ -1502,7 +1514,7 @@ class PlatformServiceManager extends EventEmitter {
     // This would query for products across platforms with the given SKU
     // Simplified implementation for now
     return await PlatformConnection.findAll({
-      where: { isActive: true }
+      where: { isActive: true },
     });
   }
 
@@ -1543,29 +1555,29 @@ class PlatformServiceManager extends EventEmitter {
       try {
         // Only run sync if not already processing
         if (this.isProcessing) {
-          logger.debug('Sync already in progress, skipping scheduled sync');
+          logger.debug("Sync already in progress, skipping scheduled sync");
           return;
         }
 
         this.isProcessing = true;
-        logger.debug('Starting scheduled platform sync');
+        logger.debug("Starting scheduled platform sync");
 
         // Use a shorter sync window for periodic syncs
         const results = await this.syncOrdersWithConflictResolution();
 
-        logger.debug('Scheduled sync completed successfully', {
+        logger.debug("Scheduled sync completed successfully", {
           totalProcessed: results.totalProcessed,
-          duration: results.syncDuration
+          duration: results.syncDuration,
         });
       } catch (error) {
-        logger.error('Scheduled sync failed:', error);
+        logger.error("Scheduled sync failed:", error);
       } finally {
         this.isProcessing = false;
       }
     }, 10 * 60 * 1000); // 10 minutes
 
     logger.info(
-      'Enhanced platform sync scheduler started (10 minute intervals)'
+      "Enhanced platform sync scheduler started (10 minute intervals)"
     );
   }
 
@@ -1573,15 +1585,15 @@ class PlatformServiceManager extends EventEmitter {
    * Get pending manual reviews
    */
   async getPendingManualReviews() {
-    const keys = await cacheService.getKeys('manual_review:*');
+    const keys = await cacheService.getKeys("manual_review:*");
     const reviews = [];
 
     for (const key of keys) {
       const review = await cacheService.get(key);
-      if (review && review.status === 'pending_review') {
+      if (review && review.status === "pending_review") {
         reviews.push({
-          id: key.replace('manual_review:', ''),
-          ...review
+          id: key.replace("manual_review:", ""),
+          ...review,
         });
       }
     }
@@ -1596,20 +1608,20 @@ class PlatformServiceManager extends EventEmitter {
     const review = await cacheService.get(`manual_review:${conflictId}`);
 
     if (!review) {
-      throw new Error('Manual review not found');
+      throw new Error("Manual review not found");
     }
 
     // Apply resolution
-    review.status = 'resolved';
+    review.status = "resolved";
     review.resolution = resolution;
     review.resolvedAt = new Date();
 
     await cacheService.set(`manual_review:${conflictId}`, review, 24 * 60 * 60);
 
-    this.emit('manualReviewResolved', {
+    this.emit("manualReviewResolved", {
       conflictId,
       resolution,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
 
     return review;

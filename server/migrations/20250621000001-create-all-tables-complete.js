@@ -5650,7 +5650,7 @@ module.exports = {
     }
 
     await queryInterface.addIndex("bulk_operations", ["userId"]);
-    await queryInterface.addIndex("bulk_operations", ["type"]);
+    await queryInterface.addIndex("bulk_operations", ["operationType"]);
     await queryInterface.addIndex("bulk_operations", ["status"]);
     await queryInterface.addIndex("bulk_operations", ["createdAt"]);
 
