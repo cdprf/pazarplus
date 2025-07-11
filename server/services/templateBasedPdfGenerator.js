@@ -5,6 +5,10 @@ const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
 
+// Import logger first
+const logger = require("../utils/logger");
+const FontManager = require("../utils/FontManager");
+
 // Try to require bwip-js for barcode generation - make it optional
 let bwipjs = null;
 try {
@@ -24,9 +28,6 @@ try {
     "Sharp image processing library not available, image operations will be limited"
   );
 }
-
-const logger = require("../utils/logger");
-const FontManager = require("../utils/FontManager");
 
 // Element types constants
 const ELEMENT_TYPES = {

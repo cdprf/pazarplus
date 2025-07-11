@@ -44,6 +44,11 @@ class DatabaseStatusWebSocketService {
     try {
       logger.info('Initializing Database Status WebSocket server...');
 
+      if (!server) {
+        logger.warn('No HTTP server provided, Database Status WebSocket will be initialized later');
+        return;
+      }
+
       this.wss = new WebSocket.Server({
         server,
         path: '/ws/database-status'
