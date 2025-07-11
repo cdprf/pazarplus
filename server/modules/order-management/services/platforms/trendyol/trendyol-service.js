@@ -236,7 +236,7 @@ class TrendyolService extends BasePlatformService {
           success: true,
           message: 'Connection successful',
           data: {
-            platform: 'trendyol',
+            connectionId: this.connectionId,
             connectionId: this.connectionId,
             status: 'active',
             supplierId: supplierId
@@ -1495,11 +1495,25 @@ class TrendyolService extends BasePlatformService {
   async getOrderDetailsForAcceptance(externalOrderId) {
     try {
       // First try to get details from the API
-      const orderDetails = await this.getOrderById(externalOrderId);
+      // Get order details from API
+      const { sellerId } = this.decryptCredentials(this.connection.credentials);
+      const endpoint = TRENDYOL_API.ENDPOINTS.NEW_ORDER_BY_ID
+        .replace('{sellerId}', sellerId)
+        .replace('{orderNumber}', externalOrderId);
+
+      let orderDetails = null;
+      try {
+        const response = await this.retryRequest(() =>
+          this.axiosInstance.get(`${TRENDYOL_API.NEW_BASE_URL}${endpoint}`)
+        );
+        orderDetails = response.data;
+      } catch (apiError) {
+        this.logger.warn(`Failed to fetch order details from API: ${apiError.message}`);
+      }
 
       if (orderDetails && orderDetails.lines) {
         return {
-          packageId: orderDetails.packageId || externalOrderId,
+          packageId: orderDetails.packageId || orderDetails.id || externalOrderId,
           lines: orderDetails.lines
         };
       }
@@ -1508,7 +1522,7 @@ class TrendyolService extends BasePlatformService {
       const localOrder = await Order.findOne({
         where: {
           externalOrderId: externalOrderId.toString(),
-          platform: 'trendyol'
+          connectionId: this.connectionId
         },
         include: [
           {
@@ -2773,11 +2787,25 @@ class TrendyolService extends BasePlatformService {
   async getOrderDetailsForAcceptance(externalOrderId) {
     try {
       // First try to get details from the API
-      const orderDetails = await this.getOrderById(externalOrderId);
+      // Get order details from API
+      const { sellerId } = this.decryptCredentials(this.connection.credentials);
+      const endpoint = TRENDYOL_API.ENDPOINTS.NEW_ORDER_BY_ID
+        .replace('{sellerId}', sellerId)
+        .replace('{orderNumber}', externalOrderId);
+
+      let orderDetails = null;
+      try {
+        const response = await this.retryRequest(() =>
+          this.axiosInstance.get(`${TRENDYOL_API.NEW_BASE_URL}${endpoint}`)
+        );
+        orderDetails = response.data;
+      } catch (apiError) {
+        this.logger.warn(`Failed to fetch order details from API: ${apiError.message}`);
+      }
 
       if (orderDetails && orderDetails.lines) {
         return {
-          packageId: orderDetails.packageId || externalOrderId,
+          packageId: orderDetails.packageId || orderDetails.id || externalOrderId,
           lines: orderDetails.lines
         };
       }
@@ -2786,7 +2814,7 @@ class TrendyolService extends BasePlatformService {
       const localOrder = await Order.findOne({
         where: {
           externalOrderId: externalOrderId.toString(),
-          platform: 'trendyol'
+          connectionId: this.connectionId
         },
         include: [
           {

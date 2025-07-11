@@ -1,11 +1,12 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const os = require('os');
+const os = require("os");
+const config = require("../config/config");
 
 /**
  * Get network configuration information
  */
-router.get('/network-info', (req, res) => {
+router.get("/network-info", (req, res) => {
   try {
     // Get current network interfaces
     const interfaces = os.networkInterfaces();
@@ -14,12 +15,12 @@ router.get('/network-info', (req, res) => {
     for (const name of Object.keys(interfaces)) {
       for (const iface of interfaces[name]) {
         // Skip over internal (i.e. 127.0.0.1) and non-IPv4 addresses
-        if (iface.family === 'IPv4' && !iface.internal) {
+        if (iface.family === "IPv4" && !iface.internal) {
           networkInfo.push({
             interface: name,
             address: iface.address,
             netmask: iface.netmask,
-            mac: iface.mac
+            mac: iface.mac,
           });
         }
       }
@@ -27,7 +28,7 @@ router.get('/network-info', (req, res) => {
 
     // Get the primary IP (usually the first non-internal IPv4 address)
     const primaryIP =
-      networkInfo.length > 0 ? networkInfo[0].address : 'localhost';
+      networkInfo.length > 0 ? networkInfo[0].address : "localhost";
 
     res.json({
       success: true,
@@ -36,17 +37,17 @@ router.get('/network-info', (req, res) => {
         hostname: os.hostname(),
         platform: os.platform(),
         networkInterfaces: networkInfo,
-        serverPort: process.env.PORT || 5001,
-        apiBaseUrl: `http://${primaryIP}:${process.env.PORT || 5001}/api`,
-        timestamp: new Date().toISOString()
-      }
+        serverPort: config.server.port,
+        apiBaseUrl: `http://${primaryIP}:${config.server.port}/api`,
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
-    console.error('Error getting network info:', error);
+    console.error("Error getting network info:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get network information',
-      error: error.message
+      message: "Failed to get network information",
+      error: error.message,
     });
   }
 });
@@ -54,37 +55,39 @@ router.get('/network-info', (req, res) => {
 /**
  * Health check endpoint that includes network info
  */
-router.get('/network-health', (req, res) => {
+router.get("/network-health", (req, res) => {
   try {
     const interfaces = os.networkInterfaces();
-    let primaryIP = 'localhost';
+    let primaryIP = "localhost";
 
     // Find the first non-internal IPv4 address
     for (const name of Object.keys(interfaces)) {
       for (const iface of interfaces[name]) {
-        if (iface.family === 'IPv4' && !iface.internal) {
+        if (iface.family === "IPv4" && !iface.internal) {
           primaryIP = iface.address;
           break;
         }
       }
-      if (primaryIP !== 'localhost') {break;}
+      if (primaryIP !== "localhost") {
+        break;
+      }
     }
 
     res.json({
       success: true,
-      status: 'healthy',
+      status: "healthy",
       network: {
         primaryIP,
         hostname: os.hostname(),
-        port: process.env.PORT || 5001,
-        timestamp: new Date().toISOString()
-      }
+        port: config.server.port,
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      status: 'error',
-      error: error.message
+      status: "error",
+      error: error.message,
     });
   }
 });

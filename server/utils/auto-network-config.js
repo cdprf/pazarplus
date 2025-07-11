@@ -1,14 +1,15 @@
-const os = require('os');
-const fs = require('fs');
-const path = require('path');
+const os = require("os");
+const fs = require("fs");
+const path = require("path");
+const config = require("../config/config");
 
 /**
  * Automatically detect network IP and update client configuration
  */
 class AutoNetworkConfig {
   constructor() {
-    this.clientEnvPath = path.join(__dirname, '../../client/.env.local');
-    this.clientMainEnvPath = path.join(__dirname, '../../client/.env');
+    this.clientEnvPath = path.join(__dirname, "../../client/.env.local");
+    this.clientMainEnvPath = path.join(__dirname, "../../client/.env");
   }
 
   /**
@@ -18,13 +19,13 @@ class AutoNetworkConfig {
     const interfaces = os.networkInterfaces();
 
     // Priority order for interface types
-    const interfacePriority = ['en0', 'eth0', 'wlan0', 'en1', 'en2'];
+    const interfacePriority = ["en0", "eth0", "wlan0", "en1", "en2"];
 
     // First, try priority interfaces
     for (const interfaceName of interfacePriority) {
       if (interfaces[interfaceName]) {
         for (const iface of interfaces[interfaceName]) {
-          if (iface.family === 'IPv4' && !iface.internal) {
+          if (iface.family === "IPv4" && !iface.internal) {
             return iface.address;
           }
         }
@@ -34,14 +35,14 @@ class AutoNetworkConfig {
     // Fallback: find any non-internal IPv4 address
     for (const interfaceName of Object.keys(interfaces)) {
       for (const iface of interfaces[interfaceName]) {
-        if (iface.family === 'IPv4' && !iface.internal) {
+        if (iface.family === "IPv4" && !iface.internal) {
           return iface.address;
         }
       }
     }
 
     // Last resort: use localhost
-    return '127.0.0.1';
+    return "127.0.0.1";
   }
 
   /**
@@ -71,7 +72,7 @@ REACT_APP_WDS_SOCKET_PORT=3000
 # REACT_APP_API_URL set in .env.production for production builds
 REACT_APP_DEV_MODE=true
 REACT_APP_CURRENT_NETWORK_IP=${ip}
-REACT_APP_SERVER_PORT=5001
+REACT_APP_SERVER_PORT=${config.server.port}
 `;
 
     try {

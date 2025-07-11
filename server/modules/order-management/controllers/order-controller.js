@@ -1873,14 +1873,36 @@ async function acceptOrder(req, res) {
 
         // Use platform-specific acceptance if available, otherwise use status update
         if (typeof platformService.acceptOrder === 'function') {
+          logger.info('Using platform acceptOrder method', {
+            orderId: id,
+            platform: order.platformConnection.platformType,
+            externalOrderId: order.externalOrderId || order.platformOrderId
+          });
+          
           platformUpdateResult = await platformService.acceptOrder(
             order.externalOrderId || order.platformOrderId
           );
+          
+          logger.info('Platform acceptOrder result', {
+            orderId: id,
+            result: platformUpdateResult
+          });
         } else if (typeof platformService.updateOrderStatus === 'function') {
+          logger.info('Using platform updateOrderStatus method', {
+            orderId: id,
+            platform: order.platformConnection.platformType
+          });
+          
           platformUpdateResult = await platformService.updateOrderStatus(
             id,
             'processing'
           );
+        } else {
+          logger.warn('No platform order acceptance method available', {
+            orderId: id,
+            platform: order.platformConnection.platformType,
+            availableMethods: Object.getOwnPropertyNames(platformService)
+          });
         }
       } catch (platformError) {
         logger.warn(

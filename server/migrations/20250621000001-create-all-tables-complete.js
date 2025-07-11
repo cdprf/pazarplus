@@ -2949,17 +2949,6 @@ module.exports = {
         defaultValue: [],
         comment: "File attachments for the reply",
       },
-      customer_feedback: {
-        type: Sequelize.BOOLEAN,
-        allowNull: true,
-        comment:
-          "Customer feedback on the reply (true=positive, false=negative)",
-      },
-      reject_reason: {
-        type: Sequelize.TEXT,
-        allowNull: true,
-        comment: "Reason for rejecting the reply",
-      },
       is_auto_generated: {
         type: Sequelize.BOOLEAN,
         defaultValue: false,
@@ -4422,32 +4411,8 @@ module.exports = {
         type: Sequelize.ENUM("male", "female", "other"),
         allowNull: true,
       },
-      preferences: {
-        type: JsonType,
-        allowNull: true,
-      },
-      tags: {
-        type: JsonType,
-        allowNull: true,
-      },
-      notes: {
-        type: Sequelize.TEXT,
-        allowNull: true,
-      },
       source: {
         type: Sequelize.STRING,
-        allowNull: true,
-      },
-      isActive: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: true,
-      },
-      lastOrderDate: {
-        type: Sequelize.DATE,
-        allowNull: true,
-      },
-      firstOrderDate: {
-        type: Sequelize.DATE,
         allowNull: true,
       },
       userId: {

@@ -136,7 +136,7 @@ class PlatformServiceManager extends EventEmitter {
     return normalizedOrders;
   }
 
-  // Enhanced single order normalization
+  // Enhanced single order normalization with OrderItem creation
   async normalizeOrder(order, connection) {
     const platformType = connection.platformType.toLowerCase();
 
@@ -199,7 +199,122 @@ class PlatformServiceManager extends EventEmitter {
       normalized.trackingInfo = trackingInfo;
     }
 
+    // Save or update the order in database
+    await this.saveNormalizedOrder(normalized, connection);
+
     return normalized;
+  }
+
+  // Save normalized order and create OrderItems
+  async saveNormalizedOrder(normalizedOrder, connection) {
+    try {
+      // Check if order already exists
+      let existingOrder = await Order.findOne({
+        where: {
+          [Op.or]: [
+            { externalOrderId: normalizedOrder.orderNumber },
+            { orderNumber: normalizedOrder.orderNumber },
+          ],
+          connectionId: connection.id,
+        },
+        include: [{ model: OrderItem, as: "items" }],
+      });
+
+      let savedOrder;
+
+      if (existingOrder) {
+        // Update existing order
+        await existingOrder.update({
+          orderStatus: normalizedOrder.orderStatus,
+          customerName: normalizedOrder.customerName,
+          customerEmail: normalizedOrder.customerEmail,
+          customerPhone: normalizedOrder.customerPhone,
+          totalAmount: normalizedOrder.totalAmount,
+          currency: normalizedOrder.currency,
+          rawData: normalizedOrder.metadata.originalData,
+          lastSyncedAt: new Date(),
+        });
+        savedOrder = existingOrder;
+      } else {
+        // Create new order
+        savedOrder = await Order.create({
+          externalOrderId: normalizedOrder.orderNumber,
+          orderNumber: normalizedOrder.orderNumber,
+          platformType: normalizedOrder.platform,
+          platform: normalizedOrder.platform,
+          connectionId: normalizedOrder.connectionId,
+          orderDate: normalizedOrder.orderDate,
+          orderStatus: normalizedOrder.orderStatus,
+          customerName: normalizedOrder.customerName,
+          customerEmail: normalizedOrder.customerEmail,
+          customerPhone: normalizedOrder.customerPhone,
+          totalAmount: normalizedOrder.totalAmount,
+          currency: normalizedOrder.currency,
+          rawData: normalizedOrder.metadata.originalData,
+          lastSyncedAt: new Date(),
+        });
+      }
+
+      // Create or update OrderItems
+      if (normalizedOrder.items && normalizedOrder.items.length > 0) {
+        await this.saveOrderItems(
+          savedOrder,
+          normalizedOrder.items,
+          normalizedOrder.platform
+        );
+      }
+
+      return savedOrder;
+    } catch (error) {
+      logger.error("Failed to save normalized order:", error);
+      throw error;
+    }
+  }
+
+  // Save OrderItems for an order
+  async saveOrderItems(order, items, platform) {
+    try {
+      for (const itemData of items) {
+        // Check if item already exists
+        let existingItem = await OrderItem.findOne({
+          where: {
+            orderId: order.id,
+            [Op.or]: [
+              { sku: itemData.sku },
+              { platformProductId: itemData.platformProductId || itemData.id },
+              { barcode: itemData.barcode },
+            ].filter((condition) => Object.values(condition)[0]), // Remove null/undefined conditions
+          },
+        });
+
+        const itemPayload = {
+          orderId: order.id,
+          platformProductId:
+            itemData.platformProductId || itemData.id?.toString(),
+          sku: itemData.sku || itemData.merchantSku,
+          barcode: itemData.barcode,
+          title: itemData.productName || itemData.name || itemData.title,
+          quantity: parseInt(itemData.quantity) || 1,
+          price: parseFloat(itemData.unitPrice || itemData.price) || 0,
+          totalPrice: parseFloat(itemData.totalPrice || itemData.amount) || 0,
+          currency: itemData.currency || "TRY",
+          productSize: itemData.productSize,
+          productColor: itemData.productColor,
+          rawData: itemData,
+        };
+
+        if (existingItem) {
+          // Update existing item
+          await existingItem.update(itemPayload);
+        } else {
+          // Create new item
+          await OrderItem.create(itemPayload);
+        }
+      }
+    } catch (error) {
+      logger.error("Failed to save order items:", error);
+      throw error;
+    }
   }
 
   // Platform-specific field extraction methods
@@ -454,7 +569,48 @@ class PlatformServiceManager extends EventEmitter {
         items = order.lines || order.orderLines || order.items;
         break;
       case "hepsiburada":
+        // For Hepsiburada, check multiple possible locations for items
         items = order.items || order.orderLines;
+
+        // Check if order has details.items array (preferred - has complete data)
+        if ((!items || items.length === 0) && order.details?.items) {
+          items = order.details.items;
+        }
+
+        // If still no items and we have root-level item data (single item order)
+        if ((!items || items.length === 0) && order.sku && order.merchantSku) {
+          items = [order]; // Treat the whole order as a single item
+        }
+
+        // If no items found and we have nested rawData, parse it
+        if ((!items || items.length === 0) && order.rawData) {
+          try {
+            let nestedData;
+            if (typeof order.rawData === "string") {
+              nestedData = JSON.parse(order.rawData);
+            } else {
+              nestedData = order.rawData;
+            }
+
+            // Check if this is a single item structure from Hepsiburada API
+            if (
+              nestedData.sku &&
+              nestedData.merchantSku &&
+              nestedData.quantity
+            ) {
+              items = [nestedData]; // Convert single item to array
+            } else if (nestedData.details?.items) {
+              items = nestedData.details.items;
+            } else if (nestedData.details && nestedData.details.sku) {
+              items = [nestedData.details]; // Single item in details
+            }
+          } catch (error) {
+            console.warn(
+              "Failed to parse nested rawData for items:",
+              error.message
+            );
+          }
+        }
         break;
       case "n11":
         items = order.items || order.orderItems;
@@ -472,14 +628,19 @@ class PlatformServiceManager extends EventEmitter {
 
   normalizeOrderItem(item, platform) {
     const normalized = {
-      id: item.id || item.orderLineId,
-      productId: item.productId,
-      productName: item.productName || item.name,
-      sku: item.sku || item.merchantSku,
-      barcode: item.barcode,
+      id: item.id || item.orderLineId || item.lineItemId,
+      platformProductId:
+        item.productId?.toString() || item.platformProductId?.toString(),
+      productName:
+        item.productName || item.name || item.title || item.displayName,
+      sku: item.sku || item.merchantSku || item.merchantSKU,
+      barcode: item.barcode || item.productBarcode || item.ean || item.gtin,
       quantity: parseInt(item.quantity) || 1,
       unitPrice: parseFloat(item.unitPrice || item.price) || 0,
-      totalPrice: parseFloat(item.totalPrice || item.amount) || 0,
+      totalPrice:
+        parseFloat(
+          item.totalPrice || item.amount || item.unitPrice * item.quantity
+        ) || 0,
       currency: item.currency || item.currencyCode || "TRY",
     };
 
@@ -492,15 +653,70 @@ class PlatformServiceManager extends EventEmitter {
         normalized.productSize = item.productSize;
         normalized.discount = parseFloat(item.discount) || 0;
         normalized.status = item.orderLineItemStatusName;
+        normalized.vatBaseAmount = parseFloat(item.vatBaseAmount) || 0;
+        normalized.platformProductId = item.productId?.toString();
+        normalized.barcode = item.barcode || item.productBarcode;
         break;
 
       case "hepsiburada":
         normalized.hepsiburadaSku = item.hepsiburadaSku;
-        normalized.merchantSku = item.merchantSku;
+        normalized.merchantSku =
+          item.merchantSku || item.merchantSKU || item.sku;
+        normalized.lineItemId = item.lineItemId || item.id;
+        normalized.platformProductId =
+          item.merchantSku ||
+          item.merchantSKU ||
+          item.lineItemId ||
+          item.id ||
+          item.sku;
+        normalized.barcode = item.productBarcode || item.barcode || item.sku;
+        normalized.sku = item.sku || item.merchantSku || item.merchantSKU;
+        normalized.productName = item.name || item.productName || item.title;
+        normalized.productColor = item.productColor;
+        normalized.productSize = item.productSize;
+        normalized.vatBaseAmount = parseFloat(item.vatBaseAmount) || 0;
+        normalized.status = item.status;
+
+        // Handle Hepsiburada price structures
+        if (
+          item.unitPrice &&
+          typeof item.unitPrice === "object" &&
+          item.unitPrice.amount
+        ) {
+          normalized.unitPrice = parseFloat(item.unitPrice.amount) || 0;
+          normalized.currency = item.unitPrice.currency || "TRY";
+        } else {
+          normalized.unitPrice = parseFloat(item.price || item.unitPrice) || 0;
+        }
+
+        if (
+          item.totalPrice &&
+          typeof item.totalPrice === "object" &&
+          item.totalPrice.amount
+        ) {
+          normalized.totalPrice = parseFloat(item.totalPrice.amount) || 0;
+        } else {
+          normalized.totalPrice =
+            parseFloat(
+              item.totalPrice || normalized.unitPrice * normalized.quantity
+            ) || 0;
+        }
+
+        // Parse numeric values properly for Hepsiburada
+        normalized.quantity = parseInt(item.quantity) || 1;
+
+        // Additional Hepsiburada specific fields
+        normalized.commission = item.commission?.amount || 0;
+        normalized.commissionRate = item.commissionRate || 0;
+        normalized.vat = item.vat || 0;
+        normalized.vatRate = item.vatRate || 0;
         break;
 
       case "n11":
         normalized.productSellerCode = item.productSellerCode;
+        normalized.n11ProductId = item.productId;
+        normalized.platformProductId = item.productId?.toString();
+        normalized.barcode = item.barcode || item.productBarcode;
         break;
     }
 
@@ -906,6 +1122,7 @@ class PlatformServiceManager extends EventEmitter {
           })),
           totalProcessed: results.totalProcessed,
           syncDuration: results.syncDuration,
+          conflicts: results.conflicts || [], // Add conflicts array to prevent undefined error
         };
 
         this.emit("syncCompleted", {
@@ -1401,7 +1618,7 @@ class PlatformServiceManager extends EventEmitter {
       this.broadcastNotification("sync_completed", {
         totalProcessed: data.results.totalProcessed,
         duration: data.performance.duration,
-        conflicts: data.results.conflicts.length,
+        conflicts: (data.results.conflicts || []).length,
         timestamp: data.timestamp,
       });
     });

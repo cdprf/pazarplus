@@ -547,9 +547,11 @@ const orderService = {
       };
     } catch (error) {
       console.error("Error accepting order:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
       return {
         success: false,
-        message: error.response?.data?.message || error.message,
+        message: error.response?.data?.message || error.message || "Unknown error occurred while accepting order",
         data: null,
       };
     }

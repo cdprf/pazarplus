@@ -3,21 +3,22 @@
 // Network IP Detection Utility
 // This script detects the machine's network IP address and sets it as an environment variable
 
-const os = require('os');
-const path = require('path');
+const os = require("os");
+const path = require("path");
+const config = require("../config/config");
 
 function getNetworkIP() {
   const interfaces = os.networkInterfaces();
 
   // Priority order for interface names (most common first)
-  const preferredInterfaces = ['en0', 'eth0', 'wlan0', 'Wi-Fi', 'Ethernet'];
+  const preferredInterfaces = ["en0", "eth0", "wlan0", "Wi-Fi", "Ethernet"];
 
   // Try preferred interfaces first
   for (const interfaceName of preferredInterfaces) {
     const iface = interfaces[interfaceName];
     if (iface) {
       for (const alias of iface) {
-        if (alias.family === 'IPv4' && !alias.internal) {
+        if (alias.family === "IPv4" && !alias.internal) {
           return alias.address;
         }
       }
@@ -28,13 +29,13 @@ function getNetworkIP() {
   for (const interfaceName in interfaces) {
     const iface = interfaces[interfaceName];
     for (const alias of iface) {
-      if (alias.family === 'IPv4' && !alias.internal) {
+      if (alias.family === "IPv4" && !alias.internal) {
         // Skip docker and other virtual interfaces
         if (
-          !alias.address.startsWith('172.') &&
-          !alias.address.startsWith('192.168.99.') &&
-          !interfaceName.toLowerCase().includes('docker') &&
-          !interfaceName.toLowerCase().includes('vbox')
+          !alias.address.startsWith("172.") &&
+          !alias.address.startsWith("192.168.99.") &&
+          !interfaceName.toLowerCase().includes("docker") &&
+          !interfaceName.toLowerCase().includes("vbox")
         ) {
           return alias.address;
         }
@@ -42,7 +43,7 @@ function getNetworkIP() {
     }
   }
 
-  return 'localhost';
+  return "localhost";
 }
 
 function setNetworkEnvironment() {
@@ -54,9 +55,7 @@ function setNetworkEnvironment() {
 
   console.log(`🌐 Network IP detected: ${networkIP}`);
   console.log(
-    `📡 Server will be accessible at: http://${networkIP}:${
-      process.env.PORT || 5001
-    }`
+    `📡 Server will be accessible at: http://${networkIP}:${config.server.port}`
   );
 
   return networkIP;
@@ -64,7 +63,7 @@ function setNetworkEnvironment() {
 
 module.exports = {
   getNetworkIP,
-  setNetworkEnvironment
+  setNetworkEnvironment,
 };
 
 // If run directly

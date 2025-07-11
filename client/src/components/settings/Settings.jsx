@@ -31,6 +31,7 @@ import {
   TabsTrigger,
 } from "../ui";
 import InvoiceSettings from "./InvoiceSettings";
+import AccountOverview from "./AccountOverview";
 import api from "../../services/api";
 
 const Settings = () => {
@@ -48,8 +49,10 @@ const Settings = () => {
     email: user?.email || "",
     username: user?.username || "",
     phone: user?.phone || "",
-    company: user?.company || "",
+    company: user?.companyName || "",
     bio: user?.bio || "",
+    businessType: user?.businessType || "",
+    monthlyRevenue: user?.monthlyRevenue || "",
   });
 
   // Password change
@@ -101,10 +104,26 @@ const Settings = () => {
     setLoading(true);
 
     try {
-      await updateProfile(profileData);
-      showAlert("Profil başarıyla güncellendi", "success");
+      const response = await api.put("/auth/profile", {
+        fullName: profileData.fullName,
+        email: profileData.email,
+        username: profileData.username,
+        phone: profileData.phone,
+        company: profileData.company,
+        bio: profileData.bio,
+        businessType: profileData.businessType,
+        monthlyRevenue: profileData.monthlyRevenue,
+      });
+
+      if (response.data.success) {
+        await updateProfile(response.data.user);
+        showAlert("Profil başarıyla güncellendi", "success");
+      }
     } catch (error) {
-      showAlert("Profil güncellenirken hata oluştu", "error");
+      showAlert(
+        error.response?.data?.message || "Profil güncellenirken hata oluştu",
+        "error"
+      );
     } finally {
       setLoading(false);
     }
@@ -227,8 +246,12 @@ const Settings = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="overview" className="flex items-center space-x-2">
+            <Cog6ToothIcon className="h-4 w-4" />
+            <span>Genel</span>
+          </TabsTrigger>
           <TabsTrigger value="profile" className="flex items-center space-x-2">
             <UserIcon className="h-4 w-4" />
             <span>Profil</span>
@@ -265,6 +288,11 @@ const Settings = () => {
             </TabsTrigger>
           )}
         </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview">
+          <AccountOverview />
+        </TabsContent>
 
         {/* Profile Tab */}
         <TabsContent value="profile">
@@ -374,6 +402,54 @@ const Settings = () => {
                     placeholder="Şirket adınızı girin"
                     className="form-input"
                   />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      İş Türü
+                    </label>
+                    <select
+                      value={profileData.businessType}
+                      onChange={(e) =>
+                        setProfileData({
+                          ...profileData,
+                          businessType: e.target.value,
+                        })
+                      }
+                      className="form-input"
+                    >
+                      <option value="">Seçin</option>
+                      <option value="individual">Bireysel</option>
+                      <option value="small_business">Küçük İşletme</option>
+                      <option value="medium_business">
+                        Orta Ölçekli İşletme
+                      </option>
+                      <option value="enterprise">Kurumsal</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Aylık Gelir Aralığı
+                    </label>
+                    <select
+                      value={profileData.monthlyRevenue}
+                      onChange={(e) =>
+                        setProfileData({
+                          ...profileData,
+                          monthlyRevenue: e.target.value,
+                        })
+                      }
+                      className="form-input"
+                    >
+                      <option value="">Seçin</option>
+                      <option value="0-10k">0-10.000 TL</option>
+                      <option value="10k-50k">10.000-50.000 TL</option>
+                      <option value="50k-100k">50.000-100.000 TL</option>
+                      <option value="100k-500k">100.000-500.000 TL</option>
+                      <option value="500k+">500.000+ TL</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div>

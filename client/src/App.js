@@ -52,6 +52,7 @@ import PlatformOperations from "./pages/PlatformOperations"; // Platform Operati
 import TaskDetails from "./pages/TaskDetails"; // Task Details page
 import CustomerQuestions from "./components/CustomerQuestions"; // Customer Questions Management
 import Settings from "./components/settings/Settings";
+import Profile from "./components/profile/Profile"; // User Profile page
 import PrintSettings from "./components/settings/PrintSettings";
 import DatabaseBusyModal from "./components/DatabaseBusyModal"; // Database transaction management modal
 import PlatformCategoriesManagement from "./components/PlatformCategoriesManagement.jsx";
@@ -328,7 +329,7 @@ function App() {
                             {/* Compliance */}
                             <Route path="compliance" element={<Settings />} />
                             {/* User Profile */}
-                            <Route path="profile" element={<Settings />} />
+                            <Route path="profile" element={<Profile />} />
                             {/* Notifications */}
                             <Route
                               path="notifications"
