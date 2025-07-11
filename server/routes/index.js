@@ -61,8 +61,11 @@ try {
   // Import platform products routes
   const platformProductsRoutes = require("./platform-products");
 
+  // Import placeholder image routes
+  const placeholderRoutes = require("./placeholder");
+
   // Import background tasks routes
-  const backgroundTasksRoutes = require("./backgroundTasks");
+  const backgroundTasksRoutes = require("./unified-product-intelligence");
 
   // Unified Product Intelligence routes
   const unifiedIntelligenceRoutes = require("./unified-product-intelligence");
@@ -112,6 +115,9 @@ try {
 
   // Image proxy routes for handling SSL certificate issues
   router.use("/image", imageProxyApiRoutes);
+
+  // Placeholder image routes
+  router.use("/placeholder", placeholderRoutes);
 
   // Month 5 Phase 2: Subscription Management & Multi-tenant SaaS routes
   router.use("/subscription", subscriptionRoutes);

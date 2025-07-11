@@ -1543,7 +1543,7 @@ class TrendyolService extends BasePlatformService {
           lines:
             rawData.lines ||
             (localOrder.items || []).map((item) => ({
-              lineId: item.platformProductId || item.id,
+              lineId: item.rawData ? (JSON.parse(item.rawData).id || item.id) : item.id,
               quantity: item.quantity || 1
             }))
         };
@@ -2835,7 +2835,7 @@ class TrendyolService extends BasePlatformService {
           lines:
             rawData.lines ||
             (localOrder.items || []).map((item) => ({
-              lineId: item.platformProductId || item.id,
+              lineId: item.rawData ? (JSON.parse(item.rawData).id || item.id) : item.id,
               quantity: item.quantity || 1
             }))
         };

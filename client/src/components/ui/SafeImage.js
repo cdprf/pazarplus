@@ -18,6 +18,7 @@ const SafeImage = ({
     if (
       currentSrc === src &&
       src &&
+      typeof src === "string" &&
       (src.startsWith("https://") || src.includes("ssl"))
     ) {
       const proxyUrl = `/api/image/proxy?url=${encodeURIComponent(src)}`;
@@ -29,6 +30,7 @@ const SafeImage = ({
     // If proxy fails, try HTTP version if HTTPS fails
     if (
       currentSrc &&
+      typeof currentSrc === "string" &&
       currentSrc.startsWith("https://") &&
       !currentSrc.includes("/api/image/proxy")
     ) {
@@ -47,7 +49,7 @@ const SafeImage = ({
     setLoading(false);
   };
 
-  if (imageError || !src) {
+  if (imageError || !src || typeof src !== "string") {
     return (
       <div
         className={`bg-gray-200 dark:bg-gray-600 flex items-center justify-center ${

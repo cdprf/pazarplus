@@ -551,7 +551,10 @@ const orderService = {
       console.error("Error status:", error.response?.status);
       return {
         success: false,
-        message: error.response?.data?.message || error.message || "Unknown error occurred while accepting order",
+        message:
+          error.response?.data?.message ||
+          error.message ||
+          "Unknown error occurred while accepting order",
         data: null,
       };
     }

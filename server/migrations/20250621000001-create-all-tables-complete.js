@@ -5838,25 +5838,71 @@ module.exports = {
         name: "users_features_gin_idx",
       });
 
-      await queryInterface.addIndex("platform_connections", ["credentials"], {
-        using: "gin",
-        name: "platform_connections_credentials_gin_idx",
-      });
+      // Create indexes only if columns exist
+      try {
+        const productsTableInfo = await queryInterface.describeTable(
+          "products"
+        );
 
-      await queryInterface.addIndex("platform_connections", ["settings"], {
-        using: "gin",
-        name: "platform_connections_settings_gin_idx",
-      });
+        // Create platform_connections indexes if table and columns exist
+        try {
+          const platformConnectionsInfo = await queryInterface.describeTable(
+            "platform_connections"
+          );
 
-      await queryInterface.addIndex("products", ["specifications"], {
-        using: "gin",
-        name: "products_specifications_gin_idx",
-      });
+          if (platformConnectionsInfo.credentials) {
+            await queryInterface.addIndex(
+              "platform_connections",
+              ["credentials"],
+              {
+                using: "gin",
+                name: "platform_connections_credentials_gin_idx",
+              }
+            );
+          }
 
-      await queryInterface.addIndex("products", ["images"], {
-        using: "gin",
-        name: "products_images_gin_idx",
-      });
+          if (platformConnectionsInfo.settings) {
+            await queryInterface.addIndex(
+              "platform_connections",
+              ["settings"],
+              {
+                using: "gin",
+                name: "platform_connections_settings_gin_idx",
+              }
+            );
+          }
+        } catch (error) {
+          console.log(
+            "⚠️  Platform connections table not found, skipping JSON indexes"
+          );
+        }
+
+        // Only create specifications index if the column exists
+        if (productsTableInfo.specifications) {
+          await queryInterface.addIndex("products", ["specifications"], {
+            using: "gin",
+            name: "products_specifications_gin_idx",
+          });
+        } else {
+          console.log(
+            "⚠️  Specifications column not found in products table, skipping index"
+          );
+        }
+
+        // Create images index if column exists
+        if (productsTableInfo.images) {
+          await queryInterface.addIndex("products", ["images"], {
+            using: "gin",
+            name: "products_images_gin_idx",
+          });
+        } else {
+          console.log(
+            "⚠️  Images column not found in products table, skipping index"
+          );
+        }
+      } catch (error) {
+        console.log("⚠️  Error creating JSON indexes:", error.message);
+      }
 
       await queryInterface.addIndex("orders", ["metadata"], {
         using: "gin",

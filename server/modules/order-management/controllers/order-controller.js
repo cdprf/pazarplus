@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const {
   Order,
   OrderItem,
@@ -8,18 +8,18 @@ const {
   Product,
   TrendyolOrder,
   HepsiburadaOrder,
-  N11Order
-} = require('../../../models');
-const PlatformServiceFactory = require('../services/platforms/platformServiceFactory');
-const logger = require('../../../utils/logger');
-const shippingDetailService = require('../../../utils/shipping-detail-service');
+  N11Order,
+} = require("../../../models");
+const PlatformServiceFactory = require("../services/platforms/platformServiceFactory");
+const logger = require("../../../utils/logger");
+const shippingDetailService = require("../../../utils/shipping-detail-service");
 // const wsService = require('../services/websocketService'); // Comment out if websocketService doesn't exist
-const { Op } = require('sequelize');
-const sequelize = require('../../../config/database');
+const { Op } = require("sequelize");
+const sequelize = require("../../../config/database");
 const {
   mapOrderStatus,
-  sanitizePlatformType
-} = require('../../../utils/enum-validators');
+  sanitizePlatformType,
+} = require("../../../utils/enum-validators");
 
 /**
  * Safely serialize Sequelize models to JSON, avoiding circular references
@@ -27,10 +27,12 @@ const {
  * @returns {*} - JSON-safe data
  */
 function safeSerialize(data) {
-  if (!data) {return data;}
+  if (!data) {
+    return data;
+  }
 
   // If it's a Sequelize model instance, use toJSON()
-  if (data.toJSON && typeof data.toJSON === 'function') {
+  if (data.toJSON && typeof data.toJSON === "function") {
     return data.toJSON();
   }
 
@@ -40,15 +42,15 @@ function safeSerialize(data) {
   }
 
   // If it's an object, process each property
-  if (typeof data === 'object' && data !== null) {
+  if (typeof data === "object" && data !== null) {
     const result = {};
     for (const [key, value] of Object.entries(data)) {
       // Skip circular reference properties and Sequelize internal properties
       if (
-        key === 'parent' ||
-        key === 'include' ||
-        key.startsWith('_') ||
-        key.startsWith('$')
+        key === "parent" ||
+        key === "include" ||
+        key.startsWith("_") ||
+        key.startsWith("$")
       ) {
         continue;
       }
@@ -63,9 +65,9 @@ function safeSerialize(data) {
 // Controller functions
 async function getAllOrders(req, res) {
   try {
-    console.log('🔍 [OrderController] getAllOrders API called');
-    console.log('🔍 [OrderController] Query params:', req.query);
-    console.log('🔍 [OrderController] User ID:', req.user?.id);
+    console.log("🔍 [OrderController] getAllOrders API called");
+    console.log("🔍 [OrderController] Query params:", req.query);
+    console.log("🔍 [OrderController] User ID:", req.user?.id);
 
     const { id: userId } = req.user;
     const {
@@ -77,8 +79,8 @@ async function getAllOrders(req, res) {
       endDate,
       customerId,
       search,
-      sortBy = 'orderDate',
-      sortOrder = 'DESC'
+      sortBy = "orderDate",
+      sortOrder = "DESC",
     } = req.query;
 
     // Check if user has any platform connections with error handling
@@ -86,11 +88,11 @@ async function getAllOrders(req, res) {
     try {
       platformConnections = await PlatformConnection.findAll({
         where: { userId },
-        attributes: ['id', 'platformType', 'name', 'isActive']
+        attributes: ["id", "platformType", "name", "isActive"],
       });
     } catch (connectionError) {
       logger.warn(
-        'Could not fetch platform connections:',
+        "Could not fetch platform connections:",
         connectionError.message
       );
       // Return empty state with guidance message for no connections
@@ -107,33 +109,33 @@ async function getAllOrders(req, res) {
             hasPrev: false,
             showing: 0,
             from: 0,
-            to: 0
-          }
+            to: 0,
+          },
         },
         stats: {
           total: 0,
           page: 1,
-          pages: 0
+          pages: 0,
         },
         meta: {
           platformConnections: {
             total: 0,
             active: 0,
-            platforms: []
+            platforms: [],
           },
           guidance: {
             hasConnections: false,
             hasActiveConnections: false,
             message:
-              'Veritabanı bağlantısı kurulamadı. Lütfen sistem yöneticisiyle iletişime geçin.',
+              "Veritabanı bağlantısı kurulamadı. Lütfen sistem yöneticisiyle iletişime geçin.",
             nextSteps: [
-              'Sistem yöneticisiyle iletişime geçin',
-              'Veritabanı bağlantısını kontrol edin',
-              'Uygulamayı yeniden başlatmayı deneyin'
+              "Sistem yöneticisiyle iletişime geçin",
+              "Veritabanı bağlantısını kontrol edin",
+              "Uygulamayı yeniden başlatmayı deneyin",
             ],
-            errorType: 'DATABASE_CONNECTION_ERROR'
-          }
-        }
+            errorType: "DATABASE_CONNECTION_ERROR",
+          },
+        },
       });
     }
 
@@ -144,8 +146,10 @@ async function getAllOrders(req, res) {
     const where = { userId };
 
     // Apply filters if provided
-    if (status && status !== 'all') {where.orderStatus = status;}
-    if (platform && platform !== 'all') {
+    if (status && status !== "all") {
+      where.orderStatus = status;
+    }
+    if (platform && platform !== "all") {
       // Check if platform is a number (connection ID) or string (platform type)
       if (!isNaN(platform)) {
         // If it's a number, treat as connection ID
@@ -155,12 +159,14 @@ async function getAllOrders(req, res) {
         where.platform = platform;
       }
     }
-    if (customerId) {where.customerId = customerId;}
+    if (customerId) {
+      where.customerId = customerId;
+    }
 
     // Apply search filter - handle product search separately due to SQL complexity
     let productOrderIds = [];
     if (search && search.trim()) {
-      console.log('🔍 [OrderController] Search term received:', search.trim());
+      console.log("🔍 [OrderController] Search term received:", search.trim());
       const searchTerm = search.trim();
 
       // Try to find orders by product search first (separate query)
@@ -170,18 +176,18 @@ async function getAllOrders(req, res) {
             [Op.or]: [
               { title: { [Op.iLike]: `%${searchTerm}%` } },
               { sku: { [Op.iLike]: `%${searchTerm}%` } },
-              { barcode: { [Op.iLike]: `%${searchTerm}%` } }
-            ]
+              { barcode: { [Op.iLike]: `%${searchTerm}%` } },
+            ],
           },
-          attributes: ['orderId'],
-          raw: true
+          attributes: ["orderId"],
+          raw: true,
         });
 
         // Get unique order IDs from product search
         productOrderIds = [
           ...new Set(
             orderItemsWithProducts.map((item) => item.orderId).filter(Boolean)
-          )
+          ),
         ];
 
         if (productOrderIds.length > 0) {
@@ -191,7 +197,7 @@ async function getAllOrders(req, res) {
         }
       } catch (productSearchError) {
         console.log(
-          '🔍 [OrderController] Product search failed:',
+          "🔍 [OrderController] Product search failed:",
           productSearchError.message
         );
       }
@@ -205,7 +211,7 @@ async function getAllOrders(req, res) {
         { platformId: { [Op.iLike]: `%${searchTerm}%` } },
         // Customer fields
         { customerName: { [Op.iLike]: `%${searchTerm}%` } },
-        { customerEmail: { [Op.iLike]: `%${searchTerm}%` } }
+        { customerEmail: { [Op.iLike]: `%${searchTerm}%` } },
       ];
 
       // Add order IDs from product search if found
@@ -214,54 +220,54 @@ async function getAllOrders(req, res) {
       }
 
       where[Op.or] = searchConditions;
-      console.log('🔍 [OrderController] Combined search conditions applied');
+      console.log("🔍 [OrderController] Combined search conditions applied");
     }
 
     // Apply date range filter if provided
     if (startDate && endDate) {
       where.orderDate = {
-        [Op.between]: [new Date(startDate), new Date(endDate)]
+        [Op.between]: [new Date(startDate), new Date(endDate)],
       };
     }
 
     // Determine sort field and order
     const validSortFields = [
-      'orderDate',
-      'createdAt',
-      'totalAmount',
-      'orderStatus',
-      'customerName',
-      'platformOrderId'
+      "orderDate",
+      "createdAt",
+      "totalAmount",
+      "orderStatus",
+      "customerName",
+      "platformOrderId",
     ];
-    const sortField = validSortFields.includes(sortBy) ? sortBy : 'orderDate';
-    const sortDirection = sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+    const sortField = validSortFields.includes(sortBy) ? sortBy : "orderDate";
+    const sortDirection = sortOrder.toLowerCase() === "asc" ? "ASC" : "DESC";
 
     // Get orders with pagination and include related models with enhanced error handling
     let orders;
     const includeOptions = [
       {
         model: OrderItem,
-        as: 'items',
+        as: "items",
         include: [
           {
             model: Product,
-            as: 'product',
-            required: false
-          }
+            as: "product",
+            required: false,
+          },
         ],
-        required: false // Make items optional in case of association issues
+        required: false, // Make items optional in case of association issues
       },
       {
         model: ShippingDetail,
-        as: 'shippingDetail',
-        required: false // Make shipping details optional
+        as: "shippingDetail",
+        required: false, // Make shipping details optional
       },
       {
         model: PlatformConnection,
-        as: 'platformConnection',
-        attributes: ['platformType', 'name', 'isActive'],
-        required: false // Make this optional to handle orders without platform connections
-      }
+        as: "platformConnection",
+        attributes: ["platformType", "name", "isActive"],
+        required: false, // Make this optional to handle orders without platform connections
+      },
     ];
 
     // If we're searching by product fields, we need to require the associations
@@ -276,10 +282,10 @@ async function getAllOrders(req, res) {
         offset: offset,
         include: includeOptions,
         order: [[sortField, sortDirection]],
-        distinct: true
+        distinct: true,
       });
     } catch (dbError) {
-      logger.error('Database error when fetching orders:', dbError);
+      logger.error("Database error when fetching orders:", dbError);
 
       // If there's a database/association error, return empty result with guidance
       return res.status(200).json({
@@ -295,13 +301,13 @@ async function getAllOrders(req, res) {
             hasPrev: false,
             showing: 0,
             from: 0,
-            to: 0
-          }
+            to: 0,
+          },
         },
         stats: {
           total: 0,
           page: validPage,
-          pages: 1
+          pages: 1,
         },
         meta: {
           databaseError: true,
@@ -312,21 +318,21 @@ async function getAllOrders(req, res) {
               id: pc.id,
               name: pc.name,
               type: pc.platformType,
-              isActive: pc.isActive
-            }))
+              isActive: pc.isActive,
+            })),
           },
           guidance: {
             hasConnections: platformConnections.length > 0,
             hasActiveConnections: platformConnections.some((pc) => pc.isActive),
             message:
-              'Veritabanı bağlantısında sorun var. Platform bağlantılarınızı kontrol edin.',
+              "Veritabanı bağlantısında sorun var. Platform bağlantılarınızı kontrol edin.",
             nextSteps: [
-              'Platform bağlantılarınızı kontrol edin',
-              'Deaktif bağlantıları aktifleştirin',
-              'Senkronizasyon işlemini yeniden deneyin'
-            ]
-          }
-        }
+              "Platform bağlantılarınızı kontrol edin",
+              "Deaktif bağlantıları aktifleştirin",
+              "Senkronizasyon işlemini yeniden deneyin",
+            ],
+          },
+        },
       });
     }
 
@@ -337,13 +343,13 @@ async function getAllOrders(req, res) {
         ...orderData,
         // Map backend fields to frontend expected fields
         status: orderData.orderStatus,
-        platform: orderData.platformConnection?.platformType || 'unknown',
-        platformName: orderData.platformConnection?.name || 'Unknown Platform',
+        platform: orderData.platformConnection?.platformType || "unknown",
+        platformName: orderData.platformConnection?.name || "Unknown Platform",
         displayDate: orderData.orderDate,
         // Ensure all required fields exist with defaults
-        currency: orderData.currency || 'TRY',
+        currency: orderData.currency || "TRY",
         tags: orderData.tags || [],
-        items: orderData.items || []
+        items: orderData.items || [],
       };
     });
 
@@ -364,14 +370,14 @@ async function getAllOrders(req, res) {
           hasPrev: validPage > 1,
           showing: transformedOrders.length,
           from: offset + 1,
-          to: Math.min(offset + transformedOrders.length, orders.count)
-        }
+          to: Math.min(offset + transformedOrders.length, orders.count),
+        },
       },
       stats: {
         total: orders.count,
         page: validPage,
-        pages: totalPages
-      }
+        pages: totalPages,
+      },
     };
 
     // Add platform connection info and guidance if no data exists
@@ -384,42 +390,42 @@ async function getAllOrders(req, res) {
             id: pc.id,
             name: pc.name,
             type: pc.platformType,
-            isActive: pc.isActive
-          }))
+            isActive: pc.isActive,
+          })),
         },
         guidance: {
           hasConnections: platformConnections.length > 0,
           hasActiveConnections: platformConnections.some((pc) => pc.isActive),
           message:
             platformConnections.length === 0
-              ? 'Siparişleri görüntülemek için önce bir pazaryeri platformuna bağlanın.'
+              ? "Siparişleri görüntülemek için önce bir pazaryeri platformuna bağlanın."
               : platformConnections.some((pc) => pc.isActive)
-                ? 'Siparişleri görmek için platformlarınızdan veri senkronizasyonu yapın.'
-                : 'Platform bağlantılarınızı aktifleştirin ve senkronizasyon yapın.',
+              ? "Siparişleri görmek için platformlarınızdan veri senkronizasyonu yapın."
+              : "Platform bağlantılarınızı aktifleştirin ve senkronizasyon yapın.",
           nextSteps:
             platformConnections.length === 0
               ? [
-                'Platform Bağlantıları sayfasına gidin',
-                'Trendyol, Hepsiburada veya N11\'e bağlanın',
-                'API anahtarlarınızı ekleyin'
-              ]
+                  "Platform Bağlantıları sayfasına gidin",
+                  "Trendyol, Hepsiburada veya N11'e bağlanın",
+                  "API anahtarlarınızı ekleyin",
+                ]
               : platformConnections.some((pc) => pc.isActive)
-                ? [
-                  'Sipariş Yönetimi sayfasında \'Senkronize Et\' butonuna tıklayın',
-                  'Platform verileriniz otomatik olarak çekilecektir'
+              ? [
+                  "Sipariş Yönetimi sayfasında 'Senkronize Et' butonuna tıklayın",
+                  "Platform verileriniz otomatik olarak çekilecektir",
                 ]
-                : [
-                  'Platform bağlantılarınızı kontrol edin',
-                  'Deaktif bağlantıları aktifleştirin',
-                  'Senkronizasyon işlemini başlatın'
-                ]
-        }
+              : [
+                  "Platform bağlantılarınızı kontrol edin",
+                  "Deaktif bağlantıları aktifleştirin",
+                  "Senkronizasyon işlemini başlatın",
+                ],
+        },
       };
     }
 
     return res.status(200).json(response);
   } catch (error) {
-    logger.error('Get orders error:', error);
+    logger.error("Get orders error:", error);
 
     // Return graceful error response instead of 500
     return res.status(200).json({
@@ -435,38 +441,38 @@ async function getAllOrders(req, res) {
           hasPrev: false,
           showing: 0,
           from: 0,
-          to: 0
-        }
+          to: 0,
+        },
       },
       stats: {
         total: 0,
         page: 1,
-        pages: 1
+        pages: 1,
       },
       meta: {
         error: true,
-        errorType: 'SYSTEM_ERROR',
+        errorType: "SYSTEM_ERROR",
         platformConnections: {
           total: 0,
           active: 0,
-          platforms: []
+          platforms: [],
         },
         guidance: {
           hasConnections: false,
           hasActiveConnections: false,
           message:
-            'Sistem hatası nedeniyle siparişler yüklenemedi. Lütfen daha sonra tekrar deneyin.',
+            "Sistem hatası nedeniyle siparişler yüklenemedi. Lütfen daha sonra tekrar deneyin.",
           nextSteps: [
-            'Sayfayı yenileyin',
-            'Platform bağlantılarınızı kontrol edin',
-            'Sorun devam ederse sistem yöneticisiyle iletişime geçin'
-          ]
-        }
+            "Sayfayı yenileyin",
+            "Platform bağlantılarınızı kontrol edin",
+            "Sorun devam ederse sistem yöneticisiyle iletişime geçin",
+          ],
+        },
       },
       error: {
-        message: 'Failed to fetch orders due to system error',
-        details: error.message
-      }
+        message: "Failed to fetch orders due to system error",
+        details: error.message,
+      },
     });
   }
 }
@@ -498,14 +504,14 @@ async function createOrder(req, res) {
 
     return res.status(201).json({
       success: true,
-      data: order
+      data: order,
     });
   } catch (error) {
-    logger.error('Error creating order:', error);
+    logger.error("Error creating order:", error);
     return res.status(500).json({
       success: false,
-      message: 'Error creating order',
-      error: error.message
+      message: "Error creating order",
+      error: error.message,
     });
   }
 }
@@ -518,28 +524,28 @@ async function getOrderById(req, res) {
       include: [
         {
           model: OrderItem,
-          as: 'items',
+          as: "items",
           include: [
             {
               model: Product,
-              as: 'product',
-              required: false // Make Product association optional
-            }
-          ]
+              as: "product",
+              required: false, // Make Product association optional
+            },
+          ],
         },
-        { model: ShippingDetail, as: 'shippingDetail' },
+        { model: ShippingDetail, as: "shippingDetail" },
         {
           model: PlatformConnection,
-          as: 'platformConnection',
-          required: false
-        }
-      ]
+          as: "platformConnection",
+          required: false,
+        },
+      ],
     });
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: `Order with ID ${id} not found`
+        message: `Order with ID ${id} not found`,
       });
     }
 
@@ -548,14 +554,14 @@ async function getOrderById(req, res) {
 
     return res.status(200).json({
       success: true,
-      data: serializedOrder
+      data: serializedOrder,
     });
   } catch (error) {
     logger.error(`Error fetching order ${req.params.id}:`, error);
     return res.status(500).json({
       success: false,
-      message: 'Error fetching order details',
-      error: error.message
+      message: "Error fetching order details",
+      error: error.message,
     });
   }
 }
@@ -568,7 +574,7 @@ async function updateOrder(req, res) {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: 'Order not found'
+        message: "Order not found",
       });
     }
 
@@ -584,14 +590,14 @@ async function updateOrder(req, res) {
 
     return res.status(200).json({
       success: true,
-      data: serializedOrder
+      data: serializedOrder,
     });
   } catch (error) {
-    logger.error('Error updating order:', error);
+    logger.error("Error updating order:", error);
     return res.status(500).json({
       success: false,
-      message: 'Error updating order',
-      error: error.message
+      message: "Error updating order",
+      error: error.message,
     });
   }
 }
@@ -606,13 +612,15 @@ async function updateOrderStatus(req, res) {
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: `Order with ID ${id} not found`
+        message: `Order with ID ${id} not found`,
       });
     }
 
     // Update order status
     order.orderStatus = status; // Fixed: use orderStatus instead of status
-    if (notes) {order.notes = notes;}
+    if (notes) {
+      order.notes = notes;
+    }
     order.updatedAt = new Date();
 
     await order.save();
@@ -623,14 +631,14 @@ async function updateOrderStatus(req, res) {
     return res.status(200).json({
       success: true,
       message: `Order status updated to ${status}`,
-      data: serializedOrder
+      data: serializedOrder,
     });
   } catch (error) {
     logger.error(`Error updating order ${req.params.id}:`, error);
     return res.status(500).json({
       success: false,
-      message: 'Error updating order status',
-      error: error.message
+      message: "Error updating order status",
+      error: error.message,
     });
   }
 }
@@ -642,23 +650,23 @@ async function cancelOrder(req, res) {
 
     // Validate authentication
     if (!req.user || !req.user.id) {
-      logger.error('Cancel order failed: No authenticated user', {
+      logger.error("Cancel order failed: No authenticated user", {
         hasUser: !!req.user,
         userId: req.user?.id,
-        orderId: id
+        orderId: id,
       });
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: "Authentication required",
       });
     }
 
     const { id: userId } = req.user;
 
-    logger.info('Order cancellation requested', {
+    logger.info("Order cancellation requested", {
       orderId: id,
       userId: userId,
-      reason: reason || 'No reason provided'
+      reason: reason || "No reason provided",
     });
 
     // Find the order with platform connection
@@ -667,25 +675,25 @@ async function cancelOrder(req, res) {
       include: [
         {
           model: PlatformConnection,
-          as: 'platformConnection',
-          attributes: ['id', 'platformType', 'credentials', 'isActive'],
-          required: false // Make optional to handle orders without platform connections
-        }
-      ]
+          as: "platformConnection",
+          attributes: ["id", "platformType", "credentials", "isActive"],
+          required: false, // Make optional to handle orders without platform connections
+        },
+      ],
     });
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: `Order with ID ${id} not found`
+        message: `Order with ID ${id} not found`,
       });
     }
 
     // Update local order status first
     await order.update({
-      orderStatus: 'cancelled',
+      orderStatus: "cancelled",
       cancellationReason: reason,
-      cancelledAt: new Date()
+      cancelledAt: new Date(),
     });
 
     // Get platform service and cancel on platform if possible
@@ -693,7 +701,7 @@ async function cancelOrder(req, res) {
 
     if (order.platformConnection && order.platformConnection.isActive) {
       try {
-        const PlatformServiceFactory = require('../services/platforms/platformServiceFactory');
+        const PlatformServiceFactory = require("../services/platforms/platformServiceFactory");
         const platformService = PlatformServiceFactory.createService(
           order.platformConnection.platformType,
           order.platformConnection.id
@@ -703,22 +711,22 @@ async function cancelOrder(req, res) {
           await platformService.initialize();
 
           // Use platform-specific cancellation if available
-          if (typeof platformService.cancelOrder === 'function') {
+          if (typeof platformService.cancelOrder === "function") {
             platformCancelResult = await platformService.cancelOrder(
               order.externalOrderId || order.platformOrderId,
-              reason || 'Merchant cancellation'
+              reason || "Merchant cancellation"
             );
           } else {
             logger.warn(
               `Platform ${order.platformConnection.platformType} does not support order cancellation`,
               {
                 orderId: id,
-                platform: order.platformConnection.platformType
+                platform: order.platformConnection.platformType,
               }
             );
             platformCancelResult = {
               success: false,
-              message: `Platform ${order.platformConnection.platformType} does not support order cancellation`
+              message: `Platform ${order.platformConnection.platformType} does not support order cancellation`,
             };
           }
         }
@@ -728,12 +736,12 @@ async function cancelOrder(req, res) {
           {
             orderId: id,
             platform: order.platformConnection.platformType,
-            error: platformError.message
+            error: platformError.message,
           }
         );
         platformCancelResult = {
           success: false,
-          message: `Order cancelled locally, but platform cancellation failed: ${platformError.message}`
+          message: `Order cancelled locally, but platform cancellation failed: ${platformError.message}`,
         };
       }
     }
@@ -751,15 +759,15 @@ async function cancelOrder(req, res) {
       data: serializedOrder,
       platformResult: platformCancelResult,
       message: platformCancelResult.success
-        ? 'Order cancelled successfully on both local system and platform'
-        : `Order cancelled locally. Platform cancellation: ${platformCancelResult.message}`
+        ? "Order cancelled successfully on both local system and platform"
+        : `Order cancelled locally. Platform cancellation: ${platformCancelResult.message}`,
     });
   } catch (error) {
-    logger.error('Error cancelling order:', error);
+    logger.error("Error cancelling order:", error);
     return res.status(500).json({
       success: false,
-      message: 'Error cancelling order',
-      error: error.message
+      message: "Error cancelling order",
+      error: error.message,
     });
   }
 }
@@ -773,7 +781,7 @@ async function syncOrders(req, res) {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: `User with ID ${userId} not found`
+        message: `User with ID ${userId} not found`,
       });
     }
 
@@ -783,19 +791,19 @@ async function syncOrders(req, res) {
       platforms = await PlatformConnection.findAll({
         where: {
           id: platformIds,
-          userId
-        }
+          userId,
+        },
       });
     } else {
       platforms = await PlatformConnection.findAll({
-        where: { userId }
+        where: { userId },
       });
     }
 
     if (platforms.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'No connected platforms found'
+        message: "No connected platforms found",
       });
     }
 
@@ -816,7 +824,7 @@ async function syncOrders(req, res) {
             platformId: platform.id,
             platformName: platform.name,
             success: false,
-            error: `Unsupported platform type: ${platform.platformType}`
+            error: `Unsupported platform type: ${platform.platformType}`,
           });
           continue;
         }
@@ -843,7 +851,7 @@ async function syncOrders(req, res) {
           platformName: platform.name,
           success: syncResult.success,
           newOrders: syncResult.data?.count || 0,
-          totalProcessed: syncResult.data?.count || 0
+          totalProcessed: syncResult.data?.count || 0,
         });
       } catch (error) {
         logger.error(
@@ -854,22 +862,22 @@ async function syncOrders(req, res) {
           platformId: platform.id,
           platformName: platform.name,
           success: false,
-          error: error.message
+          error: error.message,
         });
       }
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Order synchronization complete',
-      data: syncResults
+      message: "Order synchronization complete",
+      data: syncResults,
     });
   } catch (error) {
-    logger.error('Error in order sync process:', error);
+    logger.error("Error in order sync process:", error);
     return res.status(500).json({
       success: false,
-      message: 'Error synchronizing orders',
-      error: error.message
+      message: "Error synchronizing orders",
+      error: error.message,
     });
   }
 }
@@ -888,14 +896,14 @@ async function syncOrdersByPlatform(req, res) {
     const platformConnection = await PlatformConnection.findOne({
       where: {
         id: id,
-        userId: userId
-      }
+        userId: userId,
+      },
     });
 
     if (!platformConnection) {
       return res.status(404).json({
         success: false,
-        message: `Platform connection with ID ${id} not found or doesn't belong to the user`
+        message: `Platform connection with ID ${id} not found or doesn't belong to the user`,
       });
     }
 
@@ -922,19 +930,19 @@ async function syncOrdersByPlatform(req, res) {
       syncResult = await platformService.syncOrdersFromDate(startDate, endDate);
     } catch (syncError) {
       logger.error(`Error during sync operation: ${syncError.message}`, {
-        error: syncError
+        error: syncError,
       });
 
       // Check if this is a duplicate order error (SequelizeUniqueConstraintError)
-      if (syncError.name === 'SequelizeUniqueConstraintError') {
+      if (syncError.name === "SequelizeUniqueConstraintError") {
         return res.status(409).json({
           success: false,
           message:
-            'Some orders are already synced and could not be imported again',
+            "Some orders are already synced and could not be imported again",
           error: {
-            name: 'SequelizeUniqueConstraintError',
-            fields: syncError.fields
-          }
+            name: "SequelizeUniqueConstraintError",
+            fields: syncError.fields,
+          },
         });
       }
 
@@ -943,14 +951,14 @@ async function syncOrdersByPlatform(req, res) {
 
     // Update platform connection last sync time
     await platformConnection.update({
-      lastSyncAt: now
+      lastSyncAt: now,
     });
 
     // Successful sync
     return res.status(200).json({
       success: true,
       message: `Successfully synced orders from ${platformConnection.name}`,
-      data: syncResult
+      data: syncResult,
     });
   } catch (error) {
     logger.error(
@@ -959,8 +967,8 @@ async function syncOrdersByPlatform(req, res) {
     );
     return res.status(500).json({
       success: false,
-      message: 'Error syncing orders',
-      error: error.message
+      message: "Error syncing orders",
+      error: error.message,
     });
   }
 }
@@ -968,17 +976,17 @@ async function syncOrdersByPlatform(req, res) {
 async function getOrderStats(req, res) {
   try {
     const { id: userId } = req.user;
-    const { period = '30d' } = req.query;
+    const { period = "30d" } = req.query;
 
     // Calculate date range based on period
     const now = new Date();
     const dateRanges = {
-      '7d': new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
-      '30d': new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
-      '90d': new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
-      '1y': new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+      "7d": new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+      "30d": new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+      "90d": new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
+      "1y": new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000),
     };
-    const startDate = dateRanges[period] || dateRanges['30d'];
+    const startDate = dateRanges[period] || dateRanges["30d"];
 
     // Get comprehensive order statistics with error handling for each query
     let totalOrders = 0;
@@ -993,38 +1001,38 @@ async function getOrderStats(req, res) {
     try {
       totalOrders = await Order.count({ where: { userId } });
     } catch (error) {
-      logger.warn('Could not fetch total orders count:', error.message);
+      logger.warn("Could not fetch total orders count:", error.message);
     }
 
     try {
       periodOrders = await Order.count({
         where: {
           userId,
-          createdAt: { [Op.gte]: startDate }
-        }
+          createdAt: { [Op.gte]: startDate },
+        },
       });
     } catch (error) {
-      logger.warn('Could not fetch period orders count:', error.message);
+      logger.warn("Could not fetch period orders count:", error.message);
     }
 
     try {
       statusCounts = await Order.findAll({
         where: { userId },
         attributes: [
-          'orderStatus',
-          [Order.sequelize.fn('COUNT', Order.sequelize.col('id')), 'count']
+          "orderStatus",
+          [Order.sequelize.fn("COUNT", Order.sequelize.col("id")), "count"],
         ],
-        group: ['orderStatus'],
-        raw: true
+        group: ["orderStatus"],
+        raw: true,
       });
     } catch (error) {
-      logger.warn('Could not fetch status counts:', error.message);
+      logger.warn("Could not fetch status counts:", error.message);
     }
 
     // Platform breakdown with enhanced error handling
     try {
       const hasConnections = await PlatformConnection.count({
-        where: { userId }
+        where: { userId },
       });
 
       if (hasConnections > 0) {
@@ -1038,7 +1046,7 @@ async function getOrderStats(req, res) {
         `,
           {
             replacements: { userId },
-            type: Order.sequelize.QueryTypes.SELECT
+            type: Order.sequelize.QueryTypes.SELECT,
           }
         );
       }
@@ -1048,21 +1056,21 @@ async function getOrderStats(req, res) {
 
     try {
       totalRevenue =
-        (await Order.sum('totalAmount', { where: { userId } })) || 0;
+        (await Order.sum("totalAmount", { where: { userId } })) || 0;
     } catch (error) {
-      logger.warn('Could not fetch total revenue:', error.message);
+      logger.warn("Could not fetch total revenue:", error.message);
     }
 
     try {
       periodRevenue =
-        (await Order.sum('totalAmount', {
+        (await Order.sum("totalAmount", {
           where: {
             userId,
-            createdAt: { [Op.gte]: startDate }
-          }
+            createdAt: { [Op.gte]: startDate },
+          },
         })) || 0;
     } catch (error) {
-      logger.warn('Could not fetch period revenue:', error.message);
+      logger.warn("Could not fetch period revenue:", error.message);
     }
 
     try {
@@ -1071,48 +1079,48 @@ async function getOrderStats(req, res) {
         include: [
           {
             model: PlatformConnection,
-            as: 'platformConnection',
-            attributes: ['platformType', 'name'],
-            required: false
-          }
+            as: "platformConnection",
+            attributes: ["platformType", "name"],
+            required: false,
+          },
         ],
-        order: [['createdAt', 'DESC']],
+        order: [["createdAt", "DESC"]],
         limit: 10,
         attributes: [
-          'id',
-          'platformOrderId',
-          'orderStatus',
-          'totalAmount',
-          'currency',
-          'customerName',
-          'customerEmail',
-          'createdAt',
-          'orderDate'
-        ]
+          "id",
+          "platformOrderId",
+          "orderStatus",
+          "totalAmount",
+          "currency",
+          "customerName",
+          "customerEmail",
+          "createdAt",
+          "orderDate",
+        ],
       });
     } catch (error) {
-      logger.warn('Could not fetch recent orders:', error.message);
+      logger.warn("Could not fetch recent orders:", error.message);
     }
 
     try {
       platformConnections = await PlatformConnection.findAndCountAll({
         where: { userId },
-        attributes: ['id', 'platformType', 'name', 'isActive']
+        attributes: ["id", "platformType", "name", "isActive"],
       });
     } catch (error) {
-      logger.warn('Could not fetch platform connections:', error.message);
+      logger.warn("Could not fetch platform connections:", error.message);
     }
 
     // Transform status counts to object
     const byStatus = {};
     statusCounts.forEach((status) => {
-      byStatus[status.orderStatus || 'unknown'] = parseInt(status.count) || 0;
+      byStatus[status.orderStatus || "unknown"] = parseInt(status.count) || 0;
     });
 
     // Transform platform counts to object
     const byPlatform = {};
     platformCounts.forEach((platform) => {
-      const platformType = platform.platformType || 'unknown';
+      const platformType = platform.platformType || "unknown";
       byPlatform[platformType] = parseInt(platform.count) || 0;
     });
 
@@ -1121,8 +1129,8 @@ async function getOrderStats(req, res) {
       const orderData = safeSerialize(order);
       return {
         ...orderData,
-        platform: orderData.platformConnection?.platformType || 'unknown',
-        platformName: orderData.platformConnection?.name || 'Unknown Platform'
+        platform: orderData.platformConnection?.platformType || "unknown",
+        platformName: orderData.platformConnection?.name || "Unknown Platform",
       };
     });
 
@@ -1137,8 +1145,8 @@ async function getOrderStats(req, res) {
         id: pc.id,
         name: pc.name,
         type: pc.platformType,
-        isActive: pc.isActive
-      }))
+        isActive: pc.isActive,
+      })),
     };
 
     // Calculate growth metrics with error handling
@@ -1153,19 +1161,19 @@ async function getOrderStats(req, res) {
         where: {
           userId,
           createdAt: {
-            [Op.between]: [previousPeriodStart, startDate]
-          }
-        }
+            [Op.between]: [previousPeriodStart, startDate],
+          },
+        },
       });
 
       const previousPeriodRevenue =
-        (await Order.sum('totalAmount', {
+        (await Order.sum("totalAmount", {
           where: {
             userId,
             createdAt: {
-              [Op.between]: [previousPeriodStart, startDate]
-            }
-          }
+              [Op.between]: [previousPeriodStart, startDate],
+            },
+          },
         })) || 0;
 
       orderGrowth =
@@ -1179,7 +1187,7 @@ async function getOrderStats(req, res) {
             100
           : 0;
     } catch (error) {
-      logger.warn('Could not calculate growth metrics:', error.message);
+      logger.warn("Could not calculate growth metrics:", error.message);
     }
 
     // Comprehensive response
@@ -1206,7 +1214,7 @@ async function getOrderStats(req, res) {
         // Growth metrics
         growth: {
           orders: Math.round(orderGrowth * 100) / 100,
-          revenue: Math.round(revenueGrowth * 100) / 100
+          revenue: Math.round(revenueGrowth * 100) / 100,
         },
 
         // Period info
@@ -1215,7 +1223,7 @@ async function getOrderStats(req, res) {
           startDate: startDate.toISOString(),
           endDate: now.toISOString(),
           ordersInPeriod: periodOrders,
-          revenueInPeriod: periodRevenue || 0
+          revenueInPeriod: periodRevenue || 0,
         },
 
         // Additional metrics
@@ -1226,21 +1234,21 @@ async function getOrderStats(req, res) {
         completionRate:
           totalOrders > 0
             ? Math.round(
-              ((byStatus.delivered || 0) / totalOrders) * 100 * 100
-            ) / 100
+                ((byStatus.delivered || 0) / totalOrders) * 100 * 100
+              ) / 100
             : 0,
         cancellationRate:
           totalOrders > 0
             ? Math.round(
-              ((byStatus.cancelled || 0) / totalOrders) * 100 * 100
-            ) / 100
-            : 0
-      }
+                ((byStatus.cancelled || 0) / totalOrders) * 100 * 100
+              ) / 100
+            : 0,
+      },
     };
 
     return res.status(200).json(response);
   } catch (error) {
-    logger.error('Error fetching comprehensive order stats:', error);
+    logger.error("Error fetching comprehensive order stats:", error);
 
     // Return graceful error response instead of 500
     return res.status(200).json({
@@ -1262,26 +1270,26 @@ async function getOrderStats(req, res) {
           active: 0,
           inactive: 0,
           total: 0,
-          connections: []
+          connections: [],
         },
         growth: {
           orders: 0,
-          revenue: 0
+          revenue: 0,
         },
         period: {
-          selected: req.query.period || '30d',
+          selected: req.query.period || "30d",
           ordersInPeriod: 0,
-          revenueInPeriod: 0
+          revenueInPeriod: 0,
         },
         averageOrderValue: 0,
         completionRate: 0,
-        cancellationRate: 0
+        cancellationRate: 0,
       },
       error: {
-        message: 'System error occurred while fetching order statistics',
+        message: "System error occurred while fetching order statistics",
         details: error.message,
-        errorType: 'DATABASE_ERROR'
-      }
+        errorType: "DATABASE_ERROR",
+      },
     });
   }
 }
@@ -1299,19 +1307,19 @@ async function importHepsiburadaOrder(req, res) {
     if (!orderData || !orderData.orderId || !orderData.orderNumber) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid order data: Missing required fields'
+        message: "Invalid order data: Missing required fields",
       });
     }
 
     if (!connectionId) {
       return res.status(400).json({
         success: false,
-        message: 'Platform connection ID is required'
+        message: "Platform connection ID is required",
       });
     }
 
     // Get the Hepsiburada service for this connection
-    const HepsiburadaService = require('../services/platforms/hepsiburada/hepsiburada-service');
+    const HepsiburadaService = require("../services/platforms/hepsiburada/hepsiburada-service");
     const hepsiburadaService = new HepsiburadaService(connectionId);
 
     try {
@@ -1331,12 +1339,12 @@ async function importHepsiburadaOrder(req, res) {
 
       return res.status(200).json({
         success: true,
-        message: 'Order imported successfully',
-        data: result.data
+        message: "Order imported successfully",
+        data: result.data,
       });
     } catch (processError) {
       // Handle unique constraint violations
-      if (processError.name === 'SequelizeUniqueConstraintError') {
+      if (processError.name === "SequelizeUniqueConstraintError") {
         logger.warn(
           `Unique constraint violation during Hepsiburada order import: ${
             orderData.orderNumber || orderData.orderId
@@ -1345,26 +1353,26 @@ async function importHepsiburadaOrder(req, res) {
             error: processError,
             orderNumber: orderData.orderNumber,
             orderId: orderData.orderId,
-            connectionId: connectionId
+            connectionId: connectionId,
           }
         );
 
         return res.status(409).json({
           success: false,
-          message: 'This order already exists in the system',
+          message: "This order already exists in the system",
           error: {
-            name: 'SequelizeUniqueConstraintError',
+            name: "SequelizeUniqueConstraintError",
             fields: processError.fields || {},
             orderNumber: orderData.orderNumber,
-            orderId: orderData.orderId
-          }
+            orderId: orderData.orderId,
+          },
         });
       }
 
       // Handle other specific error for "Could not find order that caused constraint violation"
       if (
         processError.message &&
-        processError.message.includes('Could not find order')
+        processError.message.includes("Could not find order")
       ) {
         logger.error(
           `Order lookup failure after constraint violation: ${
@@ -1374,18 +1382,18 @@ async function importHepsiburadaOrder(req, res) {
             error: processError,
             orderNumber: orderData.orderNumber,
             orderId: orderData.orderId,
-            connectionId: connectionId
+            connectionId: connectionId,
           }
         );
 
         return res.status(409).json({
           success: false,
-          message: 'Order appears to exist but could not be located for update',
+          message: "Order appears to exist but could not be located for update",
           error: {
-            name: 'OrderLookupError',
+            name: "OrderLookupError",
             orderNumber: orderData.orderNumber,
-            orderId: orderData.orderId
-          }
+            orderId: orderData.orderId,
+          },
         });
       }
 
@@ -1396,13 +1404,13 @@ async function importHepsiburadaOrder(req, res) {
     logger.error(`Failed to import Hepsiburada order: ${error.message}`, {
       error,
       userId: req.user.id,
-      body: req.body.orderNumber || req.body.orderId
+      body: req.body.orderNumber || req.body.orderId,
     });
 
     return res.status(500).json({
       success: false,
       message: `Failed to import order: ${error.message}`,
-      error: error.message
+      error: error.message,
     });
   }
 }
@@ -1415,11 +1423,11 @@ async function importHepsiburadaOrder(req, res) {
 async function getOrderTrends(req, res) {
   try {
     const {
-      period = 'week',
+      period = "week",
       platform,
-      compareWithPrevious = 'true'
+      compareWithPrevious = "true",
     } = req.query;
-    const shouldCompare = compareWithPrevious === 'true';
+    const shouldCompare = compareWithPrevious === "true";
 
     // Determine date ranges based on the period
     const now = new Date();
@@ -1428,63 +1436,63 @@ async function getOrderTrends(req, res) {
     let groupByFormat;
 
     switch (period) {
-    case 'year':
-      // Last 12 months
-      startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      previousStartDate = new Date(
-        now.getFullYear() - 1,
-        now.getMonth() - 11,
-        1
-      );
-      previousEndDate = new Date(
-        now.getFullYear() - 1,
-        now.getMonth() + 1,
-        0
-      );
-      groupByFormat = 'month'; // Group by month
-      break;
+      case "year":
+        // Last 12 months
+        startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        previousStartDate = new Date(
+          now.getFullYear() - 1,
+          now.getMonth() - 11,
+          1
+        );
+        previousEndDate = new Date(
+          now.getFullYear() - 1,
+          now.getMonth() + 1,
+          0
+        );
+        groupByFormat = "month"; // Group by month
+        break;
 
-    case 'month':
-      // Last 30 days
-      startDate = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() - 29
-      );
-      endDate = now;
-      previousStartDate = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() - 59
-      );
-      previousEndDate = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() - 30
-      );
-      groupByFormat = 'day'; // Group by day
-      break;
+      case "month":
+        // Last 30 days
+        startDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - 29
+        );
+        endDate = now;
+        previousStartDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - 59
+        );
+        previousEndDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - 30
+        );
+        groupByFormat = "day"; // Group by day
+        break;
 
-    default: // week
-      // Last 7 days
-      startDate = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() - 6
-      );
-      endDate = now;
-      previousStartDate = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() - 13
-      );
-      previousEndDate = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() - 7
-      );
-      groupByFormat = 'day'; // Group by day
+      default: // week
+        // Last 7 days
+        startDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - 6
+        );
+        endDate = now;
+        previousStartDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - 13
+        );
+        previousEndDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - 7
+        );
+        groupByFormat = "day"; // Group by day
     }
 
     // Set times to beginning/end of day for consistent comparisons
@@ -1499,8 +1507,8 @@ async function getOrderTrends(req, res) {
     // Prepare the where clause
     const where = {
       orderDate: {
-        [Op.between]: [startDate, endDate]
-      }
+        [Op.between]: [startDate, endDate],
+      },
     };
 
     // Add platform filter if provided
@@ -1511,8 +1519,8 @@ async function getOrderTrends(req, res) {
     // Fetch orders for the current period
     const orders = await Order.findAll({
       where,
-      attributes: ['id', 'orderDate', 'orderStatus', 'totalAmount'], // Fixed: use orderStatus instead of status
-      order: [['orderDate', 'ASC']]
+      attributes: ["id", "orderDate", "orderStatus", "totalAmount"], // Fixed: use orderStatus instead of status
+      order: [["orderDate", "ASC"]],
     });
 
     // Group orders by date
@@ -1523,13 +1531,13 @@ async function getOrderTrends(req, res) {
     if (shouldCompare) {
       const previousWhere = { ...where };
       previousWhere.orderDate = {
-        [Op.between]: [previousStartDate, previousEndDate]
+        [Op.between]: [previousStartDate, previousEndDate],
       };
 
       const previousOrders = await Order.findAll({
         where: previousWhere,
-        attributes: ['id', 'orderDate', 'orderStatus', 'totalAmount'], // Fixed: use orderStatus instead of status
-        order: [['orderDate', 'ASC']]
+        attributes: ["id", "orderDate", "orderStatus", "totalAmount"], // Fixed: use orderStatus instead of status
+        order: [["orderDate", "ASC"]],
       });
 
       previousGroupedData = groupOrdersByDate(previousOrders, groupByFormat);
@@ -1540,14 +1548,14 @@ async function getOrderTrends(req, res) {
 
     return res.status(200).json({
       success: true,
-      data: trendData
+      data: trendData,
     });
   } catch (error) {
     logger.error(`Failed to get order trends: ${error.message}`, { error });
     return res.status(500).json({
       success: false,
-      message: 'Failed to get order trends',
-      error: error.message
+      message: "Failed to get order trends",
+      error: error.message,
     });
   }
 }
@@ -1565,18 +1573,18 @@ function groupOrdersByDate(orders, groupByFormat) {
     const date = new Date(order.orderDate);
     let key;
 
-    if (groupByFormat === 'month') {
+    if (groupByFormat === "month") {
       // Format: YYYY-MM (2023-01 for January 2023)
       key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
         2,
-        '0'
+        "0"
       )}`;
     } else {
       // Format: YYYY-MM-DD
       key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
         2,
-        '0'
-      )}-${String(date.getDate()).padStart(2, '0')}`;
+        "0"
+      )}-${String(date.getDate()).padStart(2, "0")}`;
     }
 
     if (!grouped[key]) {
@@ -1585,15 +1593,15 @@ function groupOrdersByDate(orders, groupByFormat) {
         newOrders: 0,
         shippedOrders: 0,
         totalOrders: 0,
-        revenue: 0
+        revenue: 0,
       };
     }
 
     grouped[key].totalOrders++;
 
-    if (order.orderStatus === 'new') {
+    if (order.orderStatus === "new") {
       grouped[key].newOrders++;
-    } else if (order.orderStatus === 'shipped') {
+    } else if (order.orderStatus === "shipped") {
       grouped[key].shippedOrders++;
     }
 
@@ -1626,7 +1634,7 @@ function formatTrendData(currentData, previousData, period) {
       newOrders: currentData[dateStr]?.newOrders || 0,
       shippedOrders: currentData[dateStr]?.shippedOrders || 0,
       totalOrders: currentData[dateStr]?.totalOrders || 0,
-      revenue: (currentData[dateStr]?.revenue || 0).toFixed(2)
+      revenue: (currentData[dateStr]?.revenue || 0).toFixed(2),
     };
 
     // Add previous period data if available
@@ -1666,28 +1674,28 @@ function getDateRange(period) {
   let start, end, dateFormat;
 
   switch (period) {
-  case 'year':
-    start = new Date(today.getFullYear(), today.getMonth() - 11, 1);
-    end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    dateFormat = 'month';
-    break;
-  case 'month':
-    start = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate() - 29
-    );
-    end = today;
-    dateFormat = 'day';
-    break;
-  default: // week
-    start = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate() - 6
-    );
-    end = today;
-    dateFormat = 'day';
+    case "year":
+      start = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+      end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      dateFormat = "month";
+      break;
+    case "month":
+      start = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() - 29
+      );
+      end = today;
+      dateFormat = "day";
+      break;
+    default: // week
+      start = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() - 6
+      );
+      end = today;
+      dateFormat = "day";
   }
 
   // Set to beginning of day
@@ -1698,15 +1706,15 @@ function getDateRange(period) {
   while (current <= end) {
     let dateStr;
 
-    if (dateFormat === 'month') {
+    if (dateFormat === "month") {
       dateStr = `${current.getFullYear()}-${String(
         current.getMonth() + 1
-      ).padStart(2, '0')}`;
+      ).padStart(2, "0")}`;
       current.setMonth(current.getMonth() + 1);
     } else {
       dateStr = `${current.getFullYear()}-${String(
         current.getMonth() + 1
-      ).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
+      ).padStart(2, "0")}-${String(current.getDate()).padStart(2, "0")}`;
       current.setDate(current.getDate() + 1);
     }
 
@@ -1730,30 +1738,30 @@ async function getOrderWithPlatformDetails(req, res) {
       include: [
         {
           model: OrderItem,
-          as: 'items',
+          as: "items",
           include: [
             {
               model: Product,
-              as: 'product',
-              required: false // Make Product association optional
-            }
-          ]
+              as: "product",
+              required: false, // Make Product association optional
+            },
+          ],
         },
-        { model: ShippingDetail, as: 'shippingDetail' },
+        { model: ShippingDetail, as: "shippingDetail" },
         {
           model: PlatformConnection,
-          as: 'platformConnection',
-          required: false
+          as: "platformConnection",
+          required: false,
         },
-        { model: TrendyolOrder, as: 'trendyolOrder' },
-        { model: HepsiburadaOrder, as: 'hepsiburadaOrder' }
-      ]
+        { model: TrendyolOrder, as: "trendyolOrder" },
+        { model: HepsiburadaOrder, as: "hepsiburadaOrder" },
+      ],
     });
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: `Order with ID ${id} not found`
+        message: `Order with ID ${id} not found`,
       });
     }
 
@@ -1767,12 +1775,12 @@ async function getOrderWithPlatformDetails(req, res) {
 
     // Depending on the platform type, include the appropriate details
     if (
-      orderData.platformConnection?.platformType === 'trendyol' &&
+      orderData.platformConnection?.platformType === "trendyol" &&
       orderData.trendyolOrder
     ) {
       orderData.platformDetails = orderData.trendyolOrder;
     } else if (
-      orderData.platformConnection?.platformType === 'hepsiburada' &&
+      orderData.platformConnection?.platformType === "hepsiburada" &&
       orderData.hepsiburadaOrder
     ) {
       orderData.platformDetails = orderData.hepsiburadaOrder;
@@ -1783,7 +1791,7 @@ async function getOrderWithPlatformDetails(req, res) {
 
     return res.status(200).json({
       success: true,
-      data: orderData
+      data: orderData,
     });
   } catch (error) {
     logger.error(
@@ -1792,8 +1800,8 @@ async function getOrderWithPlatformDetails(req, res) {
     );
     return res.status(500).json({
       success: false,
-      message: 'Error fetching order details',
-      error: error.message
+      message: "Error fetching order details",
+      error: error.message,
     });
   }
 }
@@ -1804,22 +1812,22 @@ async function acceptOrder(req, res) {
 
     // Validate authentication
     if (!req.user || !req.user.id) {
-      logger.error('Accept order failed: No authenticated user', {
+      logger.error("Accept order failed: No authenticated user", {
         hasUser: !!req.user,
         userId: req.user?.id,
-        orderId: id
+        orderId: id,
       });
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: "Authentication required",
       });
     }
 
     const { id: userId } = req.user;
 
-    logger.info('Order acceptance requested', {
+    logger.info("Order acceptance requested", {
       orderId: id,
-      userId: userId
+      userId: userId,
     });
 
     // Find the order with platform connection
@@ -1828,34 +1836,34 @@ async function acceptOrder(req, res) {
       include: [
         {
           model: PlatformConnection,
-          as: 'platformConnection',
-          attributes: ['id', 'platformType', 'credentials', 'isActive'],
-          required: false // Make optional to handle orders without platform connections
-        }
-      ]
+          as: "platformConnection",
+          attributes: ["id", "platformType", "credentials", "isActive"],
+          required: false, // Make optional to handle orders without platform connections
+        },
+      ],
     });
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: `Order with ID ${id} not found`
+        message: `Order with ID ${id} not found`,
       });
     }
 
     // Check if order is in acceptable state
-    const acceptableStatuses = ['new', 'pending'];
+    const acceptableStatuses = ["new", "pending"];
     if (!acceptableStatuses.includes(order.orderStatus)) {
       return res.status(400).json({
         success: false,
-        message: `Cannot accept order with status: ${order.orderStatus}. Order must be in 'new' or 'pending' status.`
+        message: `Cannot accept order with status: ${order.orderStatus}. Order must be in 'new' or 'pending' status.`,
       });
     }
 
     // Update local order status first
     await order.update({
-      orderStatus: 'processing',
+      orderStatus: "processing",
       acceptedAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
 
     // Get platform service and update status on platform
@@ -1863,7 +1871,7 @@ async function acceptOrder(req, res) {
 
     if (order.platformConnection && order.platformConnection.isActive) {
       try {
-        const PlatformServiceFactory = require('../services/platforms/platformServiceFactory');
+        const PlatformServiceFactory = require("../services/platforms/platformServiceFactory");
         const platformService = PlatformServiceFactory.createService(
           order.platformConnection.platformType,
           order.platformConnection.id
@@ -1872,36 +1880,36 @@ async function acceptOrder(req, res) {
         await platformService.initialize();
 
         // Use platform-specific acceptance if available, otherwise use status update
-        if (typeof platformService.acceptOrder === 'function') {
-          logger.info('Using platform acceptOrder method', {
+        if (typeof platformService.acceptOrder === "function") {
+          logger.info("Using platform acceptOrder method", {
             orderId: id,
             platform: order.platformConnection.platformType,
-            externalOrderId: order.externalOrderId || order.platformOrderId
+            externalOrderId: order.externalOrderId || order.platformOrderId,
           });
-          
+
           platformUpdateResult = await platformService.acceptOrder(
             order.externalOrderId || order.platformOrderId
           );
-          
-          logger.info('Platform acceptOrder result', {
+
+          logger.info("Platform acceptOrder result", {
             orderId: id,
-            result: platformUpdateResult
+            result: platformUpdateResult,
           });
-        } else if (typeof platformService.updateOrderStatus === 'function') {
-          logger.info('Using platform updateOrderStatus method', {
-            orderId: id,
-            platform: order.platformConnection.platformType
-          });
-          
-          platformUpdateResult = await platformService.updateOrderStatus(
-            id,
-            'processing'
-          );
-        } else {
-          logger.warn('No platform order acceptance method available', {
+        } else if (typeof platformService.updateOrderStatus === "function") {
+          logger.info("Using platform updateOrderStatus method", {
             orderId: id,
             platform: order.platformConnection.platformType,
-            availableMethods: Object.getOwnPropertyNames(platformService)
+          });
+
+          platformUpdateResult = await platformService.updateOrderStatus(
+            id,
+            "processing"
+          );
+        } else {
+          logger.warn("No platform order acceptance method available", {
+            orderId: id,
+            platform: order.platformConnection.platformType,
+            availableMethods: Object.getOwnPropertyNames(platformService),
           });
         }
       } catch (platformError) {
@@ -1910,13 +1918,13 @@ async function acceptOrder(req, res) {
           {
             orderId: id,
             platform: order.platformConnection.platformType,
-            error: platformError.message
+            error: platformError.message,
           }
         );
         // Don't fail the entire operation if platform update fails
         platformUpdateResult = {
           success: false,
-          message: `Order accepted locally, but platform update failed: ${platformError.message}`
+          message: `Order accepted locally, but platform update failed: ${platformError.message}`,
         };
       }
     }
@@ -1926,18 +1934,18 @@ async function acceptOrder(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: 'Order accepted successfully',
+      message: "Order accepted successfully",
       data: {
         order: serializedOrder,
-        platformUpdate: platformUpdateResult
-      }
+        platformUpdate: platformUpdateResult,
+      },
     });
   } catch (error) {
     logger.error(`Error accepting order ${req.params.id}:`, error);
     return res.status(500).json({
       success: false,
-      message: 'Error accepting order',
-      error: error.message
+      message: "Error accepting order",
+      error: error.message,
     });
   }
 }
@@ -1956,20 +1964,20 @@ async function getOldestOrderDate(req, res) {
       `Getting oldest order date for platform connection ${platformConnectionId}`,
       {
         userId,
-        platformConnectionId
+        platformConnectionId,
       }
     );
 
     // Validate platform connection belongs to user
     const connection = await PlatformConnection.findOne({
       where: { id: platformConnectionId, userId },
-      attributes: ['id', 'platformType', 'name']
+      attributes: ["id", "platformType", "name"],
     });
 
     if (!connection) {
       return res.status(404).json({
         success: false,
-        message: 'Platform connection not found'
+        message: "Platform connection not found",
       });
     }
 
@@ -1977,10 +1985,10 @@ async function getOldestOrderDate(req, res) {
     const oldestOrder = await Order.findOne({
       where: {
         userId,
-        connectionId: platformConnectionId
+        connectionId: platformConnectionId,
       },
-      order: [['orderDate', 'ASC']],
-      attributes: ['orderDate', 'orderNumber', 'id']
+      order: [["orderDate", "ASC"]],
+      attributes: ["orderDate", "orderNumber", "id"],
     });
 
     if (!oldestOrder) {
@@ -1989,8 +1997,8 @@ async function getOldestOrderDate(req, res) {
         data: {
           oldestOrderDate: null,
           hasOrders: false,
-          message: 'No orders found for this platform connection'
-        }
+          message: "No orders found for this platform connection",
+        },
       });
     }
 
@@ -1999,7 +2007,7 @@ async function getOldestOrderDate(req, res) {
       {
         orderId: oldestOrder.id,
         orderNumber: oldestOrder.orderNumber,
-        orderDate: oldestOrder.orderDate
+        orderDate: oldestOrder.orderDate,
       }
     );
 
@@ -2009,15 +2017,15 @@ async function getOldestOrderDate(req, res) {
         oldestOrderDate: oldestOrder.orderDate,
         hasOrders: true,
         orderNumber: oldestOrder.orderNumber,
-        orderId: oldestOrder.id
-      }
+        orderId: oldestOrder.id,
+      },
     });
   } catch (error) {
-    logger.error('Error getting oldest order date:', error);
+    logger.error("Error getting oldest order date:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get oldest order date',
-      error: error.message
+      message: "Failed to get oldest order date",
+      error: error.message,
     });
   }
 }
@@ -2041,27 +2049,27 @@ module.exports = {
   exportOrders: async (req, res) => {
     try {
       // Simple export functionality - can be enhanced later
-      const { format = 'json' } = req.query;
+      const { format = "json" } = req.query;
       const orders = await getAllOrders(req, { json: () => {} });
 
-      if (format === 'csv') {
+      if (format === "csv") {
         // Return CSV format
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', 'attachment; filename=orders.csv');
-        return res.status(200).send('CSV export not yet implemented');
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", "attachment; filename=orders.csv");
+        return res.status(200).send("CSV export not yet implemented");
       }
 
       return res.status(200).json({
         success: true,
-        message: 'Orders exported successfully',
-        data: orders
+        message: "Orders exported successfully",
+        data: orders,
       });
     } catch (error) {
-      logger.error('Error exporting orders:', error);
+      logger.error("Error exporting orders:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error exporting orders',
-        error: error.message
+        message: "Error exporting orders",
+        error: error.message,
       });
     }
   },
@@ -2072,35 +2080,35 @@ module.exports = {
       if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
         return res.status(400).json({
           success: false,
-          message: 'Order IDs array is required'
+          message: "Order IDs array is required",
         });
       }
 
-      if (!updates || typeof updates !== 'object') {
+      if (!updates || typeof updates !== "object") {
         return res.status(400).json({
           success: false,
-          message: 'Updates object is required'
+          message: "Updates object is required",
         });
       }
 
       const result = await Order.update(updates, {
         where: {
           id: orderIds,
-          userId: req.user.id
-        }
+          userId: req.user.id,
+        },
       });
 
       return res.status(200).json({
         success: true,
         message: `Successfully updated ${result[0]} orders`,
-        data: { updatedCount: result[0] }
+        data: { updatedCount: result[0] },
       });
     } catch (error) {
-      logger.error('Error bulk updating orders:', error);
+      logger.error("Error bulk updating orders:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error bulk updating orders',
-        error: error.message
+        message: "Error bulk updating orders",
+        error: error.message,
       });
     }
   },
@@ -2111,28 +2119,28 @@ module.exports = {
       if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
         return res.status(400).json({
           success: false,
-          message: 'Order IDs array is required'
+          message: "Order IDs array is required",
         });
       }
 
       const deletedCount = await Order.destroy({
         where: {
           id: orderIds,
-          userId: req.user.id
-        }
+          userId: req.user.id,
+        },
       });
 
       return res.status(200).json({
         success: true,
         message: `Successfully deleted ${deletedCount} orders`,
-        data: { deletedCount }
+        data: { deletedCount },
       });
     } catch (error) {
-      logger.error('Error bulk deleting orders:', error);
+      logger.error("Error bulk deleting orders:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error bulk deleting orders',
-        error: error.message
+        message: "Error bulk deleting orders",
+        error: error.message,
       });
     }
   },
@@ -2143,21 +2151,21 @@ module.exports = {
       const order = await Order.findOne({
         where: {
           id,
-          userId: req.user.id
+          userId: req.user.id,
         },
         include: [
-          { model: OrderItem, as: 'items' },
-          { model: ShippingDetail, as: 'shippingDetail' },
-          { model: HepsiburadaOrder, as: 'hepsiburadaOrder' },
-          { model: TrendyolOrder, as: 'trendyolOrder' },
-          { model: N11Order, as: 'n11Order' }
-        ]
+          { model: OrderItem, as: "items" },
+          { model: ShippingDetail, as: "shippingDetail" },
+          { model: HepsiburadaOrder, as: "hepsiburadaOrder" },
+          { model: TrendyolOrder, as: "trendyolOrder" },
+          { model: N11Order, as: "n11Order" },
+        ],
       });
 
       if (!order) {
         return res.status(404).json({
           success: false,
-          message: 'Order not found'
+          message: "Order not found",
         });
       }
 
@@ -2167,7 +2175,7 @@ module.exports = {
         if (order.items && order.items.length > 0) {
           await OrderItem.destroy({
             where: { orderId: order.id },
-            transaction: t
+            transaction: t,
           });
         }
 
@@ -2175,21 +2183,21 @@ module.exports = {
         if (order.hepsiburadaOrder) {
           await HepsiburadaOrder.destroy({
             where: { orderId: order.id },
-            transaction: t
+            transaction: t,
           });
         }
 
         if (order.trendyolOrder) {
           await TrendyolOrder.destroy({
             where: { orderId: order.id },
-            transaction: t
+            transaction: t,
           });
         }
 
         if (order.n11Order) {
           await N11Order.destroy({
             where: { orderId: order.id },
-            transaction: t
+            transaction: t,
           });
         }
 
@@ -2198,9 +2206,9 @@ module.exports = {
           const sharedShipping = await Order.findOne({
             where: {
               shippingDetailId: order.shippingDetailId,
-              id: { [Op.ne]: order.id }
+              id: { [Op.ne]: order.id },
             },
-            transaction: t
+            transaction: t,
           });
 
           if (!sharedShipping) {
@@ -2217,7 +2225,7 @@ module.exports = {
                   orderId: order.id,
                   shippingDetailId: order.shippingDetailId,
                   error: deleteResult.error,
-                  referencingOrders: deleteResult.referencingOrders
+                  referencingOrders: deleteResult.referencingOrders,
                 }
               );
             }
@@ -2227,7 +2235,7 @@ module.exports = {
         // Finally delete the main order
         await Order.destroy({
           where: { id: order.id },
-          transaction: t
+          transaction: t,
         });
       });
 
@@ -2235,14 +2243,14 @@ module.exports = {
 
       return res.status(200).json({
         success: true,
-        message: 'Order deleted successfully'
+        message: "Order deleted successfully",
       });
     } catch (error) {
-      logger.error('Error deleting order:', error);
+      logger.error("Error deleting order:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error deleting order',
-        error: error.message
+        message: "Error deleting order",
+        error: error.message,
       });
     }
   },
@@ -2253,7 +2261,7 @@ module.exports = {
       if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
         return res.status(400).json({
           success: false,
-          message: 'Order IDs array is required'
+          message: "Order IDs array is required",
         });
       }
 
@@ -2261,14 +2269,14 @@ module.exports = {
       return res.status(200).json({
         success: true,
         message: `E-invoice generation initiated for ${orderIds.length} orders`,
-        data: { orderIds, status: 'processing' }
+        data: { orderIds, status: "processing" },
       });
     } catch (error) {
-      logger.error('Error generating bulk e-invoices:', error);
+      logger.error("Error generating bulk e-invoices:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error generating bulk e-invoices',
-        error: error.message
+        message: "Error generating bulk e-invoices",
+        error: error.message,
       });
     }
   },
@@ -2279,14 +2287,14 @@ module.exports = {
       const order = await Order.findOne({
         where: {
           id,
-          userId: req.user.id
-        }
+          userId: req.user.id,
+        },
       });
 
       if (!order) {
         return res.status(404).json({
           success: false,
-          message: 'Order not found'
+          message: "Order not found",
         });
       }
 
@@ -2294,20 +2302,20 @@ module.exports = {
       // Mark invoice as printed
       await order.update({
         invoicePrinted: true,
-        invoicePrintedAt: new Date()
+        invoicePrintedAt: new Date(),
       });
 
       return res.status(200).json({
         success: true,
-        message: 'E-invoice generated successfully',
-        data: { orderId: id, status: 'generated' }
+        message: "E-invoice generated successfully",
+        data: { orderId: id, status: "generated" },
       });
     } catch (error) {
-      logger.error('Error generating e-invoice:', error);
+      logger.error("Error generating e-invoice:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error generating e-invoice',
-        error: error.message
+        message: "Error generating e-invoice",
+        error: error.message,
       });
     }
   },
@@ -2326,20 +2334,20 @@ module.exports = {
         `Getting oldest order date for platform connection ${platformConnectionId}`,
         {
           userId,
-          platformConnectionId
+          platformConnectionId,
         }
       );
 
       // Validate platform connection belongs to user
       const connection = await PlatformConnection.findOne({
         where: { id: platformConnectionId, userId },
-        attributes: ['id', 'platformType', 'name']
+        attributes: ["id", "platformType", "name"],
       });
 
       if (!connection) {
         return res.status(404).json({
           success: false,
-          message: 'Platform connection not found'
+          message: "Platform connection not found",
         });
       }
 
@@ -2347,10 +2355,10 @@ module.exports = {
       const oldestOrder = await Order.findOne({
         where: {
           userId,
-          connectionId: platformConnectionId
+          connectionId: platformConnectionId,
         },
-        order: [['orderDate', 'ASC']],
-        attributes: ['orderDate', 'orderNumber', 'id']
+        order: [["orderDate", "ASC"]],
+        attributes: ["orderDate", "orderNumber", "id"],
       });
 
       if (!oldestOrder) {
@@ -2359,8 +2367,8 @@ module.exports = {
           data: {
             oldestOrderDate: null,
             hasOrders: false,
-            message: 'No orders found for this platform connection'
-          }
+            message: "No orders found for this platform connection",
+          },
         });
       }
 
@@ -2369,7 +2377,7 @@ module.exports = {
         {
           orderId: oldestOrder.id,
           orderNumber: oldestOrder.orderNumber,
-          orderDate: oldestOrder.orderDate
+          orderDate: oldestOrder.orderDate,
         }
       );
 
@@ -2379,16 +2387,16 @@ module.exports = {
           oldestOrderDate: oldestOrder.orderDate,
           hasOrders: true,
           orderNumber: oldestOrder.orderNumber,
-          orderId: oldestOrder.id
-        }
+          orderId: oldestOrder.id,
+        },
       });
     } catch (error) {
-      logger.error('Error getting oldest order date:', error);
+      logger.error("Error getting oldest order date:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to get oldest order date',
-        error: error.message
+        message: "Failed to get oldest order date",
+        error: error.message,
       });
     }
-  }
+  },
 };
