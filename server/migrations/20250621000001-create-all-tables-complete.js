@@ -2680,6 +2680,145 @@ module.exports = {
       },
     });
 
+    // Create Reply Templates table
+    await queryInterface.createTable("reply_templates", {
+      id: {
+        type: Sequelize.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      name: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        comment: "Template name for easy identification",
+      },
+      content: {
+        type: Sequelize.TEXT,
+        allowNull: false,
+        comment: "Template reply text with placeholders",
+      },
+      category: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        comment: 'Category like "shipping", "returns", "product_info", etc.',
+      },
+      platforms: {
+        type: JsonType,
+        defaultValue: ["trendyol", "hepsiburada", "n11"],
+        comment: "Array of platforms this template can be used for",
+      },
+      keywords: {
+        type: JsonType,
+        defaultValue: [],
+        comment: "Keywords that trigger this template suggestion",
+      },
+      variables: {
+        type: JsonType,
+        defaultValue: [],
+        comment: "Available variables/placeholders in the template",
+      },
+      usage_count: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
+        comment: "Number of times this template has been used",
+      },
+      last_used: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        comment: "Last time this template was used",
+      },
+      is_active: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: true,
+        comment: "Whether the template is active and can be used",
+      },
+      is_default: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+        comment: "Whether this is a default template for the category",
+      },
+      auto_suggest: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: true,
+        comment: "Whether to auto-suggest this template based on keywords",
+      },
+      confidence_threshold: {
+        type: Sequelize.DECIMAL(3, 2),
+        defaultValue: 0.7,
+        comment: "Minimum confidence score to auto-suggest this template",
+      },
+      language: {
+        type: Sequelize.STRING(5),
+        defaultValue: "tr",
+        comment: "Template language (tr, en, etc.)",
+      },
+      priority: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
+        comment: "Priority for auto-suggestion (higher = more priority)",
+      },
+      tags: {
+        type: JsonType,
+        defaultValue: [],
+        comment: "Tags for organizing templates",
+      },
+      validation_rules: {
+        type: JsonType,
+        defaultValue: {},
+        comment: "Rules for validating template usage",
+      },
+      created_by: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: "users",
+          key: "id",
+        },
+        onDelete: "SET NULL",
+        comment: "User who created this template",
+      },
+      updated_by: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: "users",
+          key: "id",
+        },
+        onDelete: "SET NULL",
+        comment: "User who last updated this template",
+      },
+      lastUsed: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        comment: "When this template was last used (alternative field name)",
+      },
+      isAutoSuggest: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+        comment: "Whether to auto-suggest this template based on keywords",
+      },
+      rating: {
+        type: Sequelize.DECIMAL(3, 2),
+        allowNull: true,
+        comment: "Average rating of this template effectiveness",
+      },
+      ratingCount: {
+        type: Sequelize.INTEGER,
+        defaultValue: 0,
+        comment: "Number of ratings for this template",
+      },
+      createdAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW,
+      },
+      updatedAt: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW,
+      },
+    });
+
     // Create Customer Replies table
     await queryInterface.createTable("customer_replies", {
       id: {
@@ -2832,145 +2971,6 @@ module.exports = {
       raw_data: {
         type: JsonType,
         allowNull: true,
-      },
-      createdAt: {
-        type: Sequelize.DATE,
-        allowNull: false,
-        defaultValue: Sequelize.NOW,
-      },
-      updatedAt: {
-        type: Sequelize.DATE,
-        allowNull: false,
-        defaultValue: Sequelize.NOW,
-      },
-    });
-
-    // Create Reply Templates table
-    await queryInterface.createTable("reply_templates", {
-      id: {
-        type: Sequelize.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-      },
-      name: {
-        type: Sequelize.STRING,
-        allowNull: false,
-        comment: "Template name for easy identification",
-      },
-      content: {
-        type: Sequelize.TEXT,
-        allowNull: false,
-        comment: "Template reply text with placeholders",
-      },
-      category: {
-        type: Sequelize.STRING,
-        allowNull: true,
-        comment: 'Category like "shipping", "returns", "product_info", etc.',
-      },
-      platforms: {
-        type: JsonType,
-        defaultValue: ["trendyol", "hepsiburada", "n11"],
-        comment: "Array of platforms this template can be used for",
-      },
-      keywords: {
-        type: JsonType,
-        defaultValue: [],
-        comment: "Keywords that trigger this template suggestion",
-      },
-      variables: {
-        type: JsonType,
-        defaultValue: [],
-        comment: "Available variables/placeholders in the template",
-      },
-      usage_count: {
-        type: Sequelize.INTEGER,
-        defaultValue: 0,
-        comment: "Number of times this template has been used",
-      },
-      last_used: {
-        type: Sequelize.DATE,
-        allowNull: true,
-        comment: "Last time this template was used",
-      },
-      is_active: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: true,
-        comment: "Whether the template is active and can be used",
-      },
-      is_default: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false,
-        comment: "Whether this is a default template for the category",
-      },
-      auto_suggest: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: true,
-        comment: "Whether to auto-suggest this template based on keywords",
-      },
-      confidence_threshold: {
-        type: Sequelize.DECIMAL(3, 2),
-        defaultValue: 0.7,
-        comment: "Minimum confidence score to auto-suggest this template",
-      },
-      language: {
-        type: Sequelize.STRING(5),
-        defaultValue: "tr",
-        comment: "Template language (tr, en, etc.)",
-      },
-      priority: {
-        type: Sequelize.INTEGER,
-        defaultValue: 0,
-        comment: "Priority for auto-suggestion (higher = more priority)",
-      },
-      tags: {
-        type: JsonType,
-        defaultValue: [],
-        comment: "Tags for organizing templates",
-      },
-      validation_rules: {
-        type: JsonType,
-        defaultValue: {},
-        comment: "Rules for validating template usage",
-      },
-      created_by: {
-        type: Sequelize.UUID,
-        allowNull: true,
-        references: {
-          model: "users",
-          key: "id",
-        },
-        onDelete: "SET NULL",
-        comment: "User who created this template",
-      },
-      updated_by: {
-        type: Sequelize.UUID,
-        allowNull: true,
-        references: {
-          model: "users",
-          key: "id",
-        },
-        onDelete: "SET NULL",
-        comment: "User who last updated this template",
-      },
-      lastUsed: {
-        type: Sequelize.DATE,
-        allowNull: true,
-        comment: "When this template was last used (alternative field name)",
-      },
-      isAutoSuggest: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false,
-        comment: "Whether to auto-suggest this template based on keywords",
-      },
-      rating: {
-        type: Sequelize.DECIMAL(3, 2),
-        allowNull: true,
-        comment: "Average rating of this template effectiveness",
-      },
-      ratingCount: {
-        type: Sequelize.INTEGER,
-        defaultValue: 0,
-        comment: "Number of ratings for this template",
       },
       createdAt: {
         type: Sequelize.DATE,
