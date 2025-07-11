@@ -6,9 +6,9 @@ let WebSocket;
 let websocketEnabled = true;
 
 try {
-  WebSocket = require('ws');
+  WebSocket = require("ws");
 } catch (error) {
-  console.warn('WebSocket dependencies not available:', error.message);
+  console.warn("WebSocket dependencies not available:", error.message);
   websocketEnabled = false;
 
   // Create fallback WebSocket implementation
@@ -17,18 +17,18 @@ try {
       constructor() {}
       on() {}
       close() {}
-    }
+    },
   };
 }
 
-const jwt = require('jsonwebtoken');
-const logger = require('../utils/logger');
-const dbTransactionManager = require('./database-transaction-manager');
+const jwt = require("jsonwebtoken");
+const logger = require("../utils/logger");
+const dbTransactionManager = require("./database-transaction-manager");
 
 class DatabaseStatusWebSocketService {
   constructor() {
     if (!websocketEnabled) {
-      logger.warn('WebSocket service disabled - dependencies not available');
+      logger.warn("WebSocket service disabled - dependencies not available");
       this.clients = new Set();
       return;
     }
@@ -42,33 +42,35 @@ class DatabaseStatusWebSocketService {
    */
   initialize(server) {
     try {
-      logger.info('Initializing Database Status WebSocket server...');
+      logger.info("Initializing Database Status WebSocket server...");
 
       if (!server) {
-        logger.warn('No HTTP server provided, Database Status WebSocket will be initialized later');
+        logger.warn(
+          "No HTTP server provided, Database Status WebSocket will be initialized later"
+        );
         return;
       }
 
       this.wss = new WebSocket.Server({
         server,
-        path: '/ws/database-status'
+        path: "/ws/database-status",
       });
 
-      this.wss.on('connection', (ws, req) => {
+      this.wss.on("connection", (ws, req) => {
         logger.info(
-          'Database Status WebSocket: New connection attempt received'
+          "Database Status WebSocket: New connection attempt received"
         );
         this.handleConnection(ws, req);
       });
 
-      this.wss.on('error', (error) => {
-        logger.error('Database Status WebSocket Server error:', error);
+      this.wss.on("error", (error) => {
+        logger.error("Database Status WebSocket Server error:", error);
       });
 
-      logger.info('Database Status WebSocket service initialized successfully');
+      logger.info("Database Status WebSocket service initialized successfully");
     } catch (error) {
       logger.error(
-        'Failed to initialize Database Status WebSocket server:',
+        "Failed to initialize Database Status WebSocket server:",
         error
       );
       throw error;
@@ -81,21 +83,21 @@ class DatabaseStatusWebSocketService {
   handleConnection(ws, req) {
     try {
       // Extract token from query parameters
-      const url = new URL(req.url, 'ws://localhost');
-      const token = url.searchParams.get('token');
+      const url = new URL(req.url, "ws://localhost");
+      const token = url.searchParams.get("token");
 
-      logger.info('Database status WebSocket connection attempt:', {
+      logger.info("Database status WebSocket connection attempt:", {
         url: req.url,
         hasToken: !!token,
         tokenLength: token ? token.length : 0,
-        jwtSecret: !!process.env.JWT_SECRET
+        jwtSecret: !!process.env.JWT_SECRET,
       });
 
       if (!token) {
         logger.warn(
-          'Database status WebSocket connection rejected: No token provided'
+          "Database status WebSocket connection rejected: No token provided"
         );
-        ws.close(1008, 'Authentication required');
+        ws.close(1008, "Authentication required");
         return;
       }
 
@@ -116,26 +118,26 @@ class DatabaseStatusWebSocketService {
 
       // Send initial status
       this.sendToClient(ws, {
-        type: 'initial_status',
-        data: dbTransactionManager.getStatus()
+        type: "initial_status",
+        data: dbTransactionManager.getStatus(),
       });
 
       // Handle messages from client
-      ws.on('message', (message) => {
+      ws.on("message", (message) => {
         try {
           const data = JSON.parse(message);
           this.handleClientMessage(ws, data);
         } catch (error) {
-          logger.error('Error parsing WebSocket message:', error);
+          logger.error("Error parsing WebSocket message:", error);
           this.sendToClient(ws, {
-            type: 'error',
-            message: 'Invalid message format'
+            type: "error",
+            message: "Invalid message format",
           });
         }
       });
 
       // Handle client disconnect
-      ws.on('close', () => {
+      ws.on("close", () => {
         this.clients.delete(ws);
         logger.info(
           `Database status WebSocket client disconnected: user ${userId}`
@@ -143,13 +145,13 @@ class DatabaseStatusWebSocketService {
       });
 
       // Handle errors
-      ws.on('error', (error) => {
-        logger.error('Database status WebSocket error:', error);
+      ws.on("error", (error) => {
+        logger.error("Database status WebSocket error:", error);
         this.clients.delete(ws);
       });
     } catch (error) {
-      logger.error('Database status WebSocket authentication failed:', error);
-      ws.close(1008, 'Authentication failed');
+      logger.error("Database status WebSocket authentication failed:", error);
+      ws.close(1008, "Authentication failed");
     }
   }
 
@@ -158,20 +160,20 @@ class DatabaseStatusWebSocketService {
    */
   handleClientMessage(ws, data) {
     switch (data.type) {
-    case 'subscribe_operation':
-      this.subscribeToOperation(ws, data.operationId);
-      break;
-    case 'unsubscribe_operation':
-      this.unsubscribeFromOperation(ws, data.operationId);
-      break;
-    case 'get_status':
-      this.sendToClient(ws, {
-        type: 'status_update',
-        data: dbTransactionManager.getStatus()
-      });
-      break;
-    default:
-      logger.warn('Unknown WebSocket message type:', data.type);
+      case "subscribe_operation":
+        this.subscribeToOperation(ws, data.operationId);
+        break;
+      case "unsubscribe_operation":
+        this.unsubscribeFromOperation(ws, data.operationId);
+        break;
+      case "get_status":
+        this.sendToClient(ws, {
+          type: "status_update",
+          data: dbTransactionManager.getStatus(),
+        });
+        break;
+      default:
+        logger.warn("Unknown WebSocket message type:", data.type);
     }
   }
 
@@ -203,122 +205,122 @@ class DatabaseStatusWebSocketService {
    */
   setupTransactionManagerListeners() {
     // Transaction events
-    dbTransactionManager.on('transactionRegistered', (transaction) => {
+    dbTransactionManager.on("transactionRegistered", (transaction) => {
       this.broadcast({
-        type: 'transaction_registered',
-        data: transaction
+        type: "transaction_registered",
+        data: transaction,
       });
     });
 
-    dbTransactionManager.on('transactionStarted', (transaction) => {
+    dbTransactionManager.on("transactionStarted", (transaction) => {
       this.broadcast(
         {
-          type: 'transaction_started',
-          data: transaction
+          type: "transaction_started",
+          data: transaction,
         },
         transaction.id
       );
     });
 
-    dbTransactionManager.on('transactionCompleted', (transaction) => {
+    dbTransactionManager.on("transactionCompleted", (transaction) => {
       this.broadcast(
         {
-          type: 'transaction_completed',
-          data: transaction
+          type: "transaction_completed",
+          data: transaction,
         },
         transaction.id
       );
     });
 
     dbTransactionManager.on(
-      'transactionError',
+      "transactionError",
       ({ operationId, error, transaction }) => {
         this.broadcast(
           {
-            type: 'transaction_error',
-            data: { operationId, error: error.message, transaction }
+            type: "transaction_error",
+            data: { operationId, error: error.message, transaction },
           },
           operationId
         );
       }
     );
 
-    dbTransactionManager.on('transactionInterrupted', (transaction) => {
+    dbTransactionManager.on("transactionInterrupted", (transaction) => {
       this.broadcast(
         {
-          type: 'transaction_interrupted',
-          data: transaction
+          type: "transaction_interrupted",
+          data: transaction,
         },
         transaction.id
       );
     });
 
     // Database busy events
-    dbTransactionManager.on('databaseBusy', (data) => {
+    dbTransactionManager.on("databaseBusy", (data) => {
       this.broadcast({
-        type: 'database_busy',
-        data
+        type: "database_busy",
+        data,
       });
     });
 
-    dbTransactionManager.on('databaseRecovered', () => {
+    dbTransactionManager.on("databaseRecovered", () => {
       this.broadcast({
-        type: 'database_recovered',
-        data: { timestamp: Date.now() }
+        type: "database_recovered",
+        data: { timestamp: Date.now() },
       });
     });
 
     // User interaction events
-    dbTransactionManager.on('databaseBusyUserInput', (data) => {
+    dbTransactionManager.on("databaseBusyUserInput", (data) => {
       this.broadcast({
-        type: 'database_busy_user_input',
-        data
+        type: "database_busy_user_input",
+        data,
       });
     });
 
-    dbTransactionManager.on('userDecision', (decision) => {
+    dbTransactionManager.on("userDecision", (decision) => {
       this.broadcast({
-        type: 'user_decision_made',
-        data: decision
+        type: "user_decision_made",
+        data: decision,
       });
     });
 
     // Operation events
-    dbTransactionManager.on('operationQueued', (data) => {
+    dbTransactionManager.on("operationQueued", (data) => {
       this.broadcast(
         {
-          type: 'operation_queued',
-          data
+          type: "operation_queued",
+          data,
         },
         data.operationId
       );
     });
 
-    dbTransactionManager.on('operationPaused', (data) => {
+    dbTransactionManager.on("operationPaused", (data) => {
       this.broadcast(
         {
-          type: 'operation_paused',
-          data
+          type: "operation_paused",
+          data,
         },
         data.operationId
       );
     });
 
-    dbTransactionManager.on('operationResumed', (data) => {
+    dbTransactionManager.on("operationResumed", (data) => {
       this.broadcast(
         {
-          type: 'operation_resumed',
-          data
+          type: "operation_resumed",
+          data,
         },
         data.operationId
       );
     });
 
-    dbTransactionManager.on('operationCancelled', (data) => {
+    dbTransactionManager.on("operationCancelled", (data) => {
       this.broadcast(
         {
-          type: 'operation_cancelled',
-          data
+          type: "operation_cancelled",
+          data,
         },
         data.operationId
       );
@@ -327,8 +329,8 @@ class DatabaseStatusWebSocketService {
     // Periodic status updates
     setInterval(() => {
       this.broadcast({
-        type: 'status_update',
-        data: dbTransactionManager.getStatus()
+        type: "status_update",
+        data: dbTransactionManager.getStatus(),
       });
     }, 5000); // Every 5 seconds
   }
@@ -342,11 +344,11 @@ class DatabaseStatusWebSocketService {
         client.send(
           JSON.stringify({
             ...message,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           })
         );
       } catch (error) {
-        logger.error('Error sending WebSocket message to client:', error);
+        logger.error("Error sending WebSocket message to client:", error);
         this.clients.delete(client);
       }
     }
@@ -378,7 +380,7 @@ class DatabaseStatusWebSocketService {
       connectedClients: this.clients.size,
       totalSubscriptions: Array.from(this.clients).reduce((total, client) => {
         return total + (client.subscriptions ? client.subscriptions.size : 0);
-      }, 0)
+      }, 0),
     };
   }
 
@@ -395,7 +397,7 @@ class DatabaseStatusWebSocketService {
       this.wss.close();
     }
 
-    logger.info('Database Status WebSocket service closed');
+    logger.info("Database Status WebSocket service closed");
   }
 }
 

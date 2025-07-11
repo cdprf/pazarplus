@@ -568,9 +568,8 @@ async function initializeEnhancedServices() {
     await BackgroundServicesManager.initialize();
     logger.info("Background services manager initialized");
 
-    // Initialize database status WebSocket service
-    databaseStatusWebSocket.initialize();
-    logger.info("Database status WebSocket service initialized");
+    // Note: Database status WebSocket service will be initialized later when server is available
+    logger.info("Database status WebSocket service initialization deferred");
 
     // Setup enhanced platform service event listeners
     setupEnhancedPlatformEventListeners();
@@ -593,69 +592,105 @@ async function initializeEnhancedServices() {
 
 // Setup event listeners for enhanced platform service
 function setupEnhancedPlatformEventListeners() {
-  // Listen for sync completion events
-  platformServiceManager.on("syncCompleted", (data) => {
-    logger.info("Platform sync completed:", {
-      totalProcessed: data.results.totalProcessed,
-      duration: data.performance.duration,
-      conflicts: data.results.conflicts.length,
+  try {
+    // Verify platformServiceManager is an EventEmitter
+    if (
+      !platformServiceManager ||
+      typeof platformServiceManager.on !== "function"
+    ) {
+      logger.warn(
+        "Platform service manager is not available or not an EventEmitter, skipping event listeners"
+      );
+      return;
+    }
+
+    // Listen for sync completion events
+    platformServiceManager.on("syncCompleted", (data) => {
+      logger.info("Platform sync completed:", {
+        totalProcessed: data.results.totalProcessed,
+        duration: data.performance.duration,
+        conflicts: data.results.conflicts.length,
+      });
+
+      // Send notification
+      notificationService.notifySyncCompleted({
+        totalProcessed: data.results.totalProcessed,
+        duration: data.performance.duration,
+        conflicts: data.results.conflicts.length,
+        platforms: data.results.successful.map((r) => r.platform),
+      });
     });
 
-    // Send notification
-    notificationService.notifySyncCompleted({
-      totalProcessed: data.results.totalProcessed,
-      duration: data.performance.duration,
-      conflicts: data.results.conflicts.length,
-      platforms: data.results.successful.map((r) => r.platform),
+    // Listen for order conflicts
+    platformServiceManager.on("orderConflict", (data) => {
+      logger.warn("Order conflict detected:", data);
+      notificationService.notifyOrderConflict(data);
     });
-  });
 
-  // Listen for order conflicts
-  platformServiceManager.on("orderConflict", (data) => {
-    logger.warn("Order conflict detected:", data);
-    notificationService.notifyOrderConflict(data);
-  });
+    // Listen for manual review requirements
+    platformServiceManager.on("manualReviewRequired", (data) => {
+      logger.warn("Manual review required:", data);
+      notificationService.notifyManualReviewRequired(data);
+    });
 
-  // Listen for manual review requirements
-  platformServiceManager.on("manualReviewRequired", (data) => {
-    logger.warn("Manual review required:", data);
-    notificationService.notifyManualReviewRequired(data);
-  });
+    // Listen for manual review resolutions
+    platformServiceManager.on("manualReviewResolved", (data) => {
+      logger.info("Manual review resolved:", data);
+    });
 
-  // Listen for manual review resolutions
-  platformServiceManager.on("manualReviewResolved", (data) => {
-    logger.info("Manual review resolved:", data);
-  });
-
-  logger.info("Enhanced platform service event listeners setup complete");
+    logger.info("Enhanced platform service event listeners setup complete");
+  } catch (error) {
+    logger.error("Failed to setup enhanced platform event listeners", {
+      error: error.message,
+      stack: error.stack,
+    });
+  }
 }
 
 // Setup event listeners for inventory management service
 function setupInventoryManagementEventListeners() {
-  // Listen for inventory updates
-  inventoryManagementService.on("inventoryUpdated", (data) => {
-    logger.info("Inventory updated across platforms:", {
-      sku: data.sku,
-      newQuantity: data.newQuantity,
-      successCount: data.updateResults.filter((r) => r.success).length,
+  try {
+    // Verify inventoryManagementService is an EventEmitter
+    if (
+      !inventoryManagementService ||
+      typeof inventoryManagementService.on !== "function"
+    ) {
+      logger.warn(
+        "Inventory management service is not available or not an EventEmitter, skipping event listeners"
+      );
+      return;
+    }
+
+    // Listen for inventory updates
+    inventoryManagementService.on("inventoryUpdated", (data) => {
+      logger.info("Inventory updated across platforms:", {
+        sku: data.sku,
+        newQuantity: data.newQuantity,
+        successCount: data.updateResults.filter((r) => r.success).length,
+      });
     });
-  });
 
-  // Listen for low inventory alerts
-  inventoryManagementService.on("lowInventory", (data) => {
-    logger.warn("Low inventory alert:", data);
-    notificationService.notifyLowInventory(data);
-  });
-
-  // Listen for inventory health issues
-  inventoryManagementService.on("inventoryHealthIssues", (data) => {
-    logger.warn("Inventory health issues detected:", {
-      issueCount: data.issues.length,
-      timestamp: data.timestamp,
+    // Listen for low inventory alerts
+    inventoryManagementService.on("lowInventory", (data) => {
+      logger.warn("Low inventory alert:", data);
+      notificationService.notifyLowInventory(data);
     });
-  });
 
-  logger.info("Inventory management service event listeners setup complete");
+    // Listen for inventory health issues
+    inventoryManagementService.on("inventoryHealthIssues", (data) => {
+      logger.warn("Inventory health issues detected:", {
+        issueCount: data.issues.length,
+        timestamp: data.timestamp,
+      });
+    });
+
+    logger.info("Inventory management service event listeners setup complete");
+  } catch (error) {
+    logger.error("Failed to setup inventory management event listeners", {
+      error: error.message,
+      stack: error.stack,
+    });
+  }
 }
 
 // Initialize WebSocket server for real-time notifications
@@ -667,6 +702,21 @@ function initializeWebSocketServer(server) {
     logger.debug("Initializing notification service");
     notificationService.initialize();
     logger.debug("Notification service initialized successfully");
+
+    // Initialize database status WebSocket service with server
+    logger.debug("Initializing database status WebSocket service");
+    try {
+      databaseStatusWebSocket.initialize(server);
+      logger.debug(
+        "Database status WebSocket service initialized successfully"
+      );
+    } catch (dbWsError) {
+      logger.error("Failed to initialize database status WebSocket service", {
+        error: dbWsError.message,
+        stack: dbWsError.stack,
+      });
+      // Continue execution even if database WebSocket fails
+    }
 
     // Then initialize unified WebSocket server with better error handling
     logger.debug("Initializing unified WebSocket server");

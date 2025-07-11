@@ -1616,4 +1616,5 @@ class PlatformServiceManager extends EventEmitter {
   }
 }
 
-module.exports = PlatformServiceManager;
+// Export singleton instance
+module.exports = new PlatformServiceManager();

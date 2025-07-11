@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 /**
  * Complete Database Schema Migration for Pazar+ Platform
@@ -30,13 +30,13 @@ module.exports = {
     // Helper function to determine JSON type based on dialect
     const getJsonType = () => {
       const dialect = queryInterface.sequelize.getDialect();
-      return dialect === 'postgres' ? Sequelize.JSONB : Sequelize.JSON;
+      return dialect === "postgres" ? Sequelize.JSONB : Sequelize.JSON;
     };
 
     const JsonType = getJsonType();
 
     // Neon PostgreSQL specific configurations
-    if (queryInterface.sequelize.getDialect() === 'postgres') {
+    if (queryInterface.sequelize.getDialect() === "postgres") {
       // Enable required extensions
       await queryInterface.sequelize.query(
         'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
@@ -46,117 +46,117 @@ module.exports = {
       );
 
       // Set timezone for consistent date handling
-      await queryInterface.sequelize.query('SET timezone = \'UTC\';');
+      await queryInterface.sequelize.query("SET timezone = 'UTC';");
     }
 
     // Create Users table first (referenced by other tables)
-    await queryInterface.createTable('users', {
+    await queryInterface.createTable("users", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       username: {
         type: Sequelize.STRING,
         allowNull: false,
-        unique: true
+        unique: true,
       },
       email: {
         type: Sequelize.STRING,
         allowNull: false,
-        unique: true
+        unique: true,
       },
       password: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       fullName: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       role: {
-        type: Sequelize.ENUM('user', 'admin', 'support'),
-        defaultValue: 'user'
+        type: Sequelize.ENUM("user", "admin", "support"),
+        defaultValue: "user",
       },
       isActive: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
       },
       emailVerified: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       twoFactorEnabled: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       twoFactorSecret: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       lastLogin: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       subscriptionPlan: {
-        type: Sequelize.ENUM('trial', 'starter', 'professional', 'enterprise'),
-        defaultValue: 'trial'
+        type: Sequelize.ENUM("trial", "starter", "professional", "enterprise"),
+        defaultValue: "trial",
       },
       subscriptionStatus: {
-        type: Sequelize.ENUM('trial', 'active', 'expired', 'cancelled'),
-        defaultValue: 'trial'
+        type: Sequelize.ENUM("trial", "active", "expired", "cancelled"),
+        defaultValue: "trial",
       },
       subscriptionEndDate: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       tenantId: {
         type: Sequelize.UUID,
-        allowNull: true
+        allowNull: true,
       },
       trialStartedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       trialEndsAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       subscriptionStartedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       subscriptionEndsAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       preferences: {
         type: JsonType,
-        defaultValue: {}
+        defaultValue: {},
       },
       stripeCustomerId: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       stripeSubscriptionId: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       iyzicoCustomerId: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       monthlyApiCalls: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       monthlyApiLimit: {
         type: Sequelize.INTEGER,
-        defaultValue: 1000
+        defaultValue: 1000,
       },
       lastApiCallReset: {
         type: Sequelize.DATE,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       featuresEnabled: {
         type: JsonType,
@@ -166,242 +166,242 @@ module.exports = {
           multi_platform: false,
           ai_insights: false,
           custom_reports: false,
-          api_access: false
-        }
+          api_access: false,
+        },
       },
       onboardingCompleted: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       onboardingStep: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       companyName: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       businessType: {
         type: Sequelize.ENUM(
-          'individual',
-          'small_business',
-          'medium_business',
-          'enterprise'
+          "individual",
+          "small_business",
+          "medium_business",
+          "enterprise"
         ),
-        allowNull: true
+        allowNull: true,
       },
       monthlyRevenue: {
         type: Sequelize.ENUM(
-          '0-10k',
-          '10k-50k',
-          '50k-100k',
-          '100k-500k',
-          '500k+'
+          "0-10k",
+          "10k-50k",
+          "50k-100k",
+          "100k-500k",
+          "500k+"
         ),
-        allowNull: true
+        allowNull: true,
       },
       healthScore: {
         type: Sequelize.DECIMAL(3, 2),
-        defaultValue: 0.5
+        defaultValue: 0.5,
       },
       lastActivityAt: {
         type: Sequelize.DATE,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       referralCode: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       referredBy: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'users',
-          key: 'id'
-        }
+          model: "users",
+          key: "id",
+        },
       },
       billingCurrency: {
         type: Sequelize.STRING(3),
-        defaultValue: 'TRY'
+        defaultValue: "TRY",
       },
       billingCountry: {
         type: Sequelize.STRING(2),
-        defaultValue: 'TR'
+        defaultValue: "TR",
       },
       settings: {
         type: Sequelize.TEXT,
         allowNull: true,
-        defaultValue: '{}'
+        defaultValue: "{}",
       },
       passwordResetToken: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       passwordResetExpires: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       emailVerificationToken: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       emailVerificationExpires: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Platform Connections table
-    await queryInterface.createTable('platform_connections', {
+    await queryInterface.createTable("platform_connections", {
       id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       platformType: {
         type: Sequelize.ENUM(
-          'trendyol',
-          'hepsiburada',
-          'n11',
-          'pazarama',
-          'amazon',
-          'csv',
-          'shopify',
-          'woocommerce',
-          'magento'
+          "trendyol",
+          "hepsiburada",
+          "n11",
+          "pazarama",
+          "amazon",
+          "csv",
+          "shopify",
+          "woocommerce",
+          "magento"
         ),
-        allowNull: false
+        allowNull: false,
       },
       platformName: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       credentials: {
         type: JsonType,
-        allowNull: false
+        allowNull: false,
       },
       status: {
-        type: Sequelize.ENUM('active', 'inactive', 'error', 'pending'),
-        defaultValue: 'pending'
+        type: Sequelize.ENUM("active", "inactive", "error", "pending"),
+        defaultValue: "pending",
       },
       lastSync: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       syncSettings: {
         type: JsonType,
-        defaultValue: {}
+        defaultValue: {},
       },
       errorMessage: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       isDefault: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       isActive: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
       },
       lastTestedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       syncInterval: {
         type: Sequelize.INTEGER,
-        defaultValue: 24
+        defaultValue: 24,
       },
       autoSync: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       environment: {
         type: Sequelize.STRING(50),
-        defaultValue: 'production',
-        allowNull: false
+        defaultValue: "production",
+        allowNull: false,
       },
       name: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       rateLimitInfo: {
         type: JsonType,
-        defaultValue: {}
+        defaultValue: {},
       },
       lastError: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       errorCount: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       maxRetries: {
         type: Sequelize.INTEGER,
-        defaultValue: 3
+        defaultValue: 3,
       },
       webhookUrl: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       webhookSecret: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       supportedFeatures: {
         type: JsonType,
-        defaultValue: []
+        defaultValue: [],
       },
       platformMetadata: {
         type: JsonType,
-        defaultValue: {}
+        defaultValue: {},
       },
       settings: {
         type: JsonType,
-        defaultValue: {}
+        defaultValue: {},
       },
       tags: {
         type: JsonType,
-        defaultValue: []
+        defaultValue: [],
       },
       description: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       expiresAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       notificationSettings: {
         type: JsonType,
@@ -409,977 +409,977 @@ module.exports = {
           onError: true,
           onSync: false,
           onOrderUpdate: true,
-          onConnectionExpiry: true
-        }
+          onConnectionExpiry: true,
+        },
       },
       lastSyncAt: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Last time this connection was synced'
-      }
+        comment: "Last time this connection was synced",
+      },
     });
 
     // Create Products table
-    await queryInterface.createTable('products', {
+    await queryInterface.createTable("products", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       sku: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       barcode: {
         type: Sequelize.STRING(100),
-        allowNull: true
+        allowNull: true,
       },
       name: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       description: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       category: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       brand: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       price: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
       },
       costPrice: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: true
+        allowNull: true,
       },
       stockQuantity: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       minStockLevel: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       weight: {
         type: Sequelize.DECIMAL(8, 3),
-        allowNull: true
+        allowNull: true,
       },
       dimensions: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       images: {
         type: JsonType,
-        defaultValue: []
+        defaultValue: [],
       },
       attributes: {
         type: JsonType,
-        defaultValue: {}
+        defaultValue: {},
       },
       status: {
-        type: Sequelize.ENUM('active', 'inactive', 'draft'),
-        defaultValue: 'active'
+        type: Sequelize.ENUM("active", "inactive", "draft"),
+        defaultValue: "active",
       },
       platforms: {
         type: JsonType,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: {},
       },
       tags: {
         type: JsonType,
         allowNull: true,
-        defaultValue: []
+        defaultValue: [],
       },
       lastSyncedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       hasVariants: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       variantAttributes: {
         type: JsonType,
-        defaultValue: []
+        defaultValue: [],
       },
       sourcePlatform: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Platform where this product originated from'
+        comment: "Platform where this product originated from",
       },
       // Variant Detection Fields
       isVariant: {
         type: Sequelize.BOOLEAN,
         allowNull: false,
         defaultValue: false,
-        comment: 'Whether this product is a variant of another product'
+        comment: "Whether this product is a variant of another product",
       },
       isMainProduct: {
         type: Sequelize.BOOLEAN,
         allowNull: false,
         defaultValue: false,
-        comment: 'Whether this product is a main product with variants'
+        comment: "Whether this product is a main product with variants",
       },
       variantGroupId: {
         type: Sequelize.UUID,
         allowNull: true,
-        comment: 'ID linking variants to their group'
+        comment: "ID linking variants to their group",
       },
       variantType: {
         type: Sequelize.ENUM(
-          'color',
-          'size',
-          'model',
-          'feature',
-          'mixed',
-          'unknown'
+          "color",
+          "size",
+          "model",
+          "feature",
+          "mixed",
+          "unknown"
         ),
         allowNull: true,
-        comment: 'Type of variant (color, size, style, etc.)'
+        comment: "Type of variant (color, size, style, etc.)",
       },
       variantValue: {
         type: Sequelize.STRING(255),
         allowNull: true,
-        comment: 'Value of the variant (red, large, premium, etc.)'
+        comment: "Value of the variant (red, large, premium, etc.)",
       },
       parentProductId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'products',
-          key: 'id'
+          model: "products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL',
-        comment: 'Parent product ID if this is a variant'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
+        comment: "Parent product ID if this is a variant",
       },
       variantDetectionConfidence: {
         type: Sequelize.DECIMAL(3, 2),
         allowNull: true,
-        comment: 'Confidence score for variant detection (0.00-1.00)'
+        comment: "Confidence score for variant detection (0.00-1.00)",
       },
       variantDetectionSource: {
         type: Sequelize.ENUM(
-          'auto',
-          'manual',
-          'platform',
-          'sku_analysis',
-          'text_analysis'
+          "auto",
+          "manual",
+          "platform",
+          "sku_analysis",
+          "text_analysis"
         ),
         allowNull: true,
-        comment: 'Source of variant detection'
+        comment: "Source of variant detection",
       },
       lastVariantDetectionAt: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Last time variant detection was run on this product'
+        comment: "Last time variant detection was run on this product",
       },
       templateId: {
         type: Sequelize.UUID,
-        allowNull: true
+        allowNull: true,
         // Foreign key will be added after product_templates table is created
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Product Variants table
-    await queryInterface.createTable('product_variants', {
+    await queryInterface.createTable("product_variants", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       productId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'products',
-          key: 'id'
+          model: "products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       name: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       sku: {
         type: Sequelize.STRING(100),
-        allowNull: false
+        allowNull: false,
       },
       barcode: {
         type: Sequelize.STRING(100),
-        allowNull: true
+        allowNull: true,
       },
       attributes: {
         type: JsonType,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: {},
       },
       price: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: true
+        allowNull: true,
       },
       costPrice: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: true
+        allowNull: true,
       },
       stockQuantity: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       minStockLevel: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       weight: {
         type: Sequelize.DECIMAL(10, 3),
-        allowNull: true
+        allowNull: true,
       },
       dimensions: {
         type: JsonType,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: {},
       },
       images: {
         type: JsonType,
         allowNull: true,
-        defaultValue: []
+        defaultValue: [],
       },
       status: {
-        type: Sequelize.ENUM('active', 'inactive', 'discontinued'),
+        type: Sequelize.ENUM("active", "inactive", "discontinued"),
         allowNull: false,
-        defaultValue: 'active'
+        defaultValue: "active",
       },
       isDefault: {
         type: Sequelize.BOOLEAN,
         allowNull: false,
-        defaultValue: false
+        defaultValue: false,
       },
       sortOrder: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Product Media table
-    await queryInterface.createTable('product_media', {
+    await queryInterface.createTable("product_media", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       productId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'products',
-          key: 'id'
+          model: "products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       variantId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'product_variants',
-          key: 'id'
+          model: "product_variants",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       type: {
-        type: Sequelize.ENUM('image', 'gif', 'video', 'document'),
-        allowNull: false
+        type: Sequelize.ENUM("image", "gif", "video", "document"),
+        allowNull: false,
       },
       url: {
         type: Sequelize.TEXT,
-        allowNull: false
+        allowNull: false,
       },
       thumbnailUrl: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       filename: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       originalName: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       mimeType: {
         type: Sequelize.STRING(100),
-        allowNull: true
+        allowNull: true,
       },
       size: {
         type: Sequelize.BIGINT,
-        allowNull: true
+        allowNull: true,
       },
       dimensions: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       isPrimary: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       sortOrder: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       duration: {
         type: Sequelize.INTEGER,
-        allowNull: true
+        allowNull: true,
       },
       altText: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       caption: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       tags: {
         type: JsonType,
-        defaultValue: []
+        defaultValue: [],
       },
       platform: {
         type: Sequelize.STRING(50),
-        allowNull: true
+        allowNull: true,
       },
       status: {
         type: Sequelize.ENUM(
-          'active',
-          'inactive',
-          'processing',
-          'failed',
-          'archived'
+          "active",
+          "inactive",
+          "processing",
+          "failed",
+          "archived"
         ),
         allowNull: false,
-        defaultValue: 'active'
+        defaultValue: "active",
       },
       platformSpecific: {
         type: JsonType,
         allowNull: false,
-        defaultValue: {}
+        defaultValue: {},
       },
       metadata: {
         type: JsonType,
         allowNull: false,
-        defaultValue: {}
+        defaultValue: {},
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create PlatformConflict table
-    await queryInterface.createTable('platform_conflicts', {
+    await queryInterface.createTable("platform_conflicts", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       entityType: {
-        type: Sequelize.ENUM('product', 'order', 'inventory'),
-        allowNull: false
+        type: Sequelize.ENUM("product", "order", "inventory"),
+        allowNull: false,
       },
       entityId: {
         type: Sequelize.UUID,
-        allowNull: false
+        allowNull: false,
       },
       platformType: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       conflictType: {
         type: Sequelize.ENUM(
-          'price_mismatch',
-          'stock_mismatch',
-          'data_conflict',
-          'sync_error'
+          "price_mismatch",
+          "stock_mismatch",
+          "data_conflict",
+          "sync_error"
         ),
-        allowNull: false
+        allowNull: false,
       },
       conflictData: {
         type: JsonType,
-        allowNull: false
+        allowNull: false,
       },
       status: {
-        type: Sequelize.ENUM('pending', 'resolved', 'ignored'),
-        defaultValue: 'pending'
+        type: Sequelize.ENUM("pending", "resolved", "ignored"),
+        defaultValue: "pending",
       },
       resolvedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       resolvedBy: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'users',
-          key: 'id'
-        }
+          model: "users",
+          key: "id",
+        },
       },
       resolution: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create PlatformData table
-    await queryInterface.createTable('platform_data', {
+    await queryInterface.createTable("platform_data", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       platformType: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       entityType: {
-        type: Sequelize.ENUM('product', 'order', 'variant'),
-        allowNull: false
+        type: Sequelize.ENUM("product", "order", "variant"),
+        allowNull: false,
       },
       entityId: {
         type: Sequelize.UUID,
-        allowNull: false
+        allowNull: false,
       },
       platformId: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       platformEntityId: {
         type: Sequelize.STRING,
         allowNull: false,
-        comment: 'ID of the entity on the platform'
+        comment: "ID of the entity on the platform",
       },
       platformSku: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Platform-specific SKU'
+        comment: "Platform-specific SKU",
       },
       platformPrice: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: true,
-        comment: 'Price on the platform'
+        comment: "Price on the platform",
       },
       platformQuantity: {
         type: Sequelize.INTEGER,
         allowNull: true,
-        comment: 'Quantity available on the platform'
+        comment: "Quantity available on the platform",
       },
       platformStatus: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Status on the platform'
+        comment: "Status on the platform",
       },
       platformUrl: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: 'URL on the platform'
+        comment: "URL on the platform",
       },
       platformImages: {
         type: JsonType,
         allowNull: true,
-        comment: 'Images on the platform'
+        comment: "Images on the platform",
       },
       platformTitle: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: 'Title on the platform'
+        comment: "Title on the platform",
       },
       platformDescription: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: 'Description on the platform'
+        comment: "Description on the platform",
       },
       platformCategory: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Category on the platform'
+        comment: "Category on the platform",
       },
       platformBrand: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Brand on the platform'
+        comment: "Brand on the platform",
       },
       platformAttributes: {
         type: JsonType,
         allowNull: true,
-        comment: 'Attributes on the platform'
+        comment: "Attributes on the platform",
       },
       isActive: {
         type: Sequelize.BOOLEAN,
         defaultValue: true,
-        comment: 'Whether the entity is active on the platform'
+        comment: "Whether the entity is active on the platform",
       },
       lastError: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: 'Last synchronization error'
+        comment: "Last synchronization error",
       },
       data: {
         type: JsonType,
         allowNull: false,
-        defaultValue: {}
+        defaultValue: {},
       },
       metadata: {
         type: JsonType,
         allowNull: false,
-        defaultValue: {}
+        defaultValue: {},
       },
       lastSyncAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       lastSyncedAt: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Last synchronization timestamp'
+        comment: "Last synchronization timestamp",
       },
       syncStatus: {
-        type: Sequelize.ENUM('pending', 'synced', 'failed'),
-        defaultValue: 'pending'
+        type: Sequelize.ENUM("pending", "synced", "failed"),
+        defaultValue: "pending",
       },
       status: {
-        type: Sequelize.ENUM('active', 'inactive', 'syncing', 'error'),
-        defaultValue: 'active'
+        type: Sequelize.ENUM("active", "inactive", "syncing", "error"),
+        defaultValue: "active",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create ProductTemplate table
-    await queryInterface.createTable('product_templates', {
+    await queryInterface.createTable("product_templates", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       name: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       description: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       platformType: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       categoryId: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       categoryName: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Human-readable category name'
+        comment: "Human-readable category name",
       },
       template: {
         type: JsonType,
         allowNull: false,
-        defaultValue: {}
+        defaultValue: {},
       },
       fieldMappings: {
         type: JsonType,
         allowNull: false,
-        defaultValue: {}
+        defaultValue: {},
       },
       requiredFields: {
         type: JsonType,
         allowNull: false,
         defaultValue: [],
-        comment: 'List of required fields for this template'
+        comment: "List of required fields for this template",
       },
       validationRules: {
         type: JsonType,
         allowNull: false,
-        defaultValue: {}
+        defaultValue: {},
       },
       conditionalFields: {
         type: JsonType,
         allowNull: false,
         defaultValue: {},
-        comment: 'Conditional fields configuration'
+        comment: "Conditional fields configuration",
       },
       defaultValues: {
         type: JsonType,
         allowNull: false,
         defaultValue: {},
-        comment: 'Default values for fields'
+        comment: "Default values for fields",
       },
       isActive: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
       },
       version: {
         type: Sequelize.INTEGER,
         allowNull: false,
         defaultValue: 1,
-        comment: 'Template version for updates'
+        comment: "Template version for updates",
       },
       parentTemplateId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'product_templates',
-          key: 'id'
+          model: "product_templates",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL',
-        comment: 'Parent template for inheritance'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
+        comment: "Parent template for inheritance",
       },
       isDefault: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       usageCount: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       usage_count: {
         type: Sequelize.INTEGER,
         allowNull: false,
         defaultValue: 0,
-        comment: 'Number of times this template has been used'
+        comment: "Number of times this template has been used",
       },
       last_used: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Last time this template was used'
+        comment: "Last time this template was used",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Orders table
-    await queryInterface.createTable('orders', {
+    await queryInterface.createTable("orders", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       connectionId: {
         type: Sequelize.INTEGER,
         allowNull: true, // Changed: Made nullable to support orders without platform connections
         references: {
-          model: 'platform_connections',
-          key: 'id'
+          model: "platform_connections",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL' // Changed: Set to NULL instead of RESTRICT when platform connection is deleted
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL", // Changed: Set to NULL instead of RESTRICT when platform connection is deleted
       },
       externalOrderId: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       orderNumber: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       orderDate: {
         type: Sequelize.DATE,
-        allowNull: false
+        allowNull: false,
       },
       orderStatus: {
         type: Sequelize.ENUM(
-          'new',
-          'pending',
-          'processing',
-          'shipped',
-          'in_transit',
-          'delivered',
-          'cancelled',
-          'returned',
-          'failed',
-          'unknown',
-          'claim_created',
-          'claim_approved',
-          'claim_rejected',
-          'refunded',
-          'consolidated',
-          'in_batch'
+          "new",
+          "pending",
+          "processing",
+          "shipped",
+          "in_transit",
+          "delivered",
+          "cancelled",
+          "returned",
+          "failed",
+          "unknown",
+          "claim_created",
+          "claim_approved",
+          "claim_rejected",
+          "refunded",
+          "consolidated",
+          "in_batch"
         ),
         allowNull: false,
-        defaultValue: 'new'
+        defaultValue: "new",
       },
       paymentStatus: {
-        type: Sequelize.ENUM('pending', 'paid', 'failed', 'refunded'),
-        defaultValue: 'pending'
+        type: Sequelize.ENUM("pending", "paid", "failed", "refunded"),
+        defaultValue: "pending",
       },
       shippingStatus: {
         type: Sequelize.ENUM(
-          'pending',
-          'processing',
-          'shipped',
-          'delivered',
-          'returned'
+          "pending",
+          "processing",
+          "shipped",
+          "delivered",
+          "returned"
         ),
-        defaultValue: 'pending'
+        defaultValue: "pending",
       },
       customerInfo: {
         type: JsonType,
-        allowNull: false
+        allowNull: false,
       },
       shippingAddress: {
         type: JsonType,
-        allowNull: false
+        allowNull: false,
       },
       billingAddress: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       totalAmount: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
       },
       taxAmount: {
         type: Sequelize.DECIMAL(10, 2),
-        defaultValue: 0
+        defaultValue: 0,
       },
       shippingAmount: {
         type: Sequelize.DECIMAL(10, 2),
-        defaultValue: 0
+        defaultValue: 0,
       },
       discountAmount: {
         type: Sequelize.DECIMAL(10, 2),
-        defaultValue: 0
+        defaultValue: 0,
       },
       currency: {
         type: Sequelize.STRING(3),
-        defaultValue: 'TRY'
+        defaultValue: "TRY",
       },
       notes: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       trackingNumber: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       carrierName: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       metadata: {
         type: JsonType,
-        defaultValue: {}
+        defaultValue: {},
       },
       isCommercial: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       isMicroExport: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       fastDeliveryType: {
         type: Sequelize.ENUM(
-          'TodayDelivery',
-          'SameDayShipping',
-          'FastDelivery'
+          "TodayDelivery",
+          "SameDayShipping",
+          "FastDelivery"
         ),
-        allowNull: true
+        allowNull: true,
       },
       deliveryType: {
         type: Sequelize.STRING(50),
-        defaultValue: 'normal'
+        defaultValue: "normal",
       },
       deliveryAddressType: {
-        type: Sequelize.ENUM('Shipment', 'CollectionPoint'),
-        defaultValue: 'Shipment'
+        type: Sequelize.ENUM("Shipment", "CollectionPoint"),
+        defaultValue: "Shipment",
       },
       isGiftBoxRequested: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       etgbNo: {
         type: Sequelize.STRING(50),
-        allowNull: true
+        allowNull: true,
       },
       etgbDate: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       is3pByTrendyol: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       containsDangerousProduct: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       identityNumber: {
         type: Sequelize.STRING(20),
-        allowNull: true
+        allowNull: true,
       },
       isConsolidated: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       consolidatedGroupId: {
         type: Sequelize.STRING(50),
-        allowNull: true
+        allowNull: true,
       },
       batchId: {
         type: Sequelize.STRING(50),
-        allowNull: true
+        allowNull: true,
       },
       shippingTemplateId: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       // Legacy platform fields for backward compatibility
       platformType: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       platform: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       platformOrderId: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       platformId: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       // Customer fields
       customerName: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       customerEmail: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       customerPhone: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       // Shipping detail reference
       shippingDetailId: {
         type: Sequelize.INTEGER,
-        allowNull: true
+        allowNull: true,
         // Foreign key will be added after shipping_details table is created
       },
       // Cargo tracking information
@@ -1387,2306 +1387,2306 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: true,
         comment:
-          'Cargo tracking number from shipping provider (Trendyol, N11, etc.)'
+          "Cargo tracking number from shipping provider (Trendyol, N11, etc.)",
       },
       cargoTrackingLink: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Link to the cargo tracking page'
+        comment: "Link to the cargo tracking page",
       },
       cargoTrackingUrl: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: 'URL for cargo tracking'
+        comment: "URL for cargo tracking",
       },
       cargoCompany: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Name of the shipping provider'
+        comment: "Name of the shipping provider",
       },
       // Invoice fields
       invoiceStatus: {
-        type: Sequelize.ENUM('pending', 'issued', 'cancelled'),
+        type: Sequelize.ENUM("pending", "issued", "cancelled"),
         allowNull: true,
-        defaultValue: 'pending'
+        defaultValue: "pending",
       },
       invoiceNumber: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       invoiceDate: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Invoice date'
+        comment: "Invoice date",
       },
       invoiceTotal: {
         type: Sequelize.DECIMAL(12, 2),
         allowNull: false,
         defaultValue: 0,
-        comment: 'Total invoice amount'
+        comment: "Total invoice amount",
       },
       // Data tracking fields
       rawData: {
         type: JsonType,
         allowNull: true,
-        comment: 'Raw order data from platform API'
+        comment: "Raw order data from platform API",
       },
       lastSyncedAt: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Last time this order was synced from platform'
+        comment: "Last time this order was synced from platform",
       },
       shippingLabelPrinted: {
         type: Sequelize.BOOLEAN,
         defaultValue: false,
-        comment: 'Whether shipping label has been printed'
+        comment: "Whether shipping label has been printed",
       },
       shippingLabelPrintedAt: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Timestamp when shipping label was printed'
+        comment: "Timestamp when shipping label was printed",
       },
       invoicePrinted: {
         type: Sequelize.BOOLEAN,
         defaultValue: false,
-        comment: 'Whether invoice has been printed'
+        comment: "Whether invoice has been printed",
       },
       invoicePrintedAt: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Timestamp when invoice was printed'
+        comment: "Timestamp when invoice was printed",
       },
       errorMessage: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: 'Error message for failed orders or operations'
+        comment: "Error message for failed orders or operations",
       },
       retryCount: {
         type: Sequelize.INTEGER,
         allowNull: true,
         defaultValue: 0,
-        comment: 'Number of retry attempts for failed operations'
+        comment: "Number of retry attempts for failed operations",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Order Items table
-    await queryInterface.createTable('order_items', {
+    await queryInterface.createTable("order_items", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       orderId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'orders',
-          key: 'id'
+          model: "orders",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       productId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'products',
-          key: 'id'
+          model: "products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
       },
       platformProductId: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       sku: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       barcode: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       title: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       quantity: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 1
+        defaultValue: 1,
       },
       price: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
       },
       totalPrice: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
       },
       taxAmount: {
         type: Sequelize.DECIMAL(10, 2),
-        defaultValue: 0
+        defaultValue: 0,
       },
       discountAmount: {
         type: Sequelize.DECIMAL(10, 2),
-        defaultValue: 0
+        defaultValue: 0,
       },
       attributes: {
         type: JsonType,
-        defaultValue: {}
+        defaultValue: {},
       },
       discount: {
         type: Sequelize.FLOAT(10, 2),
         allowNull: true,
-        defaultValue: 0
+        defaultValue: 0,
       },
       platformDiscount: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
         defaultValue: 0,
-        comment: 'Platform discount (Trendyol tyDiscount)'
+        comment: "Platform discount (Trendyol tyDiscount)",
       },
       merchantDiscount: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
         defaultValue: 0,
-        comment: 'Merchant discount (separate from platform discount)'
+        comment: "Merchant discount (separate from platform discount)",
       },
       invoiceTotal: {
         type: Sequelize.FLOAT(10, 2),
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       currency: {
         type: Sequelize.STRING(3),
         allowNull: false,
-        defaultValue: 'TRY'
+        defaultValue: "TRY",
       },
       productSize: {
         type: Sequelize.STRING(100),
         allowNull: true,
-        comment: 'Product size from Trendyol API'
+        comment: "Product size from Trendyol API",
       },
       productColor: {
         type: Sequelize.STRING(100),
         allowNull: true,
-        comment: 'Product color from Trendyol API'
+        comment: "Product color from Trendyol API",
       },
       productCategoryId: {
         type: Sequelize.INTEGER,
         allowNull: true,
-        comment: 'Product category ID from Trendyol API'
+        comment: "Product category ID from Trendyol API",
       },
       productOrigin: {
         type: Sequelize.STRING(10),
         allowNull: true,
-        comment: 'Product origin (important for micro export orders)'
+        comment: "Product origin (important for micro export orders)",
       },
       salesCampaignId: {
         type: Sequelize.INTEGER,
         allowNull: true,
-        comment: 'Sales campaign ID from Trendyol API'
+        comment: "Sales campaign ID from Trendyol API",
       },
       lineItemStatus: {
         type: Sequelize.STRING(100),
         allowNull: true,
-        comment: 'Individual line item status (orderLineItemStatusName)'
+        comment: "Individual line item status (orderLineItemStatusName)",
       },
       vatBaseAmount: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
         defaultValue: 0,
-        comment: 'VAT base amount'
+        comment: "VAT base amount",
       },
       laborCost: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
         defaultValue: 0,
-        comment: 'Labor cost'
+        comment: "Labor cost",
       },
       fastDeliveryOptions: {
         type: JsonType,
         allowNull: true,
-        comment: 'Fast delivery options array from Trendyol API'
+        comment: "Fast delivery options array from Trendyol API",
       },
       discountDetails: {
         type: JsonType,
         allowNull: true,
-        comment: 'Detailed discount breakdown from Trendyol API'
+        comment: "Detailed discount breakdown from Trendyol API",
       },
       variantInfo: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       rawData: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Shipping Details table
-    await queryInterface.createTable('shipping_details', {
+    await queryInterface.createTable("shipping_details", {
       id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
       },
       orderId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'orders',
-          key: 'id'
+          model: "orders",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       recipientName: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       address: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       city: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       state: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       postalCode: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       country: {
         type: Sequelize.STRING,
         allowNull: false,
-        defaultValue: 'Turkey'
+        defaultValue: "Turkey",
       },
       phone: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       email: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       shippingMethod: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       carrierId: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Hepsiburada Orders table - Platform-specific order details
-    await queryInterface.createTable('hepsiburada_orders', {
+    await queryInterface.createTable("hepsiburada_orders", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       orderId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'orders',
-          key: 'id'
+          model: "orders",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       packageNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Hepsiburada package number'
+        comment: "Hepsiburada package number",
       },
       merchantId: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Merchant ID in Hepsiburada system'
+        comment: "Merchant ID in Hepsiburada system",
       },
       customerId: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Customer ID in Hepsiburada system'
+        comment: "Customer ID in Hepsiburada system",
       },
       orderNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Hepsiburada order number'
+        comment: "Hepsiburada order number",
       },
       referenceNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Reference number for the order'
+        comment: "Reference number for the order",
       },
       cargoCompany: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Cargo company for shipping'
+        comment: "Cargo company for shipping",
       },
       cargoTrackingNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Cargo tracking number'
+        comment: "Cargo tracking number",
       },
       cargoTrackingUrl: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: 'Cargo tracking URL'
+        comment: "Cargo tracking URL",
       },
       paymentType: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Payment type (e.g., credit card, bank transfer)'
+        comment: "Payment type (e.g., credit card, bank transfer)",
       },
       platformStatus: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Platform-specific order status'
+        comment: "Platform-specific order status",
       },
       paymentStatus: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Payment status from Hepsiburada'
+        comment: "Payment status from Hepsiburada",
       },
       shippingAddressJson: {
         type: JsonType,
         allowNull: true,
-        comment: 'Complete shipping address information'
+        comment: "Complete shipping address information",
       },
       billingAddressJson: {
         type: JsonType,
         allowNull: true,
-        comment: 'Complete billing address information'
+        comment: "Complete billing address information",
       },
       deliveryAddressJson: {
         type: JsonType,
         allowNull: true,
-        comment: 'Delivery address details'
+        comment: "Delivery address details",
       },
       invoiceDetailsJson: {
         type: JsonType,
         allowNull: true,
-        comment: 'Invoice details and information'
+        comment: "Invoice details and information",
       },
       customerJson: {
         type: JsonType,
         allowNull: true,
-        comment: 'Customer information'
+        comment: "Customer information",
       },
       createdDate: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Creation date from Hepsiburada'
+        comment: "Creation date from Hepsiburada",
       },
       orderDate: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Order date from Hepsiburada'
+        comment: "Order date from Hepsiburada",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Trendyol Orders table - Platform-specific order details
-    await queryInterface.createTable('trendyol_orders', {
+    await queryInterface.createTable("trendyol_orders", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       orderId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'orders',
-          key: 'id'
+          model: "orders",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       trendyolOrderId: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Trendyol order ID'
+        comment: "Trendyol order ID",
       },
       orderNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Trendyol order number'
+        comment: "Trendyol order number",
       },
       supplierId: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Supplier ID in Trendyol system'
+        comment: "Supplier ID in Trendyol system",
       },
       customerId: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Customer ID in Trendyol system'
+        comment: "Customer ID in Trendyol system",
       },
       orderStatus: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Trendyol order status'
+        comment: "Trendyol order status",
       },
       paymentType: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Payment type from Trendyol'
+        comment: "Payment type from Trendyol",
       },
       paymentStatus: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Payment status from Trendyol'
+        comment: "Payment status from Trendyol",
       },
       cargoProviderName: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Cargo provider name'
+        comment: "Cargo provider name",
       },
       cargoTrackingNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Cargo tracking number'
+        comment: "Cargo tracking number",
       },
       cargoTrackingLink: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: 'Cargo tracking link'
+        comment: "Cargo tracking link",
       },
       estimatedDeliveryStartDate: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Estimated delivery start date'
+        comment: "Estimated delivery start date",
       },
       estimatedDeliveryEndDate: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Estimated delivery end date'
+        comment: "Estimated delivery end date",
       },
       shipmentAddress: {
         type: JsonType,
         allowNull: true,
-        comment: 'Shipment address information'
+        comment: "Shipment address information",
       },
       invoiceAddress: {
         type: JsonType,
         allowNull: true,
-        comment: 'Invoice address information'
+        comment: "Invoice address information",
       },
       customerInfo: {
         type: JsonType,
         allowNull: true,
-        comment: 'Customer information'
+        comment: "Customer information",
       },
       invoiceData: {
         type: JsonType,
         allowNull: true,
-        comment: 'Invoice data'
+        comment: "Invoice data",
       },
       trendyolOrderDate: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Order date from Trendyol'
+        comment: "Order date from Trendyol",
       },
       lastModifiedDate: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Last modified date from Trendyol'
+        comment: "Last modified date from Trendyol",
       },
       lastSyncAt: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Last sync timestamp'
+        comment: "Last sync timestamp",
       },
       commercialInvoiceNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Commercial invoice number'
+        comment: "Commercial invoice number",
       },
       grossAmount: {
         type: Sequelize.DECIMAL(12, 2),
         allowNull: true,
-        comment: 'Gross amount'
+        comment: "Gross amount",
       },
       totalDiscount: {
         type: Sequelize.DECIMAL(12, 2),
         allowNull: true,
         defaultValue: 0,
-        comment: 'Total discount amount'
+        comment: "Total discount amount",
       },
       taxNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Tax number'
+        comment: "Tax number",
       },
       deliveryType: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Delivery type'
+        comment: "Delivery type",
       },
       timeSlotId: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Time slot ID for delivery'
+        comment: "Time slot ID for delivery",
       },
       fastDelivery: {
         type: Sequelize.BOOLEAN,
         allowNull: true,
         defaultValue: false,
-        comment: 'Fast delivery option'
+        comment: "Fast delivery option",
       },
       scheduledDelivery: {
         type: Sequelize.BOOLEAN,
         allowNull: true,
         defaultValue: false,
-        comment: 'Scheduled delivery option'
+        comment: "Scheduled delivery option",
       },
       agreedDeliveryDate: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Agreed delivery date'
+        comment: "Agreed delivery date",
       },
       packingListId: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Packing list ID'
+        comment: "Packing list ID",
       },
       shipmentPackageStatus: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Shipment package status'
+        comment: "Shipment package status",
       },
       currency: {
         type: Sequelize.STRING,
         allowNull: true,
-        defaultValue: 'TRY',
-        comment: 'Currency code'
+        defaultValue: "TRY",
+        comment: "Currency code",
       },
       platformOrderData: {
         type: JsonType,
         allowNull: true,
-        comment: 'Complete platform order data'
+        comment: "Complete platform order data",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create N11 Orders table - Platform-specific order details
-    await queryInterface.createTable('n11_orders', {
+    await queryInterface.createTable("n11_orders", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       orderId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'orders',
-          key: 'id'
+          model: "orders",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       n11OrderId: {
         type: Sequelize.STRING,
         allowNull: false,
-        comment: 'N11 order ID from API (field: id)'
+        comment: "N11 order ID from API (field: id)",
       },
       orderNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'N11 order number from API'
+        comment: "N11 order number from API",
       },
       sellerId: {
         type: Sequelize.BIGINT,
         allowNull: true,
-        comment: 'N11 seller ID from API'
+        comment: "N11 seller ID from API",
       },
       customerId: {
         type: Sequelize.BIGINT,
         allowNull: true,
-        comment: 'N11 customer ID from API'
+        comment: "N11 customer ID from API",
       },
       customerEmail: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Customer email from N11 API'
+        comment: "Customer email from N11 API",
       },
       customerFullName: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Customer full name from N11 API'
+        comment: "Customer full name from N11 API",
       },
       tcIdentityNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Turkish Identity Number from N11 API'
+        comment: "Turkish Identity Number from N11 API",
       },
       taxId: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Tax ID from N11 API'
+        comment: "Tax ID from N11 API",
       },
       taxOffice: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Tax office from N11 API'
+        comment: "Tax office from N11 API",
       },
       orderStatus: {
         type: Sequelize.ENUM(
-          'Created',
-          'Picking',
-          'Shipped',
-          'Delivered',
-          'Cancelled',
-          'Returned',
-          'Processing',
-          'Failed'
+          "Created",
+          "Picking",
+          "Shipped",
+          "Delivered",
+          "Cancelled",
+          "Returned",
+          "Processing",
+          "Failed"
         ),
         allowNull: false,
-        defaultValue: 'Created',
-        comment: 'Order status matching N11 API values'
+        defaultValue: "Created",
+        comment: "Order status matching N11 API values",
       },
       cargoSenderNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Cargo sender number from N11 API'
+        comment: "Cargo sender number from N11 API",
       },
       cargoTrackingNumber: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Cargo tracking number from N11 API'
+        comment: "Cargo tracking number from N11 API",
       },
       cargoTrackingLink: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: 'Cargo tracking link from N11 API'
+        comment: "Cargo tracking link from N11 API",
       },
       shipmentCompanyId: {
         type: Sequelize.INTEGER,
         allowNull: true,
-        comment: 'Shipment company ID from N11 API'
+        comment: "Shipment company ID from N11 API",
       },
       cargoProviderName: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Cargo provider name from N11 API'
+        comment: "Cargo provider name from N11 API",
       },
       shipmentMethod: {
         type: Sequelize.INTEGER,
         allowNull: true,
-        comment: 'Shipment method from N11 API'
+        comment: "Shipment method from N11 API",
       },
       installmentChargeWithVATprice: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: true,
         defaultValue: 0.0,
-        comment: 'Platform fees for the order'
+        comment: "Platform fees for the order",
       },
       cancellationReason: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: 'Reason for order cancellation'
+        comment: "Reason for order cancellation",
       },
       returnReason: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: 'Reason for order return'
+        comment: "Reason for order return",
       },
       lastModifiedDate: {
         type: Sequelize.BIGINT,
         allowNull: true,
-        comment: 'Last modified timestamp from N11 API'
+        comment: "Last modified timestamp from N11 API",
       },
       agreedDeliveryDate: {
         type: Sequelize.BIGINT,
         allowNull: true,
-        comment: 'Agreed delivery timestamp from N11 API'
+        comment: "Agreed delivery timestamp from N11 API",
       },
       totalAmount: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: true,
-        comment: 'Total amount from N11 API'
+        comment: "Total amount from N11 API",
       },
       totalDiscountAmount: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: true,
-        comment: 'Total discount amount from N11 API'
+        comment: "Total discount amount from N11 API",
       },
       packageHistories: {
         type: JsonType,
         allowNull: true,
-        comment: 'Package status history from N11 API'
+        comment: "Package status history from N11 API",
       },
       shipmentPackageStatus: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Current shipment package status from N11 API'
+        comment: "Current shipment package status from N11 API",
       },
       lines: {
         type: JsonType,
         allowNull: true,
-        comment: 'Order line items from N11 API'
+        comment: "Order line items from N11 API",
       },
       shippingAddress: {
         type: JsonType,
         allowNull: true,
-        comment: 'N11 shipping address details from API'
+        comment: "N11 shipping address details from API",
       },
       billingAddress: {
         type: JsonType,
         allowNull: true,
-        comment: 'N11 billing address details from API'
+        comment: "N11 billing address details from API",
       },
       n11OrderDate: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'N11 order creation date'
+        comment: "N11 order creation date",
       },
       lastSyncAt: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Last synchronization with N11 platform'
+        comment: "Last synchronization with N11 platform",
       },
       platformFees: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: true,
-        comment: 'N11 platform commission fees'
+        comment: "N11 platform commission fees",
       },
       platformOrderData: {
         type: JsonType,
         allowNull: true,
-        comment: 'Raw N11 order data for backup and debugging'
+        comment: "Raw N11 order data for backup and debugging",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Platform Categories table
-    await queryInterface.createTable('platform_categories', {
+    await queryInterface.createTable("platform_categories", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       platformType: {
         type: Sequelize.ENUM(
-          'trendyol',
-          'hepsiburada',
-          'n11',
-          'pazarama',
-          'amazon',
-          'csv',
-          'shopify',
-          'woocommerce',
-          'magento'
+          "trendyol",
+          "hepsiburada",
+          "n11",
+          "pazarama",
+          "amazon",
+          "csv",
+          "shopify",
+          "woocommerce",
+          "magento"
         ),
-        allowNull: false
+        allowNull: false,
       },
       platformCategoryId: {
         type: Sequelize.STRING(100),
-        allowNull: false
+        allowNull: false,
       },
       name: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       parentId: {
         type: Sequelize.STRING(100),
-        allowNull: true
+        allowNull: true,
       },
       path: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       level: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       isLeaf: {
         type: Sequelize.BOOLEAN,
         allowNull: false,
-        defaultValue: false
+        defaultValue: false,
       },
       isActive: {
         type: Sequelize.BOOLEAN,
         allowNull: false,
-        defaultValue: true
+        defaultValue: true,
       },
       fieldDefinitions: {
         type: JsonType,
         allowNull: false,
-        defaultValue: {}
+        defaultValue: {},
       },
       requiredFields: {
         type: JsonType,
         allowNull: false,
-        defaultValue: []
+        defaultValue: [],
       },
       commissionRate: {
         type: Sequelize.DECIMAL(5, 2),
-        allowNull: true
+        allowNull: true,
       },
       vatRate: {
         type: Sequelize.DECIMAL(5, 2),
-        allowNull: true
+        allowNull: true,
       },
       restrictions: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       metadata: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       lastSyncAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       syncStatus: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onDelete: 'CASCADE'
+        onDelete: "CASCADE",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create BulkOperation table
-    await queryInterface.createTable('bulk_operations', {
+    await queryInterface.createTable("bulk_operations", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       operationType: {
         type: Sequelize.ENUM(
-          'PRODUCT_SYNC',
-          'ORDER_SYNC',
-          'INVENTORY_UPDATE',
-          'PRICE_UPDATE',
-          'PRODUCT_UPLOAD',
-          'ORDER_STATUS_UPDATE',
-          'BULK_DELETE',
-          'BULK_UPDATE',
-          'IMPORT',
-          'EXPORT'
+          "PRODUCT_SYNC",
+          "ORDER_SYNC",
+          "INVENTORY_UPDATE",
+          "PRICE_UPDATE",
+          "PRODUCT_UPLOAD",
+          "ORDER_STATUS_UPDATE",
+          "BULK_DELETE",
+          "BULK_UPDATE",
+          "IMPORT",
+          "EXPORT"
         ),
-        allowNull: false
+        allowNull: false,
       },
       status: {
         type: Sequelize.ENUM(
-          'PENDING',
-          'RUNNING',
-          'COMPLETED',
-          'FAILED',
-          'CANCELLED'
+          "PENDING",
+          "RUNNING",
+          "COMPLETED",
+          "FAILED",
+          "CANCELLED"
         ),
         allowNull: false,
-        defaultValue: 'PENDING'
+        defaultValue: "PENDING",
       },
       totalItems: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       processedItems: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       successItems: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       failedItems: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       progressPercentage: {
         type: Sequelize.DECIMAL(5, 2),
         allowNull: false,
-        defaultValue: 0.0
+        defaultValue: 0.0,
       },
       startedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       completedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       estimatedDuration: {
         type: Sequelize.INTEGER,
         allowNull: true,
-        comment: 'Estimated duration in seconds'
+        comment: "Estimated duration in seconds",
       },
       actualDuration: {
         type: Sequelize.INTEGER,
         allowNull: true,
-        comment: 'Actual duration in seconds'
+        comment: "Actual duration in seconds",
       },
       errorMessage: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       errorDetails: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       config: {
         type: JsonType,
         allowNull: false,
         defaultValue: {},
-        comment: 'Operation configuration and parameters'
+        comment: "Operation configuration and parameters",
       },
       results: {
         type: JsonType,
         allowNull: true,
-        comment: 'Operation results and summary'
+        comment: "Operation results and summary",
       },
       platform: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Target platform for the operation'
+        comment: "Target platform for the operation",
       },
       batchSize: {
         type: Sequelize.INTEGER,
         allowNull: false,
         defaultValue: 100,
-        comment: 'Number of items processed per batch'
+        comment: "Number of items processed per batch",
       },
       priority: {
-        type: Sequelize.ENUM('LOW', 'NORMAL', 'HIGH', 'URGENT'),
+        type: Sequelize.ENUM("LOW", "NORMAL", "HIGH", "URGENT"),
         allowNull: false,
-        defaultValue: 'NORMAL'
+        defaultValue: "NORMAL",
       },
       retryCount: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       maxRetries: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 3
+        defaultValue: 3,
       },
       lastRetryAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       logFile: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Path to detailed operation log file'
+        comment: "Path to detailed operation log file",
       },
       tags: {
         type: JsonType,
         allowNull: false,
         defaultValue: [],
-        comment: 'Tags for categorizing operations'
+        comment: "Tags for categorizing operations",
       },
       metadata: {
         type: JsonType,
         allowNull: false,
         defaultValue: {},
-        comment: 'Additional metadata'
+        comment: "Additional metadata",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Customer Questions table
-    await queryInterface.createTable('customer_questions', {
+    await queryInterface.createTable("customer_questions", {
       id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
       },
       platform: {
-        type: Sequelize.ENUM('trendyol', 'hepsiburada', 'n11'),
-        allowNull: false
+        type: Sequelize.ENUM("trendyol", "hepsiburada", "n11"),
+        allowNull: false,
       },
       platform_question_id: {
         type: Sequelize.STRING,
         allowNull: false,
-        comment: 'Original question ID from the platform'
+        comment: "Original question ID from the platform",
       },
       customer_id: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       customer_name: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       show_customer_name: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
       },
       question_text: {
         type: Sequelize.TEXT,
-        allowNull: false
+        allowNull: false,
       },
       question_date: {
         type: Sequelize.DATE,
         allowNull: true,
-        field: 'question_date'
+        field: "question_date",
       },
       status: {
         type: Sequelize.ENUM(
-          'WAITING_FOR_ANSWER',
-          'ANSWERED',
-          'REJECTED',
-          'AUTO_CLOSED'
+          "WAITING_FOR_ANSWER",
+          "ANSWERED",
+          "REJECTED",
+          "AUTO_CLOSED"
         ),
         allowNull: false,
-        defaultValue: 'WAITING_FOR_ANSWER',
-        comment: 'WAITING_FOR_ANSWER, ANSWERED, REJECTED, AUTO_CLOSED, etc.'
+        defaultValue: "WAITING_FOR_ANSWER",
+        comment: "WAITING_FOR_ANSWER, ANSWERED, REJECTED, AUTO_CLOSED, etc.",
       },
       product_name: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       product_main_id: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       product_sku: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       product_stock_code: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       product_image_url: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       product_web_url: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       order_number: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       line_item_id: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       public: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
       },
       creation_date: {
         type: Sequelize.DATE,
-        allowNull: false
+        allowNull: false,
       },
       answered_date: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       answered_date_message: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       expire_date: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       last_modified_at: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       subject_id: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       subject_description: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       merchant_id: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       merchant_name: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       reported_date: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       report_reason: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       rejected_date: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       reason: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       question_hash: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       similar_questions_count: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       assigned_to: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       priority: {
-        type: Sequelize.ENUM('low', 'medium', 'high', 'urgent'),
-        defaultValue: 'medium'
+        type: Sequelize.ENUM("low", "medium", "high", "urgent"),
+        defaultValue: "medium",
       },
       tags: {
         type: JsonType,
-        defaultValue: []
+        defaultValue: [],
       },
       internal_notes: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       raw_data: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       customer_email: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Customer email address for contact'
+        comment: "Customer email address for contact",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Customer Replies table
-    await queryInterface.createTable('customer_replies', {
+    await queryInterface.createTable("customer_replies", {
       id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
       },
       question_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
-          model: 'customer_questions',
-          key: 'id'
+          model: "customer_questions",
+          key: "id",
         },
-        onDelete: 'CASCADE'
+        onDelete: "CASCADE",
       },
       platform: {
-        type: Sequelize.ENUM('trendyol', 'hepsiburada', 'n11'),
-        allowNull: false
+        type: Sequelize.ENUM("trendyol", "hepsiburada", "n11"),
+        allowNull: false,
       },
       platform_reply_id: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       reply_text: {
         type: Sequelize.TEXT,
-        allowNull: false
+        allowNull: false,
       },
       reply_type: {
-        type: Sequelize.ENUM('answer', 'reject', 'internal_note'),
+        type: Sequelize.ENUM("answer", "reject", "internal_note"),
         allowNull: false,
-        defaultValue: 'answer'
+        defaultValue: "answer",
       },
       from_type: {
-        type: Sequelize.ENUM('merchant', 'customer', 'admin'),
+        type: Sequelize.ENUM("merchant", "customer", "admin"),
         allowNull: false,
-        defaultValue: 'merchant'
+        defaultValue: "merchant",
       },
       merchant_id: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       author_name: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       author_email: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       attachment_urls: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       submission_status: {
-        type: Sequelize.ENUM('pending', 'sent', 'failed', 'rejected'),
+        type: Sequelize.ENUM("pending", "sent", "failed", "rejected"),
         allowNull: false,
-        defaultValue: 'pending'
+        defaultValue: "pending",
       },
       sent_at: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       error_message: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       retry_count: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       last_retry_at: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       platform_response: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       template_id: {
         type: Sequelize.INTEGER,
         allowNull: true,
         references: {
-          model: 'reply_templates',
-          key: 'id'
+          model: "reply_templates",
+          key: "id",
         },
-        onDelete: 'SET NULL'
+        onDelete: "SET NULL",
       },
       created_by: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        comment: 'User who created this reply'
+        comment: "User who created this reply",
       },
       creation_date: {
         type: Sequelize.DATE,
         allowNull: false,
         defaultValue: Sequelize.NOW,
-        comment: 'When the reply was created'
+        comment: "When the reply was created",
       },
       sent_date: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'When the reply was sent to the platform'
+        comment: "When the reply was sent to the platform",
       },
       has_private_info: {
         type: Sequelize.BOOLEAN,
         defaultValue: false,
-        comment: 'Whether the reply contains private information'
+        comment: "Whether the reply contains private information",
       },
       customer_feedback: {
         type: Sequelize.BOOLEAN,
         allowNull: true,
         comment:
-          'Customer feedback on the reply (true=positive, false=negative)'
+          "Customer feedback on the reply (true=positive, false=negative)",
       },
       reject_reason: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: 'Reason for rejecting the reply'
+        comment: "Reason for rejecting the reply",
       },
       attachments: {
         type: JsonType,
         defaultValue: [],
-        comment: 'File attachments for the reply'
+        comment: "File attachments for the reply",
       },
       customer_feedback: {
         type: Sequelize.BOOLEAN,
         allowNull: true,
         comment:
-          'Customer feedback on the reply (true=positive, false=negative)'
+          "Customer feedback on the reply (true=positive, false=negative)",
       },
       reject_reason: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: 'Reason for rejecting the reply'
+        comment: "Reason for rejecting the reply",
       },
       is_auto_generated: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       confidence_score: {
         type: Sequelize.DECIMAL(3, 2),
-        allowNull: true
+        allowNull: true,
       },
       raw_data: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Reply Templates table
-    await queryInterface.createTable('reply_templates', {
+    await queryInterface.createTable("reply_templates", {
       id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
       },
       name: {
         type: Sequelize.STRING,
         allowNull: false,
-        comment: 'Template name for easy identification'
+        comment: "Template name for easy identification",
       },
       content: {
         type: Sequelize.TEXT,
         allowNull: false,
-        comment: 'Template reply text with placeholders'
+        comment: "Template reply text with placeholders",
       },
       category: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Category like "shipping", "returns", "product_info", etc.'
+        comment: 'Category like "shipping", "returns", "product_info", etc.',
       },
       platforms: {
         type: JsonType,
-        defaultValue: ['trendyol', 'hepsiburada', 'n11'],
-        comment: 'Array of platforms this template can be used for'
+        defaultValue: ["trendyol", "hepsiburada", "n11"],
+        comment: "Array of platforms this template can be used for",
       },
       keywords: {
         type: JsonType,
         defaultValue: [],
-        comment: 'Keywords that trigger this template suggestion'
+        comment: "Keywords that trigger this template suggestion",
       },
       variables: {
         type: JsonType,
         defaultValue: [],
-        comment: 'Available variables/placeholders in the template'
+        comment: "Available variables/placeholders in the template",
       },
       usage_count: {
         type: Sequelize.INTEGER,
         defaultValue: 0,
-        comment: 'Number of times this template has been used'
+        comment: "Number of times this template has been used",
       },
       last_used: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Last time this template was used'
+        comment: "Last time this template was used",
       },
       is_active: {
         type: Sequelize.BOOLEAN,
         defaultValue: true,
-        comment: 'Whether the template is active and can be used'
+        comment: "Whether the template is active and can be used",
       },
       is_default: {
         type: Sequelize.BOOLEAN,
         defaultValue: false,
-        comment: 'Whether this is a default template for the category'
+        comment: "Whether this is a default template for the category",
       },
       auto_suggest: {
         type: Sequelize.BOOLEAN,
         defaultValue: true,
-        comment: 'Whether to auto-suggest this template based on keywords'
+        comment: "Whether to auto-suggest this template based on keywords",
       },
       confidence_threshold: {
         type: Sequelize.DECIMAL(3, 2),
         defaultValue: 0.7,
-        comment: 'Minimum confidence score to auto-suggest this template'
+        comment: "Minimum confidence score to auto-suggest this template",
       },
       language: {
         type: Sequelize.STRING(5),
-        defaultValue: 'tr',
-        comment: 'Template language (tr, en, etc.)'
+        defaultValue: "tr",
+        comment: "Template language (tr, en, etc.)",
       },
       priority: {
         type: Sequelize.INTEGER,
         defaultValue: 0,
-        comment: 'Priority for auto-suggestion (higher = more priority)'
+        comment: "Priority for auto-suggestion (higher = more priority)",
       },
       tags: {
         type: JsonType,
         defaultValue: [],
-        comment: 'Tags for organizing templates'
+        comment: "Tags for organizing templates",
       },
       validation_rules: {
         type: JsonType,
         defaultValue: {},
-        comment: 'Rules for validating template usage'
+        comment: "Rules for validating template usage",
       },
       created_by: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onDelete: 'SET NULL',
-        comment: 'User who created this template'
+        onDelete: "SET NULL",
+        comment: "User who created this template",
       },
       updated_by: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onDelete: 'SET NULL',
-        comment: 'User who last updated this template'
+        onDelete: "SET NULL",
+        comment: "User who last updated this template",
       },
       lastUsed: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'When this template was last used (alternative field name)'
+        comment: "When this template was last used (alternative field name)",
       },
       isAutoSuggest: {
         type: Sequelize.BOOLEAN,
         defaultValue: false,
-        comment: 'Whether to auto-suggest this template based on keywords'
+        comment: "Whether to auto-suggest this template based on keywords",
       },
       rating: {
         type: Sequelize.DECIMAL(3, 2),
         allowNull: true,
-        comment: 'Average rating of this template effectiveness'
+        comment: "Average rating of this template effectiveness",
       },
       ratingCount: {
         type: Sequelize.INTEGER,
         defaultValue: 0,
-        comment: 'Number of ratings for this template'
+        comment: "Number of ratings for this template",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Shipping Carriers table
-    await queryInterface.createTable('shipping_carriers', {
+    await queryInterface.createTable("shipping_carriers", {
       id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
       },
       name: {
         type: Sequelize.STRING,
         allowNull: false,
-        unique: true
+        unique: true,
       },
       code: {
         type: Sequelize.STRING(10),
         allowNull: false,
-        unique: true
+        unique: true,
       },
       website: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       trackingUrl: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'URL template for tracking, use {trackingNumber} placeholder'
+        comment: "URL template for tracking, use {trackingNumber} placeholder",
       },
       apiEndpoint: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       apiKey: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       isActive: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
       },
       supportedServices: {
         type: JsonType,
         defaultValue: [],
-        comment: 'Supported shipping services'
+        comment: "Supported shipping services",
       },
       pricingRules: {
         type: JsonType,
         defaultValue: {},
-        comment: 'Pricing calculation rules'
+        comment: "Pricing calculation rules",
       },
       deliveryTimes: {
         type: JsonType,
         defaultValue: {},
-        comment: 'Estimated delivery times by service'
+        comment: "Estimated delivery times by service",
       },
       restrictions: {
         type: JsonType,
         defaultValue: {},
-        comment: 'Size, weight, and location restrictions'
+        comment: "Size, weight, and location restrictions",
       },
       metadata: {
         type: JsonType,
-        defaultValue: {}
+        defaultValue: {},
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Hepsiburada Products table
-    await queryInterface.createTable('hepsiburada_products', {
+    await queryInterface.createTable("hepsiburada_products", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       productId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'products',
-          key: 'id'
+          model: "products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       merchantSku: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       barcode: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       name: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       brand: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       categoryId: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       description: {
         type: Sequelize.TEXT,
-        allowNull: false
+        allowNull: false,
       },
       attributes: {
         type: JsonType,
-        defaultValue: {}
+        defaultValue: {},
       },
       images: {
         type: JsonType,
-        defaultValue: []
+        defaultValue: [],
       },
       price: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
       },
       listPrice: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: true
+        allowNull: true,
       },
       stockQuantity: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       status: {
-        type: Sequelize.ENUM('active', 'inactive', 'pending', 'rejected'),
-        defaultValue: 'pending'
+        type: Sequelize.ENUM("active", "inactive", "pending", "rejected"),
+        defaultValue: "pending",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Trendyol Products table
-    await queryInterface.createTable('trendyol_products', {
+    await queryInterface.createTable("trendyol_products", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       productId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'products',
-          key: 'id'
+          model: "products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       trendyolProductId: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Trendyol product ID from platform'
+        comment: "Trendyol product ID from platform",
       },
       barcode: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       name: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       brand: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       categoryId: {
         type: Sequelize.INTEGER,
-        allowNull: false
+        allowNull: false,
       },
       description: {
         type: Sequelize.TEXT,
-        allowNull: false
+        allowNull: false,
       },
       attributes: {
         type: JsonType,
-        defaultValue: {}
+        defaultValue: {},
       },
       images: {
         type: JsonType,
-        defaultValue: []
+        defaultValue: [],
       },
       price: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
       },
       listPrice: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: true
+        allowNull: true,
       },
       stockQuantity: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       status: {
-        type: Sequelize.ENUM('active', 'inactive', 'pending', 'rejected'),
-        defaultValue: 'pending'
+        type: Sequelize.ENUM("active", "inactive", "pending", "rejected"),
+        defaultValue: "pending",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create N11 Products table
-    await queryInterface.createTable('n11_products', {
+    await queryInterface.createTable("n11_products", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       productId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'products',
-          key: 'id'
+          model: "products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       stockCode: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       name: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       brand: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       categoryId: {
         type: Sequelize.INTEGER,
-        allowNull: false
+        allowNull: false,
       },
       description: {
         type: Sequelize.TEXT,
-        allowNull: false
+        allowNull: false,
       },
       attributes: {
         type: JsonType,
-        defaultValue: {}
+        defaultValue: {},
       },
       images: {
         type: JsonType,
-        defaultValue: []
+        defaultValue: [],
       },
       price: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
       },
       listPrice: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: true
+        allowNull: true,
       },
       stockQuantity: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       status: {
-        type: Sequelize.ENUM('active', 'inactive', 'pending', 'rejected'),
-        defaultValue: 'pending'
+        type: Sequelize.ENUM("active", "inactive", "pending", "rejected"),
+        defaultValue: "pending",
       },
       sellerCode: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Seller code for N11 product'
+        comment: "Seller code for N11 product",
       },
       // N11 API Response Fields
       n11ProductId: {
         type: Sequelize.BIGINT,
         allowNull: true,
         unique: true,
-        comment: 'N11 Product ID from API response'
+        comment: "N11 Product ID from API response",
       },
       sellerId: {
         type: Sequelize.BIGINT,
         allowNull: true,
-        comment: 'N11 Seller ID'
+        comment: "N11 Seller ID",
       },
       sellerNickname: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'N11 Seller Nickname'
+        comment: "N11 Seller Nickname",
       },
       title: {
         type: Sequelize.TEXT,
         allowNull: true,
-        comment: 'Product title'
+        comment: "Product title",
       },
       productMainId: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'N11 Product Main ID'
+        comment: "N11 Product Main ID",
       },
       n11Status: {
-        type: Sequelize.ENUM('Active', 'Inactive'),
+        type: Sequelize.ENUM("Active", "Inactive"),
         allowNull: true,
-        comment: 'N11 Product Status'
+        comment: "N11 Product Status",
       },
       saleStatus: {
-        type: Sequelize.ENUM('Active', 'Inactive', 'Out_Of_Stock', 'Suspended'),
+        type: Sequelize.ENUM("Active", "Inactive", "Out_Of_Stock", "Suspended"),
         allowNull: true,
-        comment: 'N11 Product Sale Status'
+        comment: "N11 Product Sale Status",
       },
       preparingDay: {
         type: Sequelize.INTEGER,
         allowNull: true,
-        comment: 'N11 Product Preparing Days'
+        comment: "N11 Product Preparing Days",
       },
       shipmentTemplate: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'N11 Shipment Template'
+        comment: "N11 Shipment Template",
       },
       maxPurchaseQuantity: {
         type: Sequelize.INTEGER,
         allowNull: true,
-        comment: 'N11 Max Purchase Quantity'
+        comment: "N11 Max Purchase Quantity",
       },
       catalogId: {
         type: Sequelize.BIGINT,
         allowNull: true,
-        comment: 'N11 Catalog ID'
+        comment: "N11 Catalog ID",
       },
       barcode: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Product barcode'
+        comment: "Product barcode",
       },
       groupId: {
         type: Sequelize.BIGINT,
         allowNull: true,
-        comment: 'N11 Group ID'
+        comment: "N11 Group ID",
       },
       currencyType: {
         type: Sequelize.STRING(3),
         allowNull: true,
-        defaultValue: 'TL',
-        comment: 'N11 Currency Type'
+        defaultValue: "TL",
+        comment: "N11 Currency Type",
       },
       salePrice: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: true,
-        comment: 'N11 Sale Price'
+        comment: "N11 Sale Price",
       },
       quantity: {
         type: Sequelize.INTEGER,
         allowNull: true,
-        comment: 'N11 Stock Quantity'
+        comment: "N11 Stock Quantity",
       },
       imageUrls: {
         type: JsonType,
         allowNull: true,
-        comment: 'N11 Product Image URLs Array'
+        comment: "N11 Product Image URLs Array",
       },
       vatRate: {
         type: Sequelize.INTEGER,
         allowNull: true,
-        comment: 'N11 VAT Rate'
+        comment: "N11 VAT Rate",
       },
       commissionRate: {
         type: Sequelize.INTEGER,
         allowNull: true,
-        comment: 'N11 Commission Rate'
+        comment: "N11 Commission Rate",
       },
       lastSyncedAt: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Last synchronization timestamp'
+        comment: "Last synchronization timestamp",
       },
       syncErrors: {
         type: JsonType,
         allowNull: true,
-        comment: 'Synchronization error details'
+        comment: "Synchronization error details",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Background Tasks table
-    await queryInterface.createTable('background_tasks', {
+    await queryInterface.createTable("background_tasks", {
       id: {
         type: Sequelize.UUID,
         primaryKey: true,
-        defaultValue: Sequelize.UUIDV4
+        defaultValue: Sequelize.UUIDV4,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       platformConnectionId: {
         type: Sequelize.INTEGER,
         allowNull: true,
         references: {
-          model: 'platform_connections',
-          key: 'id'
+          model: "platform_connections",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       taskType: {
         type: Sequelize.ENUM(
-          'order_fetching',
-          'product_sync',
-          'inventory_sync',
-          'bulk_operation',
-          'analytics_update',
-          'customer_sync',
-          'shipping_label_generation',
-          'report_generation',
-          'data_export',
-          'data_import'
+          "order_fetching",
+          "product_sync",
+          "inventory_sync",
+          "bulk_operation",
+          "analytics_update",
+          "customer_sync",
+          "shipping_label_generation",
+          "report_generation",
+          "data_export",
+          "data_import"
         ),
-        allowNull: false
+        allowNull: false,
       },
       priority: {
-        type: Sequelize.ENUM('low', 'normal', 'high', 'urgent'),
+        type: Sequelize.ENUM("low", "normal", "high", "urgent"),
         allowNull: false,
-        defaultValue: 'normal'
+        defaultValue: "normal",
       },
       status: {
         type: Sequelize.ENUM(
-          'pending',
-          'queued',
-          'running',
-          'paused',
-          'completed',
-          'failed',
-          'cancelled',
-          'timeout'
+          "pending",
+          "queued",
+          "running",
+          "paused",
+          "completed",
+          "failed",
+          "cancelled",
+          "timeout"
         ),
-        defaultValue: 'pending'
+        defaultValue: "pending",
       },
       config: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       progress: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       totalItems: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       processedItems: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       errorMessage: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       error: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       logs: {
         type: JsonType,
         allowNull: true,
-        defaultValue: []
+        defaultValue: [],
       },
       metadata: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       estimatedDuration: {
         type: Sequelize.INTEGER,
-        allowNull: true
+        allowNull: true,
       },
       actualDuration: {
         type: Sequelize.INTEGER,
-        allowNull: true
+        allowNull: true,
       },
       result: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       scheduledAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       startedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       completedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       pausedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       resumedAt: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Task resume timestamp'
+        comment: "Task resume timestamp",
       },
       cancelledAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       stoppedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       scheduledFor: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       timeoutAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       parentTaskId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'background_tasks',
-          key: 'id'
+          model: "background_tasks",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
       },
       dependsOnTaskIds: {
         type: JsonType,
         allowNull: true,
-        defaultValue: []
+        defaultValue: [],
       },
       retryCount: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       maxRetries: {
         type: Sequelize.INTEGER,
-        defaultValue: 3
+        defaultValue: 3,
       },
       tags: {
         type: JsonType,
         allowNull: true,
-        comment: 'Task tags for organization and filtering',
-        defaultValue: []
+        comment: "Task tags for organization and filtering",
+        defaultValue: [],
       },
       dependencies: {
         type: JsonType,
         allowNull: true,
-        comment: 'Task dependencies configuration'
+        comment: "Task dependencies configuration",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       deletedAt: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'Soft delete timestamp for paranoid mode'
-      }
+        comment: "Soft delete timestamp for paranoid mode",
+      },
     });
 
     // Create Settings table
-    await queryInterface.createTable('subscriptions', {
+    await queryInterface.createTable("subscriptions", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       // Plan details
       planId: {
         type: Sequelize.STRING,
         allowNull: false,
-        comment: 'Plan identifier (starter, professional, enterprise)'
+        comment: "Plan identifier (starter, professional, enterprise)",
       },
       planName: {
         type: Sequelize.STRING,
         allowNull: false,
-        comment: 'Human-readable plan name'
+        comment: "Human-readable plan name",
       },
       // Billing information
       amount: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
-        comment: 'Subscription amount in cents/kuruş'
+        comment: "Subscription amount in cents/kuruş",
       },
       currency: {
         type: Sequelize.STRING(3),
-        defaultValue: 'TRY',
-        allowNull: false
+        defaultValue: "TRY",
+        allowNull: false,
       },
       billingInterval: {
-        type: Sequelize.ENUM('monthly', 'yearly'),
-        defaultValue: 'monthly',
-        allowNull: false
+        type: Sequelize.ENUM("monthly", "yearly"),
+        defaultValue: "monthly",
+        allowNull: false,
       },
       // Subscription lifecycle
       status: {
         type: Sequelize.ENUM(
-          'trial',
-          'active',
-          'past_due',
-          'canceled',
-          'expired'
+          "trial",
+          "active",
+          "past_due",
+          "canceled",
+          "expired"
         ),
-        defaultValue: 'trial',
-        allowNull: false
+        defaultValue: "trial",
+        allowNull: false,
       },
       startedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       endsAt: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'When current billing period ends'
+        comment: "When current billing period ends",
       },
       canceledAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       // Trial information
       trialStartedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       trialEndsAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       // Payment provider integration
       stripeSubscriptionId: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Stripe subscription ID'
+        comment: "Stripe subscription ID",
       },
       iyzicoSubscriptionId: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Iyzico subscription ID for Turkish customers'
+        comment: "Iyzico subscription ID for Turkish customers",
       },
       // Plan features and limits
       features: {
         type: JsonType,
         defaultValue: {},
-        comment: 'Features included in this subscription'
+        comment: "Features included in this subscription",
       },
       limits: {
         type: JsonType,
@@ -3694,2363 +3694,2358 @@ module.exports = {
           apiCalls: 1000,
           platforms: 1,
           users: 1,
-          reports: 10
+          reports: 10,
         },
-        comment: 'Usage limits for this subscription'
+        comment: "Usage limits for this subscription",
       },
       // Discount and promotional information
       discountPercent: {
         type: Sequelize.DECIMAL(5, 2),
         defaultValue: 0,
-        comment: 'Discount percentage applied'
+        comment: "Discount percentage applied",
       },
       couponCode: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Applied coupon code'
+        comment: "Applied coupon code",
       },
       // Next billing
       nextBillingAt: {
         type: Sequelize.DATE,
         allowNull: true,
-        comment: 'When next billing will occur'
+        comment: "When next billing will occur",
       },
       nextBillingAmount: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: true,
-        comment: 'Amount for next billing cycle'
+        comment: "Amount for next billing cycle",
       },
       // Cancellation
       cancelAtPeriodEnd: {
         type: Sequelize.BOOLEAN,
         defaultValue: false,
-        comment: 'Whether to cancel at end of current period'
+        comment: "Whether to cancel at end of current period",
       },
       cancellationReason: {
         type: Sequelize.STRING,
         allowNull: true,
-        comment: 'Reason for cancellation'
+        comment: "Reason for cancellation",
       },
       // Metadata
       metadata: {
         type: JsonType,
         defaultValue: {},
-        comment: 'Additional subscription metadata'
+        comment: "Additional subscription metadata",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Settings table
-    await queryInterface.createTable('settings', {
+    await queryInterface.createTable("settings", {
       id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       name: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       address: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       phone: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       email: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       website: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       taxNumber: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       category: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       settings: {
         type: JsonType,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: {},
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Inventory Movements table
-    await queryInterface.createTable('inventory_movements', {
+    await queryInterface.createTable("inventory_movements", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       productId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'products',
-          key: 'id'
+          model: "products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       variantId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'product_variants',
-          key: 'id'
+          model: "product_variants",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       movementType: {
-        type: Sequelize.ENUM('in', 'out', 'adjustment', 'transfer'),
-        allowNull: false
+        type: Sequelize.ENUM("in", "out", "adjustment", "transfer"),
+        allowNull: false,
       },
       quantity: {
         type: Sequelize.INTEGER,
-        allowNull: false
+        allowNull: false,
       },
       previousStock: {
         type: Sequelize.INTEGER,
-        allowNull: false
+        allowNull: false,
       },
       newStock: {
         type: Sequelize.INTEGER,
-        allowNull: false
+        allowNull: false,
       },
       reason: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       notes: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create InventorySync table
-    await queryInterface.createTable('inventory_sync', {
+    await queryInterface.createTable("inventory_sync", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       sku: {
         type: Sequelize.STRING,
         allowNull: false,
-        unique: true
+        unique: true,
       },
       productId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'products',
-          key: 'id'
+          model: "products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
       },
       masterQuantity: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       reservedQuantity: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       availableQuantity: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       lowStockThreshold: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 10
+        defaultValue: 10,
       },
       platformQuantities: {
         type: JsonType,
         defaultValue: {
-          trendyol: { quantity: 0, lastSync: null, status: 'pending' },
-          hepsiburada: { quantity: 0, lastSync: null, status: 'pending' },
-          n11: { quantity: 0, lastSync: null, status: 'pending' }
-        }
+          trendyol: { quantity: 0, lastSync: null, status: "pending" },
+          hepsiburada: { quantity: 0, lastSync: null, status: "pending" },
+          n11: { quantity: 0, lastSync: null, status: "pending" },
+        },
       },
       syncStatus: {
-        type: Sequelize.ENUM('synced', 'pending', 'failed', 'partial'),
-        defaultValue: 'pending'
+        type: Sequelize.ENUM("synced", "pending", "failed", "partial"),
+        defaultValue: "pending",
       },
       lastSyncAttempt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       lastSuccessfulSync: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       syncErrors: {
         type: JsonType,
-        defaultValue: {}
+        defaultValue: {},
       },
       autoSyncEnabled: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
       },
       syncFrequency: {
         type: Sequelize.INTEGER,
-        defaultValue: 300
+        defaultValue: 300,
       },
       metadata: {
         type: JsonType,
-        defaultValue: {}
+        defaultValue: {},
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Shipping Rates table
-    await queryInterface.createTable('shipping_rates', {
+    await queryInterface.createTable("shipping_rates", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       carrierId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'shipping_carriers',
-          key: 'id'
+          model: "shipping_carriers",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       serviceName: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       minWeight: {
         type: Sequelize.DECIMAL(8, 2),
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       maxWeight: {
         type: Sequelize.DECIMAL(8, 2),
-        allowNull: false
+        allowNull: false,
       },
       baseRate: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
       },
       perKgRate: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       zones: {
         type: JsonType,
-        defaultValue: []
+        defaultValue: [],
       },
       isActive: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Invoices table
-    await queryInterface.createTable('invoices', {
+    await queryInterface.createTable("invoices", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       orderId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'orders',
-          key: 'id'
+          model: "orders",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
       },
       invoiceNumber: {
         type: Sequelize.STRING,
         allowNull: false,
-        unique: true
+        unique: true,
       },
       invoiceDate: {
         type: Sequelize.DATE,
-        allowNull: false
+        allowNull: false,
       },
       customerInfo: {
         type: JsonType,
-        allowNull: false
+        allowNull: false,
       },
       items: {
         type: JsonType,
         allowNull: false,
-        defaultValue: []
+        defaultValue: [],
       },
       subtotal: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
       },
       taxAmount: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       totalAmount: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
       },
       currency: {
         type: Sequelize.STRING(3),
-        defaultValue: 'TRY'
+        defaultValue: "TRY",
       },
       status: {
-        type: Sequelize.ENUM('draft', 'sent', 'paid', 'cancelled'),
-        defaultValue: 'draft'
+        type: Sequelize.ENUM("draft", "sent", "paid", "cancelled"),
+        defaultValue: "draft",
       },
       pdfPath: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Stock Reservations table
-    await queryInterface.createTable('stock_reservations', {
+    await queryInterface.createTable("stock_reservations", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       productId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'products',
-          key: 'id'
+          model: "products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       variantId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'product_variants',
-          key: 'id'
+          model: "product_variants",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       orderId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'orders',
-          key: 'id'
+          model: "orders",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       quantity: {
         type: Sequelize.INTEGER,
-        allowNull: false
+        allowNull: false,
       },
       status: {
-        type: Sequelize.ENUM('active', 'released', 'fulfilled'),
-        defaultValue: 'active'
+        type: Sequelize.ENUM("active", "released", "fulfilled"),
+        defaultValue: "active",
       },
       expiresAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Usage Records table
-    await queryInterface.createTable('usage_records', {
+    await queryInterface.createTable("usage_records", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       subscriptionId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'subscriptions',
-          key: 'id'
+          model: "subscriptions",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       // Usage tracking
       metricType: {
         type: Sequelize.ENUM(
-          'api_calls',
-          'platforms',
-          'users',
-          'reports',
-          'storage'
+          "api_calls",
+          "platforms",
+          "users",
+          "reports",
+          "storage"
         ),
         allowNull: false,
-        comment: 'Type of usage metric being tracked'
+        comment: "Type of usage metric being tracked",
       },
       currentUsage: {
         type: Sequelize.INTEGER,
         defaultValue: 0,
         allowNull: false,
-        comment: 'Current usage count for this metric'
+        comment: "Current usage count for this metric",
       },
       limit: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        comment: 'Usage limit for this metric based on subscription plan'
+        comment: "Usage limit for this metric based on subscription plan",
       },
       // Billing period
       billingPeriodStart: {
         type: Sequelize.DATE,
         allowNull: false,
-        comment: 'Start of current billing period'
+        comment: "Start of current billing period",
       },
       billingPeriodEnd: {
         type: Sequelize.DATE,
         allowNull: false,
-        comment: 'End of current billing period'
+        comment: "End of current billing period",
       },
       // Overage tracking
       overageAllowed: {
         type: Sequelize.BOOLEAN,
         defaultValue: false,
-        comment: 'Whether overage is allowed for this metric'
+        comment: "Whether overage is allowed for this metric",
       },
       overageRate: {
         type: Sequelize.DECIMAL(10, 4),
         defaultValue: 0,
-        comment: 'Cost per unit over limit (in minor currency units)'
+        comment: "Cost per unit over limit (in minor currency units)",
       },
       // Last reset
       lastResetAt: {
         type: Sequelize.DATE,
         defaultValue: Sequelize.NOW,
-        comment: 'When usage was last reset'
+        comment: "When usage was last reset",
       },
       // Metadata
       metadata: {
         type: JsonType,
         defaultValue: {},
-        comment: 'Additional usage tracking metadata'
+        comment: "Additional usage tracking metadata",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Customers table
-    await queryInterface.createTable('customers', {
+    await queryInterface.createTable("customers", {
       id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
       },
       email: {
         type: Sequelize.STRING,
         allowNull: false,
         unique: true,
         validate: {
-          isEmail: true
-        }
+          isEmail: true,
+        },
       },
       name: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       phone: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       // Customer Analytics
       totalOrders: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       totalSpent: {
         type: Sequelize.DECIMAL(10, 2),
-        defaultValue: 0.0
+        defaultValue: 0.0,
       },
       averageOrderValue: {
         type: Sequelize.DECIMAL(10, 2),
-        defaultValue: 0.0
+        defaultValue: 0.0,
       },
       loyaltyScore: {
         type: Sequelize.INTEGER,
         defaultValue: 0,
         validate: {
           min: 0,
-          max: 100
-        }
+          max: 100,
+        },
       },
       customerType: {
-        type: Sequelize.ENUM('new', 'loyal', 'vip'),
-        defaultValue: 'new'
+        type: Sequelize.ENUM("new", "loyal", "vip"),
+        defaultValue: "new",
       },
       riskLevel: {
-        type: Sequelize.ENUM('low', 'medium', 'high'),
-        defaultValue: 'low'
+        type: Sequelize.ENUM("low", "medium", "high"),
+        defaultValue: "low",
       },
       // Dates
       firstOrderDate: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       lastOrderDate: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       // Platform preferences
       primaryPlatform: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       platformUsage: {
         type: JsonType,
         allowNull: true,
-        comment: 'Platform usage statistics as JSON'
+        comment: "Platform usage statistics as JSON",
       },
       // Shipping information
       shippingAddresses: {
         type: JsonType,
         allowNull: true,
-        comment: 'Array of shipping addresses used by customer'
+        comment: "Array of shipping addresses used by customer",
       },
       // Product preferences
       favoriteProducts: {
         type: JsonType,
         allowNull: true,
-        comment: 'Array of favorite products with purchase counts'
+        comment: "Array of favorite products with purchase counts",
       },
       favoriteCategories: {
         type: JsonType,
         allowNull: true,
-        comment: 'Array of favorite product categories'
+        comment: "Array of favorite product categories",
       },
       // Additional metadata
       notes: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       tags: {
         type: JsonType,
         allowNull: true,
-        comment: 'Custom tags for customer classification'
+        comment: "Custom tags for customer classification",
       },
       // Status
       isActive: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
       },
       lastUpdated: {
         type: Sequelize.DATE,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       // Legacy fields (kept for backward compatibility)
       addressLine1: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       addressLine2: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       city: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       state: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       zipCode: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       country: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       dateOfBirth: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       gender: {
-        type: Sequelize.ENUM('male', 'female', 'other'),
-        allowNull: true
+        type: Sequelize.ENUM("male", "female", "other"),
+        allowNull: true,
       },
       preferences: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       tags: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       notes: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       source: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       isActive: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
       },
       lastOrderDate: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       firstOrderDate: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Main Products table
-    await queryInterface.createTable('main_products', {
+    await queryInterface.createTable("main_products", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       name: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       baseSku: {
         type: Sequelize.STRING,
         allowNull: false,
-        unique: true
+        unique: true,
       },
       description: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       category: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       brand: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       productType: {
-        type: Sequelize.ENUM('simple', 'variant'),
-        defaultValue: 'simple'
+        type: Sequelize.ENUM("simple", "variant"),
+        defaultValue: "simple",
       },
       status: {
-        type: Sequelize.ENUM('active', 'inactive', 'draft'),
-        defaultValue: 'active'
+        type: Sequelize.ENUM("active", "inactive", "draft"),
+        defaultValue: "active",
       },
       basePrice: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: true
+        allowNull: true,
       },
       baseCost: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: true
+        allowNull: true,
       },
       weight: {
         type: Sequelize.DECIMAL(8, 3),
-        allowNull: true
+        allowNull: true,
       },
       dimensions: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       sharedStock: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       totalStock: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       reservedStock: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       availableStock: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       lowStockThreshold: {
         type: Sequelize.INTEGER,
-        defaultValue: 10
+        defaultValue: 10,
       },
       trackInventory: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
       },
       allowBackorder: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       backorderLimit: {
         type: Sequelize.INTEGER,
-        allowNull: true
+        allowNull: true,
       },
       variantAttributes: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       defaultVariantId: {
         type: Sequelize.UUID,
-        allowNull: true
+        allowNull: true,
       },
       tags: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       metadata: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       seoTitle: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       seoDescription: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       seoKeywords: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       isVirtual: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       isDownloadable: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       downloadableFiles: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       // Additional columns from migrations
       stockQuantity: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       minStockLevel: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       baseCostPrice: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: true
+        allowNull: true,
       },
       media: {
         type: JsonType,
         allowNull: true,
-        defaultValue: []
+        defaultValue: [],
       },
       publishedPlatforms: {
         type: JsonType,
         allowNull: true,
-        defaultValue: []
+        defaultValue: [],
       },
       platformTemplates: {
         type: JsonType,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: {},
       },
       learnedFields: {
         type: JsonType,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: {},
       },
       categoryMappings: {
         type: JsonType,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: {},
       },
       attributes: {
         type: JsonType,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: {},
       },
       hasVariants: {
         type: Sequelize.BOOLEAN,
         allowNull: false,
-        defaultValue: false
+        defaultValue: false,
       },
       stockCodePattern: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       patternConfidence: {
         type: Sequelize.DECIMAL(3, 2),
         allowNull: true,
-        defaultValue: 0.0
+        defaultValue: 0.0,
       },
       lastStockUpdate: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       platformExtras: {
         type: JsonType,
         allowNull: true,
-        defaultValue: {}
+        defaultValue: {},
       },
       scrapedFrom: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       scrapedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       importedFrom: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       importedAt: {
         type: Sequelize.DATE,
-        allowNull: true
-      }
+        allowNull: true,
+      },
     });
 
     // Create Platform Variants table
-    await queryInterface.createTable('platform_variants', {
+    await queryInterface.createTable("platform_variants", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       mainProductId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'main_products',
-          key: 'id'
+          model: "main_products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       productId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'products',
-          key: 'id'
+          model: "products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       platform: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       platformSku: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       platformProductId: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       platformBarcode: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       title: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       description: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       price: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
       },
       compareAtPrice: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: true
+        allowNull: true,
       },
       cost: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: true
+        allowNull: true,
       },
       platformStock: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       platformReservedStock: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       stockAllocation: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       weight: {
         type: Sequelize.DECIMAL(8, 3),
-        allowNull: true
+        allowNull: true,
       },
       dimensions: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       attributes: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       variantValues: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       platformSpecificData: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       status: {
         type: Sequelize.ENUM(
-          'active',
-          'inactive',
-          'draft',
-          'pending',
-          'rejected'
+          "active",
+          "inactive",
+          "draft",
+          "pending",
+          "rejected"
         ),
-        defaultValue: 'draft'
+        defaultValue: "draft",
       },
       isVisible: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
       },
       isFeatured: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       position: {
         type: Sequelize.INTEGER,
-        allowNull: true
+        allowNull: true,
       },
       images: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       primaryImage: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       seoTitle: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       seoDescription: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       seoKeywords: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       platformCategory: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       platformCategoryId: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       shippingInfo: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       taxInfo: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       tags: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       metadata: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       lastSyncAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       syncStatus: {
-        type: Sequelize.ENUM('pending', 'syncing', 'synced', 'error'),
-        defaultValue: 'pending'
+        type: Sequelize.ENUM("pending", "syncing", "synced", "error"),
+        defaultValue: "pending",
       },
       syncErrors: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Enhanced Product Media table
-    await queryInterface.createTable('enhanced_product_media', {
+    await queryInterface.createTable("enhanced_product_media", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       productId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'products',
-          key: 'id'
+          model: "products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       mainProductId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'main_products',
-          key: 'id'
+          model: "main_products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       platformVariantId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'platform_variants',
-          key: 'id'
+          model: "platform_variants",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       type: {
-        type: Sequelize.ENUM('image', 'video', 'document', '3d_model'),
-        allowNull: false
+        type: Sequelize.ENUM("image", "video", "document", "3d_model"),
+        allowNull: false,
       },
       url: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       fileName: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       originalName: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       mimeType: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       size: {
         type: Sequelize.INTEGER,
-        allowNull: true
+        allowNull: true,
       },
       alt: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       title: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       description: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       position: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       isPrimary: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       isActive: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
       },
       platforms: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       metadata: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       dimensions: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       thumbnails: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Question Stats table
-    await queryInterface.createTable('question_stats', {
+    await queryInterface.createTable("question_stats", {
       id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
-        autoIncrement: true
+        autoIncrement: true,
       },
       platform: {
-        type: Sequelize.ENUM('trendyol', 'hepsiburada', 'n11', 'all'),
-        allowNull: false
+        type: Sequelize.ENUM("trendyol", "hepsiburada", "n11", "all"),
+        allowNull: false,
       },
       date: {
         type: Sequelize.DATEONLY,
-        allowNull: false
+        allowNull: false,
       },
       totalQuestions: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       answeredQuestions: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       pendingQuestions: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       averageResponseTime: {
         type: Sequelize.DECIMAL(10, 2),
-        allowNull: true
+        allowNull: true,
       },
       autoRepliesUsed: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Platform Templates table
-    await queryInterface.createTable('platform_templates', {
+    await queryInterface.createTable("platform_templates", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       name: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       platform: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: false,
       },
       category: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       templateData: {
         type: JsonType,
-        allowNull: false
+        allowNull: false,
       },
       isActive: {
         type: Sequelize.BOOLEAN,
-        defaultValue: true
+        defaultValue: true,
       },
       isDefault: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       description: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       version: {
         type: Sequelize.STRING,
-        defaultValue: '1.0'
+        defaultValue: "1.0",
       },
       usageCount: {
         type: Sequelize.INTEGER,
-        defaultValue: 0
+        defaultValue: 0,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Compliance Documents table
-    await queryInterface.createTable('compliance_documents', {
+    await queryInterface.createTable("compliance_documents", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       orderId: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'orders',
-          key: 'id'
+          model: "orders",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       documentType: {
         type: Sequelize.ENUM(
-          'e-invoice',
-          'e-archive',
-          'shipping-label',
-          'customs-declaration'
+          "e-invoice",
+          "e-archive",
+          "shipping-label",
+          "customs-declaration"
         ),
-        allowNull: false
+        allowNull: false,
       },
       documentNumber: {
         type: Sequelize.STRING(100),
         unique: true,
-        allowNull: true
+        allowNull: true,
       },
       status: {
         type: Sequelize.ENUM(
-          'draft',
-          'generated',
-          'sent',
-          'accepted',
-          'rejected'
+          "draft",
+          "generated",
+          "sent",
+          "accepted",
+          "rejected"
         ),
-        defaultValue: 'draft'
+        defaultValue: "draft",
       },
       customerType: {
-        type: Sequelize.ENUM('INDIVIDUAL', 'COMPANY'),
+        type: Sequelize.ENUM("INDIVIDUAL", "COMPANY"),
         allowNull: false,
-        defaultValue: 'INDIVIDUAL'
+        defaultValue: "INDIVIDUAL",
       },
       customerInfo: {
         type: Sequelize.TEXT,
         allowNull: false,
-        defaultValue: '{}'
+        defaultValue: "{}",
       },
       orderData: {
         type: Sequelize.TEXT,
         allowNull: false,
-        defaultValue: '{}'
+        defaultValue: "{}",
       },
       xmlContent: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       pdfPath: {
         type: Sequelize.STRING(255),
-        allowNull: true
+        allowNull: true,
       },
       gibResponse: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       generatedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       sentAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       processedAt: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       errorMessage: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       retryCount: {
         type: Sequelize.INTEGER,
         defaultValue: 0,
-        allowNull: false
+        allowNull: false,
       },
       metadata: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Create Turkish Compliance table
-    await queryInterface.createTable('turkish_compliance', {
+    await queryInterface.createTable("turkish_compliance", {
       id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
       productId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'products',
-          key: 'id'
+          model: "products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       mainProductId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'main_products',
-          key: 'id'
+          model: "main_products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       orderId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'orders',
-          key: 'id'
+          model: "orders",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       gtip: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       tse: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       ce: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       eprel: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       batteryRegulation: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       hasWarranty: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       warrantyPeriod: {
         type: Sequelize.INTEGER,
-        allowNull: true
+        allowNull: true,
       },
       warrantyType: {
-        type: Sequelize.ENUM('distributor', 'manufacturer', 'importer'),
-        allowNull: true
+        type: Sequelize.ENUM("distributor", "manufacturer", "importer"),
+        allowNull: true,
       },
       riskClass: {
-        type: Sequelize.ENUM('low', 'medium', 'high'),
-        defaultValue: 'low'
+        type: Sequelize.ENUM("low", "medium", "high"),
+        defaultValue: "low",
       },
       notes: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       documents: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       // E-Fatura (Electronic Invoice) fields
       eFaturaUuid: {
         type: Sequelize.STRING,
         allowNull: true,
-        unique: true
+        unique: true,
       },
       eFaturaNumber: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       eFaturaDate: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       eFaturaStatus: {
         type: Sequelize.ENUM(
-          'DRAFT',
-          'SENT',
-          'DELIVERED',
-          'ACCEPTED',
-          'REJECTED',
-          'CANCELLED'
+          "DRAFT",
+          "SENT",
+          "DELIVERED",
+          "ACCEPTED",
+          "REJECTED",
+          "CANCELLED"
         ),
-        allowNull: true
+        allowNull: true,
       },
       eFaturaXml: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       eFaturaPdf: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       // E-Arşiv (Electronic Archive) fields
       eArsivUuid: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       eArsivNumber: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       eArsivDate: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       eArsivStatus: {
         type: Sequelize.ENUM(
-          'CREATED',
-          'SENT_TO_ARCHIVE',
-          'ARCHIVED',
-          'FAILED'
+          "CREATED",
+          "SENT_TO_ARCHIVE",
+          "ARCHIVED",
+          "FAILED"
         ),
-        allowNull: true
+        allowNull: true,
       },
       // Tax and Legal Information
       taxNumber: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       taxOffice: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       customerType: {
-        type: Sequelize.ENUM('INDIVIDUAL', 'COMPANY'),
+        type: Sequelize.ENUM("INDIVIDUAL", "COMPANY"),
         allowNull: false,
-        defaultValue: 'INDIVIDUAL'
+        defaultValue: "INDIVIDUAL",
       },
       identityNumber: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       // KDV (VAT) Information
       kdvTotal: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: false,
-        defaultValue: 0
+        defaultValue: 0,
       },
       kdvRate: {
         type: Sequelize.DECIMAL(5, 2),
         allowNull: false,
-        defaultValue: 18.0
+        defaultValue: 18.0,
       },
       kdvExempt: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       kdvExemptReason: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       // KVKK (Personal Data Protection) Compliance
       kvkkConsent: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false
+        defaultValue: false,
       },
       kvkkConsentDate: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       kvkkConsentMethod: {
         type: Sequelize.ENUM(
-          'EXPLICIT',
-          'IMPLICIT',
-          'WEBSITE',
-          'PHONE',
-          'EMAIL'
+          "EXPLICIT",
+          "IMPLICIT",
+          "WEBSITE",
+          "PHONE",
+          "EMAIL"
         ),
-        allowNull: true
+        allowNull: true,
       },
       // İrsaliye (Delivery Note) Information
       irsaliyeNumber: {
         type: Sequelize.STRING,
-        allowNull: true
+        allowNull: true,
       },
       irsaliyeDate: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       // TEBLİĞ (Official Notifications)
       gibNotifications: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       // Updated compliance status to match model
       complianceStatus: {
         type: Sequelize.ENUM(
-          'PENDING',
-          'COMPLIANT',
-          'NON_COMPLIANT',
-          'UNDER_REVIEW'
+          "PENDING",
+          "COMPLIANT",
+          "NON_COMPLIANT",
+          "UNDER_REVIEW"
         ),
         allowNull: false,
-        defaultValue: 'PENDING'
+        defaultValue: "PENDING",
       },
       complianceNotes: {
         type: Sequelize.TEXT,
-        allowNull: true
+        allowNull: true,
       },
       lastComplianceCheck: {
         type: Sequelize.DATE,
-        allowNull: true
+        allowNull: true,
       },
       // Integration Data
       gibIntegrationData: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       errorMessages: {
         type: JsonType,
-        allowNull: true
+        allowNull: true,
       },
       userId: {
         type: Sequelize.UUID,
         allowNull: true,
         references: {
-          model: 'users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
       },
       createdAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
+        defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
         allowNull: false,
-        defaultValue: Sequelize.NOW
-      }
+        defaultValue: Sequelize.NOW,
+      },
     });
 
     // Add indexes for performance
-    await queryInterface.addIndex('users', ['email']);
-    await queryInterface.addIndex('users', ['username']);
-    await queryInterface.addIndex('users', ['subscriptionStatus']);
-    await queryInterface.addIndex('users', ['subscriptionPlan']);
-    await queryInterface.addIndex('users', ['tenantId']);
-    await queryInterface.addIndex('users', ['referralCode'], { unique: true });
-    await queryInterface.addIndex('users', ['stripeCustomerId']);
-    await queryInterface.addIndex('users', ['stripeSubscriptionId']);
-    await queryInterface.addIndex('users', ['iyzicoCustomerId']);
-    await queryInterface.addIndex('users', ['lastLogin']);
-    await queryInterface.addIndex('users', ['emailVerified']);
-    await queryInterface.addIndex('users', ['isActive']);
-    await queryInterface.addIndex('users', ['createdAt']);
-    await queryInterface.addIndex('users', ['lastActivityAt']);
-    await queryInterface.addIndex('users', ['fullName'], {
-      name: 'users_fullname_search_idx'
+    await queryInterface.addIndex("users", ["email"]);
+    await queryInterface.addIndex("users", ["username"]);
+    await queryInterface.addIndex("users", ["subscriptionStatus"]);
+    await queryInterface.addIndex("users", ["subscriptionPlan"]);
+    await queryInterface.addIndex("users", ["tenantId"]);
+    await queryInterface.addIndex("users", ["referralCode"], { unique: true });
+    await queryInterface.addIndex("users", ["stripeCustomerId"]);
+    await queryInterface.addIndex("users", ["stripeSubscriptionId"]);
+    await queryInterface.addIndex("users", ["iyzicoCustomerId"]);
+    await queryInterface.addIndex("users", ["lastLogin"]);
+    await queryInterface.addIndex("users", ["emailVerified"]);
+    await queryInterface.addIndex("users", ["isActive"]);
+    await queryInterface.addIndex("users", ["createdAt"]);
+    await queryInterface.addIndex("users", ["lastActivityAt"]);
+    await queryInterface.addIndex("users", ["fullName"], {
+      name: "users_fullname_search_idx",
     });
-    await queryInterface.addIndex('users', ['companyName'], {
-      name: 'users_company_search_idx'
+    await queryInterface.addIndex("users", ["companyName"], {
+      name: "users_company_search_idx",
     });
 
-    await queryInterface.addIndex('platform_connections', ['userId']);
-    await queryInterface.addIndex('platform_connections', ['platformType']);
-    await queryInterface.addIndex('platform_connections', ['status']);
-    await queryInterface.addIndex('platform_connections', [
-      'userId',
-      'platformType'
+    await queryInterface.addIndex("platform_connections", ["userId"]);
+    await queryInterface.addIndex("platform_connections", ["platformType"]);
+    await queryInterface.addIndex("platform_connections", ["status"]);
+    await queryInterface.addIndex("platform_connections", [
+      "userId",
+      "platformType",
     ]);
-    await queryInterface.addIndex('platform_connections', ['createdAt']);
-    await queryInterface.addIndex('platform_connections', ['updatedAt']);
-    await queryInterface.addIndex('platform_connections', ['lastSync']);
-    await queryInterface.addIndex('platform_connections', ['lastTestedAt']);
-    await queryInterface.addIndex('platform_connections', ['isActive']);
-    await queryInterface.addIndex('platform_connections', ['autoSync']);
-    await queryInterface.addIndex('platform_connections', [
-      'userId',
-      'platformType',
-      'isActive'
+    await queryInterface.addIndex("platform_connections", ["createdAt"]);
+    await queryInterface.addIndex("platform_connections", ["updatedAt"]);
+    await queryInterface.addIndex("platform_connections", ["lastSync"]);
+    await queryInterface.addIndex("platform_connections", ["lastTestedAt"]);
+    await queryInterface.addIndex("platform_connections", ["isActive"]);
+    await queryInterface.addIndex("platform_connections", ["autoSync"]);
+    await queryInterface.addIndex("platform_connections", [
+      "userId",
+      "platformType",
+      "isActive",
     ]);
-    await queryInterface.addIndex('platform_connections', [
-      'userId',
-      'status',
-      'isActive'
+    await queryInterface.addIndex("platform_connections", [
+      "userId",
+      "status",
+      "isActive",
     ]);
 
-    await queryInterface.addIndex('products', ['userId']);
-    await queryInterface.addIndex('products', ['sku']);
-    await queryInterface.addIndex('products', ['barcode']);
-    await queryInterface.addIndex('products', ['status']);
-    await queryInterface.addIndex('products', ['category']);
-    await queryInterface.addIndex('products', ['stockQuantity']);
-    await queryInterface.addIndex('products', ['userId', 'sku'], {
-      unique: true
+    await queryInterface.addIndex("products", ["userId"]);
+    await queryInterface.addIndex("products", ["sku"]);
+    await queryInterface.addIndex("products", ["barcode"]);
+    await queryInterface.addIndex("products", ["status"]);
+    await queryInterface.addIndex("products", ["category"]);
+    await queryInterface.addIndex("products", ["stockQuantity"]);
+    await queryInterface.addIndex("products", ["userId", "sku"], {
+      unique: true,
     });
-    await queryInterface.addIndex('products', ['createdAt']);
-    await queryInterface.addIndex('products', ['updatedAt']);
-    await queryInterface.addIndex('products', ['lastSyncedAt']);
-    await queryInterface.addIndex('products', ['hasVariants']);
-    await queryInterface.addIndex('products', ['isVariant']);
-    await queryInterface.addIndex('products', ['isMainProduct']);
-    await queryInterface.addIndex('products', ['variantGroupId']);
-    await queryInterface.addIndex('products', ['parentProductId']);
-    await queryInterface.addIndex('products', ['brand']);
-    await queryInterface.addIndex('products', ['price']);
-    await queryInterface.addIndex('products', ['name'], {
-      name: 'products_name_search_idx'
+    await queryInterface.addIndex("products", ["createdAt"]);
+    await queryInterface.addIndex("products", ["updatedAt"]);
+    await queryInterface.addIndex("products", ["lastSyncedAt"]);
+    await queryInterface.addIndex("products", ["hasVariants"]);
+    await queryInterface.addIndex("products", ["isVariant"]);
+    await queryInterface.addIndex("products", ["isMainProduct"]);
+    await queryInterface.addIndex("products", ["variantGroupId"]);
+    await queryInterface.addIndex("products", ["parentProductId"]);
+    await queryInterface.addIndex("products", ["brand"]);
+    await queryInterface.addIndex("products", ["price"]);
+    await queryInterface.addIndex("products", ["name"], {
+      name: "products_name_search_idx",
     });
-    await queryInterface.addIndex('products', [
-      'userId',
-      'status',
-      'createdAt'
+    await queryInterface.addIndex("products", [
+      "userId",
+      "status",
+      "createdAt",
     ]);
-    await queryInterface.addIndex('products', ['userId', 'category', 'status']);
-    await queryInterface.addIndex('products', [
-      'userId',
-      'stockQuantity',
-      'status'
+    await queryInterface.addIndex("products", ["userId", "category", "status"]);
+    await queryInterface.addIndex("products", [
+      "userId",
+      "stockQuantity",
+      "status",
     ]);
 
-    await queryInterface.addIndex('product_variants', ['productId']);
-    await queryInterface.addIndex('product_variants', ['sku']);
-    await queryInterface.addIndex('product_variants', ['barcode']);
-    await queryInterface.addIndex('product_variants', ['status']);
-    await queryInterface.addIndex('product_variants', ['isDefault']);
-    await queryInterface.addIndex('product_variants', ['productId', 'sku'], {
-      unique: true
+    await queryInterface.addIndex("product_variants", ["productId"]);
+    await queryInterface.addIndex("product_variants", ["sku"]);
+    await queryInterface.addIndex("product_variants", ["barcode"]);
+    await queryInterface.addIndex("product_variants", ["status"]);
+    await queryInterface.addIndex("product_variants", ["isDefault"]);
+    await queryInterface.addIndex("product_variants", ["productId", "sku"], {
+      unique: true,
     });
-    await queryInterface.addIndex('product_variants', ['createdAt']);
-    await queryInterface.addIndex('product_variants', ['updatedAt']);
-    await queryInterface.addIndex('product_variants', ['price']);
-    await queryInterface.addIndex('product_variants', ['stockQuantity']);
-    await queryInterface.addIndex('product_variants', ['sortOrder']);
-    await queryInterface.addIndex('product_variants', [
-      'productId',
-      'status',
-      'isDefault'
+    await queryInterface.addIndex("product_variants", ["createdAt"]);
+    await queryInterface.addIndex("product_variants", ["updatedAt"]);
+    await queryInterface.addIndex("product_variants", ["price"]);
+    await queryInterface.addIndex("product_variants", ["stockQuantity"]);
+    await queryInterface.addIndex("product_variants", ["sortOrder"]);
+    await queryInterface.addIndex("product_variants", [
+      "productId",
+      "status",
+      "isDefault",
     ]);
-    await queryInterface.addIndex('product_variants', [
-      'productId',
-      'stockQuantity'
+    await queryInterface.addIndex("product_variants", [
+      "productId",
+      "stockQuantity",
     ]);
 
-    await queryInterface.addIndex('product_media', ['productId']);
-    await queryInterface.addIndex('product_media', ['variantId']);
-    await queryInterface.addIndex('product_media', ['type']);
-    await queryInterface.addIndex('product_media', ['userId']);
-    await queryInterface.addIndex('product_media', ['isPrimary']);
-    await queryInterface.addIndex('product_media', ['productId', 'sortOrder']);
+    await queryInterface.addIndex("product_media", ["productId"]);
+    await queryInterface.addIndex("product_media", ["variantId"]);
+    await queryInterface.addIndex("product_media", ["type"]);
+    await queryInterface.addIndex("product_media", ["userId"]);
+    await queryInterface.addIndex("product_media", ["isPrimary"]);
+    await queryInterface.addIndex("product_media", ["productId", "sortOrder"]);
 
-    await queryInterface.addIndex('inventory_sync', ['sku'], { unique: true });
-    await queryInterface.addIndex('inventory_sync', ['syncStatus']);
-    await queryInterface.addIndex('inventory_sync', ['availableQuantity']);
-    await queryInterface.addIndex('inventory_sync', ['lastSyncAttempt']);
-    await queryInterface.addIndex('inventory_sync', ['productId']);
+    await queryInterface.addIndex("inventory_sync", ["sku"], { unique: true });
+    await queryInterface.addIndex("inventory_sync", ["syncStatus"]);
+    await queryInterface.addIndex("inventory_sync", ["availableQuantity"]);
+    await queryInterface.addIndex("inventory_sync", ["lastSyncAttempt"]);
+    await queryInterface.addIndex("inventory_sync", ["productId"]);
 
-    await queryInterface.addIndex('platform_conflicts', ['userId']);
-    await queryInterface.addIndex('platform_conflicts', ['entityType']);
-    await queryInterface.addIndex('platform_conflicts', ['entityId']);
-    await queryInterface.addIndex('platform_conflicts', ['platformType']);
-    await queryInterface.addIndex('platform_conflicts', ['conflictType']);
-    await queryInterface.addIndex('platform_conflicts', ['status']);
+    await queryInterface.addIndex("platform_conflicts", ["userId"]);
+    await queryInterface.addIndex("platform_conflicts", ["entityType"]);
+    await queryInterface.addIndex("platform_conflicts", ["entityId"]);
+    await queryInterface.addIndex("platform_conflicts", ["platformType"]);
+    await queryInterface.addIndex("platform_conflicts", ["conflictType"]);
+    await queryInterface.addIndex("platform_conflicts", ["status"]);
 
-    await queryInterface.addIndex('product_templates', ['userId']);
-    await queryInterface.addIndex('product_templates', ['platformType']);
-    await queryInterface.addIndex('product_templates', ['categoryId']);
-    await queryInterface.addIndex('product_templates', ['isActive']);
-    await queryInterface.addIndex('product_templates', ['isDefault']);
+    await queryInterface.addIndex("product_templates", ["userId"]);
+    await queryInterface.addIndex("product_templates", ["platformType"]);
+    await queryInterface.addIndex("product_templates", ["categoryId"]);
+    await queryInterface.addIndex("product_templates", ["isActive"]);
+    await queryInterface.addIndex("product_templates", ["isDefault"]);
 
     // Add the foreign key constraint now that product_templates table exists
     try {
-      await queryInterface.addConstraint('products', {
-        fields: ['templateId'],
-        type: 'foreign key',
-        name: 'products_templateId_fkey',
+      await queryInterface.addConstraint("products", {
+        fields: ["templateId"],
+        type: "foreign key",
+        name: "products_templateId_fkey",
         references: {
-          table: 'product_templates',
-          field: 'id'
+          table: "product_templates",
+          field: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'SET NULL'
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
       });
     } catch (error) {
-      console.log('Foreign key constraint may already exist:', error.message);
+      console.log("Foreign key constraint may already exist:", error.message);
     }
 
-    await queryInterface.addIndex('bulk_operations', ['userId']);
-    await queryInterface.addIndex('bulk_operations', ['type']);
-    await queryInterface.addIndex('bulk_operations', ['status']);
-    await queryInterface.addIndex('bulk_operations', ['createdAt']);
+    await queryInterface.addIndex("bulk_operations", ["userId"]);
+    await queryInterface.addIndex("bulk_operations", ["type"]);
+    await queryInterface.addIndex("bulk_operations", ["status"]);
+    await queryInterface.addIndex("bulk_operations", ["createdAt"]);
 
-    await queryInterface.addIndex('platform_data', ['platformType']);
-    await queryInterface.addIndex('platform_data', ['entityType']);
-    await queryInterface.addIndex('platform_data', ['entityId']);
-    await queryInterface.addIndex('platform_data', ['platformId']);
-    await queryInterface.addIndex('platform_data', ['platformEntityId']);
-    await queryInterface.addIndex('platform_data', ['syncStatus']);
+    await queryInterface.addIndex("platform_data", ["platformType"]);
+    await queryInterface.addIndex("platform_data", ["entityType"]);
+    await queryInterface.addIndex("platform_data", ["entityId"]);
+    await queryInterface.addIndex("platform_data", ["platformId"]);
+    await queryInterface.addIndex("platform_data", ["platformEntityId"]);
+    await queryInterface.addIndex("platform_data", ["syncStatus"]);
 
     // Add unique constraint for platform data (merged from 20250622000001-add-platform-data-unique-constraint.js)
-    await queryInterface.addConstraint('platform_data', {
-      fields: ['entityType', 'entityId', 'platformType'],
-      type: 'unique',
-      name: 'platform_data_unique_entity_platform'
+    await queryInterface.addConstraint("platform_data", {
+      fields: ["entityType", "entityId", "platformType"],
+      type: "unique",
+      name: "platform_data_unique_entity_platform",
     });
 
-    await queryInterface.addIndex('orders', ['userId']);
-    await queryInterface.addIndex('orders', ['connectionId']);
-    await queryInterface.addIndex('orders', ['orderStatus']);
-    await queryInterface.addIndex('orders', ['orderDate']);
-    await queryInterface.addIndex('orders', ['externalOrderId']);
-    await queryInterface.addIndex('orders', ['trackingNumber']);
+    await queryInterface.addIndex("orders", ["userId"]);
+    await queryInterface.addIndex("orders", ["connectionId"]);
+    await queryInterface.addIndex("orders", ["orderStatus"]);
+    await queryInterface.addIndex("orders", ["orderDate"]);
+    await queryInterface.addIndex("orders", ["externalOrderId"]);
+    await queryInterface.addIndex("orders", ["trackingNumber"]);
     // Note: Unique constraint on externalOrderId and connectionId handles NULL connectionId properly
     // Multiple orders can have NULL connectionId (manual orders), but platform orders must be unique per connection
     await queryInterface.addIndex(
-      'orders',
-      ['externalOrderId', 'connectionId'],
+      "orders",
+      ["externalOrderId", "connectionId"],
       { unique: true }
     );
-    await queryInterface.addIndex('orders', ['isConsolidated']);
-    await queryInterface.addIndex('orders', ['batchId']);
-    await queryInterface.addIndex('orders', ['shippingTemplateId']);
-    await queryInterface.addIndex('orders', ['isCommercial']);
-    await queryInterface.addIndex('orders', ['isMicroExport']);
-    await queryInterface.addIndex('orders', ['fastDeliveryType']);
-    await queryInterface.addIndex('orders', ['createdAt']);
-    await queryInterface.addIndex('orders', ['updatedAt']);
-    await queryInterface.addIndex('orders', ['totalAmount']);
-    await queryInterface.addIndex('orders', ['currency']);
-    await queryInterface.addIndex('orders', ['paymentStatus']);
-    await queryInterface.addIndex('orders', ['shippingStatus']);
-    await queryInterface.addIndex('orders', ['deliveryType']);
-    await queryInterface.addIndex('orders', ['cargoTrackingNumber']);
-    await queryInterface.addIndex('orders', ['cargoCompany']);
-    await queryInterface.addIndex('orders', ['invoiceStatus']);
-    await queryInterface.addIndex('orders', ['invoiceNumber']);
-    await queryInterface.addIndex('orders', [
-      'userId',
-      'orderStatus',
-      'orderDate'
+    await queryInterface.addIndex("orders", ["isConsolidated"]);
+    await queryInterface.addIndex("orders", ["batchId"]);
+    await queryInterface.addIndex("orders", ["shippingTemplateId"]);
+    await queryInterface.addIndex("orders", ["isCommercial"]);
+    await queryInterface.addIndex("orders", ["isMicroExport"]);
+    await queryInterface.addIndex("orders", ["fastDeliveryType"]);
+    await queryInterface.addIndex("orders", ["createdAt"]);
+    await queryInterface.addIndex("orders", ["updatedAt"]);
+    await queryInterface.addIndex("orders", ["totalAmount"]);
+    await queryInterface.addIndex("orders", ["currency"]);
+    await queryInterface.addIndex("orders", ["paymentStatus"]);
+    await queryInterface.addIndex("orders", ["shippingStatus"]);
+    await queryInterface.addIndex("orders", ["deliveryType"]);
+    await queryInterface.addIndex("orders", ["cargoTrackingNumber"]);
+    await queryInterface.addIndex("orders", ["cargoCompany"]);
+    await queryInterface.addIndex("orders", ["invoiceStatus"]);
+    await queryInterface.addIndex("orders", ["invoiceNumber"]);
+    await queryInterface.addIndex("orders", [
+      "userId",
+      "orderStatus",
+      "orderDate",
     ]);
-    await queryInterface.addIndex('orders', [
-      'userId',
-      'connectionId',
-      'orderDate'
+    await queryInterface.addIndex("orders", [
+      "userId",
+      "connectionId",
+      "orderDate",
     ]);
-    await queryInterface.addIndex('orders', [
-      'connectionId',
-      'orderStatus',
-      'orderDate'
+    await queryInterface.addIndex("orders", [
+      "connectionId",
+      "orderStatus",
+      "orderDate",
     ]);
 
-    await queryInterface.addIndex('order_items', ['orderId']);
-    await queryInterface.addIndex('order_items', ['productId']);
-    await queryInterface.addIndex('order_items', ['sku']);
+    await queryInterface.addIndex("order_items", ["orderId"]);
+    await queryInterface.addIndex("order_items", ["productId"]);
+    await queryInterface.addIndex("order_items", ["sku"]);
 
-    await queryInterface.addIndex('shipping_details', ['orderId']);
+    await queryInterface.addIndex("shipping_details", ["orderId"]);
 
     // Add indexes for platform-specific order tables
-    await queryInterface.addIndex('hepsiburada_orders', ['orderId']);
-    await queryInterface.addIndex('hepsiburada_orders', ['packageNumber']);
-    await queryInterface.addIndex('hepsiburada_orders', ['merchantId']);
-    await queryInterface.addIndex('hepsiburada_orders', ['orderNumber']);
-    await queryInterface.addIndex('hepsiburada_orders', [
-      'cargoTrackingNumber'
+    await queryInterface.addIndex("hepsiburada_orders", ["orderId"]);
+    await queryInterface.addIndex("hepsiburada_orders", ["packageNumber"]);
+    await queryInterface.addIndex("hepsiburada_orders", ["merchantId"]);
+    await queryInterface.addIndex("hepsiburada_orders", ["orderNumber"]);
+    await queryInterface.addIndex("hepsiburada_orders", [
+      "cargoTrackingNumber",
     ]);
 
-    await queryInterface.addIndex('trendyol_orders', ['orderId']);
-    await queryInterface.addIndex('trendyol_orders', ['trendyolOrderId']);
-    await queryInterface.addIndex('trendyol_orders', ['orderNumber']);
-    await queryInterface.addIndex('trendyol_orders', ['supplierId']);
-    await queryInterface.addIndex('trendyol_orders', ['cargoTrackingNumber']);
+    await queryInterface.addIndex("trendyol_orders", ["orderId"]);
+    await queryInterface.addIndex("trendyol_orders", ["trendyolOrderId"]);
+    await queryInterface.addIndex("trendyol_orders", ["orderNumber"]);
+    await queryInterface.addIndex("trendyol_orders", ["supplierId"]);
+    await queryInterface.addIndex("trendyol_orders", ["cargoTrackingNumber"]);
 
-    await queryInterface.addIndex('n11_orders', ['orderId']);
-    await queryInterface.addIndex('n11_orders', ['n11OrderId'], {
-      unique: true
+    await queryInterface.addIndex("n11_orders", ["orderId"]);
+    await queryInterface.addIndex("n11_orders", ["n11OrderId"], {
+      unique: true,
     });
-    await queryInterface.addIndex('n11_orders', ['orderNumber']);
-    await queryInterface.addIndex('n11_orders', ['sellerId']);
-    await queryInterface.addIndex('n11_orders', ['customerId']);
-    await queryInterface.addIndex('n11_orders', ['customerEmail']);
-    await queryInterface.addIndex('n11_orders', ['orderStatus']);
-    await queryInterface.addIndex('n11_orders', ['cargoTrackingNumber']);
-    await queryInterface.addIndex('n11_orders', ['shipmentPackageStatus']);
-    await queryInterface.addIndex('n11_orders', ['n11OrderDate']);
-    await queryInterface.addIndex('n11_orders', ['lastSyncAt']);
-    await queryInterface.addIndex('n11_orders', ['lastModifiedDate']);
-    await queryInterface.addIndex('n11_orders', ['agreedDeliveryDate']);
+    await queryInterface.addIndex("n11_orders", ["orderNumber"]);
+    await queryInterface.addIndex("n11_orders", ["sellerId"]);
+    await queryInterface.addIndex("n11_orders", ["customerId"]);
+    await queryInterface.addIndex("n11_orders", ["customerEmail"]);
+    await queryInterface.addIndex("n11_orders", ["orderStatus"]);
+    await queryInterface.addIndex("n11_orders", ["cargoTrackingNumber"]);
+    await queryInterface.addIndex("n11_orders", ["shipmentPackageStatus"]);
+    await queryInterface.addIndex("n11_orders", ["n11OrderDate"]);
+    await queryInterface.addIndex("n11_orders", ["lastSyncAt"]);
+    await queryInterface.addIndex("n11_orders", ["lastModifiedDate"]);
+    await queryInterface.addIndex("n11_orders", ["agreedDeliveryDate"]);
 
     // Add index for the new trendyolProductId column
-    await queryInterface.addIndex('trendyol_products', ['trendyolProductId']);
+    await queryInterface.addIndex("trendyol_products", ["trendyolProductId"]);
 
     // Add the foreign key constraint now that shipping_details table exists
     try {
-      await queryInterface.addConstraint('orders', {
-        fields: ['shippingDetailId'],
-        type: 'foreign key',
-        name: 'orders_shippingDetailId_fkey',
+      await queryInterface.addConstraint("orders", {
+        fields: ["shippingDetailId"],
+        type: "foreign key",
+        name: "orders_shippingDetailId_fkey",
         references: {
-          table: 'shipping_details',
-          field: 'id'
-        }
+          table: "shipping_details",
+          field: "id",
+        },
       });
     } catch (error) {
-      console.log('Foreign key constraint may already exist:', error.message);
+      console.log("Foreign key constraint may already exist:", error.message);
     }
 
-    await queryInterface.addIndex('platform_categories', ['platformType']);
-    await queryInterface.addIndex('platform_categories', [
-      'platformCategoryId'
+    await queryInterface.addIndex("platform_categories", ["platformType"]);
+    await queryInterface.addIndex("platform_categories", [
+      "platformCategoryId",
     ]);
-    await queryInterface.addIndex('platform_categories', ['parentId']);
-    await queryInterface.addIndex('platform_categories', ['userId']);
+    await queryInterface.addIndex("platform_categories", ["parentId"]);
+    await queryInterface.addIndex("platform_categories", ["userId"]);
 
     // Add unique constraint for platform categories
-    await queryInterface.addConstraint('platform_categories', {
-      fields: ['platformType', 'platformCategoryId'],
-      type: 'unique',
-      name: 'platform_categories_unique_constraint'
+    await queryInterface.addConstraint("platform_categories", {
+      fields: ["platformType", "platformCategoryId"],
+      type: "unique",
+      name: "platform_categories_unique_constraint",
     });
 
-    await queryInterface.addIndex('hepsiburada_products', ['productId']);
-    await queryInterface.addIndex('hepsiburada_products', ['merchantSku']);
-    await queryInterface.addIndex('hepsiburada_products', ['barcode']);
+    await queryInterface.addIndex("hepsiburada_products", ["productId"]);
+    await queryInterface.addIndex("hepsiburada_products", ["merchantSku"]);
+    await queryInterface.addIndex("hepsiburada_products", ["barcode"]);
 
-    await queryInterface.addIndex('trendyol_products', ['productId']);
-    await queryInterface.addIndex('trendyol_products', ['barcode']);
+    await queryInterface.addIndex("trendyol_products", ["productId"]);
+    await queryInterface.addIndex("trendyol_products", ["barcode"]);
 
-    await queryInterface.addIndex('n11_products', ['productId']);
-    await queryInterface.addIndex('n11_products', ['stockCode']);
-    await queryInterface.addIndex('n11_products', ['n11ProductId'], {
-      unique: true
+    await queryInterface.addIndex("n11_products", ["productId"]);
+    await queryInterface.addIndex("n11_products", ["stockCode"]);
+    await queryInterface.addIndex("n11_products", ["n11ProductId"], {
+      unique: true,
     });
-    await queryInterface.addIndex('n11_products', ['sellerId']);
-    await queryInterface.addIndex('n11_products', ['barcode']);
-    await queryInterface.addIndex('n11_products', ['n11Status']);
-    await queryInterface.addIndex('n11_products', ['saleStatus']);
-    await queryInterface.addIndex('n11_products', ['lastSyncedAt']);
+    await queryInterface.addIndex("n11_products", ["sellerId"]);
+    await queryInterface.addIndex("n11_products", ["barcode"]);
+    await queryInterface.addIndex("n11_products", ["n11Status"]);
+    await queryInterface.addIndex("n11_products", ["saleStatus"]);
+    await queryInterface.addIndex("n11_products", ["lastSyncedAt"]);
 
-    await queryInterface.addIndex('background_tasks', ['userId']);
-    await queryInterface.addIndex('background_tasks', ['platformConnectionId']);
-    await queryInterface.addIndex('background_tasks', ['status']);
-    await queryInterface.addIndex('background_tasks', ['taskType']);
-    await queryInterface.addIndex('background_tasks', ['priority']);
-    await queryInterface.addIndex('background_tasks', ['updatedAt']);
-    await queryInterface.addIndex('background_tasks', ['startedAt']);
-    await queryInterface.addIndex('background_tasks', ['completedAt']);
-    await queryInterface.addIndex('background_tasks', ['scheduledFor']);
+    await queryInterface.addIndex("background_tasks", ["userId"]);
+    await queryInterface.addIndex("background_tasks", ["platformConnectionId"]);
+    await queryInterface.addIndex("background_tasks", ["status"]);
+    await queryInterface.addIndex("background_tasks", ["taskType"]);
+    await queryInterface.addIndex("background_tasks", ["priority"]);
+    await queryInterface.addIndex("background_tasks", ["updatedAt"]);
+    await queryInterface.addIndex("background_tasks", ["startedAt"]);
+    await queryInterface.addIndex("background_tasks", ["completedAt"]);
+    await queryInterface.addIndex("background_tasks", ["scheduledFor"]);
 
-    await queryInterface.addIndex('subscriptions', ['userId']);
-    await queryInterface.addIndex('subscriptions', ['status']);
-    await queryInterface.addIndex('subscriptions', ['startedAt']);
-    await queryInterface.addIndex('subscriptions', ['endsAt']);
-    await queryInterface.addIndex('subscriptions', ['planId']);
-    await queryInterface.addIndex('subscriptions', ['billingInterval']);
+    await queryInterface.addIndex("subscriptions", ["userId"]);
+    await queryInterface.addIndex("subscriptions", ["status"]);
+    await queryInterface.addIndex("subscriptions", ["startedAt"]);
+    await queryInterface.addIndex("subscriptions", ["endsAt"]);
+    await queryInterface.addIndex("subscriptions", ["planId"]);
+    await queryInterface.addIndex("subscriptions", ["billingInterval"]);
 
-    await queryInterface.addIndex('settings', ['userId']);
-    await queryInterface.addIndex('settings', ['category']);
-    await queryInterface.addIndex('settings', ['userId', 'category'], {
-      unique: true
+    await queryInterface.addIndex("settings", ["userId"]);
+    await queryInterface.addIndex("settings", ["category"]);
+    await queryInterface.addIndex("settings", ["userId", "category"], {
+      unique: true,
     });
 
-    await queryInterface.addIndex('inventory_movements', ['userId']);
-    await queryInterface.addIndex('inventory_movements', ['productId']);
-    await queryInterface.addIndex('inventory_movements', ['variantId']);
-    await queryInterface.addIndex('inventory_movements', ['movementType']);
-    await queryInterface.addIndex('inventory_movements', ['createdAt']);
-    await queryInterface.addIndex('inventory_movements', ['quantity']);
-    await queryInterface.addIndex('inventory_movements', ['reason']);
+    await queryInterface.addIndex("inventory_movements", ["userId"]);
+    await queryInterface.addIndex("inventory_movements", ["productId"]);
+    await queryInterface.addIndex("inventory_movements", ["variantId"]);
+    await queryInterface.addIndex("inventory_movements", ["movementType"]);
+    await queryInterface.addIndex("inventory_movements", ["createdAt"]);
+    await queryInterface.addIndex("inventory_movements", ["quantity"]);
+    await queryInterface.addIndex("inventory_movements", ["reason"]);
 
-    await queryInterface.addIndex('shipping_carriers', ['code']);
-    await queryInterface.addIndex('shipping_rates', ['carrierId']);
-    await queryInterface.addIndex('shipping_rates', ['userId']);
+    await queryInterface.addIndex("shipping_carriers", ["code"]);
+    await queryInterface.addIndex("shipping_rates", ["carrierId"]);
+    await queryInterface.addIndex("shipping_rates", ["userId"]);
 
-    await queryInterface.addIndex('invoices', ['userId']);
-    await queryInterface.addIndex('invoices', ['orderId']);
-    await queryInterface.addIndex('invoices', ['invoiceNumber']);
-    await queryInterface.addIndex('invoices', ['invoiceDate']);
-    await queryInterface.addIndex('invoices', ['totalAmount']);
-    await queryInterface.addIndex('invoices', ['currency']);
+    await queryInterface.addIndex("invoices", ["userId"]);
+    await queryInterface.addIndex("invoices", ["orderId"]);
+    await queryInterface.addIndex("invoices", ["invoiceNumber"]);
+    await queryInterface.addIndex("invoices", ["invoiceDate"]);
+    await queryInterface.addIndex("invoices", ["totalAmount"]);
+    await queryInterface.addIndex("invoices", ["currency"]);
 
-    await queryInterface.addIndex('stock_reservations', ['productId']);
-    await queryInterface.addIndex('stock_reservations', ['variantId']);
-    await queryInterface.addIndex('stock_reservations', ['orderId']);
-    await queryInterface.addIndex('stock_reservations', ['status']);
-    await queryInterface.addIndex('stock_reservations', ['createdAt']);
-    await queryInterface.addIndex('stock_reservations', ['expiresAt']);
-    await queryInterface.addIndex('stock_reservations', ['quantity']);
+    await queryInterface.addIndex("stock_reservations", ["productId"]);
+    await queryInterface.addIndex("stock_reservations", ["variantId"]);
+    await queryInterface.addIndex("stock_reservations", ["orderId"]);
+    await queryInterface.addIndex("stock_reservations", ["status"]);
+    await queryInterface.addIndex("stock_reservations", ["createdAt"]);
+    await queryInterface.addIndex("stock_reservations", ["expiresAt"]);
+    await queryInterface.addIndex("stock_reservations", ["quantity"]);
 
-    await queryInterface.addIndex('usage_records', ['userId']);
-    await queryInterface.addIndex('usage_records', ['subscriptionId']);
-    await queryInterface.addIndex('usage_records', ['metricType']);
-    await queryInterface.addIndex('usage_records', ['userId', 'metricType']);
-    await queryInterface.addIndex('usage_records', ['billingPeriodStart']);
-    await queryInterface.addIndex('usage_records', ['billingPeriodEnd']);
-    await queryInterface.addIndex('usage_records', ['currentUsage']);
-    await queryInterface.addIndex('usage_records', ['lastResetAt']);
+    await queryInterface.addIndex("usage_records", ["userId"]);
+    await queryInterface.addIndex("usage_records", ["subscriptionId"]);
+    await queryInterface.addIndex("usage_records", ["metricType"]);
+    await queryInterface.addIndex("usage_records", ["userId", "metricType"]);
+    await queryInterface.addIndex("usage_records", ["billingPeriodStart"]);
+    await queryInterface.addIndex("usage_records", ["billingPeriodEnd"]);
+    await queryInterface.addIndex("usage_records", ["currentUsage"]);
+    await queryInterface.addIndex("usage_records", ["lastResetAt"]);
 
     // Neon PostgreSQL specific optimizations
-    if (queryInterface.sequelize.getDialect() === 'postgres') {
+    if (queryInterface.sequelize.getDialect() === "postgres") {
       // Add JSONB GIN indexes for better performance on JSON queries
-      await queryInterface.addIndex('users', ['preferences'], {
-        using: 'gin',
-        name: 'users_preferences_gin_idx'
+      await queryInterface.addIndex("users", ["preferences"], {
+        using: "gin",
+        name: "users_preferences_gin_idx",
       });
 
-      await queryInterface.addIndex('users', ['featuresEnabled'], {
-        using: 'gin',
-        name: 'users_features_gin_idx'
+      await queryInterface.addIndex("users", ["featuresEnabled"], {
+        using: "gin",
+        name: "users_features_gin_idx",
       });
 
-      await queryInterface.addIndex('platform_connections', ['credentials'], {
-        using: 'gin',
-        name: 'platform_connections_credentials_gin_idx'
+      await queryInterface.addIndex("platform_connections", ["credentials"], {
+        using: "gin",
+        name: "platform_connections_credentials_gin_idx",
       });
 
-      await queryInterface.addIndex('platform_connections', ['settings'], {
-        using: 'gin',
-        name: 'platform_connections_settings_gin_idx'
+      await queryInterface.addIndex("platform_connections", ["settings"], {
+        using: "gin",
+        name: "platform_connections_settings_gin_idx",
       });
 
-      await queryInterface.addIndex('products', ['specifications'], {
-        using: 'gin',
-        name: 'products_specifications_gin_idx'
+      await queryInterface.addIndex("products", ["specifications"], {
+        using: "gin",
+        name: "products_specifications_gin_idx",
       });
 
-      await queryInterface.addIndex('products', ['images'], {
-        using: 'gin',
-        name: 'products_images_gin_idx'
+      await queryInterface.addIndex("products", ["images"], {
+        using: "gin",
+        name: "products_images_gin_idx",
       });
 
-      await queryInterface.addIndex('orders', ['metadata'], {
-        using: 'gin',
-        name: 'orders_metadata_gin_idx'
+      await queryInterface.addIndex("orders", ["metadata"], {
+        using: "gin",
+        name: "orders_metadata_gin_idx",
       });
 
       // Add partial indexes for better performance on filtered queries
-      await queryInterface.addIndex('users', ['email'], {
+      await queryInterface.addIndex("users", ["email"], {
         where: { isActive: true },
-        name: 'users_active_email_idx'
+        name: "users_active_email_idx",
       });
 
-      await queryInterface.addIndex('products', ['sku'], {
-        where: { status: 'active' },
-        name: 'products_active_sku_idx'
+      await queryInterface.addIndex("products", ["sku"], {
+        where: { status: "active" },
+        name: "products_active_sku_idx",
       });
 
-      await queryInterface.addIndex('orders', ['createdAt'], {
-        where: 'status IN (\'pending\', \'processing\')',
-        name: 'orders_active_created_idx'
+      await queryInterface.addIndex("orders", ["createdAt"], {
+        where: "status IN ('pending', 'processing')",
+        name: "orders_active_created_idx",
       });
 
       // Add composite indexes for common query patterns
       await queryInterface.addIndex(
-        'platform_connections',
-        ['userId', 'platformType', 'isActive'],
+        "platform_connections",
+        ["userId", "platformType", "isActive"],
         {
-          name: 'platform_connections_user_platform_active_idx'
+          name: "platform_connections_user_platform_active_idx",
         }
       );
 
       await queryInterface.addIndex(
-        'products',
-        ['userId', 'status', 'createdAt'],
+        "products",
+        ["userId", "status", "createdAt"],
         {
-          name: 'products_user_status_date_idx'
+          name: "products_user_status_date_idx",
         }
       );
 
       await queryInterface.addIndex(
-        'orders',
-        ['userId', 'status', 'orderDate'],
+        "orders",
+        ["userId", "status", "orderDate"],
         {
-          name: 'orders_user_status_date_idx'
+          name: "orders_user_status_date_idx",
         }
       );
 
       // Add indexes for new tables
       // Customers table indexes
-      await queryInterface.addIndex('customers', ['email'], { unique: true });
-      await queryInterface.addIndex('customers', ['userId']);
-      await queryInterface.addIndex('customers', ['customerType']);
-      await queryInterface.addIndex('customers', ['isActive']);
-      await queryInterface.addIndex('customers', ['totalOrders']);
-      await queryInterface.addIndex('customers', ['lastOrderDate']);
+      await queryInterface.addIndex("customers", ["email"], { unique: true });
+      await queryInterface.addIndex("customers", ["userId"]);
+      await queryInterface.addIndex("customers", ["customerType"]);
+      await queryInterface.addIndex("customers", ["isActive"]);
+      await queryInterface.addIndex("customers", ["totalOrders"]);
+      await queryInterface.addIndex("customers", ["lastOrderDate"]);
 
       // Customer Questions table indexes
-      await queryInterface.addIndex('customer_questions', ['platform']);
-      await queryInterface.addIndex('customer_questions', [
-        'platform_question_id'
+      await queryInterface.addIndex("customer_questions", ["platform"]);
+      await queryInterface.addIndex("customer_questions", [
+        "platform_question_id",
       ]);
-      await queryInterface.addIndex('customer_questions', ['customer_id']);
-      await queryInterface.addIndex('customer_questions', ['customer_email']);
-      await queryInterface.addIndex('customer_questions', ['is_answered']);
-      await queryInterface.addIndex('customer_questions', ['status']);
-      await queryInterface.addIndex('customer_questions', ['priority']);
-      await queryInterface.addIndex('customer_questions', ['question_date']);
-      await queryInterface.addIndex('customer_questions', ['userId']);
-      await queryInterface.addIndex('customer_questions', [
-        'platform',
-        'status'
-      ]);
-      await queryInterface.addIndex('customer_questions', [
-        'platform',
-        'is_answered'
+      await queryInterface.addIndex("customer_questions", ["customer_id"]);
+      await queryInterface.addIndex("customer_questions", ["customer_email"]);
+      await queryInterface.addIndex("customer_questions", ["status"]);
+      await queryInterface.addIndex("customer_questions", ["priority"]);
+      await queryInterface.addIndex("customer_questions", ["question_date"]);
+      await queryInterface.addIndex("customer_questions", ["userId"]);
+      await queryInterface.addIndex("customer_questions", [
+        "platform",
+        "status",
       ]);
 
       // Customer Replies table indexes
-      await queryInterface.addIndex('customer_replies', ['question_id']);
-      await queryInterface.addIndex('customer_replies', ['is_from_customer']);
-      await queryInterface.addIndex('customer_replies', ['status']);
-      await queryInterface.addIndex('customer_replies', ['reply_date']);
-      await queryInterface.addIndex('customer_replies', ['userId']);
+      await queryInterface.addIndex("customer_replies", ["question_id"]);
+      await queryInterface.addIndex("customer_replies", ["is_from_customer"]);
+      await queryInterface.addIndex("customer_replies", ["status"]);
+      await queryInterface.addIndex("customer_replies", ["reply_date"]);
+      await queryInterface.addIndex("customer_replies", ["userId"]);
 
       // Main Products table indexes
-      await queryInterface.addIndex('main_products', ['baseSku'], {
-        unique: true
+      await queryInterface.addIndex("main_products", ["baseSku"], {
+        unique: true,
       });
-      await queryInterface.addIndex('main_products', ['category']);
-      await queryInterface.addIndex('main_products', ['brand']);
-      await queryInterface.addIndex('main_products', ['productType']);
-      await queryInterface.addIndex('main_products', ['status']);
-      await queryInterface.addIndex('main_products', ['userId']);
-      await queryInterface.addIndex('main_products', ['trackInventory']);
-      await queryInterface.addIndex('main_products', ['totalStock']);
-      await queryInterface.addIndex('main_products', ['availableStock']);
+      await queryInterface.addIndex("main_products", ["category"]);
+      await queryInterface.addIndex("main_products", ["brand"]);
+      await queryInterface.addIndex("main_products", ["productType"]);
+      await queryInterface.addIndex("main_products", ["status"]);
+      await queryInterface.addIndex("main_products", ["userId"]);
+      await queryInterface.addIndex("main_products", ["trackInventory"]);
+      await queryInterface.addIndex("main_products", ["totalStock"]);
+      await queryInterface.addIndex("main_products", ["availableStock"]);
 
       // Platform Variants table indexes
-      await queryInterface.addIndex('platform_variants', ['mainProductId']);
-      await queryInterface.addIndex('platform_variants', ['productId']);
-      await queryInterface.addIndex('platform_variants', ['platform']);
-      await queryInterface.addIndex('platform_variants', ['platformSku']);
-      await queryInterface.addIndex('platform_variants', ['platformProductId']);
-      await queryInterface.addIndex('platform_variants', ['status']);
-      await queryInterface.addIndex('platform_variants', ['isVisible']);
-      await queryInterface.addIndex('platform_variants', ['syncStatus']);
-      await queryInterface.addIndex('platform_variants', ['userId']);
-      await queryInterface.addIndex('platform_variants', [
-        'platform',
-        'status'
+      await queryInterface.addIndex("platform_variants", ["mainProductId"]);
+      await queryInterface.addIndex("platform_variants", ["productId"]);
+      await queryInterface.addIndex("platform_variants", ["platform"]);
+      await queryInterface.addIndex("platform_variants", ["platformSku"]);
+      await queryInterface.addIndex("platform_variants", ["platformProductId"]);
+      await queryInterface.addIndex("platform_variants", ["status"]);
+      await queryInterface.addIndex("platform_variants", ["isVisible"]);
+      await queryInterface.addIndex("platform_variants", ["syncStatus"]);
+      await queryInterface.addIndex("platform_variants", ["userId"]);
+      await queryInterface.addIndex("platform_variants", [
+        "platform",
+        "status",
       ]);
-      await queryInterface.addIndex('platform_variants', [
-        'mainProductId',
-        'platform'
+      await queryInterface.addIndex("platform_variants", [
+        "mainProductId",
+        "platform",
       ]);
 
       // Enhanced Product Media table indexes
-      await queryInterface.addIndex('enhanced_product_media', ['productId']);
-      await queryInterface.addIndex('enhanced_product_media', [
-        'mainProductId'
+      await queryInterface.addIndex("enhanced_product_media", ["productId"]);
+      await queryInterface.addIndex("enhanced_product_media", [
+        "mainProductId",
       ]);
-      await queryInterface.addIndex('enhanced_product_media', [
-        'platformVariantId'
+      await queryInterface.addIndex("enhanced_product_media", [
+        "platformVariantId",
       ]);
-      await queryInterface.addIndex('enhanced_product_media', ['type']);
-      await queryInterface.addIndex('enhanced_product_media', ['isPrimary']);
-      await queryInterface.addIndex('enhanced_product_media', ['isActive']);
-      await queryInterface.addIndex('enhanced_product_media', ['position']);
-      await queryInterface.addIndex('enhanced_product_media', ['userId']);
+      await queryInterface.addIndex("enhanced_product_media", ["type"]);
+      await queryInterface.addIndex("enhanced_product_media", ["isPrimary"]);
+      await queryInterface.addIndex("enhanced_product_media", ["isActive"]);
+      await queryInterface.addIndex("enhanced_product_media", ["position"]);
+      await queryInterface.addIndex("enhanced_product_media", ["userId"]);
 
       // Question Stats table indexes
-      await queryInterface.addIndex('question_stats', ['platform']);
-      await queryInterface.addIndex('question_stats', ['date']);
-      await queryInterface.addIndex('question_stats', ['userId']);
-      await queryInterface.addIndex('question_stats', ['platform', 'date'], {
-        unique: true
+      await queryInterface.addIndex("question_stats", ["platform"]);
+      await queryInterface.addIndex("question_stats", ["date"]);
+      await queryInterface.addIndex("question_stats", ["userId"]);
+      await queryInterface.addIndex("question_stats", ["platform", "date"], {
+        unique: true,
       });
 
       // Reply Templates table indexes
-      await queryInterface.addIndex('reply_templates', ['category']);
-      await queryInterface.addIndex('reply_templates', ['isActive']);
-      await queryInterface.addIndex('reply_templates', ['isDefault']);
-      await queryInterface.addIndex('reply_templates', ['userId']);
-      await queryInterface.addIndex('reply_templates', ['usageCount']);
+      await queryInterface.addIndex("reply_templates", ["category"]);
+      await queryInterface.addIndex("reply_templates", ["isActive"]);
+      await queryInterface.addIndex("reply_templates", ["isDefault"]);
+      await queryInterface.addIndex("reply_templates", ["userId"]);
+      await queryInterface.addIndex("reply_templates", ["usageCount"]);
 
       // Platform Templates table indexes
-      await queryInterface.addIndex('platform_templates', ['platform']);
-      await queryInterface.addIndex('platform_templates', ['category']);
-      await queryInterface.addIndex('platform_templates', ['isActive']);
-      await queryInterface.addIndex('platform_templates', ['isDefault']);
-      await queryInterface.addIndex('platform_templates', ['userId']);
-      await queryInterface.addIndex('platform_templates', ['usageCount']);
+      await queryInterface.addIndex("platform_templates", ["platform"]);
+      await queryInterface.addIndex("platform_templates", ["category"]);
+      await queryInterface.addIndex("platform_templates", ["isActive"]);
+      await queryInterface.addIndex("platform_templates", ["isDefault"]);
+      await queryInterface.addIndex("platform_templates", ["userId"]);
+      await queryInterface.addIndex("platform_templates", ["usageCount"]);
 
       // Compliance Documents table indexes
-      await queryInterface.addIndex('compliance_documents', ['orderId']);
-      await queryInterface.addIndex('compliance_documents', ['documentType']);
-      await queryInterface.addIndex('compliance_documents', ['status']);
-      await queryInterface.addIndex('compliance_documents', ['customerType']);
-      await queryInterface.addIndex('compliance_documents', ['createdAt']);
+      await queryInterface.addIndex("compliance_documents", ["orderId"]);
+      await queryInterface.addIndex("compliance_documents", ["documentType"]);
+      await queryInterface.addIndex("compliance_documents", ["status"]);
+      await queryInterface.addIndex("compliance_documents", ["customerType"]);
+      await queryInterface.addIndex("compliance_documents", ["createdAt"]);
       // Add unique index for documentNumber (with null handling)
       await queryInterface.sequelize.query(`
         CREATE UNIQUE INDEX "compliance_documents_document_number_unique" 
@@ -6059,70 +6054,70 @@ module.exports = {
       `);
 
       // Turkish Compliance table indexes
-      await queryInterface.addIndex('turkish_compliance', ['productId']);
-      await queryInterface.addIndex('turkish_compliance', ['mainProductId']);
-      await queryInterface.addIndex('turkish_compliance', ['orderId']);
-      await queryInterface.addIndex('turkish_compliance', ['gtip']);
-      await queryInterface.addIndex('turkish_compliance', ['complianceStatus']);
-      await queryInterface.addIndex('turkish_compliance', ['riskClass']);
-      await queryInterface.addIndex('turkish_compliance', ['userId']);
+      await queryInterface.addIndex("turkish_compliance", ["productId"]);
+      await queryInterface.addIndex("turkish_compliance", ["mainProductId"]);
+      await queryInterface.addIndex("turkish_compliance", ["orderId"]);
+      await queryInterface.addIndex("turkish_compliance", ["gtip"]);
+      await queryInterface.addIndex("turkish_compliance", ["complianceStatus"]);
+      await queryInterface.addIndex("turkish_compliance", ["riskClass"]);
+      await queryInterface.addIndex("turkish_compliance", ["userId"]);
       // Additional indexes for E-Fatura and compliance fields
-      await queryInterface.addIndex('turkish_compliance', ['eFaturaUuid'], {
-        unique: true
+      await queryInterface.addIndex("turkish_compliance", ["eFaturaUuid"], {
+        unique: true,
       });
-      await queryInterface.addIndex('turkish_compliance', ['eFaturaNumber']);
-      await queryInterface.addIndex('turkish_compliance', ['eFaturaStatus']);
-      await queryInterface.addIndex('turkish_compliance', ['taxNumber']);
-      await queryInterface.addIndex('turkish_compliance', ['customerType']);
-      await queryInterface.addIndex('turkish_compliance', ['kvkkConsent']);
+      await queryInterface.addIndex("turkish_compliance", ["eFaturaNumber"]);
+      await queryInterface.addIndex("turkish_compliance", ["eFaturaStatus"]);
+      await queryInterface.addIndex("turkish_compliance", ["taxNumber"]);
+      await queryInterface.addIndex("turkish_compliance", ["customerType"]);
+      await queryInterface.addIndex("turkish_compliance", ["kvkkConsent"]);
     }
   },
 
   down: async (queryInterface, Sequelize) => {
     // Drop tables in reverse order to handle foreign key constraints
     // Use CASCADE to ensure all dependencies are dropped
-    await queryInterface.dropTable('usage_records', { cascade: true });
-    await queryInterface.dropTable('stock_reservations', { cascade: true });
-    await queryInterface.dropTable('invoices', { cascade: true });
-    await queryInterface.dropTable('shipping_rates', { cascade: true });
-    await queryInterface.dropTable('shipping_carriers', { cascade: true });
-    await queryInterface.dropTable('inventory_movements', { cascade: true });
-    await queryInterface.dropTable('settings', { cascade: true });
-    await queryInterface.dropTable('subscriptions', { cascade: true });
-    await queryInterface.dropTable('background_tasks', { cascade: true });
-    await queryInterface.dropTable('n11_products', { cascade: true });
-    await queryInterface.dropTable('trendyol_products', { cascade: true });
-    await queryInterface.dropTable('hepsiburada_products', { cascade: true });
-    await queryInterface.dropTable('platform_categories', { cascade: true });
-    await queryInterface.dropTable('bulk_operations', { cascade: true });
-    await queryInterface.dropTable('order_items', { cascade: true });
+    await queryInterface.dropTable("usage_records", { cascade: true });
+    await queryInterface.dropTable("stock_reservations", { cascade: true });
+    await queryInterface.dropTable("invoices", { cascade: true });
+    await queryInterface.dropTable("shipping_rates", { cascade: true });
+    await queryInterface.dropTable("shipping_carriers", { cascade: true });
+    await queryInterface.dropTable("inventory_movements", { cascade: true });
+    await queryInterface.dropTable("settings", { cascade: true });
+    await queryInterface.dropTable("subscriptions", { cascade: true });
+    await queryInterface.dropTable("background_tasks", { cascade: true });
+    await queryInterface.dropTable("n11_products", { cascade: true });
+    await queryInterface.dropTable("trendyol_products", { cascade: true });
+    await queryInterface.dropTable("hepsiburada_products", { cascade: true });
+    await queryInterface.dropTable("platform_categories", { cascade: true });
+    await queryInterface.dropTable("bulk_operations", { cascade: true });
+    await queryInterface.dropTable("order_items", { cascade: true });
     // Drop platform-specific order tables
-    await queryInterface.dropTable('n11_orders', { cascade: true });
-    await queryInterface.dropTable('trendyol_orders', { cascade: true });
-    await queryInterface.dropTable('hepsiburada_orders', { cascade: true });
-    await queryInterface.dropTable('shipping_details', { cascade: true });
-    await queryInterface.dropTable('orders', { cascade: true });
+    await queryInterface.dropTable("n11_orders", { cascade: true });
+    await queryInterface.dropTable("trendyol_orders", { cascade: true });
+    await queryInterface.dropTable("hepsiburada_orders", { cascade: true });
+    await queryInterface.dropTable("shipping_details", { cascade: true });
+    await queryInterface.dropTable("orders", { cascade: true });
     // Drop new tables (in reverse order of creation)
-    await queryInterface.dropTable('turkish_compliance', { cascade: true });
-    await queryInterface.dropTable('compliance_documents', { cascade: true });
-    await queryInterface.dropTable('platform_templates', { cascade: true });
-    await queryInterface.dropTable('reply_templates', { cascade: true });
-    await queryInterface.dropTable('question_stats', { cascade: true });
-    await queryInterface.dropTable('enhanced_product_media', { cascade: true });
-    await queryInterface.dropTable('platform_variants', { cascade: true });
-    await queryInterface.dropTable('main_products', { cascade: true });
-    await queryInterface.dropTable('customer_replies', { cascade: true });
-    await queryInterface.dropTable('customer_questions', { cascade: true });
-    await queryInterface.dropTable('customers', { cascade: true });
+    await queryInterface.dropTable("turkish_compliance", { cascade: true });
+    await queryInterface.dropTable("compliance_documents", { cascade: true });
+    await queryInterface.dropTable("platform_templates", { cascade: true });
+    await queryInterface.dropTable("reply_templates", { cascade: true });
+    await queryInterface.dropTable("question_stats", { cascade: true });
+    await queryInterface.dropTable("enhanced_product_media", { cascade: true });
+    await queryInterface.dropTable("platform_variants", { cascade: true });
+    await queryInterface.dropTable("main_products", { cascade: true });
+    await queryInterface.dropTable("customer_replies", { cascade: true });
+    await queryInterface.dropTable("customer_questions", { cascade: true });
+    await queryInterface.dropTable("customers", { cascade: true });
     // Drop existing tables
-    await queryInterface.dropTable('product_media', { cascade: true });
-    await queryInterface.dropTable('product_variants', { cascade: true });
-    await queryInterface.dropTable('products', { cascade: true });
-    await queryInterface.dropTable('product_templates', { cascade: true });
-    await queryInterface.dropTable('platform_data', { cascade: true });
-    await queryInterface.dropTable('platform_conflicts', { cascade: true });
-    await queryInterface.dropTable('platform_connections', { cascade: true });
-    await queryInterface.dropTable('users', { cascade: true });
-    await queryInterface.dropTable('inventory_sync', { cascade: true });
-  }
+    await queryInterface.dropTable("product_media", { cascade: true });
+    await queryInterface.dropTable("product_variants", { cascade: true });
+    await queryInterface.dropTable("products", { cascade: true });
+    await queryInterface.dropTable("product_templates", { cascade: true });
+    await queryInterface.dropTable("platform_data", { cascade: true });
+    await queryInterface.dropTable("platform_conflicts", { cascade: true });
+    await queryInterface.dropTable("platform_connections", { cascade: true });
+    await queryInterface.dropTable("users", { cascade: true });
+    await queryInterface.dropTable("inventory_sync", { cascade: true });
+  },
 };
