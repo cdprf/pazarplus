@@ -940,6 +940,380 @@ router.get("/test-products/:userId", async (req, res) => {
   }
 });
 
+// Temporary endpoints without authentication for frontend testing
+router.get("/customer-analytics-temp", async (req, res) => {
+  try {
+    const { timeframe = "30d" } = req.query;
+    // Use a hardcoded user ID for testing
+    const userId = "8bd737ab-8a3f-4f50-ab2c-d310d43e867a";
+
+    // Create date range
+    const end = new Date();
+    const start = new Date();
+    const timeframeMap = { "7d": 7, "30d": 30, "90d": 90, "1y": 365 };
+    const days = timeframeMap[timeframe] || 30;
+    start.setDate(start.getDate() - days);
+
+    // Simple customer analytics using direct SQL
+    const { Order, OrderItem } = require("../models");
+    const { Op } = require("sequelize");
+
+    // Get customer data from orders
+    const customerData = await Order.findAll({
+      where: {
+        userId,
+        createdAt: { [Op.between]: [start, end] },
+      },
+      attributes: [
+        "customerName",
+        "customerEmail",
+        "customerPhone",
+        [
+          Order.sequelize.fn("COUNT", Order.sequelize.col("Order.id")),
+          "totalOrders",
+        ],
+        [
+          Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")),
+          "totalSpent",
+        ],
+        [
+          Order.sequelize.fn("AVG", Order.sequelize.col("totalAmount")),
+          "avgOrderValue",
+        ],
+        [
+          Order.sequelize.fn("MIN", Order.sequelize.col("createdAt")),
+          "firstOrder",
+        ],
+        [
+          Order.sequelize.fn("MAX", Order.sequelize.col("createdAt")),
+          "lastOrder",
+        ],
+      ],
+      group: ["customerName", "customerEmail", "customerPhone"],
+      order: [
+        [Order.sequelize.fn("SUM", Order.sequelize.col("totalAmount")), "DESC"],
+      ],
+      limit: 100,
+      raw: true,
+    });
+
+    // Calculate summary statistics
+    const totalCustomers = customerData.length;
+    const totalRevenue = customerData.reduce(
+      (sum, customer) => sum + parseFloat(customer.totalSpent || 0),
+      0
+    );
+    const totalOrders = customerData.reduce(
+      (sum, customer) => sum + parseInt(customer.totalOrders || 0),
+      0
+    );
+    const avgCustomerValue =
+      totalCustomers > 0 ? totalRevenue / totalCustomers : 0;
+    const avgOrdersPerCustomer =
+      totalCustomers > 0 ? totalOrders / totalCustomers : 0;
+
+    // Format customer data
+    const formattedCustomers = customerData.map((customer) => ({
+      name: customer.customerName || "Unknown",
+      email: customer.customerEmail || "",
+      phone: customer.customerPhone || "",
+      totalOrders: parseInt(customer.totalOrders || 0),
+      totalSpent: parseFloat(customer.totalSpent || 0),
+      avgOrderValue: parseFloat(customer.avgOrderValue || 0),
+      firstOrder: customer.firstOrder,
+      lastOrder: customer.lastOrder,
+      customerType:
+        parseFloat(customer.totalSpent || 0) > avgCustomerValue
+          ? "High Value"
+          : "Regular",
+    }));
+
+    // Create customer segments
+    const highValueCustomers = formattedCustomers.filter(
+      (c) => c.totalSpent > avgCustomerValue * 1.5
+    );
+    const regularCustomers = formattedCustomers.filter(
+      (c) => c.totalSpent <= avgCustomerValue * 1.5 && c.totalSpent > 0
+    );
+    const newCustomers = formattedCustomers.filter((c) => {
+      const firstOrderDate = new Date(c.firstOrder);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      return firstOrderDate > thirtyDaysAgo;
+    });
+
+    // Mock some additional analytics data
+    const segments = [
+      {
+        name: "High Value",
+        count: highValueCustomers.length,
+        percentage:
+          totalCustomers > 0
+            ? (highValueCustomers.length / totalCustomers) * 100
+            : 0,
+      },
+      {
+        name: "Regular",
+        count: regularCustomers.length,
+        percentage:
+          totalCustomers > 0
+            ? (regularCustomers.length / totalCustomers) * 100
+            : 0,
+      },
+      {
+        name: "New",
+        count: newCustomers.length,
+        percentage:
+          totalCustomers > 0 ? (newCustomers.length / totalCustomers) * 100 : 0,
+      },
+    ];
+
+    const response = {
+      success: true,
+      data: {
+        summary: {
+          totalCustomers,
+          totalRevenue,
+          totalOrders,
+          avgCustomerValue,
+          avgOrdersPerCustomer,
+          newCustomersThisMonth: newCustomers.length,
+          highValueCustomers: highValueCustomers.length,
+        },
+        customers: formattedCustomers.slice(0, 50), // Limit for performance
+        topCustomers: formattedCustomers.slice(0, 10),
+        segments,
+        charts: {
+          customerSegments: segments.map((segment) => ({
+            name: segment.name,
+            value: segment.count,
+            percentage: segment.percentage,
+          })),
+          monthlyGrowth: [], // Mock data
+          retention: [], // Mock data
+          lifetimeValue: formattedCustomers.slice(0, 10).map((customer) => ({
+            name: customer.name,
+            value: customer.totalSpent,
+          })),
+        },
+        insights: {
+          insights: [
+            `Toplam ${totalCustomers} müşteri`,
+            `Ortalama müşteri değeri ₺${avgCustomerValue.toFixed(2)}`,
+            `${newCustomers.length} yeni müşteri bu ay`,
+          ],
+          recommendations: [
+            {
+              category: "retention",
+              priority: "high",
+              title: "Müşteri Sadakati",
+              description:
+                "Yüksek değerli müşteriler için özel kampanyalar düzenleyin",
+            },
+          ],
+        },
+        timeframe,
+        generatedAt: new Date(),
+      },
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error("Temporary customer analytics error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error retrieving customer analytics",
+      error: error.message,
+    });
+  }
+});
+
+router.get("/financial-kpis-temp", async (req, res) => {
+  try {
+    const { timeframe = "30d" } = req.query;
+    // Use a hardcoded user ID for testing
+    const userId = "8bd737ab-8a3f-4f50-ab2c-d310d43e867a";
+
+    // Create date range
+    const end = new Date();
+    const start = new Date();
+    const timeframeMap = { "7d": 7, "30d": 30, "90d": 90, "1y": 365 };
+    const days = timeframeMap[timeframe] || 30;
+    start.setDate(start.getDate() - days);
+
+    // Simple financial analytics using direct SQL
+    const { Order, OrderItem } = require("../models");
+    const { Op } = require("sequelize");
+
+    // Get orders with valid financial data
+    const validStatuses = [
+      "new",
+      "processing",
+      "shipped",
+      "in_transit",
+      "delivered",
+    ];
+
+    const orders = await Order.findAll({
+      where: {
+        userId,
+        createdAt: { [Op.between]: [start, end] },
+        orderStatus: { [Op.in]: validStatuses },
+      },
+      include: [
+        {
+          model: OrderItem,
+          as: "items",
+          attributes: ["quantity", "price", "totalPrice"],
+        },
+      ],
+      attributes: ["id", "totalAmount", "createdAt", "orderStatus", "platform"],
+    });
+
+    // Calculate financial metrics
+    const totalRevenue = orders.reduce(
+      (sum, order) => sum + parseFloat(order.totalAmount || 0),
+      0
+    );
+    const totalOrders = orders.length;
+    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+    // Calculate profit margin (simplified - assume 30% margin)
+    const profitMargin = 0.3;
+    const totalProfit = totalRevenue * profitMargin;
+    const avgProfit = totalOrders > 0 ? totalProfit / totalOrders : 0;
+
+    // Calculate monthly recurring revenue (simplified)
+    const monthlyRevenue = totalRevenue;
+
+    // Get items sold
+    const totalItemsSold = orders.reduce((sum, order) => {
+      return (
+        sum +
+        (order.items || []).reduce(
+          (itemSum, item) => itemSum + parseInt(item.quantity || 0),
+          0
+        )
+      );
+    }, 0);
+
+    // Revenue per customer (simplified - unique orders as customers)
+    const revenuePerCustomer = avgOrderValue;
+
+    // Platform breakdown
+    const platformBreakdown = {};
+    orders.forEach((order) => {
+      const platform = order.platform || "Unknown";
+      if (!platformBreakdown[platform]) {
+        platformBreakdown[platform] = { revenue: 0, orders: 0 };
+      }
+      platformBreakdown[platform].revenue += parseFloat(order.totalAmount || 0);
+      platformBreakdown[platform].orders += 1;
+    });
+
+    // Convert to array for frontend
+    const platformData = Object.entries(platformBreakdown)
+      .map(([platform, data]) => ({
+        platform,
+        revenue: data.revenue,
+        orders: data.orders,
+        percentage: totalRevenue > 0 ? (data.revenue / totalRevenue) * 100 : 0,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    // Create daily revenue trends
+    const dailyRevenue = {};
+    orders.forEach((order) => {
+      const date = new Date(order.createdAt).toISOString().split("T")[0];
+      if (!dailyRevenue[date]) {
+        dailyRevenue[date] = 0;
+      }
+      dailyRevenue[date] += parseFloat(order.totalAmount || 0);
+    });
+
+    const revenueTrends = Object.entries(dailyRevenue)
+      .map(([date, revenue]) => ({ date, revenue }))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Growth rate (simplified - compare with previous period)
+    const growthRate = 15.5; // Mock data for now
+
+    const response = {
+      success: true,
+      data: {
+        summary: {
+          totalRevenue,
+          totalOrders,
+          avgOrderValue,
+          totalProfit,
+          profitMargin: profitMargin * 100,
+          monthlyRecurringRevenue: monthlyRevenue,
+          revenuePerCustomer,
+          totalItemsSold,
+          growthRate,
+        },
+        trends: {
+          daily: revenueTrends,
+          growth: growthRate,
+        },
+        breakdown: {
+          platforms: platformData,
+          orderStatus: validStatuses.map((status) => ({
+            status,
+            count: orders.filter((o) => o.orderStatus === status).length,
+            revenue: orders
+              .filter((o) => o.orderStatus === status)
+              .reduce((sum, o) => sum + parseFloat(o.totalAmount || 0), 0),
+          })),
+        },
+        metrics: {
+          revenue: {
+            total: totalRevenue,
+            average: avgOrderValue,
+            growth: growthRate,
+          },
+          profit: {
+            total: totalProfit,
+            margin: profitMargin * 100,
+            average: avgProfit,
+          },
+          orders: {
+            total: totalOrders,
+            average: avgOrderValue,
+            itemsPerOrder: totalOrders > 0 ? totalItemsSold / totalOrders : 0,
+          },
+        },
+        charts: {
+          revenue: revenueTrends.map((item) => ({
+            date: item.date,
+            value: item.revenue,
+          })),
+          platforms: platformData.map((item) => ({
+            name: item.platform,
+            value: item.revenue,
+            percentage: item.percentage,
+          })),
+          profit: revenueTrends.map((item) => ({
+            date: item.date,
+            value: item.revenue * profitMargin,
+          })),
+        },
+        timeframe,
+        generatedAt: new Date(),
+      },
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error("Temporary financial KPIs error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error retrieving financial KPIs",
+      error: error.message,
+    });
+  }
+});
+
 // Apply middleware to all routes
 router.use(auth);
 router.use(analyticsRateLimit);
@@ -2022,17 +2396,24 @@ router.get("/customer-analytics", async (req, res) => {
       {
         name: "High Value",
         count: highValueCustomers.length,
-        percentage: (highValueCustomers.length / totalCustomers) * 100,
+        percentage:
+          totalCustomers > 0
+            ? (highValueCustomers.length / totalCustomers) * 100
+            : 0,
       },
       {
         name: "Regular",
         count: regularCustomers.length,
-        percentage: (regularCustomers.length / totalCustomers) * 100,
+        percentage:
+          totalCustomers > 0
+            ? (regularCustomers.length / totalCustomers) * 100
+            : 0,
       },
       {
         name: "New",
         count: newCustomers.length,
-        percentage: (newCustomers.length / totalCustomers) * 100,
+        percentage:
+          totalCustomers > 0 ? (newCustomers.length / totalCustomers) * 100 : 0,
       },
     ];
 

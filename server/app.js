@@ -472,6 +472,7 @@ if (process.env.NODE_ENV === "production") {
         req.path.startsWith("/api") ||
         req.path === "/health" ||
         req.path.startsWith("/ws/") ||
+        req.path.startsWith("/shipping") ||
         req.path.startsWith("/order-shipping") ||
         req.path.includes(".") // Skip requests for files with extensions (js, css, images, etc.)
       ) {

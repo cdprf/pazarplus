@@ -100,3 +100,10 @@ server/migrations/20250624-add-shipping-invoice-status.js
 server/migrations/20250623171147-add-platform-extras-to-main-products.js
 rename-to-camel-case.js
 rename-to-camelcase-with-imports.js
+TicimaxExport.xlsx
+convert-excel-to-json.js
+excel-converter-package.json
+read-excel.js
+RENDER_SIMULATION_GUIDE.md
+TicimaxExport.json
+bin/xlsx

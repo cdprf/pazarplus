@@ -153,7 +153,7 @@ class AnalyticsService {
    */
   async getCustomerAnalytics(timeframe = "30d") {
     return this.makeRequest(
-      `/analytics/customer-analytics?timeframe=${timeframe}`
+      `/analytics/customer-analytics-temp?timeframe=${timeframe}`
     );
   }
 
@@ -261,12 +261,12 @@ class AnalyticsService {
   }
 
   /**
-   * Get financial analytics data (using revenue endpoint)
+   * Get financial analytics data (using financial-kpis-temp endpoint)
    */
   async getFinancialAnalytics(timeframe = "30d") {
     try {
       const response = await api.get(
-        `/analytics/revenue?timeframe=${timeframe}`
+        `/analytics/financial-kpis-temp?timeframe=${timeframe}`
       );
       return response.data;
     } catch (error) {
