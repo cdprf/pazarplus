@@ -20,7 +20,16 @@ export const useWebSocketQuery = (queryKey, events, options = {}) => {
     const isDevelopment = process.env.NODE_ENV === "development";
     const wsUrl = isDevelopment
       ? `ws://localhost:5001/ws/notifications` // Connect directly to backend in development
-      : options.url || "ws://localhost:5001/ws/notifications"; // Production server
+      : (() => {
+          const serverUrl =
+            process.env.REACT_APP_SERVER_URL ||
+            "https://pazarplus.onrender.com";
+          const protocol = serverUrl.startsWith("https") ? "wss:" : "ws:";
+          const host = serverUrl
+            .replace(/^https?:\/\//, "")
+            .replace(/:\d+$/, "");
+          return `${protocol}//${host}/ws/notifications`;
+        })(); // Production backend server
 
     let ws = null;
     let reconnectTimer = null;

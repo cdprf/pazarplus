@@ -14,27 +14,6 @@ export const useWebSocketNotifications = () => {
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 2; // Reduce to 2 attempts to avoid spam
 
-  const getWebSocketUrl = (attemptDirect = false) => {
-    const isDevelopment = process.env.NODE_ENV === "development";
-
-    if (isDevelopment && !attemptDirect) {
-      // First try: Use the React dev server's proxy
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const host = window.location.hostname;
-      const port = window.location.port || "3000";
-      return `${protocol}//${host}:${port}/ws/notifications`;
-    } else if (isDevelopment && attemptDirect) {
-      // Fallback: Try direct connection to backend
-      return `ws://localhost:5001/ws/notifications`;
-    } else {
-      // Production
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const host = window.location.hostname;
-      const port = window.location.port || (protocol === "wss:" ? "443" : "80");
-      return `${protocol}//${host}:${port}/ws/notifications`;
-    }
-  };
-
   const connect = useCallback(() => {
     // Skip connection attempts if we've already failed multiple times
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
@@ -50,7 +29,16 @@ export const useWebSocketNotifications = () => {
       const isDevelopment = process.env.NODE_ENV === "development";
       const wsUrl = isDevelopment
         ? `ws://localhost:5001/ws/notifications` // Direct to backend
-        : getWebSocketUrl(false); // Use original logic for production
+        : (() => {
+            const serverUrl =
+              process.env.REACT_APP_SERVER_URL ||
+              "https://pazarplus.onrender.com";
+            const protocol = serverUrl.startsWith("https") ? "wss:" : "ws:";
+            const host = serverUrl
+              .replace(/^https?:\/\//, "")
+              .replace(/:\d+$/, "");
+            return `${protocol}//${host}/ws/notifications`;
+          })(); // Use backend server for production
 
       console.log(
         `🔌 Connecting to notifications WebSocket (attempt ${
