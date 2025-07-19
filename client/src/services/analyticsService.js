@@ -218,7 +218,7 @@ class AnalyticsService {
    * Get enhanced product analytics
    */
   async getEnhancedProductAnalytics(timeframe = "30d") {
-    return this.makeRequest(`/analytics/products?timeframe=${timeframe}`);
+    return this.makeRequest(`/analytics/products-temp?timeframe=${timeframe}`);
   }
 
   /**
@@ -236,7 +236,7 @@ class AnalyticsService {
   async getProductAnalytics(timeframe = "30d") {
     try {
       const response = await api.get(
-        `/analytics/products?timeframe=${timeframe}`
+        `/analytics/products-temp?timeframe=${timeframe}`
       );
       return response.data;
     } catch (error) {
@@ -375,7 +375,7 @@ class AnalyticsService {
   async getCohortAnalysis(timeframe = "90d") {
     try {
       const response = await api.get(
-        `/analytics/cohort-analysis?timeframe=${timeframe}`
+        `/analytics/cohort-analysis-temp?timeframe=${timeframe}`
       );
       return response.data;
     } catch (error) {

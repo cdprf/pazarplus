@@ -17,7 +17,6 @@ import ExportButton from "./ExportButton";
 const CustomerAnalytics = ({ timeframe = "30d" }) => {
   const [data, setData] = useState(null);
   const [cohortData, setCohortData] = useState(null);
-  const [segmentationData, setSegmentationData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeView, setActiveView] = useState("overview");
@@ -56,38 +55,77 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
           hasCustomerData: !!customerData?.data,
           hasCohortData: !!cohorts,
           hasSegmentationData: !!segmentation,
+          cohortStructure: cohorts ? Object.keys(cohorts) : null,
         });
 
         // Process customer data
         if (customerData && (customerData.success || customerData.data)) {
           const processedData = customerData.data || customerData;
+          console.log("Processing customer data:", processedData);
+
           const normalizedData = {
             ...processedData,
-            summary: processedData.summary || processedData.orderSummary || {},
-            customers: processedData.customers || {
-              total: 0,
-              new: 0,
-              returning: 0,
-              retention: 0,
+            summary: {
+              totalCustomers: processedData.summary?.totalCustomers || 0,
+              totalRevenue: processedData.summary?.totalRevenue || 0,
+              totalOrders: processedData.summary?.totalOrders || 0,
+              avgCustomerValue: processedData.summary?.avgCustomerValue || 0,
+              avgOrdersPerCustomer:
+                processedData.summary?.avgOrdersPerCustomer || 0,
+              newCustomersThisMonth:
+                processedData.summary?.newCustomersThisMonth || 0,
+              highValueCustomers:
+                processedData.summary?.highValueCustomers || 0,
             },
+            customers: {
+              total: processedData.summary?.totalCustomers || 0,
+              new: processedData.summary?.newCustomersThisMonth || 0,
+              returning:
+                (processedData.summary?.totalCustomers || 0) -
+                (processedData.summary?.newCustomersThisMonth || 0),
+              retention:
+                processedData.summary?.totalCustomers > 0
+                  ? ((processedData.summary?.totalCustomers -
+                      processedData.summary?.newCustomersThisMonth) /
+                      processedData.summary?.totalCustomers) *
+                    100
+                  : 0,
+              lifetimeValue: processedData.summary?.avgCustomerValue || 0,
+            },
+            segments: processedData.segments || [],
+            topCustomers: processedData.topCustomers || [],
+            charts: processedData.charts || {},
           };
           setData(normalizedData);
         } else {
           console.warn("⚠️ No customer data received, setting empty data");
           setData({
-            summary: {},
+            summary: {
+              totalCustomers: 0,
+              totalRevenue: 0,
+              totalOrders: 0,
+              avgCustomerValue: 0,
+              avgOrdersPerCustomer: 0,
+              newCustomersThisMonth: 0,
+              highValueCustomers: 0,
+            },
             customers: {
               total: 0,
               new: 0,
               returning: 0,
               retention: 0,
+              lifetimeValue: 0,
             },
+            segments: [],
+            topCustomers: [],
+            charts: {},
           });
         }
 
-        // Set cohort and segmentation data with fallbacks
-        setCohortData(cohorts || { cohorts: [], retention: [] });
-        setSegmentationData(segmentation || { segments: [], demographics: [] });
+        // Set cohort data with fallbacks
+        const processedCohorts = cohorts?.success ? cohorts.data : cohorts;
+        console.log("Processing cohorts:", processedCohorts);
+        setCohortData(processedCohorts || { cohorts: [], retention: [] });
       } catch (err) {
         console.error("Customer analytics error:", err);
         setError(err.message);
@@ -200,7 +238,9 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
           <div className="mt-3">
             <div className="flex items-baseline">
               <p className="text-2xl font-semibold text-gray-900">
-                {formatNumber(data?.totalCustomers || 0)}
+                {formatNumber(
+                  data?.customers?.total || data?.summary?.totalCustomers || 0
+                )}
               </p>
               {data?.customerGrowth !== 0 && (
                 <p
@@ -232,7 +272,11 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
           <div className="mt-3">
             <div className="flex items-baseline">
               <p className="text-2xl font-semibold text-gray-900">
-                {formatNumber(data?.newCustomers || 0)}
+                {formatNumber(
+                  data?.customers?.new ||
+                    data?.summary?.newCustomersThisMonth ||
+                    0
+                )}
               </p>
               {data?.newCustomerGrowth !== 0 && (
                 <p
@@ -266,7 +310,11 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
           <div className="mt-3">
             <div className="flex items-baseline">
               <p className="text-2xl font-semibold text-gray-900">
-                {formatCurrency(data?.averageLifetimeValue || 0)}
+                {formatCurrency(
+                  data?.customers?.lifetimeValue ||
+                    data?.summary?.avgCustomerValue ||
+                    0
+                )}
               </p>
               {data?.ltvGrowth !== 0 && (
                 <p
@@ -298,7 +346,7 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
           <div className="mt-3">
             <div className="flex items-baseline">
               <p className="text-2xl font-semibold text-gray-900">
-                {formatPercentage(data?.retentionRate || 0)}
+                {formatPercentage(data?.customers?.retention || 0)}
               </p>
               {data?.retentionChange !== 0 && (
                 <p
@@ -332,7 +380,7 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
             <div className="h-80">
               <ChartContainer isLoading={loading} error={error}>
                 <OptimizedLineChart
-                  data={data?.acquisitionTrend || []}
+                  data={data?.charts?.monthlyGrowth || []}
                   height={300}
                   lines={[
                     {
@@ -365,7 +413,7 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
             <div className="h-80">
               <ChartContainer isLoading={loading} error={error}>
                 <OptimizedPieChart
-                  data={segmentationData?.segments || []}
+                  data={data?.charts?.customerSegments || data?.segments || []}
                   height={300}
                   colors={COLORS}
                 />
@@ -548,13 +596,17 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
           <div className="h-96">
             <ChartContainer isLoading={loading} error={error}>
               <OptimizedBarChart
-                data={segmentationData?.segments || []}
+                data={data?.segments || []}
                 height={350}
                 bars={[
                   { dataKey: "count", color: "#8884d8", name: "Customers" },
-                  { dataKey: "revenue", color: "#82ca9d", name: "Revenue" },
+                  {
+                    dataKey: "percentage",
+                    color: "#82ca9d",
+                    name: "Percentage",
+                  },
                 ]}
-                formatter={formatCurrency}
+                formatter={formatPercentage}
               />
             </ChartContainer>
           </div>

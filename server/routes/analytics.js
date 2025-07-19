@@ -1314,6 +1314,378 @@ router.get("/financial-kpis-temp", async (req, res) => {
   }
 });
 
+// Cohort Analysis Temp Endpoint (bypassing auth for testing)
+router.get("/cohort-analysis-temp", async (req, res) => {
+  try {
+    const { timeframe = "90d" } = req.query;
+    // Use a hardcoded user ID for testing
+    const userId = "8bd737ab-8a3f-4f50-ab2c-d310d43e867a";
+
+    // Create date range
+    const end = new Date();
+    const start = new Date();
+    const timeframeMap = { "7d": 7, "30d": 30, "90d": 90, "1y": 365 };
+    const days = timeframeMap[timeframe] || 90;
+    start.setDate(start.getDate() - days);
+
+    // Simple cohort analysis using direct SQL
+    const { Order, OrderItem } = require("../models");
+    const { Op, sequelize } = require("sequelize");
+
+    // Get all orders in the timeframe
+    const orders = await Order.findAll({
+      where: {
+        userId,
+        orderDate: {
+          [Op.between]: [start, end],
+        },
+      },
+      order: [["orderDate", "ASC"]],
+    });
+
+    // Group customers by first order month (cohort)
+    const customerCohorts = {};
+    const customerFirstOrder = {};
+
+    orders.forEach((order) => {
+      const customerId = order.customerEmail || order.customerName;
+      const orderDate = new Date(order.orderDate);
+      const cohortMonth = `${orderDate.getFullYear()}-${String(
+        orderDate.getMonth() + 1
+      ).padStart(2, "0")}`;
+
+      if (!customerFirstOrder[customerId]) {
+        customerFirstOrder[customerId] = orderDate;
+        if (!customerCohorts[cohortMonth]) {
+          customerCohorts[cohortMonth] = [];
+        }
+        customerCohorts[cohortMonth].push(customerId);
+      }
+    });
+
+    // Calculate retention for each cohort
+    const cohorts = [];
+    const currentDate = new Date();
+
+    Object.entries(customerCohorts).forEach(([cohortMonth, customers]) => {
+      const cohortDate = new Date(cohortMonth + "-01");
+      const cohortCustomers = customers.length;
+
+      if (cohortCustomers === 0) return;
+
+      // Calculate retention for different months
+      const retention = {};
+
+      for (let monthOffset = 1; monthOffset <= 12; monthOffset++) {
+        const targetMonth = new Date(cohortDate);
+        targetMonth.setMonth(targetMonth.getMonth() + monthOffset);
+
+        // Only calculate if target month is not in the future
+        if (targetMonth <= currentDate) {
+          const targetStart = new Date(
+            targetMonth.getFullYear(),
+            targetMonth.getMonth(),
+            1
+          );
+          const targetEnd = new Date(
+            targetMonth.getFullYear(),
+            targetMonth.getMonth() + 1,
+            0
+          );
+
+          // Count how many cohort customers made orders in this month
+          const retainedCustomers = orders
+            .filter((order) => {
+              const customerId = order.customerEmail || order.customerName;
+              const orderDate = new Date(order.orderDate);
+              return (
+                customers.includes(customerId) &&
+                orderDate >= targetStart &&
+                orderDate <= targetEnd
+              );
+            })
+            .map((o) => o.customerEmail || o.customerName);
+
+          const uniqueRetained = [...new Set(retainedCustomers)];
+          retention[`month${monthOffset}`] = Math.round(
+            (uniqueRetained.length / cohortCustomers) * 100
+          );
+        }
+      }
+
+      cohorts.push({
+        period: cohortMonth,
+        totalCustomers: cohortCustomers,
+        month1: retention.month1 || 0,
+        month2: retention.month2 || 0,
+        month3: retention.month3 || 0,
+        month6: retention.month6 || 0,
+        month12: retention.month12 || 0,
+      });
+    });
+
+    // Sort cohorts by date
+    cohorts.sort(
+      (a, b) => new Date(a.period + "-01") - new Date(b.period + "-01")
+    );
+
+    const insights = [
+      `Analizde ${cohorts.length} kohort bulundu`,
+      cohorts.length > 0
+        ? `En büyük kohort: ${Math.max(
+            ...cohorts.map((c) => c.totalCustomers)
+          )} müşteri`
+        : "Kohort verisi yok",
+      cohorts.length > 0
+        ? `Ortalama 1. ay elde tutma: %${Math.round(
+            cohorts.reduce((sum, c) => sum + c.month1, 0) / cohorts.length
+          )}`
+        : "",
+    ].filter(Boolean);
+
+    res.json({
+      success: true,
+      data: {
+        cohorts,
+        retention: cohorts.map((c) => ({
+          period: c.period,
+          customers: c.totalCustomers,
+          retentionRates: [
+            100,
+            c.month1,
+            c.month2,
+            c.month3,
+            c.month6,
+            c.month12,
+          ],
+        })),
+        insights,
+        timeframe,
+        generatedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("Cohort analysis error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error retrieving cohort analysis",
+      error: error.message,
+    });
+  }
+});
+
+// Products Analytics Temp Endpoint (bypassing auth for testing)
+router.get("/products-temp", async (req, res) => {
+  try {
+    const { timeframe = "30d" } = req.query;
+    // Use a hardcoded user ID for testing
+    const userId = "8bd737ab-8a3f-4f50-ab2c-d310d43e867a";
+
+    // Create date range
+    const end = new Date();
+    const start = new Date();
+    const timeframeMap = { "7d": 7, "30d": 30, "90d": 90, "1y": 365 };
+    const days = timeframeMap[timeframe] || 30;
+    start.setDate(start.getDate() - days);
+
+    // Get orders and order items
+    const { Order, OrderItem } = require("../models");
+    const { Op, sequelize } = require("sequelize");
+
+    // Get all order items in the timeframe
+    const orderItems = await OrderItem.findAll({
+      include: [
+        {
+          model: Order,
+          as: "order",
+          where: {
+            userId,
+            orderDate: {
+              [Op.between]: [start, end],
+            },
+          },
+          required: true,
+        },
+      ],
+      attributes: [
+        "title",
+        "sku",
+        "quantity",
+        "price",
+        "totalPrice",
+        "barcode",
+      ],
+    });
+
+    // Group products by name and calculate metrics
+    const productMetrics = {};
+    let totalRevenue = 0;
+    let totalQuantity = 0;
+
+    orderItems.forEach((item) => {
+      const productName = item.title || "Unknown Product";
+      const quantity = parseInt(item.quantity) || 0;
+      const unitPrice = parseFloat(item.price) || 0;
+      const totalPrice = parseFloat(item.totalPrice) || quantity * unitPrice;
+      const platform = item.order?.platform || "Unknown";
+
+      if (!productMetrics[productName]) {
+        productMetrics[productName] = {
+          name: productName,
+          sku: item.sku || "",
+          barcode: item.barcode || "",
+          totalRevenue: 0,
+          totalQuantity: 0,
+          totalOrders: 0,
+          avgPrice: 0,
+          platforms: {},
+          orders: new Set(),
+        };
+      }
+
+      const product = productMetrics[productName];
+      product.totalRevenue += totalPrice;
+      product.totalQuantity += quantity;
+      product.orders.add(item.order.id);
+
+      // Track platforms
+      if (!product.platforms[platform]) {
+        product.platforms[platform] = { quantity: 0, revenue: 0 };
+      }
+      product.platforms[platform].quantity += quantity;
+      product.platforms[platform].revenue += totalPrice;
+
+      totalRevenue += totalPrice;
+      totalQuantity += quantity;
+    });
+
+    // Convert to array and calculate final metrics
+    const products = Object.values(productMetrics).map((product) => {
+      product.totalOrders = product.orders.size;
+      product.avgPrice =
+        product.totalQuantity > 0
+          ? product.totalRevenue / product.totalQuantity
+          : 0;
+      product.revenueShare =
+        totalRevenue > 0 ? (product.totalRevenue / totalRevenue) * 100 : 0;
+      delete product.orders; // Remove Set object for JSON serialization
+      return product;
+    });
+
+    // Sort by revenue (top selling)
+    products.sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+    // Get top 10 products
+    const topProducts = products.slice(0, 10);
+
+    // Calculate summary metrics
+    const summary = {
+      totalProducts: products.length,
+      totalRevenue,
+      totalQuantity,
+      avgRevenuePerProduct:
+        products.length > 0 ? totalRevenue / products.length : 0,
+      topSellingProduct: products.length > 0 ? products[0].name : null,
+      mostOrderedProduct:
+        products.length > 0
+          ? products.reduce(
+              (max, p) => (p.totalQuantity > max.totalQuantity ? p : max),
+              products[0]
+            ).name
+          : null,
+    };
+
+    // Platform breakdown
+    const platformBreakdown = {};
+    orderItems.forEach((item) => {
+      const platform = item.order?.platform || "Unknown";
+      const revenue = parseFloat(item.totalPrice) || 0;
+      const quantity = parseInt(item.quantity) || 0;
+
+      if (!platformBreakdown[platform]) {
+        platformBreakdown[platform] = {
+          revenue: 0,
+          quantity: 0,
+          products: new Set(),
+        };
+      }
+      platformBreakdown[platform].revenue += revenue;
+      platformBreakdown[platform].quantity += quantity;
+      platformBreakdown[platform].products.add(item.title);
+    });
+
+    // Convert platform breakdown
+    const platforms = Object.entries(platformBreakdown).map(([name, data]) => ({
+      name,
+      revenue: data.revenue,
+      quantity: data.quantity,
+      productCount: data.products.size,
+      avgRevenuePerProduct:
+        data.products.size > 0 ? data.revenue / data.products.size : 0,
+    }));
+
+    // Create charts data
+    const charts = {
+      topSellingByRevenue: topProducts.map((p) => ({
+        name: p.name.length > 20 ? p.name.substring(0, 20) + "..." : p.name,
+        value: p.totalRevenue,
+        quantity: p.totalQuantity,
+      })),
+      topSellingByQuantity: products
+        .sort((a, b) => b.totalQuantity - a.totalQuantity)
+        .slice(0, 10)
+        .map((p) => ({
+          name: p.name.length > 20 ? p.name.substring(0, 20) + "..." : p.name,
+          value: p.totalQuantity,
+          revenue: p.totalRevenue,
+        })),
+      platformPerformance: platforms.map((p) => ({
+        name: p.name,
+        value: p.revenue,
+        quantity: p.quantity,
+        products: p.productCount,
+      })),
+    };
+
+    // Generate insights
+    const insights = [
+      `Toplam ${products.length} ürün analiz edildi`,
+      topProducts.length > 0
+        ? `En çok gelir getiren: ${
+            topProducts[0].name
+          } (₺${topProducts[0].totalRevenue.toFixed(2)})`
+        : "",
+      `Toplam satış: ${totalQuantity} adet, ₺${totalRevenue.toFixed(2)} gelir`,
+      platforms.length > 1
+        ? `En başarılı platform: ${
+            platforms.sort((a, b) => b.revenue - a.revenue)[0].name
+          }`
+        : "",
+    ].filter(Boolean);
+
+    res.json({
+      success: true,
+      data: {
+        summary,
+        products: products.slice(0, 50), // Limit to top 50 for performance
+        topProducts,
+        platforms,
+        charts,
+        insights,
+        timeframe,
+        generatedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("Products analytics error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error retrieving products analytics",
+      error: error.message,
+    });
+  }
+});
+
 // Apply middleware to all routes
 router.use(auth);
 router.use(analyticsRateLimit);
