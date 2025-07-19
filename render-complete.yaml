@@ -44,9 +44,19 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+    # Add headers for better caching and security
+    headers:
+      - name: /*
+        values:
+          X-Frame-Options: DENY
+          X-Content-Type-Options: nosniff
+      - name: /static/*
+        values:
+          Cache-Control: public, max-age=31536000, immutable
     buildFilter:
       paths:
         - client/**
+        - render-frontend-build.sh
     envVars:
       - key: REACT_APP_API_URL
         value: "https://pazarplus.onrender.com/api"
