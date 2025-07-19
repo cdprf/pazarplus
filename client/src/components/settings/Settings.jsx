@@ -16,6 +16,7 @@ import {
   ExclamationTriangleIcon,
   DocumentTextIcon,
   CodeBracketIcon,
+  LanguageIcon,
 } from "@heroicons/react/24/outline";
 import { AuthContext } from "../../contexts/AuthContext";
 import { useAlert } from "../../contexts/AlertContext";
@@ -32,6 +33,7 @@ import {
 } from "../ui";
 import InvoiceSettings from "./InvoiceSettings";
 import AccountOverview from "./AccountOverview";
+import TranslationManager from "./TranslationManager";
 import api from "../../services/api";
 
 const Settings = () => {
@@ -247,7 +249,7 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview" className="flex items-center space-x-2">
             <Cog6ToothIcon className="h-4 w-4" />
             <span>Genel</span>
@@ -277,6 +279,13 @@ const Settings = () => {
           >
             <Cog6ToothIcon className="h-4 w-4" />
             <span>Tercihler</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="translations"
+            className="flex items-center space-x-2"
+          >
+            <LanguageIcon className="h-4 w-4" />
+            <span>Çeviriler</span>
           </TabsTrigger>
           {process.env.NODE_ENV === "development" && (
             <TabsTrigger
@@ -1048,6 +1057,11 @@ const Settings = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Translation Management Tab */}
+        <TabsContent value="translations">
+          <TranslationManager />
         </TabsContent>
       </Tabs>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   TrendingUp,
   ArrowUp,
@@ -11,7 +11,6 @@ import {
   AlertTriangle,
   Target,
   BarChart3,
-  PieChart,
   Zap,
   TrendingDown,
   RefreshCw,
@@ -24,12 +23,6 @@ import { Button, Badge } from "../../ui";
 import {
   LineChart,
   Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart as RechartsPieChart,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -61,17 +54,17 @@ const ProductAnalytics = ({
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  // Color schemes for charts
-  const colors = {
+  // Color schemes for charts - memoized to prevent re-renders
+  const colors = useMemo(() => ({
     primary: "#0066cc",
     success: "#28a745",
     warning: "#ffc107",
     danger: "#dc3545",
     info: "#17a2b8",
     secondary: "#6c757d",
-  };
+  }), []);
 
-  const chartColors = [
+  const chartColors = useMemo(() => [
     "#0066cc",
     "#28a745",
     "#ffc107",
@@ -80,7 +73,7 @@ const ProductAnalytics = ({
     "#6c757d",
     "#e83e8c",
     "#fd7e14",
-  ];
+  ], []);
 
   // Fetch comprehensive product analytics
   const fetchProductAnalytics = useCallback(async () => {
@@ -206,8 +199,8 @@ const ProductAnalytics = ({
     }
   }, [isOpen, activeTab, fetchRealtimeData]);
 
-  // Mock data fallback
-  const getMockAnalyticsData = () => ({
+  // Mock data fallback - used when real data is not available
+  const getMockAnalyticsData = useCallback(() => ({
     summary: {
       totalSales: 0,
       salesChange: 0,
@@ -226,14 +219,154 @@ const ProductAnalytics = ({
     chartData: [],
     platformBreakdown: [],
     dailyTrends: [],
-  });
+  }), []);
+
+  // Get chart color based on index
+  const getChartColor = useCallback((index) => {
+    return chartColors[index % chartColors.length];
+  }, [chartColors]);
+
+  // Format last updated time
+  const formatLastUpdated = useCallback(() => {
+    if (!lastUpdated) return "";
+    return `Son güncelleme: ${lastUpdated.toLocaleTimeString("tr-TR")}`;
+  }, [lastUpdated]);
+
+  // Handle tab change with analytics tracking
+  const handleTabChange = useCallback((newTab) => {
+    setActiveTab(newTab);
+    console.log(`Analytics tab changed to: ${newTab}`);
+  }, []);
+
+  // Advanced chart rendering based on selected metric
+  const renderAdvancedChart = useCallback(() => {
+    if (!analyticsData?.chartData) return null;
+
+    const data = analyticsData.chartData;
+    const color = colors[selectedMetric] || colors.primary;
+
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          <Line 
+            type="monotone" 
+            dataKey="value" 
+            stroke={color} 
+            strokeWidth={2}
+            dot={{ fill: color, strokeWidth: 2, r: 4 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    );
+  }, [analyticsData, selectedMetric, colors]);
+
+  // Render performance comparison
+  const renderPerformanceComparison = useCallback(() => {
+    if (!performanceData) return null;
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {performanceData.map((item, index) => (
+          <Card key={index}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium">{item.metric}</h4>
+                <Badge variant={item.trend === "up" ? "success" : "danger"}>
+                  {item.trend === "up" ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                </Badge>
+              </div>
+              <p className="text-2xl font-bold mt-2">{item.value}</p>
+              <p className="text-sm text-gray-500">{item.description}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }, [performanceData]);
+
+  // Render insights section
+  const renderInsights = useCallback(() => {
+    if (!insightsData?.insights) return null;
+
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold flex items-center">
+          <Eye className="h-5 w-5 mr-2" />
+          AI Insights
+        </h3>
+        {insightsData.insights.map((insight, index) => (
+          <Card key={index}>
+            <CardContent className="p-4">
+              <div className="flex items-start">
+                <Activity className="h-5 w-5 mr-3 mt-0.5 text-blue-500" />
+                <div>
+                  <h4 className="font-medium">{insight.title}</h4>
+                  <p className="text-sm text-gray-600 mt-1">{insight.description}</p>
+                  {insight.recommendation && (
+                    <div className="mt-2 p-2 bg-blue-50 rounded-md">
+                      <p className="text-sm font-medium text-blue-800">Öneri:</p>
+                      <p className="text-sm text-blue-700">{insight.recommendation}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }, [insightsData]);
+
+  // Render real-time data section
+  const renderRealtimeData = useCallback(() => {
+    if (!realtimeData) return null;
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold flex items-center">
+            <Zap className="h-5 w-5 mr-2" />
+            Canlı Veriler
+          </h3>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fetchRealtimeData}
+            className="flex items-center"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Yenile
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {Object.entries(realtimeData).map(([key, value], index) => (
+            <Card key={key}>
+              <CardContent className="p-4 text-center">
+                <div 
+                  className="w-8 h-8 mx-auto mb-2 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: getChartColor(index) }}
+                >
+                  <Target className="h-4 w-4 text-white" />
+                </div>
+                <p className="text-2xl font-bold">{value}</p>
+                <p className="text-sm text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }, [realtimeData, fetchRealtimeData, getChartColor]);
 
   if (!isOpen) return null;
 
   return (
-    <div
-      className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg ${className}`}
-    >
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg ${className}`}>
       <CardHeader className="border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center">
@@ -280,6 +413,46 @@ const ProductAnalytics = ({
             </Button>
           </div>
         </div>
+        
+        {/* Tab Navigation */}
+        <div className="flex space-x-1 mt-4">
+          {["overview", "performance", "insights", "realtime"].map((tab) => (
+            <Button
+              key={tab}
+              variant={activeTab === tab ? "primary" : "ghost"}
+              size="sm"
+              onClick={() => handleTabChange(tab)}
+              className="capitalize"
+            >
+              {tab === "overview" && <BarChart3 className="h-4 w-4 mr-2" />}
+              {tab === "performance" && <Target className="h-4 w-4 mr-2" />}
+              {tab === "insights" && <Eye className="h-4 w-4 mr-2" />}
+              {tab === "realtime" && <Zap className="h-4 w-4 mr-2" />}
+              {tab === "overview" ? "Genel Bakış" : 
+               tab === "performance" ? "Performans" : 
+               tab === "insights" ? "İçgörüler" : "Canlı"}
+            </Button>
+          ))}
+        </div>
+
+        {/* Last Updated Info */}
+        {lastUpdated && (
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-xs text-gray-500 flex items-center">
+              <Calendar className="h-3 w-3 mr-1" />
+              {formatLastUpdated()}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={fetchProductAnalytics}
+              className="flex items-center text-xs"
+            >
+              <Download className="h-3 w-3 mr-1" />
+              Export
+            </Button>
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="p-4">
@@ -314,159 +487,133 @@ const ProductAnalytics = ({
               <Button
                 variant="primary"
                 size="sm"
-                onClick={fetchProductAnalytics}
+                onClick={() => setAnalyticsData(getMockAnalyticsData())}
                 className="mt-4"
               >
-                Verileri Yükle
+                Örnek Veri Yükle
               </Button>
             </div>
           </div>
         ) : (
           <>
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <SummaryCard
-                title="Toplam Satış"
-                value={`${analyticsData.summary?.totalRevenue || 0} ₺`}
-                change={analyticsData.summary?.salesChange || 0}
-                icon={<DollarSign className="h-5 w-5 text-green-500" />}
-                onClick={() => setSelectedMetric("sales")}
-                isSelected={selectedMetric === "sales"}
-              />
-              <SummaryCard
-                title="Toplam Ürün"
-                value={analyticsData.summary?.totalProducts || 0}
-                change={analyticsData.summary?.viewsChange || 0}
-                icon={<Users className="h-5 w-5 text-blue-500" />}
-                onClick={() => setSelectedMetric("views")}
-                isSelected={selectedMetric === "views"}
-              />
-              <SummaryCard
-                title="Toplam Satılan"
-                value={`${analyticsData.summary?.totalSold || 0}`}
-                change={analyticsData.summary?.conversionChange || 0}
-                icon={<ShoppingCart className="h-5 w-5 text-purple-500" />}
-                onClick={() => setSelectedMetric("conversion")}
-                isSelected={selectedMetric === "conversion"}
-              />
-              <SummaryCard
-                title="Ortalama Fiyat"
-                value={`${(analyticsData.summary?.averagePrice || 0).toFixed(
-                  2
-                )} ₺`}
-                change={analyticsData.summary?.priceChange || 0}
-                icon={<Package className="h-5 w-5 text-orange-500" />}
-                onClick={() => setSelectedMetric("price")}
-                isSelected={selectedMetric === "price"}
-              />
-            </div>
-
-            {/* Chart Area */}
-            <div className="mb-6 bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-                {selectedMetric === "sales" && "Satış Trendi"}
-                {selectedMetric === "views" && "Görüntülenme Trendi"}
-                {selectedMetric === "conversion" && "Dönüşüm Oranı Trendi"}
-                {selectedMetric === "price" && "Fiyat Trendi"}
-              </h3>
-              <div className="h-64 flex items-end justify-between">
-                {analyticsData.charts &&
-                analyticsData.charts[selectedMetric] &&
-                analyticsData.charts[selectedMetric].length > 0 ? (
-                  analyticsData.charts[selectedMetric].map((value, index) => {
-                    const maxValue = Math.max(
-                      ...analyticsData.charts[selectedMetric]
-                    );
-                    const height = (value / maxValue) * 100;
-
-                    return (
-                      <div key={index} className="flex flex-col items-center">
-                        <div
-                          className="w-8 bg-blue-500 rounded-t"
-                          style={{ height: `${height}%` }}
-                        ></div>
-                        <span className="text-xs mt-1 text-gray-500">
-                          {
-                            ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"][
-                              index
-                            ]
-                          }
-                        </span>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-500">
-                    Veri bulunamadı
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Top Products */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  En Çok Satan Ürünler
-                </h3>
-                <div className="space-y-2">
-                  {analyticsData.topProducts &&
-                  analyticsData.topProducts.length > 0 ? (
-                    analyticsData.topProducts.map((product) => (
-                      <div
-                        key={product.id || product.productId}
-                        className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
-                      >
-                        <div className="flex items-center">
-                          <span className="text-sm font-medium">
-                            {product.name}
-                          </span>
-                        </div>
-                        <div className="flex items-center">
-                          <span className="text-sm font-medium mr-2">
-                            {product.totalSold || product.sales || 0} adet
-                          </span>
-                          <Badge
-                            variant={product.change > 0 ? "success" : "danger"}
-                            className="text-xs"
-                          >
-                            {product.change > 0 ? "+" : ""}
-                            {product.change || 0}%
-                          </Badge>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-gray-500 text-sm p-3">
-                      Veri bulunamadı
-                    </div>
-                  )}
+            {/* Tab Content */}
+            {activeTab === "overview" && (
+              <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  <SummaryCard
+                    title="Toplam Satış"
+                    value={`${analyticsData.summary?.totalRevenue || 0} ₺`}
+                    change={analyticsData.summary?.salesChange || 0}
+                    icon={<DollarSign className="h-5 w-5 text-green-500" />}
+                    onClick={() => setSelectedMetric("sales")}
+                    isSelected={selectedMetric === "sales"}
+                  />
+                  <SummaryCard
+                    title="Toplam Ürün"
+                    value={analyticsData.summary?.totalProducts || 0}
+                    change={analyticsData.summary?.viewsChange || 0}
+                    icon={<Users className="h-5 w-5 text-blue-500" />}
+                    onClick={() => setSelectedMetric("views")}
+                    isSelected={selectedMetric === "views"}
+                  />
+                  <SummaryCard
+                    title="Toplam Satılan"
+                    value={`${analyticsData.summary?.totalSold || 0}`}
+                    change={analyticsData.summary?.conversionChange || 0}
+                    icon={<ShoppingCart className="h-5 w-5 text-purple-500" />}
+                    onClick={() => setSelectedMetric("conversion")}
+                    isSelected={selectedMetric === "conversion"}
+                  />
+                  <SummaryCard
+                    title="Ortalama Fiyat"
+                    value={`${(analyticsData.summary?.averagePrice || 0).toFixed(2)} ₺`}
+                    change={analyticsData.summary?.priceChange || 0}
+                    icon={<Package className="h-5 w-5 text-orange-500" />}
+                    onClick={() => setSelectedMetric("price")}
+                    isSelected={selectedMetric === "price"}
+                  />
                 </div>
-              </div>
 
-              {/* Insights */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Öngörüler ve Tavsiyeler
-                </h3>
-                <Card>
-                  <CardContent className="p-4">
-                    <ul className="space-y-2">
-                      {(analyticsData.insights?.insights || []).map(
-                        (insight, index) => (
-                          <li key={index} className="flex items-start">
-                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 mr-2"></span>
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
-                              {insight}
-                            </span>
-                          </li>
-                        )
+                {/* Advanced Chart */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-4">Trend Analizi</h3>
+                  <Card>
+                    <CardContent className="p-4">
+                      {renderAdvancedChart()}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Top Products */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                      En Çok Satan Ürünler
+                    </h3>
+                    <div className="space-y-2">
+                      {analyticsData.topProducts && analyticsData.topProducts.length > 0 ? (
+                        analyticsData.topProducts.map((product) => (
+                          <div
+                            key={product.id || product.productId}
+                            className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
+                          >
+                            <div className="flex items-center">
+                              <span className="text-sm font-medium">
+                                {product.name}
+                              </span>
+                            </div>
+                            <div className="flex items-center">
+                              <span className="text-sm font-medium mr-2">
+                                {product.totalSold || product.sales || 0} adet
+                              </span>
+                              <Badge
+                                variant={product.change > 0 ? "success" : "danger"}
+                                className="text-xs"
+                              >
+                                {product.change > 0 ? "+" : ""}
+                                {product.change || 0}%
+                              </Badge>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-gray-500 text-sm p-3">
+                          Veri bulunamadı
+                        </div>
                       )}
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+                    </div>
+                  </div>
+
+                  {/* Basic Insights */}
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                      Hızlı İçgörüler
+                    </h3>
+                    <Card>
+                      <CardContent className="p-4">
+                        <ul className="space-y-2">
+                          {(analyticsData.insights?.insights || []).map(
+                            (insight, index) => (
+                              <li key={index} className="flex items-start">
+                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 mr-2"></span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300">
+                                  {insight}
+                                </span>
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeTab === "performance" && renderPerformanceComparison()}
+            {activeTab === "insights" && renderInsights()}
+            {activeTab === "realtime" && renderRealtimeData()}
           </>
         )}
       </CardContent>

@@ -23,13 +23,14 @@ export const useOrders = (initialFilters = {}) => {
   });
 
   const fetchOrders = useCallback(
-    async (newFilters = {}) => {
+    async (newFilters = {}, abortSignal = null) => {
       setLoading(true);
       setError(null);
 
       try {
         const queryParams = { ...filters, ...newFilters };
-        const response = await api.getOrders(queryParams);
+        const config = abortSignal ? { signal: abortSignal } : {};
+        const response = await api.getOrders(queryParams, config);
 
         if (response.success) {
           setOrders(response.data || []);
@@ -47,6 +48,16 @@ export const useOrders = (initialFilters = {}) => {
           throw new Error(response.message || "Failed to fetch orders");
         }
       } catch (err) {
+        // Handle cancellation silently
+        if (
+          err.name === "AbortError" ||
+          err.code === "ERR_CANCELED" ||
+          err.message === "canceled"
+        ) {
+          console.log("🔄 Order fetch was cancelled");
+          return;
+        }
+
         console.error("Error fetching orders:", err);
         setError(err.message);
         setOrders([]); // Set empty array on error
@@ -78,7 +89,12 @@ export const useOrders = (initialFilters = {}) => {
   }, [fetchOrders]);
 
   useEffect(() => {
-    fetchOrders();
+    const abortController = new AbortController();
+    fetchOrders({}, abortController.signal);
+
+    return () => {
+      abortController.abort();
+    };
   }, [fetchOrders]);
 
   return {
@@ -100,90 +116,113 @@ export const useOrderStats = (options = {}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchStats = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const fetchStats = useCallback(
+    async (abortSignal = null) => {
+      setIsLoading(true);
+      setError(null);
 
-    try {
-      // Fetch comprehensive stats from backend with period parameter
-      const statsResponse = await api.getOrderStats({ period });
+      try {
+        // Fetch comprehensive stats from backend with period parameter
+        const config = abortSignal ? { signal: abortSignal } : {};
+        const statsResponse = await api.getOrderStats({ period }, config);
 
-      if (statsResponse.success && statsResponse.data) {
-        const stats = statsResponse.data;
-        console.log("📊 Comprehensive stats from backend:", stats);
+        if (statsResponse.success && statsResponse.data) {
+          const stats = statsResponse.data;
+          console.log("📊 Comprehensive stats from backend:", stats);
 
-        // The backend now returns all the data we need
-        const transformedData = {
-          // Main metrics
-          total: stats.total || stats.totalOrders || 0,
-          totalRevenue: stats.totalRevenue || 0,
+          // The backend now returns all the data we need
+          const transformedData = {
+            // Main metrics
+            total: stats.total || stats.totalOrders || 0,
+            totalRevenue: stats.totalRevenue || 0,
 
-          // Status breakdown (already provided by backend)
-          byStatus: {
-            pending: stats.byStatus?.new || stats.newOrders || 0,
-            processing:
-              stats.byStatus?.processing || stats.processingOrders || 0,
-            shipped: stats.byStatus?.shipped || stats.shippedOrders || 0,
-            delivered: stats.byStatus?.delivered || stats.deliveredOrders || 0,
-            cancelled: stats.byStatus?.cancelled || stats.cancelledOrders || 0,
-            // Keep original status names too
-            ...stats.byStatus,
-          },
+            // Status breakdown (already provided by backend)
+            byStatus: {
+              pending: stats.byStatus?.new || stats.newOrders || 0,
+              processing:
+                stats.byStatus?.processing || stats.processingOrders || 0,
+              shipped: stats.byStatus?.shipped || stats.shippedOrders || 0,
+              delivered:
+                stats.byStatus?.delivered || stats.deliveredOrders || 0,
+              cancelled:
+                stats.byStatus?.cancelled || stats.cancelledOrders || 0,
+              // Keep original status names too
+              ...stats.byStatus,
+            },
 
-          // Platform breakdown (already provided by backend)
-          byPlatform: stats.byPlatform || {},
+            // Platform breakdown (already provided by backend)
+            byPlatform: stats.byPlatform || {},
 
-          // Recent orders (already provided by backend)
-          recentOrders: stats.recentOrders || [],
+            // Recent orders (already provided by backend)
+            recentOrders: stats.recentOrders || [],
 
-          // Growth metrics (already calculated by backend)
-          growth: {
-            orders: stats.growth?.orders || 0,
-            revenue: stats.growth?.revenue || 0,
-          },
+            // Growth metrics (already calculated by backend)
+            growth: {
+              orders: stats.growth?.orders || 0,
+              revenue: stats.growth?.revenue || 0,
+            },
 
-          // Additional comprehensive data
-          averageOrderValue: stats.averageOrderValue || 0,
-          completionRate: stats.completionRate || 0,
-          cancellationRate: stats.cancellationRate || 0,
+            // Additional comprehensive data
+            averageOrderValue: stats.averageOrderValue || 0,
+            completionRate: stats.completionRate || 0,
+            cancellationRate: stats.cancellationRate || 0,
 
-          // Period information
-          period: stats.period || { selected: period },
+            // Period information
+            period: stats.period || { selected: period },
 
-          // Platform info
-          platforms: stats.platforms || { active: 0, inactive: 0, total: 0 },
+            // Platform info
+            platforms: stats.platforms || { active: 0, inactive: 0, total: 0 },
 
-          // Trends and summary for compatibility
-          trends: [],
-          summary: {
-            new: stats.byStatus?.new || stats.newOrders || 0,
-            processing:
-              stats.byStatus?.processing || stats.processingOrders || 0,
-            shipped: stats.byStatus?.shipped || stats.shippedOrders || 0,
-            delivered: stats.byStatus?.delivered || stats.deliveredOrders || 0,
-            cancelled: stats.byStatus?.cancelled || stats.cancelledOrders || 0,
-            returned: stats.byStatus?.returned || 0,
-          },
-        };
+            // Trends and summary for compatibility
+            trends: [],
+            summary: {
+              new: stats.byStatus?.new || stats.newOrders || 0,
+              processing:
+                stats.byStatus?.processing || stats.processingOrders || 0,
+              shipped: stats.byStatus?.shipped || stats.shippedOrders || 0,
+              delivered:
+                stats.byStatus?.delivered || stats.deliveredOrders || 0,
+              cancelled:
+                stats.byStatus?.cancelled || stats.cancelledOrders || 0,
+              returned: stats.byStatus?.returned || 0,
+            },
+          };
 
-        console.log("📊 Transformed comprehensive stats:", transformedData);
-        setData(transformedData);
-      } else {
-        throw new Error(
-          statsResponse.message || "Failed to fetch order statistics"
-        );
+          console.log("📊 Transformed comprehensive stats:", transformedData);
+          setData(transformedData);
+        } else {
+          throw new Error(
+            statsResponse.message || "Failed to fetch order statistics"
+          );
+        }
+      } catch (err) {
+        // Handle cancellation silently
+        if (
+          err.name === "AbortError" ||
+          err.code === "ERR_CANCELED" ||
+          err.message === "canceled"
+        ) {
+          console.log("🔄 Order stats fetch was cancelled");
+          return;
+        }
+
+        console.error("Error fetching comprehensive order stats:", err);
+        setError(err.message);
+        setData(null);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      console.error("Error fetching comprehensive order stats:", err);
-      setError(err.message);
-      setData(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [period]);
+    },
+    [period]
+  );
 
   useEffect(() => {
-    fetchStats();
+    const abortController = new AbortController();
+    fetchStats(abortController.signal);
+
+    return () => {
+      abortController.abort();
+    };
   }, [fetchStats]);
 
   return {
@@ -203,6 +242,7 @@ export const useOrderTrends = (timeRange = "30d") => {
 
   useEffect(() => {
     let isMounted = true;
+    const abortController = new AbortController();
 
     const fetchTrends = async () => {
       try {
@@ -217,7 +257,9 @@ export const useOrderTrends = (timeRange = "30d") => {
         };
         const period = periodMap[timeRange] || "month";
 
-        const response = await api.getOrderTrends(period);
+        const response = await api.getOrderTrends(period, {
+          signal: abortController.signal,
+        });
 
         if (isMounted && response.success && response.data) {
           // Transform backend data format to what charts expect
@@ -255,6 +297,16 @@ export const useOrderTrends = (timeRange = "30d") => {
           });
         }
       } catch (error) {
+        // Handle cancellation silently
+        if (
+          error.name === "AbortError" ||
+          error.code === "ERR_CANCELED" ||
+          error.message === "canceled"
+        ) {
+          console.log("🔄 Order trends fetch was cancelled");
+          return;
+        }
+
         console.error("Error fetching order trends:", error);
         if (isMounted) {
           setTrends((prev) => ({
@@ -270,6 +322,7 @@ export const useOrderTrends = (timeRange = "30d") => {
 
     return () => {
       isMounted = false;
+      abortController.abort();
     };
   }, [timeRange]);
 

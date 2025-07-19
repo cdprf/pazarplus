@@ -30,11 +30,11 @@ module.exports = function (app) {
   app.use(
     "/ws",
     createProxyMiddleware({
-      target: `http://${SERVER_HOST}:${SERVER_PORT}`,
+      target: `ws://${SERVER_HOST}:${SERVER_PORT}`,
       changeOrigin: true,
       secure: false,
       ws: true, // Enable WebSocket proxying
-      logLevel: "info",
+      logLevel: "debug", // Increased log level
       onError: (err, req, res) => {
         console.log("WebSocket proxy error:", err.message);
         console.log("WebSocket Request URL:", req.url);
@@ -44,6 +44,12 @@ module.exports = function (app) {
         console.log(
           `Proxying WebSocket ${req.url} -> ws://${SERVER_HOST}:${SERVER_PORT}${req.url}`
         );
+      },
+      onOpen: (proxySocket) => {
+        console.log("WebSocket proxy connection opened");
+      },
+      onClose: (res, socket, head) => {
+        console.log("WebSocket proxy connection closed");
       },
     })
   );

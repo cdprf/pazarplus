@@ -440,37 +440,66 @@ logger.debug("Setting up development/production routing", {
 if (process.env.NODE_ENV === "production") {
   logger.info("Setting up production static file serving");
   // Serve static files from the React app build directory
-  const clientBuildPath = path.resolve(__dirname, "..", "client", "build");
-  logger.info(`Checking for client build at: ${clientBuildPath}`);
+  // Check multiple possible build locations for different deployment scenarios
+  const possibleBuildPaths = [
+    path.resolve(__dirname, "..", "build"), // Render deployment build location
+    path.resolve(__dirname, "..", "client", "build"), // Development build location
+    path.resolve(process.cwd(), "build"), // Current working directory build
+  ];
 
-  // Check if client build exists
-  const fs = require("fs");
-  if (
-    fs.existsSync(clientBuildPath) &&
-    fs.existsSync(path.join(clientBuildPath, "index.html"))
-  ) {
+  let clientBuildPath = null;
+
+  for (const buildPath of possibleBuildPaths) {
+    logger.info(`Checking for client build at: ${buildPath}`);
+    if (
+      fs.existsSync(buildPath) &&
+      fs.existsSync(path.join(buildPath, "index.html"))
+    ) {
+      clientBuildPath = buildPath;
+      logger.info(`Found valid client build at: ${clientBuildPath}`);
+      break;
+    }
+  }
+
+  if (clientBuildPath) {
     logger.info(`Serving static files from: ${clientBuildPath}`);
     app.use(express.static(clientBuildPath));
 
     // For any other request, send back React's index.html file
     app.get("*", (req, res, next) => {
-      // Skip API and known non-file routes, and WebSocket upgrade paths
+      // Skip API and known server routes
       if (
         req.path.startsWith("/api") ||
         req.path === "/health" ||
-        req.path.startsWith("/ws/")
+        req.path.startsWith("/ws/") ||
+        req.path.startsWith("/order-shipping") ||
+        req.path.includes(".") // Skip requests for files with extensions (js, css, images, etc.)
       ) {
         return next();
       }
 
-      logger.debug(`Serving React app for path: ${req.path}`);
+      // Log the request for debugging SPA routing
+      logger.debug(`Serving React app for SPA route: ${req.path}`, {
+        userAgent: req.get("User-Agent"),
+        referer: req.get("Referer"),
+      });
+
+      // Send the React app's index.html for all SPA routes
       res.sendFile(path.resolve(clientBuildPath, "index.html"), (err) => {
         if (err) {
-          logger.error(`Error serving index.html: ${err.message}`, {
+          logger.error(
+            `Error serving index.html for ${req.path}: ${err.message}`,
+            {
+              path: req.path,
+              error: err,
+            }
+          );
+          // Send a more informative error response
+          res.status(500).json({
+            error: "Application failed to load",
+            message: "Please try refreshing the page",
             path: req.path,
-            error: err,
           });
-          next(err);
         }
       });
     });

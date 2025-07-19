@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Users,
   Search,
@@ -12,10 +12,6 @@ import {
   Calendar,
   Star,
   AlertTriangle,
-  BarChart3,
-  TrendingUp,
-  Target,
-  UserCheck,
 } from "lucide-react";
 import api from "../../services/api";
 import { useAlert } from "../../contexts/AlertContext";
@@ -23,20 +19,7 @@ import { formatCurrency, formatDate } from "../../utils/platformHelpers";
 
 const CustomerManagement = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { showNotification } = useAlert();
-
-  // Determine current view based on route
-  const getCurrentView = () => {
-    const path = location.pathname;
-    if (path.includes("/analytics")) return "analytics";
-    if (path.includes("/segments")) return "segments";
-    if (path.includes("/orders")) return "orders";
-    if (path.includes("/profiles")) return "profiles";
-    return "list";
-  };
-
-  const currentView = getCurrentView();
 
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);

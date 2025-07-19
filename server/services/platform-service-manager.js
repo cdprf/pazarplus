@@ -1125,8 +1125,25 @@ class PlatformServiceManager extends EventEmitter {
           conflicts: results.conflicts || [], // Add conflicts array to prevent undefined error
         };
 
+        // Get platform summary for notification
+        const platforms = [
+          ...new Set([
+            ...safeResults.successful.map((r) => r.platform),
+            ...safeResults.failed.map((f) => f.platform),
+          ]),
+        ];
+        const platformSummary =
+          platforms.length === 1
+            ? platforms[0]
+            : platforms.length > 1
+            ? `${platforms.length} Platforms`
+            : "Platform";
+
         this.emit("syncCompleted", {
           timestamp: new Date(),
+          platform: platformSummary,
+          platformType: platformSummary,
+          totalProcessed: safeResults.totalProcessed,
           results: safeResults,
           performance: {
             duration: syncDuration,
@@ -1616,10 +1633,14 @@ class PlatformServiceManager extends EventEmitter {
     // Sync completion notifications
     this.on("syncCompleted", (data) => {
       this.broadcastNotification("sync_completed", {
-        totalProcessed: data.results.totalProcessed,
-        duration: data.performance.duration,
-        conflicts: (data.results.conflicts || []).length,
-        timestamp: data.timestamp,
+        platform: data.platform || data.platformType || "Platform",
+        itemsProcessed:
+          data.results?.totalProcessed || data.totalProcessed || 0,
+        totalProcessed:
+          data.results?.totalProcessed || data.totalProcessed || 0,
+        duration: data.performance?.duration || data.duration || 0,
+        conflicts: (data.results?.conflicts || []).length,
+        timestamp: data.timestamp || new Date().toISOString(),
       });
     });
 

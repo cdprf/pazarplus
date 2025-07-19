@@ -12,16 +12,22 @@ export const useWebSocketNotifications = () => {
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
-  const maxReconnectAttempts = 5;
+  const maxReconnectAttempts = 2; // Reduce to 2 attempts to avoid spam
 
-  const getWebSocketUrl = () => {
-    // For development, use the dev server URL which will be proxied
-    // For production, use the actual server URL
+  const getWebSocketUrl = (attemptDirect = false) => {
     const isDevelopment = process.env.NODE_ENV === "development";
 
-    if (isDevelopment) {
-      return `ws://localhost:5001/ws/notifications`; // Connect directly to backend in development
+    if (isDevelopment && !attemptDirect) {
+      // First try: Use the React dev server's proxy
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const host = window.location.hostname;
+      const port = window.location.port || "3000";
+      return `${protocol}//${host}:${port}/ws/notifications`;
+    } else if (isDevelopment && attemptDirect) {
+      // Fallback: Try direct connection to backend
+      return `ws://localhost:5001/ws/notifications`;
     } else {
+      // Production
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.hostname;
       const port = window.location.port || (protocol === "wss:" ? "443" : "80");
@@ -30,9 +36,28 @@ export const useWebSocketNotifications = () => {
   };
 
   const connect = useCallback(() => {
+    // Skip connection attempts if we've already failed multiple times
+    if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+      console.log(
+        "⚠️ WebSocket connection disabled after multiple failures. Using offline mode."
+      );
+      setConnectionError("WebSocket unavailable - using offline mode");
+      return;
+    }
+
     try {
-      const wsUrl = getWebSocketUrl();
-      console.log("🔌 Connecting to notifications WebSocket:", wsUrl);
+      // Try direct connection to backend (skip proxy issues)
+      const isDevelopment = process.env.NODE_ENV === "development";
+      const wsUrl = isDevelopment
+        ? `ws://localhost:5001/ws/notifications` // Direct to backend
+        : getWebSocketUrl(false); // Use original logic for production
+
+      console.log(
+        `🔌 Connecting to notifications WebSocket (attempt ${
+          reconnectAttemptsRef.current + 1
+        }/${maxReconnectAttempts}):`,
+        wsUrl
+      );
 
       wsRef.current = new WebSocket(wsUrl);
 
@@ -124,9 +149,30 @@ export const useWebSocketNotifications = () => {
               break;
 
             case "sync_completed":
+              console.log("🔄 Sync completed message received:", message);
+              const platform =
+                message.data?.platform ||
+                message.data?.source ||
+                message.platform ||
+                "Platform";
+              const itemCount =
+                message.data?.itemsProcessed ||
+                message.data?.items ||
+                message.data?.count ||
+                message.data?.total ||
+                message.itemsProcessed ||
+                message.items ||
+                0;
+
+              console.log("🔍 Parsed sync data:", {
+                platform,
+                itemCount,
+                rawData: message.data,
+              });
+
               addNotification({
                 title: "Platform Sync Complete",
-                message: `${message.data?.platform} sync finished - ${message.data?.itemsProcessed} items`,
+                message: `${platform} sync finished - ${itemCount} items processed`,
                 type: "sync",
                 priority: "low",
                 icon: "SparklesIcon",
@@ -200,7 +246,7 @@ export const useWebSocketNotifications = () => {
         ) {
           const delay = Math.min(
             1000 * Math.pow(2, reconnectAttemptsRef.current),
-            30000
+            10000 // Reduce max delay to 10 seconds
           );
           console.log(
             `🔄 Attempting to reconnect in ${delay}ms (attempt ${
@@ -213,13 +259,19 @@ export const useWebSocketNotifications = () => {
             connect();
           }, delay);
         } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-          setConnectionError("Failed to reconnect to notification service");
-          console.error("❌ Max reconnection attempts reached");
+          setConnectionError("WebSocket connection unavailable");
+          console.warn(
+            "⚠️ WebSocket connection failed. Notifications will work in offline mode."
+          );
+          // Don't reset attempts automatically - let the user refresh if they want to try again
         }
       };
 
       wsRef.current.onerror = (error) => {
-        console.error("❌ WebSocket notification error:", error);
+        // Only log errors for the first few attempts to avoid spam
+        if (reconnectAttemptsRef.current < 2) {
+          console.error("❌ WebSocket notification error:", error);
+        }
         setConnectionError("WebSocket connection failed");
       };
     } catch (error) {
@@ -241,6 +293,16 @@ export const useWebSocketNotifications = () => {
     setIsConnected(false);
     setConnectionError(null);
     reconnectAttemptsRef.current = 0;
+  };
+
+  const retryConnection = () => {
+    console.log("🔄 Manual retry requested");
+    disconnect();
+    reconnectAttemptsRef.current = 0;
+    setConnectionError(null);
+    setTimeout(() => {
+      connect();
+    }, 1000);
   };
 
   const sendMessage = (message) => {
@@ -276,6 +338,7 @@ export const useWebSocketNotifications = () => {
     connectionError,
     connect,
     disconnect,
+    retryConnection,
     sendMessage,
   };
 };

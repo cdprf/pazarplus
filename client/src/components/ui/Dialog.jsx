@@ -11,7 +11,8 @@ const Dialog = ({ open, onOpenChange, children, ...props }) => {
     <Transition appear show={open} as={Fragment}>
       <HeadlessDialog
         as="div"
-        className="relative z-50"
+        className="relative"
+        style={{ zIndex: "var(--z-modal)" }}
         onClose={() => onOpenChange?.(false)}
         {...props}
       >

@@ -189,6 +189,47 @@
     "timeout": "Zaman aşımı",
     "unknownError": "Bilinmeyen hata"
   },
+  "settings": {
+    "title": "Ayarlar",
+    "general": "Genel",
+    "profile": "Profil",
+    "security": "Güvenlik",
+    "notifications": "Bildirimler",
+    "invoices": "Faturalar",
+    "preferences": "Tercihler",
+    "translations": "Çeviriler",
+    "developer": "Geliştirici",
+    "language": {
+      "title": "Dil Ayarları",
+      "current": "Mevcut Dil",
+      "select": "Dil Seçin",
+      "changed": "Dil başarıyla değiştirildi"
+    }
+  },
+  "translationManager": {
+    "title": "Çeviri Yöneticisi",
+    "subtitle": "Tüm desteklenen diller için çevirileri yönetin",
+    "searchPlaceholder": "Çevirilerde ara...",
+    "addTranslation": "Çeviri Ekle",
+    "saveAll": "Tümünü Kaydet",
+    "saving": "Kaydediliyor...",
+    "saved": "Çeviriler başarıyla kaydedildi",
+    "error": "Çeviriler kaydedilirken hata oluştu",
+    "loadError": "Çeviriler yüklenirken hata oluştu",
+    "addNew": "Yeni Çeviri Ekle",
+    "translationKey": "Çeviri Anahtarı",
+    "translationValue": "Çeviri Değeri",
+    "keyPlaceholder": "örn. common.button.save",
+    "valuePlaceholder": "Çeviri değerini girin",
+    "keyExists": "Çeviri anahtarı zaten mevcut",
+    "added": "Çeviri başarıyla eklendi",
+    "deleteConfirm": "\"{{key}}\" çeviri anahtarını silmek istediğinizden emin misiniz?",
+    "currentlyDevelopment": "Şu anda tüm kullanıcılar için mevcut (geliştirme modu)",
+    "restrictToSuperAdmin": "TODO: Sadece süper admin ile sınırlı olacak",
+    "noTranslations": "Çeviri bulunamadı",
+    "loading": "Çeviriler yükleniyor...",
+    "count": "{{count}} çeviri"
+  },
   "validation": {
     "required": "Bu alan zorunludur",
     "email": "Geçerli bir e-posta adresi giriniz",

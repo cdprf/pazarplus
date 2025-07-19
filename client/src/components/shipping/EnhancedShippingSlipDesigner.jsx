@@ -387,6 +387,25 @@ const EnhancedShippingSlipDesigner = ({
     [setTemplateConfig, setElements, showAlert]
   );
 
+  // Handle template import from JSON data
+  const handleImportTemplateData = useCallback(
+    (templateData) => {
+      try {
+        if (templateData.config && templateData.elements) {
+          setTemplateConfig(templateData.config);
+          setElements(templateData.elements);
+          showAlert("Template imported successfully!", "success");
+        } else {
+          throw new Error("Invalid template format");
+        }
+      } catch (error) {
+        console.error("Error importing template:", error);
+        showAlert("Error importing template: " + error.message, "error");
+      }
+    },
+    [setTemplateConfig, setElements, showAlert]
+  );
+
   // Resize handling functions
   const handleResizeStart = useCallback((element, corner, event) => {
     if (event.button !== 0 || element.locked) return;
@@ -1519,6 +1538,7 @@ const EnhancedShippingSlipDesigner = ({
                     config={templateConfig}
                     onConfigChange={handleConfigChange}
                     onSave={handleSaveTemplate}
+                    onImport={handleImportTemplateData}
                     onShowTemplates={() => setShowTemplateModal(true)}
                     savedTemplates={savedTemplates}
                   />

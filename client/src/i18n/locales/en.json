@@ -189,6 +189,47 @@
     "timeout": "Timeout",
     "unknownError": "Unknown error"
   },
+  "settings": {
+    "title": "Settings",
+    "general": "General",
+    "profile": "Profile",
+    "security": "Security",
+    "notifications": "Notifications",
+    "invoices": "Invoices",
+    "preferences": "Preferences",
+    "translations": "Translations",
+    "developer": "Developer",
+    "language": {
+      "title": "Language Settings",
+      "current": "Current Language",
+      "select": "Select Language",
+      "changed": "Language changed successfully"
+    }
+  },
+  "translationManager": {
+    "title": "Translation Manager",
+    "subtitle": "Manage translations for all supported languages",
+    "searchPlaceholder": "Search translations...",
+    "addTranslation": "Add Translation",
+    "saveAll": "Save All",
+    "saving": "Saving...",
+    "saved": "Translations saved successfully",
+    "error": "Error saving translations",
+    "loadError": "Error loading translations",
+    "addNew": "Add New Translation",
+    "translationKey": "Translation Key",
+    "translationValue": "Translation Value",
+    "keyPlaceholder": "e.g. common.button.save",
+    "valuePlaceholder": "Enter translation value",
+    "keyExists": "Translation key already exists",
+    "added": "Translation added successfully",
+    "deleteConfirm": "Are you sure you want to delete the translation key \"{{key}}\"?",
+    "currentlyDevelopment": "Currently available for all users (development mode)",
+    "restrictToSuperAdmin": "TODO: Restrict to super admin only",
+    "noTranslations": "No translations found",
+    "loading": "Loading translations...",
+    "count": "{{count}} translations"
+  },
   "validation": {
     "required": "This field is required",
     "email": "Please enter a valid email address",

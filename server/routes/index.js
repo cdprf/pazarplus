@@ -149,6 +149,12 @@ try {
   // Font management routes
   router.use("/fonts", fontRoutes);
 
+  // Import translation routes
+  const translationRoutes = require("./translationRoutes");
+
+  // Translation management routes (for super admin)
+  router.use("/translations", translationRoutes);
+
   // Unified Product Intelligence routes
   router.use("/product-intelligence", unifiedIntelligenceRoutes);
 
@@ -237,6 +243,7 @@ router.use("/*", (req, res) => {
       "/api/subscription", // Month 5 Phase 2 - NEW
       "/api/database", // Database transaction management
       "/api/fonts", // Font management and validation
+      "/api/translations", // Translation management (super admin)
       "/api/background-tasks", // Background task management
       "/api/order-management/orders/:orderId/items-with-products", // Product linking
       "/api/order-management/products/search", // Product search for linking

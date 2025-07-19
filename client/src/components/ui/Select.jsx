@@ -117,10 +117,11 @@ const SelectContent = React.forwardRef(
       <div
         ref={ref}
         className={cn(
-          "absolute top-full z-50 w-full rounded-md border bg-popover text-popover-foreground shadow-md",
+          "absolute top-full w-full rounded-md border bg-popover text-popover-foreground shadow-md",
           "border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-lg mt-1 max-h-60 overflow-auto",
           className
         )}
+        style={{ zIndex: "var(--z-dropdown)" }}
         {...props}
       >
         <div className="p-1">{children}</div>

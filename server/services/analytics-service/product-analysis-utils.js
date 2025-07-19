@@ -1,10 +1,10 @@
-const { Op } = require('sequelize');
-const { Order, OrderItem, Product } = require('../../models');
-const cacheService = require('../cache-service');
-const logger = require('../../utils/logger');
+const { Op } = require("sequelize");
+const { Order, OrderItem, Product } = require("../../models");
+const cacheService = require("../cache-service");
+const logger = require("../../utils/logger");
 
 // Analytics configuration
-const cachePrefix = 'analytics:';
+const cachePrefix = "analytics:";
 const defaultCacheTTL = 3600; // 1 hour
 
 // Helper function to get date range
@@ -13,20 +13,20 @@ function getDateRange(timeframe) {
   const start = new Date();
 
   switch (timeframe) {
-  case '7d':
-    start.setDate(start.getDate() - 7);
-    break;
-  case '30d':
-    start.setDate(start.getDate() - 30);
-    break;
-  case '90d':
-    start.setDate(start.getDate() - 90);
-    break;
-  case '365d':
-    start.setDate(start.getDate() - 365);
-    break;
-  default:
-    start.setDate(start.getDate() - 30);
+    case "7d":
+      start.setDate(start.getDate() - 7);
+      break;
+    case "30d":
+      start.setDate(start.getDate() - 30);
+      break;
+    case "90d":
+      start.setDate(start.getDate() - 90);
+      break;
+    case "365d":
+      start.setDate(start.getDate() - 365);
+      break;
+    default:
+      start.setDate(start.getDate() - 30);
   }
 
   return { start, end };
@@ -44,9 +44,9 @@ async function getProductAnalytics(
   try {
     // Simplified approach for better SQLite compatibility
     console.log(
-      'Getting product analytics for user:',
+      "Getting product analytics for user:",
       userId,
-      'product:',
+      "product:",
       productId
     );
 
@@ -57,7 +57,7 @@ async function getProductAnalytics(
       totalSold: 0,
       totalOrders: 0,
       averagePrice: 0,
-      topCategory: 'Electronics'
+      topCategory: "Electronics",
     };
 
     // Get orders for the user (use broader date range to ensure we get data)
@@ -67,27 +67,27 @@ async function getProductAnalytics(
         // Use broader date range or no date filter for testing
         ...(dateRange && dateRange.start && dateRange.end
           ? {
-            createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
-          }
-          : {})
+              createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
+            }
+          : {}),
       },
       include: [
         {
           model: OrderItem,
-          as: 'items',
+          as: "items",
           ...(productId && { where: { productId } }),
           include: [
             {
               model: Product,
-              as: 'product',
-              attributes: ['name', 'sku', 'category', 'stockQuantity']
-            }
-          ]
-        }
-      ]
+              as: "product",
+              attributes: ["name", "sku", "category", "stockQuantity"],
+            },
+          ],
+        },
+      ],
     });
 
-    console.log('Found orders:', orders.length);
+    console.log("Found orders:", orders.length);
 
     // Process orders to create analytics data
     const productStats = new Map();
@@ -107,14 +107,14 @@ async function getProductAnalytics(
           if (!productStats.has(productId)) {
             productStats.set(productId, {
               productId,
-              name: item.product?.name || 'Unknown Product',
+              name: item.product?.name || "Unknown Product",
               sku: item.product?.sku,
               category: item.product?.category,
               currentStock: item.product?.stockQuantity || 0,
               totalSold: 0,
               totalRevenue: 0,
               totalOrders: 0,
-              averagePrice: 0
+              averagePrice: 0,
             });
           }
 
@@ -149,33 +149,33 @@ async function getProductAnalytics(
       const date = new Date(dateRange.start);
       date.setDate(date.getDate() + i);
       dailyTrends.push({
-        date: date.toISOString().split('T')[0],
+        date: date.toISOString().split("T")[0],
         soldQuantity: Math.floor(Math.random() * 10),
         revenue: Math.floor(Math.random() * 1000),
-        orders: Math.floor(Math.random() * 5)
+        orders: Math.floor(Math.random() * 5),
       });
     }
 
     // Generate mock platform breakdown
     const platformBreakdown = [
       {
-        platform: 'Trendyol',
+        platform: "Trendyol",
         totalSold: Math.floor(totalSold * 0.4),
         totalRevenue: Math.floor(totalRevenue * 0.4),
-        totalOrders: Math.floor(orders.length * 0.4)
+        totalOrders: Math.floor(orders.length * 0.4),
       },
       {
-        platform: 'Hepsiburada',
+        platform: "Hepsiburada",
         totalSold: Math.floor(totalSold * 0.35),
         totalRevenue: Math.floor(totalRevenue * 0.35),
-        totalOrders: Math.floor(orders.length * 0.35)
+        totalOrders: Math.floor(orders.length * 0.35),
       },
       {
-        platform: 'N11',
+        platform: "N11",
         totalSold: Math.floor(totalSold * 0.25),
         totalRevenue: Math.floor(totalRevenue * 0.25),
-        totalOrders: Math.floor(orders.length * 0.25)
-      }
+        totalOrders: Math.floor(orders.length * 0.25),
+      },
     ];
 
     return {
@@ -191,62 +191,62 @@ async function getProductAnalytics(
           date: trend.date,
           revenue: trend.revenue,
           orders: trend.orders,
-          sold: trend.soldQuantity
+          sold: trend.soldQuantity,
         })),
         platformBreakdown: platformBreakdown.map((platform) => ({
           name: platform.platform,
           value: platform.totalRevenue,
           orders: platform.totalOrders,
-          sold: platform.totalSold
+          sold: platform.totalSold,
         })),
         topProducts: products.slice(0, 10).map((product) => ({
           name: product.name,
           revenue: product.totalRevenue,
           sold: product.totalSold,
-          category: product.category
+          category: product.category,
         })),
         // Add common metric names that frontend might be looking for
         revenue: dailyTrends.map((trend) => ({
           date: trend.date,
-          value: trend.revenue
+          value: trend.revenue,
         })),
         sales: dailyTrends.map((trend) => ({
           date: trend.date,
-          value: trend.soldQuantity
+          value: trend.soldQuantity,
         })),
         orders: dailyTrends.map((trend) => ({
           date: trend.date,
-          value: trend.orders
+          value: trend.orders,
         })),
         performance: products.slice(0, 10).map((product) => ({
           name: product.name,
-          value: product.totalRevenue
+          value: product.totalRevenue,
         })),
         categories: platformBreakdown.map((platform) => ({
           name: platform.platform,
-          value: platform.totalRevenue
-        }))
+          value: platform.totalRevenue,
+        })),
       },
       performanceMetrics: null,
       insights: {
         insights: [
-          'Ürün performansı analiz ediliyor',
-          'Günlük satış trendleri takip ediliyor'
+          "Ürün performansı analiz ediliyor",
+          "Günlük satış trendleri takip ediliyor",
         ],
         recommendations: [
           {
-            category: 'performance',
-            priority: 'medium',
-            title: 'Satış Optimizasyonu',
+            category: "performance",
+            priority: "medium",
+            title: "Satış Optimizasyonu",
             description:
-              'En çok satan ürünlerin stok seviyelerini kontrol edin'
-          }
-        ]
+              "En çok satan ürünlerin stok seviyelerini kontrol edin",
+          },
+        ],
       },
-      generatedAt: new Date()
+      generatedAt: new Date(),
     };
   } catch (error) {
-    logger.error('Product analytics error:', error);
+    logger.error("Product analytics error:", error);
     // Return fallback data
     return {
       summary: {
@@ -255,7 +255,7 @@ async function getProductAnalytics(
         totalSold: 0,
         totalOrders: 0,
         averagePrice: 0,
-        topCategory: null
+        topCategory: null,
       },
       products: [],
       dailyTrends: [],
@@ -269,14 +269,14 @@ async function getProductAnalytics(
         sales: [],
         orders: [],
         performance: [],
-        categories: []
+        categories: [],
       },
       performanceMetrics: null,
       insights: {
-        insights: ['Veri bulunamadı'],
-        recommendations: []
+        insights: ["Veri bulunamadı"],
+        recommendations: [],
       },
-      generatedAt: new Date()
+      generatedAt: new Date(),
     };
   }
 }
@@ -289,56 +289,56 @@ async function getProductDailyTrends(userId, productId, dateRange) {
     include: [
       {
         model: Order,
-        as: 'order',
+        as: "order",
         where: {
           userId,
-          createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
         },
-        attributes: []
-      }
+        attributes: [],
+      },
     ],
     attributes: [
       [
         OrderItem.sequelize.fn(
-          'DATE',
-          OrderItem.sequelize.col('order.createdAt')
+          "DATE",
+          OrderItem.sequelize.col("order.createdAt")
         ),
-        'date'
+        "date",
       ],
       [
-        OrderItem.sequelize.fn('SUM', OrderItem.sequelize.col('quantity')),
-        'soldQuantity'
+        OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
+        "soldQuantity",
       ],
       [
         OrderItem.sequelize.fn(
-          'SUM',
+          "SUM",
           OrderItem.sequelize.literal('"quantity" * "OrderItem"."price"')
         ),
-        'revenue'
+        "revenue",
       ],
       [
         OrderItem.sequelize.fn(
-          'COUNT',
-          OrderItem.sequelize.literal('DISTINCT order.id')
+          "COUNT",
+          OrderItem.sequelize.literal("DISTINCT order.id")
         ),
-        'orders'
-      ]
+        "orders",
+      ],
     ],
     group: [
       OrderItem.sequelize.fn(
-        'DATE',
-        OrderItem.sequelize.col('order.createdAt')
-      )
+        "DATE",
+        OrderItem.sequelize.col("order.createdAt")
+      ),
     ],
     order: [
       [
         OrderItem.sequelize.fn(
-          'DATE',
-          OrderItem.sequelize.col('order.createdAt')
+          "DATE",
+          OrderItem.sequelize.col("order.createdAt")
         ),
-        'ASC'
-      ]
-    ]
+        "ASC",
+      ],
+    ],
   };
 
   if (productId) {
@@ -348,10 +348,10 @@ async function getProductDailyTrends(userId, productId, dateRange) {
   const trends = await OrderItem.findAll(whereClause);
 
   return trends.map((item) => ({
-    date: item.get('date'),
-    soldQuantity: parseInt(item.get('soldQuantity')),
-    revenue: parseFloat(item.get('revenue')),
-    orders: parseInt(item.get('orders'))
+    date: item.get("date"),
+    soldQuantity: parseInt(item.get("soldQuantity")),
+    revenue: parseFloat(item.get("revenue")),
+    orders: parseInt(item.get("orders")),
   }));
 }
 
@@ -387,30 +387,30 @@ async function generateProductInsights(userId, productId, dateRange) {
 
       if (salesVelocity > 10) {
         insights.push({
-          type: 'positive',
-          category: 'performance',
-          title: 'Yüksek Satış Hızı',
-          message: 'Ürün satış hızı ortalamanın üzerinde',
-          impact: 'high'
+          type: "positive",
+          category: "performance",
+          title: "Yüksek Satış Hızı",
+          message: "Ürün satış hızı ortalamanın üzerinde",
+          impact: "high",
         });
 
         recommendations.push({
-          category: 'inventory',
-          priority: 'high',
-          title: 'Stok Artırımı Önerisi',
-          description: 'Yüksek satış hızı nedeniyle stok seviyelerini artırın',
-          estimatedImpact: '+15% satış artışı'
+          category: "inventory",
+          priority: "high",
+          title: "Stok Artırımı Önerisi",
+          description: "Yüksek satış hızı nedeniyle stok seviyelerini artırın",
+          estimatedImpact: "+15% satış artışı",
         });
       }
 
       if (productData.averagePrice < 50) {
         recommendations.push({
-          category: 'pricing',
-          priority: 'medium',
-          title: 'Fiyat Optimizasyonu',
+          category: "pricing",
+          priority: "medium",
+          title: "Fiyat Optimizasyonu",
           description:
-            'Düşük fiyatlı ürünler için kar marjını artırmayı değerlendirin',
-          estimatedImpact: '+10% kar marjı'
+            "Düşük fiyatlı ürünler için kar marjını artırmayı değerlendirin",
+          estimatedImpact: "+10% kar marjı",
         });
       }
     }
@@ -419,13 +419,13 @@ async function generateProductInsights(userId, productId, dateRange) {
     if (demandForecast) {
       if (demandForecast.daily > 5) {
         insights.push({
-          type: 'warning',
-          category: 'inventory',
-          title: 'Yüksek Talep Beklentisi',
+          type: "warning",
+          category: "inventory",
+          title: "Yüksek Talep Beklentisi",
           message: `Günlük ${demandForecast.daily.toFixed(
             1
           )} adet satış öngörülüyor`,
-          impact: 'medium'
+          impact: "medium",
         });
       }
     }
@@ -437,11 +437,11 @@ async function generateProductInsights(userId, productId, dateRange) {
 
       if (monthlyTrend && monthlyTrend.salesMultiplier > 1.2) {
         insights.push({
-          type: 'info',
-          category: 'seasonal',
-          title: 'Mevsimsel Fırsat',
-          message: 'Bu ay geçmişte yüksek satış performansı göstermiş',
-          impact: 'medium'
+          type: "info",
+          category: "seasonal",
+          title: "Mevsimsel Fırsat",
+          message: "Bu ay geçmişte yüksek satış performansı göstermiş",
+          impact: "medium",
         });
       }
     }
@@ -462,21 +462,21 @@ async function generateProductInsights(userId, productId, dateRange) {
 
       if (dominance > 70) {
         insights.push({
-          type: 'warning',
-          category: 'platform',
-          title: 'Platform Bağımlılığı',
+          type: "warning",
+          category: "platform",
+          title: "Platform Bağımlılığı",
           message: `Satışların %${dominance.toFixed(1)}'i ${
             topPlatform.platform
           } platformundan`,
-          impact: 'medium'
+          impact: "medium",
         });
 
         recommendations.push({
-          category: 'diversification',
-          priority: 'medium',
-          title: 'Platform Çeşitlendirme',
-          description: 'Diğer platformlarda satışları artırmaya odaklanın',
-          estimatedImpact: '+20% risk azaltma'
+          category: "diversification",
+          priority: "medium",
+          title: "Platform Çeşitlendirme",
+          description: "Diğer platformlarda satışları artırmaya odaklanın",
+          estimatedImpact: "+20% risk azaltma",
         });
       }
     }
@@ -486,12 +486,12 @@ async function generateProductInsights(userId, productId, dateRange) {
       recommendations,
       analysisDate: new Date(),
       productId,
-      timeframe: `${dateRange.start.toISOString().split('T')[0]} - ${
-        dateRange.end.toISOString().split('T')[0]
-      }`
+      timeframe: `${dateRange.start.toISOString().split("T")[0]} - ${
+        dateRange.end.toISOString().split("T")[0]
+      }`,
     };
   } catch (error) {
-    logger.error('Product insights generation error:', error);
+    logger.error("Product insights generation error:", error);
     return { insights: [], recommendations: [] };
   }
 }
@@ -504,35 +504,38 @@ async function getProductPeriodData(userId, productId, dateRange) {
     include: [
       {
         model: Order,
-        as: 'order',
+        as: "order",
         where: {
           userId,
-          createdAt: { [Op.between]: [dateRange.start, dateRange.end] }
+          createdAt: { [Op.between]: [dateRange.start, dateRange.end] },
         },
-        attributes: []
-      }
+        attributes: [],
+      },
     ],
     attributes: [
       [
-        OrderItem.sequelize.fn('SUM', OrderItem.sequelize.col('quantity')),
-        'totalSold'
+        OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
+        "totalSold",
       ],
       [
         OrderItem.sequelize.fn(
-          'SUM',
+          "SUM",
           OrderItem.sequelize.literal('"quantity" * "OrderItem"."price"')
         ),
-        'totalRevenue'
+        "totalRevenue",
       ],
       [
-        OrderItem.sequelize.fn('COUNT', OrderItem.sequelize.col('order.id')),
-        'totalOrders'
+        OrderItem.sequelize.fn("COUNT", OrderItem.sequelize.col("order.id")),
+        "totalOrders",
       ],
       [
-        OrderItem.sequelize.fn('AVG', OrderItem.sequelize.col('price')),
-        'averagePrice'
-      ]
-    ]
+        OrderItem.sequelize.fn(
+          "AVG",
+          OrderItem.sequelize.col("OrderItem.price")
+        ),
+        "averagePrice",
+      ],
+    ],
   };
 
   if (productId) {
@@ -542,10 +545,10 @@ async function getProductPeriodData(userId, productId, dateRange) {
   const result = await OrderItem.findOne(whereClause);
 
   return {
-    totalSold: parseInt(result?.get('totalSold') || 0),
-    totalRevenue: parseFloat(result?.get('totalRevenue') || 0),
-    totalOrders: parseInt(result?.get('totalOrders') || 0),
-    averagePrice: parseFloat(result?.get('averagePrice') || 0)
+    totalSold: parseInt(result?.get("totalSold") || 0),
+    totalRevenue: parseFloat(result?.get("totalRevenue") || 0),
+    totalOrders: parseInt(result?.get("totalOrders") || 0),
+    averagePrice: parseFloat(result?.get("averagePrice") || 0),
   };
 }
 
@@ -559,63 +562,63 @@ async function getProductSeasonalTrends(userId, productId, dateRange) {
       include: [
         {
           model: Order,
-          as: 'order',
+          as: "order",
           where: {
             userId,
             createdAt: {
-              [Op.gte]: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
-            } // Last year
+              [Op.gte]: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000),
+            }, // Last year
           },
-          attributes: []
-        }
+          attributes: [],
+        },
       ],
       where: productId ? { productId } : {},
       attributes: [
         [
           OrderItem.sequelize.fn(
-            'strftime',
-            '%m',
-            OrderItem.sequelize.col('order.createdAt')
+            "strftime",
+            "%m",
+            OrderItem.sequelize.col("order.createdAt")
           ),
-          'month'
+          "month",
         ],
         [
-          OrderItem.sequelize.fn('SUM', OrderItem.sequelize.col('quantity')),
-          'totalSold'
-        ]
+          OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
+          "totalSold",
+        ],
       ],
       group: [
         OrderItem.sequelize.fn(
-          'strftime',
-          '%m',
-          OrderItem.sequelize.col('order.createdAt')
-        )
+          "strftime",
+          "%m",
+          OrderItem.sequelize.col("order.createdAt")
+        ),
       ],
       order: [
         [
           OrderItem.sequelize.fn(
-            'strftime',
-            '%m',
-            OrderItem.sequelize.col('order.createdAt')
+            "strftime",
+            "%m",
+            OrderItem.sequelize.col("order.createdAt")
           ),
-          'ASC'
-        ]
-      ]
+          "ASC",
+        ],
+      ],
     });
 
     const averageMonthlySales =
       monthlyData.reduce(
-        (sum, item) => sum + parseInt(item.get('totalSold')),
+        (sum, item) => sum + parseInt(item.get("totalSold")),
         0
       ) / monthlyData.length;
 
     return monthlyData.map((item) => ({
-      month: parseInt(item.get('month')) - 1, // 0-based month
-      totalSold: parseInt(item.get('totalSold')),
-      salesMultiplier: parseInt(item.get('totalSold')) / averageMonthlySales
+      month: parseInt(item.get("month")) - 1, // 0-based month
+      totalSold: parseInt(item.get("totalSold")),
+      salesMultiplier: parseInt(item.get("totalSold")) / averageMonthlySales,
     }));
   } catch (error) {
-    logger.error('Seasonal trends error:', error);
+    logger.error("Seasonal trends error:", error);
     return [];
   }
 }
@@ -634,72 +637,72 @@ async function getHourlyProductBreakdown(userId, productId, dateRange) {
       attributes: [
         [
           OrderItem.sequelize.fn(
-            'strftime',
-            '%H',
-            OrderItem.sequelize.col('order.createdAt')
+            "strftime",
+            "%H",
+            OrderItem.sequelize.col("order.createdAt")
           ),
-          'hour'
+          "hour",
         ],
         [
-          OrderItem.sequelize.fn('SUM', OrderItem.sequelize.col('quantity')),
-          'totalSold'
+          OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
+          "totalSold",
         ],
         [
           OrderItem.sequelize.fn(
-            'SUM',
+            "SUM",
             OrderItem.sequelize.literal('"quantity" * "OrderItem"."price"')
           ),
-          'revenue'
-        ]
+          "revenue",
+        ],
       ],
       include: [
         {
           model: Order,
-          as: 'order',
+          as: "order",
           where: {
             userId: userId,
             createdAt: {
-              [Op.between]: [startDate, endDate]
-            }
-          }
-        }
+              [Op.between]: [startDate, endDate],
+            },
+          },
+        },
       ],
       where: {
-        productId: productId
+        productId: productId,
       },
       group: [
         OrderItem.sequelize.fn(
-          'strftime',
-          '%H',
-          OrderItem.sequelize.col('order.createdAt')
-        )
+          "strftime",
+          "%H",
+          OrderItem.sequelize.col("order.createdAt")
+        ),
       ],
       order: [
         [
           OrderItem.sequelize.fn(
-            'strftime',
-            '%H',
-            OrderItem.sequelize.col('order.createdAt')
+            "strftime",
+            "%H",
+            OrderItem.sequelize.col("order.createdAt")
           ),
-          'ASC'
-        ]
-      ]
+          "ASC",
+        ],
+      ],
     });
 
     // Fill in missing hours with zero values
     const result = [];
     for (let hour = 0; hour < 24; hour++) {
-      const hourData = hourlyData.find((h) => parseInt(h.get('hour')) === hour);
+      const hourData = hourlyData.find((h) => parseInt(h.get("hour")) === hour);
       result.push({
         hour,
-        totalSold: hourData ? parseInt(hourData.get('totalSold')) : 0,
-        revenue: hourData ? parseFloat(hourData.get('revenue')) : 0
+        totalSold: hourData ? parseInt(hourData.get("totalSold")) : 0,
+        revenue: hourData ? parseFloat(hourData.get("revenue")) : 0,
       });
     }
 
     return result;
   } catch (error) {
-    logger.error('Hourly product breakdown error:', error);
+    logger.error("Hourly product breakdown error:", error);
     return [];
   }
 }
@@ -712,20 +715,20 @@ async function getStockStatus(productId) {
     const product = await Product.findByPk(productId);
     if (!product) {
       return {
-        status: 'unknown',
+        status: "unknown",
         quantity: 0,
-        threshold: 0
+        threshold: 0,
       };
     }
 
     const stockQuantity = product.stockQuantity || 0;
     const lowStockThreshold = product.minStockLevel || 10;
 
-    let status = 'in_stock';
+    let status = "in_stock";
     if (stockQuantity === 0) {
-      status = 'out_of_stock';
+      status = "out_of_stock";
     } else if (stockQuantity <= lowStockThreshold) {
-      status = 'low_stock';
+      status = "low_stock";
     }
 
     return {
@@ -735,14 +738,14 @@ async function getStockStatus(productId) {
       daysUntilOutOfStock: await calculateDaysUntilOutOfStock(
         productId,
         stockQuantity
-      )
+      ),
     };
   } catch (error) {
-    logger.error('Stock status error:', error);
+    logger.error("Stock status error:", error);
     return {
-      status: 'unknown',
+      status: "unknown",
       quantity: 0,
-      threshold: 0
+      threshold: 0,
     };
   }
 }
@@ -753,75 +756,75 @@ async function getStockStatus(productId) {
 async function getTopProducts(userId, dateRange, limit = 10) {
   // Valid statuses for revenue calculation (exclude returned/cancelled)
   const validRevenueStatuses = [
-    'new',
-    'processing',
-    'shipped',
-    'delivered',
-    'delivered'
+    "new",
+    "processing",
+    "shipped",
+    "delivered",
+    "delivered",
   ];
 
   const topProducts = await OrderItem.findAll({
     include: [
       {
         model: Order,
-        as: 'order',
+        as: "order",
         where: {
           userId,
           createdAt: {
-            [Op.between]: [dateRange.start, dateRange.end]
+            [Op.between]: [dateRange.start, dateRange.end],
           },
-          orderStatus: { [Op.in]: validRevenueStatuses } // Exclude returned/cancelled orders
+          orderStatus: { [Op.in]: validRevenueStatuses }, // Exclude returned/cancelled orders
         },
-        attributes: ['platform', 'orderStatus'] // Include platform and status information
+        attributes: ["platform", "orderStatus"], // Include platform and status information
       },
       {
         model: Product,
-        as: 'product',
-        attributes: ['name', 'sku', 'category']
-      }
+        as: "product",
+        attributes: ["name", "sku", "category"],
+      },
     ],
     attributes: [
-      'productId',
+      "productId",
       [
-        OrderItem.sequelize.fn('SUM', OrderItem.sequelize.col('quantity')),
-        'totalSold'
+        OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
+        "totalSold",
       ],
       [
         OrderItem.sequelize.fn(
-          'SUM',
+          "SUM",
           OrderItem.sequelize.literal(
             'CASE WHEN "OrderItem"."price" > 0 THEN "OrderItem"."quantity" * "OrderItem"."price" ELSE 0 END'
           )
         ),
-        'totalRevenue'
-      ]
+        "totalRevenue",
+      ],
     ],
     group: [
-      'productId',
-      'product.id',
-      'order.id',
-      'order.platform',
-      'order.orderStatus'
+      "productId",
+      "product.id",
+      "order.id",
+      "order.platform",
+      "order.orderStatus",
     ], // Group by all selected columns
     order: [
       [
-        OrderItem.sequelize.fn('SUM', OrderItem.sequelize.col('quantity')),
-        'DESC'
-      ]
+        OrderItem.sequelize.fn("SUM", OrderItem.sequelize.col("quantity")),
+        "DESC",
+      ],
     ],
-    limit
+    limit,
   });
 
   return topProducts.map((item) => {
-    const totalSold = parseInt(item.get('totalSold')) || 0;
-    const totalRevenue = parseFloat(item.get('totalRevenue')) || 0;
+    const totalSold = parseInt(item.get("totalSold")) || 0;
+    const totalRevenue = parseFloat(item.get("totalRevenue")) || 0;
 
     return {
       productId: item.productId,
-      name: item.product?.name || 'Unknown Product',
-      sku: item.product?.sku || 'N/A',
-      category: item.product?.category || 'Uncategorized',
-      platform: item.order?.platform || 'Unknown', // Add platform info
+      name: item.product?.name || "Unknown Product",
+      sku: item.product?.sku || "N/A",
+      category: item.product?.category || "Uncategorized",
+      platform: item.order?.platform || "Unknown", // Add platform info
       totalSold,
       totalRevenue: isNaN(totalRevenue) ? 0 : totalRevenue, // Handle NaN values safely
       orderCount: totalSold, // Add order count field for UI
@@ -829,7 +832,7 @@ async function getTopProducts(userId, dateRange, limit = 10) {
       sales: totalSold,
       revenue: isNaN(totalRevenue) ? 0 : totalRevenue,
       // Add price per unit calculation
-      avgPrice: totalSold > 0 ? totalRevenue / totalSold : 0
+      avgPrice: totalSold > 0 ? totalRevenue / totalSold : 0,
     };
   });
 }
@@ -841,10 +844,12 @@ async function calculateDaysUntilOutOfStock(
   avgDailySales
 ) {
   try {
-    if (!avgDailySales || avgDailySales <= 0) {return null;}
+    if (!avgDailySales || avgDailySales <= 0) {
+      return null;
+    }
     return Math.ceil(currentStock / avgDailySales);
   } catch (error) {
-    logger.error('Error calculating days until out of stock:', error);
+    logger.error("Error calculating days until out of stock:", error);
     return null;
   }
 }
@@ -857,5 +862,5 @@ module.exports = {
   getProductSeasonalTrends,
   getHourlyProductBreakdown,
   getStockStatus,
-  getTopProducts
+  getTopProducts,
 };

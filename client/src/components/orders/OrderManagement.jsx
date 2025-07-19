@@ -33,6 +33,8 @@ import {
   WifiOff,
 } from "lucide-react";
 import api from "../../services/api";
+import enhancedPDFService from "../../services/enhancedPDFService";
+import qnbFinansService from "../../services/qnbFinansService";
 import { useAlert } from "../../contexts/AlertContext";
 import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { Button, Card, CardContent, Badge, Modal } from "../ui";
@@ -44,6 +46,7 @@ const OrderManagement = React.memo(() => {
   const { showAlert } = useAlert();
   const searchInputRef = useRef(null);
   const debounceRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   // State management
   const [orders, setOrders] = useState([]);
@@ -64,6 +67,9 @@ const OrderManagement = React.memo(() => {
     key: "orderDate",
     direction: "desc",
   });
+
+  // Bulk operation loading states
+  const [bulkPrintingShipping, setBulkPrintingShipping] = useState(false);
 
   // Enhanced filters state with validation
   const [filters, setFilters] = useState({
@@ -357,6 +363,14 @@ const OrderManagement = React.memo(() => {
   }, []);
   const fetchOrders = useCallback(async () => {
     try {
+      // Cancel any pending request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      // Create new AbortController for this request
+      abortControllerRef.current = new AbortController();
+
       setLoading(true);
       setError(null);
 
@@ -382,10 +396,23 @@ const OrderManagement = React.memo(() => {
         "🔍 [OrderManagement] Search term length:",
         searchTerm.length
       );
-      const response = await api.orders.getOrders(params);
+
+      const response = await api.orders.getOrders(params, {
+        signal: abortControllerRef.current.signal,
+      });
       console.log("API Response:", response);
 
-      if (response.success) {
+      // Handle timeout responses that still return data structure
+      if (response.error === "TIMEOUT") {
+        setError("⏱️ İstek zaman aşımına uğradı. Veriler güncel olmayabilir.");
+        showAlert(
+          "Sunucu yavaş yanıt veriyor. Sonuçlar sınırlı olabilir.",
+          "warning"
+        );
+        // Continue processing with empty data but don't throw error
+      }
+
+      if (response.success || response.data) {
         // Handle different response structures from the API
         let ordersData = [];
         let totalCount = 0;
@@ -476,6 +503,30 @@ const OrderManagement = React.memo(() => {
     } catch (error) {
       console.error("Error fetching orders:", error);
 
+      // Handle abort errors gracefully (don't show error messages)
+      if (
+        error.name === "AbortError" ||
+        error.message === "Request aborted" ||
+        error.code === "ERR_CANCELED" ||
+        error.message === "canceled"
+      ) {
+        console.log("🔄 Request was cancelled, ignoring error");
+        return;
+      }
+
+      // Handle timeout errors specifically
+      if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+        setError(
+          "İstek zaman aşımına uğradı. Sunucu yoğun olabilir, lütfen tekrar deneyin."
+        );
+        showAlert(
+          "⏱️ İstek zaman aşımına uğradı. Lütfen tekrar deneyin.",
+          "warning"
+        );
+        // Don't clear orders on timeout - keep existing data
+        return;
+      }
+
       // Handle circuit breaker errors gracefully
       if (
         error.isCircuitBreakerError ||
@@ -500,6 +551,10 @@ const OrderManagement = React.memo(() => {
           "Sunucuya bağlantı kurulamıyor. Lütfen internet bağlantınızı kontrol edin."
         );
         showAlert("Sunucuya bağlantı kurulamıyor", "error");
+      } else if (error.code === "ECONNABORTED") {
+        // Handle timeout errors
+        setError("İstek zaman aşımına uğradı. Lütfen tekrar deneyin.");
+        showAlert("İstek zaman aşımına uğradı", "warning");
       } else {
         setError(error.message);
         showAlert("Siparişler yüklenirken bir hata oluştu", "error");
@@ -523,41 +578,44 @@ const OrderManagement = React.memo(() => {
     validateFilters,
   ]);
 
-  // Debounced search effect
+  // Consolidated effect for all data fetching with proper debouncing
   useEffect(() => {
     console.log(
-      "🔍 [OrderManagement] Search effect triggered, searchTerm:",
+      "🔍 [OrderManagement] Data fetch effect triggered, searchTerm:",
       `"${searchTerm}"`
     );
 
+    // Clear any existing timeout
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
       console.log("🔍 [OrderManagement] Cleared previous debounce timeout");
     }
 
-    debounceRef.current = setTimeout(
-      () => {
-        console.log(
-          "🔍 [OrderManagement] Debounce timeout fired, calling fetchOrders"
-        );
-        fetchOrders();
-      },
-      searchTerm ? 500 : 0
-    ); // 500ms debounce for search, immediate for other changes
+    // Use debounce only for search, immediate fetch for other changes
+    const delay = searchTerm ? 500 : 0;
+
+    debounceRef.current = setTimeout(() => {
+      console.log(
+        "🔍 [OrderManagement] Debounce timeout fired, calling fetchOrders"
+      );
+      fetchOrders();
+    }, delay);
 
     return () => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
     };
-  }, [searchTerm, fetchOrders]);
+  }, [searchTerm, currentPage, filters, recordCount, fetchOrders]);
 
-  // Effect for non-search changes
+  // Clean up abort controller on unmount
   useEffect(() => {
-    if (!searchTerm) {
-      fetchOrders();
-    }
-  }, [currentPage, filters, recordCount, fetchOrders, searchTerm]);
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   // Use server-provided data directly (no client-side filtering or pagination)
   // Orders are already filtered and paginated by the server
@@ -651,28 +709,6 @@ const OrderManagement = React.memo(() => {
       setSelectedOrders((prev) => prev.filter((id) => id !== orderId));
     }
   }, []);
-
-  const handleBulkStatusUpdate = useCallback(
-    async (newStatus) => {
-      if (selectedOrders.length === 0) {
-        showAlert("Lütfen güncellenecek siparişleri seçin", "warning");
-        return;
-      }
-
-      try {
-        await api.orders.bulkUpdateStatus(selectedOrders, newStatus);
-        showAlert(
-          `${selectedOrders.length} sipariş durumu güncellendi`,
-          "success"
-        );
-        setSelectedOrders([]);
-        fetchOrders();
-      } catch (error) {
-        showAlert("Toplu durum güncelleme başarısız", "error");
-      }
-    },
-    [selectedOrders, showAlert, fetchOrders]
-  );
 
   const handleViewOrderDetail = useCallback(
     (orderId) => {
@@ -785,16 +821,13 @@ const OrderManagement = React.memo(() => {
   }, [showAlert, fetchOrders]);
 
   // Enhanced search handlers
-  const handleKeyPress = useCallback(
-    (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        setCurrentPage(1);
-        fetchOrders();
-      }
-    },
-    [fetchOrders]
-  );
+  const handleKeyPress = useCallback((e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      setCurrentPage(1);
+      // Don't call fetchOrders directly - let the useEffect handle it
+    }
+  }, []);
 
   const handleSearch = useCallback((value) => {
     console.log("🔍 [OrderManagement] handleSearch called with:", `"${value}"`);
@@ -1251,6 +1284,342 @@ const OrderManagement = React.memo(() => {
     }
   }, [selectedOrders, orders, showAlert, fetchOrders]);
 
+  // Bulk print shipping slips
+  const handleBulkPrintShippingSlips = useCallback(async () => {
+    if (bulkPrintingShipping) {
+      console.log(
+        "⚠️ Bulk shipping print already in progress, ignoring request"
+      );
+      return;
+    }
+
+    if (selectedOrders.length === 0) {
+      showAlert("Lütfen yazdırılacak siparişleri seçin", "warning");
+      return;
+    }
+
+    console.log("🔍 DEBUG: Original selectedOrders:", selectedOrders);
+
+    // Remove duplicates from selected orders
+    const uniqueOrderIds = [...new Set(selectedOrders)];
+
+    console.log("🔍 DEBUG: Unique order IDs:", uniqueOrderIds);
+    console.log(
+      "🔍 DEBUG: Removed duplicates:",
+      selectedOrders.length - uniqueOrderIds.length
+    );
+
+    const confirmMessage = `${uniqueOrderIds.length} sipariş için gönderi belgeleri yazdırılacak. Devam etmek istiyor musunuz?`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setBulkPrintingShipping(true);
+
+    let successful = 0;
+    let failed = 0;
+    const failedOrders = [];
+
+    showAlert("Gönderi belgeleri hazırlanıyor...", "info");
+
+    try {
+      // Get default template once for all orders
+      let defaultTemplateId = null;
+      try {
+        const defaultTemplateResponse = await api.shipping.getDefaultTemplate();
+        if (defaultTemplateResponse.success && defaultTemplateResponse.data) {
+          defaultTemplateId = defaultTemplateResponse.data.defaultTemplateId;
+          if (
+            !defaultTemplateId &&
+            defaultTemplateResponse.data.availableTemplates?.length > 0
+          ) {
+            defaultTemplateId =
+              defaultTemplateResponse.data.availableTemplates[0].id;
+          }
+        }
+      } catch (templateError) {
+        console.warn("Template detection failed:", templateError);
+      }
+
+      if (!defaultTemplateId) {
+        showAlert(
+          "Gönderi belgesi template'i bulunamadı. Lütfen önce bir template oluşturun.",
+          "error"
+        );
+        return;
+      }
+
+      console.log("🔍 DEBUG: Using template ID:", defaultTemplateId);
+
+      // Process orders sequentially with delay to prevent browser popup blocking
+      for (let i = 0; i < uniqueOrderIds.length; i++) {
+        const orderId = uniqueOrderIds[i];
+
+        try {
+          console.log(
+            `🖨️ [${i + 1}/${
+              uniqueOrderIds.length
+            }] Starting shipping slip for order ${orderId}`
+          );
+
+          // Add a small delay before each request to ensure sequential processing
+          if (i > 0) {
+            console.log(
+              `⏳ Waiting 2 seconds before processing order ${orderId}...`
+            );
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+          }
+
+          const result = await enhancedPDFService.generateAndOpenShippingSlip(
+            orderId,
+            defaultTemplateId
+          );
+
+          console.log(
+            `📄 [${i + 1}/${
+              uniqueOrderIds.length
+            }] Result for order ${orderId}:`,
+            result.success ? "SUCCESS" : "FAILED"
+          );
+
+          if (result.success) {
+            successful++;
+          } else {
+            failed++;
+            failedOrders.push(
+              `Sipariş ${orderId}: ${result.message || result.error}`
+            );
+          }
+        } catch (error) {
+          console.error(
+            `❌ [${i + 1}/${
+              uniqueOrderIds.length
+            }] Error for order ${orderId}:`,
+            error
+          );
+          failed++;
+          failedOrders.push(`Sipariş ${orderId}: ${error.message}`);
+        }
+      }
+
+      if (successful > 0) {
+        showAlert(
+          `${successful} gönderi belgesi başarıyla hazırlandı${
+            failed > 0 ? `, ${failed} başarısız` : ""
+          }`,
+          failed > 0 ? "warning" : "success"
+        );
+      } else {
+        showAlert("Hiçbir gönderi belgesi hazırlanamadı", "error");
+      }
+
+      if (failed > 0 && failedOrders.length > 0) {
+        console.log("Failed shipping slip generations:", failedOrders);
+      }
+
+      setSelectedOrders([]);
+    } finally {
+      setBulkPrintingShipping(false);
+    }
+  }, [selectedOrders, showAlert, bulkPrintingShipping]);
+
+  // Bulk print invoices
+  const handleBulkPrintInvoices = useCallback(
+    async (invoiceType = "standard") => {
+      if (selectedOrders.length === 0) {
+        showAlert("Lütfen faturası yazdırılacak siparişleri seçin", "warning");
+        return;
+      }
+
+      const typeLabels = {
+        standard: "Standart Fatura",
+        qnb_auto: "QNB Finans (Otomatik)",
+        qnb_einvoice: "QNB E-Fatura",
+        qnb_earsiv: "QNB E-Arşiv",
+      };
+
+      const confirmMessage = `${selectedOrders.length} sipariş için ${typeLabels[invoiceType]} yazdırılacak. Devam etmek istiyor musunuz?`;
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+
+      let successful = 0;
+      let failed = 0;
+      const failedOrders = [];
+
+      showAlert(`${typeLabels[invoiceType]} hazırlanıyor...`, "info");
+
+      for (const orderId of selectedOrders) {
+        try {
+          let result;
+
+          if (invoiceType === "standard") {
+            result = await enhancedPDFService.generateAndOpenInvoice(orderId);
+          } else if (invoiceType === "qnb_auto") {
+            result = await qnbFinansService.autoGenerateDocument(orderId);
+          } else if (invoiceType === "qnb_einvoice") {
+            result = await qnbFinansService.generateEInvoice(orderId);
+          } else if (invoiceType === "qnb_earsiv") {
+            result = await qnbFinansService.generateEArchive(orderId);
+          }
+
+          if (result && result.success) {
+            successful++;
+            // Open PDF if available
+            if (result.data?.pdfUrl) {
+              window.open(result.data.pdfUrl, "_blank");
+            }
+          } else {
+            failed++;
+            failedOrders.push(
+              `Sipariş ${orderId}: ${
+                result?.message || result?.error || "Bilinmeyen hata"
+              }`
+            );
+          }
+        } catch (error) {
+          failed++;
+          failedOrders.push(`Sipariş ${orderId}: ${error.message}`);
+        }
+
+        // Small delay to prevent overwhelming the system
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+
+      if (successful > 0) {
+        showAlert(
+          `${successful} ${typeLabels[invoiceType]} başarıyla hazırlandı${
+            failed > 0 ? `, ${failed} başarısız` : ""
+          }`,
+          failed > 0 ? "warning" : "success"
+        );
+      } else {
+        showAlert(`Hiçbir ${typeLabels[invoiceType]} hazırlanamadı`, "error");
+      }
+
+      if (failed > 0 && failedOrders.length > 0) {
+        console.log(`Failed ${invoiceType} generations:`, failedOrders);
+      }
+
+      setSelectedOrders([]);
+    },
+    [selectedOrders, showAlert]
+  );
+
+  // Bulk cancel orders
+  const handleBulkCancelOrders = useCallback(
+    async (reason = "") => {
+      if (selectedOrders.length === 0) {
+        showAlert("Lütfen iptal edilecek siparişleri seçin", "warning");
+        return;
+      }
+
+      const cancelReason =
+        reason ||
+        window.prompt(
+          `${selectedOrders.length} sipariş iptal edilecek. İptal nedeni (opsiyonel):`,
+          ""
+        );
+
+      if (cancelReason === null) {
+        return; // User cancelled the prompt
+      }
+
+      const confirmMessage = `${selectedOrders.length} siparişi iptal etmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`;
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+
+      let successful = 0;
+      let failed = 0;
+      const failedOrders = [];
+
+      showAlert("Siparişler iptal ediliyor...", "info");
+
+      for (const orderId of selectedOrders) {
+        try {
+          const result = await api.orders.cancelOrder(orderId, cancelReason);
+          if (result && result.success) {
+            successful++;
+          } else {
+            failed++;
+            failedOrders.push(
+              `Sipariş ${orderId}: ${result?.message || "Bilinmeyen hata"}`
+            );
+          }
+        } catch (error) {
+          failed++;
+          failedOrders.push(`Sipariş ${orderId}: ${error.message}`);
+        }
+      }
+
+      if (successful > 0) {
+        showAlert(
+          `${successful} sipariş başarıyla iptal edildi${
+            failed > 0 ? `, ${failed} başarısız` : ""
+          }`,
+          failed > 0 ? "warning" : "success"
+        );
+        fetchOrders(); // Refresh the orders list
+      } else {
+        showAlert("Hiçbir sipariş iptal edilemedi", "error");
+      }
+
+      if (failed > 0 && failedOrders.length > 0) {
+        console.log("Failed order cancellations:", failedOrders);
+      }
+
+      setSelectedOrders([]);
+    },
+    [selectedOrders, showAlert, fetchOrders]
+  );
+
+  // Enhanced bulk status update with more options
+  const handleBulkStatusChange = useCallback(
+    async (newStatus) => {
+      if (selectedOrders.length === 0) {
+        showAlert("Lütfen durumu güncellenecek siparişleri seçin", "warning");
+        return;
+      }
+
+      const statusLabels = {
+        new: "Yeni",
+        pending: "Beklemede",
+        confirmed: "Onaylandı",
+        processing: "Hazırlanıyor",
+        shipped: "Kargoda",
+        in_transit: "Yolda",
+        delivered: "Teslim Edildi",
+        cancelled: "İptal Edildi",
+        returned: "İade Edildi",
+        refunded: "İade Tamamlandı",
+        claimCreated: "Talep Oluşturuldu",
+        claimApproved: "Talep Onaylandı",
+        claimRejected: "Talep Reddedildi",
+        failed: "Başarısız",
+        unknown: "Bilinmeyen",
+      };
+
+      const confirmMessage = `${selectedOrders.length} siparişin durumu "${statusLabels[newStatus]}" olarak güncellenecek. Devam etmek istiyor musunuz?`;
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+
+      try {
+        await api.orders.bulkUpdateStatus(selectedOrders, newStatus);
+        showAlert(
+          `${selectedOrders.length} sipariş durumu "${statusLabels[newStatus]}" olarak güncellendi`,
+          "success"
+        );
+        setSelectedOrders([]);
+        fetchOrders();
+      } catch (error) {
+        showAlert("Toplu durum güncelleme başarısız", "error");
+      }
+    },
+    [selectedOrders, showAlert, fetchOrders]
+  );
+
   // Loading and error states
   if (loading) {
     return (
@@ -1495,11 +1864,21 @@ const OrderManagement = React.memo(() => {
                   }
                 >
                   <option value="all">Tüm Durumlar</option>
-                  <option value="pending">Bekleyen</option>
+                  <option value="new">Yeni</option>
+                  <option value="pending">Beklemede</option>
+                  <option value="confirmed">Onaylandı</option>
                   <option value="processing">Hazırlanıyor</option>
                   <option value="shipped">Kargoda</option>
+                  <option value="in_transit">Yolda</option>
                   <option value="delivered">Teslim Edildi</option>
                   <option value="cancelled">İptal Edildi</option>
+                  <option value="returned">İade Edildi</option>
+                  <option value="refunded">İade Tamamlandı</option>
+                  <option value="claimCreated">Talep Oluşturuldu</option>
+                  <option value="claimApproved">Talep Onaylandı</option>
+                  <option value="claimRejected">Talep Reddedildi</option>
+                  <option value="failed">Başarısız</option>
+                  <option value="unknown">Bilinmeyen</option>
                 </select>
 
                 <select
@@ -1664,53 +2043,165 @@ const OrderManagement = React.memo(() => {
           </CardContent>
         </Card>
 
-        {/* Bulk Actions */}
+        {/* Enhanced Bulk Actions */}
         {selectedOrders.length > 0 && (
           <Card className="mb-6">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">
-                  {selectedOrders.length} sipariş seçildi
-                </span>
-                <div className="flex space-x-2">
-                  <Button
-                    onClick={() => handleBulkAccept()}
-                    size="sm"
-                    variant="outline"
-                    className="text-green-600 hover:text-green-700 hover:border-green-300"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-1 action-icon-success" />
-                    Seçilenleri Onayla
-                  </Button>
-                  <Button
-                    onClick={() => handleBulkStatusUpdate("processing")}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Hazırlanıyor Olarak İşaretle
-                  </Button>
-                  <Button
-                    onClick={() => handleBulkStatusUpdate("shipped")}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Kargoda Olarak İşaretle
-                  </Button>
-                  <Button
-                    onClick={handleDeleteSelected}
-                    size="sm"
-                    variant="outline"
-                    className="text-red-600 hover:text-red-700 hover:border-red-300"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Seçilenleri Sil
-                  </Button>
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <AlertTriangle className="h-5 w-5 text-orange-500" />
+                    <span className="text-sm font-medium text-gray-900">
+                      {selectedOrders.length} sipariş seçildi
+                    </span>
+                  </div>
                   <Button
                     onClick={() => setSelectedOrders([])}
                     size="sm"
                     variant="outline"
+                    className="flex items-center space-x-2"
                   >
-                    Seçimi Temizle
+                    <X className="h-4 w-4" />
+                    <span>Seçimi Temizle</span>
+                  </Button>
+                </div>
+
+                {/* Action Buttons Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {/* Status Actions */}
+                  <Button
+                    onClick={() => handleBulkAccept()}
+                    size="sm"
+                    variant="outline"
+                    className="text-green-600 hover:text-green-700 hover:border-green-300 flex items-center justify-center space-x-2"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Onayla</span>
+                  </Button>
+
+                  <Button
+                    onClick={() => handleBulkStatusChange("new")}
+                    size="sm"
+                    variant="outline"
+                    className="text-blue-500 hover:text-blue-600 hover:border-blue-300 flex items-center justify-center space-x-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Yeni</span>
+                  </Button>
+
+                  <Button
+                    onClick={() => handleBulkStatusChange("processing")}
+                    size="sm"
+                    variant="outline"
+                    className="text-blue-600 hover:text-blue-700 hover:border-blue-300 flex items-center justify-center space-x-2"
+                  >
+                    <Package className="h-4 w-4" />
+                    <span>Hazırlanıyor</span>
+                  </Button>
+
+                  <Button
+                    onClick={() => handleBulkStatusChange("shipped")}
+                    size="sm"
+                    variant="outline"
+                    className="text-purple-600 hover:text-purple-700 hover:border-purple-300 flex items-center justify-center space-x-2"
+                  >
+                    <Truck className="h-4 w-4" />
+                    <span>Kargola</span>
+                  </Button>
+
+                  <Button
+                    onClick={() => handleBulkStatusChange("delivered")}
+                    size="sm"
+                    variant="outline"
+                    className="text-green-600 hover:text-green-700 hover:border-green-300 flex items-center justify-center space-x-2"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Teslim Edildi</span>
+                  </Button>
+
+                  {/* Print Actions */}
+                  <Button
+                    onClick={handleBulkPrintShippingSlips}
+                    size="sm"
+                    variant="outline"
+                    disabled={bulkPrintingShipping}
+                    className="text-indigo-600 hover:text-indigo-700 hover:border-indigo-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {bulkPrintingShipping ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Printer className="h-4 w-4" />
+                    )}
+                    <span>
+                      {bulkPrintingShipping
+                        ? "Hazırlanıyor..."
+                        : "Gönderi Belgeleri"}
+                    </span>
+                  </Button>
+                </div>
+
+                {/* Secondary Actions Row */}
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                  {/* Invoice Options */}
+                  <Button
+                    onClick={() => handleBulkPrintInvoices("standard")}
+                    size="sm"
+                    variant="outline"
+                    className="text-blue-600 hover:text-blue-700 hover:border-blue-300 flex items-center justify-center space-x-1"
+                  >
+                    <FileText className="h-3 w-3" />
+                    <span className="text-xs">Standart Fatura</span>
+                  </Button>
+
+                  <Button
+                    onClick={() => handleBulkPrintInvoices("qnb_auto")}
+                    size="sm"
+                    variant="outline"
+                    className="text-blue-600 hover:text-blue-700 hover:border-blue-300 flex items-center justify-center space-x-1"
+                  >
+                    <FileText className="h-3 w-3" />
+                    <span className="text-xs">QNB Otomatik</span>
+                  </Button>
+
+                  <Button
+                    onClick={() => handleBulkPrintInvoices("qnb_einvoice")}
+                    size="sm"
+                    variant="outline"
+                    className="text-blue-600 hover:text-blue-700 hover:border-blue-300 flex items-center justify-center space-x-1"
+                  >
+                    <FileText className="h-3 w-3" />
+                    <span className="text-xs">QNB E-Fatura</span>
+                  </Button>
+
+                  <Button
+                    onClick={() => handleBulkPrintInvoices("qnb_earsiv")}
+                    size="sm"
+                    variant="outline"
+                    className="text-blue-600 hover:text-blue-700 hover:border-blue-300 flex items-center justify-center space-x-1"
+                  >
+                    <FileText className="h-3 w-3" />
+                    <span className="text-xs">QNB E-Arşiv</span>
+                  </Button>
+
+                  {/* Destructive Actions */}
+                  <Button
+                    onClick={() => handleBulkCancelOrders()}
+                    size="sm"
+                    variant="outline"
+                    className="text-orange-600 hover:text-orange-700 hover:border-orange-300 flex items-center justify-center space-x-1"
+                  >
+                    <Ban className="h-3 w-3" />
+                    <span className="text-xs">İptal Et</span>
+                  </Button>
+
+                  <Button
+                    onClick={handleDeleteSelected}
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 hover:text-red-700 hover:border-red-300 flex items-center justify-center space-x-1"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    <span className="text-xs">Sil</span>
                   </Button>
                 </div>
               </div>
@@ -1742,7 +2233,7 @@ const OrderManagement = React.memo(() => {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="min-w-full divide-y divide-gray-200 orders-table">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left">
@@ -1813,7 +2304,7 @@ const OrderManagement = React.memo(() => {
                       return (
                         <tr
                           key={order.id}
-                          className="hover:bg-gray-50 transition-colors"
+                          className="table-row transition-colors"
                         >
                           {/* checkbox */}
                           <td className="px-6 py-4">

@@ -61,7 +61,7 @@ const OrderTableRow = memo(
     );
 
     return (
-      <tr className="hover:bg-gray-50">
+      <tr className="table-row">
         <td className="px-6 py-4">
           <input
             type="checkbox"

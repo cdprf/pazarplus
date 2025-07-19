@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 import { useAlert } from "../../contexts/AlertContext";
-import PrintDiagnostics from "./PrintDiagnostics";
 import OrderTimeline from "./OrderTimeline";
 import OrderProductLinks from "./OrderProductLinks";
 import PaymentDetails from "./PaymentDetails";
@@ -245,6 +244,7 @@ const OrderDetail = () => {
 
   // Print PDF using shipping API
   // Print shipping slip
+  // eslint-disable-next-line no-unused-vars
   const handlePrintShippingSlip = async (e) => {
     // Prevent any default browser behavior
     if (e) {
@@ -263,7 +263,7 @@ const OrderDetail = () => {
     // Check if template is available
     if (!linkedTemplate && !defaultTemplate) {
       showNotification(
-        "No shipping template found. Please create or link a shipping template to this order before printing.", 
+        "No shipping template found. Please create or link a shipping template to this order before printing.",
         "warning"
       );
       return;

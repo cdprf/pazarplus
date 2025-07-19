@@ -4,6 +4,11 @@ services:
     name: pazar-plus-frontend
     buildCommand: ./render-frontend-build.sh
     publishPath: ./build
+    # Add routing configuration for SPA
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     buildFilter:
       paths:
         - client/**

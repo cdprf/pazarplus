@@ -3,6 +3,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useAlert } from "../../contexts/AlertContext";
 import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
 import api from "../../services/api";
+import requestQueue from "../../utils/requestQueue";
 import {
   HomeIcon,
   ShoppingCartIcon,
@@ -30,6 +31,7 @@ export const useOrderCounts = () => {
   const { isAuthenticated } = useAuth();
   const [orderCounts, setOrderCounts] = useState({
     total: 0,
+    newOrders: 0,
     pending: 0,
     processing: 0,
     shipped: 0,
@@ -45,13 +47,24 @@ export const useOrderCounts = () => {
     setError(null);
 
     try {
-      const response = await api.orders.getOrders({ page: 0, size: 1 });
-      if (response.success) {
+      // Use request queue for background requests to prevent overwhelming server
+      const response = await requestQueue.add(
+        () =>
+          api.orders.getOrders(
+            { page: 1, limit: 1 }, // Minimal data request
+            { timeout: 8000 } // Shorter timeout for background requests
+          ),
+        "normal" // Normal priority for background requests
+      );
+
+      if (response.success || response.data) {
         // Get total count from response
         let totalOrders = 0;
 
         if (Array.isArray(response.data)) {
           totalOrders = response.data.length;
+        } else if (response.data && response.data.pagination?.total) {
+          totalOrders = response.data.pagination.total;
         } else if (response.data && response.data.total) {
           totalOrders = response.data.total;
         } else if (response.data && Array.isArray(response.data.data)) {
@@ -62,6 +75,7 @@ export const useOrderCounts = () => {
         const statsResponse = await api.orders.getOrderStats?.();
         let counts = {
           total: totalOrders,
+          newOrders: 0,
           pending: 0,
           processing: 0,
           shipped: 0,
@@ -71,6 +85,7 @@ export const useOrderCounts = () => {
         if (statsResponse?.success && statsResponse.data) {
           counts = {
             total: statsResponse.data.total || totalOrders,
+            newOrders: statsResponse.data.newOrders || 0,
             pending: statsResponse.data.pending || 0,
             processing: statsResponse.data.processing || 0,
             shipped: statsResponse.data.shipped || 0,
@@ -83,20 +98,31 @@ export const useOrderCounts = () => {
       }
     } catch (error) {
       console.error("Error fetching order counts in sidebar:", error);
-      setError(error.message);
 
-      // Try alternative method to get total orders count
-      try {
-        const response = await api.orders.getOrders({ page: 0, size: 999 });
-        if (response.success && Array.isArray(response.data)) {
-          setOrderCounts((prev) => ({
-            ...prev,
-            total: response.data.length,
-          }));
-        }
-      } catch (err) {
-        console.error("Alternative order count fetch failed in sidebar:", err);
+      // Handle timeout errors gracefully without making more requests
+      if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+        console.log(
+          "⏱️ Sidebar order count request timed out, keeping previous values"
+        );
+        setError("Server response slow"); // Don't show timeout errors prominently in sidebar
+      } else {
+        setError(error.message);
       }
+
+      // Don't make additional requests on error - this can cause cascade failures
+      // Keep existing counts or set to safe defaults
+      setOrderCounts((prev) => {
+        if (!prev.total) {
+          return {
+            total: 0,
+            pending: 0,
+            processing: 0,
+            shipped: 0,
+            delivered: 0,
+          };
+        }
+        return prev;
+      });
     } finally {
       setIsLoading(false);
     }
@@ -106,8 +132,8 @@ export const useOrderCounts = () => {
     fetchOrderCounts();
   }, [fetchOrderCounts]);
 
-  // Use network-aware interval for order count polling
-  useNetworkAwareInterval(fetchOrderCounts, 30000);
+  // Use network-aware interval for order count polling with longer interval to reduce server load
+  useNetworkAwareInterval(fetchOrderCounts, 60000); // Increased from 30s to 60s
 
   return { orderCounts, isLoading, error, refetch: fetchOrderCounts };
 };
@@ -138,7 +164,8 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
         href: "/orders",
         icon: ShoppingCartIcon,
         description: "Sipariş listesi",
-        badge: orderCounts.total > 0 ? orderCounts.total.toString() : null,
+        badge:
+          orderCounts.newOrders > 0 ? orderCounts.newOrders.toString() : null,
         ariaLabel: "Sipariş yönetimi",
         subItems: [
           {

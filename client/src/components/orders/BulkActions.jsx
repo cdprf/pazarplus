@@ -13,6 +13,9 @@ import {
   Trash2,
   X,
   AlertTriangle,
+  Printer,
+  FileText,
+  Ban,
 } from "lucide-react";
 
 const BULK_ACTIONS = {
@@ -37,6 +40,49 @@ const BULK_ACTIONS = {
     color: "primary",
     description: "Seçili siparişleri kargoda olarak işaretle",
   },
+  delivered: {
+    label: "Teslim Edildi",
+    icon: CheckCircle,
+    variant: "outline",
+    color: "success",
+    description: "Seçili siparişleri teslim edildi olarak işaretle",
+  },
+  print_shipping: {
+    label: "Gönderi Belgeleri",
+    icon: Printer,
+    variant: "outline",
+    color: "info",
+    description: "Seçili siparişler için gönderi belgelerini yazdır",
+  },
+  print_shipping_bulk: {
+    label: "Toplu Gönderi PDF",
+    icon: Printer,
+    variant: "filled",
+    color: "primary",
+    description: "Seçili siparişlerin gönderi belgelerini tek PDF'te indir",
+  },
+  print_invoice: {
+    label: "Faturalar",
+    icon: FileText,
+    variant: "outline",
+    color: "info",
+    description: "Seçili siparişler için faturaları yazdır",
+  },
+  print_invoice_bulk: {
+    label: "Toplu Fatura PDF",
+    icon: FileText,
+    variant: "filled",
+    color: "secondary",
+    description: "Seçili siparişlerin faturalarını tek PDF'te indir",
+  },
+  cancel: {
+    label: "İptal Et",
+    icon: Ban,
+    variant: "outline",
+    color: "warning",
+    description: "Seçili siparişleri iptal et",
+    confirmRequired: true,
+  },
   delete: {
     label: "Sil",
     icon: Trash2,
@@ -51,7 +97,18 @@ const BulkActions = ({
   selectedCount = 0,
   onBulkAction,
   onClearSelection,
-  availableActions = ["accept", "process", "ship", "delete"],
+  availableActions = [
+    "accept",
+    "process",
+    "ship",
+    "delivered",
+    "print_shipping",
+    "print_shipping_bulk",
+    "print_invoice",
+    "print_invoice_bulk",
+    "cancel",
+    "delete",
+  ],
   loading = false,
   className = "",
 }) => {
@@ -189,9 +246,7 @@ const BulkActionConfirmation = ({
             </div>
             <div>
               <h3 className="modal-title">Toplu İşlem Onayı</h3>
-              <p className="text-sm text-muted">
-                {actionConfig.description}
-              </p>
+              <p className="text-sm text-muted">{actionConfig.description}</p>
             </div>
           </div>
         </div>
@@ -258,9 +313,7 @@ const BulkActionProgress = ({
         <div className="flex items-center space-x-3 mb-3">
           <Icon className="h-5 w-5 text-primary-600 animate-pulse" />
           <div className="flex-1">
-            <h4 className="text-sm font-medium">
-              {actionConfig.label} İşlemi
-            </h4>
+            <h4 className="text-sm font-medium">{actionConfig.label} İşlemi</h4>
             <p className="text-xs text-muted">
               {progress} / {total} tamamlandı
             </p>

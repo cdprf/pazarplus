@@ -1,21 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import {
-  QuestionAnswer,
-  Plus,
   Search,
   Download,
-  Edit,
   Eye,
   RefreshCw,
   Filter,
-  MoreHorizontal,
   X,
   CheckCircle,
   Clock,
   AlertCircle,
   BarChart3,
-  ArrowUpDown,
   Loader2,
   AlertTriangle,
   MessageSquare,
@@ -32,9 +26,7 @@ import { Button, Card, CardContent, Badge, Modal } from "./ui";
 
 const CustomerQuestions = () => {
   const { showAlert } = useAlert();
-  const navigate = useNavigate();
   const searchInputRef = useRef(null);
-  const debounceRef = useRef(null);
 
   // State management
   const [questions, setQuestions] = useState([]);
@@ -43,15 +35,13 @@ const CustomerQuestions = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState("view");
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalRecords, setTotalRecords] = useState(0);
   const [pagination, setPagination] = useState({ totalPages: 1, total: 0 });
   const [syncing, setSyncing] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedQuestions, setSelectedQuestions] = useState([]);
   const [recordCount, setRecordCount] = useState(20);
-  const [sortConfig, setSortConfig] = useState({
+  const [sortConfig] = useState({
     key: "creation_date",
     direction: "desc",
   });
@@ -66,7 +56,6 @@ const CustomerQuestions = () => {
     sortBy: "creation_date",
     sortOrder: "desc",
   });
-  const [filterErrors, setFilterErrors] = useState({});
 
   // Enhanced stats state
   const [stats, setStats] = useState({
@@ -128,7 +117,6 @@ const CustomerQuestions = () => {
           ),
           total: response.data.pagination?.total || 0,
         });
-        setTotalRecords(response.data.pagination?.total || 0);
       } else {
         throw new Error(response.data.message || "Failed to load questions");
       }
@@ -805,7 +793,6 @@ const CustomerQuestions = () => {
                               onClick={() => {
                                 setSelectedQuestion(question);
                                 setShowModal(true);
-                                setModalMode("view");
                               }}
                               variant="outline"
                               size="sm"

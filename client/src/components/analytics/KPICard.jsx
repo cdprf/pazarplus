@@ -1,208 +1,175 @@
-import React, { useState, useCallback, useMemo } from "react";
-import { Card, Spinner, Alert } from "react-bootstrap";
+import React from "react";
 import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
-  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
-import { safeNumeric } from "../../utils/analyticsFormatting";
 
+/**
+ * Enhanced KPI Card Component
+ * Displays key performance indicators with trend indicators and color-coded status
+ */
 const KPICard = ({
   title,
   value,
   change,
-  icon: IconComponent,
+  icon: Icon,
   color = "primary",
   loading = false,
   error = null,
-  onClick,
-  className = "",
-  "aria-label": ariaLabel,
-  testId,
+  format = "default",
+  trend = null,
+  subtitle = null,
+  testId = null,
 }) => {
-  // Safely parse the change value using useMemo for performance
-  const numericChange = useMemo(() => safeNumeric(change), [change]);
+  // Color mapping for different KPI types
+  const colorClasses = {
+    primary: {
+      container: "border-primary-200 bg-primary-50 hover:bg-primary-100",
+      icon: "bg-primary-100 text-primary-600",
+      text: "text-primary-900",
+    },
+    success: {
+      container: "border-success-200 bg-success-50 hover:bg-success-100",
+      icon: "bg-success-100 text-success-600",
+      text: "text-success-900",
+    },
+    warning: {
+      container: "border-warning-200 bg-warning-50 hover:bg-warning-100",
+      icon: "bg-warning-100 text-warning-600",
+      text: "text-warning-900",
+    },
+    danger: {
+      container: "border-danger-200 bg-danger-50 hover:bg-danger-100",
+      icon: "bg-danger-100 text-danger-600",
+      text: "text-danger-900",
+    },
+    info: {
+      container: "border-gray-200 bg-gray-50 hover:bg-gray-100",
+      icon: "bg-gray-100 text-gray-600",
+      text: "text-gray-900",
+    },
+  };
 
-  // Memoize trend calculations
-  const trendData = useMemo(() => {
-    const getTrendIcon = () => {
-      if (numericChange > 0)
-        return (
-          <ArrowTrendingUpIcon
-            className="h-4 w-4 text-success"
-            aria-hidden="true"
-          />
-        );
-      if (numericChange < 0)
-        return (
-          <ArrowTrendingDownIcon
-            className="h-4 w-4 text-danger"
-            aria-hidden="true"
-          />
-        );
-      return null;
-    };
+  const colors = colorClasses[color] || colorClasses.primary;
 
-    const getTrendColor = () => {
-      if (numericChange > 0) return "text-success";
-      if (numericChange < 0) return "text-danger";
-      return "text-muted";
-    };
+  // Format value based on type
+  const formatValue = (val) => {
+    // Ensure val is a number, default to 0 if not
+    const numericValue = typeof val === "number" && !isNaN(val) ? val : 0;
 
-    const getTrendAriaLabel = () => {
-      if (numericChange > 0) return "Increasing trend";
-      if (numericChange < 0) return "Decreasing trend";
-      return "Stable trend";
-    };
+    if (format === "currency") {
+      return new Intl.NumberFormat("tr-TR", {
+        style: "currency",
+        currency: "TRY",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(numericValue);
+    }
+    if (format === "percentage") {
+      return `${numericValue.toFixed(1)}%`;
+    }
+    if (format === "number") {
+      return new Intl.NumberFormat("tr-TR").format(numericValue);
+    }
+    return val || "0";
+  };
+
+  // Determine trend direction and color
+  const getTrendInfo = () => {
+    const changeValue = change || trend;
+    if (changeValue === null || changeValue === undefined) return null;
+
+    // Ensure changeValue is a number
+    const numericChange =
+      typeof changeValue === "number" && !isNaN(changeValue) ? changeValue : 0;
+
+    const isPositive = numericChange > 0;
+    const isNegative = numericChange < 0;
 
     return {
-      icon: getTrendIcon(),
-      color: getTrendColor(),
-      ariaLabel: getTrendAriaLabel(),
+      isPositive,
+      isNegative,
+      isNeutral: numericChange === 0,
+      value: Math.abs(numericChange),
+      icon: isPositive ? ArrowTrendingUpIcon : ArrowTrendingDownIcon,
+      className: isPositive
+        ? "analytics-trend trend-up"
+        : isNegative
+        ? "analytics-trend trend-down"
+        : "analytics-trend trend-neutral",
     };
-  }, [numericChange]);
+  };
 
-  const formatChangeValue = useCallback((changeValue) => {
-    const numeric = safeNumeric(changeValue);
-    if (numeric === 0) return "0%";
-    return `${numeric > 0 ? "+" : ""}${numeric.toFixed(1)}%`;
-  }, []);
-
-  // Handle keyboard navigation
-  const handleKeyDown = useCallback(
-    (event) => {
-      if (onClick && (event.key === "Enter" || event.key === " ")) {
-        event.preventDefault();
-        onClick();
-      }
-    },
-    [onClick]
-  );
-
-  // Handle click with error boundary
-  const handleClick = useCallback(() => {
-    try {
-      if (onClick) {
-        onClick();
-      }
-    } catch (err) {
-      console.error("KPICard click error:", err);
-    }
-  }, [onClick]);
+  const trendInfo = getTrendInfo();
 
   // Loading state
   if (loading) {
     return (
-      <Card className={`mb-3 ${className}`} data-testid={testId}>
-        <Card.Body>
-          <div
-            className="d-flex justify-content-center align-items-center"
-            style={{ minHeight: "120px" }}
-          >
-            <Spinner
-              animation="border"
-              size="sm"
-              role="status"
-              aria-label="Loading KPI data"
-            >
-              <span className="visually-hidden">Loading...</span>
-            </Spinner>
+      <div className="analytics-kpi-card" data-testid={testId}>
+        <div className="animate-pulse">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+            <div className="w-16 h-6 bg-gray-200 rounded"></div>
           </div>
-        </Card.Body>
-      </Card>
+          <div className="space-y-2">
+            <div className="w-24 h-4 bg-gray-200 rounded"></div>
+            <div className="w-32 h-8 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
     );
   }
 
   // Error state
   if (error) {
     return (
-      <Card className={`mb-3 ${className}`} data-testid={testId}>
-        <Card.Body>
-          <Alert variant="danger" className="mb-0">
-            <ExclamationTriangleIcon
-              className="h-4 w-4 me-2"
-              aria-hidden="true"
-            />
-            <span className="small">Failed to load KPI data</span>
-          </Alert>
-        </Card.Body>
-      </Card>
-    );
-  }
-
-  // Empty state
-  if (!value && value !== 0) {
-    return (
-      <Card className={`mb-3 ${className}`} data-testid={testId}>
-        <Card.Body>
-          <div className="text-center text-muted">
-            <div className="mb-2">
-              <ExclamationTriangleIcon
-                className="h-6 w-6 mx-auto"
-                aria-hidden="true"
-              />
-            </div>
-            <h6 className="card-subtitle mb-2">{title}</h6>
-            <small>No data available</small>
+      <div
+        className="analytics-kpi-card border-danger-200 bg-danger-50"
+        data-testid={testId}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="icon-container bg-danger-100 text-danger-600">
+            {Icon && <Icon className="h-5 w-5" />}
           </div>
-        </Card.Body>
-      </Card>
+          <div className="analytics-trend trend-down">
+            <ArrowTrendingDownIcon className="h-4 w-4" />
+            Error
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-danger-600 mb-2">{title}</p>
+          <p className="analytics-value text-danger-700">--</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card
-      className={`mb-3 ${className} ${onClick ? "cursor-pointer" : ""}`}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      tabIndex={onClick ? 0 : -1}
-      role={onClick ? "button" : "article"}
-      aria-label={
-        ariaLabel ||
-        `${title}: ${value}${change ? `, ${trendData.ariaLabel}` : ""}`
-      }
+    <div
+      className={`analytics-kpi-card ${colors.container}`}
       data-testid={testId}
-      style={{ cursor: onClick ? "pointer" : "default" }}
     >
-      <Card.Body>
-        <div className="d-flex justify-content-between align-items-start">
-          <div className="flex-grow-1">
-            <h6
-              className="card-subtitle mb-2 text-muted"
-              id={`${testId}-title`}
-            >
-              {title}
-            </h6>
-            <h4
-              className="card-title mb-1"
-              aria-describedby={`${testId}-title`}
-              style={{ wordBreak: "break-word" }}
-            >
-              {value}
-            </h4>
-            {change !== undefined && change !== null && (
-              <div
-                className={`d-flex align-items-center ${trendData.color}`}
-                aria-label={`Change: ${formatChangeValue(change)}, ${
-                  trendData.ariaLabel
-                }`}
-              >
-                {trendData.icon}
-                <small className="ms-1">{formatChangeValue(change)}</small>
-              </div>
-            )}
-          </div>
-          {IconComponent && (
-            <div
-              className={`text-${color} flex-shrink-0 ms-3`}
-              aria-hidden="true"
-            >
-              <IconComponent className="h-8 w-8" />
-            </div>
-          )}
+      <div className="flex items-center justify-between mb-4">
+        <div className={`icon-container ${colors.icon}`}>
+          {Icon && <Icon className="h-5 w-5" />}
         </div>
-      </Card.Body>
-    </Card>
+        {trendInfo && (
+          <div className={trendInfo.className}>
+            <trendInfo.icon className="h-4 w-4" />
+            {trendInfo.isPositive ? "+" : ""}
+            {format === "percentage"
+              ? `${trendInfo.value.toFixed(1)}%`
+              : trendInfo.value.toFixed(1)}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <p className={`text-sm font-medium mb-2 ${colors.text}`}>{title}</p>
+        <p className={`analytics-value ${colors.text}`}>{formatValue(value)}</p>
+        {subtitle && <p className="text-xs text-gray-600 mt-1">{subtitle}</p>}
+      </div>
+    </div>
   );
 };
 

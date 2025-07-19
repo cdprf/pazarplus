@@ -4,8 +4,8 @@ const { Product, Order, OrderItem, Customer, sequelize } = require("../models");
 const { Op } = require("sequelize");
 
 // Analytics timeout configuration
-const ANALYTICS_TIMEOUT = 30000; // 30 seconds
-const CRITICAL_ANALYTICS_TIMEOUT = 45000; // 45 seconds for complex operations
+const ANALYTICS_TIMEOUT = 20000; // 20 seconds
+const CRITICAL_ANALYTICS_TIMEOUT = 30000; // 30 seconds for complex operations
 
 // Helper function to create timeout wrapper
 const withTimeout = (promise, timeout = ANALYTICS_TIMEOUT) => {
@@ -116,7 +116,7 @@ function generateInventoryOptimization(predictions, topProducts) {
  */
 class AnalyticsController {
   /**
-   * Get comprehensive dashboard analytics with advanced insights
+   * Get comprehensive dashboard analytics with advanced insights and fallback handling
    */
   async getDashboardAnalytics(req, res) {
     try {
@@ -131,12 +131,17 @@ class AnalyticsController {
         ANALYTICS_TIMEOUT
       );
 
+      // Check if this is fallback data (no real data available)
+      const hasRealData = analytics?.hasData !== false;
+
       // Debug logging
       logger.info("Dashboard analytics response", {
         userId,
         timeframe,
-        orderSummaryTotal: analytics?.orderSummary?.total || 0,
-        revenueTotal: analytics?.revenue?.total || 0,
+        hasRealData,
+        orderSummaryTotal: analytics?.orderSummary?.totalOrders || 0,
+        revenueTotal:
+          analytics?.revenue?.total || analytics?.revenue?.totalRevenue || 0,
         revenueTrendsCount: analytics?.revenue?.trends?.length || 0,
         topProductsCount: analytics?.topProducts?.length || 0,
         hasRevenueData: !!analytics?.revenue,
@@ -145,11 +150,22 @@ class AnalyticsController {
         ),
       });
 
-      res.json({
+      // Determine appropriate message based on data availability
+      let message = "Dashboard analytics retrieved successfully";
+      let statusCode = 200;
+
+      if (!hasRealData) {
+        message =
+          "No sales data available yet. Start making sales to see detailed analytics.";
+        statusCode = 200; // Still success, just no data
+      }
+
+      res.status(statusCode).json({
         success: true,
-        message: "Dashboard analytics retrieved successfully",
+        message,
         data: safeJsonResponse(analytics),
         timeframe,
+        hasData: hasRealData,
         generatedAt: new Date(),
       });
     } catch (error) {
@@ -165,10 +181,41 @@ class AnalyticsController {
           timeframe: req.query.timeframe || "30d",
         });
       } else {
-        res.status(500).json({
-          success: false,
-          message: "Failed to retrieve dashboard analytics",
-          error: error.message,
+        // For any other error, return a fallback response instead of 500
+        logger.warn(
+          "Returning fallback analytics due to error:",
+          error.message
+        );
+
+        const fallbackAnalytics = {
+          orderSummary: {
+            totalOrders: 0,
+            totalRevenue: 0,
+            averageOrderValue: 0,
+          },
+          revenue: { total: 0, trends: [], growth: { percentage: 0 } },
+          platformComparison: [],
+          platforms: [],
+          topProducts: [],
+          orderTrends: { daily: [], growth: { percentage: 0 } },
+          trends: { daily: [], growth: { percentage: 0 } },
+          performanceMetrics: { conversionRate: 0, customerSatisfaction: 0 },
+          performance: { conversionRate: 0, customerSatisfaction: 0 },
+          generatedAt: new Date(),
+          timeframe: req.query.timeframe || "30d",
+          hasData: false,
+          error: "Analytics temporarily unavailable",
+        };
+
+        res.status(200).json({
+          success: true,
+          message:
+            "Analytics service temporarily unavailable. Please try again later.",
+          data: fallbackAnalytics,
+          timeframe: req.query.timeframe || "30d",
+          hasData: false,
+          error: "SERVICE_UNAVAILABLE",
+          generatedAt: new Date(),
         });
       }
     }

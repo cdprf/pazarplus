@@ -6,6 +6,7 @@ import { useNotification } from "../../contexts/NotificationContext";
 import { useWebSocketNotifications } from "../../hooks/useWebSocketNotifications";
 import { cn } from "../../utils/cn";
 import { Button, Badge, Tooltip } from "../ui";
+import LanguageSwitcher from "../common/LanguageSwitcher";
 import api from "../../services/api";
 import {
   Bars3Icon,
@@ -32,8 +33,7 @@ const Navbar = ({ toggleSidebar }) => {
   const { user, logout, isAuthenticated } = useAuth();
   const { theme, setLightTheme, setDarkTheme, followSystemTheme, systemTheme } =
     useTheme();
-  const { notifications, unreadCount, markAllAsRead, addTestNotifications } =
-    useNotification();
+  const { notifications, unreadCount, markAllAsRead } = useNotification();
   const { isConnected: wsConnected } = useWebSocketNotifications();
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,6 +44,7 @@ const Navbar = ({ toggleSidebar }) => {
   const [showQuickSearch, setShowQuickSearch] = useState(false);
   const [orderCounts, setOrderCounts] = useState({
     total: 0,
+    newOrders: 0,
     pending: 0,
     processing: 0,
     shipped: 0,
@@ -54,15 +55,40 @@ const Navbar = ({ toggleSidebar }) => {
   const themeMenuRef = useRef(null);
   const notificationRef = useRef(null);
   const searchRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const isFetchingRef = useRef(false);
 
-  // Fetch order counts for navigation badges
+  // Fetch order counts for navigation badges with proper cancellation handling
   useEffect(() => {
+    let isMounted = true;
+
     const fetchOrderCounts = async () => {
-      if (!isAuthenticated) return;
+      if (!isAuthenticated || !isMounted || isFetchingRef.current) return;
 
       try {
-        const response = await api.orders.getOrders({ page: 0, size: 1 });
-        if (response.success) {
+        isFetchingRef.current = true;
+
+        // Cancel any pending request before making a new one
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        // Use shorter timeout for navbar background requests with abort signal
+        const response = await api.orders.getOrders(
+          { page: 1, limit: 1 }, // Minimal data request
+          {
+            timeout: 8000, // Shorter timeout
+            signal: abortControllerRef.current.signal,
+          }
+        );
+
+        if (!isMounted || abortControllerRef.current?.signal.aborted) {
+          console.log("📊 Order count request was cancelled");
+          return;
+        }
+
+        if (response.success || response.data) {
           // Get total count from response
           let totalOrders = 0;
 
@@ -75,50 +101,127 @@ const Navbar = ({ toggleSidebar }) => {
           }
 
           // Also fetch stats for different statuses
-          const statsResponse = await api.orders.getOrderStats?.();
-          let counts = {
-            total: totalOrders,
-            pending: 0,
-            processing: 0,
-            shipped: 0,
-            delivered: 0,
-          };
+          try {
+            const statsResponse = await api.orders.getOrderStats?.(
+              {},
+              {
+                signal: abortControllerRef.current.signal,
+                timeout: 6000,
+              }
+            );
 
-          if (statsResponse?.success && statsResponse.data) {
-            counts = {
-              total: statsResponse.data.total || totalOrders,
-              pending: statsResponse.data.pending || 0,
-              processing: statsResponse.data.processing || 0,
-              shipped: statsResponse.data.shipped || 0,
-              delivered: statsResponse.data.delivered || 0,
+            if (!isMounted || abortControllerRef.current?.signal.aborted) {
+              console.log("📊 Order stats request was cancelled");
+              return;
+            }
+
+            let counts = {
+              total: totalOrders,
+              newOrders: 0,
+              pending: 0,
+              processing: 0,
+              shipped: 0,
+              delivered: 0,
             };
-          }
 
-          setOrderCounts(counts);
-          console.log("Order counts updated:", counts);
+            if (statsResponse?.success && statsResponse.data) {
+              counts = {
+                total: statsResponse.data.total || totalOrders,
+                newOrders: statsResponse.data.newOrders || 0,
+                pending: statsResponse.data.pending || 0,
+                processing: statsResponse.data.processing || 0,
+                shipped: statsResponse.data.shipped || 0,
+                delivered: statsResponse.data.delivered || 0,
+              };
+            }
+
+            setOrderCounts(counts);
+            console.log("Order counts updated:", counts);
+          } catch (statsError) {
+            // If stats fetch fails, just use basic counts
+            if (
+              isMounted &&
+              statsError.name !== "AbortError" &&
+              statsError.code !== "ERR_CANCELED"
+            ) {
+              setOrderCounts((prev) => ({
+                ...prev,
+                total: totalOrders,
+              }));
+            }
+          }
         }
       } catch (error) {
-        console.error("Error fetching order counts:", error);
-        // Try alternative method to get total orders count
-        try {
-          const response = await api.orders.getOrders({ page: 0, size: 999 });
-          if (response.success && Array.isArray(response.data)) {
-            setOrderCounts((prev) => ({
-              ...prev,
-              total: response.data.length,
-            }));
-          }
-        } catch (err) {
-          console.error("Alternative order count fetch failed:", err);
+        // Don't log cancelled requests as errors
+        if (
+          error.name === "AbortError" ||
+          error.message === "canceled" ||
+          error.code === "ERR_CANCELED"
+        ) {
+          console.log(
+            "📊 Navbar order count request was cancelled (normal behavior)"
+          );
+          return;
         }
+
+        if (!isMounted) return; // Component was unmounted
+
+        // Handle cancellation errors silently - they're expected behavior
+        if (
+          error.name === "AbortError" ||
+          error.code === "ERR_CANCELED" ||
+          error.message === "canceled"
+        ) {
+          console.log(
+            "🔄 Navbar order count request was cancelled (expected behavior)"
+          );
+          return;
+        }
+
+        // Handle timeout errors gracefully without making more requests
+        if (
+          error.code === "ECONNABORTED" ||
+          error.message?.includes("timeout")
+        ) {
+          console.log(
+            "⏱️ Navbar order count request timed out, keeping previous values"
+          );
+          // Don't show timeout errors prominently in navbar
+        } else {
+          console.error("Navbar order count fetch failed:", error.message);
+        }
+
+        // Don't make additional requests on error - this can cause cascade failures
+        // Keep existing counts or set to safe defaults if none exist
+        setOrderCounts((prev) => {
+          if (!prev || Object.keys(prev).length === 0) {
+            return {
+              total: 0,
+              pending: 0,
+              processing: 0,
+              shipped: 0,
+              delivered: 0,
+            };
+          }
+          return prev;
+        });
+      } finally {
+        isFetchingRef.current = false;
       }
     };
 
     fetchOrderCounts();
 
-    // Refresh counts every 30 seconds
-    const interval = setInterval(fetchOrderCounts, 30000);
-    return () => clearInterval(interval);
+    // Refresh counts every 60 seconds (reduced frequency to prevent server overload)
+    const interval = setInterval(fetchOrderCounts, 60000);
+
+    return () => {
+      isMounted = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      clearInterval(interval);
+    };
   }, [isAuthenticated]);
 
   // Close dropdowns when clicking outside
@@ -170,8 +273,6 @@ const Navbar = ({ toggleSidebar }) => {
     if (theme === "light") return SunIcon;
     return ComputerDesktopIcon;
   };
-
-  const ThemeIcon = getThemeIcon();
 
   // Map notification types to icons and styles
   const getNotificationIcon = (type) => {
@@ -241,7 +342,7 @@ const Navbar = ({ toggleSidebar }) => {
       path: "/orders",
       icon: ShoppingCartIcon,
       description: "Manage orders",
-      badge: orderCounts.total > 0 ? orderCounts.total : null,
+      badge: orderCounts.newOrders > 0 ? orderCounts.newOrders : null,
     },
     {
       name: "Analytics",
@@ -384,6 +485,9 @@ const Navbar = ({ toggleSidebar }) => {
               </div>
             )}
 
+            {/* Language Switcher */}
+            <LanguageSwitcher />
+
             {/* Theme toggle dropdown */}
             <div className="relative" ref={themeMenuRef}>
               <Button
@@ -392,7 +496,7 @@ const Navbar = ({ toggleSidebar }) => {
                 onClick={() => setShowThemeMenu(!showThemeMenu)}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex items-center"
               >
-                <ThemeIcon className="h-4 w-4" />
+                {React.createElement(getThemeIcon(), { className: "h-4 w-4" })}
                 <ChevronDownIcon className="h-3 w-3 ml-1" />
               </Button>
 
@@ -458,8 +562,8 @@ const Navbar = ({ toggleSidebar }) => {
                           ? `${unreadCount} unread notification${
                               unreadCount !== 1 ? "s" : ""
                             }`
-                          : "No new notifications"
-                        : "Connecting to notifications..."
+                          : "Real-time notifications active"
+                        : "Notifications offline - will show manually refreshed data"
                     }
                     position="bottom"
                   >
@@ -467,34 +571,32 @@ const Navbar = ({ toggleSidebar }) => {
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowNotifications(!showNotifications)}
-                      className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 relative"
+                      className={cn(
+                        "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 relative notification-container",
+                        !wsConnected && "opacity-60"
+                      )}
                     >
                       <BellIcon className="h-5 w-5" />
+                      {!wsConnected && (
+                        <div className="absolute -top-1 -left-1 w-3 h-3 bg-amber-500 rounded-full animate-pulse" />
+                      )}
                       {unreadCount > 0 && (
-                        <div
-                          className="absolute -top-1 -right-1 flex items-center justify-center"
-                          style={{ zIndex: "var(--z-notification-badge)" }}
+                        <span
+                          className={cn(
+                            "absolute -top-1 -right-1 h-5 w-5 text-white text-xs rounded-full flex items-center justify-center font-medium shadow-lg notification-badge",
+                            highPriorityCount > 0
+                              ? "bg-red-500 animate-pulse high-priority"
+                              : "bg-primary-500"
+                          )}
                         >
-                          <span
-                            className={cn(
-                              "h-5 w-5 text-white text-xs rounded-full flex items-center justify-center font-medium shadow-lg",
-                              highPriorityCount > 0
-                                ? "bg-red-500 animate-pulse"
-                                : "bg-primary-500"
-                            )}
-                          >
-                            {unreadCount > 9 ? "9+" : unreadCount}
-                          </span>
-                        </div>
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
                       )}
                     </Button>
                   </Tooltip>
 
                   {showNotifications && (
-                    <div
-                      className="absolute right-0 top-full mt-2 w-96 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 animate-scale-in"
-                      style={{ zIndex: "var(--z-popover)" }}
-                    >
+                    <div className="absolute right-0 top-full mt-2 w-96 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 animate-scale-in notification-dropdown">
                       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex items-center justify-between">
                           <h3 className="font-semibold text-gray-900 dark:text-white">
@@ -590,25 +692,13 @@ const Navbar = ({ toggleSidebar }) => {
                             </p>
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                               {wsConnected
-                                ? "Connected to real-time notifications"
-                                : "Connecting..."}
+                                ? "Real-time notifications active"
+                                : "Offline mode - notifications will update when page refreshes"}
                             </p>
                           </div>
                         )}
                       </div>
                       <div className="p-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
-                        {process.env.NODE_ENV === "development" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full justify-center text-xs"
-                            onClick={() => {
-                              addTestNotifications();
-                            }}
-                          >
-                            Add Test Notifications (Dev)
-                          </Button>
-                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -619,6 +709,17 @@ const Navbar = ({ toggleSidebar }) => {
                           }}
                         >
                           View All Notifications
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-center text-xs"
+                          onClick={() => {
+                            setShowNotifications(false);
+                            navigate("/settings");
+                          }}
+                        >
+                          Notification Settings
                         </Button>
                       </div>
                     </div>

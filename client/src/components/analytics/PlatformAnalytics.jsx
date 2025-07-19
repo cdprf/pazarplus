@@ -189,27 +189,31 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPICard
           title="Active Platforms"
-          value={totalPlatforms.toString()}
+          value={totalPlatforms}
           icon={GlobeAltIcon}
           color="primary"
+          format="number"
         />
         <KPICard
           title="Total Revenue"
-          value={formatCurrency(totalRevenue)}
+          value={totalRevenue}
           icon={ChartBarIcon}
           color="success"
+          format="currency"
         />
         <KPICard
           title="Total Orders"
-          value={formatNumber(totalOrders)}
+          value={totalOrders}
           icon={ShoppingBagIcon}
           color="info"
+          format="number"
         />
         <KPICard
           title="Avg Order Value"
-          value={formatCurrency(avgOrderValue)}
+          value={avgOrderValue}
           icon={ArrowTrendingUpIcon}
           color="warning"
+          format="currency"
         />
       </div>
 

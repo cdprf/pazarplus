@@ -1,22 +1,19 @@
 import React, { useState, useContext, useEffect, useCallback } from "react";
 import {
   ShieldCheckIcon,
-  CreditCardIcon,
-  BellIcon,
-  UserIcon,
   ChartBarIcon,
   ClockIcon,
-  ExclamationTriangleIcon,
   StarIcon,
   TrophyIcon,
   BuildingOfficeIcon,
 } from "@heroicons/react/24/outline";
 import { AuthContext } from "../../contexts/AuthContext";
-import { Button, Badge } from "../ui";
+import { Badge } from "../ui";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui";
 
 const AccountOverview = () => {
   const { user } = useContext(AuthContext);
+  // eslint-disable-next-line no-unused-vars
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalProducts: 0,

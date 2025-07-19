@@ -14,12 +14,9 @@ import {
   ShoppingBag,
   CreditCard,
   Truck,
-  Phone,
-  Mail,
   Building,
   Clock,
   DollarSign,
-  Info,
   Tag,
   CheckCircle,
 } from "lucide-react";

@@ -25,6 +25,7 @@
   /* Notification Layers (8000-8999) */
   --z-toast: 8000;
   --z-notification: 8100;
+  --z-notification-badge: 8150;
   --z-tooltip: 8200;
   --z-popover: 8300;
 

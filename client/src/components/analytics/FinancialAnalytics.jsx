@@ -153,28 +153,32 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPICard
           title="Total Revenue"
-          value={formatCurrency(totalRevenue)}
+          value={totalRevenue}
           change={revenueGrowth}
           icon={CurrencyDollarIcon}
           color="success"
+          format="currency"
         />
         <KPICard
           title="Gross Profit"
-          value={formatCurrency(grossProfit)}
+          value={grossProfit}
           icon={BanknotesIcon}
           color="primary"
+          format="currency"
         />
         <KPICard
           title="Profit Margin"
-          value={formatPercentage(profitMargin)}
+          value={profitMargin}
           icon={ChartBarIcon}
           color="info"
+          format="percentage"
         />
         <KPICard
           title="Avg Order Value"
-          value={formatCurrency(avgOrderValue)}
+          value={avgOrderValue}
           icon={ArrowTrendingUpIcon}
           color="warning"
+          format="currency"
         />
       </div>
 
@@ -335,7 +339,12 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
                   ></div>
                 </div>
                 <p className="text-sm text-gray-600">
-                  Profit margin: {profitMargin.toFixed(1)}%
+                  Profit margin:{" "}
+                  {(typeof profitMargin === "number" && !isNaN(profitMargin)
+                    ? profitMargin
+                    : 0
+                  ).toFixed(1)}
+                  %
                 </p>
               </div>
               <div>
@@ -350,7 +359,11 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
                   }`}
                 >
                   {revenueGrowth > 0 ? "+" : ""}
-                  {revenueGrowth.toFixed(1)}%
+                  {(typeof revenueGrowth === "number" && !isNaN(revenueGrowth)
+                    ? revenueGrowth
+                    : 0
+                  ).toFixed(1)}
+                  %
                 </span>
                 <p className="text-sm text-gray-600 mt-1">vs previous period</p>
               </div>
@@ -480,10 +493,18 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-900">
-                  ${avgOrderValue.toFixed(2)}
+                  $
+                  {(typeof avgOrderValue === "number" && !isNaN(avgOrderValue)
+                    ? avgOrderValue
+                    : 0
+                  ).toFixed(2)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-900">
-                  ${(avgOrderValue * 0.95).toFixed(2)}
+                  $
+                  {(typeof avgOrderValue === "number" && !isNaN(avgOrderValue)
+                    ? avgOrderValue * 0.95
+                    : 0
+                  ).toFixed(2)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">

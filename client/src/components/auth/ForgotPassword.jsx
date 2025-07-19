@@ -39,7 +39,7 @@ const ForgotPassword = () => {
 
   if (success) {
     return (
-      <Container className="py-5">
+      <Container className="py-5 auth-container">
         <Row className="justify-content-center">
           <Col md={6}>
             <Card>
@@ -67,7 +67,7 @@ const ForgotPassword = () => {
   }
 
   return (
-    <Container className="py-5">
+    <Container className="py-5 auth-container">
       <Row className="justify-content-center">
         <Col md={6}>
           <Card>

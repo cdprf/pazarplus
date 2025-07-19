@@ -295,6 +295,21 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
     showAlert("Template loaded successfully!", "success");
   };
 
+  const handleImportTemplate = (templateData) => {
+    try {
+      if (templateData.config && templateData.elements) {
+        setTemplateConfig(templateData.config);
+        setElements(templateData.elements);
+        showAlert("Template imported successfully!", "success");
+      } else {
+        throw new Error("Invalid template format");
+      }
+    } catch (error) {
+      console.error("Error importing template:", error);
+      showAlert("Error importing template: " + error.message, "error");
+    }
+  };
+
   const handleDeleteTemplate = async (templateId) => {
     try {
       await TemplateManager.deleteTemplate(templateId);
@@ -408,6 +423,7 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
               onConfigChange={setTemplateConfig}
               onSave={handleSaveTemplate}
               onExport={handleExportTemplate}
+              onImport={handleImportTemplate}
               onShowTemplates={() => setShowTemplateModal(true)}
               savedTemplates={savedTemplates}
             />

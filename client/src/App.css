@@ -423,6 +423,295 @@ body {
   color: #f87171;
 }
 
+/* Dark Mode Overrides for Bootstrap */
+
+/* Bootstrap text color overrides */
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
+.text-primary {
+  color: var(--text-primary) !important;
+}
+
+.text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+/* Comprehensive Tailwind Dark Mode Text Overrides */
+
+/* Override hard-coded gray text colors with responsive variants */
+.text-gray-900 {
+  color: var(--text-primary) !important;
+}
+
+.text-gray-800 {
+  color: var(--text-primary) !important;
+}
+
+.text-gray-700 {
+  color: var(--text-secondary) !important;
+}
+
+.text-gray-600 {
+  color: var(--text-secondary) !important;
+}
+
+.text-gray-500 {
+  color: var(--text-muted) !important;
+}
+
+.text-gray-400 {
+  color: var(--text-muted) !important;
+}
+
+/* Override slate text colors */
+.text-slate-900 {
+  color: var(--text-primary) !important;
+}
+
+.text-slate-800 {
+  color: var(--text-primary) !important;
+}
+
+.text-slate-700 {
+  color: var(--text-secondary) !important;
+}
+
+.text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+.text-slate-500 {
+  color: var(--text-muted) !important;
+}
+
+.text-slate-400 {
+  color: var(--text-muted) !important;
+}
+
+/* Override zinc text colors */
+.text-zinc-900 {
+  color: var(--text-primary) !important;
+}
+
+.text-zinc-800 {
+  color: var(--text-primary) !important;
+}
+
+.text-zinc-700 {
+  color: var(--text-secondary) !important;
+}
+
+.text-zinc-600 {
+  color: var(--text-secondary) !important;
+}
+
+.text-zinc-500 {
+  color: var(--text-muted) !important;
+}
+
+.text-zinc-400 {
+  color: var(--text-muted) !important;
+}
+
+/* Background color overrides for better contrast */
+.bg-gray-50 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.bg-gray-100 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.bg-gray-800 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.bg-gray-900 {
+  background-color: var(--bg-primary) !important;
+}
+
+/* Border color overrides */
+.border-gray-200 {
+  border-color: var(--border-color) !important;
+}
+
+.border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+.border-gray-700 {
+  border-color: var(--border-color) !important;
+}
+
+/* Bootstrap card overrides for dark mode */
+.card {
+  background-color: var(--bg-primary) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.card-body {
+  color: var(--text-primary) !important;
+}
+
+.card-header {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.card-footer {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Bootstrap form control overrides */
+.form-control {
+  background-color: var(--bg-primary) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.form-control:focus {
+  background-color: var(--bg-primary) !important;
+  border-color: var(--primary-500) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25) !important;
+}
+
+.form-control::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Bootstrap form label overrides */
+.form-label {
+  color: var(--text-primary) !important;
+}
+
+/* Bootstrap alert overrides */
+.alert {
+  border-color: var(--border-color) !important;
+}
+
+.alert-success {
+  background-color: var(--success-50) !important;
+  border-color: var(--success-500) !important;
+  color: var(--success-600) !important;
+}
+
+.alert-danger {
+  background-color: var(--danger-50) !important;
+  border-color: var(--danger-500) !important;
+  color: var(--danger-600) !important;
+}
+
+.alert-warning {
+  background-color: var(--warning-50) !important;
+  border-color: var(--warning-500) !important;
+  color: var(--warning-600) !important;
+}
+
+.alert-info {
+  background-color: rgba(6, 182, 212, 0.1) !important;
+  border-color: #06b6d4 !important;
+  color: #0891b2 !important;
+}
+
+/* Dark mode specific alert overrides */
+[data-theme="dark"] .alert-success {
+  background-color: rgba(34, 197, 94, 0.1) !important;
+  color: #4ade80 !important;
+}
+
+[data-theme="dark"] .alert-danger {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  color: #f87171 !important;
+}
+
+[data-theme="dark"] .alert-warning {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  color: #fbbf24 !important;
+}
+
+[data-theme="dark"] .alert-info {
+  background-color: rgba(6, 182, 212, 0.1) !important;
+  color: #22d3ee !important;
+}
+
+/* Bootstrap button overrides */
+.btn-primary {
+  background-color: var(--primary-500) !important;
+  border-color: var(--primary-500) !important;
+  color: white !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: var(--primary-600) !important;
+  border-color: var(--primary-600) !important;
+  color: white !important;
+}
+
+.btn-primary:disabled {
+  background-color: var(--primary-500) !important;
+  border-color: var(--primary-500) !important;
+  opacity: 0.6 !important;
+}
+
+/* Bootstrap link overrides */
+a {
+  color: var(--primary-500) !important;
+}
+
+a:hover,
+a:focus {
+  color: var(--primary-600) !important;
+}
+
+/* Container and layout overrides */
+.container,
+.container-fluid {
+  color: var(--text-primary) !important;
+}
+
+/* Ensure proper text contrast in all Bootstrap components */
+[data-theme="dark"] .text-dark {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .text-light {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .bg-light {
+  background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .bg-dark {
+  background-color: var(--bg-primary) !important;
+}
+
+[data-theme="dark"] .bg-white {
+  background-color: var(--bg-primary) !important;
+}
+
+/* Specific fix for the login form */
+[data-theme="dark"] .login-container .text-muted {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .login-container h2 {
+  color: var(--primary-500) !important;
+}
+
+[data-theme="dark"] .login-container p {
+  color: var(--text-secondary) !important;
+}
+
 /* Enhanced animations */
 .fade-in {
   animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -601,4 +890,896 @@ body {
     box-shadow: none;
     border: 1px solid #ccc;
   }
+}
+
+/* Enhanced Auth Components Dark Mode Support */
+.auth-container {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.auth-container .card {
+  background-color: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.auth-container .card-body {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.auth-container h1,
+.auth-container h2,
+.auth-container h3,
+.auth-container h4,
+.auth-container h5,
+.auth-container h6 {
+  color: var(--text-primary) !important;
+}
+
+.auth-container .text-primary {
+  color: var(--primary-500) !important;
+}
+
+.auth-container .text-muted {
+  color: var(--text-muted) !important;
+}
+
+.auth-container .text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+/* Enhanced form controls for auth pages */
+.auth-container .form-control {
+  background-color: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
+  transition: all 0.3s ease !important;
+}
+
+.auth-container .form-control:focus {
+  background-color: var(--bg-primary) !important;
+  border-color: var(--primary-500) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25) !important;
+}
+
+.auth-container .form-control::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.8 !important;
+}
+
+.auth-container .form-label {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+}
+
+/* Enhanced links for auth pages */
+.auth-container a {
+  color: var(--primary-500) !important;
+  text-decoration: none !important;
+  transition: color 0.3s ease !important;
+}
+
+.auth-container a:hover,
+.auth-container a:focus {
+  color: var(--primary-600) !important;
+  text-decoration: underline !important;
+}
+
+/* Enhanced buttons for auth pages */
+.auth-container .btn-primary {
+  background: linear-gradient(
+    135deg,
+    var(--primary-500),
+    var(--primary-600)
+  ) !important;
+  border-color: var(--primary-500) !important;
+  color: white !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+}
+
+.auth-container .btn-primary:hover,
+.auth-container .btn-primary:focus {
+  background: linear-gradient(
+    135deg,
+    var(--primary-600),
+    var(--primary-700)
+  ) !important;
+  border-color: var(--primary-600) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.auth-container .btn-primary:active {
+  transform: translateY(0) !important;
+}
+
+.auth-container .btn-primary:disabled {
+  opacity: 0.6 !important;
+  transform: none !important;
+  cursor: not-allowed !important;
+}
+
+/* Enhanced alerts for auth pages */
+.auth-container .alert {
+  border: none !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+}
+
+.auth-container .alert-success {
+  background: linear-gradient(
+    135deg,
+    var(--success-50),
+    rgba(34, 197, 94, 0.1)
+  ) !important;
+  color: var(--success-600) !important;
+  border-left: 4px solid var(--success-500) !important;
+}
+
+.auth-container .alert-danger {
+  background: linear-gradient(
+    135deg,
+    var(--danger-50),
+    rgba(239, 68, 68, 0.1)
+  ) !important;
+  color: var(--danger-600) !important;
+  border-left: 4px solid var(--danger-500) !important;
+}
+
+.auth-container .alert-warning {
+  background: linear-gradient(
+    135deg,
+    var(--warning-50),
+    rgba(245, 158, 11, 0.1)
+  ) !important;
+  color: var(--warning-600) !important;
+  border-left: 4px solid var(--warning-500) !important;
+}
+
+.auth-container .alert-info {
+  background: linear-gradient(
+    135deg,
+    rgba(6, 182, 212, 0.1),
+    rgba(6, 182, 212, 0.05)
+  ) !important;
+  color: #0891b2 !important;
+  border-left: 4px solid #06b6d4 !important;
+}
+
+/* Dark mode specific overrides for auth alerts */
+[data-theme="dark"] .auth-container .alert-success {
+  background: linear-gradient(
+    135deg,
+    rgba(34, 197, 94, 0.1),
+    rgba(34, 197, 94, 0.05)
+  ) !important;
+  color: #4ade80 !important;
+}
+
+[data-theme="dark"] .auth-container .alert-danger {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.1),
+    rgba(239, 68, 68, 0.05)
+  ) !important;
+  color: #f87171 !important;
+}
+
+[data-theme="dark"] .auth-container .alert-warning {
+  background: linear-gradient(
+    135deg,
+    rgba(245, 158, 11, 0.1),
+    rgba(245, 158, 11, 0.05)
+  ) !important;
+  color: #fbbf24 !important;
+}
+
+[data-theme="dark"] .auth-container .alert-info {
+  background: linear-gradient(
+    135deg,
+    rgba(6, 182, 212, 0.1),
+    rgba(6, 182, 212, 0.05)
+  ) !important;
+  color: #22d3ee !important;
+}
+
+/* Table hover state fixes */
+.hover\:bg-gray-50:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.hover\:bg-gray-100:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+/* Additional hover state overrides for all components */
+.hover\:bg-gray-200:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.hover\:bg-gray-800:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+/* Dark mode hover overrides */
+[data-theme="dark"] .dark\:hover\:bg-gray-600:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+[data-theme="dark"] .dark\:hover\:bg-gray-700:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+[data-theme="dark"] .dark\:hover\:bg-gray-800:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+/* Text hover states */
+.hover\:text-gray-600:hover {
+  color: var(--text-secondary) !important;
+}
+
+.hover\:text-gray-300:hover {
+  color: var(--text-secondary) !important;
+}
+
+/* Customer questions table hover fix */
+.customer-questions-table tr:hover,
+tr.hover\:bg-gray-50:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+/* Notification and button hover states */
+.bg-gray-100 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.bg-gray-700 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.text-gray-700 {
+  color: var(--text-secondary) !important;
+}
+
+.text-gray-300 {
+  color: var(--text-secondary) !important;
+}
+
+/* Dark mode text overrides */
+[data-theme="dark"] .dark\:bg-gray-700 {
+  background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .dark\:text-gray-300 {
+  color: var(--text-secondary) !important;
+}
+
+/* Comprehensive hover state normalization */
+*[class*="hover:bg-gray"]:hover {
+  background-color: var(--bg-tertiary) !important;
+  transition: background-color 0.2s ease !important;
+}
+
+/* Sidebar hover states */
+.sidebar *[class*="hover:bg-gray"]:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+/* Focus state overrides for consistency */
+.focus\:bg-gray-50:focus {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.focus\:bg-red-50:focus {
+  background-color: var(--danger-50) !important;
+}
+
+[data-theme="dark"] .focus\:bg-red-50:focus {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* Additional hover states for colored backgrounds */
+.hover\:bg-green-700:hover {
+  background-color: var(--success-700) !important;
+}
+
+.hover\:bg-red-50:hover {
+  background-color: var(--danger-50) !important;
+}
+
+[data-theme="dark"] .hover\:bg-red-50:hover {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* Ensure all hover states have consistent transitions */
+*[class*="hover:"]:hover {
+  transition: all 0.2s ease !important;
+}
+
+/* Notification Badge Z-Index Fixes */
+.notification-badge {
+  z-index: var(--z-notification-badge) !important;
+  position: relative !important;
+}
+
+.notification-dropdown {
+  z-index: var(--z-popover) !important;
+}
+
+/* Ensure notification badge appears above all other elements */
+.navbar .notification-badge {
+  z-index: var(--z-notification-badge) !important;
+}
+
+/* Fix for notification badge positioning */
+.notification-container {
+  position: relative;
+  z-index: var(--z-notification);
+}
+
+.notification-container .notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  z-index: var(--z-notification-badge) !important;
+}
+
+/* Ensure badges are above modals and other overlays */
+[class*="notification-badge"],
+[class*="badge"] {
+  z-index: var(--z-notification-badge) !important;
+}
+
+/* Higher z-index for critical notification elements */
+.notification-badge.high-priority {
+  z-index: calc(var(--z-notification-badge) + 10) !important;
+}
+
+/* Fix for notification badge in navbar */
+.navbar-notification {
+  position: relative;
+  z-index: var(--z-notification);
+}
+
+.navbar-notification .badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  z-index: var(--z-notification-badge) !important;
+  pointer-events: none;
+}
+
+/* Additional badge positioning fixes */
+.position-relative {
+  position: relative !important;
+}
+
+.position-absolute {
+  position: absolute !important;
+}
+
+/* Specific positioning for notification badges */
+.-top-1 {
+  top: -0.25rem !important;
+}
+
+.-right-1 {
+  right: -0.25rem !important;
+}
+
+/* Ensure proper stacking context */
+.navbar-nav,
+.nav-item {
+  position: static;
+}
+
+.nav-item .notification-badge {
+  z-index: var(--z-notification-badge) !important;
+}
+
+/* Enhanced Analytics Dashboard Styles */
+
+/* Analytics Page Container */
+.analytics-dashboard {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* Analytics KPI Cards */
+.analytics-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.analytics-kpi-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.analytics-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.analytics-kpi-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary-500), var(--primary-600));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.analytics-kpi-card:hover::before {
+  opacity: 1;
+}
+
+/* Icon container styles */
+.icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.icon-container.icon-primary {
+  background: var(--primary-100);
+  color: var(--primary-600);
+}
+
+.icon-container.icon-success {
+  background: var(--success-50);
+  color: var(--success-600);
+}
+
+.icon-container.icon-warning {
+  background: var(--warning-50);
+  color: var(--warning-600);
+}
+
+.icon-container.icon-danger {
+  background: var(--danger-50);
+  color: var(--danger-600);
+}
+
+.icon-container.icon-info {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+/* Dark mode adjustments for icon containers */
+[data-theme="dark"] .icon-container.icon-primary {
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .icon-container.icon-success {
+  background: rgba(34, 197, 94, 0.1);
+  color: #4ade80;
+}
+
+[data-theme="dark"] .icon-container.icon-warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+}
+
+[data-theme="dark"] .icon-container.icon-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+}
+
+[data-theme="dark"] .icon-container.icon-info {
+  background: rgba(107, 114, 128, 0.1);
+  color: #d1d5db;
+}
+
+/* Enhanced Chart Containers */
+.analytics-chart-container {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.analytics-chart-container:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.analytics-chart-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.analytics-chart-header h3 {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.analytics-chart-body {
+  padding: 1.5rem;
+}
+
+/* Analytics Status Badges */
+.analytics-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.analytics-status-badge.status-live {
+  background: var(--success-50);
+  color: var(--success-600);
+  border: 1px solid var(--success-200);
+}
+
+.analytics-status-badge.status-action-required {
+  background: var(--warning-50);
+  color: var(--warning-600);
+  border: 1px solid var(--warning-200);
+  animation: pulse 2s infinite;
+}
+
+.analytics-status-badge.status-setup {
+  background: var(--gray-50);
+  color: var(--gray-600);
+  border: 1px solid var(--gray-200);
+}
+
+/* Analytics Recommendations */
+.analytics-recommendation-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.25rem;
+  transition: all 0.3s ease;
+  position: relative;
+  border-left-width: 4px;
+}
+
+.analytics-recommendation-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.analytics-recommendation-card.priority-high {
+  border-left-color: var(--danger-500);
+}
+
+.analytics-recommendation-card.priority-medium {
+  border-left-color: var(--warning-500);
+}
+
+.analytics-recommendation-card.priority-low {
+  border-left-color: var(--success-500);
+}
+
+/* Analytics Loading States */
+.analytics-skeleton {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.analytics-skeleton::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+[data-theme="dark"] .analytics-skeleton::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+}
+
+/* Analytics Trends */
+.analytics-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.analytics-trend.trend-up {
+  background: var(--success-50);
+  color: var(--success-600);
+}
+
+.analytics-trend.trend-down {
+  background: var(--danger-50);
+  color: var(--danger-600);
+}
+
+.analytics-trend.trend-neutral {
+  background: var(--gray-50);
+  color: var(--gray-600);
+}
+
+/* Dark mode enhancements for analytics */
+[data-theme="dark"] .analytics-trend.trend-up {
+  background: rgba(34, 197, 94, 0.1);
+  color: #4ade80;
+}
+
+[data-theme="dark"] .analytics-trend.trend-down {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+}
+
+[data-theme="dark"] .analytics-trend.trend-neutral {
+  background: rgba(107, 114, 128, 0.1);
+  color: #d1d5db;
+}
+
+/* Analytics Tab Navigation */
+.analytics-tab-nav {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.analytics-tab-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.analytics-tab-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+}
+
+.analytics-tab-button:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.analytics-tab-button.active {
+  color: var(--primary-600);
+  border-bottom-color: var(--primary-500);
+  background: var(--primary-50);
+}
+
+.analytics-tab-button.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--primary-500);
+}
+
+/* Analytics Value Display */
+.analytics-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-primary);
+  margin: 0.5rem 0;
+}
+
+.analytics-value.large {
+  font-size: 2.5rem;
+}
+
+.analytics-value.small {
+  font-size: 1.5rem;
+}
+
+/* Analytics Metric Cards */
+.analytics-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.analytics-metric-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.analytics-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Enhanced gradient backgrounds */
+.bg-gradient-primary {
+  background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+}
+
+.bg-gradient-success {
+  background: linear-gradient(135deg, var(--success-500), var(--success-600));
+}
+
+.bg-gradient-warning {
+  background: linear-gradient(135deg, var(--warning-500), var(--warning-600));
+}
+
+.bg-gradient-danger {
+  background: linear-gradient(135deg, var(--danger-500), var(--danger-600));
+}
+
+/* Page content wrapper */
+.page-content {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: calc(100vh - 200px);
+  padding: 1rem 0;
+}
+
+/* Enhanced text utilities */
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+/* Progress bar styles */
+.progress-bar {
+  width: 4rem;
+  height: 0.5rem;
+  background: var(--gray-200);
+  border-radius: 0.25rem;
+  overflow: hidden;
+  margin-right: 0.75rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary-500);
+  border-radius: 0.25rem;
+  transition: width 0.3s ease;
+}
+
+[data-theme="dark"] .progress-bar {
+  background: var(--gray-700);
+}
+
+/* Table styles */
+.table-container {
+  overflow-x: auto;
+  border-radius: 0.5rem;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.data-table thead {
+  background: var(--bg-secondary);
+}
+
+.data-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.data-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.data-table tbody tr:hover {
+  background: var(--bg-tertiary);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--border-color);
+  border-top: 2px solid var(--primary-500);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Card title styles */
+.card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
 }

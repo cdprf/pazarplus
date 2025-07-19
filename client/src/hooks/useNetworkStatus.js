@@ -107,12 +107,14 @@ export const useNetworkAwareInterval = (callback, delay, options = {}) => {
     }, delay);
 
     return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     callback,
     delay,
     canMakeRequest,
     pauseOnNetworkError,
     runImmediately,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     ...dependencies,
   ]);
 };

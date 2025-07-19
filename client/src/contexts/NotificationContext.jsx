@@ -53,23 +53,6 @@ export const NotificationProvider = ({ children }) => {
     setNotifications([]);
   };
 
-  // Test function to add sample notifications
-  const addTestNotifications = () => {
-    addNotification({
-      title: "Test Order Notification",
-      message: "This is a test order notification from the system",
-      type: "order",
-      priority: "high",
-    });
-
-    addNotification({
-      title: "Test Inventory Alert",
-      message: "Test low stock notification",
-      type: "inventory",
-      priority: "medium",
-    });
-  };
-
   const value = {
     notifications,
     unreadCount: notifications.filter((n) => !n.read).length,
@@ -78,7 +61,6 @@ export const NotificationProvider = ({ children }) => {
     markAllAsRead,
     removeNotification,
     clearAllNotifications,
-    addTestNotifications,
   };
 
   return (

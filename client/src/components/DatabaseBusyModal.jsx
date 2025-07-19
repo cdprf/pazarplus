@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   X,
   Database,
   Clock,
   AlertTriangle,
   Pause,
-  Play,
   StopCircle,
   Loader,
 } from "lucide-react";
@@ -21,21 +20,35 @@ const DatabaseBusyModal = ({ isOpen, onClose, onUserDecision }) => {
   const [userInteraction, setUserInteraction] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  // Initialize WebSocket connection
-  useEffect(() => {
-    if (isOpen && !wsConnection) {
-      connectWebSocket();
-    }
-
-    return () => {
-      if (wsConnection) {
-        wsConnection.close();
-        setWsConnection(null);
+  const handleWebSocketMessage = useCallback(
+    (data) => {
+      switch (data.type) {
+        case "initial_status":
+        case "status_update":
+          setDatabaseStatus(data.data);
+          break;
+        case "database_busy_user_input":
+          setUserInteraction(data.data.interaction);
+          break;
+        case "database_recovered":
+          setDatabaseStatus((prev) => ({ ...prev, isDatabaseBusy: false }));
+          break;
+        case "user_decision_made":
+          if (
+            userInteraction &&
+            data.data.interactionId === userInteraction.id
+          ) {
+            setUserInteraction(null);
+          }
+          break;
+        default:
+          console.log("Unhandled WebSocket message type:", data.type);
       }
-    };
-  }, [isOpen]);
+    },
+    [userInteraction]
+  );
 
-  const connectWebSocket = () => {
+  const connectWebSocket = useCallback(() => {
     setIsConnecting(true);
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 
@@ -84,29 +97,21 @@ const DatabaseBusyModal = ({ isOpen, onClose, onUserDecision }) => {
       console.error("Database status WebSocket error:", error);
       setIsConnecting(false);
     };
-  };
+  }, [handleWebSocketMessage]);
 
-  const handleWebSocketMessage = (data) => {
-    switch (data.type) {
-      case "initial_status":
-      case "status_update":
-        setDatabaseStatus(data.data);
-        break;
-      case "database_busy_user_input":
-        setUserInteraction(data.data.interaction);
-        break;
-      case "database_recovered":
-        setDatabaseStatus((prev) => ({ ...prev, isDatabaseBusy: false }));
-        break;
-      case "user_decision_made":
-        if (userInteraction && data.data.interactionId === userInteraction.id) {
-          setUserInteraction(null);
-        }
-        break;
-      default:
-        console.log("Unhandled WebSocket message type:", data.type);
+  // Initialize WebSocket connection
+  useEffect(() => {
+    if (isOpen && !wsConnection) {
+      connectWebSocket();
     }
-  };
+
+    return () => {
+      if (wsConnection) {
+        wsConnection.close();
+        setWsConnection(null);
+      }
+    };
+  }, [isOpen, wsConnection, connectWebSocket]);
 
   const handleUserDecision = async (action) => {
     if (!userInteraction) return;

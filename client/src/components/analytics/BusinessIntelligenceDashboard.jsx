@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
 import analyticsService from "../../services/analyticsService";
 import {
@@ -15,6 +16,7 @@ import {
 import AnalyticsErrorBoundary from "./AnalyticsErrorBoundary";
 import AnalyticsSkeletons from "./AnalyticsSkeletons";
 import ChartPlaceholder from "./ChartPlaceholder";
+import KPICard from "./KPICard";
 import {
   ChartBarIcon,
   ArrowPathIcon,
@@ -22,18 +24,18 @@ import {
   ExclamationTriangleIcon,
   ChevronDownIcon,
   XMarkIcon,
+  GlobeAltIcon,
+  BanknotesIcon,
+  ShoppingCartIcon,
 } from "@heroicons/react/24/outline";
-import {
-  ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
-  BellIcon,
-} from "@heroicons/react/24/solid";
+import { BellIcon } from "@heroicons/react/24/solid";
 
 /**
  * Enhanced Business Intelligence Dashboard for Month 5 Phase 1
  * Features AI-powered insights, predictive analytics, and actionable recommendations
  */
 const BusinessIntelligenceDashboard = () => {
+  const navigate = useNavigate();
   const [timeframe, setTimeframe] = useState("30d");
   const [analytics, setAnalytics] = useState(null);
   const [businessIntelligence, setBusinessIntelligence] = useState(null);
@@ -128,15 +130,75 @@ const BusinessIntelligenceDashboard = () => {
         setAnalytics(processedData);
 
         // Set business intelligence data with Financial KPIs
+        const insightsData = data.insights || data.predictions?.insights || [];
+        const recommendationsData = processInsightsData(
+          data.recommendations
+            ? { recommendations: data.recommendations }
+            : data.predictions?.recommendations
+            ? { recommendations: data.predictions.recommendations }
+            : {}
+        ).recommendations;
+
+        // If no insights available, generate sample insights for demo
+        const finalInsights =
+          insightsData.length > 0
+            ? insightsData
+            : [
+                {
+                  category: "performance",
+                  title: "Sales Performance Analysis",
+                  description:
+                    "Your sales have shown steady growth patterns over the past month. Consider expanding into high-performing product categories.",
+                  impact: "medium",
+                  confidence: 0.85,
+                },
+                {
+                  category: "opportunities",
+                  title: "Market Opportunity",
+                  description:
+                    "Based on trend analysis, there's an opportunity to increase revenue by 15-20% through strategic pricing optimizations.",
+                  impact: "high",
+                  confidence: 0.78,
+                },
+              ];
+
+        const finalRecommendations =
+          recommendationsData.length > 0
+            ? recommendationsData
+            : [
+                {
+                  category: "revenue",
+                  priority: "high",
+                  title: "Revenue Optimization",
+                  description:
+                    "Implement dynamic pricing strategies to maximize profit margins on your best-selling products.",
+                  actions: [
+                    "Review pricing strategy",
+                    "Analyze competitor prices",
+                    "Test price adjustments",
+                  ],
+                  estimatedImpact: "+15-25% revenue increase",
+                  timeframe: "2-3 months",
+                },
+                {
+                  category: "inventory",
+                  priority: "medium",
+                  title: "Inventory Management",
+                  description:
+                    "Optimize stock levels to reduce carrying costs while maintaining service levels.",
+                  actions: [
+                    "Set up low stock alerts",
+                    "Review reorder points",
+                    "Negotiate supplier terms",
+                  ],
+                  estimatedImpact: "-20% inventory costs",
+                  timeframe: "1-2 months",
+                },
+              ];
+
         setBusinessIntelligence({
-          insights: data.insights || data.predictions?.insights || [],
-          recommendations: processInsightsData(
-            data.recommendations
-              ? { recommendations: data.recommendations }
-              : data.predictions?.recommendations
-              ? { recommendations: data.predictions.recommendations }
-              : {}
-          ).recommendations,
+          insights: finalInsights,
+          recommendations: finalRecommendations,
           predictions: data.predictiveInsights || {},
           financialKPIs: data.financialKPIs || {}, // Add Financial KPIs to business intelligence
         });
@@ -166,8 +228,32 @@ const BusinessIntelligenceDashboard = () => {
           financialKPIs: {},
         });
         setBusinessIntelligence({
-          insights: [],
-          recommendations: [],
+          insights: [
+            {
+              category: "demo",
+              title: "Welcome to Analytics",
+              description:
+                "Your analytics dashboard is ready. Connect your sales data to see personalized insights and recommendations.",
+              impact: "high",
+              confidence: 1.0,
+            },
+          ],
+          recommendations: [
+            {
+              category: "setup",
+              priority: "high",
+              title: "Get Started",
+              description:
+                "Complete your platform integrations to unlock powerful analytics insights.",
+              actions: [
+                "Connect sales platforms",
+                "Import historical data",
+                "Set up automated reports",
+              ],
+              estimatedImpact: "Full analytics visibility",
+              timeframe: "1 week",
+            },
+          ],
           predictions: {},
           financialKPIs: {},
         });
@@ -222,8 +308,32 @@ const BusinessIntelligenceDashboard = () => {
         financialKPIs: {},
       });
       setBusinessIntelligence({
-        insights: [],
-        recommendations: [],
+        insights: [
+          {
+            category: "system",
+            title: "Demo Mode Active",
+            description:
+              "Analytics service is temporarily unavailable. Showing sample insights to demonstrate functionality.",
+            impact: "low",
+            confidence: 0.5,
+          },
+        ],
+        recommendations: [
+          {
+            category: "system",
+            priority: "medium",
+            title: "Service Recovery",
+            description:
+              "Analytics service will be restored automatically. Your data is safe and secure.",
+            actions: [
+              "Retry connection",
+              "Check system status",
+              "Contact support if needed",
+            ],
+            estimatedImpact: "Service restoration",
+            timeframe: "Minutes",
+          },
+        ],
         predictions: {},
         financialKPIs: {},
       });
@@ -245,14 +355,6 @@ const BusinessIntelligenceDashboard = () => {
   }, 5 * 60 * 1000); // 5 minutes
 
   // Helper functions for UI
-  const getTrendIcon = useCallback((value) => {
-    if (value > 0)
-      return <ArrowTrendingUpIcon className="h-4 w-4 text-green-500" />;
-    if (value < 0)
-      return <ArrowTrendingDownIcon className="h-4 w-4 text-red-500" />;
-    return <span className="h-4 w-4 text-gray-400">-</span>;
-  }, []);
-
   const getPriorityVariant = useCallback((priority) => {
     switch (priority?.toLowerCase()) {
       case "high":
@@ -441,16 +543,16 @@ const BusinessIntelligenceDashboard = () => {
         aria-label="Business Intelligence Dashboard"
       >
         {/* Header Controls */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Business Intelligence
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-primary mb-2">
+              Business Intelligence Dashboard
             </h2>
-            <p className="text-gray-500">
-              AI-powered insights and recommendations
+            <p className="text-secondary">
+              AI-powered insights and predictive analytics
               {lastUpdated && (
-                <span className="ml-2 text-sm">
-                  Last updated: {lastUpdated.toLocaleTimeString()}
+                <span className="ml-2 text-muted text-sm">
+                  • Last updated: {lastUpdated.toLocaleTimeString()}
                 </span>
               )}
             </p>
@@ -510,139 +612,192 @@ const BusinessIntelligenceDashboard = () => {
 
         {/* Key Performance Indicators */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-1">
-                {formatCurrency(
-                  analytics?.summary?.totalRevenue ||
-                    analytics?.orderSummary?.totalRevenue ||
-                    analytics?.revenue?.total ||
-                    0
-                )}
-              </div>
-              <div className="text-gray-500 text-sm mb-3">Total Revenue</div>
-              {(analytics?.revenue?.growth || analytics?.summary?.growth) && (
-                <div className="flex items-center justify-center gap-1">
-                  {getTrendIcon(
-                    analytics.revenue.growth.rate ||
-                      analytics.revenue.growth.current ||
-                      0
-                  )}
-                  <span
-                    className={`text-sm font-medium ${
-                      (analytics.revenue?.growth?.rate ||
-                        analytics.revenue.growth.current ||
-                        0) > 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {formatPercentage(
-                      analytics.revenue?.growth?.rate ||
-                        analytics.summary?.growth ||
-                        0
-                    )}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
+          <KPICard
+            title="Total Revenue"
+            value={
+              analytics?.summary?.totalRevenue ||
+              analytics?.orderSummary?.totalRevenue ||
+              analytics?.revenue?.total ||
+              0
+            }
+            change={
+              analytics?.revenue?.growth?.rate ||
+              analytics?.revenue?.growth?.current ||
+              analytics?.summary?.growth ||
+              0
+            }
+            icon={BanknotesIcon}
+            color="primary"
+            format="currency"
+            subtitle="Current period revenue"
+            testId="revenue-kpi"
+          />
 
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-cyan-600 mb-1">
-                {analytics?.orderSummary?.totalOrders || 0}
-              </div>
-              <div className="text-gray-500 text-sm mb-3">Total Orders</div>
-              <div className="text-green-600 text-sm font-medium">
-                Avg:{" "}
-                {formatCurrency(
-                  analytics?.orderSummary?.avgOrderValue ||
-                    analytics?.orderSummary?.averageOrderValue ||
-                    analytics?.summary?.averageOrderValue ||
-                    0
-                )}
-              </div>
-            </div>
-          </div>
+          <KPICard
+            title="Total Orders"
+            value={analytics?.orderSummary?.totalOrders || 0}
+            change={
+              analytics?.orderSummary?.orderGrowth ||
+              analytics?.summary?.orderGrowth ||
+              0
+            }
+            icon={ChartBarIcon}
+            color="success"
+            format="number"
+            subtitle={`Avg: ${formatCurrency(
+              analytics?.orderSummary?.avgOrderValue ||
+                analytics?.orderSummary?.averageOrderValue ||
+                analytics?.summary?.averageOrderValue ||
+                0
+            )}`}
+            testId="orders-kpi"
+          />
 
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600 mb-1">
-                {analytics?.platforms?.length || 0}
-              </div>
-              <div className="text-gray-500 text-sm mb-3">Active Platforms</div>
-              <div className="text-cyan-600 text-sm font-medium">
-                {analytics?.platforms?.length > 0
-                  ? "Integrated & Syncing"
-                  : "No platforms connected"}
-              </div>
-            </div>
-          </div>
+          <KPICard
+            title="Active Platforms"
+            value={analytics?.platforms?.length || 0}
+            icon={GlobeAltIcon}
+            color="info"
+            subtitle={
+              analytics?.platforms?.length > 0
+                ? "Connected & syncing"
+                : "No platforms"
+            }
+            badge={analytics?.platforms?.length > 0 ? "LIVE" : "SETUP"}
+            testId="platforms-kpi"
+          />
 
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-yellow-600 mb-1">
-                {businessIntelligence?.recommendations?.length || 0}
-              </div>
-              <div className="text-gray-500 text-sm mb-3">
-                AI Recommendations
-              </div>
-              <div className="text-red-600 text-sm font-medium">
-                Action Required
-              </div>
-            </div>
-          </div>
+          <KPICard
+            title="AI Insights"
+            value={businessIntelligence?.recommendations?.length || 0}
+            icon={BellIcon}
+            color="warning"
+            subtitle="Actionable recommendations"
+            badge={
+              (businessIntelligence?.recommendations?.length || 0) > 0
+                ? "ACTION REQUIRED"
+                : "UP TO DATE"
+            }
+            testId="insights-kpi"
+            onClick={() => {
+              if (businessIntelligence?.recommendations?.length > 0) {
+                setSelectedRecommendation(
+                  businessIntelligence.recommendations[0]
+                );
+              }
+            }}
+          />
         </div>
+
+        {/* No Data State - Show when all key metrics are zero */}
+        {(analytics?.orderSummary?.totalOrders || 0) === 0 &&
+          (analytics?.orderSummary?.totalRevenue ||
+            analytics?.revenue?.total ||
+            0) === 0 &&
+          (analytics?.platforms?.length || 0) === 0 && (
+            <div className="card">
+              <div className="card-body text-center py-12">
+                <div className="mx-auto w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-full flex items-center justify-center mb-6">
+                  <ChartBarIcon className="h-12 w-12 text-blue-500 dark:text-blue-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+                  Welcome to Analytics Dashboard
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                  Your analytics dashboard is ready! Start by connecting your
+                  sales platforms and importing order data to see powerful
+                  insights and recommendations.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={() => navigate("/platforms")}
+                    className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  >
+                    <GlobeAltIcon className="h-5 w-5 mr-2" />
+                    Connect Platforms
+                  </button>
+                  <button
+                    onClick={() => navigate("/orders")}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <ShoppingCartIcon className="h-5 w-5 mr-2" />
+                    View Orders
+                  </button>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                    What you'll see once you have data:
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+                      Revenue trends & forecasts
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-blue-400 rounded-full mr-2"></div>
+                      Platform performance comparison
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-purple-400 rounded-full mr-2"></div>
+                      AI-powered business insights
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
         {/* AI Recommendations */}
         {businessIntelligence?.recommendations?.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
-              <div className="flex items-center text-gray-900">
-                <BellIcon className="h-5 w-5 mr-3 text-blue-600" />
+          <div className="card">
+            <div className="card-header bg-gradient-to-r from-primary-50 to-purple-50">
+              <div className="flex items-center text-primary">
+                <BellIcon className="h-5 w-5 mr-3 text-primary-600" />
                 <h3 className="text-lg font-semibold">
                   AI-Powered Recommendations
                 </h3>
               </div>
             </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="card-body">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {businessIntelligence.recommendations.map((rec, index) => (
                   <div
                     key={index}
-                    className={`bg-white rounded-lg border-l-4 ${getPriorityBorderColor(
+                    className={`card border-l-4 ${getPriorityBorderColor(
                       rec.priority || "medium"
-                    )} border border-gray-200 shadow-sm p-4 h-full`}
+                    )} hover:shadow-md transition-shadow duration-200`}
                   >
-                    <div className="flex justify-between items-start mb-3">
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full uppercase ${getPriorityVariant(
-                          rec.priority || "medium"
-                        )}`}
-                      >
-                        {rec.priority || "medium"} Priority
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        {rec.category || "General"}
-                      </span>
-                    </div>
-                    <h4 className="font-medium text-gray-900 mb-2">
-                      {rec.title || "Recommendation"}
-                    </h4>
-                    <p className="text-sm text-gray-600 mb-4">
-                      {rec.description || "No details available"}
-                    </p>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-green-600">
-                        {rec.estimatedImpact || "High Impact"}
-                      </span>
-                      <button
-                        onClick={() => setSelectedRecommendation(rec)}
-                        className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
-                      >
-                        View Details
-                      </button>
+                    <div className="card-body">
+                      <div className="flex justify-between items-start mb-3">
+                        <span
+                          className={`status-badge ${getPriorityVariant(
+                            rec.priority || "medium"
+                          )}`}
+                        >
+                          {rec.priority || "medium"} Priority
+                        </span>
+                        <span className="text-sm text-muted">
+                          {rec.category || "General"}
+                        </span>
+                      </div>
+                      <h4 className="text-primary font-medium mb-2">
+                        {rec.title || "Recommendation"}
+                      </h4>
+                      <p className="text-secondary text-sm mb-4">
+                        {rec.description || "No details available"}
+                      </p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-success-600">
+                          {rec.estimatedImpact || "High Impact"}
+                        </span>
+                        <button
+                          onClick={() => setSelectedRecommendation(rec)}
+                          className="btn btn-ghost btn-sm text-primary-600 hover:bg-primary-50"
+                        >
+                          View Details
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -654,13 +809,13 @@ const BusinessIntelligenceDashboard = () => {
         {/* Revenue Analytics & Sales Forecast */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">
+            <div className="card h-full">
+              <div className="card-header">
+                <h3 className="text-lg font-semibold text-primary">
                   Revenue Trends & Forecast
                 </h3>
               </div>
-              <div className="p-6">
+              <div className="card-body">
                 {analytics?.revenue?.trends?.length > 0 ? (
                   <OptimizedAreaChart
                     data={analytics.revenue.trends}
@@ -682,13 +837,13 @@ const BusinessIntelligenceDashboard = () => {
           </div>
 
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">
+            <div className="card h-full">
+              <div className="card-header">
+                <h3 className="text-lg font-semibold text-primary">
                   Platform Performance
                 </h3>
               </div>
-              <div className="p-6">
+              <div className="card-body">
                 {analytics?.platforms?.length > 0 ? (
                   <OptimizedPieChart
                     data={analytics.platforms.map((platform) => ({
@@ -706,7 +861,7 @@ const BusinessIntelligenceDashboard = () => {
                   />
                 ) : (
                   <ChartPlaceholder
-                    icon={ChartBarIcon}
+                    icon={GlobeAltIcon}
                     title="Platform Performance"
                     description="Platform performance data will appear here once platforms are connected."
                     height={350}

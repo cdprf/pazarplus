@@ -69,14 +69,14 @@ const BarcodeRenderer = ({
     const MIN_ASPECT_RATIO = 2.0; // width:height (EXACT same as PDF)
     const MAX_ASPECT_RATIO = 6.0; // (EXACT same as PDF)
     const aspectRatio = absoluteWidthMM / absoluteHeightMM;
-    let aspectRatioAdjusted = false;
+    // let aspectRatioAdjusted = false;
 
     if (aspectRatio < MIN_ASPECT_RATIO) {
       absoluteHeightMM = absoluteWidthMM / MIN_ASPECT_RATIO;
-      aspectRatioAdjusted = true;
+      // aspectRatioAdjusted = true;
     } else if (aspectRatio > MAX_ASPECT_RATIO) {
       absoluteWidthMM = absoluteHeightMM * MAX_ASPECT_RATIO;
-      aspectRatioAdjusted = true;
+      // aspectRatioAdjusted = true;
     }
 
     // Convert mm to pixels for canvas display

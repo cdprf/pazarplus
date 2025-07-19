@@ -38,11 +38,12 @@ class DatabaseStatusWebSocketService {
   }
 
   /**
-   * Initialize WebSocket server
+   * Initialize WebSocket service (without creating server)
+   * The unified WebSocket server will route connections to this service
    */
   initialize(server) {
     try {
-      logger.info("Initializing Database Status WebSocket server...");
+      logger.info("Initializing Database Status WebSocket service...");
 
       if (!server) {
         logger.warn(
@@ -51,26 +52,19 @@ class DatabaseStatusWebSocketService {
         return;
       }
 
-      this.wss = new WebSocket.Server({
-        server,
-        path: "/ws/database-status",
-      });
+      // Don't create WebSocket server here - let unified server handle it
+      // this.wss = new WebSocket.Server({
+      //   server,
+      //   path: "/ws/database-status",
+      // });
 
-      this.wss.on("connection", (ws, req) => {
-        logger.info(
-          "Database Status WebSocket: New connection attempt received"
-        );
-        this.handleConnection(ws, req);
-      });
-
-      this.wss.on("error", (error) => {
-        logger.error("Database Status WebSocket Server error:", error);
-      });
+      // The unified WebSocket server will route connections to this service
+      // via the handleConnection method
 
       logger.info("Database Status WebSocket service initialized successfully");
     } catch (error) {
       logger.error(
-        "Failed to initialize Database Status WebSocket server:",
+        "Failed to initialize Database Status WebSocket service:",
         error
       );
       throw error;

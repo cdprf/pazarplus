@@ -7,7 +7,6 @@ import {
 import analyticsService from "../../services/analyticsService";
 import {
   formatCurrency,
-  formatNumber,
   safeInteger,
   processProductData,
   processInsightsData,
@@ -480,27 +479,31 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPICard
           title={showAllProducts ? "All Products" : "Top Products"}
-          value={totalProducts.toLocaleString()}
+          value={totalProducts}
           icon={CubeIcon}
           color="primary"
+          format="number"
         />
         <KPICard
           title={showAllProducts ? "Total Revenue" : "Top Products Revenue"}
-          value={formatCurrency(totalRevenue)}
+          value={totalRevenue}
           icon={ChartBarIcon}
           color="success"
+          format="currency"
         />
         <KPICard
           title="Units Sold"
-          value={formatNumber(totalQuantity)}
+          value={totalQuantity}
           icon={ArrowTrendingUpIcon}
           color="info"
+          format="number"
         />
         <KPICard
           title="Avg Unit Price"
-          value={formatCurrency(avgOrderValue)}
+          value={avgOrderValue}
           icon={ExclamationTriangleIcon}
           color="warning"
+          format="currency"
         />
       </div>
 
@@ -632,7 +635,12 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
                   <span className="text-sm text-gray-600">Conversion Rate</span>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     {totalQuantity > 0
-                      ? ((totalProducts / totalQuantity) * 100).toFixed(1)
+                      ? typeof totalProducts === "number" &&
+                        typeof totalQuantity === "number" &&
+                        !isNaN(totalProducts) &&
+                        !isNaN(totalQuantity)
+                        ? ((totalProducts / totalQuantity) * 100).toFixed(1)
+                        : "0"
                       : "0"}
                     %
                   </span>
@@ -864,7 +872,12 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
                           ></div>
                         </div>
                         <span className="text-xs font-medium">
-                          {performance.toFixed(1)}%
+                          {(typeof performance === "number" &&
+                          !isNaN(performance)
+                            ? performance
+                            : 0
+                          ).toFixed(1)}
+                          %
                         </span>
                       </div>
                     </td>

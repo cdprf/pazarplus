@@ -202,7 +202,8 @@ export const Modal = ({
   return (
     <div
       ref={modalContainerRef}
-      className="modal modal-open fixed inset-0 z-[1040] flex items-center justify-center p-4"
+      className="modal modal-open fixed inset-0 flex items-center justify-center p-4"
+      style={{ zIndex: "var(--z-modal)" }}
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? titleId : undefined}
