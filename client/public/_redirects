@@ -1,6 +1,10 @@
-# Handle client-side routing for SPA
-/*    /index.html   200
+# Render.com SPA routing configuration
+# This file handles client-side routing for single page applications
 
-# API routes should proxy to backend server
-/api/*    https://pazarplus.onrender.com/api/:splat   200
-/health   https://pazarplus.onrender.com/health   200
+# API proxying (optional - for mixed deployments)
+/api/*  https://pazarplus.onrender.com/api/:splat  200
+/health https://pazarplus.onrender.com/health      200
+
+# SPA fallback - MUST be last rule
+# All other routes should serve index.html with 200 status
+/*      /index.html   200

@@ -25,15 +25,35 @@ else
     echo "⚠️  _redirects file not found, creating it..."
     # Create proper _redirects file for Render.com SPA routing
     cat > build/_redirects << 'EOF'
-# Handle client-side routing for SPA
-/*    /index.html   200
+# Render.com SPA routing configuration
+# This file handles client-side routing for single page applications
 
-# API routes should proxy to backend (if needed for static deployment)
-/api/*    https://pazarplus.onrender.com/api/:splat   200
-/health   https://pazarplus.onrender.com/health   200
+# API proxying (optional - for mixed deployments)
+/api/*  https://pazarplus.onrender.com/api/:splat  200
+/health https://pazarplus.onrender.com/health      200
+
+# SPA fallback - MUST be last rule
+# All other routes should serve index.html with 200 status
+/*      /index.html   200
 EOF
     echo "✅ _redirects file created with proper SPA routing"
 fi
+
+# Force copy the _redirects file to ensure it's present
+echo "🔧 Ensuring _redirects file is properly placed..."
+cp build/_redirects build/_redirects.backup
+cat > build/_redirects << 'EOF'
+# Render.com SPA routing configuration
+# This file handles client-side routing for single page applications
+
+# API proxying (optional - for mixed deployments)
+/api/*  https://pazarplus.onrender.com/api/:splat  200
+/health https://pazarplus.onrender.com/health      200
+
+# SPA fallback - MUST be last rule
+# All other routes should serve index.html with 200 status
+/*      /index.html   200
+EOF
 
 echo "🔧 Creating additional routing support files..."
 # Create .htaccess for Apache servers (fallback)
@@ -70,17 +90,31 @@ if [ -d "build" ]; then
 fi
 mv client/build ./build
 
+# CRITICAL: Ensure _redirects file exists in final build location
+echo "🔧 Creating _redirects file in final build location..."
+cat > build/_redirects << 'EOF'
+# Render.com SPA routing - CRITICAL for client-side routing
+/api/*  https://pazarplus.onrender.com/api/:splat  200
+/health https://pazarplus.onrender.com/health      200
+/*      /index.html   200
+EOF
+
+# Create 404.html fallback
+cp build/index.html build/404.html
+
 echo "✅ Build completed successfully!"
 echo "📊 Build directory contents:"
 ls -la build/
 
 echo "🔍 Verifying routing files in final build location..."
-for file in _redirects .htaccess nginx.conf vercel.json web.config; do
+for file in _redirects 404.html .htaccess nginx.conf vercel.json web.config; do
     if [ -f "build/$file" ]; then
         echo "✅ $file confirmed in final location"
-        echo "Contents of $file:"
-        cat "build/$file"
-        echo "---"
+        if [ "$file" = "_redirects" ]; then
+            echo "Contents of _redirects:"
+            cat "build/$file"
+            echo "---"
+        fi
     else
         echo "❌ $file missing in final location"
     fi
