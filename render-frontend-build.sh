@@ -94,8 +94,18 @@ mv client/build ./build
 echo "🔧 Creating _redirects file in final build location..."
 cat > build/_redirects << 'EOF'
 # Render.com SPA routing - CRITICAL for client-side routing
+
+# Backend file routes - PDF files, downloads, etc.
+/shipping/*.pdf  https://pazarplus.onrender.com/shipping/:splat  200
+/downloads/*     https://pazarplus.onrender.com/downloads/:splat  200
+/uploads/*       https://pazarplus.onrender.com/uploads/:splat    200
+/files/*         https://pazarplus.onrender.com/files/:splat      200
+
+# API proxying
 /api/*  https://pazarplus.onrender.com/api/:splat  200
 /health https://pazarplus.onrender.com/health      200
+
+# SPA fallback - MUST be last rule
 /*      /index.html   200
 EOF
 
