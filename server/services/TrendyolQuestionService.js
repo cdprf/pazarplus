@@ -1,6 +1,6 @@
-const axios = require('axios');
-const crypto = require('crypto');
-const debug = require('debug')('pazar:trendyol:questions');
+const axios = require("axios");
+const crypto = require("crypto");
+const debug = require("debug")("pazar:trendyol:questions");
 
 class TrendyolQuestionService {
   constructor(config) {
@@ -10,8 +10,8 @@ class TrendyolQuestionService {
     // For Trendyol Q&A API, sellerId is often the same as supplierId
     this.sellerId = config.sellerId || config.supplierId;
     this.baseURL = config.isTest
-      ? 'https://stageapigw.trendyol.com'
-      : 'https://apigw.trendyol.com';
+      ? "https://stageapigw.trendyol.com"
+      : "https://apigw.trendyol.com";
   }
 
   /**
@@ -21,8 +21,8 @@ class TrendyolQuestionService {
     return {
       Authorization: `Basic ${Buffer.from(
         `${this.apiKey}:${this.apiSecret}`
-      ).toString('base64')}`,
-      'Content-Type': 'application/json'
+      ).toString("base64")}`,
+      "Content-Type": "application/json",
     };
   }
 
@@ -40,8 +40,8 @@ class TrendyolQuestionService {
         page = 0,
         size = 50,
         barcode,
-        orderByField = 'CreatedDate',
-        orderByDirection = 'DESC'
+        orderByField = "CreatedDate",
+        orderByDirection = "DESC",
       } = options;
 
       const params = {
@@ -49,27 +49,35 @@ class TrendyolQuestionService {
         page,
         size,
         orderByField,
-        orderByDirection
+        orderByDirection,
       };
 
-      if (startDate) {params.startDate = new Date(startDate).getTime();}
-      if (endDate) {params.endDate = new Date(endDate).getTime();}
-      if (status) {params.status = status;}
-      if (barcode) {params.barcode = barcode;}
+      if (startDate) {
+        params.startDate = new Date(startDate).getTime();
+      }
+      if (endDate) {
+        params.endDate = new Date(endDate).getTime();
+      }
+      if (status) {
+        params.status = status;
+      }
+      if (barcode) {
+        params.barcode = barcode;
+      }
 
       const url = `${this.baseURL}/integration/qna/sellers/${this.sellerId}/questions/filter`;
 
-      debug('Fetching questions from Trendyol:', { url, params });
+      debug("Fetching questions from Trendyol:", { url, params });
 
       const response = await axios.get(url, {
         headers: this.getAuthHeaders(),
-        params
+        params,
       });
 
       return this.normalizeQuestionsResponse(response.data);
     } catch (error) {
       debug(
-        'Error fetching questions from Trendyol:',
+        "Error fetching questions from Trendyol:",
         error.response?.data || error.message
       );
       throw new Error(
@@ -93,8 +101,8 @@ class TrendyolQuestionService {
         page = 0,
         size = 50,
         barcode,
-        orderByField = 'CreatedDate',
-        orderByDirection = 'DESC'
+        orderByField = "CreatedDate",
+        orderByDirection = "DESC",
       } = options;
 
       const params = {
@@ -102,30 +110,38 @@ class TrendyolQuestionService {
         page,
         size,
         orderByField,
-        orderByDirection
+        orderByDirection,
       };
 
-      if (startDate) {params.startDate = new Date(startDate).getTime();}
-      if (endDate) {params.endDate = new Date(endDate).getTime();}
-      if (status) {params.status = status;}
-      if (barcode) {params.barcode = barcode;}
+      if (startDate) {
+        params.startDate = new Date(startDate).getTime();
+      }
+      if (endDate) {
+        params.endDate = new Date(endDate).getTime();
+      }
+      if (status) {
+        params.status = status;
+      }
+      if (barcode) {
+        params.barcode = barcode;
+      }
 
       const url = `${this.baseURL}/integration/qna/sellers/${this.sellerId}/questions/filter`;
 
-      debug('Fetching questions from Trendyol (original format):', {
+      debug("Fetching questions from Trendyol (original format):", {
         url,
-        params
+        params,
       });
 
       const response = await axios.get(url, {
         headers: this.getAuthHeaders(),
-        params
+        params,
       });
 
       return this.normalizeQuestionsResponse(response.data);
     } catch (error) {
       debug(
-        'Error fetching questions from Trendyol (original format):',
+        "Error fetching questions from Trendyol (original format):",
         error.response?.data || error.message
       );
       throw new Error(
@@ -144,16 +160,16 @@ class TrendyolQuestionService {
     try {
       const url = `${this.baseURL}/integration/qna/sellers/${this.sellerId}/questions/${questionId}`;
 
-      debug('Fetching question by ID from Trendyol:', { url, questionId });
+      debug("Fetching question by ID from Trendyol:", { url, questionId });
 
       const response = await axios.get(url, {
-        headers: this.getAuthHeaders()
+        headers: this.getAuthHeaders(),
       });
 
       return this.normalizeQuestionResponse(response.data);
     } catch (error) {
       debug(
-        'Error fetching question by ID from Trendyol:',
+        "Error fetching question by ID from Trendyol:",
         error.response?.data || error.message
       );
       throw new Error(
@@ -171,36 +187,52 @@ class TrendyolQuestionService {
   async answerQuestion(questionId, answerText) {
     try {
       if (answerText.length < 10 || answerText.length > 2000) {
-        throw new Error('Answer text must be between 10 and 2000 characters');
+        throw new Error("Answer text must be between 10 and 2000 characters");
       }
 
       const url = `${this.baseURL}/integration/qna/sellers/${this.sellerId}/questions/${questionId}/answers`;
 
-      debug('Answering question on Trendyol:', {
+      debug("Answering question on Trendyol:", {
         url,
         questionId,
-        answerLength: answerText.length
+        answerLength: answerText.length,
       });
 
       const response = await axios.post(
         url,
         {
-          text: answerText
+          text: answerText,
         },
         {
-          headers: this.getAuthHeaders()
+          headers: this.getAuthHeaders(),
         }
       );
 
       return {
         success: response.status === 200,
-        response: response.data
+        response: response.data,
       };
     } catch (error) {
       debug(
-        'Error answering question on Trendyol:',
+        "Error answering question on Trendyol:",
         error.response?.data || error.message
       );
+
+      // Check for specific "already answered" error
+      const errorData = error.response?.data;
+      if (
+        errorData?.errors?.some(
+          (err) => err.key === "business.rule.question.has.already.answered"
+        )
+      ) {
+        const alreadyAnsweredError = new Error(
+          `Trendyol answer submission failed: ${errorData.errors[0].message}`
+        );
+        alreadyAnsweredError.code = "ALREADY_ANSWERED";
+        alreadyAnsweredError.originalError = errorData;
+        throw alreadyAnsweredError;
+      }
+
       throw new Error(
         `Trendyol answer submission failed: ${
           error.response?.data?.message || error.message
@@ -219,7 +251,7 @@ class TrendyolQuestionService {
       page: data.page || 0,
       size: data.size || 0,
       totalElements: data.totalElements || 0,
-      totalPages: data.totalPages || 0
+      totalPages: data.totalPages || 0,
     };
   }
 
@@ -242,23 +274,23 @@ class TrendyolQuestionService {
 
     // Map Trendyol status to our enum
     const statusMapping = {
-      WAITING_FOR_ANSWER: 'WAITING_FOR_ANSWER',
-      UNANSWERED: 'WAITING_FOR_ANSWER',
-      ANSWERED: 'ANSWERED',
-      REJECTED: 'REJECTED',
-      AUTO_CLOSED: 'AUTO_CLOSED'
+      WAITING_FOR_ANSWER: "WAITING_FOR_ANSWER",
+      UNANSWERED: "WAITING_FOR_ANSWER",
+      ANSWERED: "ANSWERED",
+      REJECTED: "REJECTED",
+      AUTO_CLOSED: "AUTO_CLOSED",
     };
 
     const normalizedStatus =
-      statusMapping[question.status] || 'WAITING_FOR_ANSWER';
+      statusMapping[question.status] || "WAITING_FOR_ANSWER";
 
     return {
-      platform: 'trendyol',
+      platform: "trendyol",
       platform_question_id: question.id?.toString(),
       customer_id: question.customerId?.toString(),
       customer_name:
         question.userName ||
-        (question.customerId ? `Müşteri-${question.customerId}` : ''),
+        (question.customerId ? `Müşteri-${question.customerId}` : ""),
       show_customer_name: question.showUserName,
       question_text: question.text,
       question_date: new Date(question.creationDate), // Map creation_date to question_date
@@ -287,24 +319,24 @@ class TrendyolQuestionService {
       // Answer information if available
       answer: question.answer
         ? {
-          platform_reply_id: question.answer.id?.toString(),
-          reply_text: question.answer.text,
-          has_private_info: question.answer.hasPrivateInfo,
-          creation_date: new Date(question.answer.creationDate),
-          reason: question.answer.reason,
-          raw_data: question.answer
-        }
+            platform_reply_id: question.answer.id?.toString(),
+            reply_text: question.answer.text,
+            has_private_info: question.answer.hasPrivateInfo,
+            creation_date: new Date(question.answer.creationDate),
+            reason: question.answer.reason,
+            raw_data: question.answer,
+          }
         : null,
 
       // Rejected answer information if available
       rejected_answer: question.rejectedAnswer
         ? {
-          platform_reply_id: question.rejectedAnswer.id?.toString(),
-          reply_text: question.rejectedAnswer.text,
-          creation_date: new Date(question.rejectedAnswer.creationDate),
-          reason: question.rejectedAnswer.reason
-        }
-        : null
+            platform_reply_id: question.rejectedAnswer.id?.toString(),
+            reply_text: question.rejectedAnswer.text,
+            creation_date: new Date(question.rejectedAnswer.creationDate),
+            reason: question.rejectedAnswer.reason,
+          }
+        : null,
     };
   }
 
@@ -315,15 +347,15 @@ class TrendyolQuestionService {
     // Normalize text: lowercase, remove punctuation, sort words
     const normalizedText = questionText
       .toLowerCase()
-      .replace(/[^\w\s]/g, ' ')
-      .replace(/\s+/g, ' ')
+      .replace(/[^\w\s]/g, " ")
+      .replace(/\s+/g, " ")
       .trim()
-      .split(' ')
+      .split(" ")
       .filter((word) => word.length > 2) // Remove very short words
       .sort()
-      .join(' ');
+      .join(" ");
 
-    return crypto.createHash('md5').update(normalizedText).digest('hex');
+    return crypto.createHash("md5").update(normalizedText).digest("hex");
   }
 
   /**
@@ -333,17 +365,17 @@ class TrendyolQuestionService {
     try {
       // Fetch questions for different statuses
       const statuses = [
-        'WAITING_FOR_ANSWER',
-        'ANSWERED',
-        'REJECTED',
-        'REPORTED'
+        "WAITING_FOR_ANSWER",
+        "ANSWERED",
+        "REJECTED",
+        "REPORTED",
       ];
       const stats = {
         total_questions: 0,
         waiting_for_answer: 0,
         answered: 0,
         rejected: 0,
-        reported: 0
+        reported: 0,
       };
 
       for (const status of statuses) {
@@ -351,31 +383,31 @@ class TrendyolQuestionService {
           startDate,
           endDate,
           status,
-          size: 1 // We only need the count
+          size: 1, // We only need the count
         });
 
         const count = response.totalElements;
         stats.total_questions += count;
 
         switch (status) {
-        case 'WAITING_FOR_ANSWER':
-          stats.waiting_for_answer = count;
-          break;
-        case 'ANSWERED':
-          stats.answered = count;
-          break;
-        case 'REJECTED':
-          stats.rejected = count;
-          break;
-        case 'REPORTED':
-          stats.reported = count;
-          break;
+          case "WAITING_FOR_ANSWER":
+            stats.waiting_for_answer = count;
+            break;
+          case "ANSWERED":
+            stats.answered = count;
+            break;
+          case "REJECTED":
+            stats.rejected = count;
+            break;
+          case "REPORTED":
+            stats.reported = count;
+            break;
         }
       }
 
       return stats;
     } catch (error) {
-      debug('Error getting questions stats from Trendyol:', error.message);
+      debug("Error getting questions stats from Trendyol:", error.message);
       throw error;
     }
   }

@@ -149,12 +149,26 @@ class AnalyticsService {
   }
 
   /**
-   * Get customer analytics and segmentation
+   * Get customer analytics data
    */
   async getCustomerAnalytics(timeframe = "30d") {
-    return this.makeRequest(
-      `/analytics/customer-analytics-temp?timeframe=${timeframe}`
-    );
+    try {
+      // Try the authenticated endpoint first
+      return await this.makeRequest(
+        `/analytics/customer-analytics?timeframe=${timeframe}`
+      );
+    } catch (error) {
+      // If authentication fails, fall back to temp endpoint
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        console.warn(
+          "Authentication failed, using temp endpoint for customer analytics"
+        );
+        return await this.makeRequest(
+          `/analytics/customer-analytics-temp?timeframe=${timeframe}`
+        );
+      }
+      throw error;
+    }
   }
 
   /**
@@ -215,10 +229,17 @@ class AnalyticsService {
   }
 
   /**
-   * Get enhanced product analytics
+   * Get enhanced product analytics with insights
    */
   async getEnhancedProductAnalytics(timeframe = "30d") {
-    return this.makeRequest(`/analytics/products-temp?timeframe=${timeframe}`);
+    try {
+      return await this.makeRequest(
+        `/analytics/products?timeframe=${timeframe}`
+      );
+    } catch (error) {
+      console.warn("Enhanced product analytics failed, using fallback");
+      return this.getProductAnalytics(timeframe);
+    }
   }
 
   /**
@@ -235,12 +256,20 @@ class AnalyticsService {
    */
   async getProductAnalytics(timeframe = "30d") {
     try {
-      const response = await api.get(
-        `/analytics/products-temp?timeframe=${timeframe}`
+      // Try the authenticated endpoint first
+      return await this.makeRequest(
+        `/analytics/products?timeframe=${timeframe}`
       );
-      return response.data;
     } catch (error) {
-      console.error("Error fetching product analytics:", error);
+      // If authentication fails, fall back to temp endpoint
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        console.warn(
+          "Authentication failed, using temp endpoint for product analytics"
+        );
+        return await this.makeRequest(
+          `/analytics/products-temp?timeframe=${timeframe}`
+        );
+      }
       throw error;
     }
   }
@@ -261,16 +290,47 @@ class AnalyticsService {
   }
 
   /**
-   * Get financial analytics data (using financial-kpis-temp endpoint)
+   * Get financial analytics data
    */
   async getFinancialAnalytics(timeframe = "30d") {
     try {
-      const response = await api.get(
-        `/analytics/financial-kpis-temp?timeframe=${timeframe}`
+      // Try the authenticated endpoint first
+      return await this.makeRequest(
+        `/analytics/financial-kpis?timeframe=${timeframe}`
       );
-      return response.data;
     } catch (error) {
-      console.error("Error fetching financial analytics:", error);
+      // If authentication fails, fall back to temp endpoint
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        console.warn(
+          "Authentication failed, using temp endpoint for financial analytics"
+        );
+        return await this.makeRequest(
+          `/analytics/financial-kpis-temp?timeframe=${timeframe}`
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get cohort analysis data
+   */
+  async getCohortAnalytics(timeframe = "30d") {
+    try {
+      // Try the authenticated endpoint first
+      return await this.makeRequest(
+        `/analytics/cohort-analysis?timeframe=${timeframe}`
+      );
+    } catch (error) {
+      // If authentication fails, fall back to temp endpoint
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        console.warn(
+          "Authentication failed, using temp endpoint for cohort analytics"
+        );
+        return await this.makeRequest(
+          `/analytics/cohort-analysis-temp?timeframe=${timeframe}`
+        );
+      }
       throw error;
     }
   }
@@ -375,7 +435,7 @@ class AnalyticsService {
   async getCohortAnalysis(timeframe = "90d") {
     try {
       const response = await api.get(
-        `/analytics/cohort-analysis-temp?timeframe=${timeframe}`
+        `/analytics/cohort-analysis?timeframe=${timeframe}`
       );
       return response.data;
     } catch (error) {

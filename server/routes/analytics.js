@@ -3387,4 +3387,190 @@ router.get("/financial-kpis", async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /analytics/cohort-analysis:
+ *   get:
+ *     summary: Get cohort analysis data
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: timeframe
+ *         schema:
+ *           type: string
+ *           enum: [7d, 30d, 90d, 1y]
+ *         description: Time period for cohort analysis
+ *     responses:
+ *       200:
+ *         description: Cohort analysis data retrieved successfully
+ */
+router.get("/cohort-analysis", async (req, res) => {
+  try {
+    // Get user from request (this should be set by auth middleware)
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
+
+    const { timeframe = "90d" } = req.query;
+
+    // Create date range
+    const end = new Date();
+    const start = new Date();
+    const timeframeMap = { "7d": 7, "30d": 30, "90d": 90, "1y": 365 };
+    const days = timeframeMap[timeframe] || 90;
+    start.setDate(start.getDate() - days);
+
+    // Simple cohort analysis using direct SQL
+    const { Order, OrderItem } = require("../models");
+    const { Op, sequelize } = require("sequelize");
+
+    // Get all orders in the timeframe
+    const orders = await Order.findAll({
+      where: {
+        userId,
+        orderDate: {
+          [Op.between]: [start, end],
+        },
+      },
+      order: [["orderDate", "ASC"]],
+    });
+
+    // Group customers by first order month (cohort)
+    const customerCohorts = {};
+    const customerFirstOrder = {};
+
+    orders.forEach((order) => {
+      const customerId = order.customerEmail || order.customerName;
+      const orderDate = new Date(order.orderDate);
+      const cohortMonth = `${orderDate.getFullYear()}-${String(
+        orderDate.getMonth() + 1
+      ).padStart(2, "0")}`;
+
+      if (!customerFirstOrder[customerId]) {
+        customerFirstOrder[customerId] = orderDate;
+        if (!customerCohorts[cohortMonth]) {
+          customerCohorts[cohortMonth] = [];
+        }
+        customerCohorts[cohortMonth].push(customerId);
+      }
+    });
+
+    // Calculate retention for each cohort
+    const cohorts = [];
+    const currentDate = new Date();
+
+    Object.entries(customerCohorts).forEach(([cohortMonth, customers]) => {
+      const cohortDate = new Date(cohortMonth + "-01");
+      const cohortCustomers = customers.length;
+
+      if (cohortCustomers === 0) return;
+
+      // Calculate retention for different months
+      const retention = {};
+
+      for (let monthOffset = 1; monthOffset <= 12; monthOffset++) {
+        const targetMonth = new Date(cohortDate);
+        targetMonth.setMonth(targetMonth.getMonth() + monthOffset);
+
+        // Only calculate if target month is not in the future
+        if (targetMonth <= currentDate) {
+          const targetStart = new Date(
+            targetMonth.getFullYear(),
+            targetMonth.getMonth(),
+            1
+          );
+          const targetEnd = new Date(
+            targetMonth.getFullYear(),
+            targetMonth.getMonth() + 1,
+            0
+          );
+
+          // Count how many cohort customers made orders in this month
+          const retainedCustomers = orders
+            .filter((order) => {
+              const customerId = order.customerEmail || order.customerName;
+              const orderDate = new Date(order.orderDate);
+              return (
+                customers.includes(customerId) &&
+                orderDate >= targetStart &&
+                orderDate <= targetEnd
+              );
+            })
+            .map((o) => o.customerEmail || o.customerName);
+
+          const uniqueRetained = [...new Set(retainedCustomers)];
+          retention[`month${monthOffset}`] = Math.round(
+            (uniqueRetained.length / cohortCustomers) * 100
+          );
+        }
+      }
+
+      cohorts.push({
+        period: cohortMonth,
+        totalCustomers: cohortCustomers,
+        month1: retention.month1 || 0,
+        month2: retention.month2 || 0,
+        month3: retention.month3 || 0,
+        month6: retention.month6 || 0,
+        month12: retention.month12 || 0,
+      });
+    });
+
+    // Sort cohorts by date
+    cohorts.sort(
+      (a, b) => new Date(a.period + "-01") - new Date(b.period + "-01")
+    );
+
+    const insights = [
+      `Analizde ${cohorts.length} kohort bulundu`,
+      cohorts.length > 0
+        ? `En büyük kohort: ${Math.max(
+            ...cohorts.map((c) => c.totalCustomers)
+          )} müşteri`
+        : "Kohort verisi yok",
+      cohorts.length > 0
+        ? `Ortalama 1. ay elde tutma: %${Math.round(
+            cohorts.reduce((sum, c) => sum + c.month1, 0) / cohorts.length
+          )}`
+        : "",
+    ].filter(Boolean);
+
+    res.json({
+      success: true,
+      data: {
+        cohorts,
+        retention: cohorts.map((c) => ({
+          period: c.period,
+          customers: c.totalCustomers,
+          retentionRates: [
+            100,
+            c.month1,
+            c.month2,
+            c.month3,
+            c.month6,
+            c.month12,
+          ],
+        })),
+        insights,
+        timeframe,
+        generatedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("Cohort analysis error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error retrieving cohort analysis",
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;

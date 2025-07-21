@@ -71,6 +71,9 @@ const CustomerQuestions = () => {
   const [replyDialog, setReplyDialog] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [replyType, setReplyType] = useState("answer");
+  const [replyLoading, setReplyLoading] = useState(false);
+  const [replyFeedback, setReplyFeedback] = useState(null);
+  const [templateSaving, setTemplateSaving] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState("");
 
   // API functions
@@ -168,6 +171,7 @@ const CustomerQuestions = () => {
     const title = prompt("Şablon adı giriniz:");
     if (!title) return;
 
+    setTemplateSaving(true);
     try {
       const response = await api.post("/customer-questions/templates", {
         title: title.trim(),
@@ -184,6 +188,8 @@ const CustomerQuestions = () => {
     } catch (err) {
       console.error("Error saving template:", err);
       showAlert("Şablon kaydedilirken hata oluştu", "error");
+    } finally {
+      setTemplateSaving(false);
     }
   }, [replyText, showAlert, loadTemplates]);
 
@@ -215,6 +221,9 @@ const CustomerQuestions = () => {
   const handleReply = useCallback(async () => {
     if (!selectedQuestion || !replyText.trim()) return;
 
+    setReplyLoading(true);
+    setReplyFeedback({ type: "info", message: "Yanıt gönderiliyor..." });
+
     try {
       const response = await api.post(
         `/customer-questions/${selectedQuestion.id}/reply`,
@@ -225,10 +234,20 @@ const CustomerQuestions = () => {
       );
 
       if (response.data.success) {
+        setReplyFeedback({
+          type: "success",
+          message: "Yanıt başarıyla gönderildi!",
+        });
         showAlert("Yanıt başarıyla gönderildi", "success");
-        setReplyDialog(false);
-        setReplyText("");
-        setSelectedQuestion(null);
+
+        // Wait a moment to show success feedback before closing
+        setTimeout(() => {
+          setReplyDialog(false);
+          setReplyText("");
+          setSelectedQuestion(null);
+          setReplyFeedback(null);
+        }, 1500);
+
         await loadQuestions();
         await loadStats();
       } else {
@@ -236,7 +255,14 @@ const CustomerQuestions = () => {
       }
     } catch (err) {
       console.error("Error sending reply:", err);
-      showAlert("Yanıt gönderilirken hata oluştu", "error");
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Yanıt gönderilirken hata oluştu";
+      setReplyFeedback({ type: "error", message: errorMessage });
+      showAlert(errorMessage, "error");
+    } finally {
+      setReplyLoading(false);
     }
   }, [
     selectedQuestion,
@@ -919,9 +945,10 @@ const CustomerQuestions = () => {
                 Yanıt Türü
               </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 value={replyType}
                 onChange={(e) => setReplyType(e.target.value)}
+                disabled={replyLoading}
               >
                 <option value="answer">Cevap Ver</option>
                 <option value="reject">Reddet</option>
@@ -933,12 +960,16 @@ const CustomerQuestions = () => {
                 Yanıt Metni
               </label>
               <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 rows={4}
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 placeholder="Yanıtınızı buraya yazın..."
+                disabled={replyLoading}
               />
+              <div className="mt-1 text-xs text-gray-500">
+                {replyText.length}/2000 karakter
+              </div>
             </div>
 
             {templates.length > 0 && (
@@ -958,6 +989,7 @@ const CustomerQuestions = () => {
                       setReplyText(template.content);
                     }
                   }}
+                  disabled={replyLoading}
                 >
                   <option value="">Şablon seçin...</option>
                   {templates.map((template) => (
@@ -969,25 +1001,67 @@ const CustomerQuestions = () => {
               </div>
             )}
 
+            {/* Feedback Message */}
+            {replyFeedback && (
+              <div
+                className={`px-4 py-3 rounded-lg flex items-center space-x-2 ${
+                  replyFeedback.type === "success"
+                    ? "bg-green-50 text-green-700 border border-green-200"
+                    : replyFeedback.type === "error"
+                    ? "bg-red-50 text-red-700 border border-red-200"
+                    : "bg-blue-50 text-blue-700 border border-blue-200"
+                }`}
+              >
+                {replyFeedback.type === "success" && (
+                  <CheckCircle className="w-5 h-5" />
+                )}
+                {replyFeedback.type === "error" && (
+                  <AlertTriangle className="w-5 h-5" />
+                )}
+                {replyFeedback.type === "info" && (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                )}
+                <span className="text-sm font-medium">
+                  {replyFeedback.message}
+                </span>
+              </div>
+            )}
+
             <div className="flex justify-between items-center pt-4">
               <Button
                 onClick={saveTemplate}
                 variant="outline"
-                disabled={!replyText.trim()}
-                className="text-green-600 border-green-300 hover:bg-green-50"
+                disabled={!replyText.trim() || replyLoading || templateSaving}
+                className="text-green-600 border-green-300 hover:bg-green-50 flex items-center space-x-2"
               >
-                Şablon Olarak Kaydet
+                {templateSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>
+                  {templateSaving ? "Kaydediliyor..." : "Şablon Olarak Kaydet"}
+                </span>
               </Button>
               <div className="flex space-x-3">
-                <Button onClick={() => setReplyDialog(false)} variant="outline">
+                <Button
+                  onClick={() => {
+                    setReplyDialog(false);
+                    setReplyText("");
+                    setReplyFeedback(null);
+                    setSelectedQuestion(null);
+                  }}
+                  variant="outline"
+                  disabled={replyLoading || templateSaving}
+                >
                   İptal
                 </Button>
                 <Button
                   onClick={handleReply}
                   variant="primary"
-                  disabled={!replyText.trim()}
+                  disabled={!replyText.trim() || replyLoading || templateSaving}
+                  className="flex items-center space-x-2"
                 >
-                  Yanıt Gönder
+                  {replyLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>
+                    {replyLoading ? "Gönderiliyor..." : "Yanıt Gönder"}
+                  </span>
                 </Button>
               </div>
             </div>
