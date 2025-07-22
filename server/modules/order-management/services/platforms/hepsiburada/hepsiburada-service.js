@@ -19,6 +19,9 @@ class HepsiburadaService extends BasePlatformService {
   constructor(connectionId, directCredentials = null, options = {}) {
     super(connectionId, directCredentials);
 
+    // Set platform type for caching
+    this._setPlatformType("hepsiburada");
+
     // Support different base URLs for different API types
     this.ordersApiUrl =
       options.ordersApiUrl || "https://oms-external.hepsiburada.com";
@@ -34,14 +37,6 @@ class HepsiburadaService extends BasePlatformService {
 
     // Store auth string for reuse across different API calls
     this.authString = null;
-  }
-
-  /**
-   * Get the platform type
-   * @returns {string} Platform type identifier
-   */
-  getPlatformType() {
-    return "hepsiburada";
   }
 
   /**

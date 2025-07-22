@@ -47,7 +47,8 @@
     "tailwindcss": "^3.4.0"
   },
   "scripts": {
-    "start": "REACT_APP_HOST=0.0.0.0 HOST=0.0.0.0 PORT=3000 GENERATE_SOURCEMAP=true react-scripts start",
+    "start": "react-scripts start",
+    "start:network": "HOST=0.0.0.0 PORT=3000 react-scripts start",
     "build": "CI=false react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",

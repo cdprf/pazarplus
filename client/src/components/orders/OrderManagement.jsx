@@ -39,6 +39,7 @@ import { useAlert } from "../../contexts/AlertContext";
 import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { Button, Card, CardContent, Badge, Modal } from "../ui";
 import CancelOrderDialog from "../dialogs/CancelOrderDialog";
+import EnhancedOrderBulkActions from "./BulkActions";
 // import NetworkDebugger from "../NetworkDebugger";
 
 const OrderManagement = React.memo(() => {
@@ -1620,6 +1621,74 @@ const OrderManagement = React.memo(() => {
     [selectedOrders, showAlert, fetchOrders]
   );
 
+  // Enhanced bulk action handler
+  const handleBulkAction = useCallback(
+    async (actionId, actionData) => {
+      try {
+        switch (actionId) {
+          // Status Actions
+          case "accept":
+            await handleBulkAccept();
+            break;
+          case "process":
+            await handleBulkStatusChange("processing");
+            break;
+          case "ship":
+            await handleBulkStatusChange("shipped");
+            break;
+          case "delivered":
+            await handleBulkStatusChange("delivered");
+            break;
+
+          // Print Actions
+          case "print_shipping":
+            await handleBulkPrintShippingSlips();
+            break;
+          case "print_invoice":
+            await handleBulkPrintInvoices("standard");
+            break;
+          case "print_invoice_bulk":
+            await handleBulkPrintInvoices("standard");
+            break;
+
+          // QNB Invoice Actions - these would need separate action types in enhanced component
+          case "print_invoice_qnb_auto":
+            await handleBulkPrintInvoices("qnb_auto");
+            break;
+          case "print_invoice_qnb_einvoice":
+            await handleBulkPrintInvoices("qnb_einvoice");
+            break;
+          case "print_invoice_qnb_earsiv":
+            await handleBulkPrintInvoices("qnb_earsiv");
+            break;
+
+          // Destructive Actions
+          case "cancel":
+            await handleBulkCancelOrders();
+            break;
+          case "delete":
+            await handleDeleteSelected();
+            break;
+
+          default:
+            console.warn(`Unknown bulk action: ${actionId}`);
+        }
+      } catch (error) {
+        console.error(`Error executing bulk action ${actionId}:`, error);
+        showAlert(`Toplu işlem hatası: ${error.message}`, "error");
+      }
+    },
+    [
+      handleBulkAccept,
+      handleBulkStatusChange,
+      handleBulkPrintShippingSlips,
+      handleBulkPrintInvoices,
+      handleBulkCancelOrders,
+      handleDeleteSelected,
+      showAlert,
+    ]
+  );
+
   // Loading and error states
   if (loading) {
     return (
@@ -1651,6 +1720,7 @@ const OrderManagement = React.memo(() => {
       </div>
     );
   }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Temporary Network Debugger */}
@@ -2045,168 +2115,11 @@ const OrderManagement = React.memo(() => {
 
         {/* Enhanced Bulk Actions */}
         {selectedOrders.length > 0 && (
-          <Card className="mb-6">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <AlertTriangle className="h-5 w-5 text-orange-500" />
-                    <span className="text-sm font-medium text-gray-900">
-                      {selectedOrders.length} sipariş seçildi
-                    </span>
-                  </div>
-                  <Button
-                    onClick={() => setSelectedOrders([])}
-                    size="sm"
-                    variant="outline"
-                    className="flex items-center space-x-2"
-                  >
-                    <X className="h-4 w-4" />
-                    <span>Seçimi Temizle</span>
-                  </Button>
-                </div>
-
-                {/* Action Buttons Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                  {/* Status Actions */}
-                  <Button
-                    onClick={() => handleBulkAccept()}
-                    size="sm"
-                    variant="outline"
-                    className="text-green-600 hover:text-green-700 hover:border-green-300 flex items-center justify-center space-x-2"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Onayla</span>
-                  </Button>
-
-                  <Button
-                    onClick={() => handleBulkStatusChange("new")}
-                    size="sm"
-                    variant="outline"
-                    className="text-blue-500 hover:text-blue-600 hover:border-blue-300 flex items-center justify-center space-x-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Yeni</span>
-                  </Button>
-
-                  <Button
-                    onClick={() => handleBulkStatusChange("processing")}
-                    size="sm"
-                    variant="outline"
-                    className="text-blue-600 hover:text-blue-700 hover:border-blue-300 flex items-center justify-center space-x-2"
-                  >
-                    <Package className="h-4 w-4" />
-                    <span>Hazırlanıyor</span>
-                  </Button>
-
-                  <Button
-                    onClick={() => handleBulkStatusChange("shipped")}
-                    size="sm"
-                    variant="outline"
-                    className="text-purple-600 hover:text-purple-700 hover:border-purple-300 flex items-center justify-center space-x-2"
-                  >
-                    <Truck className="h-4 w-4" />
-                    <span>Kargola</span>
-                  </Button>
-
-                  <Button
-                    onClick={() => handleBulkStatusChange("delivered")}
-                    size="sm"
-                    variant="outline"
-                    className="text-green-600 hover:text-green-700 hover:border-green-300 flex items-center justify-center space-x-2"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Teslim Edildi</span>
-                  </Button>
-
-                  {/* Print Actions */}
-                  <Button
-                    onClick={handleBulkPrintShippingSlips}
-                    size="sm"
-                    variant="outline"
-                    disabled={bulkPrintingShipping}
-                    className="text-indigo-600 hover:text-indigo-700 hover:border-indigo-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {bulkPrintingShipping ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Printer className="h-4 w-4" />
-                    )}
-                    <span>
-                      {bulkPrintingShipping
-                        ? "Hazırlanıyor..."
-                        : "Gönderi Belgeleri"}
-                    </span>
-                  </Button>
-                </div>
-
-                {/* Secondary Actions Row */}
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                  {/* Invoice Options */}
-                  <Button
-                    onClick={() => handleBulkPrintInvoices("standard")}
-                    size="sm"
-                    variant="outline"
-                    className="text-blue-600 hover:text-blue-700 hover:border-blue-300 flex items-center justify-center space-x-1"
-                  >
-                    <FileText className="h-3 w-3" />
-                    <span className="text-xs">Standart Fatura</span>
-                  </Button>
-
-                  <Button
-                    onClick={() => handleBulkPrintInvoices("qnb_auto")}
-                    size="sm"
-                    variant="outline"
-                    className="text-blue-600 hover:text-blue-700 hover:border-blue-300 flex items-center justify-center space-x-1"
-                  >
-                    <FileText className="h-3 w-3" />
-                    <span className="text-xs">QNB Otomatik</span>
-                  </Button>
-
-                  <Button
-                    onClick={() => handleBulkPrintInvoices("qnb_einvoice")}
-                    size="sm"
-                    variant="outline"
-                    className="text-blue-600 hover:text-blue-700 hover:border-blue-300 flex items-center justify-center space-x-1"
-                  >
-                    <FileText className="h-3 w-3" />
-                    <span className="text-xs">QNB E-Fatura</span>
-                  </Button>
-
-                  <Button
-                    onClick={() => handleBulkPrintInvoices("qnb_earsiv")}
-                    size="sm"
-                    variant="outline"
-                    className="text-blue-600 hover:text-blue-700 hover:border-blue-300 flex items-center justify-center space-x-1"
-                  >
-                    <FileText className="h-3 w-3" />
-                    <span className="text-xs">QNB E-Arşiv</span>
-                  </Button>
-
-                  {/* Destructive Actions */}
-                  <Button
-                    onClick={() => handleBulkCancelOrders()}
-                    size="sm"
-                    variant="outline"
-                    className="text-orange-600 hover:text-orange-700 hover:border-orange-300 flex items-center justify-center space-x-1"
-                  >
-                    <Ban className="h-3 w-3" />
-                    <span className="text-xs">İptal Et</span>
-                  </Button>
-
-                  <Button
-                    onClick={handleDeleteSelected}
-                    size="sm"
-                    variant="outline"
-                    className="text-red-600 hover:text-red-700 hover:border-red-300 flex items-center justify-center space-x-1"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    <span className="text-xs">Sil</span>
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <EnhancedOrderBulkActions
+            selectedOrders={selectedOrders}
+            onBulkAction={handleBulkAction}
+            onClearSelection={() => setSelectedOrders([])}
+          />
         )}
 
         {/* Orders Table */}

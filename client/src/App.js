@@ -38,7 +38,7 @@ import Orders from "./pages/Orders"; // Consolidated order management
 import OrderDetail from "./components/orders/OrderDetail";
 import ProductDetail from "./components/products/ProductDetail"; // Product detail page
 import ProductManagement from "./components/ProductManagement/index.js"; // Modernized product management
-import EnhancedProductManagement from "./components/ProductManagement/components/EnhancedProductManagement"; // Enhanced product management system
+import AdvancedProductManagement from "./components/ProductManagement/components/ProductManagement"; // Advanced product management system
 import VariantDetectionConfigurationPage from "./components/ProductManagement/VariantDetectionConfig/VariantDetectionConfigurationPage"; // Variant detection configuration
 import CustomerManagement from "./components/customers/CustomerManagement";
 import EnhancedCustomerManagement from "./components/customers/EnhancedCustomerManagement";
@@ -192,14 +192,14 @@ function App() {
                               {/* ============================================ */}
                               {/* === NEW ENHANCED PRODUCT MANAGEMENT === */}
                               {/* ============================================ */}
-                              {/* Access the NEW enhanced system at /products/enhanced */}
+                              {/* Access the NEW advanced system at /products/enhanced */}
                               <Route
                                 path="products/enhanced"
-                                element={<EnhancedProductManagement />}
+                                element={<AdvancedProductManagement />}
                               />
                               <Route
                                 path="products/enhanced/:id"
-                                element={<EnhancedProductManagement />}
+                                element={<AdvancedProductManagement />}
                               />
                               {/* ============================================ */}
                               <Route

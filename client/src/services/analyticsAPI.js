@@ -98,7 +98,7 @@ class AnalyticsAPI {
   async getCustomerAnalytics(timeframe = "30d") {
     try {
       const response = await api.get(
-        `/analytics/customer-analytics-temp?timeframe=${timeframe}`
+        `/analytics/customer-analytics?timeframe=${timeframe}`
       );
       return response.data;
     } catch (error) {
@@ -113,7 +113,7 @@ class AnalyticsAPI {
   async getFinancialKPIs(timeframe = "30d") {
     try {
       const response = await api.get(
-        `/analytics/financial-kpis-temp?timeframe=${timeframe}`
+        `/analytics/financial-kpis?timeframe=${timeframe}`
       );
       return response.data;
     } catch (error) {

@@ -2,19 +2,22 @@ import api from "./api";
 
 /**
  * Consolidated Analytics Service - Frontend service for fetching analytics data
- * This service consolidates functionality from both analyticsAPI.js and analyticsService.js
+ * This service provides comprehensive analytics endpoints with caching, error handling, and timeout protection
  *
  * Features:
  * - Comprehensive analytics endpoints
- * - Error handling and retry logic
- * - Caching support
- * - Timeout protection
+ * - Intelligent error handling and retry logic
+ * - Memory-efficient caching system
+ * - Request timeout protection
+ * - Performance optimizations
+ * - Data formatting utilities
  */
 class AnalyticsService {
   constructor() {
     this.cache = new Map();
-    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
-    this.requestTimeout = 30000; // 30 seconds
+    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes cache
+    this.requestTimeout = 30000; // 30 seconds timeout
+    this.maxCacheSize = 50; // Prevent memory bloat
   }
 
   /**
@@ -30,6 +33,11 @@ class AnalyticsService {
         return cached.data;
       }
       this.cache.delete(cacheKey);
+    }
+
+    // Clean cache if it gets too large
+    if (this.cache.size >= this.maxCacheSize) {
+      this.cleanOldCache();
     }
 
     try {
@@ -63,6 +71,18 @@ class AnalyticsService {
   }
 
   /**
+   * Clean old cache entries
+   */
+  cleanOldCache() {
+    const now = Date.now();
+    for (const [key, value] of this.cache.entries()) {
+      if (now - value.timestamp > this.cacheTimeout) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
+  /**
    * Enhance error with more context
    */
   enhanceError(error, endpoint) {
@@ -80,6 +100,9 @@ class AnalyticsService {
     } else if (error.response?.status >= 500) {
       enhancedError.type = "SERVER_ERROR";
       enhancedError.message = "Server error. Please try again later.";
+    } else if (error.response?.status === 404) {
+      enhancedError.type = "NOT_FOUND";
+      enhancedError.message = "Analytics endpoint not found.";
     }
 
     return enhancedError;
@@ -149,26 +172,12 @@ class AnalyticsService {
   }
 
   /**
-   * Get customer analytics data
+   * Get customer analytics data (with retry logic)
    */
   async getCustomerAnalytics(timeframe = "30d") {
-    try {
-      // Try the authenticated endpoint first
-      return await this.makeRequest(
-        `/analytics/customer-analytics?timeframe=${timeframe}`
-      );
-    } catch (error) {
-      // If authentication fails, fall back to temp endpoint
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        console.warn(
-          "Authentication failed, using temp endpoint for customer analytics"
-        );
-        return await this.makeRequest(
-          `/analytics/customer-analytics-temp?timeframe=${timeframe}`
-        );
-      }
-      throw error;
-    }
+    return this.makeRequest(
+      `/analytics/customer-analytics?timeframe=${timeframe}`
+    );
   }
 
   /**
@@ -255,23 +264,7 @@ class AnalyticsService {
    * Get product analytics data
    */
   async getProductAnalytics(timeframe = "30d") {
-    try {
-      // Try the authenticated endpoint first
-      return await this.makeRequest(
-        `/analytics/products?timeframe=${timeframe}`
-      );
-    } catch (error) {
-      // If authentication fails, fall back to temp endpoint
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        console.warn(
-          "Authentication failed, using temp endpoint for product analytics"
-        );
-        return await this.makeRequest(
-          `/analytics/products-temp?timeframe=${timeframe}`
-        );
-      }
-      throw error;
-    }
+    return this.makeRequest(`/analytics/products?timeframe=${timeframe}`);
   }
 
   /**
@@ -293,46 +286,16 @@ class AnalyticsService {
    * Get financial analytics data
    */
   async getFinancialAnalytics(timeframe = "30d") {
-    try {
-      // Try the authenticated endpoint first
-      return await this.makeRequest(
-        `/analytics/financial-kpis?timeframe=${timeframe}`
-      );
-    } catch (error) {
-      // If authentication fails, fall back to temp endpoint
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        console.warn(
-          "Authentication failed, using temp endpoint for financial analytics"
-        );
-        return await this.makeRequest(
-          `/analytics/financial-kpis-temp?timeframe=${timeframe}`
-        );
-      }
-      throw error;
-    }
+    return this.makeRequest(`/analytics/financial-kpis?timeframe=${timeframe}`);
   }
 
   /**
    * Get cohort analysis data
    */
   async getCohortAnalytics(timeframe = "30d") {
-    try {
-      // Try the authenticated endpoint first
-      return await this.makeRequest(
-        `/analytics/cohort-analysis?timeframe=${timeframe}`
-      );
-    } catch (error) {
-      // If authentication fails, fall back to temp endpoint
-      if (error.response?.status === 401 || error.response?.status === 403) {
-        console.warn(
-          "Authentication failed, using temp endpoint for cohort analytics"
-        );
-        return await this.makeRequest(
-          `/analytics/cohort-analysis-temp?timeframe=${timeframe}`
-        );
-      }
-      throw error;
-    }
+    return this.makeRequest(
+      `/analytics/cohort-analysis?timeframe=${timeframe}`
+    );
   }
 
   /**

@@ -111,6 +111,9 @@ class AnalyticsService {
     this.cachePrefix = "analytics:";
     this.defaultCacheTTL = 3600; // 1 hour
     this.predictiveCacheTTL = 86400; // 24 hours for predictive analytics
+
+    // Bind imported functions to this instance
+    this.getOrderTrends = getFixedOrderTrends;
   }
 
   /**

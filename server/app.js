@@ -442,8 +442,8 @@ if (process.env.NODE_ENV === "production") {
   // Serve static files from the React app build directory
   // Check multiple possible build locations for different deployment scenarios
   const possibleBuildPaths = [
-    path.resolve(__dirname, "..", "build"), // Render deployment build location
-    path.resolve(__dirname, "..", "client", "build"), // Development build location
+    path.resolve(__dirname, "..", "client", "build"), // Standard build location
+    path.resolve(__dirname, "..", "build"), // Alternative build location
     path.resolve(process.cwd(), "build"), // Current working directory build
   ];
 
