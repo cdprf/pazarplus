@@ -3,7 +3,7 @@
 # Quick VPS Setup Script for Pazar+
 # This script automates the initial setup process
 
-set -e  # Exit on any errocßr
+set -e  # Exit on any error
 
 # Colors for output
 RED='\033[0;31m'
