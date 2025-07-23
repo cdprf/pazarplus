@@ -8,6 +8,7 @@ check.js
 check.ts
 diagnose*
 *.sh
+!quick-*.sh
 !render*.sh
 !client-render-build.sh
 !client-build.sh
