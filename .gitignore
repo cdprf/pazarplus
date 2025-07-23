@@ -11,6 +11,8 @@ diagnose*
 !render*.sh
 !client-render-build.sh
 !client-build.sh
+!deploy-vps.sh
+!quick-vps-setup.sh
 *.pdf
 *summary*
 *report*
