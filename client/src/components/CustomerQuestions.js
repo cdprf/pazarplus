@@ -137,13 +137,36 @@ const CustomerQuestions = () => {
       const response = await api.get("/customer-questions/stats");
       if (response.data.success) {
         const statsData = response.data.data;
+        console.log("📊 Stats API Response:", statsData); // Debug log
+
+        // Handle the actual API response format
+        const total = statsData.totalQuestions || 0;
+
+        // Use direct properties from the API response
+        const waiting = statsData.openQuestions || 0;
+        const answered = statsData.answeredQuestions || 0;
+        const rejected = statsData.rejectedQuestions || 0;
+        const autoClosed = statsData.autoClosedQuestions || 0;
+
+        const avgResponseTime =
+          statsData.avgResponseTime || parseFloat(statsData.responseRate) || 0;
+
+        console.log("📈 Parsed Stats:", {
+          total,
+          waiting,
+          answered,
+          rejected,
+          autoClosed,
+          avgResponseTime,
+        }); // Debug log
+
         setStats({
-          total: statsData.totalQuestions || 0,
-          waiting: statsData.openQuestions || 0,
-          answered: statsData.answeredQuestions || 0,
-          rejected: statsData.rejectedQuestions || 0,
-          autoClosed: statsData.autoClosedQuestions || 0,
-          avgResponseTime: Math.round(parseFloat(statsData.responseRate) || 0),
+          total,
+          waiting,
+          answered,
+          rejected,
+          autoClosed,
+          avgResponseTime: Math.round(avgResponseTime),
         });
       }
     } catch (err) {
@@ -994,7 +1017,7 @@ const CustomerQuestions = () => {
                   <option value="">Şablon seçin...</option>
                   {templates.map((template) => (
                     <option key={template.id} value={template.id}>
-                      {template.name || template.title}
+                      {template.title}
                     </option>
                   ))}
                 </select>

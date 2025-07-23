@@ -672,6 +672,37 @@ class CustomerQuestionService {
         count: parseInt(q.getDataValue("count")),
       })),
       totalQuestions: await CustomerQuestion.count({ where: whereClause }),
+      totalResponseTimeHours: await CustomerQuestion.sum(
+        Sequelize.literal(
+          "EXTRACT(EPOCH FROM (answered_date - creation_date))/3600"
+        ),
+        { where: whereClause }
+      ),
+      openQuestions: await CustomerQuestion.count({
+        where: { status: "WAITING_FOR_ANSWER", ...whereClause },
+      }),
+      answeredQuestions: await CustomerQuestion.count({
+        where: { status: "ANSWERED", ...whereClause },
+      }),
+      rejectedQuestions: await CustomerQuestion.count({
+        where: { status: "REJECTED", ...whereClause },
+      }),
+      unansweredQuestions: await CustomerQuestion.count({
+        where: { status: "UNANSWERED", ...whereClause },
+      }),
+      averageResponseTimeHours: await CustomerQuestion.findOne({
+        attributes: [
+          [
+            Sequelize.fn(
+              "AVG",
+              Sequelize.literal(
+                "EXTRACT(EPOCH FROM (answered_date - creation_date))/3600"
+              )
+            ),
+            "avg_response_time_hours",
+          ],
+        ],
+      }),
     };
   }
 
