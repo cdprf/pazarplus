@@ -32,7 +32,7 @@ const getPageNumbers = (currentPage, totalPages) => {
   );
 };
 
-const EnhancedPagination = ({
+const Pagination = ({
   currentPage,
   totalPages,
   totalRecords,
@@ -58,7 +58,7 @@ const EnhancedPagination = ({
   // Validate onPageChange callback
   const handlePageChange = (page) => {
     if (typeof onPageChange !== "function") {
-      console.warn("EnhancedPagination: onPageChange is not a function");
+      console.warn("Pagination: onPageChange is not a function");
       return;
     }
 
@@ -195,4 +195,4 @@ const EnhancedPagination = ({
   );
 };
 
-export default EnhancedPagination;
+export default Pagination;

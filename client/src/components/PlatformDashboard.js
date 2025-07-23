@@ -5,7 +5,7 @@ import enhancedPlatformService from "../services/enhancedPlatformService";
  * Enhanced Platform Integration Dashboard
  * Provides UI for Week 5-6 enhanced platform features
  */
-const EnhancedPlatformDashboard = () => {
+const PlatformDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [conflicts, setConflicts] = useState([]);
   const [inventoryStatus, setInventoryStatus] = useState(null);
@@ -514,4 +514,4 @@ const EnhancedPlatformDashboard = () => {
   );
 };
 
-export default EnhancedPlatformDashboard;
+export default PlatformDashboard;

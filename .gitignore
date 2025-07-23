@@ -29,6 +29,11 @@ diagnose*
 .env.development
 .env.test
 .env.production
+.env.vps
+# Keep example files for templates
+!.env.example
+!.env.*.example
+!.env.vps.example
 
 # Client environment variables
 /client/.env
@@ -36,6 +41,9 @@ diagnose*
 /client/.env.development
 /client/.env.test
 /client/.env.production
+# Keep client example files for templates
+!/client/.env.example
+!/client/.env.*.example
 
 # Logs
 logs/

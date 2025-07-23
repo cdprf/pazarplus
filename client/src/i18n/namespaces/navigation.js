@@ -36,17 +36,17 @@ export const navigationTranslations = {
       logout: "Çıkış",
       login: "Giriş",
       register: "Kayıt",
-      forgotPassword: "Şifremi Unuttum"
+      forgotPassword: "Şifremi Unuttum",
     },
     breadcrumb: {
       home: "Ana Sayfa",
       back: "Geri",
-      current: "Mevcut Sayfa"
+      current: "Mevcut Sayfa",
     },
     sidebar: {
       expand: "Genişlet",
       collapse: "Daralt",
-      toggle: "Aç/Kapat"
+      toggle: "Aç/Kapat",
     },
     header: {
       search: "Ara...",
@@ -56,7 +56,7 @@ export const navigationTranslations = {
       language: "Dil",
       theme: "Tema",
       darkMode: "Karanlık Mod",
-      lightMode: "Aydınlık Mod"
+      lightMode: "Aydınlık Mod",
     },
     footer: {
       copyright: "Tüm hakları saklıdır",
@@ -64,7 +64,7 @@ export const navigationTranslations = {
       build: "Yapı",
       terms: "Kullanım Şartları",
       privacy: "Gizlilik Politikası",
-      cookies: "Çerez Politikası"
+      cookies: "Çerez Politikası",
     },
     tabs: {
       overview: "Genel Bakış",
@@ -76,14 +76,14 @@ export const navigationTranslations = {
       basic: "Temel",
       general: "Genel",
       specific: "Özel",
-      custom: "Özel"
+      custom: "Özel",
     },
     modal: {
       title: "Başlık",
       close: "Kapat",
       dismiss: "Kapat",
       fullscreen: "Tam Ekran",
-      minimize: "Küçült"
+      minimize: "Küçült",
     },
     table: {
       sortAscending: "Artan Sıralama",
@@ -104,7 +104,7 @@ export const navigationTranslations = {
       entries: "kayıt",
       noData: "Veri yok",
       noResults: "Sonuç bulunamadı",
-      totalRows: "Toplam Satır"
+      totalRows: "Toplam Satır",
     },
     form: {
       required: "Zorunlu",
@@ -115,7 +115,7 @@ export const navigationTranslations = {
       validation: "Doğrulama",
       invalid: "Geçersiz",
       valid: "Geçerli",
-      pending: "Beklemede"
+      pending: "Beklemede",
     },
     pagination: {
       first: "İlk",
@@ -127,8 +127,8 @@ export const navigationTranslations = {
       perPage: "Sayfa başına",
       showing: "Gösterilen",
       to: "-",
-      results: "sonuç"
-    }
+      results: "sonuç",
+    },
   },
   en: {
     menu: {
@@ -166,17 +166,17 @@ export const navigationTranslations = {
       logout: "Logout",
       login: "Login",
       register: "Register",
-      forgotPassword: "Forgot Password"
+      forgotPassword: "Forgot Password",
     },
     breadcrumb: {
       home: "Home",
       back: "Back",
-      current: "Current Page"
+      current: "Current Page",
     },
     sidebar: {
       expand: "Expand",
       collapse: "Collapse",
-      toggle: "Toggle"
+      toggle: "Toggle",
     },
     header: {
       search: "Search...",
@@ -186,7 +186,7 @@ export const navigationTranslations = {
       language: "Language",
       theme: "Theme",
       darkMode: "Dark Mode",
-      lightMode: "Light Mode"
+      lightMode: "Light Mode",
     },
     footer: {
       copyright: "All rights reserved",
@@ -194,7 +194,7 @@ export const navigationTranslations = {
       build: "Build",
       terms: "Terms of Service",
       privacy: "Privacy Policy",
-      cookies: "Cookie Policy"
+      cookies: "Cookie Policy",
     },
     tabs: {
       overview: "Overview",
@@ -206,14 +206,14 @@ export const navigationTranslations = {
       basic: "Basic",
       general: "General",
       specific: "Specific",
-      custom: "Custom"
+      custom: "Custom",
     },
     modal: {
       title: "Title",
       close: "Close",
       dismiss: "Dismiss",
       fullscreen: "Fullscreen",
-      minimize: "Minimize"
+      minimize: "Minimize",
     },
     table: {
       sortAscending: "Sort Ascending",
@@ -234,7 +234,7 @@ export const navigationTranslations = {
       entries: "entries",
       noData: "No data",
       noResults: "No results found",
-      totalRows: "Total Rows"
+      totalRows: "Total Rows",
     },
     form: {
       required: "Required",
@@ -245,7 +245,7 @@ export const navigationTranslations = {
       validation: "Validation",
       invalid: "Invalid",
       valid: "Valid",
-      pending: "Pending"
+      pending: "Pending",
     },
     pagination: {
       first: "First",
@@ -257,7 +257,7 @@ export const navigationTranslations = {
       perPage: "Per page",
       showing: "Showing",
       to: "to",
-      results: "results"
-    }
-  }
+      results: "results",
+    },
+  },
 };

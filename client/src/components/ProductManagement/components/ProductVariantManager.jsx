@@ -1,5 +1,5 @@
 /**
- * Product Variant Manager Component
+ * Product Variimport SKUInput from '../../common/SKUInput';nt Manager Component
  * Manages product variants with your structured SKU system
  */
 
@@ -17,7 +17,7 @@ import {
   Loader,
 } from "lucide-react";
 import { skuSystemAPI } from "../../../services/skuSystemAPI";
-import EnhancedSKUInput from "../../common/EnhancedSKUInput";
+import SKUInput from "../../common/SKUInput";
 
 const ProductVariantManager = ({
   baseProduct,
@@ -460,7 +460,7 @@ const ProductVariantManager = ({
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     SKU *
                   </label>
-                  <EnhancedSKUInput
+                  <SKUInput
                     value={variantForm.sku}
                     onChange={(sku) =>
                       setVariantForm((prev) => ({ ...prev, sku }))

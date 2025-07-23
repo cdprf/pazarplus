@@ -39,7 +39,7 @@ import { useAlert } from "../../contexts/AlertContext";
 import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { Button, Card, CardContent, Badge, Modal } from "../ui";
 import CancelOrderDialog from "../dialogs/CancelOrderDialog";
-import EnhancedOrderBulkActions from "./BulkActions";
+import OrderBulkActions from "./BulkActions";
 // import NetworkDebugger from "../NetworkDebugger";
 
 const OrderManagement = React.memo(() => {
@@ -2115,7 +2115,7 @@ const OrderManagement = React.memo(() => {
 
         {/* Enhanced Bulk Actions */}
         {selectedOrders.length > 0 && (
-          <EnhancedOrderBulkActions
+          <OrderBulkActions
             selectedOrders={selectedOrders}
             onBulkAction={handleBulkAction}
             onClearSelection={() => setSelectedOrders([])}

@@ -1,18 +1,18 @@
-import { commonTranslations } from '../namespaces/common';
-import { businessTranslations } from '../namespaces/business';
-import { navigationTranslations } from '../namespaces/navigation';
+import { commonTranslations } from "../namespaces/common";
+import { businessTranslations } from "../namespaces/business";
+import { navigationTranslations } from "../namespaces/navigation";
 
 /**
  * Translation validation and management tools
  */
 export class TranslationValidator {
   constructor() {
-    this.supportedLanguages = ['tr', 'en'];
-    this.requiredNamespaces = ['common', 'business', 'navigation'];
+    this.supportedLanguages = ["tr", "en"];
+    this.requiredNamespaces = ["common", "business", "navigation"];
     this.allTranslations = {
       common: commonTranslations,
       business: businessTranslations,
-      navigation: navigationTranslations
+      navigation: navigationTranslations,
     };
   }
 
@@ -26,15 +26,15 @@ export class TranslationValidator {
         totalKeys: 0,
         translatedKeys: 0,
         missingKeys: 0,
-        completionPercentage: 0
+        completionPercentage: 0,
       },
       languages: {},
       missingKeys: {},
       extraKeys: {},
-      recommendations: []
+      recommendations: [],
     };
 
-    this.supportedLanguages.forEach(lang => {
+    this.supportedLanguages.forEach((lang) => {
       results.languages[lang] = this.validateLanguage(lang);
       results.missingKeys[lang] = results.languages[lang].missing;
       results.extraKeys[lang] = results.languages[lang].extra;
@@ -42,12 +42,19 @@ export class TranslationValidator {
 
     // Calculate summary
     const allLanguageResults = Object.values(results.languages);
-    results.summary.totalKeys = Math.max(...allLanguageResults.map(r => r.total));
-    results.summary.translatedKeys = Math.min(...allLanguageResults.map(r => r.translated));
-    results.summary.missingKeys = Math.max(...allLanguageResults.map(r => r.missing.length));
-    results.summary.completionPercentage = results.summary.totalKeys > 0 
-      ? (results.summary.translatedKeys / results.summary.totalKeys) * 100 
-      : 0;
+    results.summary.totalKeys = Math.max(
+      ...allLanguageResults.map((r) => r.total)
+    );
+    results.summary.translatedKeys = Math.min(
+      ...allLanguageResults.map((r) => r.translated)
+    );
+    results.summary.missingKeys = Math.max(
+      ...allLanguageResults.map((r) => r.missing.length)
+    );
+    results.summary.completionPercentage =
+      results.summary.totalKeys > 0
+        ? (results.summary.translatedKeys / results.summary.totalKeys) * 100
+        : 0;
 
     // Generate recommendations
     results.recommendations = this.generateRecommendations(results);
@@ -67,19 +74,24 @@ export class TranslationValidator {
       translated: 0,
       missing: [],
       extra: [],
-      namespaces: {}
+      namespaces: {},
     };
 
-    this.requiredNamespaces.forEach(namespace => {
+    this.requiredNamespaces.forEach((namespace) => {
       const namespaceResult = this.validateNamespace(language, namespace);
       result.namespaces[namespace] = namespaceResult;
       result.total += namespaceResult.total;
       result.translated += namespaceResult.translated;
-      result.missing.push(...namespaceResult.missing.map(key => `${namespace}.${key}`));
-      result.extra.push(...namespaceResult.extra.map(key => `${namespace}.${key}`));
+      result.missing.push(
+        ...namespaceResult.missing.map((key) => `${namespace}.${key}`)
+      );
+      result.extra.push(
+        ...namespaceResult.extra.map((key) => `${namespace}.${key}`)
+      );
     });
 
-    result.percentage = result.total > 0 ? (result.translated / result.total) * 100 : 0;
+    result.percentage =
+      result.total > 0 ? (result.translated / result.total) * 100 : 0;
 
     return result;
   }
@@ -97,7 +109,7 @@ export class TranslationValidator {
       total: 0,
       translated: 0,
       missing: [],
-      extra: []
+      extra: [],
     };
 
     if (!this.allTranslations[namespace]) {
@@ -105,18 +117,21 @@ export class TranslationValidator {
       return result;
     }
 
-    const referenceLanguage = 'en'; // Use English as reference
+    const referenceLanguage = "en"; // Use English as reference
     const reference = this.allTranslations[namespace][referenceLanguage];
     const target = this.allTranslations[namespace][language];
 
     if (!reference || !target) {
-      console.warn(`Missing translations for namespace: ${namespace}, language: ${language}`);
+      console.warn(
+        `Missing translations for namespace: ${namespace}, language: ${language}`
+      );
       return result;
     }
 
     this.compareTranslationObjects(reference, target, result);
 
-    result.percentage = result.total > 0 ? (result.translated / result.total) * 100 : 0;
+    result.percentage =
+      result.total > 0 ? (result.translated / result.total) * 100 : 0;
 
     return result;
   }
@@ -128,19 +143,28 @@ export class TranslationValidator {
    * @param {object} result - Result object to populate
    * @param {string} path - Current path
    */
-  compareTranslationObjects(reference, target, result, path = '') {
+  compareTranslationObjects(reference, target, result, path = "") {
     for (const key in reference) {
       const currentPath = path ? `${path}.${key}` : key;
       result.total++;
 
-      if (typeof reference[key] === 'object' && reference[key] !== null) {
-        if (!target[key] || typeof target[key] !== 'object') {
+      if (typeof reference[key] === "object" && reference[key] !== null) {
+        if (!target[key] || typeof target[key] !== "object") {
           result.missing.push(currentPath);
         } else {
-          this.compareTranslationObjects(reference[key], target[key], result, currentPath);
+          this.compareTranslationObjects(
+            reference[key],
+            target[key],
+            result,
+            currentPath
+          );
         }
       } else {
-        if (target[key] === undefined || target[key] === null || target[key] === '') {
+        if (
+          target[key] === undefined ||
+          target[key] === null ||
+          target[key] === ""
+        ) {
           result.missing.push(currentPath);
         } else {
           result.translated++;
@@ -168,9 +192,11 @@ export class TranslationValidator {
     // Check completion percentage
     if (results.summary.completionPercentage < 100) {
       recommendations.push({
-        type: 'warning',
-        message: `Translation completion is at ${results.summary.completionPercentage.toFixed(1)}%. Consider completing missing translations.`,
-        action: 'complete_translations'
+        type: "warning",
+        message: `Translation completion is at ${results.summary.completionPercentage.toFixed(
+          1
+        )}%. Consider completing missing translations.`,
+        action: "complete_translations",
       });
     }
 
@@ -178,37 +204,41 @@ export class TranslationValidator {
     Object.entries(results.languages).forEach(([lang, langResult]) => {
       if (langResult.missing.length > 10) {
         recommendations.push({
-          type: 'error',
+          type: "error",
           message: `Language "${lang}" has ${langResult.missing.length} missing translation keys.`,
-          action: 'translate_language',
-          data: { language: lang, missingCount: langResult.missing.length }
+          action: "translate_language",
+          data: { language: lang, missingCount: langResult.missing.length },
         });
       }
 
       if (langResult.extra.length > 5) {
         recommendations.push({
-          type: 'info',
+          type: "info",
           message: `Language "${lang}" has ${langResult.extra.length} extra keys that might be unused.`,
-          action: 'review_extra_keys',
-          data: { language: lang, extraCount: langResult.extra.length }
+          action: "review_extra_keys",
+          data: { language: lang, extraCount: langResult.extra.length },
         });
       }
     });
 
     // Check for namespace-specific issues
-    this.requiredNamespaces.forEach(namespace => {
-      const namespaceResults = this.supportedLanguages.map(lang => 
-        results.languages[lang].namespaces[namespace]
+    this.requiredNamespaces.forEach((namespace) => {
+      const namespaceResults = this.supportedLanguages.map(
+        (lang) => results.languages[lang].namespaces[namespace]
       );
 
-      const avgCompletion = namespaceResults.reduce((sum, ns) => sum + ns.percentage, 0) / namespaceResults.length;
+      const avgCompletion =
+        namespaceResults.reduce((sum, ns) => sum + ns.percentage, 0) /
+        namespaceResults.length;
 
       if (avgCompletion < 80) {
         recommendations.push({
-          type: 'warning',
-          message: `Namespace "${namespace}" has low completion rate (${avgCompletion.toFixed(1)}%). Consider prioritizing this area.`,
-          action: 'focus_namespace',
-          data: { namespace, completion: avgCompletion }
+          type: "warning",
+          message: `Namespace "${namespace}" has low completion rate (${avgCompletion.toFixed(
+            1
+          )}%). Consider prioritizing this area.`,
+          action: "focus_namespace",
+          data: { namespace, completion: avgCompletion },
         });
       }
     });
@@ -225,7 +255,7 @@ export class TranslationValidator {
     const result = this.validateLanguage(language);
     const template = {};
 
-    result.missing.forEach(key => {
+    result.missing.forEach((key) => {
       this.setNestedValue(template, key, `[MISSING: ${key}]`);
     });
 
@@ -239,12 +269,12 @@ export class TranslationValidator {
    * @param {any} value - Value to set
    */
   setNestedValue(obj, path, value) {
-    const keys = path.split('.');
+    const keys = path.split(".");
     let current = obj;
 
     for (let i = 0; i < keys.length - 1; i++) {
       const key = keys[i];
-      if (!current[key] || typeof current[key] !== 'object') {
+      if (!current[key] || typeof current[key] !== "object") {
         current[key] = {};
       }
       current = current[key];
@@ -258,19 +288,19 @@ export class TranslationValidator {
    * @param {string} format - Export format ('json', 'csv', 'html')
    * @returns {string} Formatted report
    */
-  exportReport(format = 'json') {
+  exportReport(format = "json") {
     const results = this.validateAll();
 
     switch (format) {
-      case 'json':
+      case "json":
         return JSON.stringify(results, null, 2);
-      
-      case 'csv':
+
+      case "csv":
         return this.generateCSVReport(results);
-      
-      case 'html':
+
+      case "html":
         return this.generateHTMLReport(results);
-      
+
       default:
         return JSON.stringify(results, null, 2);
     }
@@ -282,22 +312,26 @@ export class TranslationValidator {
    * @returns {string} CSV content
    */
   generateCSVReport(results) {
-    const lines = ['Language,Namespace,Total Keys,Translated,Missing,Completion %'];
+    const lines = [
+      "Language,Namespace,Total Keys,Translated,Missing,Completion %",
+    ];
 
     Object.entries(results.languages).forEach(([lang, langResult]) => {
       Object.entries(langResult.namespaces).forEach(([namespace, nsResult]) => {
-        lines.push([
-          lang,
-          namespace,
-          nsResult.total,
-          nsResult.translated,
-          nsResult.missing.length,
-          nsResult.percentage.toFixed(1)
-        ].join(','));
+        lines.push(
+          [
+            lang,
+            namespace,
+            nsResult.total,
+            nsResult.translated,
+            nsResult.missing.length,
+            nsResult.percentage.toFixed(1),
+          ].join(",")
+        );
       });
     });
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   /**
@@ -335,39 +369,67 @@ export class TranslationValidator {
         <p>Missing Keys: ${results.summary.missingKeys}</p>
         <p>Completion: ${results.summary.completionPercentage.toFixed(1)}%</p>
         <div class="progress">
-            <div class="progress-bar" style="width: ${results.summary.completionPercentage}%"></div>
+            <div class="progress-bar" style="width: ${
+              results.summary.completionPercentage
+            }%"></div>
         </div>
     </div>
 
     <h2>Languages</h2>
-    ${Object.entries(results.languages).map(([lang, langResult]) => `
+    ${Object.entries(results.languages)
+      .map(
+        ([lang, langResult]) => `
         <div class="language">
-            <h3>${lang.toUpperCase()} (${langResult.percentage.toFixed(1)}% complete)</h3>
-            ${Object.entries(langResult.namespaces).map(([namespace, nsResult]) => `
+            <h3>${lang.toUpperCase()} (${langResult.percentage.toFixed(
+          1
+        )}% complete)</h3>
+            ${Object.entries(langResult.namespaces)
+              .map(
+                ([namespace, nsResult]) => `
                 <div class="namespace">
-                    <h4>${namespace}: ${nsResult.translated}/${nsResult.total} (${nsResult.percentage.toFixed(1)}%)</h4>
+                    <h4>${namespace}: ${nsResult.translated}/${
+                  nsResult.total
+                } (${nsResult.percentage.toFixed(1)}%)</h4>
                     <div class="progress">
-                        <div class="progress-bar" style="width: ${nsResult.percentage}%"></div>
+                        <div class="progress-bar" style="width: ${
+                          nsResult.percentage
+                        }%"></div>
                     </div>
-                    ${nsResult.missing.length > 0 ? `
+                    ${
+                      nsResult.missing.length > 0
+                        ? `
                         <details>
-                            <summary>Missing Keys (${nsResult.missing.length})</summary>
+                            <summary>Missing Keys (${
+                              nsResult.missing.length
+                            })</summary>
                             <div class="missing-keys">
-                                ${nsResult.missing.map(key => `<div>${key}</div>`).join('')}
+                                ${nsResult.missing
+                                  .map((key) => `<div>${key}</div>`)
+                                  .join("")}
                             </div>
                         </details>
-                    ` : ''}
+                    `
+                        : ""
+                    }
                 </div>
-            `).join('')}
+            `
+              )
+              .join("")}
         </div>
-    `).join('')}
+    `
+      )
+      .join("")}
 
     <h2>Recommendations</h2>
-    ${results.recommendations.map(rec => `
+    ${results.recommendations
+      .map(
+        (rec) => `
         <div class="recommendation ${rec.type}">
             <strong>${rec.type.toUpperCase()}</strong>: ${rec.message}
         </div>
-    `).join('')}
+    `
+      )
+      .join("")}
 
     <p><small>Generated on ${new Date().toLocaleString()}</small></p>
 </body>

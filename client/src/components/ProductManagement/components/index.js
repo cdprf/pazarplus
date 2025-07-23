@@ -4,7 +4,7 @@ export { default as ProductStatusTabs } from "./ProductStatusTabs";
 export { default as CompletionScore } from "./CompletionScore";
 export { default as InlineEditor } from "./InlineEditor";
 export { default as BulkOperations } from "./BulkOperations";
-export { default as EnhancedPagination } from "./EnhancedPagination";
+export { default as Pagination } from "./Pagination";
 export { default as SearchPanel } from "./SearchPanel";
 export { default as EmptyState } from "./EmptyState";
 export { default as LoadingState } from "./LoadingState";

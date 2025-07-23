@@ -42,7 +42,7 @@ export const commonTranslations = {
       activate: "Aktifleştir",
       deactivate: "Deaktifleştir",
       enable: "Etkinleştir",
-      disable: "Devre Dışı Bırak"
+      disable: "Devre Dışı Bırak",
     },
     status: {
       loading: "Yükleniyor...",
@@ -65,12 +65,13 @@ export const commonTranslations = {
       info: "Bilgi",
       pending: "Beklemede",
       inProgress: "Devam Ediyor",
-      cancelled: "İptal Edildi"
+      cancelled: "İptal Edildi",
     },
     messages: {
       confirmDelete: "Bu öğeyi silmek istediğinizden emin misiniz?",
       confirmAction: "Bu işlemi gerçekleştirmek istediğinizden emin misiniz?",
-      unsavedChanges: "Kaydedilmemiş değişiklikleriniz var. Sayfadan ayrılmak istediğinizden emin misiniz?",
+      unsavedChanges:
+        "Kaydedilmemiş değişiklikleriniz var. Sayfadan ayrılmak istediğinizden emin misiniz?",
       noData: "Gösterilecek veri yok",
       noResults: "Sonuç bulunamadı",
       searchPlaceholder: "Aramak için yazın...",
@@ -91,7 +92,7 @@ export const commonTranslations = {
       connectionLost: "Bağlantı kesildi",
       reconnecting: "Yeniden bağlanılıyor...",
       offline: "Çevrimdışı",
-      online: "Çevrimiçi"
+      online: "Çevrimiçi",
     },
     labels: {
       yes: "Evet",
@@ -133,8 +134,8 @@ export const commonTranslations = {
       user: "Kullanıcı",
       admin: "Yönetici",
       moderator: "Moderatör",
-      guest: "Misafir"
-    }
+      guest: "Misafir",
+    },
   },
   en: {
     buttons: {
@@ -178,7 +179,7 @@ export const commonTranslations = {
       activate: "Activate",
       deactivate: "Deactivate",
       enable: "Enable",
-      disable: "Disable"
+      disable: "Disable",
     },
     status: {
       loading: "Loading...",
@@ -201,12 +202,13 @@ export const commonTranslations = {
       info: "Info",
       pending: "Pending",
       inProgress: "In Progress",
-      cancelled: "Cancelled"
+      cancelled: "Cancelled",
     },
     messages: {
       confirmDelete: "Are you sure you want to delete this item?",
       confirmAction: "Are you sure you want to perform this action?",
-      unsavedChanges: "You have unsaved changes. Are you sure you want to leave this page?",
+      unsavedChanges:
+        "You have unsaved changes. Are you sure you want to leave this page?",
       noData: "No data to display",
       noResults: "No results found",
       searchPlaceholder: "Type to search...",
@@ -227,7 +229,7 @@ export const commonTranslations = {
       connectionLost: "Connection lost",
       reconnecting: "Reconnecting...",
       offline: "Offline",
-      online: "Online"
+      online: "Online",
     },
     labels: {
       yes: "Yes",
@@ -269,7 +271,7 @@ export const commonTranslations = {
       user: "User",
       admin: "Admin",
       moderator: "Moderator",
-      guest: "Guest"
-    }
-  }
+      guest: "Guest",
+    },
+  },
 };

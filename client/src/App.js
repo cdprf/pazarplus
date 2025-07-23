@@ -41,10 +41,9 @@ import ProductManagement from "./components/ProductManagement/index.js"; // Mode
 import AdvancedProductManagement from "./components/ProductManagement/components/ProductManagement"; // Advanced product management system
 import VariantDetectionConfigurationPage from "./components/ProductManagement/VariantDetectionConfig/VariantDetectionConfigurationPage"; // Variant detection configuration
 import CustomerManagement from "./components/customers/CustomerManagement";
-import EnhancedCustomerManagement from "./components/customers/EnhancedCustomerManagement";
 import CustomerProfile from "./components/customers/CustomerProfile";
 import ShippingManagement from "./components/shipping/ShippingManagement";
-import EnhancedShippingSlipDesigner from "./components/shipping/EnhancedShippingSlipDesigner";
+import ShippingSlipDesigner from "./components/shipping/ShippingSlipDesigner";
 import ImportExport from "./components/common/ImportExport";
 import PlatformConnections from "./components/platforms/PlatformConnections";
 import PlatformSettings from "./components/platforms/PlatformSettings";
@@ -223,7 +222,7 @@ function App() {
                               {/* Customer Management */}
                               <Route
                                 path="customers"
-                                element={<EnhancedCustomerManagement />}
+                                element={<CustomerManagement />}
                               />
                               <Route
                                 path="customers/:email"
@@ -231,19 +230,19 @@ function App() {
                               />
                               <Route
                                 path="customers/profiles"
-                                element={<EnhancedCustomerManagement />}
+                                element={<CustomerManagement />}
                               />
                               <Route
                                 path="customers/analytics"
-                                element={<EnhancedCustomerManagement />}
+                                element={<CustomerManagement />}
                               />
                               <Route
                                 path="customers/orders"
-                                element={<EnhancedCustomerManagement />}
+                                element={<CustomerManagement />}
                               />
                               <Route
                                 path="customers/segments"
-                                element={<EnhancedCustomerManagement />}
+                                element={<CustomerManagement />}
                               />
                               {/* Customer Questions Management */}
                               <Route
@@ -274,7 +273,7 @@ function App() {
                               />
                               <Route
                                 path="shipping/slip-designer"
-                                element={<EnhancedShippingSlipDesigner />}
+                                element={<ShippingSlipDesigner />}
                               />
 
                               {/* Platform Management - enhanced */}

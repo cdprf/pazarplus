@@ -23,7 +23,7 @@ import { Button } from "../ui";
 import { Modal } from "../ui";
 import ProductDisplay from "./components/ProductDisplay";
 import { ImagePreviewModal } from "./components/ProductModals";
-import EnhancedProductAnalytics from "./components/ProductAnalytics";
+import ProductAnalytics from "./components/ProductAnalytics";
 import BulkEditModal from "./components/BulkEditModal";
 import SearchPanel from "./components/SearchPanel";
 import ProductManagementErrorBoundary, {
@@ -1208,7 +1208,7 @@ const ProductManagement = () => {
         />
 
         {/* Enhanced Product Analytics */}
-        <EnhancedProductAnalytics
+        <ProductAnalytics
           isOpen={state.showAnalytics}
           onClose={() => actions.setModals({ showAnalytics: false })}
           timeRange={state.analyticsTimeRange}

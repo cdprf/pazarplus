@@ -49,7 +49,7 @@ import {
 import { useToast } from "../ui/use-toast";
 import api from "../../services/api";
 import TemplateManager from "../../services/TemplateManager";
-import EnhancedShippingSlipDesigner from "../shipping/EnhancedShippingSlipDesigner";
+import ShippingSlipDesigner from "../shipping/ShippingSlipDesigner";
 import PreviewModal from "../shipping/designer/components/PreviewModal";
 
 const ShippingTemplateSettings = () => {
@@ -285,7 +285,7 @@ const ShippingTemplateSettings = () => {
   if (showDesigner) {
     return (
       <div className="h-screen">
-        <EnhancedShippingSlipDesigner
+        <ShippingSlipDesigner
           initialTemplate={selectedTemplate}
           onSave={async (template) => {
             console.log(
@@ -415,7 +415,9 @@ const ShippingTemplateSettings = () => {
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">Loading templates...</p>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">
+                Loading templates...
+              </p>
             </div>
           ) : filteredTemplates.length === 0 ? (
             <div className="text-center py-12">
@@ -651,7 +653,9 @@ const ShippingTemplateSettings = () => {
                     <div className="text-2xl font-bold text-blue-600">
                       {templates.length}
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Total Templates</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      Total Templates
+                    </div>
                   </div>
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
                     <div className="text-2xl font-bold text-green-600">
@@ -660,7 +664,9 @@ const ShippingTemplateSettings = () => {
                         0
                       )}
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Total Elements</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      Total Elements
+                    </div>
                   </div>
                 </div>
 

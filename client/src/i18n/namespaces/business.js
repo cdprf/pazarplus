@@ -26,7 +26,7 @@ export const businessTranslations = {
       fulfillment: "Gerçekleştirme",
       packingSlip: "Sevk İrsaliyesi",
       invoice: "Fatura",
-      receipt: "Fiş"
+      receipt: "Fiş",
     },
     products: {
       title: "Ürünler",
@@ -69,7 +69,7 @@ export const businessTranslations = {
       digital: "Dijital",
       physical: "Fiziksel",
       virtual: "Sanal",
-      downloadable: "İndirilebilir"
+      downloadable: "İndirilebilir",
     },
     platforms: {
       title: "Platformlar",
@@ -104,7 +104,7 @@ export const businessTranslations = {
       webhook: "Webhook",
       callback: "Geri Çağrı",
       authorization: "Yetkilendirme",
-      authentication: "Kimlik Doğrulama"
+      authentication: "Kimlik Doğrulama",
     },
     analytics: {
       title: "Analitik",
@@ -142,7 +142,7 @@ export const businessTranslations = {
       comparison: "Karşılaştırma",
       trend: "Trend",
       growth: "Büyüme",
-      decline: "Düşüş"
+      decline: "Düşüş",
     },
     compliance: {
       title: "Uyumluluk",
@@ -174,8 +174,8 @@ export const businessTranslations = {
       approval: "Onay",
       certification: "Sertifikasyon",
       license: "Lisans",
-      permit: "İzin"
-    }
+      permit: "İzin",
+    },
   },
   en: {
     orders: {
@@ -203,7 +203,7 @@ export const businessTranslations = {
       fulfillment: "Fulfillment",
       packingSlip: "Packing Slip",
       invoice: "Invoice",
-      receipt: "Receipt"
+      receipt: "Receipt",
     },
     products: {
       title: "Products",
@@ -246,7 +246,7 @@ export const businessTranslations = {
       digital: "Digital",
       physical: "Physical",
       virtual: "Virtual",
-      downloadable: "Downloadable"
+      downloadable: "Downloadable",
     },
     platforms: {
       title: "Platforms",
@@ -281,7 +281,7 @@ export const businessTranslations = {
       webhook: "Webhook",
       callback: "Callback",
       authorization: "Authorization",
-      authentication: "Authentication"
+      authentication: "Authentication",
     },
     analytics: {
       title: "Analytics",
@@ -319,7 +319,7 @@ export const businessTranslations = {
       comparison: "Comparison",
       trend: "Trend",
       growth: "Growth",
-      decline: "Decline"
+      decline: "Decline",
     },
     compliance: {
       title: "Compliance",
@@ -351,7 +351,7 @@ export const businessTranslations = {
       approval: "Approval",
       certification: "Certification",
       license: "License",
-      permit: "Permit"
-    }
-  }
+      permit: "Permit",
+    },
+  },
 };

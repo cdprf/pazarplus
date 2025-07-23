@@ -1,187 +1,186 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes } = require("sequelize");
 
 module.exports = (sequelize) => {
   const ProductMedia = sequelize.define(
-    'ProductMedia',
+    "ProductMedia",
     {
       id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
-        primaryKey: true
+        primaryKey: true,
       },
-      productId: {
+      mainProductId: {
         type: DataTypes.UUID,
         allowNull: false,
         references: {
-          model: 'Products',
-          key: 'id'
+          model: "main_products",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
+        comment: "Main product this media belongs to",
       },
       variantId: {
         type: DataTypes.UUID,
         allowNull: true,
         references: {
-          model: 'product_variants',
-          key: 'id'
+          model: "platform_variants",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE',
-        comment: 'If this media is specific to a variant'
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
+        comment:
+          "Platform variant this media is specific to (null for shared media)",
       },
       type: {
-        type: DataTypes.ENUM('image', 'gif', 'video', 'document'),
+        type: DataTypes.ENUM("image", "gif", "video", "document"),
         allowNull: false,
-        comment: 'Type of media file'
+        comment: "Type of media file",
       },
       url: {
         type: DataTypes.TEXT,
         allowNull: false,
-        comment: 'URL to the media file'
+        comment: "URL to the media file",
       },
       thumbnailUrl: {
         type: DataTypes.TEXT,
         allowNull: true,
-        comment: 'URL to thumbnail version'
+        comment: "URL to thumbnail version",
       },
       filename: {
         type: DataTypes.STRING,
-        allowNull: true,
-        comment: 'Stored filename'
+        allowNull: false,
+        comment: "Original filename",
       },
       originalName: {
         type: DataTypes.STRING,
         allowNull: true,
-        comment: 'Original filename'
+        comment: "Original uploaded filename",
       },
-      mimeType: {
-        type: DataTypes.STRING(100),
-        allowNull: true,
-        comment: 'MIME type of the file'
+      path: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+        comment: "Relative path to the file",
       },
       size: {
-        type: DataTypes.BIGINT,
-        allowNull: true,
-        comment: 'File size in bytes'
-      },
-      dimensions: {
-        type: DataTypes.JSON,
-        allowNull: true,
-        comment: 'Width and height for images/videos'
-      },
-      duration: {
         type: DataTypes.INTEGER,
+        allowNull: false,
+        comment: "File size in bytes",
+      },
+      mimetype: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        comment: "MIME type of the file",
+      },
+      altText: {
+        type: DataTypes.TEXT,
         allowNull: true,
-        comment: 'Duration in seconds for videos'
+        comment: "Alternative text for accessibility",
+      },
+      caption: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        comment: "Caption or description",
       },
       isPrimary: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: false,
-        comment: 'Primary media for the product/variant'
+        comment: "Is this the primary media for the product/variant",
       },
       sortOrder: {
         type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0,
-        comment: 'Display order'
+        comment: "Sort order for displaying media",
       },
-      platformSpecific: {
-        type: DataTypes.JSON,
-        allowNull: false,
-        defaultValue: {},
-        comment: 'Platform-specific media settings'
+      width: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        comment: "Image/video width in pixels",
+      },
+      height: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        comment: "Image/video height in pixels",
+      },
+      duration: {
+        type: DataTypes.FLOAT,
+        allowNull: true,
+        comment: "Video duration in seconds",
       },
       metadata: {
-        type: DataTypes.JSON,
-        allowNull: false,
-        defaultValue: {},
-        comment: 'Additional metadata (dimensions, colors, etc.)'
-      },
-      altText: {
-        type: DataTypes.TEXT,
+        type: DataTypes.JSONB,
         allowNull: true,
-        comment: 'Alt text for accessibility'
+        comment: "Additional metadata (EXIF, processing info, etc.)",
       },
-      caption: {
-        type: DataTypes.TEXT,
+      processedAt: {
+        type: DataTypes.DATE,
         allowNull: true,
-        comment: 'Media caption'
-      },
-      tags: {
-        type: DataTypes.JSON,
-        allowNull: false,
-        defaultValue: [],
-        comment: 'Tags for media categorization'
-      },
-      platform: {
-        type: DataTypes.STRING(50),
-        allowNull: true,
-        comment:
-          'Platform where this media is used (e.g., \'trendyol\', \'hepsiburada\', \'n11\')'
+        comment: "When media processing was completed",
       },
       status: {
-        type: DataTypes.ENUM(
-          'active',
-          'inactive',
-          'processing',
-          'failed',
-          'archived'
-        ),
+        type: DataTypes.ENUM("uploading", "processing", "ready", "failed"),
         allowNull: false,
-        defaultValue: 'active',
-        comment: 'Media status'
+        defaultValue: "uploading",
+        comment: "Processing status of the media",
       },
       userId: {
         type: DataTypes.UUID,
         allowNull: false,
         references: {
-          model: 'Users',
-          key: 'id'
+          model: "users",
+          key: "id",
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE',
-        comment: 'User who owns this media'
-      }
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
+        comment: "User who uploaded this media",
+      },
     },
     {
-      tableName: 'ProductMedias',
+      tableName: "enhanced_product_media",
       timestamps: true,
+      underscored: true,
       indexes: [
         {
-          fields: ['productId']
+          fields: ["main_product_id"],
         },
         {
-          fields: ['variantId']
+          fields: ["variant_id"],
         },
         {
-          fields: ['type']
+          fields: ["type"],
         },
         {
-          fields: ['isPrimary']
+          fields: ["is_primary"],
         },
         {
-          fields: ['productId', 'sortOrder'],
-          name: 'product_media_sort_order_idx'
-        }
+          fields: ["status"],
+        },
+        {
+          fields: ["user_id"],
+        },
+        {
+          fields: ["main_product_id", "sort_order"],
+          name: "enhanced_product_media_sort_order_idx",
+        },
       ],
       hooks: {
         beforeCreate: (media) => {
           // Auto-generate alt text if not provided
-          if (!media.altText && media.filename) {
-            media.altText = media.filename.replace(/\.[^/.]+$/, '');
+          if (!media.altText && media.originalName) {
+            media.altText = media.originalName.replace(/\.[^/.]+$/, "");
           }
         },
         afterCreate: async (media) => {
           // If this is set as primary, unset others
           if (media.isPrimary) {
             const whereClause = {
-              productId: media.productId,
-              id: { [sequelize.Sequelize.Op.ne]: media.id }
+              mainProductId: media.mainProductId,
+              id: { [sequelize.Sequelize.Op.ne]: media.id },
             };
 
-            // Add variantId condition only if it's defined
+            // Add variantId condition
             if (media.variantId !== null && media.variantId !== undefined) {
               whereClause.variantId = media.variantId;
             } else {
@@ -193,25 +192,43 @@ module.exports = (sequelize) => {
               { where: whereClause }
             );
           }
-        }
-      }
+        },
+      },
     }
   );
 
   ProductMedia.associate = function (models) {
-    ProductMedia.belongsTo(models.Product, {
-      foreignKey: 'productId',
-      as: 'product'
+    // MainProduct association
+    ProductMedia.belongsTo(models.MainProduct, {
+      foreignKey: "mainProductId",
+      as: "mainProduct",
+    });
+    models.MainProduct.hasMany(ProductMedia, {
+      foreignKey: "mainProductId",
+      as: "mediaAssets",
+      onDelete: "CASCADE",
     });
 
-    ProductMedia.belongsTo(models.ProductVariant, {
-      foreignKey: 'variantId',
-      as: 'variant'
+    // PlatformVariant association
+    ProductMedia.belongsTo(models.PlatformVariant, {
+      foreignKey: "variantId",
+      as: "platformVariant",
+    });
+    models.PlatformVariant.hasMany(ProductMedia, {
+      foreignKey: "variantId",
+      as: "mediaAssets",
+      onDelete: "CASCADE",
     });
 
+    // User association
     ProductMedia.belongsTo(models.User, {
-      foreignKey: 'userId',
-      as: 'user'
+      foreignKey: "userId",
+      as: "user",
+    });
+    models.User.hasMany(ProductMedia, {
+      foreignKey: "userId",
+      as: "enhancedProductMedia",
+      onDelete: "CASCADE",
     });
   };
 

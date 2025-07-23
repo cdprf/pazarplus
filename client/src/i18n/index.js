@@ -15,13 +15,13 @@ import { navigationTranslations } from "./namespaces/navigation";
 // Merge all translations
 const mergeTranslations = (baseTranslations, ...namespaces) => {
   const merged = { ...baseTranslations };
-  
-  namespaces.forEach(namespace => {
-    Object.keys(namespace).forEach(key => {
+
+  namespaces.forEach((namespace) => {
+    Object.keys(namespace).forEach((key) => {
       merged[key] = { ...merged[key], ...namespace[key] };
     });
   });
-  
+
   return merged;
 };
 
@@ -33,8 +33,8 @@ const resources = {
         en: {
           common: commonTranslations.en,
           business: businessTranslations.en,
-          navigation: navigationTranslations.en
-        }
+          navigation: navigationTranslations.en,
+        },
       }.en
     ),
   },
@@ -45,8 +45,8 @@ const resources = {
         tr: {
           common: commonTranslations.tr,
           business: businessTranslations.tr,
-          navigation: navigationTranslations.tr
-        }
+          navigation: navigationTranslations.tr,
+        },
       }.tr
     ),
   },
@@ -57,28 +57,28 @@ const i18nConfig = {
   resources,
   fallbackLng: ["tr", "en"], // Multiple fallback languages
   lng: "tr", // Default language
-  debug: process.env.NODE_ENV === 'development', // Debug only in development
+  debug: process.env.NODE_ENV === "development", // Debug only in development
 
   interpolation: {
     escapeValue: false, // React already escapes values
-    formatSeparator: ',',
-    format: function(value, format, lng) {
+    formatSeparator: ",",
+    format: function (value, format, lng) {
       // Custom formatting functions
-      if (format === 'uppercase') return value.toUpperCase();
-      if (format === 'lowercase') return value.toLowerCase();
-      if (format === 'currency') {
-        const locale = lng === 'tr' ? 'tr-TR' : 'en-US';
+      if (format === "uppercase") return value.toUpperCase();
+      if (format === "lowercase") return value.toLowerCase();
+      if (format === "currency") {
+        const locale = lng === "tr" ? "tr-TR" : "en-US";
         return new Intl.NumberFormat(locale, {
-          style: 'currency',
-          currency: lng === 'tr' ? 'TRY' : 'USD'
+          style: "currency",
+          currency: lng === "tr" ? "TRY" : "USD",
         }).format(value);
       }
-      if (format === 'date') {
-        const locale = lng === 'tr' ? 'tr-TR' : 'en-US';
+      if (format === "date") {
+        const locale = lng === "tr" ? "tr-TR" : "en-US";
         return new Intl.DateTimeFormat(locale).format(new Date(value));
       }
       return value;
-    }
+    },
   },
 
   detection: {
@@ -86,7 +86,7 @@ const i18nConfig = {
     caches: ["localStorage"],
     lookupFromPathIndex: 0,
     lookupFromSubdomainIndex: 0,
-    checkWhitelist: true
+    checkWhitelist: true,
   },
 
   react: {
@@ -96,10 +96,10 @@ const i18nConfig = {
     transEmptyNodeValue: "",
     transSupportBasicHtmlNodes: true,
     transKeepBasicHtmlNodesFor: ["br", "strong", "i", "p", "span", "em", "b"],
-    hashTransKey: function(defaultValue) {
+    hashTransKey: function (defaultValue) {
       return defaultValue;
     },
-    defaultTransParent: "div"
+    defaultTransParent: "div",
   },
 
   backend: {
@@ -108,7 +108,7 @@ const i18nConfig = {
     allowMultiLoading: false,
     crossDomain: false,
     withCredentials: false,
-    reloadInterval: false
+    reloadInterval: false,
   },
 
   // Enhanced configuration
@@ -117,44 +117,44 @@ const i18nConfig = {
   nsSeparator: ":",
   pluralSeparator: "_",
   contextSeparator: "_",
-  
+
   // Performance optimizations
   initImmediate: false,
   preload: ["tr", "en"],
   cleanCode: true,
-  
+
   // Namespace configuration
   defaultNS: "translation",
   fallbackNS: "translation",
-  
+
   // Missing key handling
-  saveMissing: process.env.NODE_ENV === 'development',
-  missingKeyHandler: function(lng, ns, key, fallbackValue) {
-    if (process.env.NODE_ENV === 'development') {
+  saveMissing: process.env.NODE_ENV === "development",
+  missingKeyHandler: function (lng, ns, key, fallbackValue) {
+    if (process.env.NODE_ENV === "development") {
       console.warn(`Missing translation key: ${key} for language: ${lng}`);
     }
   },
-  
+
   // Custom parsing
-  parseMissingKeyHandler: function(key) {
+  parseMissingKeyHandler: function (key) {
     // Generate human-readable fallback from key
     return key
-      .split('.')
+      .split(".")
       .pop()
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/_/g, ' ')
-      .replace(/^./, str => str.toUpperCase())
+      .replace(/([A-Z])/g, " $1")
+      .replace(/_/g, " ")
+      .replace(/^./, (str) => str.toUpperCase())
       .trim();
   },
 
   // Post-processing
   postProcess: ["interval", "plural"],
-  
+
   // Retry configuration
   retry: {
     times: 3,
-    interval: 300
-  }
+    interval: 300,
+  },
 };
 
 // Initialize i18n with enhanced error handling
@@ -165,31 +165,36 @@ const initializeI18n = async () => {
       .use(LanguageDetector)
       .use(initReactI18next)
       .init(i18nConfig);
-    
-    console.log('i18n initialized successfully');
-    
+
+    console.log("i18n initialized successfully");
+
     // Add event listeners for language changes
-    i18n.on('languageChanged', (lng) => {
+    i18n.on("languageChanged", (lng) => {
       document.documentElement.lang = lng;
-      document.documentElement.dir = ['ar', 'he', 'fa', 'ur'].includes(lng) ? 'rtl' : 'ltr';
+      document.documentElement.dir = ["ar", "he", "fa", "ur"].includes(lng)
+        ? "rtl"
+        : "ltr";
     });
-    
+
     // Set initial language attributes
     document.documentElement.lang = i18n.language;
-    document.documentElement.dir = ['ar', 'he', 'fa', 'ur'].includes(i18n.language) ? 'rtl' : 'ltr';
-    
+    document.documentElement.dir = ["ar", "he", "fa", "ur"].includes(
+      i18n.language
+    )
+      ? "rtl"
+      : "ltr";
   } catch (error) {
     console.error("i18n initialization failed:", error);
-    
+
     // Fallback initialization with minimal config
     try {
       await i18n.init({
-        lng: 'tr',
+        lng: "tr",
         resources,
         interpolation: { escapeValue: false },
-        react: { useSuspense: false }
+        react: { useSuspense: false },
       });
-      console.log('i18n initialized with fallback configuration');
+      console.log("i18n initialized with fallback configuration");
     } catch (fallbackError) {
       console.error("i18n fallback initialization failed:", fallbackError);
     }

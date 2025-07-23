@@ -42,6 +42,72 @@ import {
   DollarSign,
 } from "lucide-react";
 
+// Utility functions for bulk actions
+const BulkActionUtils = {
+  // Calculate estimated time for an action
+  calculateEstimatedTime: (action, orderCount) => {
+    const timePerItem = action.estimatedTime || 1;
+    return Math.ceil(timePerItem * orderCount);
+  },
+
+  // Format time duration
+  formatDuration: (seconds) => {
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return remainingSeconds > 0
+      ? `${minutes}m ${remainingSeconds}s`
+      : `${minutes}m`;
+  },
+
+  // Check if orders are eligible for an action
+  getEligibleOrders: (orders, selectedOrderIds, action) => {
+    if (!action.prerequisites) return selectedOrderIds;
+
+    return selectedOrderIds.filter((orderId) => {
+      const order = orders.find((o) => o.id === orderId);
+      return order && action.prerequisites.includes(order.status);
+    });
+  },
+
+  // Generate action summary
+  generateActionSummary: (action, eligibleCount, ineligibleCount) => {
+    const total = eligibleCount + ineligibleCount;
+    return {
+      eligible: eligibleCount,
+      ineligible: ineligibleCount,
+      total,
+      eligibilityRate: total > 0 ? (eligibleCount / total) * 100 : 0,
+      estimatedTime: BulkActionUtils.calculateEstimatedTime(
+        action,
+        eligibleCount
+      ),
+      hasWarnings: ineligibleCount > 0,
+      isDestructive: action.destructive || false,
+      requiresConfirmation: action.confirmRequired || action.destructive,
+    };
+  },
+
+  // Validate action options
+  validateActionOptions: (action, options) => {
+    const errors = [];
+
+    if (action.requiresReason && !options.reason?.trim()) {
+      errors.push("İptal nedeni gereklidir");
+    }
+
+    if (action.requiresShippingInfo && !options.shippingCompany) {
+      errors.push("Kargo şirketi seçimi gereklidir");
+    }
+
+    if (action.requiresConfirmation && !options.confirmed) {
+      errors.push("İşlem onayı gereklidir");
+    }
+
+    return errors;
+  },
+};
+
 // Enhanced bulk actions with categories and advanced options
 const ENHANCED_BULK_ACTIONS = {
   // Order Management Actions
@@ -243,7 +309,7 @@ const BULK_ACTIONS = {
   },
 };
 
-const EnhancedOrderBulkActions = ({
+const OrderBulkActions = ({
   selectedOrders = [],
   onBulkAction,
   onClearSelection,
@@ -256,7 +322,12 @@ const EnhancedOrderBulkActions = ({
   maxRecentActions = 5,
   enableBatchProcessing = true,
   enableProgressTracking = true,
-  enableAdvancedFiltering = false,
+  enableAdvancedFiltering = true, // Enable by default to use all features
+  // Additional props for enhanced functionality
+  onActionComplete,
+  onActionError,
+  customActions = {},
+  theme = "default",
 }) => {
   // State management
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -289,7 +360,29 @@ const EnhancedOrderBulkActions = ({
 
     const eligible = {};
 
-    Object.entries(ENHANCED_BULK_ACTIONS).forEach(([categoryKey, category]) => {
+    // Merge custom actions with enhanced actions
+    const allActions = { ...ENHANCED_BULK_ACTIONS };
+
+    // Add custom actions if provided
+    if (customActions && Object.keys(customActions).length > 0) {
+      Object.entries(customActions).forEach(([categoryKey, customCategory]) => {
+        if (allActions[categoryKey]) {
+          // Merge with existing category
+          allActions[categoryKey] = {
+            ...allActions[categoryKey],
+            actions: {
+              ...allActions[categoryKey].actions,
+              ...customCategory.actions,
+            },
+          };
+        } else {
+          // Add new category
+          allActions[categoryKey] = customCategory;
+        }
+      });
+    }
+
+    Object.entries(allActions).forEach(([categoryKey, category]) => {
       eligible[categoryKey] = {
         ...category,
         actions: {},
@@ -326,22 +419,7 @@ const EnhancedOrderBulkActions = ({
     });
 
     return eligible;
-  }, [selectedOrders, orders, selectedCount]);
-
-  // Enhanced action handler with progress tracking
-  const handleBulkAction = useCallback(async (categoryKey, actionKey) => {
-    const action = ENHANCED_BULK_ACTIONS[categoryKey]?.actions?.[actionKey];
-    if (!action) return;
-
-    // Show confirmation if required
-    if (action.confirmRequired || action.destructive) {
-      setActionToConfirm({ categoryKey, actionKey, action });
-      setShowConfirmation(true);
-      return;
-    }
-
-    await executeBulkAction(categoryKey, actionKey, action);
-  }, []);
+  }, [selectedOrders, orders, selectedCount, customActions]);
 
   const executeBulkAction = useCallback(
     async (categoryKey, actionKey, action, options = {}) => {
@@ -349,7 +427,8 @@ const EnhancedOrderBulkActions = ({
         setShowProgress(true);
         processingRef.current.cancelled = false;
 
-        const batchSize = action.batchSize || 10;
+        const batchSize = options.batchSize || action.batchSize || 10;
+        const delay = options.delay || 100;
         const total = selectedOrders.length;
         const batches = [];
 
@@ -394,47 +473,168 @@ const EnhancedOrderBulkActions = ({
               {
                 ...options,
                 ...actionOptions,
+                categoryKey,
+                actionKey,
+                batchIndex,
+                totalBatches: batches.length,
+                action,
               }
             );
 
             results.push(result);
 
-            // Small delay for better UX
-            await new Promise((resolve) => {
-              timeoutRef.current = setTimeout(resolve, 100);
-            });
+            // Progressive delay for better UX and server load management
+            if (delay > 0) {
+              await new Promise((resolve) => {
+                timeoutRef.current = setTimeout(resolve, delay);
+              });
+            }
+
+            // Call completion callback if provided
+            if (onActionComplete) {
+              onActionComplete({
+                action: `${categoryKey}_${actionKey}`,
+                batch,
+                result,
+                batchIndex,
+                totalBatches: batches.length,
+                progress: {
+                  current: startIndex + batch.length,
+                  total,
+                  percentage: Math.round(
+                    ((startIndex + batch.length) / total) * 100
+                  ),
+                },
+              });
+            }
           } catch (error) {
-            errors.push({
+            const errorInfo = {
               batch: batchIndex,
               orderIds: batch,
               error: error.message,
-            });
+              timestamp: new Date().toISOString(),
+            };
+            errors.push(errorInfo);
 
-            // Continue or stop based on action configuration
-            if (action.stopOnError) break;
+            // Call error callback if provided
+            if (onActionError) {
+              onActionError({
+                action: `${categoryKey}_${actionKey}`,
+                batch,
+                error: error.message,
+                batchIndex,
+                errorInfo,
+              });
+            }
+
+            // Handle error based on options
+            const errorHandling = options.errorHandling || "continue";
+
+            if (errorHandling === "stop") {
+              break;
+            } else if (
+              errorHandling === "retry" &&
+              batchIndex < batches.length
+            ) {
+              // Simple retry logic - could be enhanced
+              try {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                const retryResult = await onBulkAction(
+                  `${categoryKey}_${actionKey}`,
+                  batch,
+                  { ...options, ...actionOptions, isRetry: true }
+                );
+                results.push(retryResult);
+              } catch (retryError) {
+                errors.push({
+                  ...errorInfo,
+                  retryError: retryError.message,
+                });
+              }
+            }
+            // Continue processing for 'continue' option
           }
         }
 
+        const finalStatus = {
+          current: total,
+          currentItem: processingRef.current.cancelled
+            ? "İptal edildi"
+            : "Tamamlandı",
+          errors,
+          completed: !processingRef.current.cancelled,
+          successCount:
+            total - errors.reduce((sum, err) => sum + err.orderIds.length, 0),
+          errorCount: errors.reduce((sum, err) => sum + err.orderIds.length, 0),
+        };
+
         setProcessingStatus((prev) => ({
           ...prev,
-          current: total,
-          currentItem: "Tamamlandı",
-          errors,
+          ...finalStatus,
         }));
 
-        // Auto-hide progress after success
+        // Auto-hide progress after success (longer delay if there were errors)
+        const hideDelay = errors.length > 0 ? 5000 : 2000;
         setTimeout(() => {
           setShowProgress(false);
           setActionOptions({});
-        }, 2000);
+        }, hideDelay);
+
+        return {
+          results,
+          errors,
+          cancelled: processingRef.current.cancelled,
+          finalStatus,
+        };
       } catch (error) {
+        const generalError = {
+          general: error.message,
+          timestamp: new Date().toISOString(),
+        };
+
         setProcessingStatus((prev) => ({
           ...prev,
-          errors: [...prev.errors, { general: error.message }],
+          errors: [...prev.errors, generalError],
+          currentItem: "Hata oluştu",
         }));
+
+        if (onActionError) {
+          onActionError({
+            action: `${categoryKey}_${actionKey}`,
+            error: error.message,
+            general: true,
+            generalError,
+          });
+        }
+
+        throw error;
       }
     },
-    [selectedOrders, onBulkAction, actionOptions]
+    [
+      selectedOrders,
+      onBulkAction,
+      actionOptions,
+      onActionComplete,
+      onActionError,
+    ]
+  );
+
+  // Enhanced action handler with progress tracking
+  const handleBulkAction = useCallback(
+    async (categoryKey, actionKey) => {
+      const action = ENHANCED_BULK_ACTIONS[categoryKey]?.actions?.[actionKey];
+      if (!action) return;
+
+      // Show confirmation if required
+      if (action.confirmRequired || action.destructive) {
+        setActionToConfirm({ categoryKey, actionKey, action });
+        setShowConfirmation(true);
+        return;
+      }
+
+      await executeBulkAction(categoryKey, actionKey, action);
+    },
+    [executeBulkAction]
   );
 
   const handleCancelProcessing = useCallback(() => {
@@ -472,6 +672,21 @@ const EnhancedOrderBulkActions = ({
 
   if (selectedCount === 0) {
     return null;
+  }
+
+  // If theme is "simple", use the StatusUpdateBulkAction
+  if (theme === "simple") {
+    return (
+      <StatusUpdateBulkAction
+        selectedCount={selectedCount}
+        onStatusUpdate={(status) =>
+          onBulkAction("status_update", selectedOrders, { status })
+        }
+        onClearSelection={onClearSelection}
+        loading={loading}
+        className={className}
+      />
+    );
   }
 
   return (
@@ -551,8 +766,9 @@ const EnhancedOrderBulkActions = ({
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium">
-                    Filtreleme
+                  <label className="flex items-center space-x-2 text-sm font-medium mb-2">
+                    <Filter className="h-4 w-4" />
+                    <span>Filtreleme</span>
                   </label>
                   <div className="space-y-1">
                     <label className="flex items-center space-x-2">
@@ -566,6 +782,7 @@ const EnhancedOrderBulkActions = ({
                           }))
                         }
                       />
+                      <CheckSquare className="h-4 w-4 text-success-600" />
                       <span className="text-sm">Sadece uygun siparişler</span>
                     </label>
                     <label className="flex items-center space-x-2">
@@ -579,14 +796,15 @@ const EnhancedOrderBulkActions = ({
                           }))
                         }
                       />
+                      <Square className="h-4 w-4 text-info-600" />
                       <span className="text-sm">Benzer siparişleri grupla</span>
                     </label>
                   </div>
-                </div>
-
+                </div>{" "}
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium">
-                    İşlem Seçenekleri
+                  <label className="flex items-center space-x-2 text-sm font-medium mb-2">
+                    <Upload className="h-4 w-4" />
+                    <span>İşlem Seçenekleri</span>
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <input
@@ -617,11 +835,53 @@ const EnhancedOrderBulkActions = ({
                       }
                     />
                   </div>
+                  {/* Action Control Buttons */}
+                  <div className="flex space-x-2 mt-2">
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs flex items-center space-x-1"
+                      onClick={() =>
+                        setActionOptions((prev) => ({
+                          ...prev,
+                          priority: "high",
+                        }))
+                      }
+                    >
+                      <PlayCircle className="h-3 w-3" />
+                      <span>Hızlı</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs flex items-center space-x-1"
+                      onClick={() =>
+                        setActionOptions((prev) => ({
+                          ...prev,
+                          priority: "normal",
+                        }))
+                      }
+                    >
+                      <PauseCircle className="h-3 w-3" />
+                      <span>Normal</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs flex items-center space-x-1"
+                      onClick={() =>
+                        setActionOptions((prev) => ({
+                          ...prev,
+                          priority: "low",
+                        }))
+                      }
+                    >
+                      <StopCircle className="h-3 w-3" />
+                      <span>Yavaş</span>
+                    </button>
+                  </div>
                 </div>
-
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium">
-                    Hata Yönetimi
+                  <label className="flex items-center space-x-2 text-sm font-medium mb-2">
+                    <Search className="h-4 w-4" />
+                    <span>Hata Yönetimi</span>
                   </label>
                   <select
                     value={actionOptions.errorHandling || "continue"}
@@ -637,6 +897,36 @@ const EnhancedOrderBulkActions = ({
                     <option value="stop">İlk hatada dur</option>
                     <option value="retry">Hataları yeniden dene</option>
                   </select>
+
+                  {/* Additional scheduling options */}
+                  <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-3 w-3 text-gray-500" />
+                      <span className="text-gray-600">Zamanlama:</span>
+                      <select
+                        value={actionOptions.scheduling || "immediate"}
+                        onChange={(e) =>
+                          setActionOptions((prev) => ({
+                            ...prev,
+                            scheduling: e.target.value,
+                          }))
+                        }
+                        className="select select-xs"
+                      >
+                        <option value="immediate">Hemen</option>
+                        <option value="delayed">Gecikmeli</option>
+                        <option value="scheduled">Zamanlanmış</option>
+                      </select>
+                    </div>
+
+                    {/* Cost estimation */}
+                    <div className="flex items-center space-x-2 mt-1">
+                      <DollarSign className="h-3 w-3 text-gray-500" />
+                      <span className="text-gray-600">
+                        Tahmini maliyet: API çağrısı başına ~0.001₺
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -683,6 +973,20 @@ const EnhancedOrderBulkActions = ({
           status={processingStatus}
         />
       )}
+
+      {/* Additional Progress Indicator (if both are enabled) */}
+      {enableProgressTracking && showProgress && (
+        <BulkActionProgress
+          isVisible={showProgress}
+          action={processingStatus.action}
+          progress={processingStatus.current}
+          total={processingStatus.total}
+          currentItem={processingStatus.currentItem}
+          onCancel={
+            processingStatus.canCancel ? handleCancelProcessing : undefined
+          }
+        />
+      )}
     </>
   );
 };
@@ -695,28 +999,49 @@ const ActionCategoryDropdown = ({
   disabled,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef(null);
   const CategoryIcon = category.icon;
 
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+      });
+    }
+  }, [isOpen]);
+
   return (
-    <div className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        disabled={disabled}
-        className="btn btn-outline btn-sm flex items-center space-x-2"
-      >
-        <CategoryIcon className="h-4 w-4" />
-        <span>{category.label}</span>
-        <ChevronDown className="h-3 w-3" />
-      </button>
+    <>
+      <div className="relative">
+        <button
+          ref={buttonRef}
+          onClick={() => setIsOpen(!isOpen)}
+          disabled={disabled}
+          className="btn btn-outline btn-sm flex items-center space-x-2"
+        >
+          <CategoryIcon className="h-4 w-4" />
+          <span>{category.label}</span>
+          <ChevronDown className="h-3 w-3" />
+        </button>
+      </div>
 
       {isOpen && (
         <>
           <div
-            className="fixed inset-0 z-10"
+            className="fixed inset-0 z-[9998]"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute top-full left-0 z-20 mt-1 bg-white border border-gray-200 rounded-md shadow-lg min-w-[250px]">
-            <div className="py-1">
+          <div
+            className="fixed z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-xl min-w-[250px] max-w-sm"
+            style={{
+              top: `${dropdownPosition.top + 4}px`,
+              left: `${dropdownPosition.left}px`,
+            }}
+          >
+            <div className="py-1 max-h-80 overflow-y-auto">
               {Object.entries(category.actions).map(([actionKey, action]) => {
                 const ActionIcon = action.icon;
                 const hasIneligible = action.ineligibleCount > 0;
@@ -729,32 +1054,36 @@ const ActionCategoryDropdown = ({
                       setIsOpen(false);
                     }}
                     className={`
-                      w-full px-4 py-2 text-left text-sm hover:bg-gray-50
-                      flex items-center justify-between
+                      w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700
+                      flex items-center justify-between transition-colors duration-200
                       ${
-                        action.destructive ? "text-danger-600" : "text-gray-700"
+                        action.destructive
+                          ? "text-danger-600 hover:text-danger-700"
+                          : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
                       }
                     `}
                   >
                     <div className="flex items-center space-x-3">
-                      <ActionIcon className="h-4 w-4" />
-                      <div>
-                        <div className="font-medium">{action.label}</div>
-                        <div className="text-xs text-gray-500">
+                      <ActionIcon className="h-4 w-4 flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium truncate">
+                          {action.label}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
                           {action.description}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
                       {hasIneligible && (
-                        <span className="bg-warning-100 text-warning-800 text-xs px-2 py-1 rounded">
+                        <span className="bg-warning-100 dark:bg-warning-900 text-warning-800 dark:text-warning-200 text-xs px-2 py-1 rounded">
                           {action.eligibleCount}/
                           {action.eligibleCount + action.ineligibleCount}
                         </span>
                       )}
                       {action.estimatedTime && (
-                        <div className="text-xs text-gray-500 flex items-center">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
                           <Clock className="h-3 w-3 mr-1" />~
                           {Math.ceil(
                             action.estimatedTime * action.eligibleCount
@@ -770,7 +1099,7 @@ const ActionCategoryDropdown = ({
           </div>
         </>
       )}
-    </div>
+    </>
   );
 };
 
@@ -789,6 +1118,18 @@ const EnhancedConfirmationModal = ({
 }) => {
   const ActionIcon = action.icon;
   const hasIneligible = ineligibleCount > 0;
+
+  // Use utility functions
+  const actionSummary = BulkActionUtils.generateActionSummary(
+    action,
+    eligibleCount,
+    ineligibleCount
+  );
+  const validationErrors = BulkActionUtils.validateActionOptions(
+    action,
+    options
+  );
+  const canProceed = validationErrors.length === 0;
 
   if (!isOpen) return null;
 
@@ -846,13 +1187,40 @@ const EnhancedConfirmationModal = ({
                   <div>
                     <span className="text-gray-600">Tahmini süre:</span>
                     <span className="ml-2 font-medium">
-                      ~{Math.ceil((action.estimatedTime || 1) * eligibleCount)}s
+                      {BulkActionUtils.formatDuration(
+                        actionSummary.estimatedTime
+                      )}
                     </span>
                   </div>
                 </>
               )}
+              <div>
+                <span className="text-gray-600">Uygunluk oranı:</span>
+                <span className="ml-2 font-medium">
+                  %{Math.round(actionSummary.eligibilityRate)}
+                </span>
+              </div>
             </div>
           </div>
+
+          {/* Validation Errors */}
+          {validationErrors.length > 0 && (
+            <div className="bg-danger-50 border border-danger-200 rounded-lg p-4">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="h-5 w-5 text-danger-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <div className="font-medium text-danger-800 mb-1">
+                    Eksik Bilgiler
+                  </div>
+                  <ul className="text-danger-700 space-y-1">
+                    {validationErrors.map((error, index) => (
+                      <li key={index}>• {error}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Warnings */}
           {action.destructive && (
@@ -985,12 +1353,7 @@ const EnhancedConfirmationModal = ({
           </button>
           <button
             onClick={onConfirm}
-            disabled={
-              loading ||
-              (action.requiresReason && !options.reason) ||
-              (action.requiresShippingInfo && !options.shippingCompany) ||
-              (action.requiresConfirmation && !options.confirmed)
-            }
+            disabled={loading || !canProceed}
             className={`btn ${
               action.destructive ? "btn-danger" : "btn-primary"
             } flex-1`}
@@ -1436,13 +1799,20 @@ const StatusUpdateBulkAction = ({
   );
 };
 
-export default EnhancedOrderBulkActions;
+// Export the enhanced component as default
+export default OrderBulkActions;
+
+// Export all components and utilities for flexibility
 export {
-  EnhancedOrderBulkActions,
+  OrderBulkActions,
   BulkActions,
   BulkActionConfirmation,
   BulkActionProgress,
   StatusUpdateBulkAction,
+  ActionCategoryDropdown,
+  EnhancedConfirmationModal,
+  EnhancedProgressModal,
+  BulkActionUtils,
   BULK_ACTIONS,
   ENHANCED_BULK_ACTIONS,
 };

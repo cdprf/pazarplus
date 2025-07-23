@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "../../ui";
 
-const EnhancedPagination = ({
+const Pagination = ({
   currentPage,
   totalPages,
   totalItems,
@@ -37,7 +37,9 @@ const EnhancedPagination = ({
         </div>
 
         <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">Her Sayfada:</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">
+            Her Sayfada:
+          </span>
           <select
             value={itemsPerPage}
             onChange={(e) => onPageSizeChange?.(parseInt(e.target.value))}
@@ -54,7 +56,9 @@ const EnhancedPagination = ({
 
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">Sayfaya Git:</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400 dark:text-gray-500">
+            Sayfaya Git:
+          </span>
           <input
             type="number"
             value={pageInput}
@@ -96,4 +100,4 @@ const EnhancedPagination = ({
   );
 };
 
-export default EnhancedPagination;
+export default Pagination;

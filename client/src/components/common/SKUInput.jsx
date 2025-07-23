@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { skuSystemAPI } from "../../services/skuSystemAPI";
 
-const EnhancedSKUInput = ({
+const SKUInput = ({
   value = "",
   onChange,
   productName = "",
@@ -585,4 +585,4 @@ const EnhancedSKUInput = ({
   );
 };
 
-export default EnhancedSKUInput;
+export default SKUInput;

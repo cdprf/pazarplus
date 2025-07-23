@@ -1,4 +1,4 @@
-import i18n from '../index';
+import i18n from "../index";
 
 /**
  * Enhanced translation utilities with better error handling and fallbacks
@@ -17,12 +17,12 @@ export class TranslationUtils {
   static t(key, options = {}, fallback = null) {
     try {
       if (!i18n.isInitialized) {
-        console.warn('i18n not initialized, using fallback');
+        console.warn("i18n not initialized, using fallback");
         return fallback || key;
       }
 
       const translated = i18n.t(key, options);
-      
+
       // Check if translation is missing (i18next returns the key if not found)
       if (translated === key && !this.keyExists(key)) {
         this.logMissingKey(key);
@@ -31,7 +31,7 @@ export class TranslationUtils {
 
       return translated;
     } catch (error) {
-      console.error('Translation error:', error);
+      console.error("Translation error:", error);
       this.logMissingKey(key);
       return fallback || this.generateFallback(key);
     }
@@ -95,7 +95,7 @@ export class TranslationUtils {
    * @returns {string} Translated text
    */
   static tc(key, options = {}, fallback = null) {
-    return this.tn('common', key, options, fallback);
+    return this.tn("common", key, options, fallback);
   }
 
   /**
@@ -106,7 +106,7 @@ export class TranslationUtils {
    * @returns {string} Translated text
    */
   static tb(key, options = {}, fallback = null) {
-    return this.tn('business', key, options, fallback);
+    return this.tn("business", key, options, fallback);
   }
 
   /**
@@ -117,7 +117,7 @@ export class TranslationUtils {
    * @returns {string} Translated text
    */
   static tnav(key, options = {}, fallback = null) {
-    return this.tn('navigation', key, options, fallback);
+    return this.tn("navigation", key, options, fallback);
   }
 
   /**
@@ -126,17 +126,17 @@ export class TranslationUtils {
    * @returns {string} Human-readable fallback
    */
   static generateFallback(key) {
-    if (!key) return '';
-    
+    if (!key) return "";
+
     // Extract the last part of the key
-    const parts = key.split('.');
+    const parts = key.split(".");
     const lastPart = parts[parts.length - 1];
-    
+
     // Convert camelCase/snake_case to readable text
     return lastPart
-      .replace(/([A-Z])/g, ' $1') // Add space before capital letters
-      .replace(/_/g, ' ') // Replace underscores with spaces
-      .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+      .replace(/([A-Z])/g, " $1") // Add space before capital letters
+      .replace(/_/g, " ") // Replace underscores with spaces
+      .replace(/^./, (str) => str.toUpperCase()) // Capitalize first letter
       .trim();
   }
 
@@ -146,7 +146,7 @@ export class TranslationUtils {
    */
   static logMissingKey(key) {
     if (!this.logMissingKeys) return;
-    
+
     if (!this.missingKeys.has(key)) {
       this.missingKeys.add(key);
       console.warn(`Missing translation key: ${key}`);
@@ -184,12 +184,12 @@ export class TranslationUtils {
    */
   static formatDate(date, options = {}) {
     try {
-      const currentLanguage = i18n.language || 'tr';
-      const locale = currentLanguage === 'tr' ? 'tr-TR' : 'en-US';
+      const currentLanguage = i18n.language || "tr";
+      const locale = currentLanguage === "tr" ? "tr-TR" : "en-US";
       return new Intl.DateTimeFormat(locale, options).format(new Date(date));
     } catch (error) {
-      console.error('Date formatting error:', error);
-      return date?.toString() || '';
+      console.error("Date formatting error:", error);
+      return date?.toString() || "";
     }
   }
 
@@ -201,12 +201,12 @@ export class TranslationUtils {
    */
   static formatNumber(number, options = {}) {
     try {
-      const currentLanguage = i18n.language || 'tr';
-      const locale = currentLanguage === 'tr' ? 'tr-TR' : 'en-US';
+      const currentLanguage = i18n.language || "tr";
+      const locale = currentLanguage === "tr" ? "tr-TR" : "en-US";
       return new Intl.NumberFormat(locale, options).format(number);
     } catch (error) {
-      console.error('Number formatting error:', error);
-      return number?.toString() || '';
+      console.error("Number formatting error:", error);
+      return number?.toString() || "";
     }
   }
 
@@ -217,11 +217,11 @@ export class TranslationUtils {
    * @param {object} options - Additional formatting options
    * @returns {string} Formatted currency
    */
-  static formatCurrency(amount, currency = 'TRY', options = {}) {
+  static formatCurrency(amount, currency = "TRY", options = {}) {
     const defaultOptions = {
-      style: 'currency',
+      style: "currency",
       currency: currency,
-      ...options
+      ...options,
     };
     return this.formatNumber(amount, defaultOptions);
   }
@@ -233,34 +233,34 @@ export class TranslationUtils {
    */
   static getRelativeTime(date) {
     try {
-      const currentLanguage = i18n.language || 'tr';
-      const locale = currentLanguage === 'tr' ? 'tr-TR' : 'en-US';
-      const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
-      
+      const currentLanguage = i18n.language || "tr";
+      const locale = currentLanguage === "tr" ? "tr-TR" : "en-US";
+      const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+
       const now = new Date();
       const targetDate = new Date(date);
       const diffInSeconds = Math.floor((targetDate - now) / 1000);
-      
+
       const intervals = [
-        { unit: 'year', seconds: 31536000 },
-        { unit: 'month', seconds: 2592000 },
-        { unit: 'day', seconds: 86400 },
-        { unit: 'hour', seconds: 3600 },
-        { unit: 'minute', seconds: 60 },
-        { unit: 'second', seconds: 1 }
+        { unit: "year", seconds: 31536000 },
+        { unit: "month", seconds: 2592000 },
+        { unit: "day", seconds: 86400 },
+        { unit: "hour", seconds: 3600 },
+        { unit: "minute", seconds: 60 },
+        { unit: "second", seconds: 1 },
       ];
-      
+
       for (const interval of intervals) {
         const count = Math.floor(Math.abs(diffInSeconds) / interval.seconds);
         if (count >= 1) {
           return rtf.format(diffInSeconds < 0 ? -count : count, interval.unit);
         }
       }
-      
-      return rtf.format(0, 'second');
+
+      return rtf.format(0, "second");
     } catch (error) {
-      console.error('Relative time formatting error:', error);
-      return date?.toString() || '';
+      console.error("Relative time formatting error:", error);
+      return date?.toString() || "";
     }
   }
 
@@ -269,8 +269,8 @@ export class TranslationUtils {
    * @returns {boolean} True if RTL language
    */
   static isRTL() {
-    const currentLanguage = i18n.language || 'tr';
-    const rtlLanguages = ['ar', 'he', 'fa', 'ur'];
+    const currentLanguage = i18n.language || "tr";
+    const rtlLanguages = ["ar", "he", "fa", "ur"];
     return rtlLanguages.includes(currentLanguage);
   }
 
@@ -279,7 +279,7 @@ export class TranslationUtils {
    * @returns {string} 'rtl' or 'ltr'
    */
   static getTextDirection() {
-    return this.isRTL() ? 'rtl' : 'ltr';
+    return this.isRTL() ? "rtl" : "ltr";
   }
 
   /**
@@ -304,19 +304,20 @@ export class TranslationUtils {
       extra: [],
       total: 0,
       translated: 0,
-      percentage: 0
+      percentage: 0,
     };
 
     try {
-      const currentTranslations = i18n.getResourceBundle(language, 'translation') || {};
-      
-      const validateLevel = (ref, current, path = '') => {
+      const currentTranslations =
+        i18n.getResourceBundle(language, "translation") || {};
+
+      const validateLevel = (ref, current, path = "") => {
         for (const key in ref) {
           const currentPath = path ? `${path}.${key}` : key;
           results.total++;
-          
-          if (typeof ref[key] === 'object' && ref[key] !== null) {
-            if (!current[key] || typeof current[key] !== 'object') {
+
+          if (typeof ref[key] === "object" && ref[key] !== null) {
+            if (!current[key] || typeof current[key] !== "object") {
               results.missing.push(currentPath);
             } else {
               validateLevel(ref[key], current[key], currentPath);
@@ -329,7 +330,7 @@ export class TranslationUtils {
             }
           }
         }
-        
+
         // Check for extra keys
         for (const key in current) {
           const currentPath = path ? `${path}.${key}` : key;
@@ -340,10 +341,10 @@ export class TranslationUtils {
       };
 
       validateLevel(referenceTranslations, currentTranslations);
-      results.percentage = results.total > 0 ? (results.translated / results.total) * 100 : 0;
-      
+      results.percentage =
+        results.total > 0 ? (results.translated / results.total) * 100 : 0;
     } catch (error) {
-      console.error('Translation validation error:', error);
+      console.error("Translation validation error:", error);
     }
 
     return results;

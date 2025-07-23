@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { TranslationUtils } from '../utils/translationUtils';
-import i18n from '../index';
+import { useState, useEffect, useCallback } from "react";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { TranslationUtils } from "../utils/translationUtils";
+import i18n from "../index";
 
 /**
  * Enhanced translation hook with better error handling and caching
@@ -23,54 +23,63 @@ export const useTranslation = (namespace = null) => {
   /**
    * Main translation function
    */
-  const t = useCallback((key, options = {}, fallback = null) => {
-    if (!isReady) {
-      return fallback || TranslationUtils.generateFallback(key);
-    }
-
-    // Check cache first
-    const cacheKey = `${namespace || ''}.${key}.${JSON.stringify(options)}`;
-    if (translationCache.has(cacheKey)) {
-      return translationCache.get(cacheKey);
-    }
-
-    let result;
-    if (namespace) {
-      result = TranslationUtils.tn(namespace, key, options, fallback);
-    } else {
-      result = TranslationUtils.t(key, options, fallback);
-    }
-
-    // Cache the result
-    setTranslationCache(prev => {
-      const newCache = new Map(prev);
-      newCache.set(cacheKey, result);
-      
-      // Limit cache size to prevent memory leaks
-      if (newCache.size > 1000) {
-        const firstKey = newCache.keys().next().value;
-        newCache.delete(firstKey);
+  const t = useCallback(
+    (key, options = {}, fallback = null) => {
+      if (!isReady) {
+        return fallback || TranslationUtils.generateFallback(key);
       }
-      
-      return newCache;
-    });
 
-    return result;
-  }, [isReady, namespace, translationCache]);
+      // Check cache first
+      const cacheKey = `${namespace || ""}.${key}.${JSON.stringify(options)}`;
+      if (translationCache.has(cacheKey)) {
+        return translationCache.get(cacheKey);
+      }
+
+      let result;
+      if (namespace) {
+        result = TranslationUtils.tn(namespace, key, options, fallback);
+      } else {
+        result = TranslationUtils.t(key, options, fallback);
+      }
+
+      // Cache the result
+      setTranslationCache((prev) => {
+        const newCache = new Map(prev);
+        newCache.set(cacheKey, result);
+
+        // Limit cache size to prevent memory leaks
+        if (newCache.size > 1000) {
+          const firstKey = newCache.keys().next().value;
+          newCache.delete(firstKey);
+        }
+
+        return newCache;
+      });
+
+      return result;
+    },
+    [isReady, namespace, translationCache]
+  );
 
   /**
    * Plural translation function
    */
-  const tp = useCallback((key, count, options = {}, fallback = null) => {
-    return t(key, { ...options, count }, fallback);
-  }, [t]);
+  const tp = useCallback(
+    (key, count, options = {}, fallback = null) => {
+      return t(key, { ...options, count }, fallback);
+    },
+    [t]
+  );
 
   /**
    * Translation with interpolation
    */
-  const ti = useCallback((key, interpolations = {}, fallback = null) => {
-    return t(key, interpolations, fallback);
-  }, [t]);
+  const ti = useCallback(
+    (key, interpolations = {}, fallback = null) => {
+      return t(key, interpolations, fallback);
+    },
+    [t]
+  );
 
   /**
    * Common translations shortcut
@@ -110,9 +119,12 @@ export const useTranslation = (namespace = null) => {
   /**
    * Format currency with current locale
    */
-  const formatCurrency = useCallback((amount, currency = 'TRY', options = {}) => {
-    return TranslationUtils.formatCurrency(amount, currency, options);
-  }, []);
+  const formatCurrency = useCallback(
+    (amount, currency = "TRY", options = {}) => {
+      return TranslationUtils.formatCurrency(amount, currency, options);
+    },
+    []
+  );
 
   /**
    * Get relative time string
@@ -124,11 +136,14 @@ export const useTranslation = (namespace = null) => {
   /**
    * Check if key exists
    */
-  const exists = useCallback((key) => {
-    if (!isReady) return false;
-    const fullKey = namespace ? `${namespace}.${key}` : key;
-    return TranslationUtils.keyExists(fullKey);
-  }, [isReady, namespace]);
+  const exists = useCallback(
+    (key) => {
+      if (!isReady) return false;
+      const fullKey = namespace ? `${namespace}.${key}` : key;
+      return TranslationUtils.keyExists(fullKey);
+    },
+    [isReady, namespace]
+  );
 
   /**
    * Get current language info
@@ -153,16 +168,16 @@ export const useTranslation = (namespace = null) => {
     isRTL,
     textDirection,
     isReady,
-    namespace
+    namespace,
   };
 };
 
 /**
  * Hook for specific namespaces
  */
-export const useCommonTranslation = () => useTranslation('common');
-export const useBusinessTranslation = () => useTranslation('business');
-export const useNavigationTranslation = () => useTranslation('navigation');
+export const useCommonTranslation = () => useTranslation("common");
+export const useBusinessTranslation = () => useTranslation("business");
+export const useNavigationTranslation = () => useTranslation("navigation");
 
 /**
  * Hook for translation management (admin features)
@@ -180,17 +195,23 @@ export const useTranslationManager = () => {
     setMissingKeys([]);
   }, []);
 
-  const validateTranslations = useCallback((language, referenceTranslations) => {
-    return TranslationUtils.validateTranslations(language, referenceTranslations);
-  }, []);
+  const validateTranslations = useCallback(
+    (language, referenceTranslations) => {
+      return TranslationUtils.validateTranslations(
+        language,
+        referenceTranslations
+      );
+    },
+    []
+  );
 
   const exportMissingKeys = useCallback(() => {
     const missing = getMissingKeys();
     const data = JSON.stringify(missing, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
+    const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
+
+    const link = document.createElement("a");
     link.href = url;
     link.download = `missing-keys-${currentLanguage}-${Date.now()}.json`;
     document.body.appendChild(link);
@@ -213,6 +234,6 @@ export const useTranslationManager = () => {
     clearMissingKeys,
     validateTranslations,
     exportMissingKeys,
-    currentLanguage
+    currentLanguage,
   };
 };

@@ -50,7 +50,7 @@ import EnhancedPatternDetector from "../utils/enhancedPatternDetector.js";
 import { getBackgroundService } from "../utils/backgroundVariantService.js";
 import CustomPatternConfigurator from "./CustomPatternConfigurator.js";
 
-const EnhancedPatternManagement = ({
+const PatternManagement = ({
   products = [],
   onCreateVariantGroup,
   onPatternApplied,
@@ -776,4 +776,4 @@ const EnhancedPatternManagement = ({
   );
 };
 
-export default EnhancedPatternManagement;
+export default PatternManagement;

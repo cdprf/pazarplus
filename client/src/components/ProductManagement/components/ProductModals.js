@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Button, Badge, Modal } from "../../ui";
 import { Card, CardContent } from "../../ui";
-import EnhancedSKUInput from "../../common/EnhancedSKUInput";
+import SKUInput from "../../common/SKUInput";
 import ProductVariantManager from "./ProductVariantManager";
 import {
   CATEGORIES,
@@ -159,7 +159,7 @@ const ProductFormModal = ({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 SKU *
               </label>
-              <EnhancedSKUInput
+              <SKUInput
                 value={formData.sku}
                 onChange={(sku) => handleInputChange("sku", sku)}
                 productInfo={{
