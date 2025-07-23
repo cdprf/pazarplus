@@ -1,17 +1,23 @@
 // filepath: /Users/Username/Desktop/Soft/pazar+/services/order-management/src/services/platforms/trendyol/trendyol-service-generic.js
 /**
- * Trendyol marketplace integration service using the generic platform data model
+ * Trendyol marketplace integration       const models = require('../../../../../models');ervice using the generic platform data    const { PlatformData, OrderHistory } = require('../../../../../models');model
  *
  * This service handles all interactions with the Trendyol API and stores data
- * using the platform-agnostic data models instead of platform-specific tables.
+ * using the platform-agnostic data models instead of     const {
+      Order,
+      OrderItem,
+      ShippingDetail,
+      PlatformData,
+      PlatformAttribute
+    } = require('../../../../../models'); // Fixed path: go up to server, then into modelsm-specific tables.
  *
  * @date May 20, 2025
  */
 
-const axios = require('axios');
-const logger = require('../../../../../utils/logger'); // Fixed path: 6 levels up to reach server/utils
-const { sequelize } = require('../../../../../config/database');
-const { getStatusMapping } = require('./status-mapping');
+const axios = require("axios");
+const logger = require("../../../../../utils/logger"); // Fixed path: 6 levels up to reach server/utils
+const { sequelize } = require("../../../../../config/database");
+const { getStatusMapping } = require("./status-mapping");
 
 class TrendyolServiceGeneric {
   constructor(connectionData) {
@@ -19,19 +25,19 @@ class TrendyolServiceGeneric {
     this.userId = connectionData.userId;
     this.credentials = connectionData.credentials;
     this.settings = connectionData.settings || {};
-    this.platformType = 'trendyol';
+    this.platformType = "trendyol";
 
     // Configure API client
     this.apiClient = axios.create({
-      baseURL: this.settings.apiBaseUrl || 'https://api.trendyol.com/sapigw',
+      baseURL: this.settings.apiBaseUrl || "https://api.trendyol.com/sapigw",
       headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Pazar+ Order Management v1.0'
+        "Content-Type": "application/json",
+        "User-Agent": "Pazar+ Order Management v1.0",
       },
       auth: {
         username: this.credentials.apiKey,
-        password: this.credentials.apiSecret
-      }
+        password: this.credentials.apiSecret,
+      },
     });
 
     // Configure request interceptor to log API calls
@@ -39,7 +45,7 @@ class TrendyolServiceGeneric {
       logger.debug(
         `Trendyol API Request: ${config.method.toUpperCase()} ${config.url}`,
         {
-          connectionId: this.connectionId
+          connectionId: this.connectionId,
         }
       );
       return config;
@@ -53,7 +59,7 @@ class TrendyolServiceGeneric {
           message: error.message,
           code: error.response?.status,
           data: error.response?.data,
-          connectionId: this.connectionId
+          connectionId: this.connectionId,
         };
 
         logger.error(`Trendyol API Error: ${error.message}`, errorDetails);
@@ -73,24 +79,24 @@ class TrendyolServiceGeneric {
       const defaultParams = {
         size: 50,
         page: 0,
-        orderByField: 'CreatedDate',
-        orderByDirection: 'DESC'
+        orderByField: "CreatedDate",
+        orderByDirection: "DESC",
       };
 
       const queryParams = { ...defaultParams, ...params };
 
       // Ensure dates are in ISO format if provided
-      if (queryParams.startDate && typeof queryParams.startDate === 'object') {
+      if (queryParams.startDate && typeof queryParams.startDate === "object") {
         queryParams.startDate = queryParams.startDate.toISOString();
       }
 
-      if (queryParams.endDate && typeof queryParams.endDate === 'object') {
+      if (queryParams.endDate && typeof queryParams.endDate === "object") {
         queryParams.endDate = queryParams.endDate.toISOString();
       }
 
       // Make API request to fetch orders
-      const response = await this.apiClient.get('/suppliers/orders', {
-        params: queryParams
+      const response = await this.apiClient.get("/suppliers/orders", {
+        params: queryParams,
       });
 
       return {
@@ -100,19 +106,19 @@ class TrendyolServiceGeneric {
           page: response.data.pageable?.pageNumber || 0,
           size: response.data.pageable?.pageSize || 0,
           totalElements: response.data.totalElements || 0,
-          totalPages: response.data.totalPages || 0
-        }
+          totalPages: response.data.totalPages || 0,
+        },
       };
     } catch (error) {
       logger.error(`Failed to fetch orders from Trendyol: ${error.message}`, {
         error,
-        connectionId: this.connectionId
+        connectionId: this.connectionId,
       });
 
       return {
         success: false,
         message: `Failed to fetch orders: ${error.message}`,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -126,14 +132,14 @@ class TrendyolServiceGeneric {
     try {
       const defaultParams = {
         size: 50,
-        page: 0
+        page: 0,
       };
 
       const queryParams = { ...defaultParams, ...params };
 
       // Make API request to fetch products
-      const response = await this.apiClient.get('/suppliers/products', {
-        params: queryParams
+      const response = await this.apiClient.get("/suppliers/products", {
+        params: queryParams,
       });
 
       return {
@@ -143,19 +149,19 @@ class TrendyolServiceGeneric {
           page: response.data.pageable?.pageNumber || 0,
           size: response.data.pageable?.pageSize || 0,
           totalElements: response.data.totalElements || 0,
-          totalPages: response.data.totalPages || 0
-        }
+          totalPages: response.data.totalPages || 0,
+        },
       };
     } catch (error) {
       logger.error(`Failed to fetch products from Trendyol: ${error.message}`, {
         error,
-        connectionId: this.connectionId
+        connectionId: this.connectionId,
       });
 
       return {
         success: false,
         message: `Failed to fetch products: ${error.message}`,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -167,14 +173,14 @@ class TrendyolServiceGeneric {
    */
   async syncOrders(params = {}) {
     try {
-      const models = require('../../../models');
+      const models = require("../../../models");
       const {
         Order,
         OrderItem,
         ShippingDetail,
         PlatformData,
         PlatformAttribute,
-        OrderHistory
+        OrderHistory,
       } = models;
 
       // Fetch orders from Trendyol
@@ -184,7 +190,7 @@ class TrendyolServiceGeneric {
         return {
           success: false,
           message: `Failed to fetch orders from Trendyol: ${result.message}`,
-          error: result.error
+          error: result.error,
         };
       }
 
@@ -196,7 +202,7 @@ class TrendyolServiceGeneric {
         new: 0,
         updated: 0,
         skipped: 0,
-        failed: 0
+        failed: 0,
       };
 
       // Process each order
@@ -207,8 +213,8 @@ class TrendyolServiceGeneric {
             where: {
               externalOrderId: trendyolOrder.orderNumber,
               platformType: this.platformType,
-              connectionId: this.connectionId
-            }
+              connectionId: this.connectionId,
+            },
           });
 
           if (existingOrder) {
@@ -226,7 +232,7 @@ class TrendyolServiceGeneric {
             {
               error: orderError,
               orderNumber: trendyolOrder.orderNumber,
-              connectionId: this.connectionId
+              connectionId: this.connectionId,
             }
           );
           stats.failed++;
@@ -236,18 +242,18 @@ class TrendyolServiceGeneric {
       return {
         success: true,
         message: `Synced ${stats.total} orders from Trendyol: ${stats.new} new, ${stats.updated} updated, ${stats.failed} failed`,
-        data: stats
+        data: stats,
       };
     } catch (error) {
       logger.error(`Failed to sync orders from Trendyol: ${error.message}`, {
         error,
-        connectionId: this.connectionId
+        connectionId: this.connectionId,
       });
 
       return {
         success: false,
         message: `Failed to sync orders: ${error.message}`,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -259,7 +265,7 @@ class TrendyolServiceGeneric {
    * @returns {Promise<Object>} Updated order
    */
   async updateExistingOrder(existingOrder, trendyolOrderData) {
-    const { PlatformData, OrderHistory } = require('../../../models');
+    const { PlatformData, OrderHistory } = require("../../../models");
     const transaction = await sequelize.transaction();
 
     try {
@@ -267,13 +273,13 @@ class TrendyolServiceGeneric {
       const currentPlatformData = await PlatformData.findOne({
         where: {
           entityId: existingOrder.id,
-          entityType: 'order',
-          platformType: this.platformType
-        }
+          entityType: "order",
+          platformType: this.platformType,
+        },
       });
 
       // Map Trendyol status to our internal status
-      const oldStatus = existingorder.orderStatus;
+      const oldStatus = existingOrder.orderStatus;
       const newStatus = this.mapOrderStatus(trendyolOrderData.status);
       const statusChanged = oldStatus !== newStatus;
 
@@ -282,7 +288,7 @@ class TrendyolServiceGeneric {
         {
           status: newStatus,
           paymentStatus: this.mapPaymentStatus(trendyolOrderData.status),
-          lastSyncedAt: new Date()
+          lastSyncedAt: new Date(),
         },
         { transaction }
       );
@@ -293,7 +299,7 @@ class TrendyolServiceGeneric {
           {
             data: trendyolOrderData,
             status: trendyolOrderData.status,
-            lastSyncedAt: new Date()
+            lastSyncedAt: new Date(),
           },
           { transaction }
         );
@@ -302,12 +308,12 @@ class TrendyolServiceGeneric {
         await PlatformData.create(
           {
             entityId: existingOrder.id,
-            entityType: 'order',
+            entityType: "order",
             platformType: this.platformType,
             platformEntityId: trendyolOrderData.orderNumber,
             data: trendyolOrderData,
             status: trendyolOrderData.status,
-            lastSyncedAt: new Date()
+            lastSyncedAt: new Date(),
           },
           { transaction }
         );
@@ -318,13 +324,13 @@ class TrendyolServiceGeneric {
         await OrderHistory.create(
           {
             orderId: existingOrder.id,
-            changeType: 'status',
-            fieldName: 'status',
+            changeType: "status",
+            fieldName: "status",
             oldValue: oldStatus,
             newValue: newStatus,
-            source: 'trendyol',
+            source: "trendyol",
             notes: `Order status changed from ${oldStatus} to ${newStatus}`,
-            metadata: { trendyolStatus: trendyolOrderData.status }
+            metadata: { trendyolStatus: trendyolOrderData.status },
           },
           { transaction }
         );
@@ -342,7 +348,7 @@ class TrendyolServiceGeneric {
       logger.error(`Failed to update order: ${error.message}`, {
         error,
         orderId: existingOrder.id,
-        externalOrderId: existingOrder.externalOrderId
+        externalOrderId: existingOrder.externalOrderId,
       });
 
       throw error;
@@ -360,8 +366,8 @@ class TrendyolServiceGeneric {
       OrderItem,
       ShippingDetail,
       PlatformData,
-      PlatformAttribute
-    } = require('../../../models');
+      PlatformAttribute,
+    } = require("../../../models");
     const transaction = await sequelize.transaction();
 
     try {
@@ -375,7 +381,7 @@ class TrendyolServiceGeneric {
           platformType: this.platformType,
           connectionId: this.connectionId,
           userId: this.userId,
-          lastSyncedAt: new Date()
+          lastSyncedAt: new Date(),
         },
         { transaction }
       );
@@ -398,8 +404,8 @@ class TrendyolServiceGeneric {
                 lineId: line.id,
                 vatRate: line.vatRate,
                 discount: line.discount,
-                platformSpecific: line
-              }
+                platformSpecific: line,
+              },
             },
             { transaction }
           );
@@ -419,11 +425,11 @@ class TrendyolServiceGeneric {
             city: trendyolOrderData.shipmentAddress.city,
             state: trendyolOrderData.shipmentAddress.district,
             postalCode: trendyolOrderData.shipmentAddress.postalCode,
-            country: trendyolOrderData.shipmentAddress.countryCode || 'TR',
-            instructions: trendyolOrderData.shipmentAddress.address2 || '',
+            country: trendyolOrderData.shipmentAddress.countryCode || "TR",
+            instructions: trendyolOrderData.shipmentAddress.address2 || "",
             carrierName: trendyolOrderData.cargoProviderName,
             trackingNumber: trendyolOrderData.cargoTrackingNumber,
-            shippingMethod: trendyolOrderData.deliveryType || 'standard'
+            shippingMethod: trendyolOrderData.deliveryType || "standard",
           },
           { transaction }
         );
@@ -433,12 +439,12 @@ class TrendyolServiceGeneric {
       await PlatformData.create(
         {
           entityId: order.id,
-          entityType: 'order',
+          entityType: "order",
           platformType: this.platformType,
           platformEntityId: trendyolOrderData.orderNumber,
           data: trendyolOrderData,
           status: trendyolOrderData.status,
-          lastSyncedAt: new Date()
+          lastSyncedAt: new Date(),
         },
         { transaction }
       );
@@ -448,11 +454,11 @@ class TrendyolServiceGeneric {
         await PlatformAttribute.create(
           {
             entityId: order.id,
-            entityType: 'order',
+            entityType: "order",
             platformType: this.platformType,
-            attributeKey: 'trackingNumber',
+            attributeKey: "trackingNumber",
             stringValue: trendyolOrderData.cargoTrackingNumber,
-            valueType: 'string'
+            valueType: "string",
           },
           { transaction }
         );
@@ -467,7 +473,7 @@ class TrendyolServiceGeneric {
 
       logger.error(`Failed to create order: ${error.message}`, {
         error,
-        orderNumber: trendyolOrderData.orderNumber
+        orderNumber: trendyolOrderData.orderNumber,
       });
 
       throw error;
@@ -484,7 +490,7 @@ class TrendyolServiceGeneric {
     const customerName =
       trendyolOrder.customerFirstName && trendyolOrder.customerLastName
         ? `${trendyolOrder.customerFirstName} ${trendyolOrder.customerLastName}`
-        : trendyolOrder.shipmentAddress?.fullName || 'Unknown Customer';
+        : trendyolOrder.shipmentAddress?.fullName || "Unknown Customer";
 
     // Calculate total amount
     const totalAmount =
@@ -499,12 +505,12 @@ class TrendyolServiceGeneric {
       customerPhone: trendyolOrder.shipmentAddress?.phone || null,
       orderDate: new Date(trendyolOrder.orderDate),
       totalAmount: totalAmount,
-      currency: 'TRY', // Trendyol operates in Turkish Lira
-      status: this.mapOrderStatus(trendyolorder.orderStatus),
-      paymentMethod: trendyolOrder.paymentType || 'other',
-      paymentStatus: this.mapPaymentStatus(trendyolorder.orderStatus),
-      shippingMethod: trendyolOrder.deliveryType || 'standard',
-      notes: trendyolOrder.note || ''
+      currency: "TRY", // Trendyol operates in Turkish Lira
+      status: this.mapOrderStatus(trendyolOrder.orderStatus),
+      paymentMethod: trendyolOrder.paymentType || "other",
+      paymentStatus: this.mapPaymentStatus(trendyolOrder.orderStatus),
+      shippingMethod: trendyolOrder.deliveryType || "standard",
+      notes: trendyolOrder.note || "",
     };
   }
 
@@ -515,7 +521,7 @@ class TrendyolServiceGeneric {
    */
   mapOrderStatus(trendyolStatus) {
     // Use the status mapping utility
-    return getStatusMapping('order', trendyolStatus);
+    return getStatusMapping("order", trendyolStatus);
   }
 
   /**
@@ -527,16 +533,16 @@ class TrendyolServiceGeneric {
     // Payment is generally considered completed in Trendyol once order is created
     // unless it's canceled or returned
     const cancelledStatuses = [
-      'Cancelled',
-      'Returned',
-      'UndeliveredAndReturned'
+      "Cancelled",
+      "Returned",
+      "UndeliveredAndReturned",
     ];
 
     if (cancelledStatuses.includes(trendyolStatus)) {
-      return 'refunded';
+      return "refunded";
     }
 
-    return 'completed';
+    return "completed";
   }
 
   /**
@@ -549,8 +555,8 @@ class TrendyolServiceGeneric {
       const {
         Product,
         PlatformData,
-        PlatformAttribute
-      } = require('../../../models');
+        PlatformAttribute,
+      } = require("../../../../../models");
       const defaultUserId = process.env.DEFAULT_USER_ID || this.userId;
 
       // Fetch products from Trendyol
@@ -560,7 +566,7 @@ class TrendyolServiceGeneric {
         return {
           success: false,
           message: `Failed to fetch products from Trendyol: ${result.message}`,
-          error: result.error
+          error: result.error,
         };
       }
 
@@ -572,7 +578,7 @@ class TrendyolServiceGeneric {
         new: 0,
         updated: 0,
         skipped: 0,
-        failed: 0
+        failed: 0,
       };
 
       // Process each product
@@ -586,15 +592,15 @@ class TrendyolServiceGeneric {
           const existingPlatformData = await PlatformData.findOne({
             where: {
               platformType: this.platformType,
-              entityType: 'product',
-              platformEntityId: externalProductId
+              entityType: "product",
+              platformEntityId: externalProductId,
             },
             include: [
               {
                 model: Product,
-                as: 'Product'
-              }
-            ]
+                as: "Product",
+              },
+            ],
           });
 
           if (existingPlatformData) {
@@ -615,7 +621,7 @@ class TrendyolServiceGeneric {
             {
               error: productError,
               productId: trendyolProduct.productCode || trendyolProduct.id,
-              connectionId: this.connectionId
+              connectionId: this.connectionId,
             }
           );
           stats.failed++;
@@ -625,18 +631,18 @@ class TrendyolServiceGeneric {
       return {
         success: true,
         message: `Synced ${stats.total} products from Trendyol: ${stats.new} new, ${stats.updated} updated, ${stats.failed} failed`,
-        data: stats
+        data: stats,
       };
     } catch (error) {
       logger.error(`Failed to sync products from Trendyol: ${error.message}`, {
         error,
-        connectionId: this.connectionId
+        connectionId: this.connectionId,
       });
 
       return {
         success: false,
         message: `Failed to sync products: ${error.message}`,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -652,8 +658,8 @@ class TrendyolServiceGeneric {
       Product,
       PlatformData,
       PlatformAttribute,
-      ProductPriceHistory
-    } = require('../../../models');
+      ProductPriceHistory,
+    } = require("../../../../../models");
     const transaction = await sequelize.transaction();
 
     try {
@@ -683,7 +689,7 @@ class TrendyolServiceGeneric {
               trendyolProductData.images &&
               trendyolProductData.images.length > 1
                 ? trendyolProductData.images.slice(1)
-                : mainProduct.additionalImages
+                : mainProduct.additionalImages,
           },
           { transaction }
         );
@@ -694,14 +700,14 @@ class TrendyolServiceGeneric {
             {
               productId: mainProduct.id,
               platformType: this.platformType,
-              changeSource: 'trendyol_sync',
+              changeSource: "trendyol_sync",
               previousPrice: currentPrice,
               newPrice: newPrice,
               priceChange: newPrice - currentPrice,
-              currency: 'TRY',
-              priceType: 'regular',
-              reason: 'Platform price update',
-              effectiveDate: new Date()
+              currency: "TRY",
+              priceType: "regular",
+              reason: "Platform price update",
+              effectiveDate: new Date(),
             },
             { transaction }
           );
@@ -712,13 +718,13 @@ class TrendyolServiceGeneric {
       await existingPlatformData.update(
         {
           data: trendyolProductData,
-          status: trendyolProductData.onSale ? 'active' : 'inactive',
-          approvalStatus: trendyolProductData.approved ? 'approved' : 'pending',
+          status: trendyolProductData.onSale ? "active" : "inactive",
+          approvalStatus: trendyolProductData.approved ? "approved" : "pending",
           platformPrice: trendyolProductData.listPrice,
           platformQuantity: trendyolProductData.quantity,
           hasError: trendyolProductData.hasError || false,
           errorMessage: trendyolProductData.errorMessage,
-          lastSyncedAt: new Date()
+          lastSyncedAt: new Date(),
         },
         { transaction }
       );
@@ -741,7 +747,7 @@ class TrendyolServiceGeneric {
 
       logger.error(`Failed to update product: ${error.message}`, {
         error,
-        productId: existingPlatformData.platformEntityId
+        productId: existingPlatformData.platformEntityId,
       });
 
       throw error;
@@ -758,8 +764,8 @@ class TrendyolServiceGeneric {
     const {
       Product,
       PlatformData,
-      PlatformAttribute
-    } = require('../../../models');
+      PlatformAttribute,
+    } = require("../../../../../models");
     const transaction = await sequelize.transaction();
 
     try {
@@ -771,9 +777,9 @@ class TrendyolServiceGeneric {
           name: trendyolProductData.title,
           description: trendyolProductData.description,
           price: trendyolProductData.listPrice || 0,
-          currency: 'TRY',
+          currency: "TRY",
           barcode: trendyolProductData.barcode,
-          sourcePlatform: 'trendyol',
+          sourcePlatform: "trendyol",
           mainImageUrl:
             trendyolProductData.images && trendyolProductData.images.length > 0
               ? trendyolProductData.images[0]
@@ -787,10 +793,10 @@ class TrendyolServiceGeneric {
             trendyolProductData.variants &&
             trendyolProductData.variants.length > 0,
           metadata: {
-            source: 'trendyol',
+            source: "trendyol",
             externalProductId:
-              trendyolProductData.productCode || trendyolProductData.id
-          }
+              trendyolProductData.productCode || trendyolProductData.id,
+          },
         },
         { transaction }
       );
@@ -801,17 +807,17 @@ class TrendyolServiceGeneric {
       const platformData = await PlatformData.create(
         {
           entityId: product.id,
-          entityType: 'product',
+          entityType: "product",
           platformType: this.platformType,
           platformEntityId: externalProductId,
           data: trendyolProductData,
-          status: trendyolProductData.onSale ? 'active' : 'inactive',
-          approvalStatus: trendyolProductData.approved ? 'approved' : 'pending',
+          status: trendyolProductData.onSale ? "active" : "inactive",
+          approvalStatus: trendyolProductData.approved ? "approved" : "pending",
           platformPrice: trendyolProductData.listPrice,
           platformQuantity: trendyolProductData.quantity,
           hasError: trendyolProductData.hasError || false,
           errorMessage: trendyolProductData.errorMessage,
-          lastSyncedAt: new Date()
+          lastSyncedAt: new Date(),
         },
         { transaction }
       );
@@ -837,8 +843,8 @@ class TrendyolServiceGeneric {
         productData: {
           title: trendyolProductData.title,
           productCode: trendyolProductData.productCode,
-          id: trendyolProductData.id
-        }
+          id: trendyolProductData.id,
+        },
       });
 
       throw error;
@@ -853,39 +859,39 @@ class TrendyolServiceGeneric {
    * @returns {Promise<void>}
    */
   async createProductAttributes(productId, trendyolProductData, transaction) {
-    const { PlatformAttribute } = require('../../../models');
+    const { PlatformAttribute } = require("../../../../../models");
     const attributes = [];
 
     // Add important attributes for searching
     if (trendyolProductData.barcode) {
       attributes.push({
-        attributeKey: 'barcode',
+        attributeKey: "barcode",
         stringValue: trendyolProductData.barcode,
-        valueType: 'string'
+        valueType: "string",
       });
     }
 
     if (trendyolProductData.stockCode) {
       attributes.push({
-        attributeKey: 'stockCode',
+        attributeKey: "stockCode",
         stringValue: trendyolProductData.stockCode,
-        valueType: 'string'
+        valueType: "string",
       });
     }
 
     if (trendyolProductData.categoryId) {
       attributes.push({
-        attributeKey: 'categoryId',
+        attributeKey: "categoryId",
         stringValue: String(trendyolProductData.categoryId),
-        valueType: 'string'
+        valueType: "string",
       });
     }
 
     if (trendyolProductData.brandId) {
       attributes.push({
-        attributeKey: 'brandId',
+        attributeKey: "brandId",
         stringValue: String(trendyolProductData.brandId),
-        valueType: 'string'
+        valueType: "string",
       });
     }
 
@@ -894,9 +900,9 @@ class TrendyolServiceGeneric {
       await PlatformAttribute.create(
         {
           entityId: productId,
-          entityType: 'product',
+          entityType: "product",
           platformType: this.platformType,
-          ...attr
+          ...attr,
         },
         { transaction }
       );
@@ -911,16 +917,16 @@ class TrendyolServiceGeneric {
    * @returns {Promise<void>}
    */
   async updateProductAttributes(productId, trendyolProductData, transaction) {
-    const { PlatformAttribute } = require('../../../models');
+    const { PlatformAttribute } = require("../../../../../models");
 
     // Delete existing attributes
     await PlatformAttribute.destroy({
       where: {
         entityId: productId,
-        entityType: 'product',
-        platformType: this.platformType
+        entityType: "product",
+        platformType: this.platformType,
       },
-      transaction
+      transaction,
     });
 
     // Create new attributes

@@ -773,6 +773,234 @@ const customerAPI = {
   },
 };
 
+// Customer Questions API methods
+const customerQuestionsAPI = {
+  // Get all questions with filters and pagination
+  getQuestions: async (params = {}) => {
+    try {
+      const response = await api.get("/customer-questions", { params });
+      return response.data;
+    } catch (error) {
+      console.error("❌ API: Error getting customer questions:", error);
+      throw error;
+    }
+  },
+
+  // Get question by ID
+  getQuestionById: async (id) => {
+    try {
+      const response = await api.get(`/customer-questions/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("❌ API: Error getting question by ID:", error);
+      throw error;
+    }
+  },
+
+  // Get questions by customer email
+  getQuestionsByCustomer: async (email, params = {}) => {
+    try {
+      const response = await api.get(
+        `/customer-questions/by-customer/${encodeURIComponent(email)}`,
+        { params }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("❌ API: Error getting questions by customer:", error);
+      throw error;
+    }
+  },
+
+  // Reply to a question
+  replyToQuestion: async (questionId, replyData) => {
+    try {
+      const response = await api.post(
+        `/customer-questions/${questionId}/reply`,
+        replyData
+      );
+      return response.data;
+    } catch (error) {
+      console.error("❌ API: Error replying to question:", error);
+      throw error;
+    }
+  },
+
+  // Sync questions from platforms
+  syncQuestions: async (platforms = []) => {
+    try {
+      const response = await api.post("/customer-questions/sync", {
+        platforms,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("❌ API: Error syncing questions:", error);
+      throw error;
+    }
+  },
+
+  // Get question statistics
+  getQuestionStats: async (params = {}) => {
+    try {
+      const response = await api.get("/customer-questions/stats", { params });
+      return response.data;
+    } catch (error) {
+      console.error("❌ API: Error getting question stats:", error);
+      throw error;
+    }
+  },
+
+  // Get dashboard data
+  getDashboardData: async (params = {}) => {
+    try {
+      const response = await api.get("/customer-questions/dashboard", {
+        params,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("❌ API: Error getting dashboard data:", error);
+      throw error;
+    }
+  },
+
+  // Template management methods
+  templates: {
+    // Get all reply templates
+    getTemplates: async (params = {}) => {
+      try {
+        const response = await api.get("/customer-questions/templates", {
+          params,
+        });
+        return response.data;
+      } catch (error) {
+        console.error("❌ API: Error getting reply templates:", error);
+        throw error;
+      }
+    },
+
+    // Create a new reply template
+    createTemplate: async (templateData) => {
+      try {
+        // Ensure we use 'name' field for consistency
+        const data = {
+          name: templateData.name || templateData.title,
+          content: templateData.content,
+          category: templateData.category || "general",
+          platforms: templateData.platforms,
+          keywords: templateData.keywords,
+          variables: templateData.variables,
+        };
+
+        console.log("🌐 API Request: POST /customer-questions/templates", {
+          data,
+          originalData: templateData,
+        });
+
+        const response = await api.post("/customer-questions/templates", data);
+        return response.data;
+      } catch (error) {
+        console.error("❌ API: Error creating reply template:", error);
+        console.error("❌ API: Error details:", {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message,
+        });
+        throw error;
+      }
+    },
+
+    // Update an existing reply template
+    updateTemplate: async (id, templateData) => {
+      try {
+        // Ensure we use 'name' field for consistency
+        const data = {
+          name: templateData.name || templateData.title,
+          content: templateData.content,
+          category: templateData.category || "general",
+          platforms: templateData.platforms,
+          keywords: templateData.keywords,
+          variables: templateData.variables,
+        };
+
+        const response = await api.put(
+          `/customer-questions/templates/${id}`,
+          data
+        );
+        return response.data;
+      } catch (error) {
+        console.error("❌ API: Error updating reply template:", error);
+        throw error;
+      }
+    },
+
+    // Delete a reply template
+    deleteTemplate: async (id) => {
+      try {
+        const response = await api.delete(
+          `/customer-questions/templates/${id}`
+        );
+        return response.data;
+      } catch (error) {
+        console.error("❌ API: Error deleting reply template:", error);
+        throw error;
+      }
+    },
+
+    // Get template suggestions for a question
+    getSuggestions: async (questionId, params = {}) => {
+      try {
+        const response = await api.get(
+          `/customer-questions/${questionId}/template-suggestions`,
+          { params }
+        );
+        return response.data;
+      } catch (error) {
+        console.error("❌ API: Error getting template suggestions:", error);
+        throw error;
+      }
+    },
+  },
+
+  // Question management methods
+  assignQuestion: async (questionId, assignedTo) => {
+    try {
+      const response = await api.put(
+        `/customer-questions/${questionId}/assign`,
+        { assigned_to: assignedTo }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("❌ API: Error assigning question:", error);
+      throw error;
+    }
+  },
+
+  updateQuestionPriority: async (questionId, priority) => {
+    try {
+      const response = await api.put(
+        `/customer-questions/${questionId}/priority`,
+        { priority }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("❌ API: Error updating question priority:", error);
+      throw error;
+    }
+  },
+
+  addInternalNote: async (questionId, note) => {
+    try {
+      const response = await api.post(
+        `/customer-questions/${questionId}/note`,
+        { note }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("❌ API: Error adding internal note:", error);
+      throw error;
+    }
+  },
+};
+
 // Shipping API methods
 const shippingAPI = {
   // Get shipping carriers
@@ -1471,6 +1699,7 @@ const fontAPI = {
 api.platforms = platformAPI;
 api.orders = orderService;
 api.customers = customerAPI;
+api.customerQuestions = customerQuestionsAPI;
 api.shipping = shippingAPI;
 api.importExport = importExportAPI;
 api.dashboard = dashboardAPI;

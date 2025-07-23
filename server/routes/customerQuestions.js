@@ -1,7 +1,7 @@
 const express = require("express");
 const { body, query, param } = require("express-validator");
 // Re-enable auth middleware now that we have the reply method implemented
-const auth = require("../middleware/auth");
+const { auth } = require("../middleware/auth");
 
 // Import the proper controller class
 const CustomerQuestionController = require("../controllers/CustomerQuestionController");
@@ -50,10 +50,22 @@ const validateReply = [
 ];
 
 const validateTemplate = [
+  // Accept either 'name' or 'title' for backward compatibility
   body("name")
-    .notEmpty()
+    .optional()
     .isLength({ min: 1, max: 255 })
-    .withMessage("Template name is required"),
+    .withMessage("Template name must be between 1 and 255 characters"),
+  body("title")
+    .optional()
+    .isLength({ min: 1, max: 255 })
+    .withMessage("Template title must be between 1 and 255 characters"),
+  // Custom validation to ensure at least one is provided
+  body().custom((value, { req }) => {
+    if (!req.body.name && !req.body.title) {
+      throw new Error("Either 'name' or 'title' field is required");
+    }
+    return true;
+  }),
   body("content")
     .notEmpty()
     .isLength({ min: 10, max: 5000 })
@@ -70,8 +82,8 @@ const validateSync = [
   body("end_date").optional().isISO8601(),
 ];
 
-// Apply authentication to all routes (temporarily disabled for debugging)
-// router.use(auth);
+// Apply authentication to all routes
+router.use(auth);
 
 /**
  * @route GET /api/customer-questions
@@ -155,9 +167,23 @@ router.post(
   (req, res, next) => {
     console.log("Template POST request body:", req.body);
     console.log("Template POST content-type:", req.headers["content-type"]);
+    console.log("Template POST user:", req.user?.id);
     next();
   },
   validateTemplate,
+  (req, res, next) => {
+    const { validationResult } = require("express-validator");
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.log("Template validation errors:", errors.array());
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array(),
+      });
+    }
+    next();
+  },
   (req, res) => getController().saveReplyTemplate(req, res)
 );
 

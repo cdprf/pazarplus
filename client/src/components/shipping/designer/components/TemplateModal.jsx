@@ -270,7 +270,7 @@ const TemplateModal = ({
                       }`}
                     >
                       <div className={viewMode === "grid" ? "mb-3" : "flex-1"}>
-                        <h4 className="font-medium text-gray-900 dark:text-gray-100 dark:text-white mb-1 flex items-center gap-2">
+                        <h4 className="font-medium text-gray-900  dark:text-white mb-1 flex items-center gap-2">
                           {template.name}
                           {defaultTemplateId === template.id && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">

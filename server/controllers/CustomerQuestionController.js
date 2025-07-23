@@ -314,6 +314,13 @@ class CustomerQuestionController {
       }
 
       const templateData = req.body;
+
+      // Handle backward compatibility: if 'title' is sent instead of 'name', use 'title'
+      if (templateData.title && !templateData.name) {
+        templateData.name = templateData.title;
+        delete templateData.title;
+      }
+
       const userId = req.user?.id || null; // Handle case where user is not authenticated
       debug("Template data:", templateData);
       debug("User ID:", userId);

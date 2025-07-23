@@ -1,5 +1,6 @@
 const axios = require("axios");
 const crypto = require("crypto");
+const xml2js = require("xml2js");
 const debug = require("debug")("pazar:n11:questions");
 
 class N11QuestionService {
@@ -109,7 +110,7 @@ class N11QuestionService {
         response.data?.substring(0, 500)
       );
 
-      return this.normalizeQuestionsResponse(response.data);
+      return await this.normalizeQuestionsResponse(response.data);
     } catch (error) {
       debug(
         "Error fetching questions from N11:",
@@ -184,7 +185,7 @@ class N11QuestionService {
 
       debug("N11 question detail response received");
 
-      return this.parseQuestionDetailResponse(response.data);
+      return await this.parseQuestionDetailResponse(response.data);
     } catch (error) {
       debug(
         "Error fetching question detail from N11:",
@@ -326,7 +327,6 @@ class N11QuestionService {
   normalizeQuestionsResponse(xmlData) {
     try {
       // Parse SOAP XML response
-      const xml2js = require("xml2js");
       const parser = new xml2js.Parser({ explicitArray: false });
 
       return new Promise((resolve, reject) => {
@@ -347,7 +347,10 @@ class N11QuestionService {
             let envelope = null;
             let body = null;
 
-            if (result["env:Envelope"]) {
+            if (result["SOAP-ENV:Envelope"]) {
+              envelope = result["SOAP-ENV:Envelope"];
+              body = envelope["SOAP-ENV:Body"];
+            } else if (result["env:Envelope"]) {
               envelope = result["env:Envelope"];
               body = envelope["env:Body"];
             } else if (result["soap:Envelope"]) {
@@ -386,7 +389,16 @@ class N11QuestionService {
               body["ns3:GetProductQuestionListResponse"] ||
               body.GetProductQuestionListResponse;
 
-            if (!response || response.result?.status !== "success") {
+            if (!response) {
+              debug("No response object found in body");
+              resolve({
+                questions: [],
+                pagination: { page: 0, totalPages: 0, totalItems: 0 },
+              });
+              return;
+            }
+
+            if (!response.result || response.result.status !== "success") {
               debug(
                 "N11 API returned unsuccessful response:",
                 response?.result
@@ -695,7 +707,6 @@ class N11QuestionService {
    */
   parseQuestionDetailResponse(xmlData) {
     try {
-      const xml2js = require("xml2js");
       const parser = new xml2js.Parser({ explicitArray: false });
 
       return new Promise((resolve, reject) => {

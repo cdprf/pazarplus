@@ -171,9 +171,9 @@ const CustomerQuestions = () => {
 
   const loadTemplates = useCallback(async () => {
     try {
-      const response = await api.get("/customer-questions/templates");
-      if (response.data.success) {
-        setTemplates(response.data.data || []);
+      const response = await api.customerQuestions.templates.getTemplates();
+      if (response.success) {
+        setTemplates(response.data || []);
       }
     } catch (err) {
       console.error("Error loading templates:", err);

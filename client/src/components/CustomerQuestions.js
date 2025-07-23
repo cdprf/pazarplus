@@ -153,9 +153,9 @@ const CustomerQuestions = () => {
 
   const loadTemplates = useCallback(async () => {
     try {
-      const response = await api.get("/customer-questions/templates");
-      if (response.data.success) {
-        setTemplates(response.data.data || []);
+      const response = await api.customerQuestions.templates.getTemplates();
+      if (response.success) {
+        setTemplates(response.data || []);
       }
     } catch (err) {
       console.error("Error loading templates:", err);
@@ -173,17 +173,17 @@ const CustomerQuestions = () => {
 
     setTemplateSaving(true);
     try {
-      const response = await api.post("/customer-questions/templates", {
-        title: title.trim(),
+      const response = await api.customerQuestions.templates.createTemplate({
+        name: title.trim(),
         content: replyText.trim(),
         category: "general",
       });
 
-      if (response.data.success) {
+      if (response.success) {
         showAlert("Şablon başarıyla kaydedildi", "success");
         await loadTemplates();
       } else {
-        throw new Error(response.data.message || "Template save failed");
+        throw new Error(response.message || "Template save failed");
       }
     } catch (err) {
       console.error("Error saving template:", err);
@@ -994,7 +994,7 @@ const CustomerQuestions = () => {
                   <option value="">Şablon seçin...</option>
                   {templates.map((template) => (
                     <option key={template.id} value={template.id}>
-                      {template.title}
+                      {template.name || template.title}
                     </option>
                   ))}
                 </select>
