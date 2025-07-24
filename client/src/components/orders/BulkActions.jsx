@@ -11,6 +11,7 @@ import React, {
   useRef,
   useEffect,
 } from "react";
+import ReactDOM from "react-dom";
 
 import {
   CheckCircle,
@@ -1005,11 +1006,84 @@ const ActionCategoryDropdown = ({
 
   useEffect(() => {
     if (isOpen && buttonRef.current) {
+      // Force recalculation on every open
       const rect = buttonRef.current.getBoundingClientRect();
       setDropdownPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
+        top: rect.bottom + 4, // 4px gap, using viewport coordinates
+        left: rect.left,
       });
+
+      // Also recalculate if viewport changes while open
+      const handleRecalculate = () => {
+        if (isOpen && buttonRef.current) {
+          const newRect = buttonRef.current.getBoundingClientRect();
+          setDropdownPosition({
+            top: newRect.bottom + 4,
+            left: newRect.left,
+          });
+        }
+      };
+
+      window.addEventListener("scroll", handleRecalculate, true);
+      window.addEventListener("resize", handleRecalculate);
+
+      return () => {
+        window.removeEventListener("scroll", handleRecalculate, true);
+        window.removeEventListener("resize", handleRecalculate);
+      };
+    }
+  }, [isOpen]);
+
+  // Handle scroll events to close dropdown when scrolling (but allow position updates)
+  useEffect(() => {
+    const handleScroll = (event) => {
+      if (isOpen) {
+        // Only close if it's a major scroll (user scrolling page, not small adjustments)
+        const scrollDelta = Math.abs(event.target.scrollTop || window.scrollY);
+        if (scrollDelta > 10) {
+          setIsOpen(false);
+        }
+      }
+    };
+
+    const handleResize = () => {
+      if (isOpen) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      // Use passive listener for better performance
+      window.addEventListener("scroll", handleScroll, { passive: true });
+      window.addEventListener("resize", handleResize);
+      return () => {
+        window.removeEventListener("scroll", handleScroll);
+        window.removeEventListener("resize", handleResize);
+      };
+    }
+  }, [isOpen]);
+
+  // Handle clicks outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        isOpen &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target)
+      ) {
+        // Check if clicked element is inside the dropdown
+        const dropdown = document.querySelector(".fixed.z-\\[9999\\]");
+        if (!dropdown || !dropdown.contains(event.target)) {
+          setIsOpen(false);
+        }
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
     }
   }, [isOpen]);
 
@@ -1018,7 +1092,21 @@ const ActionCategoryDropdown = ({
       <div className="relative">
         <button
           ref={buttonRef}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => {
+            if (!isOpen) {
+              // Recalculate position immediately when opening
+              setTimeout(() => {
+                if (buttonRef.current) {
+                  const rect = buttonRef.current.getBoundingClientRect();
+                  setDropdownPosition({
+                    top: rect.bottom + 4, // 4px gap, using viewport coordinates
+                    left: rect.left,
+                  });
+                }
+              }, 0);
+            }
+            setIsOpen(!isOpen);
+          }}
           disabled={disabled}
           className="btn btn-outline btn-sm flex items-center space-x-2"
         >
@@ -1028,32 +1116,36 @@ const ActionCategoryDropdown = ({
         </button>
       </div>
 
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-[9998]"
-            onClick={() => setIsOpen(false)}
-          />
-          <div
-            className="fixed z-[9999] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-xl min-w-[250px] max-w-sm"
-            style={{
-              top: `${dropdownPosition.top + 4}px`,
-              left: `${dropdownPosition.left}px`,
-            }}
-          >
-            <div className="py-1 max-h-80 overflow-y-auto">
-              {Object.entries(category.actions).map(([actionKey, action]) => {
-                const ActionIcon = action.icon;
-                const hasIneligible = action.ineligibleCount > 0;
+      {isOpen &&
+        ReactDOM.createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[9998]"
+              onClick={() => setIsOpen(false)}
+            />
+            <div
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-xl min-w-[250px] max-w-sm z-[9999]"
+              style={{
+                position: "fixed",
+                top: `${dropdownPosition.top + 4}px`,
+                left: `${dropdownPosition.left}px`,
+                maxHeight: "320px",
+                overflowY: "auto",
+              }}
+            >
+              <div className="py-1 max-h-80 overflow-y-auto">
+                {Object.entries(category.actions).map(([actionKey, action]) => {
+                  const ActionIcon = action.icon;
+                  const hasIneligible = action.ineligibleCount > 0;
 
-                return (
-                  <button
-                    key={actionKey}
-                    onClick={() => {
-                      onAction(actionKey);
-                      setIsOpen(false);
-                    }}
-                    className={`
+                  return (
+                    <button
+                      key={actionKey}
+                      onClick={() => {
+                        onAction(actionKey);
+                        setIsOpen(false);
+                      }}
+                      className={`
                       w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700
                       flex items-center justify-between transition-colors duration-200
                       ${
@@ -1062,43 +1154,44 @@ const ActionCategoryDropdown = ({
                           : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
                       }
                     `}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <ActionIcon className="h-4 w-4 flex-shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium truncate">
-                          {action.label}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {action.description}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <ActionIcon className="h-4 w-4 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium truncate">
+                            {action.label}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {action.description}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
-                      {hasIneligible && (
-                        <span className="bg-warning-100 dark:bg-warning-900 text-warning-800 dark:text-warning-200 text-xs px-2 py-1 rounded">
-                          {action.eligibleCount}/
-                          {action.eligibleCount + action.ineligibleCount}
-                        </span>
-                      )}
-                      {action.estimatedTime && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                          <Clock className="h-3 w-3 mr-1" />~
-                          {Math.ceil(
-                            action.estimatedTime * action.eligibleCount
-                          )}
-                          s
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
+                      <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
+                        {hasIneligible && (
+                          <span className="bg-warning-100 dark:bg-warning-900 text-warning-800 dark:text-warning-200 text-xs px-2 py-1 rounded">
+                            {action.eligibleCount}/
+                            {action.eligibleCount + action.ineligibleCount}
+                          </span>
+                        )}
+                        {action.estimatedTime && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                            <Clock className="h-3 w-3 mr-1" />~
+                            {Math.ceil(
+                              action.estimatedTime * action.eligibleCount
+                            )}
+                            s
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        </>
-      )}
+          </>,
+          document.body
+        )}
     </>
   );
 };

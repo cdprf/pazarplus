@@ -1,10 +1,11 @@
 import React, { useState, useCallback } from "react";
-import { List, Grid3X3, Package, Edit, Settings } from "lucide-react";
+import { List, Grid3X3, Package, Settings } from "lucide-react";
 
 // Import modular components
 import SimpleProductGrid from "./SimpleProductGrid";
 import SimpleProductTable from "./SimpleProductTable";
 import LoadingState from "./LoadingState";
+import BulkOperations from "./BulkOperations";
 
 // Import design system components
 import { Button } from "../../ui";
@@ -399,23 +400,17 @@ const ProductDisplay = ({
             </div>
 
             <div className="flex items-center justify-between sm:justify-end space-x-2">
-              {selectedProducts.length > 0 && (
-                <Button
-                  onClick={() => onBulkEdit?.(selectedProducts)}
-                  variant="primary"
-                  size="sm"
-                  className="flex items-center space-x-2"
-                  aria-label={`${
-                    selectedProducts.length
-                  } ürünü ${TRANSLATIONS.bulkEdit.toLowerCase()}`}
-                >
-                  <Edit className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    {TRANSLATIONS.bulkEdit}
-                  </span>
-                  <span>({selectedProducts.length})</span>
-                </Button>
-              )}
+              {/* Replace simple bulk edit button with comprehensive bulk operations */}
+              <BulkOperations
+                selectedCount={selectedProducts.length}
+                onBulkEdit={() => onBulkEdit?.(selectedProducts)}
+                onBulkDelete={() => onBulkDelete?.(selectedProducts)}
+                onBulkStatusChange={(status) =>
+                  onBulkStatusChange?.(status, selectedProducts)
+                }
+                onBulkExport={() => onBulkExport?.(selectedProducts)}
+                compact={true}
+              />
               <div className="tabs">
                 <button
                   className={`tab ${viewMode === "table" ? "tab-active" : ""}`}
