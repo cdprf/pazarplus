@@ -28,7 +28,7 @@ const BulkOperations = ({
     if (!triggerRef.current) return;
 
     const triggerRect = triggerRef.current.getBoundingClientRect();
-    
+
     setDropdownPosition({
       top: triggerRect.bottom + 4, // 4px gap, using viewport coordinates
       left: triggerRect.left,
