@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * useValidation - Centralized validation hook
  * Provides real-time validation with debouncing and error management
@@ -90,7 +91,7 @@ export const useValidation = (initialErrors = {}, validationRules = {}) => {
 
             resolve(fieldErrors);
           } catch (error) {
-            console.error("Validation error:", error);
+            logger.error("Validation error:", error);
             const errorMessage = ["Validation failed"];
 
             setErrors((prev) => ({

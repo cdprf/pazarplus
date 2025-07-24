@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState } from "react";
 import { Edit, X } from "lucide-react";
 import { Button } from "../../ui";
@@ -28,7 +29,7 @@ const InlineEditor = ({
       await onSave?.(editValue);
       setIsEditing(false);
     } catch (error) {
-      console.error("Save failed:", error);
+      logger.error("Save failed:", error);
     } finally {
       setIsLoading(false);
     }

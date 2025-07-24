@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 // Enhanced Variant Management Components
 // Components for automatic detection, manual grouping, and suggestions
 
@@ -173,7 +174,7 @@ export const VariantSuggestionCard = ({
         <div className="flex items-center justify-end space-x-2 mt-4 pt-3 border-t">
           <Button
             onClick={() => {
-              console.log(
+              logger.info(
                 "🔴 Reject button clicked for suggestion:",
                 suggestion
               );
@@ -188,7 +189,7 @@ export const VariantSuggestionCard = ({
           </Button>
           <Button
             onClick={() => {
-              console.log(
+              logger.info(
                 "✅ Accept button clicked for suggestion:",
                 suggestion
               );
@@ -650,7 +651,7 @@ export const VariantManagementModal = ({
       await onSaveVariantRelationship?.(variantData);
       onClose();
     } catch (error) {
-      console.error("Error saving variant relationship:", error);
+      logger.error("Error saving variant relationship:", error);
     } finally {
       setIsProcessing(false);
     }
@@ -668,7 +669,7 @@ export const VariantManagementModal = ({
       await onDeleteVariantGroup?.(product);
       onClose();
     } catch (error) {
-      console.error("Error deleting variant group:", error);
+      logger.error("Error deleting variant group:", error);
     } finally {
       setIsProcessing(false);
     }

@@ -152,7 +152,7 @@ const PlatformConnections = () => {
         isActive: true,
       };
 
-      console.log("📤 Sending platform connection request:", {
+      logger.info("📤 Sending platform connection request:", {
         url: "/api/platforms/connections",
         method: "POST",
         payload: { ...payload, credentials: "[REDACTED]" },
@@ -160,7 +160,7 @@ const PlatformConnections = () => {
 
       const response = await api.post("/platforms/connections", payload);
 
-      console.log("✅ Platform connected successfully:", response.data);
+      logger.info("✅ Platform connected successfully:", response.data);
 
       setShowModal(false);
       showAlert("Platform başarıyla bağlandı", "success");
@@ -168,7 +168,7 @@ const PlatformConnections = () => {
         refetch();
       }
     } catch (error) {
-      console.error("❌ Failed to connect platform:", error);
+      logger.error("❌ Failed to connect platform:", error);
       showAlert(
         `Platform bağlantısı başarısız: ${
           error.response?.data?.message || error.message
@@ -184,18 +184,18 @@ const PlatformConnections = () => {
     }
 
     try {
-      console.log("🗑️ Disconnecting platform:", platformId);
+      logger.info("🗑️ Disconnecting platform:", platformId);
 
       const response = await api.delete(`/platforms/connections/${platformId}`);
 
-      console.log("✅ Platform disconnected successfully:", response.data);
+      logger.info("✅ Platform disconnected successfully:", response.data);
 
       showAlert("Platform bağlantısı kesildi", "success");
       if (typeof refetch === "function") {
         refetch();
       }
     } catch (error) {
-      console.error("❌ Failed to disconnect platform:", error);
+      logger.error("❌ Failed to disconnect platform:", error);
       showAlert(
         `Platform bağlantısı kesilemedi: ${
           error.response?.data?.message || error.message
@@ -207,13 +207,13 @@ const PlatformConnections = () => {
 
   const testConnection = async (platformId) => {
     try {
-      console.log("🧪 Testing platform connection:", platformId);
+      logger.info("🧪 Testing platform connection:", platformId);
 
       const response = await api.post(
         `/platforms/connections/${platformId}/test`
       );
 
-      console.log("✅ Connection test completed:", response.data);
+      logger.info("✅ Connection test completed:", response.data);
 
       if (response.data.success) {
         showAlert("Bağlantı testi başarılı!", "success");
@@ -228,7 +228,7 @@ const PlatformConnections = () => {
         refetch();
       }
     } catch (error) {
-      console.error("❌ Connection test failed:", error);
+      logger.error("❌ Connection test failed:", error);
       showAlert(
         `Bağlantı testi başarısız: ${
           error.response?.data?.message || error.message

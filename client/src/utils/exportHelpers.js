@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Export functionality for orders
  */
@@ -23,7 +24,7 @@ export const exportOrders = async (showAlert) => {
 
     showAlert("Siparişler başarıyla dışa aktarıldı", "success");
   } catch (error) {
-    console.error("Error exporting orders:", error);
+    logger.error("Error exporting orders:", error);
     showAlert("Eksport işlemi başarısız", "error");
   }
 };
@@ -45,7 +46,7 @@ export const exportOrdersAsJSON = async (orders, showAlert) => {
     window.URL.revokeObjectURL(url);
     showAlert("Siparişler JSON olarak dışa aktarıldı", "success");
   } catch (error) {
-    console.error("Error exporting orders as JSON:", error);
+    logger.error("Error exporting orders as JSON:", error);
     showAlert("JSON eksport işlemi başarısız", "error");
   }
 };
@@ -67,7 +68,7 @@ export const exportOrdersAsExcel = async (showAlert) => {
     window.URL.revokeObjectURL(url);
     showAlert("Siparişler Excel olarak dışa aktarıldı", "success");
   } catch (error) {
-    console.error("Error exporting orders as Excel:", error);
+    logger.error("Error exporting orders as Excel:", error);
     showAlert("Excel eksport işlemi başarısız", "error");
   }
 };

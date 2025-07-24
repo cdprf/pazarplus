@@ -496,7 +496,7 @@ class ProductController {
 
         if (validPlatforms.length > 0) {
           whereClause.platformType = { [Op.in]: validPlatforms };
-          logger.debug(`Filtering by platforms: ${validPlatforms.join(", ")}`);
+          logger.info(`Filtering by platforms: ${validPlatforms.join(", ")}`);
         }
       } else if (
         platforms &&
@@ -507,7 +507,7 @@ class ProductController {
         const sanitizedPlatform = sanitizePlatformType(platforms);
         if (sanitizedPlatform) {
           whereClause.platformType = sanitizedPlatform;
-          logger.debug(`Filtering by single platform: ${sanitizedPlatform}`);
+          logger.info(`Filtering by single platform: ${sanitizedPlatform}`);
         }
       } else {
         logger.info(
@@ -519,7 +519,7 @@ class ProductController {
         where: whereClause,
       });
 
-      logger.debug(
+      logger.info(
         `Found ${connections.length} active platform connections for sync`
       );
 
@@ -3152,7 +3152,7 @@ class ProductController {
               stockStatus = await StockService.getStockStatus(product.id);
             }
           } catch (error) {
-            logger.debug("Enhanced stock service not available", error.message);
+            logger.info("Enhanced stock service not available", error.message);
             stockStatus = {
               available: product.stock || product.stockQuantity || 0,
               reserved: 0,
@@ -3500,7 +3500,7 @@ class ProductController {
           );
         }
       } catch (error) {
-        logger.debug(
+        logger.info(
           "Enhanced service not available, using direct query",
           error.message
         );
@@ -3573,7 +3573,7 @@ class ProductController {
           );
         }
       } catch (error) {
-        logger.debug(
+        logger.info(
           "Enhanced service not available, using direct creation",
           error.message
         );
@@ -3714,7 +3714,7 @@ class ProductController {
           stockStatus = await StockService.getStockStatus(id);
         }
       } catch (error) {
-        logger.debug("Enhanced stock service not available", error.message);
+        logger.info("Enhanced stock service not available", error.message);
 
         // Fallback to basic stock info
         const ProductModel = MainProduct || Product;
@@ -3770,7 +3770,7 @@ class ProductController {
           );
         }
       } catch (error) {
-        logger.debug(
+        logger.info(
           "Enhanced stock service not available, using direct update",
           error.message
         );
@@ -3841,7 +3841,7 @@ class ProductController {
           );
         }
       } catch (error) {
-        logger.debug(
+        logger.info(
           "Enhanced service not available, using basic publishing",
           error.message
         );

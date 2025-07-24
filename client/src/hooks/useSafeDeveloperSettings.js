@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React from "react";
 
 // Default fallback settings
@@ -30,7 +31,7 @@ export const getDeveloperSettings = () => {
       return JSON.parse(savedSettings);
     }
   } catch (error) {
-    console.warn("Failed to load developer settings from localStorage:", error);
+    logger.warn("Failed to load developer settings from localStorage:", error);
   }
 
   return defaultSettings;

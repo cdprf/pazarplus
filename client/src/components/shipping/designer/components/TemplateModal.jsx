@@ -1,3 +1,4 @@
+import logger from "../../../../utils/logger";
 import React, { useState, useMemo, useEffect } from "react";
 import {
   X,
@@ -40,7 +41,7 @@ const TemplateModal = ({
           const templates = await fetchTemplates();
           setSavedTemplates(templates);
         } catch (error) {
-          console.error("Error loading templates:", error);
+          logger.error("Error loading templates:", error);
         }
       };
       loadTemplates();
@@ -61,7 +62,7 @@ const TemplateModal = ({
             setDefaultTemplateId(response.data.defaultTemplateId);
           }
         } catch (error) {
-          console.error("Error loading default template:", error);
+          logger.error("Error loading default template:", error);
         }
       };
       loadDefaultTemplate();
@@ -106,7 +107,7 @@ const TemplateModal = ({
       const updatedTemplates = [...savedTemplates, savedTemplate];
       setSavedTemplates(updatedTemplates);
     } catch (error) {
-      console.error("Error duplicating template:", error);
+      logger.error("Error duplicating template:", error);
       alert("Template duplication failed. Please try again.");
     }
   };
@@ -144,7 +145,7 @@ const TemplateModal = ({
 
         if (onDelete) onDelete(templateId);
       } catch (error) {
-        console.error("Error deleting template:", error);
+        logger.error("Error deleting template:", error);
         alert("Template deletion failed. Please try again.");
       }
     }
@@ -161,7 +162,7 @@ const TemplateModal = ({
         alert("Varsayılan şablon ayarlanamadı. Lütfen tekrar deneyin.");
       }
     } catch (error) {
-      console.error("Error setting default template:", error);
+      logger.error("Error setting default template:", error);
       alert("Varsayılan şablon ayarlanamadı. Lütfen tekrar deneyin.");
     }
   };
@@ -170,7 +171,7 @@ const TemplateModal = ({
     if (onLoad) {
       onLoad(template);
     } else {
-      console.warn("No onLoad handler provided");
+      logger.warn("No onLoad handler provided");
     }
   };
 

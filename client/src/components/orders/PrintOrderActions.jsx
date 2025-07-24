@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import api from "../../services/api";
 
@@ -21,7 +22,7 @@ const PrintOrderActions = ({ order }) => {
         setSelectedTemplate(defaultTemplate.id);
       }
     } catch (error) {
-      console.error("Error loading templates:", error);
+      logger.error("Error loading templates:", error);
     }
   };
 
@@ -47,7 +48,7 @@ const PrintOrderActions = ({ order }) => {
         const labelUrl = response.data.labelUrl.startsWith("http")
           ? response.data.labelUrl
           : `${baseUrl}${response.data.labelUrl}`;
-        console.log(`🖨️ Opening PDF: ${labelUrl}`);
+        logger.info(`🖨️ Opening PDF: ${labelUrl}`);
 
         // Try to open the PDF in a new window
         const pdfWindow = window.open(labelUrl, "_blank");
@@ -70,7 +71,7 @@ const PrintOrderActions = ({ order }) => {
           setTimeout(() => {
             try {
               if (pdfWindow.location.href === "about:blank") {
-                console.warn(
+                logger.warn(
                   "⚠️ PDF window seems to be blank, possible network issue"
                 );
                 alert(
@@ -80,7 +81,7 @@ const PrintOrderActions = ({ order }) => {
               }
             } catch (e) {
               // Cross-origin error is expected for successful loads
-              console.log(
+              logger.info(
                 "✅ PDF window loaded successfully (cross-origin error is normal)"
               );
             }
@@ -97,7 +98,7 @@ const PrintOrderActions = ({ order }) => {
         throw new Error("No PDF data received");
       }
     } catch (error) {
-      console.error("Error generating PDF:", error);
+      logger.error("Error generating PDF:", error);
       alert(
         `Failed to generate PDF: ${error.message}\n\nThis might be a network connectivity issue. Please ensure you're connected to the same network as the server.`
       );
@@ -133,7 +134,7 @@ const PrintOrderActions = ({ order }) => {
         throw new Error("Failed to generate shipping slip");
       }
     } catch (error) {
-      console.error("Error generating shipping slip:", error);
+      logger.error("Error generating shipping slip:", error);
       alert("Failed to generate shipping slip: " + error.message);
     } finally {
       setLoading(false);
@@ -155,7 +156,7 @@ const PrintOrderActions = ({ order }) => {
         window.open(response.pdfUrl, "_blank");
       }
     } catch (error) {
-      console.error("Error printing invoice:", error);
+      logger.error("Error printing invoice:", error);
       alert("Failed to print invoice: " + error.message);
     } finally {
       setLoading(false);

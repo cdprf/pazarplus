@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -59,7 +60,7 @@ const OrderDetail = () => {
           );
         }
       } catch (error) {
-        console.error("Error auto-linking template:", error);
+        logger.error("Error auto-linking template:", error);
         showNotification("Failed to link template automatically", "warning");
       } finally {
         setLinkingTemplate(false);
@@ -75,7 +76,7 @@ const OrderDetail = () => {
         setLinkedTemplate(response.data);
       }
     } catch (error) {
-      console.error("Error loading linked template:", error);
+      logger.error("Error loading linked template:", error);
     }
   }, []);
 
@@ -92,7 +93,7 @@ const OrderDetail = () => {
         await fetchLinkedTemplate(response.data.shippingTemplateId);
       }
     } catch (error) {
-      console.error("Error fetching order:", error);
+      logger.error("Error fetching order:", error);
       showNotification("Error loading order details", "error");
     } finally {
       setLoading(false);
@@ -113,7 +114,7 @@ const OrderDetail = () => {
     } catch (error) {
       // Don't show error for no default template set
       if (error.response?.status !== 404) {
-        console.error("Error loading default template:", error);
+        logger.error("Error loading default template:", error);
       }
     }
   }, [order, linkedTemplate, handleAutoLinkTemplate]);
@@ -125,7 +126,7 @@ const OrderDetail = () => {
         setAvailableTemplates(response.data);
       }
     } catch (error) {
-      console.error("Error loading available templates:", error);
+      logger.error("Error loading available templates:", error);
     }
   }, []);
 
@@ -151,7 +152,7 @@ const OrderDetail = () => {
         );
       }
     } catch (error) {
-      console.error("Error linking template:", error);
+      logger.error("Error linking template:", error);
       showNotification("Failed to link template", "error");
     } finally {
       setLinkingTemplate(false);
@@ -209,7 +210,7 @@ const OrderDetail = () => {
         }
       }
     } catch (error) {
-      console.error("Error generating shipping slip:", error);
+      logger.error("Error generating shipping slip:", error);
       showNotification("Error generating shipping slip", "error");
     } finally {
       setGeneratingSlip(false);
@@ -252,10 +253,10 @@ const OrderDetail = () => {
       e.stopPropagation();
     }
 
-    console.log("🖨️ Print shipping slip clicked");
+    logger.info("🖨️ Print shipping slip clicked");
 
     if (!order?.id) {
-      console.warn("No order ID available");
+      logger.warn("No order ID available");
       showNotification("No order selected", "error");
       return;
     }
@@ -270,11 +271,11 @@ const OrderDetail = () => {
     }
 
     setGeneratingSlip(true);
-    console.log(`🖨️ Starting PDF generation for order ${order.id}`);
+    logger.info(`🖨️ Starting PDF generation for order ${order.id}`);
 
     try {
       const response = await api.shipping.generatePDF(order.id);
-      console.log("📄 PDF generation response:", response);
+      logger.info("📄 PDF generation response:", response);
 
       if (response.success && response.data?.labelUrl) {
         // Construct full URL for PDF access (like legacy code)
@@ -285,7 +286,7 @@ const OrderDetail = () => {
         const labelUrl = response.data.labelUrl.startsWith("http")
           ? response.data.labelUrl
           : `${baseUrl}${response.data.labelUrl}`;
-        console.log(`🖨️ Attempting to open PDF: ${labelUrl}`);
+        logger.info(`🖨️ Attempting to open PDF: ${labelUrl}`);
 
         // Try multiple approaches to open the PDF
         let pdfWindow = null;
@@ -293,13 +294,13 @@ const OrderDetail = () => {
         try {
           // Method 1: Standard window.open
           pdfWindow = window.open(labelUrl, "_blank", "noopener,noreferrer");
-          console.log("🖨️ window.open result:", pdfWindow);
+          logger.info("🖨️ window.open result:", pdfWindow);
         } catch (windowOpenError) {
-          console.error("🖨️ window.open failed:", windowOpenError);
+          logger.error("🖨️ window.open failed:", windowOpenError);
         }
 
         if (!pdfWindow || pdfWindow.closed) {
-          console.warn(
+          logger.warn(
             "🖨️ Popup blocked or failed, trying alternative methods"
           );
 
@@ -314,10 +315,10 @@ const OrderDetail = () => {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            console.log("🖨️ Alternative link click method used");
+            logger.info("🖨️ Alternative link click method used");
             showNotification("PDF opened in new tab", "success");
           } catch (linkError) {
-            console.error("🖨️ Link click method failed:", linkError);
+            logger.error("🖨️ Link click method failed:", linkError);
 
             // Method 3: Direct navigation as last resort
             showNotification(
@@ -327,13 +328,13 @@ const OrderDetail = () => {
             window.location.href = labelUrl;
           }
         } else {
-          console.log("✅ PDF window opened successfully");
+          logger.info("✅ PDF window opened successfully");
 
           // Check if the window loaded successfully after a short delay
           setTimeout(() => {
             try {
               if (pdfWindow.location.href === "about:blank") {
-                console.warn(
+                logger.warn(
                   "⚠️ PDF window seems to be blank, possible network issue"
                 );
                 showNotification(
@@ -344,7 +345,7 @@ const OrderDetail = () => {
               }
             } catch (e) {
               // Cross-origin error is expected for successful loads
-              console.log(
+              logger.info(
                 "✅ PDF window loaded successfully (cross-origin expected)"
               );
             }
@@ -353,21 +354,21 @@ const OrderDetail = () => {
           showNotification("Shipping slip generated successfully", "success");
         }
       } else {
-        console.error(
+        logger.error(
           "PDF generation failed - no success or labelUrl",
           response
         );
         throw new Error("Failed to generate shipping slip - no valid response");
       }
     } catch (error) {
-      console.error("Error generating shipping slip:", error);
+      logger.error("Error generating shipping slip:", error);
       showNotification(
         `Failed to generate shipping slip: ${error.message}. This might be a network connectivity issue.`,
         "error"
       );
     } finally {
       setGeneratingSlip(false);
-      console.log("🖨️ PDF generation process completed");
+      logger.info("🖨️ PDF generation process completed");
     }
   };
 
@@ -389,7 +390,7 @@ const OrderDetail = () => {
         throw new Error("Failed to generate invoice");
       }
     } catch (error) {
-      console.error("Error generating invoice:", error);
+      logger.error("Error generating invoice:", error);
       showNotification(`Failed to generate invoice: ${error.message}`, "error");
     } finally {
       setGeneratingSlip(false);
@@ -418,7 +419,7 @@ const OrderDetail = () => {
 
       setAvailableTemplates(templatesWithDefault);
     } catch (error) {
-      console.error("Error loading templates:", error);
+      logger.error("Error loading templates:", error);
     }
   }, []);
 
@@ -447,7 +448,7 @@ const OrderDetail = () => {
       setOrder((prev) => ({ ...prev, status: newStatus }));
       showNotification("Order status updated successfully", "success");
     } catch (error) {
-      console.error("Error updating order status:", error);
+      logger.error("Error updating order status:", error);
       showNotification("Error updating order status", "error");
     }
   };
@@ -459,7 +460,7 @@ const OrderDetail = () => {
       setEditing(false);
       showNotification("Order updated successfully", "success");
     } catch (error) {
-      console.error("Error updating order:", error);
+      logger.error("Error updating order:", error);
       showNotification("Error updating order", "error");
     }
   };

@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import {
   OptimizedBarChart,
@@ -39,13 +40,13 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
         setLoading(true);
         setError(null);
 
-        console.log("🔍 Fetching product analytics for timeframe:", timeframe);
+        logger.info("🔍 Fetching product analytics for timeframe:", timeframe);
 
         const productData = await analyticsService.getProductAnalytics(
           timeframe
         );
 
-        console.log("✅ Product analytics data received:", {
+        logger.info("✅ Product analytics data received:", {
           success: productData?.success,
           hasData: !!productData?.data,
           dataKeys: productData?.data ? Object.keys(productData.data) : [],
@@ -72,7 +73,7 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
             insights: processInsightsData(rawData.insights || {}),
           };
 
-          console.log("📊 Processed product analytics:", {
+          logger.info("📊 Processed product analytics:", {
             topProductsLength: normalizedData.topProducts?.length || 0,
             hasPerformance: !!normalizedData.performance,
             hasInsights: !!normalizedData.insights,
@@ -81,7 +82,7 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
 
           setData(normalizedData);
         } else {
-          console.warn("⚠️ No product data received, setting empty data");
+          logger.warn("⚠️ No product data received, setting empty data");
           setData({
             topProducts: [],
             performance: {
@@ -102,7 +103,7 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
           });
         }
       } catch (err) {
-        console.error("Error fetching product analytics:", err);
+        logger.error("Error fetching product analytics:", err);
         setError(err.message || "Failed to load product analytics");
       } finally {
         setLoading(false);
@@ -131,13 +132,13 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
         const allProducts =
           rawData.allProducts || rawData.products || rawData.topProducts || [];
         setAllProductsData(allProducts);
-        console.log(`Loaded ${allProducts.length} total products with orders`);
+        logger.info(`Loaded ${allProducts.length} total products with orders`);
       }
 
       setShowAllProducts(true);
       setCurrentPage(1); // Reset to first page when loading new data
     } catch (err) {
-      console.error("Error fetching all products data:", err);
+      logger.error("Error fetching all products data:", err);
       setError("Failed to load detailed product analysis");
     } finally {
       setAllProductsLoading(false);

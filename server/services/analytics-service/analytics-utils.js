@@ -76,7 +76,7 @@ async function getPlatformComparison(userId, dateRange) {
       };
     });
   } catch (error) {
-    console.error('Error in getPlatformComparison:', error);
+    logger.error('Error in getPlatformComparison:', error);
     return [];
   }
 }
@@ -143,7 +143,7 @@ async function getPerformanceMetrics(userId, dateRange) {
         totalOrders > 0 ? (cancelledOrders / totalOrders) * 100 : 0
     };
   } catch (error) {
-    console.error('Error in getPerformanceMetrics:', error);
+    logger.error('Error in getPerformanceMetrics:', error);
     return {
       efficiency: 0,
       growth: 0,
@@ -211,7 +211,7 @@ async function getFinancialKPIs(userId, dateRange) {
       growthRate: 0 // Would need historical comparison
     };
   } catch (error) {
-    console.error('Error in getFinancialKPIs:', error);
+    logger.error('Error in getFinancialKPIs:', error);
     return {
       revenue: 0,
       profit: 0,
@@ -445,7 +445,7 @@ async function getRevenueAnalytics(userId, dateRange) {
     }
   };
 
-  console.log('Revenue Analytics - Starting daily revenue calculation');
+  logger.info('Revenue Analytics - Starting daily revenue calculation');
 
   try {
     // Daily revenue breakdown using OrderItems for accurate revenue calculation
@@ -503,8 +503,8 @@ async function getRevenueAnalytics(userId, dateRange) {
       ]
     });
 
-    console.log('Revenue Analytics - Daily revenue calculation complete');
-    console.log('Revenue Analytics - Starting platform revenue calculation');
+    logger.info('Revenue Analytics - Daily revenue calculation complete');
+    logger.info('Revenue Analytics - Starting platform revenue calculation');
 
     // Revenue by platform using OrderItems
     const platformRevenue = await OrderItem.findAll({
@@ -541,13 +541,13 @@ async function getRevenueAnalytics(userId, dateRange) {
       group: [OrderItem.sequelize.col('order.platform')]
     });
 
-    console.log('Revenue Analytics - Platform revenue calculation complete');
-    console.log('Revenue Analytics - Starting previous period calculation');
+    logger.info('Revenue Analytics - Platform revenue calculation complete');
+    logger.info('Revenue Analytics - Starting previous period calculation');
 
     // Growth calculation using OrderItems
     const previousPeriod = getPreviousPeriod(dateRange);
 
-    console.log('Revenue Analytics - Calculating previous revenue');
+    logger.info('Revenue Analytics - Calculating previous revenue');
 
     // Fix: Replace OrderItem.sum with a more standard approach using findAll and SUM
     const previousRevenueResult = await OrderItem.findAll({
@@ -580,7 +580,7 @@ async function getRevenueAnalytics(userId, dateRange) {
 
     const previousRevenue = previousRevenueResult[0]?.totalRevenue || 0;
 
-    console.log('Revenue Analytics - Calculating current revenue');
+    logger.info('Revenue Analytics - Calculating current revenue');
 
     // Fix: Replace OrderItem.sum with a more standard approach using findAll and SUM
     const currentRevenueResult = await OrderItem.findAll({
@@ -608,12 +608,12 @@ async function getRevenueAnalytics(userId, dateRange) {
 
     const currentRevenue = currentRevenueResult[0]?.totalRevenue || 0;
 
-    console.log('Revenue Analytics - Calculating growth rate');
+    logger.info('Revenue Analytics - Calculating growth rate');
     const growthRate = previousRevenue
       ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
       : 0;
 
-    console.log('Revenue Analytics - Preparing return data');
+    logger.info('Revenue Analytics - Preparing return data');
     const result = {
       daily: dailyRevenue.map((item) => ({
         date: item.get('date'),
@@ -636,11 +636,11 @@ async function getRevenueAnalytics(userId, dateRange) {
         value: parseFloat(item.get('revenue') || 0)
       }))
     };
-    console.log('Revenue Analytics - Complete');
+    logger.info('Revenue Analytics - Complete');
     return result;
   } catch (error) {
-    console.error('Revenue Analytics Error:', error.message);
-    console.error('Error location:', error.stack);
+    logger.error('Revenue Analytics Error:', error.message);
+    logger.error('Error location:', error.stack);
     throw error;
   }
 }
@@ -804,7 +804,7 @@ async function getPredictiveInsights(userId, dateRange) {
     await cacheService.set(cacheKey, result, defaultCacheTTL);
     return result;
   } catch (error) {
-    console.error('Error in getPredictiveInsights:', error);
+    logger.error('Error in getPredictiveInsights:', error);
     return {
       trends: [],
       forecast: [],
@@ -1005,7 +1005,7 @@ async function getMarketIntelligence(userId, dateRange) {
     await cacheService.set(cacheKey, result, defaultCacheTTL);
     return result;
   } catch (error) {
-    console.error('Error in getMarketIntelligence:', error);
+    logger.error('Error in getMarketIntelligence:', error);
     return {
       topProducts: [],
       categoryPerformance: [],

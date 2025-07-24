@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Network Status Service
  * Implements circuit breaker pattern to handle server connectivity gracefully
@@ -34,7 +35,7 @@ class NetworkStatusService {
 
     // Debug: Log initialization
     if (process.env.NODE_ENV === "development") {
-      console.log("🌐 NetworkStatusService initialized", {
+      logger.info("🌐 NetworkStatusService initialized", {
         isOnline: this.isOnline,
         isServerReachable: this.isServerReachable,
         circuitBreakerState: this.circuitBreakerState,
@@ -62,7 +63,7 @@ class NetworkStatusService {
       try {
         callback(status);
       } catch (error) {
-        console.error("Error in network status listener:", error);
+        logger.error("Error in network status listener:", error);
       }
     });
   }
@@ -119,7 +120,7 @@ class NetworkStatusService {
    */
   resetCircuitBreaker() {
     if (process.env.NODE_ENV === "development") {
-      console.log("🔄 Manually resetting circuit breaker");
+      logger.info("🔄 Manually resetting circuit breaker");
     }
 
     this.circuitBreakerState = "CLOSED";
@@ -141,7 +142,7 @@ class NetworkStatusService {
    */
   recordSuccess() {
     if (process.env.NODE_ENV === "development") {
-      console.log("✅ NetworkStatusService.recordSuccess() called");
+      logger.info("✅ NetworkStatusService.recordSuccess() called");
     }
 
     if (this.circuitBreakerState === "HALF_OPEN") {
@@ -150,7 +151,7 @@ class NetworkStatusService {
       this.failureCount = 0;
       this.retryDelay = 1000; // Reset delay
       this.isServerReachable = true;
-      console.log("🟢 Server connectivity restored - circuit breaker CLOSED");
+      logger.info("🟢 Server connectivity restored - circuit breaker CLOSED");
       this.notifyListeners();
     } else if (
       this.circuitBreakerState === "CLOSED" &&
@@ -160,7 +161,7 @@ class NetworkStatusService {
       this.isServerReachable = true;
       this.failureCount = 0;
       this.retryDelay = 1000;
-      console.log("🟢 Server connectivity restored");
+      logger.info("🟢 Server connectivity restored");
       this.notifyListeners();
     }
   }
@@ -170,7 +171,7 @@ class NetworkStatusService {
    */
   recordFailure(error) {
     if (process.env.NODE_ENV === "development") {
-      console.log("❌ NetworkStatusService.recordFailure() called", {
+      logger.info("❌ NetworkStatusService.recordFailure() called", {
         error: error.message,
         code: error.code,
         status: error.response?.status,
@@ -187,7 +188,7 @@ class NetworkStatusService {
 
     if (!isServerError) {
       if (process.env.NODE_ENV === "development") {
-        console.log(
+        logger.info(
           "🔍 Not a server connectivity error, ignoring for circuit breaker",
           {
             code: error.code,
@@ -200,7 +201,7 @@ class NetworkStatusService {
     }
 
     if (process.env.NODE_ENV === "development") {
-      console.log("🚨 COUNTING as connectivity failure for circuit breaker", {
+      logger.info("🚨 COUNTING as connectivity failure for circuit breaker", {
         code: error.code,
         status: error.response?.status,
         message: error.message,
@@ -220,14 +221,14 @@ class NetworkStatusService {
       ) {
         // Open the circuit breaker
         this.circuitBreakerState = "OPEN";
-        console.warn(
+        logger.warn(
           `🔴 Circuit breaker OPENED after ${this.failureCount} failures`
         );
         this.scheduleRetry();
       } else if (this.circuitBreakerState === "HALF_OPEN") {
         // Failed during recovery attempt, open circuit again
         this.circuitBreakerState = "OPEN";
-        console.warn("🔴 Circuit breaker OPENED - recovery attempt failed");
+        logger.warn("🔴 Circuit breaker OPENED - recovery attempt failed");
         this.scheduleRetry();
       }
 
@@ -246,7 +247,7 @@ class NetworkStatusService {
    */
   isServerConnectivityError(error) {
     if (process.env.NODE_ENV === "development") {
-      console.log("🔍 Checking if error is server connectivity issue:", {
+      logger.info("🔍 Checking if error is server connectivity issue:", {
         code: error.code,
         message: error.message,
         hasRequest: !!error.request,
@@ -261,7 +262,7 @@ class NetworkStatusService {
       error.code === "NETWORK_ERROR" ||
       error.message?.includes("Network Error")
     ) {
-      console.log("🔍 ✅ Detected NETWORK_ERROR - IS connectivity issue");
+      logger.info("🔍 ✅ Detected NETWORK_ERROR - IS connectivity issue");
       return true;
     }
 
@@ -271,7 +272,7 @@ class NetworkStatusService {
       error.code === "ENOTFOUND" ||
       error.code === "ETIMEDOUT"
     ) {
-      console.log(
+      logger.info(
         "🔍 ✅ Detected connection error:",
         error.code,
         "- IS connectivity issue"
@@ -281,7 +282,7 @@ class NetworkStatusService {
 
     // Axios network errors - request was made but no response received
     if (error.request && !error.response) {
-      console.log(
+      logger.info(
         "🔍 ✅ Detected Axios network error (no response) - IS connectivity issue"
       );
       return true;
@@ -290,7 +291,7 @@ class NetworkStatusService {
     // DON'T count 5xx server errors as connectivity issues
     // 5xx means server is reachable but has internal issues
     if (error.response?.status >= 500) {
-      console.log(
+      logger.info(
         "🔍 ❌ 5xx server error - server reachable but has issues, NOT a connectivity issue"
       );
       return false; // Changed from true to false
@@ -298,7 +299,7 @@ class NetworkStatusService {
 
     // DON'T count 4xx client errors (including auth errors) as connectivity issues
     if (error.response?.status >= 400 && error.response?.status < 500) {
-      console.log(
+      logger.info(
         "🔍 ❌ 4xx client error (auth, etc.) - server reachable, NOT a connectivity issue"
       );
       return false;
@@ -309,11 +310,11 @@ class NetworkStatusService {
       error.message?.includes("CORS") ||
       error.message?.includes("blocked by CORS policy")
     ) {
-      console.log("🔍 ✅ Detected CORS error - IS connectivity issue");
+      logger.info("🔍 ✅ Detected CORS error - IS connectivity issue");
       return true;
     }
 
-    console.log(
+    logger.info(
       "🔍 ❌ Unknown error type - NOT counting as connectivity issue"
     );
     return false;
@@ -339,7 +340,7 @@ class NetworkStatusService {
    */
   async attemptHealthCheck() {
     try {
-      console.log("🔍 Attempting server health check...");
+      logger.info("🔍 Attempting server health check...");
 
       // Use a lightweight endpoint for health check
       const response = await fetch("/api/health", {
@@ -349,13 +350,13 @@ class NetworkStatusService {
       });
 
       if (response.ok) {
-        console.log("✅ Health check successful");
+        logger.info("✅ Health check successful");
         this.recordSuccess();
       } else {
         throw new Error(`Health check failed: ${response.status}`);
       }
     } catch (error) {
-      console.log("❌ Health check failed:", error.message);
+      logger.info("❌ Health check failed:", error.message);
       this.scheduleRetry();
     }
   }
@@ -380,7 +381,7 @@ class NetworkStatusService {
    * Handle browser online event
    */
   handleOnline() {
-    console.log("🌐 Browser back online");
+    logger.info("🌐 Browser back online");
     this.isOnline = true;
     this.notifyListeners();
 
@@ -392,7 +393,7 @@ class NetworkStatusService {
    * Handle browser offline event
    */
   handleOffline() {
-    console.log("🌐 Browser went offline");
+    logger.info("🌐 Browser went offline");
     this.isOnline = false;
     this.isServerReachable = false;
     this.notifyListeners();
@@ -402,7 +403,7 @@ class NetworkStatusService {
    * Force reset the circuit breaker (for manual recovery)
    */
   reset() {
-    console.log("🔄 Manually resetting circuit breaker");
+    logger.info("🔄 Manually resetting circuit breaker");
     this.circuitBreakerState = "CLOSED";
     this.failureCount = 0;
     this.retryDelay = 1000;
@@ -442,7 +443,7 @@ const networkStatusService = new NetworkStatusService();
 // Expose to window for debugging in development
 if (process.env.NODE_ENV === "development") {
   window.networkStatusService = networkStatusService;
-  console.log(
+  logger.info(
     "🔧 NetworkStatusService exposed to window.networkStatusService for debugging"
   );
 }

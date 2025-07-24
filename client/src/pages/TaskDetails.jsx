@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -200,7 +201,7 @@ const TaskDetails = () => {
         );
       }
     } catch (error) {
-      console.error("Error loading task details:", error);
+      logger.error("Error loading task details:", error);
       showAlert(
         "Failed to load task details: " +
           (error.response?.data?.message || error.message),
@@ -229,7 +230,7 @@ const TaskDetails = () => {
         throw new Error(response.data?.message || `Failed to ${action} task`);
       }
     } catch (error) {
-      console.error(`Error ${action} task:`, error);
+      logger.error(`Error ${action} task:`, error);
       showAlert(
         `Failed to ${action} task: ` +
           (error.response?.data?.message || error.message),

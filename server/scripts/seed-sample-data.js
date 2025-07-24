@@ -1,9 +1,10 @@
 const { User, Order, OrderItem, Product, sequelize } = require('../models');
+const logger = require("../utils/logger");
 const bcrypt = require('bcryptjs'); // Fixed: use bcryptjs instead of bcrypt
 
 const seedSampleData = async () => {
   try {
-    console.log('🌱 Starting database seeding...');
+    logger.info('🌱 Starting database seeding...');
 
     // Create a test user if it doesn't exist
     let testUser = await User.findOne({ where: { email: 'test@example.com' } });
@@ -17,9 +18,9 @@ const seedSampleData = async () => {
         password: hashedPassword,
         isActive: true
       });
-      console.log('✅ Created test user');
+      logger.info('✅ Created test user');
     } else {
-      console.log('ℹ️ Test user already exists');
+      logger.info('ℹ️ Test user already exists');
     }
 
     // Create sample products
@@ -90,9 +91,9 @@ const seedSampleData = async () => {
           sourcePlatform: 'sample' // Mark as sample data
         };
         await Product.create(productWithSource);
-        console.log(`✅ Created product: ${productData.name}`);
+        logger.info(`✅ Created product: ${productData.name}`);
       } else {
-        console.log(`ℹ️ Product already exists: ${productData.name}`);
+        logger.info(`ℹ️ Product already exists: ${productData.name}`);
       }
     }
 
@@ -245,19 +246,19 @@ const seedSampleData = async () => {
           });
         }
 
-        console.log(`✅ Created order: ${orderData.orderNumber}`);
+        logger.info(`✅ Created order: ${orderData.orderNumber}`);
       } else {
-        console.log(`ℹ️ Order already exists: ${orderData.orderNumber}`);
+        logger.info(`ℹ️ Order already exists: ${orderData.orderNumber}`);
       }
     }
 
-    console.log('🎉 Database seeding completed successfully!');
-    console.log('📊 Sample data summary:');
-    console.log(`   - Products: ${sampleProducts.length}`);
-    console.log(`   - Orders: ${sampleOrders.length}`);
-    console.log(`   - Test user: ${testUser.email}`);
+    logger.info('🎉 Database seeding completed successfully!');
+    logger.info('📊 Sample data summary:');
+    logger.info(`   - Products: ${sampleProducts.length}`);
+    logger.info(`   - Orders: ${sampleOrders.length}`);
+    logger.info(`   - Test user: ${testUser.email}`);
   } catch (error) {
-    console.error('❌ Error seeding database:', error);
+    logger.error('❌ Error seeding database:', error);
     throw error;
   }
 };
@@ -268,11 +269,11 @@ module.exports = { seedSampleData };
 if (require.main === module) {
   seedSampleData()
     .then(() => {
-      console.log('✅ Seeding complete, exiting...');
+      logger.info('✅ Seeding complete, exiting...');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('❌ Seeding failed:', error);
+      logger.error('❌ Seeding failed:', error);
       process.exit(1);
     });
 }

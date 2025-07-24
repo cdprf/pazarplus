@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -128,7 +129,7 @@ const PlatformOperations = () => {
           };
         }
       } catch (error) {
-        console.warn("Could not fetch order date range:", error);
+        logger.warn("Could not fetch order date range:", error);
       }
 
       // Fallback to current date if no order data available
@@ -194,7 +195,7 @@ const PlatformOperations = () => {
         );
       }
     } catch (error) {
-      console.error("Error loading platform connections:", error);
+      logger.error("Error loading platform connections:", error);
       showAlert(
         "Failed to load platform connections: " +
           (error.response?.data?.message || error.message),
@@ -225,7 +226,7 @@ const PlatformOperations = () => {
         throw new Error(response.data.message || "Failed to load tasks");
       }
     } catch (error) {
-      console.error("Error loading tasks:", error);
+      logger.error("Error loading tasks:", error);
       showAlert(
         "Failed to load tasks: " +
           (error.response?.data?.message || error.message),
@@ -246,7 +247,7 @@ const PlatformOperations = () => {
         throw new Error(response.data.message || "Failed to load task stats");
       }
     } catch (error) {
-      console.error("Error loading task stats:", error);
+      logger.error("Error loading task stats:", error);
       showAlert(
         "Failed to load statistics: " +
           (error.response?.data?.message || error.message),
@@ -280,7 +281,7 @@ const PlatformOperations = () => {
         }
       } catch (error) {
         // Silent error handling - don't show alerts for auto-refresh failures
-        console.warn("Silent refresh failed:", error);
+        logger.warn("Silent refresh failed:", error);
       }
     };
 
@@ -291,7 +292,7 @@ const PlatformOperations = () => {
           setTaskStats(response.data.data || {});
         }
       } catch (error) {
-        console.warn("Silent stats refresh failed:", error);
+        logger.warn("Silent stats refresh failed:", error);
       }
     };
 
@@ -314,7 +315,7 @@ const PlatformOperations = () => {
         throw new Error(response.data.message || "Failed to stop task");
       }
     } catch (error) {
-      console.error("Error stopping task:", error);
+      logger.error("Error stopping task:", error);
       showAlert(
         "Failed to stop task: " +
           (error.response?.data?.message || error.message),
@@ -337,7 +338,7 @@ const PlatformOperations = () => {
         throw new Error(response.data.message || "Failed to retry task");
       }
     } catch (error) {
-      console.error("Error retrying task:", error);
+      logger.error("Error retrying task:", error);
       showAlert(
         "Failed to retry task: " +
           (error.response?.data?.message || error.message),
@@ -404,7 +405,7 @@ const PlatformOperations = () => {
         throw new Error(response.data.message || "Failed to create task");
       }
     } catch (error) {
-      console.error("Error creating task:", error);
+      logger.error("Error creating task:", error);
       showAlert(
         "Failed to create task: " +
           (error.response?.data?.message || error.message),
@@ -559,7 +560,7 @@ const PlatformOperations = () => {
         throw new Error(response.data.message || "Failed to start task");
       }
     } catch (error) {
-      console.error("Error starting task:", error);
+      logger.error("Error starting task:", error);
       showAlert(
         "Failed to start task: " +
           (error.response?.data?.message || error.message),
@@ -582,7 +583,7 @@ const PlatformOperations = () => {
         throw new Error(response.data.message || "Failed to cancel task");
       }
     } catch (error) {
-      console.error("Error cancelling task:", error);
+      logger.error("Error cancelling task:", error);
       showAlert(
         "Failed to cancel task: " +
           (error.response?.data?.message || error.message),
@@ -605,7 +606,7 @@ const PlatformOperations = () => {
         throw new Error(response.data.message || "Failed to resume task");
       }
     } catch (error) {
-      console.error("Error resuming task:", error);
+      logger.error("Error resuming task:", error);
       showAlert(
         "Failed to resume task: " +
           (error.response?.data?.message || error.message),
@@ -641,7 +642,7 @@ const PlatformOperations = () => {
         throw new Error(response.data.message || "Failed to delete task");
       }
     } catch (error) {
-      console.error("Error deleting task:", error);
+      logger.error("Error deleting task:", error);
       showAlert(
         "Failed to delete task: " +
           (error.response?.data?.message || error.message),

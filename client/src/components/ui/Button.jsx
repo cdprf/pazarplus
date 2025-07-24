@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React from "react";
 import { cn } from "../../utils/cn";
 
@@ -84,7 +85,7 @@ const Button = React.forwardRef(
         }
         // For any other invalid type, don't render and warn in development
         if (process.env.NODE_ENV === "development") {
-          console.warn(
+          logger.warn(
             "Button: Invalid icon type provided. Expected React component, JSX element, or function.",
             typeof icon,
             icon

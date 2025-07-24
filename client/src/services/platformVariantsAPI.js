@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import api from "./api";
 
 /**
@@ -23,7 +24,7 @@ class PlatformVariantsAPI {
         );
       }
     } catch (error) {
-      console.error("Get platform fields error:", error);
+      logger.error("Get platform fields error:", error);
       throw error;
     }
   }
@@ -45,7 +46,7 @@ class PlatformVariantsAPI {
         );
       }
     } catch (error) {
-      console.error("Get platform categories error:", error);
+      logger.error("Get platform categories error:", error);
       throw error;
     }
   }
@@ -67,7 +68,7 @@ class PlatformVariantsAPI {
         );
       }
     } catch (error) {
-      console.error("Get product variants error:", error);
+      logger.error("Get product variants error:", error);
       throw error;
     }
   }
@@ -92,7 +93,7 @@ class PlatformVariantsAPI {
         throw error;
       }
     } catch (error) {
-      console.error("Create platform variant error:", error);
+      logger.error("Create platform variant error:", error);
       throw error;
     }
   }
@@ -117,7 +118,7 @@ class PlatformVariantsAPI {
         throw error;
       }
     } catch (error) {
-      console.error("Update platform variant error:", error);
+      logger.error("Update platform variant error:", error);
       throw error;
     }
   }
@@ -137,7 +138,7 @@ class PlatformVariantsAPI {
         throw new Error(response.data.message || "Varyant silinemedi");
       }
     } catch (error) {
-      console.error("Delete platform variant error:", error);
+      logger.error("Delete platform variant error:", error);
       throw error;
     }
   }
@@ -157,7 +158,7 @@ class PlatformVariantsAPI {
         throw new Error(response.data.message || "Varyant yayınlanamadı");
       }
     } catch (error) {
-      console.error("Publish variant error:", error);
+      logger.error("Publish variant error:", error);
       throw error;
     }
   }
@@ -179,7 +180,7 @@ class PlatformVariantsAPI {
         );
       }
     } catch (error) {
-      console.error("Sync variant error:", error);
+      logger.error("Sync variant error:", error);
       throw error;
     }
   }
@@ -204,7 +205,7 @@ class PlatformVariantsAPI {
         );
       }
     } catch (error) {
-      console.error("Bulk publish variants error:", error);
+      logger.error("Bulk publish variants error:", error);
       throw error;
     }
   }
@@ -227,7 +228,7 @@ class PlatformVariantsAPI {
         );
       }
     } catch (error) {
-      console.error("Bulk sync variants error:", error);
+      logger.error("Bulk sync variants error:", error);
       throw error;
     }
   }
@@ -247,7 +248,7 @@ class PlatformVariantsAPI {
         throw new Error(response.data.message || "Kategoriler oluşturulamadı");
       }
     } catch (error) {
-      console.error("Seed platform categories error:", error);
+      logger.error("Seed platform categories error:", error);
       throw error;
     }
   }

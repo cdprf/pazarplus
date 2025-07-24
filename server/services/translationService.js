@@ -1,3 +1,4 @@
+const logger = require("../utils/logger");
 const fs = require("fs").promises;
 const path = require("path");
 
@@ -20,7 +21,7 @@ class TranslationService {
       const content = await fs.readFile(filePath, "utf8");
       return JSON.parse(content);
     } catch (error) {
-      console.error(`Error reading translations for ${language}:`, error);
+      logger.error(`Error reading translations for ${language}:`, error);
       throw new Error(`Failed to load translations for ${language}`);
     }
   }
@@ -41,7 +42,7 @@ class TranslationService {
         flag: this.getLanguageFlag(code),
       }));
     } catch (error) {
-      console.error("Error getting supported languages:", error);
+      logger.error("Error getting supported languages:", error);
       return [
         { code: "en", name: "English", flag: "🇺🇸" },
         { code: "tr", name: "Türkçe", flag: "🇹🇷" },
@@ -75,7 +76,7 @@ class TranslationService {
       await this.saveTranslations(language, translations);
       return { success: true, message: "Translation updated successfully" };
     } catch (error) {
-      console.error(
+      logger.error(
         `Error updating translation ${key} for ${language}:`,
         error
       );
@@ -112,7 +113,7 @@ class TranslationService {
         message: `Updated ${Object.keys(updates).length} translations`,
       };
     } catch (error) {
-      console.error(`Error updating translations for ${language}:`, error);
+      logger.error(`Error updating translations for ${language}:`, error);
       throw new Error(`Failed to update translations: ${error.message}`);
     }
   }
@@ -126,7 +127,7 @@ class TranslationService {
       const content = JSON.stringify(translations, null, 2);
       await fs.writeFile(filePath, content, "utf8");
     } catch (error) {
-      console.error(`Error saving translations for ${language}:`, error);
+      logger.error(`Error saving translations for ${language}:`, error);
       throw new Error(`Failed to save translations for ${language}`);
     }
   }
@@ -149,9 +150,9 @@ class TranslationService {
       const content = await fs.readFile(currentFile, "utf8");
       await fs.writeFile(backupFile, content, "utf8");
 
-      console.log(`Backup created: ${backupFile}`);
+      logger.info(`Backup created: ${backupFile}`);
     } catch (error) {
-      console.warn(`Failed to create backup for ${language}:`, error.message);
+      logger.warn(`Failed to create backup for ${language}:`, error.message);
     }
   }
 
@@ -169,7 +170,7 @@ class TranslationService {
         contentType: "application/json",
       };
     } catch (error) {
-      console.error(`Error exporting translations for ${language}:`, error);
+      logger.error(`Error exporting translations for ${language}:`, error);
       throw new Error(`Failed to export translations for ${language}`);
     }
   }
@@ -190,7 +191,7 @@ class TranslationService {
 
       return { success: true, message: "Translations imported successfully" };
     } catch (error) {
-      console.error(`Error importing translations for ${language}:`, error);
+      logger.error(`Error importing translations for ${language}:`, error);
       throw new Error(`Failed to import translations: ${error.message}`);
     }
   }

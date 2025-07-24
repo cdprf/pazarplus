@@ -129,7 +129,11 @@ app.use(
 
       // For development, allow all origins first
       if (process.env.NODE_ENV === "development") {
-        logger.debug(`CORS: Allowing origin in development: ${origin}`);
+        logger.info(`CORS: Allowing origin in development: ${origin}`, {
+          operation: "cors_check",
+          origin,
+          environment: "development",
+        });
         return callback(null, true);
       }
 
@@ -142,7 +146,11 @@ app.use(
       const localNetworkRegex =
         /^https?:\/\/(192\.168\.|10\.|172\.(?:1[6-9]|2[0-9]|3[01])\.)[\d.]+(?::\d+)?$/;
       if (localNetworkRegex.test(origin)) {
-        logger.debug(`CORS: Allowing local network origin: ${origin}`);
+        logger.info(`CORS: Allowing local network origin: ${origin}`, {
+          operation: "cors_check",
+          origin,
+          type: "local_network",
+        });
         return callback(null, true);
       }
 
@@ -151,7 +159,11 @@ app.use(
         return callback(null, true);
       }
 
-      logger.warn(`CORS: Blocking origin: ${origin}`);
+      logger.warn(`CORS: Blocking origin: ${origin}`, {
+        operation: "cors_check",
+        origin,
+        action: "blocked",
+      });
       callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
@@ -183,8 +195,15 @@ app.use(
 app.use((req, res, next) => {
   // Log CORS-related information
   if (req.method === "OPTIONS") {
-    logger.debug(
-      `CORS Preflight: ${req.method} ${req.url} from ${req.headers.origin}`
+    logger.info(
+      `CORS Preflight: ${req.method} ${req.url} from ${req.headers.origin}`,
+      {
+        operation: "cors_preflight",
+        method: req.method,
+        url: req.url,
+        origin: req.headers.origin,
+        ip: req.ip,
+      }
     );
   }
 
@@ -294,8 +313,8 @@ app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
   const authHeader = req.headers.authorization;
 
-  // Enhanced request logging
-  logger.debug("Incoming Request", {
+  // Enhanced request logging - Replace debug with info for important operations
+  logger.info("Incoming Request", {
     timestamp,
     method: req.method,
     url: req.originalUrl,
@@ -304,6 +323,8 @@ app.use((req, res, next) => {
     contentLength: req.headers["content-length"] || 0,
     ip: req.ip,
     authPresent: !!authHeader,
+    referer: req.get("Referer") || null,
+    queryParams: Object.keys(req.query).length > 0 ? req.query : null,
   });
 
   // Response logging
@@ -381,7 +402,10 @@ try {
   throw error;
 }
 
-logger.debug("Setting up static file serving");
+logger.info("Setting up static file serving", {
+  operation: "app_initialization",
+  step: "static_files",
+});
 // Serve shipping PDFs statically with proper headers for Turkish character support
 const shippingPublicPath = path.join(__dirname, "public", "shipping");
 
@@ -404,7 +428,7 @@ app.use("/shipping", (req, res, next) => {
 app.use("/shipping", express.static(shippingPublicPath));
 logger.info(`Serving shipping PDFs from: ${shippingPublicPath}`);
 
-logger.debug("Checking for order management shipping path");
+logger.info("Checking for order management shipping path");
 // Also serve PDFs from order-management module
 const orderManagementShippingPath = path.join(
   __dirname,
@@ -419,10 +443,13 @@ if (fs.existsSync(orderManagementShippingPath)) {
     `Serving order management shipping PDFs from: ${orderManagementShippingPath}`
   );
 } else {
-  logger.debug("Order management shipping path does not exist");
+  logger.info("Order management shipping path does not exist");
 }
 
-logger.debug("Initializing Swagger documentation");
+logger.info("Initializing Swagger documentation", {
+  operation: "app_initialization",
+  step: "swagger",
+});
 // Initialize Swagger documentation at /api-docs
 try {
   initializeSwagger(app);
@@ -431,7 +458,9 @@ try {
   logger.error("Failed to initialize Swagger", { error: error.message });
 }
 
-logger.debug("Setting up development/production routing", {
+logger.info("Setting up development/production routing", {
+  operation: "app_initialization",
+  step: "routing_setup",
   nodeEnv: process.env.NODE_ENV,
 });
 
@@ -480,7 +509,7 @@ if (process.env.NODE_ENV === "production") {
       }
 
       // Log the request for debugging SPA routing
-      logger.debug(`Serving React app for SPA route: ${req.path}`, {
+      logger.info(`Serving React app for SPA route: ${req.path}`, {
         userAgent: req.get("User-Agent"),
         referer: req.get("Referer"),
       });
@@ -546,7 +575,7 @@ if (process.env.NODE_ENV === "production") {
     });
   }
 } else {
-  logger.debug("Development mode - React dev server handles frontend");
+  logger.info("Development mode - React dev server handles frontend");
   // In development mode, just serve a simple message for non-API routes
   app.get("*", (req, res, next) => {
     // Skip API and known non-file routes, and WebSocket upgrade paths
@@ -570,7 +599,7 @@ if (process.env.NODE_ENV === "production") {
       },
     });
   });
-  logger.debug("Development mode routing configured");
+  logger.info("Development mode routing configured");
 }
 
 // Handle 404 errors for all unmatched routes
@@ -583,10 +612,13 @@ app.use(createErrorTrackingMiddleware());
 app.use(errorHandler);
 logger.info("Error handlers configured");
 
-logger.debug("Initializing enhanced platform services");
+logger.info("Initializing enhanced platform services", {
+  operation: "app_initialization",
+  step: "platform_services",
+});
 // Initialize enhanced platform services
 async function initializeEnhancedServices() {
-  logger.debug("Starting enhanced services initialization");
+  logger.info("Starting enhanced services initialization");
   try {
     // Start performance monitoring periodic updates
     performanceMonitor.startPeriodicUpdates();
@@ -725,21 +757,22 @@ function setupInventoryManagementEventListeners() {
 
 // Initialize WebSocket server for real-time notifications
 function initializeWebSocketServer(server) {
-  logger.debug("Starting WebSocket server initialization");
+  logger.info("Starting WebSocket server initialization", {
+    operation: "websocket_initialization",
+    step: "start",
+  });
 
   try {
     // First initialize notification service (without WebSocket server)
-    logger.debug("Initializing notification service");
+    logger.info("Initializing notification service");
     notificationService.initialize();
-    logger.debug("Notification service initialized successfully");
+    logger.info("Notification service initialized successfully");
 
     // Initialize database status WebSocket service with server
-    logger.debug("Initializing database status WebSocket service");
+    logger.info("Initializing database status WebSocket service");
     try {
       databaseStatusWebSocket.initialize(server);
-      logger.debug(
-        "Database status WebSocket service initialized successfully"
-      );
+      logger.info("Database status WebSocket service initialized successfully");
     } catch (dbWsError) {
       logger.error("Failed to initialize database status WebSocket service", {
         error: dbWsError.message,
@@ -749,10 +782,10 @@ function initializeWebSocketServer(server) {
     }
 
     // Then initialize unified WebSocket server with better error handling
-    logger.debug("Initializing unified WebSocket server");
+    logger.info("Initializing unified WebSocket server");
     try {
       unifiedWebSocketServer.initialize(server);
-      logger.debug("Unified WebSocket server initialized successfully");
+      logger.info("Unified WebSocket server initialized successfully");
     } catch (wsError) {
       logger.error("Failed to initialize unified WebSocket server", {
         error: wsError.message,
@@ -762,11 +795,11 @@ function initializeWebSocketServer(server) {
     }
 
     // Setup real-time notification handlers
-    logger.debug("Setting up real-time notification handlers");
+    logger.info("Setting up real-time notification handlers");
     notificationService.setupRealTimeNotifications();
 
     // Start periodic cleanup for notification service
-    logger.debug("Starting periodic cleanup for notification service");
+    logger.info("Starting periodic cleanup for notification service");
     notificationService.startPeriodicCleanup();
 
     logger.info("WebSocket initialization process completed");
@@ -785,7 +818,10 @@ process.nextTick(() => {
   });
 });
 
-logger.debug("App module loaded successfully");
+logger.info("App module loaded successfully", {
+  operation: "app_initialization",
+  step: "complete",
+});
 
 // Graceful shutdown handling
 const gracefulShutdown = async (signal) => {
@@ -816,7 +852,10 @@ process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
 // Handle unhandled promise rejections
-logger.debug("Setting up global error handlers");
+logger.info("Setting up global error handlers", {
+  operation: "app_initialization",
+  step: "error_handlers",
+});
 process.on("unhandledRejection", (err) => {
   logger.error("Unhandled Promise Rejection", {
     error: err.message,

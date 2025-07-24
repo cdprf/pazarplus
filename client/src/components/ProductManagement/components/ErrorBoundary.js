@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '../../ui';
@@ -24,7 +25,7 @@ class ProductManagementErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     // Log error details
-    console.error('ProductManagement Error Boundary caught an error:', error, errorInfo);
+    logger.error('ProductManagement Error Boundary caught an error:', error, errorInfo);
     
     this.setState({
       error,
@@ -121,7 +122,7 @@ export const useErrorHandler = () => {
   }, []);
 
   const handleError = React.useCallback((error, errorInfo = {}) => {
-    console.error('Error caught by useErrorHandler:', error);
+    logger.error('Error caught by useErrorHandler:', error);
     setError({ error, errorInfo });
   }, []);
 

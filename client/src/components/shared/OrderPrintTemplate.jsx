@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from 'react';
 import { 
   Row, 
@@ -29,7 +30,7 @@ const OrderPrintTemplate = ({ order, formatDate }) => {
           }));
         }
       } catch (err) {
-        console.error('Error fetching company info:', err);
+        logger.error('Error fetching company info:', err);
       }
     };
     

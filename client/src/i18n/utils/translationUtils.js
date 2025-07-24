@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import i18n from "../index";
 
 /**
@@ -17,7 +18,7 @@ export class TranslationUtils {
   static t(key, options = {}, fallback = null) {
     try {
       if (!i18n.isInitialized) {
-        console.warn("i18n not initialized, using fallback");
+        logger.warn("i18n not initialized, using fallback");
         return fallback || key;
       }
 
@@ -31,7 +32,7 @@ export class TranslationUtils {
 
       return translated;
     } catch (error) {
-      console.error("Translation error:", error);
+      logger.error("Translation error:", error);
       this.logMissingKey(key);
       return fallback || this.generateFallback(key);
     }
@@ -149,7 +150,7 @@ export class TranslationUtils {
 
     if (!this.missingKeys.has(key)) {
       this.missingKeys.add(key);
-      console.warn(`Missing translation key: ${key}`);
+      logger.warn(`Missing translation key: ${key}`);
     }
   }
 
@@ -188,7 +189,7 @@ export class TranslationUtils {
       const locale = currentLanguage === "tr" ? "tr-TR" : "en-US";
       return new Intl.DateTimeFormat(locale, options).format(new Date(date));
     } catch (error) {
-      console.error("Date formatting error:", error);
+      logger.error("Date formatting error:", error);
       return date?.toString() || "";
     }
   }
@@ -205,7 +206,7 @@ export class TranslationUtils {
       const locale = currentLanguage === "tr" ? "tr-TR" : "en-US";
       return new Intl.NumberFormat(locale, options).format(number);
     } catch (error) {
-      console.error("Number formatting error:", error);
+      logger.error("Number formatting error:", error);
       return number?.toString() || "";
     }
   }
@@ -259,7 +260,7 @@ export class TranslationUtils {
 
       return rtf.format(0, "second");
     } catch (error) {
-      console.error("Relative time formatting error:", error);
+      logger.error("Relative time formatting error:", error);
       return date?.toString() || "";
     }
   }
@@ -344,7 +345,7 @@ export class TranslationUtils {
       results.percentage =
         results.total > 0 ? (results.translated / results.total) * 100 : 0;
     } catch (error) {
-      console.error("Translation validation error:", error);
+      logger.error("Translation validation error:", error);
     }
 
     return results;

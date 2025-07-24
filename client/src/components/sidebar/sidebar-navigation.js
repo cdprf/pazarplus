@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useAlert } from "../../contexts/AlertContext";
@@ -94,14 +95,14 @@ export const useOrderCounts = () => {
         }
 
         setOrderCounts(counts);
-        console.log("Sidebar order counts updated:", counts);
+        logger.info("Sidebar order counts updated:", counts);
       }
     } catch (error) {
-      console.error("Error fetching order counts in sidebar:", error);
+      logger.error("Error fetching order counts in sidebar:", error);
 
       // Handle timeout errors gracefully without making more requests
       if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
-        console.log(
+        logger.info(
           "⏱️ Sidebar order count request timed out, keeping previous values"
         );
         setError("Server response slow"); // Don't show timeout errors prominently in sidebar

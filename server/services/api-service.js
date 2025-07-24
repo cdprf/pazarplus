@@ -51,7 +51,7 @@ class ApiService {
       // Add request interceptor for logging
       client.interceptors.request.use(
         (config) => {
-          logger.debug('API request', {
+          logger.info('API request', {
             platform,
             method: config.method?.toUpperCase(),
             url: config.url,
@@ -68,7 +68,7 @@ class ApiService {
       // Add response interceptor for logging and error handling
       client.interceptors.response.use(
         (response) => {
-          logger.debug('API response', {
+          logger.info('API response', {
             platform,
             status: response.status,
             url: response.config.url,

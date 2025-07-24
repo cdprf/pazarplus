@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useContext, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -59,7 +60,7 @@ const Profile = () => {
         });
       }
     } catch (error) {
-      console.error("Failed to fetch profile:", error);
+      logger.error("Failed to fetch profile:", error);
       showAlert("Profil bilgileri yüklenemedi", "error");
     }
   }, [showAlert]);
@@ -183,7 +184,7 @@ const Profile = () => {
       const diffDays = Math.floor(diffHours / 24);
       return `${diffDays} gün önce aktif`;
     } catch (error) {
-      console.error("Error calculating activity status:", error);
+      logger.error("Error calculating activity status:", error);
       return "Bilinmiyor";
     }
   };

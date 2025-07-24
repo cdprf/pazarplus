@@ -201,12 +201,12 @@ class TemplateBasedPDFGenerator {
 
         if (fs.existsSync(dejavuSansPath)) {
           doc.registerFont("DejaVuSans", dejavuSansPath);
-          logger.debug("DejaVuSans font registered successfully (manual)");
+          logger.info("DejaVuSans font registered successfully (manual)");
         }
 
         if (fs.existsSync(dejavuSansBoldPath)) {
           doc.registerFont("DejaVuSans-Bold", dejavuSansBoldPath);
-          logger.debug("DejaVuSans-Bold font registered successfully (manual)");
+          logger.info("DejaVuSans-Bold font registered successfully (manual)");
         }
       }
 
@@ -356,7 +356,7 @@ class TemplateBasedPDFGenerator {
     const height = (element.size.height / 100) * paperDimensions.height;
 
     // Debug logging for element positioning
-    logger.debug("Rendering element", {
+    logger.info("Rendering element", {
       type: element.type,
       id: element.id?.substring(0, 20),
       position: { x: element.position.x + "%", y: element.position.y + "%" },
@@ -1428,7 +1428,7 @@ class TemplateBasedPDFGenerator {
                 imageWidth = height * aspectRatio;
               }
 
-              logger.debug("Successfully got image metadata with Sharp", {
+              logger.info("Successfully got image metadata with Sharp", {
                 originalDimensions: {
                   width: imageInfo.width,
                   height: imageInfo.height,
@@ -1441,7 +1441,7 @@ class TemplateBasedPDFGenerator {
               });
             }
           } else {
-            logger.debug("Unsupported image format for Sharp metadata", {
+            logger.info("Unsupported image format for Sharp metadata", {
               extension: fileExtension,
               supportedExtensions,
             });
@@ -1459,7 +1459,7 @@ class TemplateBasedPDFGenerator {
           imageHeight = height;
         }
       } else {
-        logger.debug("Skipping Sharp metadata for non-local image", {
+        logger.info("Skipping Sharp metadata for non-local image", {
           imageType: imageSource.startsWith("http")
             ? "URL"
             : imageSource.startsWith("data:")
@@ -1495,7 +1495,7 @@ class TemplateBasedPDFGenerator {
         fit: [imageWidth, imageHeight],
       });
     } catch (error) {
-      console.error(`Error rendering image element:`, {
+      logger.error(`Error rendering image element:`, {
         src: element.src,
         content: element.content,
         imageSrc: element.imageSrc,
@@ -1821,7 +1821,7 @@ class TemplateBasedPDFGenerator {
         height
       );
     } catch (error) {
-      console.error("Error in renderRecipientElement:", error);
+      logger.error("Error in renderRecipientElement:", error);
 
       // Fallback rendering with proper encoding
       const fallbackText = "Alıcı bilgisi yüklenemedi";
@@ -1942,7 +1942,7 @@ class TemplateBasedPDFGenerator {
         item.value === undefined ||
         (typeof item.value === "string" && item.value.trim() === "")
       ) {
-        logger.debug("Skipping empty item in renderLabelValuePairs", {
+        logger.info("Skipping empty item in renderLabelValuePairs", {
           label: item.label,
           value: item.value,
           valueType: typeof item.value,
@@ -1952,7 +1952,7 @@ class TemplateBasedPDFGenerator {
 
       // Check if we have space for at least one line (less restrictive boundary check)
       if (currentY + lineHeightPx > maxY) {
-        logger.debug("Truncating content - not enough space", {
+        logger.info("Truncating content - not enough space", {
           currentY,
           maxY,
           remainingItems: data.length - data.indexOf(item),
@@ -1969,7 +1969,7 @@ class TemplateBasedPDFGenerator {
         // Set bold font for label with better error handling
         const boldFont = this.getBoldFont(fontFamily);
 
-        logger.debug("Setting bold font for recipient label", {
+        logger.info("Setting bold font for recipient label", {
           requestedFont: fontFamily,
           boldFont: boldFont,
           fontSize: fontSize,
@@ -2020,7 +2020,7 @@ class TemplateBasedPDFGenerator {
           try {
             labelWidth = doc.widthOfString(labelText);
           } catch (error) {
-            logger.debug("Failed to calculate text width, using fallback", {
+            logger.info("Failed to calculate text width, using fallback", {
               error: error.message,
               text: labelText.substring(0, 30),
             });
@@ -2195,7 +2195,7 @@ class TemplateBasedPDFGenerator {
           }
 
           // Render normal value with spacing from label
-          logger.debug("Rendering value text", {
+          logger.info("Rendering value text", {
             valueString: valueString,
             valueStartX: valueStartX,
             currentY: currentY,
@@ -2296,7 +2296,7 @@ class TemplateBasedPDFGenerator {
    * Render sender element
    */
   async renderSenderElement(doc, element, orderData, x, y, width, height) {
-    logger.debug("Rendering sender element", {
+    logger.info("Rendering sender element", {
       element: element.id,
       orderData: Object.keys(orderData),
     });
@@ -2397,7 +2397,7 @@ class TemplateBasedPDFGenerator {
     width,
     height
   ) {
-    logger.debug("Rendering customer info element", {
+    logger.info("Rendering customer info element", {
       element: element.id,
       orderData: Object.keys(orderData),
     });
@@ -2554,7 +2554,7 @@ class TemplateBasedPDFGenerator {
     width,
     height
   ) {
-    logger.debug("Rendering billing address element", {
+    logger.info("Rendering billing address element", {
       element: element.id,
       orderData: Object.keys(orderData),
     });
@@ -2664,7 +2664,7 @@ class TemplateBasedPDFGenerator {
     width,
     height
   ) {
-    logger.debug("Rendering order summary element", {
+    logger.info("Rendering order summary element", {
       element: element.id,
       orderData: Object.keys(orderData),
     });
@@ -2758,7 +2758,7 @@ class TemplateBasedPDFGenerator {
     width,
     height
   ) {
-    logger.debug("Rendering order details element", {
+    logger.info("Rendering order details element", {
       element: element.id,
       orderData: Object.keys(orderData),
     });
@@ -2838,7 +2838,7 @@ class TemplateBasedPDFGenerator {
    * Render order items element
    */
   async renderOrderItemsElement(doc, element, orderData, x, y, width, height) {
-    logger.debug("Rendering order items element", {
+    logger.info("Rendering order items element", {
       element: element.id,
       orderData: Object.keys(orderData),
     });
@@ -2911,7 +2911,7 @@ class TemplateBasedPDFGenerator {
         });
 
         // Debug logging for item construction
-        logger.debug("Order item constructed", {
+        logger.info("Order item constructed", {
           index: index + 1,
           itemName: itemName,
           cleanItemName: cleanItemName,
@@ -2969,7 +2969,7 @@ class TemplateBasedPDFGenerator {
    * Render order totals element
    */
   async renderOrderTotalsElement(doc, element, orderData, x, y, width, height) {
-    logger.debug("Rendering order totals element", {
+    logger.info("Rendering order totals element", {
       element: element.id,
       orderData: Object.keys(orderData),
     });
@@ -3322,7 +3322,7 @@ class TemplateBasedPDFGenerator {
     width,
     height
   ) {
-    logger.debug("Rendering tracking info element", {
+    logger.info("Rendering tracking info element", {
       element: element.id,
       orderData: Object.keys(orderData),
     });
@@ -3503,7 +3503,7 @@ class TemplateBasedPDFGenerator {
     width,
     height
   ) {
-    logger.debug("Rendering platform info element", {
+    logger.info("Rendering platform info element", {
       element: element.id,
       orderData: Object.keys(orderData),
     });

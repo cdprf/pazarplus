@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import api from "./api";
 
 /**
@@ -65,7 +66,7 @@ class AnalyticsService {
 
       return response.data;
     } catch (error) {
-      console.error(`Error fetching ${endpoint}:`, error);
+      logger.error(`Error fetching ${endpoint}:`, error);
       throw this.enhanceError(error, endpoint);
     }
   }
@@ -246,7 +247,7 @@ class AnalyticsService {
         `/analytics/products?timeframe=${timeframe}`
       );
     } catch (error) {
-      console.warn("Enhanced product analytics failed, using fallback");
+      logger.warn("Enhanced product analytics failed, using fallback");
       return this.getProductAnalytics(timeframe);
     }
   }
@@ -277,7 +278,7 @@ class AnalyticsService {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching platform analytics:", error);
+      logger.error("Error fetching platform analytics:", error);
       throw error;
     }
   }
@@ -312,7 +313,7 @@ class AnalyticsService {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching operational analytics:", error);
+      logger.error("Error fetching operational analytics:", error);
       throw error;
     }
   }
@@ -330,7 +331,7 @@ class AnalyticsService {
       );
       return response.data;
     } catch (error) {
-      console.error("Error exporting analytics:", error);
+      logger.error("Error exporting analytics:", error);
       throw error;
     }
   }
@@ -370,7 +371,7 @@ class AnalyticsService {
         generatedAt: new Date(),
       };
     } catch (error) {
-      console.error("Error fetching overview analytics:", error);
+      logger.error("Error fetching overview analytics:", error);
       // Return partial data if some endpoints fail
       try {
         const dashboard = await this.getDashboardAnalytics(timeframe);
@@ -402,7 +403,7 @@ class AnalyticsService {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching cohort analysis:", error);
+      logger.error("Error fetching cohort analysis:", error);
       throw error;
     }
   }
@@ -417,7 +418,7 @@ class AnalyticsService {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching customer segmentation:", error);
+      logger.error("Error fetching customer segmentation:", error);
       throw error;
     }
   }
@@ -432,7 +433,7 @@ class AnalyticsService {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching market analysis:", error);
+      logger.error("Error fetching market analysis:", error);
       throw error;
     }
   }
@@ -447,7 +448,7 @@ class AnalyticsService {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching product performance:", error);
+      logger.error("Error fetching product performance:", error);
       throw error;
     }
   }
@@ -462,7 +463,7 @@ class AnalyticsService {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching product insights:", error);
+      logger.error("Error fetching product insights:", error);
       throw error;
     }
   }
@@ -477,7 +478,7 @@ class AnalyticsService {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching real-time product analytics:", error);
+      logger.error("Error fetching real-time product analytics:", error);
       throw error;
     }
   }
@@ -492,7 +493,7 @@ class AnalyticsService {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching accurate analytics:", error);
+      logger.error("Error fetching accurate analytics:", error);
       throw error;
     }
   }
@@ -507,7 +508,7 @@ class AnalyticsService {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching real-time metrics:", error);
+      logger.error("Error fetching real-time metrics:", error);
       throw error;
     }
   }
@@ -540,7 +541,7 @@ class AnalyticsService {
         ],
       };
     } catch (error) {
-      console.error("Error fetching all analytics:", error);
+      logger.error("Error fetching all analytics:", error);
       throw error;
     }
   }

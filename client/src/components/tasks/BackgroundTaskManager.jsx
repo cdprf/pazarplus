@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
 import {
@@ -120,7 +121,7 @@ const BackgroundTaskManager = () => {
         throw new Error(response.data.message || "Failed to load tasks");
       }
     } catch (err) {
-      console.error("Error loading tasks:", err);
+      logger.error("Error loading tasks:", err);
       setError(err.message);
       handleError(err, "Görevler yüklenirken hata oluştu");
     } finally {
@@ -136,7 +137,7 @@ const BackgroundTaskManager = () => {
         setStats(response.data.data);
       }
     } catch (err) {
-      console.error("Error loading stats:", err);
+      logger.error("Error loading stats:", err);
     }
   }, []);
 

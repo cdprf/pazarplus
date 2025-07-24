@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Container,
@@ -53,7 +54,7 @@ const PlatformAnalytics = () => {
       setAnalytics(analyticsResponse.data);
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
-        console.error("Failed to fetch platform analytics:", error);
+        logger.error("Failed to fetch platform analytics:", error);
       }
       setError("Failed to load platform analytics");
     } finally {

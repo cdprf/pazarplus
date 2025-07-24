@@ -9,7 +9,7 @@ let cheerio;
 try {
   cheerio = require("cheerio");
 } catch (error) {
-  console.log("cheerio not available, web scraping disabled");
+  logger.info("cheerio not available, web scraping disabled");
   cheerio = null;
 }
 const logger = require("../utils/logger");

@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useEffect } from "react";
 import {
   Settings,
@@ -151,7 +152,7 @@ const PatternGenerator = ({ onPatternGenerated }) => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Pattern search response:", data); // Debug log
+        logger.info("Pattern search response:", data); // Debug log
         setTestResult({
           success: true,
           matches: data.data?.matches || data.matches || [],
@@ -161,7 +162,7 @@ const PatternGenerator = ({ onPatternGenerated }) => {
         });
       } else {
         const errorData = await response.json();
-        console.log("Pattern search error:", errorData); // Debug log
+        logger.info("Pattern search error:", errorData); // Debug log
         setTestResult({
           success: false,
           error: errorData.message || "Failed to search database",
@@ -184,7 +185,7 @@ const PatternGenerator = ({ onPatternGenerated }) => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } catch (error) {
-        console.error("Failed to copy pattern:", error);
+        logger.error("Failed to copy pattern:", error);
       }
     }
   };
@@ -362,7 +363,7 @@ const PatternGenerator = ({ onPatternGenerated }) => {
                         },
                       });
                       const data = await response.json();
-                      console.log("Products API test:", data);
+                      logger.info("Products API test:", data);
 
                       if (response.ok && data.data?.products) {
                         alert(
@@ -664,7 +665,7 @@ const VariantDetectionConfigurationPage = () => {
       const response = await variantDetectionConfigAPI.getStatus();
       setStatus(response.data);
     } catch (error) {
-      console.error("Error loading status:", error);
+      logger.error("Error loading status:", error);
       addAlert("Failed to load service status", "error");
     }
   };
@@ -675,13 +676,13 @@ const VariantDetectionConfigurationPage = () => {
       if (response.success && response.data) {
         setConfig(response.data);
         setOriginalConfig({ ...response.data });
-        console.log("Loaded configuration from server:", response.data);
+        logger.info("Loaded configuration from server:", response.data);
       } else {
-        console.warn("Failed to load config from server, using defaults");
+        logger.warn("Failed to load config from server, using defaults");
         setOriginalConfig({ ...config });
       }
     } catch (error) {
-      console.error("Error loading configuration:", error);
+      logger.error("Error loading configuration:", error);
       addAlert("Failed to load configuration, using defaults", "warning");
       setOriginalConfig({ ...config });
     }
@@ -732,7 +733,7 @@ const VariantDetectionConfigurationPage = () => {
       );
       await loadStatus();
     } catch (error) {
-      console.error("Error starting service:", error);
+      logger.error("Error starting service:", error);
       addAlert("Failed to start service", "error");
     } finally {
       setLoading(false);
@@ -746,7 +747,7 @@ const VariantDetectionConfigurationPage = () => {
       addAlert("Background variant detection service stopped", "success");
       await loadStatus();
     } catch (error) {
-      console.error("Error stopping service:", error);
+      logger.error("Error stopping service:", error);
       addAlert("Failed to stop service", "error");
     } finally {
       setLoading(false);
@@ -770,7 +771,7 @@ const VariantDetectionConfigurationPage = () => {
 
       await loadStatus();
     } catch (error) {
-      console.error("Error saving configuration:", error);
+      logger.error("Error saving configuration:", error);
       addAlert("Failed to save configuration", "error");
     } finally {
       setLoading(false);

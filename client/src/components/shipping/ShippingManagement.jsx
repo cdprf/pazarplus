@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Container,
@@ -107,11 +108,11 @@ const ShippingManagement = () => {
           // Keep existing rates or fetch new ones
           break;
         default:
-          console.warn("Unknown tab:", activeTab);
+          logger.warn("Unknown tab:", activeTab);
           break;
       }
     } catch (error) {
-      console.error("Failed to fetch shipping data:", error);
+      logger.error("Failed to fetch shipping data:", error);
       showAlert("Failed to load shipping data", "error");
     } finally {
       setLoading(false);
@@ -256,7 +257,7 @@ const ShippingManagement = () => {
         );
       }
     } catch (error) {
-      console.error("Failed to create shipment:", error);
+      logger.error("Failed to create shipment:", error);
       showAlert("Failed to create shipment: " + error.message, "error");
     } finally {
       setLoading(false);
@@ -291,7 +292,7 @@ const ShippingManagement = () => {
         );
       }
     } catch (error) {
-      console.error("Failed to add carrier:", error);
+      logger.error("Failed to add carrier:", error);
       showAlert("Failed to add carrier: " + error.message, "error");
     } finally {
       setLoading(false);
@@ -349,7 +350,7 @@ const ShippingManagement = () => {
 
   // Enhanced carrier selection handler
   const handleCarrierSelection = (carrierCode) => {
-    console.log("Selected carrier:", carrierCode);
+    logger.info("Selected carrier:", carrierCode);
     // This function can be used for future carrier-specific operations
   };
 

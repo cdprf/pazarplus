@@ -152,7 +152,7 @@ class DatabaseTransactionManager extends EventEmitter {
       transaction.duration = transaction.endTime - transaction.startTime;
       this.emit('transactionCompleted', transaction);
 
-      logger.debug(
+      logger.info(
         `Transaction ${operationId} completed in ${transaction.duration}ms`
       );
       return result;

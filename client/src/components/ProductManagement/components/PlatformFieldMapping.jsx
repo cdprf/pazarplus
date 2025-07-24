@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useEffect } from "react";
 import {
   Modal,
@@ -289,7 +290,7 @@ const PlatformFieldMapping = ({
 
       setPreviewData(mappedData);
     } catch (error) {
-      console.error("Error generating preview:", error);
+      logger.error("Error generating preview:", error);
       setPreviewData(null);
     }
   };
@@ -329,7 +330,7 @@ const PlatformFieldMapping = ({
       showAlert("Field mapping configuration saved successfully", "success");
       onHide();
     } catch (error) {
-      console.error("Error saving mapping:", error);
+      logger.error("Error saving mapping:", error);
       showAlert("Error saving mapping configuration", "error");
     } finally {
       setLoading(false);

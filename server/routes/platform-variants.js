@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require("../utils/logger");
 const { body, param, query } = require('express-validator');
 const router = express.Router();
 const { auth } = require('../middleware/auth');
@@ -142,7 +143,7 @@ router.post(
         });
       }
     } catch (error) {
-      console.error('Seed categories error:', error);
+      logger.error('Seed categories error:', error);
       res.status(500).json({
         success: false,
         message: 'Kategoriler oluşturulamadı',

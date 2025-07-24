@@ -24,7 +24,7 @@ class Logger {
         this.logs = JSON.parse(stored).slice(-this.maxLogs);
       }
     } catch (err) {
-      console.warn("Failed to load stored logs:", err);
+      logger.warn("Failed to load stored logs:", err);
     }
   }
 
@@ -41,7 +41,7 @@ class Logger {
       try {
         localStorage.setItem("app_logs", JSON.stringify(this.logs));
       } catch (err2) {
-        console.warn("Failed to save logs to localStorage:", err2);
+        logger.warn("Failed to save logs to localStorage:", err2);
       }
     }
   }
@@ -66,6 +66,9 @@ class Logger {
       message,
       data: typeof data === "object" ? data : { value: data },
       stack: level === "error" ? new Error().stack : undefined,
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      ip: null, // Will be determined server-side
     };
 
     // Add to logs array
@@ -86,19 +89,12 @@ class Logger {
       try {
         listener(logEntry);
       } catch (err) {
-        console.error("Logger listener error:", err);
+        logger.error("Logger listener error:", err);
       }
     });
 
-    // Console output for development
-    if (this.isDev) {
-      const prefix = `[${level.toUpperCase()}][${category.toUpperCase()}]`;
-      const consoleMethod =
-        level === "debug" ? "log" : level === "success" ? "log" : level;
-      if (console[consoleMethod]) {
-        console[consoleMethod](`${prefix} ${message}`, logEntry.data);
-      }
-    }
+    // Console output disabled - using structured logging only
+    // Logs are stored in localStorage and can be viewed via logger.getLogs()
 
     return logEntry;
   }
@@ -121,6 +117,83 @@ class Logger {
 
   success(message, data, category = "general") {
     return this._log("success", category, message, data);
+  }
+
+  // Enhanced structured logging methods
+  logOperation(operation, context = {}) {
+    return this.info(
+      `Operation: ${operation}`,
+      {
+        operation,
+        ...context,
+      },
+      "operation"
+    );
+  }
+
+  logEndpointAccess(endpoint, method, context = {}) {
+    return this.info(
+      `Endpoint Access: ${method} ${endpoint}`,
+      {
+        operation: "endpoint_access",
+        endpoint,
+        method,
+        ...context,
+      },
+      "endpoint"
+    );
+  }
+
+  logUserAction(action, context = {}) {
+    return this.info(
+      `User Action: ${action}`,
+      {
+        operation: "user_action",
+        action,
+        ...context,
+      },
+      "user"
+    );
+  }
+
+  logServiceCall(service, action, context = {}) {
+    return this.info(
+      `Service Call: ${service}.${action}`,
+      {
+        operation: "service_call",
+        service,
+        action,
+        ...context,
+      },
+      "service"
+    );
+  }
+
+  logNavigation(from, to, context = {}) {
+    return this.info(
+      `Navigation: ${from} → ${to}`,
+      {
+        operation: "navigation",
+        from,
+        to,
+        ...context,
+      },
+      "navigation"
+    );
+  }
+
+  logPerformance(metric, value, unit = "ms", context = {}) {
+    return this.info(
+      `Performance: ${metric} = ${value}${unit}`,
+      {
+        operation: "performance",
+        metric,
+        value,
+        unit,
+        ...context,
+      },
+      "performance"
+    );
   }
 
   // Category-specific loggers

@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React, { useState, useEffect } from "react";
 import {
   FiSave,
@@ -112,7 +113,7 @@ const Settings = () => {
         setShippingSettings((prev) => ({ ...prev, ...shipping.value.data }));
       }
     } catch (error) {
-      console.error("Error loading settings:", error);
+      logger.error("Error loading settings:", error);
       showMessage("Settings yüklenirken hata oluştu", "error");
     } finally {
       setLoading(false);
@@ -138,7 +139,7 @@ const Settings = () => {
         throw new Error(response.message || "Kaydetme işlemi başarısız");
       }
     } catch (error) {
-      console.error("Error saving company info:", error);
+      logger.error("Error saving company info:", error);
       showMessage(
         error.message || "Şirket bilgileri kaydedilirken hata oluştu",
         "error"
@@ -158,7 +159,7 @@ const Settings = () => {
         throw new Error(response.message || "Kaydetme işlemi başarısız");
       }
     } catch (error) {
-      console.error("Error saving general settings:", error);
+      logger.error("Error saving general settings:", error);
       showMessage(
         error.message || "Genel ayarlar kaydedilirken hata oluştu",
         "error"
@@ -180,7 +181,7 @@ const Settings = () => {
         throw new Error(response.message || "Kaydetme işlemi başarısız");
       }
     } catch (error) {
-      console.error("Error saving notification settings:", error);
+      logger.error("Error saving notification settings:", error);
       showMessage(
         error.message || "Bildirim ayarları kaydedilirken hata oluştu",
         "error"
@@ -200,7 +201,7 @@ const Settings = () => {
         throw new Error(response.message || "Kaydetme işlemi başarısız");
       }
     } catch (error) {
-      console.error("Error saving email settings:", error);
+      logger.error("Error saving email settings:", error);
       showMessage(
         error.message || "E-posta ayarları kaydedilirken hata oluştu",
         "error"
@@ -222,7 +223,7 @@ const Settings = () => {
         throw new Error(response.message || "Kaydetme işlemi başarısız");
       }
     } catch (error) {
-      console.error("Error saving shipping settings:", error);
+      logger.error("Error saving shipping settings:", error);
       showMessage(
         error.message || "Kargo ayarları kaydedilirken hata oluştu",
         "error"
@@ -242,7 +243,7 @@ const Settings = () => {
         throw new Error(response.message || "Test e-postası gönderilemedi");
       }
     } catch (error) {
-      console.error("Error testing email:", error);
+      logger.error("Error testing email:", error);
       showMessage(
         error.message || "Test e-postası gönderilirken hata oluştu",
         "error"
@@ -281,7 +282,7 @@ const Settings = () => {
         throw new Error(response.message || "Logo yükleme başarısız");
       }
     } catch (error) {
-      console.error("Error uploading logo:", error);
+      logger.error("Error uploading logo:", error);
       showMessage(error.message || "Logo yüklenirken hata oluştu", "error");
     } finally {
       setSaving(false);

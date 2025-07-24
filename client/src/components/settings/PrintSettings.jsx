@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
@@ -109,11 +110,11 @@ const PrintSettings = () => {
           }));
         }
       } catch (error) {
-        console.warn("Could not load QNB Finans settings:", error);
+        logger.warn("Could not load QNB Finans settings:", error);
         // Continue with default settings
       }
     } catch (error) {
-      console.error("Error loading settings:", error);
+      logger.error("Error loading settings:", error);
       showAlert("Ayarlar yüklenirken hata oluştu", "error");
     } finally {
       setLoading(false);
@@ -151,7 +152,7 @@ const PrintSettings = () => {
           );
         }
       } catch (error) {
-        console.error("Error saving QNB Finans settings:", error);
+        logger.error("Error saving QNB Finans settings:", error);
         showAlert(
           `QNB Finans ayarları kaydedilemedi: ${qnbFinansService.formatErrorMessage(
             error
@@ -162,7 +163,7 @@ const PrintSettings = () => {
 
       showAlert("Ayarlar başarıyla kaydedildi", "success");
     } catch (error) {
-      console.error("Error saving settings:", error);
+      logger.error("Error saving settings:", error);
       showAlert("Ayarlar kaydedilirken hata oluştu", "error");
     } finally {
       setLoading(false);
@@ -199,7 +200,7 @@ const PrintSettings = () => {
         setLoading(false);
       }, 2000);
     } catch (error) {
-      console.error("E-fatura connection test failed:", error);
+      logger.error("E-fatura connection test failed:", error);
       showAlert("E-Fatura bağlantısı başarısız", "error");
       setLoading(false);
     }
@@ -232,7 +233,7 @@ const PrintSettings = () => {
         );
       }
     } catch (error) {
-      console.error("QNB Finans connection test failed:", error);
+      logger.error("QNB Finans connection test failed:", error);
       showAlert(
         `QNB Finans bağlantısı başarısız: ${qnbFinansService.formatErrorMessage(
           error

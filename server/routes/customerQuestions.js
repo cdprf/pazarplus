@@ -1,4 +1,5 @@
 const express = require("express");
+const logger = require("../utils/logger");
 const { body, query, param } = require("express-validator");
 // Re-enable auth middleware now that we have the reply method implemented
 const { auth } = require("../middleware/auth");
@@ -165,9 +166,9 @@ router.get(
 router.post(
   "/templates",
   (req, res, next) => {
-    console.log("Template POST request body:", req.body);
-    console.log("Template POST content-type:", req.headers["content-type"]);
-    console.log("Template POST user:", req.user?.id);
+    logger.info("Template POST request body:", req.body);
+    logger.info("Template POST content-type:", req.headers["content-type"]);
+    logger.info("Template POST user:", req.user?.id);
     next();
   },
   validateTemplate,
@@ -175,7 +176,7 @@ router.post(
     const { validationResult } = require("express-validator");
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log("Template validation errors:", errors.array());
+      logger.info("Template validation errors:", errors.array());
       return res.status(400).json({
         success: false,
         message: "Validation failed",
@@ -224,8 +225,8 @@ router.get("/:id", [param("id").isInt()], (req, res) =>
 router.post(
   "/:id/reply",
   (req, res, next) => {
-    console.log("Reply POST request params:", req.params);
-    console.log("Reply POST request body:", req.body);
+    logger.info("Reply POST request params:", req.params);
+    logger.info("Reply POST request body:", req.body);
     next();
   },
   [param("id").isInt(), ...validateReply],

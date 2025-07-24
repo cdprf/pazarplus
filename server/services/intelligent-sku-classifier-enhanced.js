@@ -1,3 +1,4 @@
+const logger = require("../utils/logger");
 /**
  * Enhanced Intelligent SKU Classifier
  * Advanced barcode vs SKU detection with data-driven learning
@@ -482,7 +483,7 @@ class IntelligentSKUClassifier {
       code: code
     });
 
-    console.log(
+    logger.info(
       `Learned: ${code} -> ${correctType} (confidence: ${confidence})`
     );
   }
@@ -616,7 +617,7 @@ class IntelligentSKUClassifier {
     };
 
     // Log feedback for analysis
-    console.log('Classification feedback received:', {
+    logger.info('Classification feedback received:', {
       code,
       was: currentClassification.type,
       should_be: expectedType,

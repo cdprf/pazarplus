@@ -106,7 +106,7 @@ class FontManager {
           const stats = fs.statSync(fontPath);
           if (stats.size > 1000) {
             // Font files should be reasonably sized
-            logger.debug(`Font found: ${fontPath}`);
+            logger.info(`Font found: ${fontPath}`);
             return fontPath;
           }
         } catch (error) {
@@ -148,7 +148,7 @@ class FontManager {
             registeredCount++;
             groupRegistered = true;
 
-            logger.debug(`Font registered successfully: ${fontName}`, {
+            logger.info(`Font registered successfully: ${fontName}`, {
               path: fontPath
             });
           } catch (error) {
@@ -157,7 +157,7 @@ class FontManager {
               path: fontPath,
               error: error.message
             });
-            logger.debug(`Failed to register font: ${fontFile}`, error);
+            logger.info(`Failed to register font: ${fontFile}`, error);
           }
         } else {
           results.failed.push({ file: fontFile, error: 'File not found' });
@@ -530,7 +530,7 @@ class FontManager {
           }
         }
       } catch (error) {
-        logger.debug(`Failed to read font directory: ${searchPath}`, {
+        logger.info(`Failed to read font directory: ${searchPath}`, {
           error: error.message
         });
       }

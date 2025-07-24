@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useCallback, useMemo } from "react";
 import { Button, Dropdown, Alert, Spinner } from "react-bootstrap";
 import { 
@@ -109,7 +110,7 @@ const ExportButton = ({
       onExportComplete?.(format, filename);
       
     } catch (error) {
-      console.error("Export failed:", error);
+      logger.error("Export failed:", error);
       const errorMessage = error.message || 'Export failed';
       setError(errorMessage);
       onExportError?.(error, format);

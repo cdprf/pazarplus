@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Order History - Undo/Redo system for order operations
  * Implements Command Pattern for order history management
@@ -220,7 +221,7 @@ export class OrderHistory {
       this.notifyListeners();
       return result;
     } catch (error) {
-      console.error("Failed to execute command:", error);
+      logger.error("Failed to execute command:", error);
       throw error;
     }
   }
@@ -304,7 +305,7 @@ export class OrderHistory {
     } catch (error) {
       // Restore command to undo stack if undo fails
       this.undoStack.push(command);
-      console.error("Failed to undo command:", error);
+      logger.error("Failed to undo command:", error);
       throw error;
     }
   }
@@ -327,7 +328,7 @@ export class OrderHistory {
     } catch (error) {
       // Restore command to redo stack if redo fails
       this.redoStack.push(command);
-      console.error("Failed to redo command:", error);
+      logger.error("Failed to redo command:", error);
       throw error;
     }
   }
@@ -425,7 +426,7 @@ export class OrderHistory {
 
       this.notifyListeners();
     } catch (error) {
-      console.error("Failed to import history:", error);
+      logger.error("Failed to import history:", error);
       this.clear();
     }
   }

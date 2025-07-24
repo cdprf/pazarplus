@@ -3,17 +3,24 @@
  */
 
 import api from "./api";
+import logger from "../utils/logger";
 
 class OrderService {
   // Enhanced sync with platform connection checking
   static async syncOrders(showAlert) {
     try {
-      console.log("🔄 Starting order sync...");
+      logger.logOperation("Starting order sync", {
+        operation: "sync_orders",
+      });
 
       // Check platform connections first
       try {
         const connectionsResponse = await api.platforms.getConnections();
-        console.log("📡 Platform connections:", connectionsResponse);
+        logger.api.info("Platform connections retrieved", {
+          operation: "get_platform_connections",
+          success: connectionsResponse.success,
+          connectionCount: connectionsResponse.data?.length || 0,
+        });
 
         if (
           !connectionsResponse.success ||
@@ -27,13 +34,20 @@ class OrderService {
           return { success: false, error: "No platform connections" };
         }
       } catch (connectionError) {
-        console.warn("Could not check platform connections:", connectionError);
+        logger.api.warn("Could not check platform connections", {
+          operation: "check_platform_connections",
+          error: connectionError.message,
+        });
         // Continue with sync anyway
       }
 
       // Proceed with sync
       const syncResponse = await api.orders.syncOrders();
-      console.log("✅ Sync response:", syncResponse);
+      logger.api.success("Sync response received", {
+        operation: "sync_orders_response",
+        success: syncResponse.success,
+        data: syncResponse,
+      });
 
       if (syncResponse.success) {
         const {
@@ -61,7 +75,7 @@ class OrderService {
 
         // Log platform-specific results
         platforms.forEach((platform) => {
-          console.log(
+          logger.info(
             `🏪 ${platform.platformType}: ${
               platform.syncedCount || 0
             } senkronize, ${platform.errorCount || 0} hata`
@@ -75,7 +89,7 @@ class OrderService {
         );
       }
     } catch (error) {
-      console.error("❌ Error syncing orders:", error);
+      logger.error("❌ Error syncing orders:", error);
 
       let errorMessage = "Senkronizasyon sırasında bir hata oluştu";
 
@@ -117,7 +131,7 @@ class OrderService {
         return { success: false, error: result.message };
       }
     } catch (error) {
-      console.error("Error accepting order:", error);
+      logger.error("Error accepting order:", error);
       showAlert("Sipariş onaylanırken bir hata oluştu", "error");
       return { success: false, error: error.message };
     }
@@ -138,7 +152,7 @@ class OrderService {
         return { success: false, error: result.message };
       }
     } catch (error) {
-      console.error("Error cancelling order:", error);
+      logger.error("Error cancelling order:", error);
       showAlert("Sipariş iptal edilirken hata oluştu", "error");
       return { success: false, error: error.message };
     }
@@ -164,7 +178,7 @@ class OrderService {
         return { success: false, error: result.message };
       }
     } catch (error) {
-      console.error("Error deleting order:", error);
+      logger.error("Error deleting order:", error);
       showAlert("Sipariş silinirken hata oluştu", "error");
       return { success: false, error: error.message };
     }
@@ -212,7 +226,7 @@ class OrderService {
         return { success: false, error: "No orders accepted" };
       }
     } catch (error) {
-      console.error("Error in bulk accept:", error);
+      logger.error("Error in bulk accept:", error);
       showAlert("Toplu onaylama işlemi sırasında hata oluştu", "error");
       return { success: false, error: error.message };
     }
@@ -248,7 +262,7 @@ class OrderService {
         return { success: false, error: result.message };
       }
     } catch (error) {
-      console.error("Error deleting orders:", error);
+      logger.error("Error deleting orders:", error);
       showAlert("Siparişler silinirken hata oluştu", "error");
       return { success: false, error: error.message };
     }
@@ -348,13 +362,13 @@ class OrderService {
   // Save order (create or update)
   static async saveOrder(orderData, isEdit = false) {
     try {
-      console.log(`💾 ${isEdit ? "Updating" : "Creating"} order:`, orderData);
+      logger.info(`💾 ${isEdit ? "Updating" : "Creating"} order:`, orderData);
 
       const response = isEdit
         ? await api.orders.updateOrder(orderData.id, orderData)
         : await api.orders.createOrder(orderData);
 
-      console.log(
+      logger.info(
         `✅ Order ${isEdit ? "updated" : "created"} successfully:`,
         response
       );
@@ -373,7 +387,7 @@ class OrderService {
         );
       }
     } catch (error) {
-      console.error(
+      logger.error(
         `❌ Error ${isEdit ? "updating" : "creating"} order:`,
         error
       );
@@ -396,10 +410,10 @@ class OrderService {
   // Get order by ID for editing
   static async getOrderById(orderId) {
     try {
-      console.log(`🔍 Fetching order by ID: ${orderId}`);
+      logger.info(`🔍 Fetching order by ID: ${orderId}`);
 
       const response = await api.orders.getOrder(orderId);
-      console.log("✅ Order fetched:", response);
+      logger.info("✅ Order fetched:", response);
 
       if (response.success) {
         return {
@@ -410,7 +424,7 @@ class OrderService {
         throw new Error(response.message || "Order not found");
       }
     } catch (error) {
-      console.error("❌ Error fetching order:", error);
+      logger.error("❌ Error fetching order:", error);
       return {
         success: false,
         error: error.message || "Sipariş yüklenirken hata oluştu",
@@ -475,11 +489,11 @@ class OrderService {
    */
   static async fetchOrders(params = {}) {
     try {
-      console.log("🔍 [OrderService] fetchOrders called with params:", params);
-      console.log("🔍 [OrderService] Search parameter:", params.search);
+      logger.info("🔍 [OrderService] fetchOrders called with params:", params);
+      logger.info("🔍 [OrderService] Search parameter:", params.search);
 
       const response = await api.orders.getOrders(params);
-      console.log("🔍 [OrderService] API Response:", response);
+      logger.info("🔍 [OrderService] API Response:", response);
 
       if (response.success) {
         // Handle different response structures from the API
@@ -547,13 +561,13 @@ class OrderService {
           paginationInfo.limit = params.limit || 20;
         } else {
           // Fallback: empty array
-          console.warn("Unknown API response structure:", response);
+          logger.warn("Unknown API response structure:", response);
           ordersData = [];
         }
 
         // Ensure we have valid data
         if (!Array.isArray(ordersData)) {
-          console.warn("Invalid orders data structure:", ordersData);
+          logger.warn("Invalid orders data structure:", ordersData);
           ordersData = [];
         }
 
@@ -589,7 +603,7 @@ class OrderService {
         throw new Error(response.message || "Failed to fetch orders");
       }
     } catch (error) {
-      console.error("❌ Error fetching orders:", error);
+      logger.error("❌ Error fetching orders:", error);
       return {
         success: false,
         error: error.message || "Failed to fetch orders",
@@ -603,7 +617,7 @@ class OrderService {
    */
   static calculateStats(ordersData) {
     if (!Array.isArray(ordersData)) {
-      console.warn("calculateStats: Invalid orders data");
+      logger.warn("calculateStats: Invalid orders data");
       return {
         total: 0,
         new: 0,
@@ -626,7 +640,7 @@ class OrderService {
       };
     }
 
-    console.log(`Calculating stats for ALL ${ordersData.length} orders`);
+    logger.info(`Calculating stats for ALL ${ordersData.length} orders`);
 
     const stats = {
       total: ordersData.length,
@@ -675,7 +689,7 @@ class OrderService {
       ) {
         const amount = parseFloat(order.totalAmount) || 0;
         stats.totalRevenue += amount;
-        console.log(
+        logger.info(
           `Adding revenue: ${amount} for order ${
             order.id || order.orderNumber
           } (status: ${status})`
@@ -683,7 +697,7 @@ class OrderService {
       }
     });
 
-    console.log("Final calculated stats:", stats);
+    logger.info("Final calculated stats:", stats);
     return stats;
   }
 
@@ -745,7 +759,7 @@ class OrderService {
    */
   static async fetchOrderStats(filters = {}) {
     try {
-      console.log("Fetching order stats for ALL orders");
+      logger.info("Fetching order stats for ALL orders");
 
       // Fetch all orders without pagination for accurate stats
       // Ignore any filters passed in to ensure we get stats for ALL orders
@@ -757,7 +771,7 @@ class OrderService {
       };
 
       const response = await api.orders.getOrders(params);
-      console.log("Stats API Response:", response);
+      logger.info("Stats API Response:", response);
 
       if (response.success) {
         let ordersData = [];
@@ -788,7 +802,7 @@ class OrderService {
         throw new Error(response.message || "Failed to fetch order stats");
       }
     } catch (error) {
-      console.error("❌ Error fetching order stats:", error);
+      logger.error("❌ Error fetching order stats:", error);
       return {
         success: false,
         error: error.message || "Failed to fetch order stats",

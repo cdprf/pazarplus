@@ -4,7 +4,7 @@ let cronEnabled = true;
 try {
   cron = require('node-cron');
 } catch (error) {
-  console.warn('Cron job dependencies not available:', error.message);
+  logger.warn('Cron job dependencies not available:', error.message);
   cronEnabled = false;
 
   // Create fallback cron implementation

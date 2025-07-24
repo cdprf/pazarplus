@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Font Service
  * Client-side service for font management and text validation
@@ -24,7 +25,7 @@ class FontService {
       this.cachedFonts = response.data.data;
       return this.cachedFonts;
     } catch (error) {
-      console.error("Failed to fetch available fonts:", error);
+      logger.error("Failed to fetch available fonts:", error);
       // Return fallback fonts if API fails
       return this.getFallbackFonts();
     }
@@ -100,7 +101,7 @@ class FontService {
         suggestions: data.suggestions,
       };
     } catch (error) {
-      console.error("Text validation failed:", error);
+      logger.error("Text validation failed:", error);
       // Fallback to client-side validation
       return this.validateTextClientSide(text, fontFamily);
     }

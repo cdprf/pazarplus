@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import enhancedPlatformService from "../services/enhancedPlatformService";
 
@@ -80,7 +81,7 @@ const PlatformDashboard = () => {
       const conflictsData = await enhancedPlatformService.getPendingConflicts();
       setConflicts(conflictsData.conflicts || []);
     } catch (error) {
-      console.error("Failed to load conflicts:", error);
+      logger.error("Failed to load conflicts:", error);
     }
   };
 
@@ -89,7 +90,7 @@ const PlatformDashboard = () => {
       const status = await enhancedPlatformService.getInventoryStatus();
       setInventoryStatus(status);
     } catch (error) {
-      console.error("Failed to load inventory status:", error);
+      logger.error("Failed to load inventory status:", error);
     }
   };
 
@@ -98,7 +99,7 @@ const PlatformDashboard = () => {
       const recent = await enhancedPlatformService.getRecentNotifications(20);
       setNotifications(recent.notifications || []);
     } catch (error) {
-      console.error("Failed to load recent notifications:", error);
+      logger.error("Failed to load recent notifications:", error);
     }
   };
 
@@ -112,7 +113,7 @@ const PlatformDashboard = () => {
         "n11",
       ]);
     } catch (error) {
-      console.error("Sync failed:", error);
+      logger.error("Sync failed:", error);
       setSyncInProgress(false);
     }
   };
@@ -122,7 +123,7 @@ const PlatformDashboard = () => {
       await enhancedPlatformService.resolveConflict(conflictId, resolution);
       await loadConflicts();
     } catch (error) {
-      console.error("Failed to resolve conflict:", error);
+      logger.error("Failed to resolve conflict:", error);
     }
   };
 

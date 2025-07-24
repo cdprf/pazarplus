@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * Invoice Settings Component
  * Dedicated component for managing invoice printing and e-solutions configuration
@@ -79,7 +80,7 @@ const InvoiceSettings = () => {
           }));
         }
       } catch (error) {
-        console.error("Error loading invoice settings:", error);
+        logger.error("Error loading invoice settings:", error);
         showAlert("Fatura ayarları yüklenirken hata oluştu", "error");
       } finally {
         setLoading(false);
@@ -102,7 +103,7 @@ const InvoiceSettings = () => {
         showAlert(`Ayarlar kaydedilemedi: ${qnbResult.message}`, "error");
       }
     } catch (error) {
-      console.error("Error saving invoice settings:", error);
+      logger.error("Error saving invoice settings:", error);
       showAlert(
         `Ayarlar kaydedilirken hata oluştu: ${qnbFinansService.formatErrorMessage(
           error
@@ -144,7 +145,7 @@ const InvoiceSettings = () => {
         showAlert(`Bağlantı başarısız: ${result.message}`, "error");
       }
     } catch (error) {
-      console.error("QNB Finans connection test failed:", error);
+      logger.error("QNB Finans connection test failed:", error);
       const errorMessage = qnbFinansService.formatErrorMessage(error);
       setConnectionStatus({ success: false, message: errorMessage });
       showAlert(`Bağlantı test edilemedi: ${errorMessage}`, "error");

@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require("../utils/logger");
 const https = require('https');
 const http = require('http');
 const { URL } = require('url');
@@ -128,7 +129,7 @@ router.get('/image-proxy', async (req, res) => {
           try {
             res.write(chunk);
           } catch (writeError) {
-            console.error('Error writing chunk:', writeError);
+            logger.error('Error writing chunk:', writeError);
             responseEnded = true;
           }
         }
@@ -140,7 +141,7 @@ router.get('/image-proxy', async (req, res) => {
           try {
             res.end();
           } catch (endError) {
-            console.error('Error ending response:', endError);
+            logger.error('Error ending response:', endError);
           }
         }
 
@@ -157,20 +158,20 @@ router.get('/image-proxy', async (req, res) => {
       });
 
       responseStream.on('error', (error) => {
-        console.error('Error reading image stream:', error);
+        logger.error('Error reading image stream:', error);
         if (!res.headersSent && !responseEnded) {
           responseEnded = true;
           try {
             res.status(500).json({ error: 'Error processing image' });
           } catch (errorResponseError) {
-            console.error('Error sending error response:', errorResponseError);
+            logger.error('Error sending error response:', errorResponseError);
           }
         }
       });
     });
 
     request.on('error', (error) => {
-      console.error('Error fetching image:', error);
+      logger.error('Error fetching image:', error);
       if (!res.headersSent) {
         try {
           res.status(500).json({
@@ -178,7 +179,7 @@ router.get('/image-proxy', async (req, res) => {
             details: error.message
           });
         } catch (errorResponseError) {
-          console.error('Error sending error response:', errorResponseError);
+          logger.error('Error sending error response:', errorResponseError);
         }
       }
     });
@@ -189,14 +190,14 @@ router.get('/image-proxy', async (req, res) => {
         try {
           res.status(408).json({ error: 'Image request timeout' });
         } catch (errorResponseError) {
-          console.error('Error sending timeout response:', errorResponseError);
+          logger.error('Error sending timeout response:', errorResponseError);
         }
       }
     });
 
     request.end();
   } catch (error) {
-    console.error('Image proxy error:', error);
+    logger.error('Image proxy error:', error);
     if (!res.headersSent) {
       try {
         res.status(500).json({
@@ -204,7 +205,7 @@ router.get('/image-proxy', async (req, res) => {
           details: error.message
         });
       } catch (errorResponseError) {
-        console.error('Error sending error response:', errorResponseError);
+        logger.error('Error sending error response:', errorResponseError);
       }
     }
   }

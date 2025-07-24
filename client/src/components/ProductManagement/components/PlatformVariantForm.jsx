@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useEffect } from "react";
 import { X, Plus, Save, AlertCircle } from "lucide-react";
 import { Button } from "../../ui";
@@ -246,7 +247,7 @@ const PlatformVariantForm = ({
       await onSave(submitData);
       onClose();
     } catch (error) {
-      console.error("Error saving variant:", error);
+      logger.error("Error saving variant:", error);
       setErrors({ submit: error.message });
     } finally {
       setIsLoading(false);

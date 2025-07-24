@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Search,
@@ -124,7 +125,7 @@ const CustomerQuestions = () => {
         throw new Error(response.data.message || "Failed to load questions");
       }
     } catch (err) {
-      console.error("Error loading questions:", err);
+      logger.error("Error loading questions:", err);
       setError(err.message || "Failed to load questions");
       showAlert("Sorular yüklenirken hata oluştu", "error");
     } finally {
@@ -137,7 +138,7 @@ const CustomerQuestions = () => {
       const response = await api.get("/customer-questions/stats");
       if (response.data.success) {
         const statsData = response.data.data;
-        console.log("📊 Stats API Response:", statsData); // Debug log
+        logger.info("📊 Stats API Response:", statsData); // Debug log
 
         // Handle the actual API response format
         const total = statsData.totalQuestions || 0;
@@ -151,7 +152,7 @@ const CustomerQuestions = () => {
         const avgResponseTime =
           statsData.avgResponseTime || parseFloat(statsData.responseRate) || 0;
 
-        console.log("📈 Parsed Stats:", {
+        logger.info("📈 Parsed Stats:", {
           total,
           waiting,
           answered,
@@ -170,7 +171,7 @@ const CustomerQuestions = () => {
         });
       }
     } catch (err) {
-      console.error("Error loading stats:", err);
+      logger.error("Error loading stats:", err);
     }
   }, []);
 
@@ -181,7 +182,7 @@ const CustomerQuestions = () => {
         setTemplates(response.data || []);
       }
     } catch (err) {
-      console.error("Error loading templates:", err);
+      logger.error("Error loading templates:", err);
     }
   }, []);
 
@@ -209,7 +210,7 @@ const CustomerQuestions = () => {
         throw new Error(response.message || "Template save failed");
       }
     } catch (err) {
-      console.error("Error saving template:", err);
+      logger.error("Error saving template:", err);
       showAlert("Şablon kaydedilirken hata oluştu", "error");
     } finally {
       setTemplateSaving(false);
@@ -234,7 +235,7 @@ const CustomerQuestions = () => {
         throw new Error(response.data.message || "Sync failed");
       }
     } catch (err) {
-      console.error("Error syncing questions:", err);
+      logger.error("Error syncing questions:", err);
       showAlert("Senkronizasyon sırasında hata oluştu", "error");
     } finally {
       setSyncing(false);
@@ -277,7 +278,7 @@ const CustomerQuestions = () => {
         throw new Error(response.data.message || "Reply failed");
       }
     } catch (err) {
-      console.error("Error sending reply:", err);
+      logger.error("Error sending reply:", err);
       const errorMessage =
         err.response?.data?.message ||
         err.message ||

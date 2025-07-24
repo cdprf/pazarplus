@@ -3,7 +3,7 @@ let CircuitBreaker;
 try {
   CircuitBreaker = require('opossum');
 } catch (error) {
-  console.warn('opossum not available, circuit breaker disabled');
+  logger.warn('opossum not available, circuit breaker disabled');
   // Fallback circuit breaker that just passes through
   CircuitBreaker = function (fn) {
     const breaker = {
@@ -20,7 +20,7 @@ let pRetry;
 try {
   pRetry = require('p-retry');
 } catch (error) {
-  console.warn('p-retry not available, using simple retry');
+  logger.warn('p-retry not available, using simple retry');
   // Simple fallback retry function
   pRetry = async function (fn, options = {}) {
     const maxRetries = options.retries || 3;
@@ -39,7 +39,7 @@ let Bottleneck;
 try {
   Bottleneck = require('bottleneck');
 } catch (error) {
-  console.warn('bottleneck not available, rate limiting disabled');
+  logger.warn('bottleneck not available, rate limiting disabled');
   // Simple fallback that doesn't rate limit
   Bottleneck = function (options) {
     return {
@@ -153,7 +153,7 @@ class EnhancedTrendyolService extends EventEmitter {
 
     // Request interceptor for logging
     this.axios.interceptors.request.use((config) => {
-      logger.debug(
+      logger.info(
         `Trendyol API Request: ${config.method?.toUpperCase()} ${config.url}`,
         {
           connectionId: this.connectionId,
@@ -298,7 +298,7 @@ class EnhancedTrendyolService extends EventEmitter {
 
           this.syncState.stats.ordersProcessed += orders.length;
 
-          logger.debug(
+          logger.info(
             `Fetched page ${currentPage + 1} with ${orders.length} orders`
           );
 
@@ -627,7 +627,7 @@ class EnhancedTrendyolService extends EventEmitter {
 
     // Use centralized mapping as fallback and validation
     if (!mappedStatus && trendyolStatus) {
-      console.warn(
+      logger.warn(
         `Unknown Trendyol order status encountered: ${trendyolStatus}`,
         {
           platformType: 'trendyol',

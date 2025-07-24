@@ -1,3 +1,4 @@
+import logger from "../../../../utils/logger";
 /**
  * Text Validation Indicator Component
  * Shows inline validation messages and encoding issues
@@ -30,7 +31,7 @@ const TextValidationIndicator = ({
         const result = await fontService.validateText(text, fontFamily);
         setValidation(result);
       } catch (error) {
-        console.error("Text validation failed:", error);
+        logger.error("Text validation failed:", error);
         setValidation(null);
       } finally {
         setLoading(false);

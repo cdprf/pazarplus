@@ -8,7 +8,7 @@ let websocketEnabled = true;
 try {
   WebSocket = require("ws");
 } catch (error) {
-  console.warn("WebSocket dependencies not available:", error.message);
+  logger.warn("WebSocket dependencies not available:", error.message);
   websocketEnabled = false;
 
   // Create fallback WebSocket implementation

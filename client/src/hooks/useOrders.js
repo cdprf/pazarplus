@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import { useState, useEffect, useCallback } from "react";
 import api from "../services/api";
 
@@ -54,11 +55,11 @@ export const useOrders = (initialFilters = {}) => {
           err.code === "ERR_CANCELED" ||
           err.message === "canceled"
         ) {
-          console.log("🔄 Order fetch was cancelled");
+          logger.info("🔄 Order fetch was cancelled");
           return;
         }
 
-        console.error("Error fetching orders:", err);
+        logger.error("Error fetching orders:", err);
         setError(err.message);
         setOrders([]); // Set empty array on error
         setPagination({
@@ -128,7 +129,7 @@ export const useOrderStats = (options = {}) => {
 
         if (statsResponse.success && statsResponse.data) {
           const stats = statsResponse.data;
-          console.log("📊 Comprehensive stats from backend:", stats);
+          logger.info("📊 Comprehensive stats from backend:", stats);
 
           // The backend now returns all the data we need
           const transformedData = {
@@ -188,7 +189,7 @@ export const useOrderStats = (options = {}) => {
             },
           };
 
-          console.log("📊 Transformed comprehensive stats:", transformedData);
+          logger.info("📊 Transformed comprehensive stats:", transformedData);
           setData(transformedData);
         } else {
           throw new Error(
@@ -202,11 +203,11 @@ export const useOrderStats = (options = {}) => {
           err.code === "ERR_CANCELED" ||
           err.message === "canceled"
         ) {
-          console.log("🔄 Order stats fetch was cancelled");
+          logger.info("🔄 Order stats fetch was cancelled");
           return;
         }
 
-        console.error("Error fetching comprehensive order stats:", err);
+        logger.error("Error fetching comprehensive order stats:", err);
         setError(err.message);
         setData(null);
       } finally {
@@ -280,7 +281,7 @@ export const useOrderTrends = (timeRange = "30d") => {
               }))
             : [];
 
-          console.log("Transformed trends data:", transformedData);
+          logger.info("Transformed trends data:", transformedData);
 
           setTrends({
             data: transformedData,
@@ -289,7 +290,7 @@ export const useOrderTrends = (timeRange = "30d") => {
           });
         } else if (isMounted) {
           // Handle case where API returns success but no data
-          console.warn("No trends data returned from API");
+          logger.warn("No trends data returned from API");
           setTrends({
             data: [],
             loading: false,
@@ -303,11 +304,11 @@ export const useOrderTrends = (timeRange = "30d") => {
           error.code === "ERR_CANCELED" ||
           error.message === "canceled"
         ) {
-          console.log("🔄 Order trends fetch was cancelled");
+          logger.info("🔄 Order trends fetch was cancelled");
           return;
         }
 
-        console.error("Error fetching order trends:", error);
+        logger.error("Error fetching order trends:", error);
         if (isMounted) {
           setTrends((prev) => ({
             ...prev,
@@ -371,7 +372,7 @@ export const useOrderTrends = (timeRange = "30d") => {
           });
         }
       } catch (error) {
-        console.error("Error refreshing order trends:", error);
+        logger.error("Error refreshing order trends:", error);
         setTrends((prev) => ({
           ...prev,
           loading: false,

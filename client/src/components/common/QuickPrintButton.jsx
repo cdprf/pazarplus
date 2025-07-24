@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React from "react";
 import { Printer } from "lucide-react";
 import api from "../../services/api";
@@ -27,7 +28,7 @@ const QuickPrintButton = ({ orderId, type = "pdf", className = "" }) => {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
     } catch (error) {
-      console.error("Print error:", error);
+      logger.error("Print error:", error);
       alert(`Failed to print: ${error.message}`);
     }
   };

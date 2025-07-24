@@ -43,7 +43,7 @@ async function getProductAnalytics(
 ) {
   try {
     // Simplified approach for better SQLite compatibility
-    console.log(
+    logger.info(
       "Getting product analytics for user:",
       userId,
       "product:",
@@ -87,7 +87,7 @@ async function getProductAnalytics(
       ],
     });
 
-    console.log("Found orders:", orders.length);
+    logger.info("Found orders:", orders.length);
 
     // Process orders to create analytics data
     const productStats = new Map();

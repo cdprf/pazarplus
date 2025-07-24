@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 /**
  * Custom Pattern Configuration Component
  *
@@ -162,7 +163,7 @@ const CustomPatternConfigurator = ({
               `"use strict"; return (${currentPattern.extractBase});`
             )(match);
           } catch (error) {
-            console.warn("Base extraction error:", error);
+            logger.warn("Base extraction error:", error);
           }
         }
 
@@ -174,7 +175,7 @@ const CustomPatternConfigurator = ({
               `"use strict"; return (${currentPattern.extractVariant});`
             )(match);
           } catch (error) {
-            console.warn("Variant extraction error:", error);
+            logger.warn("Variant extraction error:", error);
           }
         }
 

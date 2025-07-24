@@ -28,7 +28,7 @@ class ShippingDetailService {
 
       const result = await shippingDetail.update(updateData, options);
 
-      logger.debug(`Successfully updated shipping detail ${shippingDetailId}`, {
+      logger.info(`Successfully updated shipping detail ${shippingDetailId}`, {
         shippingDetailId,
         updateData: Object.keys(updateData)
       });

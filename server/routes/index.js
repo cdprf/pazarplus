@@ -2,10 +2,10 @@ const express = require("express");
 const router = express.Router();
 const logger = require("../utils/logger");
 
-console.log("Testing route loading...");
+logger.info("Testing route loading...");
 try {
   // Test loading the main routes
-  console.log("Loading main routes index...");
+  logger.info("Loading main routes index...");
 
   // Import centralized route modules
   const authRoutes = require("./auth");
@@ -71,9 +71,9 @@ try {
   const unifiedIntelligenceRoutes = require("./unified-product-intelligence");
 
   // Mount centralized routes
-  console.log("Mounting auth routes at /auth...");
+  logger.info("Mounting auth routes at /auth...");
   router.use("/auth", authRoutes);
-  console.log("✅ Auth routes mounted successfully");
+  logger.info("✅ Auth routes mounted successfully");
 
   router.use("/platforms", platformRoutes);
   router.use("/v1/enhanced-platforms", platformRoutes); // Enhanced platform routes compatibility
@@ -96,7 +96,7 @@ try {
   router.use(
     "/order-management",
     (req, res, next) => {
-      console.log(
+      logger.info(
         `Main routes - Order Management: ${req.method} ${req.originalUrl}`
       );
       next();
@@ -158,10 +158,10 @@ try {
   // Unified Product Intelligence routes
   router.use("/product-intelligence", unifiedIntelligenceRoutes);
 
-  console.log("✅ Main routes loaded");
+  logger.info("✅ Main routes loaded");
 } catch (error) {
-  console.error("❌ Error loading routes:", error.message);
-  console.error("Stack:", error.stack);
+  logger.error("❌ Error loading routes:", error.message);
+  logger.error("Stack:", error.stack);
 }
 
 // Health check endpoint - should be accessible at /api/health
@@ -209,7 +209,7 @@ router.get("/health", (req, res) => {
 
 // Global API middleware for debugging
 router.use("*", (req, res, next) => {
-  logger.debug(`API Route accessed: ${req.method} /api${req.url}`);
+  logger.info(`API Route accessed: ${req.method} /api${req.url}`);
   next();
 });
 
@@ -253,5 +253,5 @@ router.use("/*", (req, res) => {
   });
 });
 
-console.log("✅ All routes configured successfully");
+logger.info("✅ All routes configured successfully");
 module.exports = router;

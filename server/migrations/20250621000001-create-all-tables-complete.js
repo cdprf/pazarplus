@@ -1,3 +1,4 @@
+const logger = require("../utils/logger");
 "use strict";
 
 /**
@@ -5611,7 +5612,7 @@ module.exports = {
         onDelete: "SET NULL",
       });
     } catch (error) {
-      console.log("Foreign key constraint may already exist:", error.message);
+      logger.info("Foreign key constraint may already exist:", error.message);
     }
 
     await queryInterface.addIndex("bulk_operations", ["userId"]);
@@ -5731,7 +5732,7 @@ module.exports = {
         },
       });
     } catch (error) {
-      console.log("Foreign key constraint may already exist:", error.message);
+      logger.info("Foreign key constraint may already exist:", error.message);
     }
 
     await queryInterface.addIndex("platform_categories", ["platformType"]);
@@ -5872,7 +5873,7 @@ module.exports = {
             );
           }
         } catch (error) {
-          console.log(
+          logger.info(
             "⚠️  Platform connections table not found, skipping JSON indexes"
           );
         }
@@ -5884,7 +5885,7 @@ module.exports = {
             name: "products_specifications_gin_idx",
           });
         } else {
-          console.log(
+          logger.info(
             "⚠️  Specifications column not found in products table, skipping index"
           );
         }
@@ -5896,12 +5897,12 @@ module.exports = {
             name: "products_images_gin_idx",
           });
         } else {
-          console.log(
+          logger.info(
             "⚠️  Images column not found in products table, skipping index"
           );
         }
       } catch (error) {
-        console.log("⚠️  Error creating JSON indexes:", error.message);
+        logger.info("⚠️  Error creating JSON indexes:", error.message);
       }
 
       await queryInterface.addIndex("orders", ["metadata"], {

@@ -61,7 +61,7 @@ class SOAPClient {
 
       const serviceUrl = config.getEndpoint(environment, 'earsivService');
 
-      logger.debug('Making SOAP request', {
+      logger.info('Making SOAP request', {
         url: serviceUrl,
         hasSession: !!sessionCookie,
         bodyLength: soapXML.length

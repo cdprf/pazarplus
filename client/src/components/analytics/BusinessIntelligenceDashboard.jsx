@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
@@ -59,38 +60,38 @@ const BusinessIntelligenceDashboard = () => {
       setLoading(true);
       setError(null);
 
-      console.log("🔍 Fetching dashboard analytics for timeframe:", timeframe);
+      logger.info("🔍 Fetching dashboard analytics for timeframe:", timeframe);
 
       // Use multiple analytics service calls for comprehensive data
       const [dashboardData, customerData, productData, financialData] =
         await Promise.all([
           analyticsService.getDashboardAnalytics(timeframe).catch((err) => {
-            console.warn(
+            logger.warn(
               "Dashboard analytics failed, continuing with other data"
             );
             return null;
           }),
           analyticsService.getCustomerAnalytics(timeframe).catch((err) => {
-            console.warn(
+            logger.warn(
               "Customer analytics failed, continuing with other data"
             );
             return null;
           }),
           analyticsService.getProductAnalytics(timeframe).catch((err) => {
-            console.warn(
+            logger.warn(
               "Product analytics failed, continuing with other data"
             );
             return null;
           }),
           analyticsService.getFinancialAnalytics(timeframe).catch((err) => {
-            console.warn(
+            logger.warn(
               "Financial analytics failed, continuing with other data"
             );
             return null;
           }),
         ]);
 
-      console.log("📊 Analytics data received:", {
+      logger.info("📊 Analytics data received:", {
         hasDashboard: !!dashboardData?.data,
         hasCustomer: !!customerData?.data,
         hasProduct: !!productData?.data,
@@ -123,7 +124,7 @@ const BusinessIntelligenceDashboard = () => {
         platforms: dashboardData?.data?.platforms || [],
       };
 
-      console.log("🔍 Combined data before processing:", {
+      logger.info("🔍 Combined data before processing:", {
         platforms: combinedData.platforms,
         platformsLength: combinedData.platforms?.length,
         dashboardDataKeys: dashboardData?.data
@@ -190,7 +191,7 @@ const BusinessIntelligenceDashboard = () => {
         processedData.platforms.length === 0 &&
         processedData.orderSummary.totalOrders > 0
       ) {
-        console.log(
+        logger.info(
           "🔄 No platform data found, attempting to derive from order summary"
         );
 
@@ -292,16 +293,16 @@ const BusinessIntelligenceDashboard = () => {
             .filter((platform) => platform.totalOrders > 0); // Only include platforms with orders
         }
 
-        console.log(
+        logger.info(
           "🔄 Generated platform data from orders:",
           processedData.platforms
         );
-        console.log(
+        logger.info(
           "🔄 Platform performance based on net orders (orders - returns)"
         );
       }
 
-      console.log("📊 Processed analytics data:", processedData);
+      logger.info("📊 Processed analytics data:", processedData);
       setAnalytics(processedData);
 
       // Set business intelligence data with Financial KPIs
@@ -381,7 +382,7 @@ const BusinessIntelligenceDashboard = () => {
 
       setLastUpdated(new Date());
     } catch (err) {
-      console.error("❌ Error fetching analytics:", err);
+      logger.error("❌ Error fetching analytics:", err);
 
       // Check if this is an authentication error
       const isAuthError =
@@ -404,7 +405,7 @@ const BusinessIntelligenceDashboard = () => {
       setError(errorMessage);
 
       // Use empty data on error to show proper loading states
-      console.warn("🔄 Setting empty data due to analytics service error");
+      logger.warn("🔄 Setting empty data due to analytics service error");
       setAnalytics({
         orderSummary: {
           totalOrders: 0,
@@ -505,7 +506,7 @@ const BusinessIntelligenceDashboard = () => {
 
   const handleExport = useCallback((format) => {
     // Placeholder export functionality
-    console.log(`Exporting analytics data in ${format} format`);
+    logger.info(`Exporting analytics data in ${format} format`);
     setShowExportModal(false);
     // In a real implementation, this would export the analytics data
   }, []);

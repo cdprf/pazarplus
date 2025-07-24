@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAlert } from "../../../contexts/AlertContext";
@@ -16,7 +17,7 @@ const productAPI = {
   async ensureAuth() {
     let token = localStorage.getItem("token");
     if (!token) {
-      console.log("🔄 No token found, generating dev token...");
+      logger.info("🔄 No token found, generating dev token...");
       try {
         const response = await fetch(`${API_BASE_URL}/auth/dev-token`, {
           method: "POST",
@@ -26,10 +27,10 @@ const productAPI = {
           const { token: devToken } = await response.json();
           localStorage.setItem("token", devToken);
           token = devToken;
-          console.log("✅ Dev token generated and stored");
+          logger.info("✅ Dev token generated and stored");
         }
       } catch (error) {
-        console.error("❌ Failed to generate dev token:", error);
+        logger.error("❌ Failed to generate dev token:", error);
       }
     }
     return token;
@@ -230,7 +231,7 @@ const ProductManagement = () => {
         throw new Error(response.message || "Failed to load products");
       }
     } catch (error) {
-      console.error("Error loading main products:", error);
+      logger.error("Error loading main products:", error);
       if (showAlertRef.current) {
         showAlertRef.current("Ürünler yüklenirken hata oluştu", "error");
       }
@@ -251,7 +252,7 @@ const ProductManagement = () => {
         throw new Error(response.message || "Failed to load product");
       }
     } catch (error) {
-      console.error("Error loading main product:", error);
+      logger.error("Error loading main product:", error);
       if (showAlertRef.current) {
         showAlertRef.current("Ürün yüklenirken hata oluştu", "error");
       }
@@ -273,11 +274,11 @@ const ProductManagement = () => {
 
   // Handle main product creation
   const handleCreateMainProduct = async (productData) => {
-    console.log("handleCreateMainProduct called with:", productData);
+    logger.info("handleCreateMainProduct called with:", productData);
 
     if (!productData || Object.keys(productData).length === 0) {
       // Open creation modal
-      console.log("Opening product creation modal");
+      logger.info("Opening product creation modal");
       alert("Opening product creation modal"); // Debug alert
       setShowProductCreationModal(true);
       return;
@@ -293,7 +294,7 @@ const ProductManagement = () => {
         throw new Error(response.message || "Failed to create product");
       }
     } catch (error) {
-      console.error("Error creating main product:", error);
+      logger.error("Error creating main product:", error);
       showAlert("Ana ürün oluşturulurken hata oluştu", "error");
     } finally {
       setLoading(false);
@@ -346,7 +347,7 @@ const ProductManagement = () => {
 
   // Handle field mapping completion
   const handleFieldMappingComplete = (mappingConfig) => {
-    console.log("Field mapping completed:", mappingConfig);
+    logger.info("Field mapping completed:", mappingConfig);
     // You can save this configuration or use it for data transformation
     showAlert("Field mapping configuration saved", "success");
   };
@@ -378,7 +379,7 @@ const ProductManagement = () => {
         showAlert("Could not find selected product", "error");
       }
     } catch (error) {
-      console.error("Error starting bulk variant creation:", error);
+      logger.error("Error starting bulk variant creation:", error);
       showAlert("Error starting bulk variant creation", "error");
     } finally {
       setLoading(false);
@@ -439,7 +440,7 @@ const ProductManagement = () => {
         showAlert("Failed to mark any products as main products", "error");
       }
     } catch (error) {
-      console.error("Error marking products as main:", error);
+      logger.error("Error marking products as main:", error);
       showAlert("Error marking products as main products", "error");
     } finally {
       setLoading(false);
@@ -471,7 +472,7 @@ const ProductManagement = () => {
         throw new Error(response.message || "Failed to create variant");
       }
     } catch (error) {
-      console.error("Error creating variant:", error);
+      logger.error("Error creating variant:", error);
       showAlert("Varyant oluşturulurken hata oluştu", "error");
     } finally {
       setLoading(false);
@@ -500,7 +501,7 @@ const ProductManagement = () => {
         throw new Error(response.message || "Failed to update variant");
       }
     } catch (error) {
-      console.error("Error updating variant:", error);
+      logger.error("Error updating variant:", error);
       showAlert("Varyant güncellenirken hata oluştu", "error");
     } finally {
       setLoading(false);
@@ -524,7 +525,7 @@ const ProductManagement = () => {
         throw new Error(response.message || "Failed to delete variant");
       }
     } catch (error) {
-      console.error("Error deleting variant:", error);
+      logger.error("Error deleting variant:", error);
       showAlert("Varyant silinirken hata oluştu", "error");
     } finally {
       setLoading(false);
@@ -548,7 +549,7 @@ const ProductManagement = () => {
         throw new Error(response.message || "Failed to publish variants");
       }
     } catch (error) {
-      console.error("Error publishing variants:", error);
+      logger.error("Error publishing variants:", error);
       showAlert("Varyantlar yayınlanırken hata oluştu", "error");
     } finally {
       setLoading(false);
@@ -578,7 +579,7 @@ const ProductManagement = () => {
         throw new Error(response.message || "Failed to auto-match products");
       }
     } catch (error) {
-      console.error("Error auto-matching products:", error);
+      logger.error("Error auto-matching products:", error);
       setAutoMatchProgress({
         status: "error",
         message: "Otomatik eşleştirmede hata oluştu",
@@ -812,7 +813,7 @@ const ProductManagement = () => {
         onDelete={() => {}} // TODO: Implement main product deletion
         onAddProduct={() => handleCreateMainProduct({})}
         onImportProducts={() => {
-          console.log("🎯 Import Products button clicked!");
+          logger.info("🎯 Import Products button clicked!");
           setShowProductCreationModal(true);
         }}
         onSync={loadMainProducts}

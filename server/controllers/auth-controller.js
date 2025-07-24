@@ -78,7 +78,8 @@ const generateToken = (user) => {
     }
 
     // Log token generation attempt
-    logger.debug("Generating JWT token", {
+    logger.info("Generating JWT token", {
+      operation: "token_generation",
       userId: user.id,
       secretExists: !!config.jwt.secret,
       secretLength: config.jwt.secret?.length,
@@ -107,7 +108,7 @@ const generateToken = (user) => {
     // Verify the token was created correctly
     try {
       const decoded = jwt.verify(token, config.jwt.secret);
-      logger.debug("Token generated and verified successfully", {
+      logger.info("Token generated and verified successfully", {
         userId: user.id,
         tokenLength: token.length,
         expiresAt: new Date(decoded.exp * 1000).toISOString(),
@@ -269,8 +270,21 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    logger.logOperation("User login attempt", {
+      operation: "user_login",
+      email,
+      ip: req.ip,
+      userAgent: req.get("User-Agent"),
+    });
+
     // Validate email and password
     if (!email || !password) {
+      logger.warn("Login failed - missing credentials", {
+        operation: "user_login_failed",
+        reason: "missing_credentials",
+        email: email || "not_provided",
+        ip: req.ip,
+      });
       return res.status(400).json({
         success: false,
         message: "Email and password are required",
@@ -283,6 +297,12 @@ const login = async (req, res) => {
     });
 
     if (!user) {
+      logger.warn("Login failed - user not found", {
+        operation: "user_login_failed",
+        reason: "user_not_found",
+        email,
+        ip: req.ip,
+      });
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
@@ -292,6 +312,13 @@ const login = async (req, res) => {
     // Check if password matches
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      logger.warn("Login failed - invalid password", {
+        operation: "user_login_failed",
+        reason: "invalid_password",
+        email,
+        userId: user.id,
+        ip: req.ip,
+      });
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
@@ -300,6 +327,13 @@ const login = async (req, res) => {
 
     // Check if user is active
     if (!user.isActive) {
+      logger.warn("Login failed - account deactivated", {
+        operation: "user_login_failed",
+        reason: "account_deactivated",
+        email,
+        userId: user.id,
+        ip: req.ip,
+      });
       return res.status(401).json({
         success: false,
         message: "Account is deactivated. Please contact support.",
@@ -314,6 +348,14 @@ const login = async (req, res) => {
 
     // Generate tenant-aware token
     const token = generateToken(user);
+
+    logger.info("User login successful", {
+      operation: "user_login_success",
+      email,
+      userId: user.id,
+      ip: req.ip,
+      userAgent: req.get("User-Agent"),
+    });
 
     // Remove password from response
     const userResponse = { ...user.toJSON() };

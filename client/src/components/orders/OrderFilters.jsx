@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * OrderFilters - Enhanced with Pazar+ Design System
  * Implements consistent form patterns, accessibility, and enhanced UX
@@ -148,7 +149,7 @@ const BasicFilters = ({
               placeholder="Sipariş numarası, müşteri adı veya ürün ara..."
               value={filters.search || ""}
               onChange={(e) => {
-                console.log(
+                logger.info(
                   "🔍 [OrderFilters] Search input changed:",
                   e.target.value
                 );

@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 /**
  * Product Variimport SKUInput from '../../common/SKUInput';nt Manager Component
  * Manages product variants with your structured SKU system
@@ -56,7 +57,7 @@ const ProductVariantManager = ({
           }))
         );
       } catch (error) {
-        console.error("Error loading variant types:", error);
+        logger.error("Error loading variant types:", error);
       }
     };
 
@@ -74,7 +75,7 @@ const ProductVariantManager = ({
           const detected = await skuSystemAPI.detectVariants(skus);
           setDetectedVariants(detected);
         } catch (error) {
-          console.error("Error detecting variants:", error);
+          logger.error("Error detecting variants:", error);
         }
       }
     };
@@ -120,7 +121,7 @@ const ProductVariantManager = ({
 
         onVariantsChange(variantsToCreate);
       } catch (error) {
-        console.error("Error generating variants:", error);
+        logger.error("Error generating variants:", error);
         alert("Varyant oluşturma hatası: " + error.message);
       } finally {
         setIsGenerating(false);
@@ -159,7 +160,7 @@ const ProductVariantManager = ({
       setShowVariantForm(false);
       setEditingVariant(null);
     } catch (error) {
-      console.error("Error saving variant:", error);
+      logger.error("Error saving variant:", error);
       alert("Varyant kaydetme hatası: " + error.message);
     }
   }, [
@@ -198,7 +199,7 @@ const ProductVariantManager = ({
             }));
           }
         } catch (error) {
-          console.error("Error generating variant info:", error);
+          logger.error("Error generating variant info:", error);
         }
       };
 

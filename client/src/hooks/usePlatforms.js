@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 
@@ -11,12 +12,12 @@ export const usePlatforms = () => {
       setIsLoading(true);
       setError(null);
       
-      console.log('🔍 Fetching platforms...');
+      logger.info('🔍 Fetching platforms...');
       
       // Use the new platform-specific API method
       const response = await api.platforms.getConnections();
       
-      console.log('✅ Platforms fetched successfully:', response);
+      logger.info('✅ Platforms fetched successfully:', response);
       
       // Handle the response structure from the backend
       const platforms = response.success ? response.data : response;
@@ -42,7 +43,7 @@ export const usePlatforms = () => {
       setData(validatedPlatforms);
       
     } catch (err) {
-      console.error('❌ Failed to fetch platforms:', err);
+      logger.error('❌ Failed to fetch platforms:', err);
       setError(err);
       setData([]);
     } finally {
@@ -55,7 +56,7 @@ export const usePlatforms = () => {
   }, [fetchPlatforms]);
 
   const refetch = useCallback(() => {
-    console.log('🔄 Refetching platforms...');
+    logger.info('🔄 Refetching platforms...');
     fetchPlatforms();
   }, [fetchPlatforms]);
 
@@ -66,7 +67,7 @@ export const usePlatforms = () => {
       await refetch(); // Refresh the list
       return response;
     } catch (error) {
-      console.error('❌ Failed to create platform connection:', error);
+      logger.error('❌ Failed to create platform connection:', error);
       throw error;
     }
   }, [refetch]);
@@ -77,7 +78,7 @@ export const usePlatforms = () => {
       await refetch(); // Refresh the list
       return response;
     } catch (error) {
-      console.error('❌ Failed to update platform connection:', error);
+      logger.error('❌ Failed to update platform connection:', error);
       throw error;
     }
   }, [refetch]);
@@ -88,7 +89,7 @@ export const usePlatforms = () => {
       await refetch(); // Refresh the list
       return response;
     } catch (error) {
-      console.error('❌ Failed to delete platform connection:', error);
+      logger.error('❌ Failed to delete platform connection:', error);
       throw error;
     }
   }, [refetch]);
@@ -99,7 +100,7 @@ export const usePlatforms = () => {
       await refetch(); // Refresh to get updated status
       return response;
     } catch (error) {
-      console.error('❌ Failed to test platform connection:', error);
+      logger.error('❌ Failed to test platform connection:', error);
       throw error;
     }
   }, [refetch]);

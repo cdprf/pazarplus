@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Network utilities for handling cross-device PDF access
  * Provides robust URL construction and PDF access methods
@@ -73,7 +74,7 @@ export async function detectAndSaveServerIP() {
 
           if (response.ok) {
             localStorage.setItem("server_network_ip", ip);
-            console.log(`✅ Detected server IP: ${ip}`);
+            logger.info(`✅ Detected server IP: ${ip}`);
             return ip;
           }
         } catch (error) {
@@ -83,7 +84,7 @@ export async function detectAndSaveServerIP() {
       }
     }
   } catch (error) {
-    console.warn("Could not detect server IP:", error);
+    logger.warn("Could not detect server IP:", error);
   }
 
   return null;
@@ -122,20 +123,20 @@ export async function openPDFWithFallbacks(pdfUrl, filename = "document.pdf") {
     throw new Error("PDF URL is required");
   }
 
-  console.log(`🖨️ Attempting to open PDF: ${pdfUrl}`);
+  logger.info(`🖨️ Attempting to open PDF: ${pdfUrl}`);
 
   // Only use window.open - no fallbacks that could cause duplicates
   try {
     const pdfWindow = window.open(pdfUrl, "_blank", "noopener,noreferrer");
 
     if (pdfWindow && !pdfWindow.closed) {
-      console.log("✅ PDF opened successfully with window.open");
+      logger.info("✅ PDF opened successfully with window.open");
       return true;
     } else {
       throw new Error("Window.open was blocked or failed");
     }
   } catch (error) {
-    console.warn("window.open failed:", error);
+    logger.warn("window.open failed:", error);
     throw new Error(`Failed to open PDF: ${error.message}`);
   }
 }

@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import { useState, useEffect, useContext, createContext } from "react";
 import { subscriptionService } from "../services/subscriptionService";
 
@@ -55,7 +56,7 @@ export const SubscriptionProvider = ({ children }) => {
 
       return hasAccess;
     } catch (err) {
-      console.error("Feature validation error:", err);
+      logger.error("Feature validation error:", err);
       return false;
     }
   };
@@ -66,7 +67,7 @@ export const SubscriptionProvider = ({ children }) => {
       // Reload subscription to get updated usage stats
       await loadSubscription();
     } catch (err) {
-      console.error("Usage tracking error:", err);
+      logger.error("Usage tracking error:", err);
     }
   };
 

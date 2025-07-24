@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * Network Status Component for PDF Printing
  * Shows current network configuration and provides recommendations
@@ -18,7 +19,7 @@ const NetworkStatusForPDF = ({ className = "", showDetails = true }) => {
       const status = await enhancedPDFService.getNetworkStatus();
       setNetworkStatus(status);
     } catch (error) {
-      console.error("Failed to load network status:", error);
+      logger.error("Failed to load network status:", error);
       setNetworkStatus({
         serverAccessible: false,
         error: error.message,

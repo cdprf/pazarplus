@@ -10,6 +10,10 @@ const {
 const { validationResult } = require("express-validator");
 const logger = require("../utils/logger");
 const rateLimit = require("express-rate-limit");
+const {
+  logRouteAccess,
+  logBusinessEvent,
+} = require("../middleware/route-logger");
 
 // Define validateRequest locally to avoid import issues
 const validateRequest = (req, res, next) => {
@@ -62,8 +66,8 @@ const productionSafeAuthLimiter = rateLimit({
 
 // Debug middleware
 router.use((req, res, next) => {
-  logger.debug(`Auth route accessed: ${req.method} ${req.url}`);
-  console.log(`🔐 Auth route hit: ${req.method} ${req.url}`);
+  logger.info(`Auth route accessed: ${req.method} ${req.url}`);
+  logger.info(`🔐 Auth route hit: ${req.method} ${req.url}`);
   next();
 });
 
@@ -73,13 +77,28 @@ router.use(productionSafeAuthLimiter);
 // Public routes with validation
 router.post(
   "/register",
+  logBusinessEvent("user_registration_attempt"),
   registerValidation,
   validateRequest,
   authController.register
 );
-router.post("/login", loginValidation, validateRequest, authController.login);
-router.post("/forgot-password", authController.forgotPassword);
-router.post("/reset-password", authController.resetPassword);
+router.post(
+  "/login",
+  logBusinessEvent("user_login_attempt"),
+  loginValidation,
+  validateRequest,
+  authController.login
+);
+router.post(
+  "/forgot-password",
+  logBusinessEvent("password_reset_request"),
+  authController.forgotPassword
+);
+router.post(
+  "/reset-password",
+  logBusinessEvent("password_reset_attempt"),
+  authController.resetPassword
+);
 router.post("/verify-email", authController.verifyEmail);
 router.post("/resend-verification", authController.resendVerification);
 
@@ -87,12 +106,28 @@ router.post("/resend-verification", authController.resendVerification);
 router.post("/dev-token", authController.generateDevToken);
 
 // Protected routes
-router.get("/me", auth, authController.getProfile); // Added missing /me endpoint
-router.get("/profile", auth, authController.getProfile);
-router.put("/profile", auth, authController.updateProfile);
+router.get(
+  "/me",
+  auth,
+  logRouteAccess("auth.getProfile"),
+  authController.getProfile
+);
+router.get(
+  "/profile",
+  auth,
+  logRouteAccess("auth.getProfile"),
+  authController.getProfile
+);
+router.put(
+  "/profile",
+  auth,
+  logRouteAccess("auth.updateProfile"),
+  authController.updateProfile
+);
 router.post(
   "/change-password",
   auth,
+  logBusinessEvent("password_change_attempt"),
   passwordChangeValidation,
   validateRequest,
   authController.changePassword

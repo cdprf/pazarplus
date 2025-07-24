@@ -22,7 +22,7 @@ class SQLiteOptimizer {
     try {
       // Check if we're using SQLite dialect
       const dialect = sequelize.getDialect();
-      logger.debug(`Database dialect detected: ${dialect}`);
+      logger.info(`Database dialect detected: ${dialect}`);
 
       if (dialect !== 'sqlite') {
         logger.info(
@@ -70,7 +70,7 @@ class SQLiteOptimizer {
       for (const pragma of optimizations) {
         try {
           await sequelize.query(pragma);
-          logger.debug(`Applied: ${pragma}`);
+          logger.info(`Applied: ${pragma}`);
         } catch (error) {
           logger.warn(`Failed to apply ${pragma}:`, error.message);
         }

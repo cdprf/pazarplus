@@ -1,4 +1,5 @@
 const { DataTypes } = require("sequelize");
+const logger = require("../utils/logger");
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
@@ -12,7 +13,7 @@ module.exports = {
           allowNull: true,
           comment: "User phone number",
         });
-        console.log("Added phone column to users table");
+        logger.info("Added phone column to users table");
       }
 
       if (!usersTable.bio) {
@@ -21,12 +22,12 @@ module.exports = {
           allowNull: true,
           comment: "User biography/description",
         });
-        console.log("Added bio column to users table");
+        logger.info("Added bio column to users table");
       }
 
-      console.log("User profile enhancement migration completed successfully");
+      logger.info("User profile enhancement migration completed successfully");
     } catch (error) {
-      console.error("Migration failed:", error);
+      logger.error("Migration failed:", error);
       throw error;
     }
   },
@@ -36,9 +37,9 @@ module.exports = {
       // Remove the added columns
       await queryInterface.removeColumn("users", "phone");
       await queryInterface.removeColumn("users", "bio");
-      console.log("Removed phone and bio columns from users table");
+      logger.info("Removed phone and bio columns from users table");
     } catch (error) {
-      console.error("Migration rollback failed:", error);
+      logger.error("Migration rollback failed:", error);
       throw error;
     }
   },

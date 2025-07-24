@@ -1,4 +1,5 @@
 require('dotenv').config();
+const logger = require("../utils/logger");
 
 const config = {
   // Server configuration
@@ -36,7 +37,7 @@ const config = {
             'JWT_SECRET environment variable is required in production'
           );
         }
-        console.warn('⚠️ Using default JWT secret - CHANGE IN PRODUCTION!');
+        logger.warn('⚠️ Using default JWT secret - CHANGE IN PRODUCTION!');
         return 'dev-secret-change-in-production';
       })(),
     expiresIn: process.env.JWT_EXPIRES_IN || '1d',

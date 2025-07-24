@@ -219,7 +219,7 @@ class BackgroundTaskService {
    * @returns {Promise<BackgroundTask[]>}
    */
   static async getQueuedTasks(options = {}) {
-    logger.debug('Getting queued tasks', { options });
+    logger.info('Getting queued tasks', { options });
 
     try {
       const tasks = await BackgroundTask.getQueuedTasks(options);
@@ -272,7 +272,7 @@ class BackgroundTaskService {
 
     await task.updateProgress(current, total, message, phase);
 
-    logger.debug(`Task progress updated: ${taskId}`, {
+    logger.info(`Task progress updated: ${taskId}`, {
       taskId,
       current,
       total,

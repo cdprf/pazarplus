@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * TemplateManager service for managing shipping slip templates
  * Used by ShippingSlipDesigner to load, save, and manage templates
@@ -16,7 +17,7 @@ class TemplateManager {
       // First try to fetch from API if available
       return await this.fetchFromApi();
     } catch (error) {
-      console.warn("API fetch failed, falling back to local storage:", error);
+      logger.warn("API fetch failed, falling back to local storage:", error);
       // Fall back to local storage
       return this.fetchFromLocalStorage();
     }
@@ -56,7 +57,7 @@ class TemplateManager {
 
       throw new Error("Invalid API response format");
     } catch (error) {
-      console.warn("Failed to fetch templates from API:", error);
+      logger.warn("Failed to fetch templates from API:", error);
       throw error;
     }
   }
@@ -75,7 +76,7 @@ class TemplateManager {
       }
       return [];
     } catch (error) {
-      console.error("Failed to load templates from local storage:", error);
+      logger.error("Failed to load templates from local storage:", error);
       return [];
     }
   }
@@ -100,7 +101,7 @@ class TemplateManager {
           return response.data;
         }
       } catch (apiError) {
-        console.warn(
+        logger.warn(
           `Failed to fetch template ${id} from API, checking local storage:`,
           apiError
         );
@@ -110,7 +111,7 @@ class TemplateManager {
       const templates = this.fetchFromLocalStorage();
       return templates.find((template) => template.id === id) || null;
     } catch (error) {
-      console.error(`Failed to get template with ID ${id}:`, error);
+      logger.error(`Failed to get template with ID ${id}:`, error);
       return null;
     }
   }
@@ -122,7 +123,7 @@ class TemplateManager {
    * @returns {Promise<Object>} Promise resolving to saved template with ID
    */
   static async save(template) {
-    console.log("🔧 DEBUG: TemplateManager.save called with:", template);
+    logger.info("🔧 DEBUG: TemplateManager.save called with:", template);
 
     if (!template) {
       throw new Error("No template provided");
@@ -150,32 +151,32 @@ class TemplateManager {
         updatedAt: new Date().toISOString(),
       };
 
-      console.log("🔧 DEBUG: Template to save:", templateToSave);
+      logger.info("🔧 DEBUG: Template to save:", templateToSave);
 
       let savedTemplate = null;
       let apiSuccess = false;
 
       // Try to save to API first
       try {
-        console.log("🔧 DEBUG: Making API call to save template");
+        logger.info("🔧 DEBUG: Making API call to save template");
         const response = await api.post("/shipping/templates", templateToSave);
-        console.log("🔧 DEBUG: API response:", response.data);
+        logger.info("🔧 DEBUG: API response:", response.data);
 
         // Handle the standard API response format
         if (response.data && response.data.success && response.data.data) {
           savedTemplate = response.data.data;
           apiSuccess = true;
-          console.log("🔧 DEBUG: Template saved to API successfully");
+          logger.info("🔧 DEBUG: Template saved to API successfully");
         } else if (response.data && response.data.id) {
           // Fallback: direct data response (backward compatibility)
           savedTemplate = response.data;
           apiSuccess = true;
-          console.log(
+          logger.info(
             "🔧 DEBUG: Template saved to API successfully (fallback format)"
           );
         }
       } catch (apiError) {
-        console.warn(
+        logger.warn(
           "🔧 DEBUG: Failed to save template to API, will save locally:",
           apiError.message
         );
@@ -194,7 +195,7 @@ class TemplateManager {
           JSON.stringify(updatedTemplates)
         );
       } catch (storageError) {
-        console.error("Failed to save to local storage:", storageError);
+        logger.error("Failed to save to local storage:", storageError);
         if (!apiSuccess) {
           throw new Error(
             "Failed to save template both to API and local storage"
@@ -202,13 +203,13 @@ class TemplateManager {
         }
       }
 
-      console.log(
+      logger.info(
         "🔧 DEBUG: Template save completed, returning:",
         templateToSave
       );
       return templateToSave;
     } catch (error) {
-      console.error("Failed to save template:", error);
+      logger.error("Failed to save template:", error);
       throw error;
     }
   }
@@ -229,7 +230,7 @@ class TemplateManager {
       try {
         await api.delete(`/shipping/templates/${id}`);
       } catch (apiError) {
-        console.warn(`Failed to delete template ${id} from API:`, apiError);
+        logger.warn(`Failed to delete template ${id} from API:`, apiError);
         // Continue with local deletion regardless
       }
 
@@ -245,7 +246,7 @@ class TemplateManager {
 
       return true;
     } catch (error) {
-      console.error(`Failed to delete template ${id}:`, error);
+      logger.error(`Failed to delete template ${id}:`, error);
       throw error;
     }
   }
@@ -283,7 +284,7 @@ class TemplateManager {
 
       return true;
     } catch (error) {
-      console.error("Failed to export template:", error);
+      logger.error("Failed to export template:", error);
       throw error;
     }
   }
@@ -322,7 +323,7 @@ class TemplateManager {
 
       return importedTemplate;
     } catch (error) {
-      console.error("Failed to import template:", error);
+      logger.error("Failed to import template:", error);
       throw error;
     }
   }

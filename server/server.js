@@ -174,7 +174,7 @@ async function startServer() {
           networkIP: networkIP,
           environment: process.env.NODE_ENV
         });
-        console.log(
+        logger.info(
           '🔍 AGGRESSIVE DEBUG: Inside server listen callback - server is ACTUALLY running now'
         );
 
@@ -194,13 +194,13 @@ async function startServer() {
         );
 
         // Initialize WebSocket server for real-time notifications
-        logger.debug('Initializing WebSocket server');
+        logger.info('Initializing WebSocket server');
         const wsServer = initializeWebSocketServer(server);
         logger.info('WebSocket server initialized successfully');
 
         // Start network monitoring for automatic IP detection (development only)
         if (!isProduction) {
-          console.log(
+          logger.info(
             '🔄 Starting network monitoring for automatic IP updates...'
           );
           const autoNetworkConfig = new AutoNetworkConfig();

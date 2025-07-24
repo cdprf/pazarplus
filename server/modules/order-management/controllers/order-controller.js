@@ -65,9 +65,9 @@ function safeSerialize(data) {
 // Controller functions
 async function getAllOrders(req, res) {
   try {
-    console.log("🔍 [OrderController] getAllOrders API called");
-    console.log("🔍 [OrderController] Query params:", req.query);
-    console.log("🔍 [OrderController] User ID:", req.user?.id);
+    logger.info("🔍 [OrderController] getAllOrders API called");
+    logger.info("🔍 [OrderController] Query params:", req.query);
+    logger.info("🔍 [OrderController] User ID:", req.user?.id);
 
     const { id: userId } = req.user;
     const {
@@ -166,7 +166,7 @@ async function getAllOrders(req, res) {
     // Apply search filter - handle product search separately due to SQL complexity
     let productOrderIds = [];
     if (search && search.trim()) {
-      console.log("🔍 [OrderController] Search term received:", search.trim());
+      logger.info("🔍 [OrderController] Search term received:", search.trim());
       const searchTerm = search.trim();
 
       // Try to find orders by product search first (separate query)
@@ -191,12 +191,12 @@ async function getAllOrders(req, res) {
         ];
 
         if (productOrderIds.length > 0) {
-          console.log(
+          logger.info(
             `🔍 [OrderController] Found ${productOrderIds.length} orders with matching products`
           );
         }
       } catch (productSearchError) {
-        console.log(
+        logger.info(
           "🔍 [OrderController] Product search failed:",
           productSearchError.message
         );
@@ -220,7 +220,7 @@ async function getAllOrders(req, res) {
       }
 
       where[Op.or] = searchConditions;
-      console.log("🔍 [OrderController] Combined search conditions applied");
+      logger.info("🔍 [OrderController] Combined search conditions applied");
     }
 
     // Apply date range filter if provided

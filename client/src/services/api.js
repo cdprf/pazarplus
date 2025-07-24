@@ -1,6 +1,7 @@
 import axios from "axios";
 import { handleJWTError } from "../utils/authRecovery";
 import networkStatusService from "./networkStatusService";
+import logger from "../utils/logger";
 
 // Create a safe wrapper to handle different import structures
 const networkService = networkStatusService?.default ||
@@ -14,19 +15,19 @@ const networkService = networkStatusService?.default ||
 
 // Verify the service has the required methods and add fallbacks if needed
 if (typeof networkService?.isCircuitOpen !== "function") {
-  console.warn(
+  logger.warn(
     "⚠️ NetworkStatusService missing isCircuitOpen method, using fallback"
   );
   networkService.isCircuitOpen = () => false;
 }
 if (typeof networkService?.recordSuccess !== "function") {
-  console.warn(
+  logger.warn(
     "⚠️ NetworkStatusService missing recordSuccess method, using fallback"
   );
   networkService.recordSuccess = () => {};
 }
 if (typeof networkService?.recordFailure !== "function") {
-  console.warn(
+  logger.warn(
     "⚠️ NetworkStatusService missing recordFailure method, using fallback"
   );
   networkService.recordFailure = () => {};
@@ -68,7 +69,7 @@ api.interceptors.request.use(
         return Promise.reject(error);
       }
     } catch (circuitError) {
-      console.error("Error checking circuit breaker:", circuitError);
+      logger.error("Error checking circuit breaker:", circuitError);
       // Continue with the request if there's an error checking the circuit breaker
     }
 
@@ -78,25 +79,29 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Only log in development
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        `🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`,
-        {
-          baseURL: config.baseURL,
-          headers: Object.keys(config.headers),
-          tokenPresent: !!token,
-          tokenLength: token?.length || 0,
-        }
-      );
-    }
+    // Add request start time for performance tracking
+    config.metadata = { requestStartTime: Date.now() };
+
+    // Log API request using structured logger
+    logger.api.info(`Request: ${config.method?.toUpperCase()} ${config.url}`, {
+      operation: "api_request",
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      headers: Object.keys(config.headers),
+      tokenPresent: !!token,
+      tokenLength: token?.length || 0,
+      timestamp: new Date().toISOString(),
+    });
 
     return config;
   },
   (error) => {
-    if (process.env.NODE_ENV === "development") {
-      console.error("❌ Request interceptor error:", error);
-    }
+    logger.api.error("Request interceptor error", {
+      operation: "api_request_error",
+      error: error.message,
+      stack: error.stack,
+    });
     return Promise.reject(error);
   }
 );
@@ -113,18 +118,19 @@ api.interceptors.response.use(
         networkService.recordSuccess();
       }
     } catch (error) {
-      console.error(
-        "Error recording success in network status service:",
-        error
-      );
+      logger.error("Error recording success in network status service:", error);
     }
 
-    if (process.env.NODE_ENV === "development") {
-      console.log(`✅ API Response: ${response.status}`, {
-        url: response.config.url,
-        status: response.status,
-      });
-    }
+    logger.api.info(`Response: ${response.status}`, {
+      operation: "api_response",
+      url: response.config.url,
+      status: response.status,
+      method: response.config.method?.toUpperCase(),
+      timestamp: new Date().toISOString(),
+      responseTime: response.config.metadata?.requestStartTime
+        ? Date.now() - response.config.metadata.requestStartTime + "ms"
+        : "unknown",
+    });
     return response;
   },
   (error) => {
@@ -143,7 +149,7 @@ api.interceptors.response.use(
           networkService.recordFailure(error);
         }
       } catch (networkError) {
-        console.error(
+        logger.error(
           "Error recording failure in network status service:",
           networkError
         );
@@ -151,7 +157,7 @@ api.interceptors.response.use(
     }
 
     if (process.env.NODE_ENV === "development") {
-      console.error("❌ API Response error:", {
+      logger.error("❌ API Response error:", {
         url: error.config?.url,
         status: error.response?.status,
         message: error.message,
@@ -163,7 +169,7 @@ api.interceptors.response.use(
     // Handle 431 errors specifically
     if (error.response?.status === 431) {
       if (process.env.NODE_ENV === "development") {
-        console.warn(
+        logger.warn(
           "🚨 Request header too large - clearing potentially corrupted token"
         );
       }
@@ -233,7 +239,7 @@ const orderService = {
         totalPages: backendPagination.totalPages || backendStats.pages || 1,
       };
     } catch (error) {
-      console.error("Order API error:", {
+      logger.error("Order API error:", {
         message: error.message,
         status: error.response?.status,
         statusText: error.response?.statusText,
@@ -249,13 +255,13 @@ const orderService = {
         error.message?.includes("CONNECTION_NOT_FOUND") ||
         error.message?.includes("no connection found")
       ) {
-        console.warn(
+        logger.warn(
           "Orders API failed due to connection issues, returning empty state"
         );
 
         // Check if the server provided a graceful error response
         if (error.response?.data && error.response.data.success === false) {
-          console.log("Using server's graceful error response");
+          logger.info("Using server's graceful error response");
           return error.response.data; // Use the server's graceful response
         }
 
@@ -534,11 +540,19 @@ const orderService = {
         throw new Error("Order ID is required");
       }
 
-      console.log(`Accepting order with ID: ${id}`);
+      logger.logOperation(`Accepting order with ID: ${id}`, {
+        operation: "accept_order",
+        orderId: id,
+      });
 
       const response = await api.put(`/order-management/orders/${id}/accept`);
 
-      console.log("Accept order response:", response.data);
+      logger.api.success("Accept order response received", {
+        operation: "accept_order_response",
+        orderId: id,
+        status: response.status,
+        data: response.data,
+      });
 
       return {
         success: response.data?.success ?? true,
@@ -546,9 +560,9 @@ const orderService = {
         data: response.data?.data || null,
       };
     } catch (error) {
-      console.error("Error accepting order:", error);
-      console.error("Error response:", error.response?.data);
-      console.error("Error status:", error.response?.status);
+      logger.error("Error accepting order:", error);
+      logger.error("Error response:", error.response?.data);
+      logger.error("Error status:", error.response?.status);
       return {
         success: false,
         message:
@@ -781,7 +795,7 @@ const customerQuestionsAPI = {
       const response = await api.get("/customer-questions", { params });
       return response.data;
     } catch (error) {
-      console.error("❌ API: Error getting customer questions:", error);
+      logger.error("❌ API: Error getting customer questions:", error);
       throw error;
     }
   },
@@ -792,7 +806,7 @@ const customerQuestionsAPI = {
       const response = await api.get(`/customer-questions/${id}`);
       return response.data;
     } catch (error) {
-      console.error("❌ API: Error getting question by ID:", error);
+      logger.error("❌ API: Error getting question by ID:", error);
       throw error;
     }
   },
@@ -806,7 +820,7 @@ const customerQuestionsAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("❌ API: Error getting questions by customer:", error);
+      logger.error("❌ API: Error getting questions by customer:", error);
       throw error;
     }
   },
@@ -820,7 +834,7 @@ const customerQuestionsAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("❌ API: Error replying to question:", error);
+      logger.error("❌ API: Error replying to question:", error);
       throw error;
     }
   },
@@ -833,7 +847,7 @@ const customerQuestionsAPI = {
       });
       return response.data;
     } catch (error) {
-      console.error("❌ API: Error syncing questions:", error);
+      logger.error("❌ API: Error syncing questions:", error);
       throw error;
     }
   },
@@ -844,7 +858,7 @@ const customerQuestionsAPI = {
       const response = await api.get("/customer-questions/stats", { params });
       return response.data;
     } catch (error) {
-      console.error("❌ API: Error getting question stats:", error);
+      logger.error("❌ API: Error getting question stats:", error);
       throw error;
     }
   },
@@ -857,7 +871,7 @@ const customerQuestionsAPI = {
       });
       return response.data;
     } catch (error) {
-      console.error("❌ API: Error getting dashboard data:", error);
+      logger.error("❌ API: Error getting dashboard data:", error);
       throw error;
     }
   },
@@ -872,7 +886,7 @@ const customerQuestionsAPI = {
         });
         return response.data;
       } catch (error) {
-        console.error("❌ API: Error getting reply templates:", error);
+        logger.error("❌ API: Error getting reply templates:", error);
         throw error;
       }
     },
@@ -890,7 +904,7 @@ const customerQuestionsAPI = {
           variables: templateData.variables,
         };
 
-        console.log("🌐 API Request: POST /customer-questions/templates", {
+        logger.info("🌐 API Request: POST /customer-questions/templates", {
           data,
           originalData: templateData,
         });
@@ -898,8 +912,8 @@ const customerQuestionsAPI = {
         const response = await api.post("/customer-questions/templates", data);
         return response.data;
       } catch (error) {
-        console.error("❌ API: Error creating reply template:", error);
-        console.error("❌ API: Error details:", {
+        logger.error("❌ API: Error creating reply template:", error);
+        logger.error("❌ API: Error details:", {
           status: error.response?.status,
           data: error.response?.data,
           message: error.message,
@@ -927,7 +941,7 @@ const customerQuestionsAPI = {
         );
         return response.data;
       } catch (error) {
-        console.error("❌ API: Error updating reply template:", error);
+        logger.error("❌ API: Error updating reply template:", error);
         throw error;
       }
     },
@@ -940,7 +954,7 @@ const customerQuestionsAPI = {
         );
         return response.data;
       } catch (error) {
-        console.error("❌ API: Error deleting reply template:", error);
+        logger.error("❌ API: Error deleting reply template:", error);
         throw error;
       }
     },
@@ -954,7 +968,7 @@ const customerQuestionsAPI = {
         );
         return response.data;
       } catch (error) {
-        console.error("❌ API: Error getting template suggestions:", error);
+        logger.error("❌ API: Error getting template suggestions:", error);
         throw error;
       }
     },
@@ -969,7 +983,7 @@ const customerQuestionsAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("❌ API: Error assigning question:", error);
+      logger.error("❌ API: Error assigning question:", error);
       throw error;
     }
   },
@@ -982,7 +996,7 @@ const customerQuestionsAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("❌ API: Error updating question priority:", error);
+      logger.error("❌ API: Error updating question priority:", error);
       throw error;
     }
   },
@@ -995,7 +1009,7 @@ const customerQuestionsAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error("❌ API: Error adding internal note:", error);
+      logger.error("❌ API: Error adding internal note:", error);
       throw error;
     }
   },
@@ -1070,13 +1084,19 @@ const shippingAPI = {
   // Shipping Templates
   getShippingTemplates: async () => {
     try {
-      console.log("🔍 API: Getting shipping templates...");
+      logger.api.info("Getting shipping templates", {
+        operation: "get_shipping_templates",
+      });
       const response = await api.get("/shipping/templates");
-      console.log("📄 API: Shipping templates response:", response.data);
+      logger.api.success("Shipping templates response received", {
+        operation: "get_shipping_templates_response",
+        templateCount: response.data?.length || 0,
+        data: response.data,
+      });
       return response.data;
     } catch (error) {
-      console.error("❌ API: Error getting shipping templates:", error);
-      console.error("❌ API: Error details:", {
+      logger.error("❌ API: Error getting shipping templates:", error);
+      logger.error("❌ API: Error details:", {
         status: error.response?.status,
         data: error.response?.data,
         message: error.message,
@@ -1124,13 +1144,13 @@ const shippingAPI = {
   // Default Template Management
   getDefaultTemplate: async () => {
     try {
-      console.log("🔍 API: Getting default template...");
+      logger.info("🔍 API: Getting default template...");
       const response = await api.get("/shipping/templates/default");
-      console.log("📄 API: Default template response:", response.data);
+      logger.info("📄 API: Default template response:", response.data);
       return response.data;
     } catch (error) {
-      console.error("❌ API: Error getting default template:", error);
-      console.error("❌ API: Error details:", {
+      logger.error("❌ API: Error getting default template:", error);
+      logger.error("❌ API: Error details:", {
         status: error.response?.status,
         data: error.response?.data,
         message: error.message,
@@ -1153,13 +1173,13 @@ const shippingAPI = {
   // Generate PDF using template and order data
   generatePDF: async (orderId, templateId = null) => {
     try {
-      console.log(
+      logger.info(
         `🖨️ API: Generating PDF for order: ${orderId}, template: ${
           templateId || "default"
         }`
       );
-      console.log(`🔗 API: Base URL: ${api.defaults.baseURL}`);
-      console.log(
+      logger.info(`🔗 API: Base URL: ${api.defaults.baseURL}`);
+      logger.info(
         `🔗 API: Request URL: ${api.defaults.baseURL}/shipping/templates/generate-pdf`
       );
 
@@ -1169,20 +1189,20 @@ const shippingAPI = {
         templateId: templateId || null,
       };
 
-      console.log("📦 API: Sending payload:", payload);
+      logger.info("📦 API: Sending payload:", payload);
 
       const response = await api.post(
         "/shipping/templates/generate-pdf",
         payload
       );
-      console.log("✅ API: PDF generation response:", response.data);
+      logger.info("✅ API: PDF generation response:", response.data);
 
       // Validate the response contains a valid labelUrl
       if (response.data.success && response.data.data?.labelUrl) {
         const labelUrl = response.data.data.labelUrl;
 
         // Check if the URL is accessible from this device
-        console.log(`🔍 API: Generated PDF URL: ${labelUrl}`);
+        logger.info(`🔍 API: Generated PDF URL: ${labelUrl}`);
 
         // If the URL starts with /shipping/ and we're not on localhost,
         // we might need to construct the full URL
@@ -1196,7 +1216,7 @@ const shippingAPI = {
           const serverPort = 5001; // Default server port
           const fullUrl = `http://${currentHost}:${serverPort}${labelUrl}`;
 
-          console.log(
+          logger.info(
             `🌐 API: Network access detected, trying full URL: ${fullUrl}`
           );
 
@@ -1204,11 +1224,11 @@ const shippingAPI = {
           try {
             const testResponse = await fetch(fullUrl, { method: "HEAD" });
             if (testResponse.ok) {
-              console.log(`✅ API: Full URL is accessible, updating response`);
+              logger.info(`✅ API: Full URL is accessible, updating response`);
               response.data.data.labelUrl = fullUrl;
             }
           } catch (testError) {
-            console.warn(
+            logger.warn(
               `⚠️ API: Full URL test failed, keeping original URL:`,
               testError.message
             );
@@ -1218,7 +1238,7 @@ const shippingAPI = {
 
       return response.data;
     } catch (error) {
-      console.error("❌ API: Error generating PDF:", {
+      logger.error("❌ API: Error generating PDF:", {
         status: error.response?.status,
         statusText: error.response?.statusText,
         url: error.config?.url,
@@ -1247,12 +1267,12 @@ const shippingAPI = {
   // Aliases for backward compatibility
   getTemplates: async () => {
     try {
-      console.log("🔍 API: Getting all templates...");
+      logger.info("🔍 API: Getting all templates...");
       const response = await shippingAPI.getShippingTemplates();
-      console.log("📄 API: Templates response:", response);
+      logger.info("📄 API: Templates response:", response);
       return response;
     } catch (error) {
-      console.error("❌ API: Error getting templates:", error);
+      logger.error("❌ API: Error getting templates:", error);
       throw error;
     }
   },
@@ -1295,7 +1315,7 @@ const importExportAPI = {
       return response;
     } catch (error) {
       // Add logging for better debugging
-      console.error(`Export error for ${type}:`, error);
+      logger.error(`Export error for ${type}:`, error);
 
       // Add better error handling with specific message
       if (error.response) {

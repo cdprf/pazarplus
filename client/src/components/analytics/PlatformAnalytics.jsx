@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import {
   OptimizedBarChart,
@@ -31,13 +32,13 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
         setLoading(true);
         setError(null);
 
-        console.log("🔍 Fetching platform analytics for timeframe:", timeframe);
+        logger.info("🔍 Fetching platform analytics for timeframe:", timeframe);
 
         const platformData = await analyticsService.getPlatformAnalytics(
           timeframe
         );
 
-        console.log("✅ Platform analytics data received:", {
+        logger.info("✅ Platform analytics data received:", {
           success: platformData?.success,
           hasData: !!platformData?.data,
           dataKeys: platformData?.data ? Object.keys(platformData.data) : [],
@@ -55,7 +56,7 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
             summary: rawData.summary || rawData.orderSummary || {},
           };
 
-          console.log("📊 Processed platform data:", {
+          logger.info("📊 Processed platform data:", {
             platformsLength: normalizedData.platforms?.length || 0,
             hasPerformance: !!normalizedData.performance,
             hasSummary: !!normalizedData.summary,
@@ -64,7 +65,7 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
 
           setData(normalizedData);
         } else {
-          console.warn("⚠️ No platform data received, setting empty data");
+          logger.warn("⚠️ No platform data received, setting empty data");
           setData({
             platforms: [],
             performance: {},
@@ -72,7 +73,7 @@ const PlatformAnalytics = ({ timeframe = "30d", filters = {} }) => {
           });
         }
       } catch (err) {
-        console.error("Error fetching platform analytics:", err);
+        logger.error("Error fetching platform analytics:", err);
         setError(err.message || "Failed to load platform analytics");
       } finally {
         setLoading(false);

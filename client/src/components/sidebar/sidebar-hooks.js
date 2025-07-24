@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 // Part 1: Enhanced Hooks and Utilities for Sidebar
 // Add these hooks to your Sidebar component file
 
@@ -21,7 +22,7 @@ class SidebarErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     this.setState({ error, errorInfo });
-    console.error("Sidebar Error:", error, errorInfo);
+    logger.error("Sidebar Error:", error, errorInfo);
   }
 
   render() {
@@ -108,7 +109,7 @@ const useOrderCounts = () => {
           });
         } catch (e) {
           // Stats endpoint might not exist, continue to fallback
-          console.log("Stats endpoint not available, using fallback");
+          logger.info("Stats endpoint not available, using fallback");
         }
 
         if (statsResponse?.success && statsResponse.data) {
@@ -122,7 +123,7 @@ const useOrderCounts = () => {
           setOrderCounts(counts);
           setLastFetch(now);
           retryCountRef.current = 0;
-          console.log("Order counts updated from stats:", counts);
+          logger.info("Order counts updated from stats:", counts);
           return;
         }
 
@@ -149,13 +150,13 @@ const useOrderCounts = () => {
           }));
           setLastFetch(now);
           retryCountRef.current = 0;
-          console.log("Order counts updated from orders API:", {
+          logger.info("Order counts updated from orders API:", {
             total: totalOrders,
           });
         }
       } catch (error) {
         if (error.name !== "AbortError") {
-          console.error("Error fetching order counts:", error);
+          logger.error("Error fetching order counts:", error);
           setError(error.message);
 
           // Exponential backoff retry

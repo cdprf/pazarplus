@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 /**
  * Enhanced Product Variant Pattern Detection System
  *
@@ -725,7 +726,7 @@ class EnhancedPatternDetector {
         JSON.stringify(patterns)
       );
     } catch (error) {
-      console.warn("Failed to save custom patterns:", error);
+      logger.warn("Failed to save custom patterns:", error);
     }
   }
 
@@ -740,7 +741,7 @@ class EnhancedPatternDetector {
         this.customPatterns = new Map(Object.entries(patterns));
       }
     } catch (error) {
-      console.warn("Failed to load custom patterns:", error);
+      logger.warn("Failed to load custom patterns:", error);
     }
   }
 

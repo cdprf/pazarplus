@@ -162,7 +162,7 @@ class ProductOrderLinkingService {
         if (matchedProduct) {
           item.productId = matchedProduct.id;
           linkedCount++;
-          logger.debug(
+          logger.info(
             `Linked order item "${item.title}" to product "${matchedProduct.name}"`
           );
         }
@@ -285,7 +285,7 @@ class ProductOrderLinkingService {
             linkedItems.push(linkedItem);
             stats.linked++;
 
-            logger.debug(
+            logger.info(
               `Linked order item "${orderItem.title}" to product "${matchedProduct.name}"`,
               {
                 orderItemId: orderItem.id,
@@ -298,7 +298,7 @@ class ProductOrderLinkingService {
             unlinkedItems.push(orderItem);
             stats.unlinked++;
 
-            logger.debug(
+            logger.info(
               `No product match found for order item "${orderItem.title}"`,
               {
                 orderItemId: orderItem.id,
@@ -489,7 +489,7 @@ class ProductOrderLinkingService {
         }
         linked++;
 
-        logger.debug(
+        logger.info(
           `${dryRun ? '[DRY RUN] ' : ''}Matched order item "${
             orderItem.title
           }" to product "${matchedProduct.name}"`

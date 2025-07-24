@@ -1,3 +1,4 @@
+import logger from "../../../../utils/logger";
 import TemplateManager from "../../../../services/TemplateManager";
 
 /**
@@ -9,7 +10,7 @@ export const fetchTemplates = async () => {
     // Use the existing TemplateManager service
     return await TemplateManager.getAll();
   } catch (error) {
-    console.error("Error fetching templates:", error);
+    logger.error("Error fetching templates:", error);
     throw error;
   }
 };
@@ -24,7 +25,7 @@ export const saveTemplate = async (template) => {
     // Use the existing TemplateManager service
     return await TemplateManager.save(template);
   } catch (error) {
-    console.error("Error saving template:", error);
+    logger.error("Error saving template:", error);
     throw error;
   }
 };
@@ -39,7 +40,7 @@ export const deleteTemplate = async (templateId) => {
     // Use the existing TemplateManager service
     return await TemplateManager.delete(templateId);
   } catch (error) {
-    console.error("Error deleting template:", error);
+    logger.error("Error deleting template:", error);
     throw error;
   }
 };

@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState } from "react";
 import { X, Save, AlertTriangle } from "lucide-react";
 import { Button } from "../../ui";
@@ -97,7 +98,7 @@ const BulkEditModal = ({
       await onSave(selectedProducts, updateData);
       onClose();
     } catch (error) {
-      console.error("Error during bulk update:", error);
+      logger.error("Error during bulk update:", error);
     } finally {
       setSaving(false);
     }

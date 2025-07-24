@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
 import {
@@ -39,7 +40,7 @@ const OperationalAnalytics = ({ timeframe = "30d" }) => {
       setPerformanceData(performance);
       setAnomalies(anomalyData);
     } catch (err) {
-      console.error("Operational analytics error:", err);
+      logger.error("Operational analytics error:", err);
       setError(err.message);
     } finally {
       setLoading(false);

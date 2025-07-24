@@ -5,7 +5,7 @@ try {
   speakeasy = require('speakeasy');
   QRCode = require('qrcode');
 } catch (error) {
-  console.warn(
+  logger.warn(
     'Two-factor authentication dependencies not available:',
     error.message
   );

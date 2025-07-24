@@ -1,3 +1,4 @@
+import logger from "../../../../utils/logger";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { elementDefaults, ELEMENT_TYPES } from "../constants/index.js";
 import { generateId } from "../utils/designerUtils.js";
@@ -76,7 +77,7 @@ export const useDesignerState = () => {
   const elementOperations = useMemo(
     () => ({
       add: (type, position = { x: 10, y: 10 }) => {
-        console.log("useDesignerState: Adding element", type, position);
+        logger.info("useDesignerState: Adding element", type, position);
         
         // Get base element defaults
         const baseDefaults = elementDefaults[type] || {};
@@ -103,13 +104,13 @@ export const useDesignerState = () => {
           position,
           zIndex: elements.length + 1,
         };
-        console.log("useDesignerState: Created new element", newElement);
+        logger.info("useDesignerState: Created new element", newElement);
 
         const newElements = [...elements, newElement];
         setElements(newElements);
         setSelectedElement(newElement);
         saveToHistory(newElements);
-        console.log(
+        logger.info(
           "useDesignerState: Element added successfully, total elements:",
           newElements.length
         );

@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import axios from "axios";
 
 const API_URL =
@@ -30,7 +31,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error("API Error:", error.response?.data || error.message);
+    logger.error("API Error:", error.response?.data || error.message);
 
     // Handle specific error cases
     if (error.response?.status === 401) {
@@ -59,7 +60,7 @@ const orderService = {
         return acc;
       }, {});
 
-      console.log("OrderService: Making request with params:", cleanParams);
+      logger.info("OrderService: Making request with params:", cleanParams);
       const response = await api.get("/", { params: cleanParams });
 
       // Ensure consistent response structure
@@ -80,10 +81,10 @@ const orderService = {
         stats: response.data.stats || {},
       };
 
-      console.log("OrderService: Processed response:", result);
+      logger.info("OrderService: Processed response:", result);
       return result;
     } catch (error) {
-      console.error("OrderService: Error fetching orders:", error);
+      logger.error("OrderService: Error fetching orders:", error);
       return {
         success: false,
         message: error.response?.data?.message || error.message,
@@ -505,11 +506,11 @@ const orderService = {
         throw new Error("Order ID is required");
       }
 
-      console.log(`Accepting order with ID: ${id}`);
+      logger.info(`Accepting order with ID: ${id}`);
 
       const response = await api.put(`/${id}/accept`);
 
-      console.log("Accept order response:", response.data);
+      logger.info("Accept order response:", response.data);
 
       return {
         success: response.data?.success ?? true,
@@ -517,7 +518,7 @@ const orderService = {
         data: response.data?.data || null,
       };
     } catch (error) {
-      console.error("Error accepting order:", error);
+      logger.error("Error accepting order:", error);
       return {
         success: false,
         message: error.response?.data?.message || error.message,

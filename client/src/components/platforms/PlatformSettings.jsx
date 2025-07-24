@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Container,
@@ -105,7 +106,7 @@ const PlatformSettings = () => {
         showAlert("Force sync failed: " + response.message, "error");
       }
     } catch (error) {
-      console.error("Force sync failed:", error);
+      logger.error("Force sync failed:", error);
       showAlert(
         "Force sync failed: " +
           (error.response?.data?.message || error.message),

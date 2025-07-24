@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { Card, CardHeader, CardTitle, CardContent, Button } from "../ui";
@@ -98,7 +99,7 @@ const TranslationManager = () => {
         setTranslations({});
       }
     } catch (error) {
-      console.error("Error loading translations:", error);
+      logger.error("Error loading translations:", error);
       // Fallback to empty translations
       setTranslations({});
     } finally {
@@ -148,12 +149,12 @@ const TranslationManager = () => {
           unflattened
         );
       } catch (apiError) {
-        console.warn("Could not save to server, saved locally:", apiError);
+        logger.warn("Could not save to server, saved locally:", apiError);
       }
 
       showAlert(t("translationManager.saved"), "success");
     } catch (error) {
-      console.error("Error saving translations:", error);
+      logger.error("Error saving translations:", error);
       showAlert(t("translationManager.error"), "error");
     } finally {
       setLoading(false);
@@ -165,7 +166,7 @@ const TranslationManager = () => {
       await translationService.exportTranslations(selectedLanguage);
       showAlert(t("common.success"), "success");
     } catch (error) {
-      console.error("Export error:", error);
+      logger.error("Export error:", error);
       showAlert(t("common.error"), "error");
     }
   };
@@ -180,7 +181,7 @@ const TranslationManager = () => {
       await loadTranslations(); // Reload translations
       showAlert(t("common.success"), "success");
     } catch (error) {
-      console.error("Import error:", error);
+      logger.error("Import error:", error);
       showAlert(t("common.error"), "error");
     } finally {
       setLoading(false);

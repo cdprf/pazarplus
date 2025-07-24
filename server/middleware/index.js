@@ -1,4 +1,5 @@
 const { authorize } = require('./authorize');
+const logger = require("../utils/logger");
 const {
   auth,
   adminAuth,
@@ -70,13 +71,13 @@ const createCacheMiddleware = (ttl = 300) => {
         // Cache successful responses
         if (res.statusCode === 200) {
           cacheService.set(cacheKey, data, ttl).catch((err) => {
-            console.warn('Cache set failed:', err);
+            logger.warn('Cache set failed:', err);
           });
         }
         return originalJson.call(this, data);
       };
     } catch (error) {
-      console.warn('Cache middleware error:', error);
+      logger.warn('Cache middleware error:', error);
     }
 
     next();

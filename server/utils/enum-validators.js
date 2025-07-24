@@ -1,3 +1,4 @@
+const logger = require("../utils/logger");
 /**
  * Enum validation and mapping utilities
  * Prevents enum-related database errors by validating and mapping values
@@ -199,7 +200,7 @@ function mapOrderStatus(externalStatus, platformType = null) {
     return mappedUpperStatus;
   }
 
-  console.warn(
+  logger.warn(
     `Unknown order status "${externalStatus}" from platform "${platformType}", defaulting to "unknown"`
   );
   return 'unknown';
@@ -227,7 +228,7 @@ function sanitizePlatformType(platformType) {
     return platformType.toLowerCase();
   }
 
-  console.warn(
+  logger.warn(
     `Invalid platform type "${platformType}", filtering out from database operation`
   );
   return null;
@@ -258,7 +259,7 @@ function sanitizeQueryFilter(queryFilter) {
   // Handle orderStatus
   if (sanitized.orderStatus) {
     if (!isValidOrderStatus(sanitized.orderStatus)) {
-      console.warn(
+      logger.warn(
         `Invalid order status in query filter: "${sanitized.orderStatus}", removing from filter`
       );
       delete sanitized.orderStatus;

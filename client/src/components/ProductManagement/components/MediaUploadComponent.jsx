@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useRef } from "react";
 import { Upload, X, Image, Video, FileText } from "lucide-react";
 import { Button } from "../../ui";
@@ -156,7 +157,7 @@ const MediaUploadComponent = ({
         throw new Error(result.error || "Upload failed");
       }
     } catch (error) {
-      console.error("Upload error:", error);
+      logger.error("Upload error:", error);
       showAlert(`Upload failed: ${error.message}`, "error");
     } finally {
       setIsUploading(false);

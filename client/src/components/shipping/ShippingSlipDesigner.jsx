@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Palette,
@@ -109,7 +110,7 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
       icon: Type,
       label: "Metin Ekle",
       action: () => {
-        console.log("Adding text element");
+        logger.info("Adding text element");
         addElement("text", { x: 10, y: 10 });
       },
       shortcut: "T",
@@ -356,7 +357,7 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
 
       showAlert("Template exported successfully!", "success");
     } catch (error) {
-      console.error("Error exporting template:", error);
+      logger.error("Error exporting template:", error);
       showAlert("Error exporting template", "error");
     }
   }, [templateConfig, elements, showAlert]);
@@ -374,7 +375,7 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
           setElements(templateData.elements);
           showAlert("Template imported successfully!", "success");
         } catch (error) {
-          console.error("Error importing template:", error);
+          logger.error("Error importing template:", error);
           showAlert("Error importing template", "error");
         }
       };
@@ -395,7 +396,7 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
           throw new Error("Invalid template format");
         }
       } catch (error) {
-        console.error("Error importing template:", error);
+        logger.error("Error importing template:", error);
         showAlert("Error importing template: " + error.message, "error");
       }
     },
@@ -504,7 +505,7 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
           );
           break;
         default:
-          console.warn("Unknown resize corner:", resizeInfo.corner);
+          logger.warn("Unknown resize corner:", resizeInfo.corner);
           return;
       }
 
@@ -540,7 +541,7 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
           });
         }
       } catch (error) {
-        console.error("Error handling canvas drop:", error);
+        logger.error("Error handling canvas drop:", error);
       }
     },
     [addElement]
@@ -553,10 +554,10 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
 
   // Template operations
   const handleSaveTemplate = useCallback(async () => {
-    console.log("🔧 DEBUG: handleSaveTemplate called");
-    console.log("🔧 DEBUG: templateConfig:", templateConfig);
-    console.log("🔧 DEBUG: elements:", elements);
-    console.log("🔧 DEBUG: onSave callback:", onSave);
+    logger.info("🔧 DEBUG: handleSaveTemplate called");
+    logger.info("🔧 DEBUG: templateConfig:", templateConfig);
+    logger.info("🔧 DEBUG: elements:", elements);
+    logger.info("🔧 DEBUG: onSave callback:", onSave);
 
     try {
       setLoading(true);
@@ -568,21 +569,21 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
         updatedAt: new Date().toISOString(),
       };
 
-      console.log("🔧 DEBUG: Template data to save:", templateData);
+      logger.info("🔧 DEBUG: Template data to save:", templateData);
 
       if (onSave) {
-        console.log("🔧 DEBUG: Calling onSave callback");
+        logger.info("🔧 DEBUG: Calling onSave callback");
         await onSave(templateData);
-        console.log("🔧 DEBUG: onSave callback completed successfully");
+        logger.info("🔧 DEBUG: onSave callback completed successfully");
       } else {
-        console.log("🔧 DEBUG: No onSave callback, using TemplateManager.save");
+        logger.info("🔧 DEBUG: No onSave callback, using TemplateManager.save");
         await TemplateManager.save(templateData);
-        console.log("🔧 DEBUG: TemplateManager.save completed successfully");
+        logger.info("🔧 DEBUG: TemplateManager.save completed successfully");
       }
 
       showAlert("Template saved successfully!", "success");
     } catch (error) {
-      console.error("🔧 DEBUG: Error saving template:", error);
+      logger.error("🔧 DEBUG: Error saving template:", error);
       showAlert("Error saving template", "error");
     } finally {
       setLoading(false);
@@ -592,11 +593,11 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
   // Handle template configuration changes
   const handleConfigChange = useCallback(
     (newConfig) => {
-      console.log("🔧 DEBUG: handleConfigChange called", newConfig);
+      logger.info("🔧 DEBUG: handleConfigChange called", newConfig);
 
       // Check if we need to apply default font to all text elements
       if (newConfig.applyDefaultFontToAll && newConfig.defaultFont) {
-        console.log(
+        logger.info(
           "🔧 DEBUG: Applying default font to all text elements",
           newConfig.defaultFont
         );
@@ -1152,7 +1153,7 @@ const ShippingSlipDesigner = ({ initialTemplate, onSave, onCancel }) => {
                 <Button
                   size="sm"
                   onClick={() => {
-                    console.log("Save button clicked!");
+                    logger.info("Save button clicked!");
                     alert("Save button clicked - debugging!");
                     handleSaveTemplate();
                   }}

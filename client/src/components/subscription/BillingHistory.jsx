@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -55,7 +56,7 @@ const BillingHistory = () => {
         setInvoices(data.invoices || []);
       }
     } catch (error) {
-      console.error("Failed to fetch billing history:", error);
+      logger.error("Failed to fetch billing history:", error);
     } finally {
       setLoading(false);
     }
@@ -84,7 +85,7 @@ const BillingHistory = () => {
         document.body.removeChild(a);
       }
     } catch (error) {
-      console.error("Failed to download invoice:", error);
+      logger.error("Failed to download invoice:", error);
       alert("Fatura indirme işlemi başarısız oldu.");
     }
   };

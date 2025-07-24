@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * OrderProductLinks - Enhanced product linking component
  * Shows order items with images, links to product details and platform sources
@@ -53,7 +54,7 @@ const OrderProductLinks = ({ order, onProductClick }) => {
         setOrderItems(response.data.data);
       }
     } catch (error) {
-      console.error("Error fetching order items with products:", error);
+      logger.error("Error fetching order items with products:", error);
     } finally {
       setLoading(false);
     }
@@ -82,7 +83,7 @@ const OrderProductLinks = ({ order, onProductClick }) => {
         setSearchResults(response.data.data);
       }
     } catch (error) {
-      console.error("Error searching products:", error);
+      logger.error("Error searching products:", error);
       setSearchResults([]);
     } finally {
       setSearchingProducts(false);
@@ -111,7 +112,7 @@ const OrderProductLinks = ({ order, onProductClick }) => {
       setSearchTerm("");
       setSearchResults([]);
     } catch (error) {
-      console.error("Error linking item with product:", error);
+      logger.error("Error linking item with product:", error);
     }
   };
 
@@ -125,7 +126,7 @@ const OrderProductLinks = ({ order, onProductClick }) => {
       // Refresh the order items
       await fetchOrderItemsWithProducts();
     } catch (error) {
-      console.error("Error unlinking item from product:", error);
+      logger.error("Error unlinking item from product:", error);
     }
   };
 

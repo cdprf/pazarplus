@@ -1,3 +1,4 @@
+import logger from "../../../../utils/logger";
 import React, { useEffect, useRef } from "react";
 import QRCode from "qrcode";
 
@@ -32,7 +33,7 @@ const QRCodeRenderer = ({
         },
         (error) => {
           if (error) {
-            console.error("QR Code generation error:", error);
+            logger.error("QR Code generation error:", error);
             // Fallback: draw a simple placeholder
             ctx.fillStyle = "#f3f4f6";
             ctx.fillRect(0, 0, canvas.width, canvas.height);

@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useCallback, useMemo } from "react";
 import { Nav, Badge, Spinner, Alert } from "react-bootstrap";
 import {
@@ -91,7 +92,7 @@ const AnalyticsNavigation = ({
           onTabChange(tabKey);
         }
       } catch (err) {
-        console.error("Analytics navigation error:", err);
+        logger.error("Analytics navigation error:", err);
       }
     },
     [activeTab, onTabChange]

@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import api from "./api";
 
 /**
@@ -57,7 +58,7 @@ class AnalyticsService {
 
       return response.data;
     } catch (error) {
-      console.error(`Error fetching ${endpoint}:`, error);
+      logger.error(`Error fetching ${endpoint}:`, error);
       throw this.enhanceError(error, endpoint);
     }
   }
@@ -280,7 +281,7 @@ class AnalyticsService {
       );
       return response.data;
     } catch (error) {
-      console.error("Error exporting analytics:", error);
+      logger.error("Error exporting analytics:", error);
       throw this.enhanceError(error, "export");
     }
   }
@@ -320,7 +321,7 @@ class AnalyticsService {
         generatedAt: new Date(),
       };
     } catch (error) {
-      console.error("Error fetching overview analytics:", error);
+      logger.error("Error fetching overview analytics:", error);
       // Return partial data if some endpoints fail
       try {
         const dashboard = await this.getDashboardAnalytics(timeframe);
@@ -368,7 +369,7 @@ class AnalyticsService {
       const response = await api.get("/analytics/health");
       return response.data;
     } catch (error) {
-      console.error("Analytics health check failed:", error);
+      logger.error("Analytics health check failed:", error);
       return { status: "error", message: error.message };
     }
   }

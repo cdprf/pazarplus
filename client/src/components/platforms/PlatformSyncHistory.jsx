@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Container,
@@ -40,7 +41,7 @@ const PlatformSyncHistory = () => {
       const response = await api.platforms.getConnection(platformId);
       setPlatform(response.data);
     } catch (err) {
-      console.error("Error fetching platform info:", err);
+      logger.error("Error fetching platform info:", err);
       setError("Failed to load platform information");
     }
   }, [platformId]);
@@ -60,7 +61,7 @@ const PlatformSyncHistory = () => {
         setCurrentPage(response.data.currentPage || 1);
         setTotalPages(response.data.totalPages || 1);
       } catch (err) {
-        console.error("Error fetching sync history:", err);
+        logger.error("Error fetching sync history:", err);
         setError("Failed to load sync history");
       } finally {
         setLoading(false);
@@ -108,7 +109,7 @@ const PlatformSyncHistory = () => {
       // Refresh sync history after triggering
       fetchSyncHistory();
     } catch (err) {
-      console.error("Error triggering sync:", err);
+      logger.error("Error triggering sync:", err);
       setError("Failed to trigger sync");
     }
   };

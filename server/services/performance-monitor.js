@@ -2,7 +2,7 @@ let prometheus;
 try {
   prometheus = require("prom-client");
 } catch (error) {
-  console.warn(
+  logger.warn(
     "prom-client module not available, performance monitoring disabled"
   );
   prometheus = null;
@@ -313,7 +313,7 @@ class PerformanceMonitor {
             this.dbPoolSize.set(0);
           }
         } else {
-          logger.debug("Database connection manager not available");
+          logger.info("Database connection manager not available");
           this.dbConnectionPool.set(0);
           this.dbPoolSize.set(0);
         }
@@ -340,7 +340,7 @@ class PerformanceMonitor {
           this.activeUsers.set(activeUserCount);
         }
       } catch (userError) {
-        logger.debug("Could not get active user count:", userError.message);
+        logger.info("Could not get active user count:", userError.message);
       }
 
       // Platform connections
@@ -355,7 +355,7 @@ class PerformanceMonitor {
           }
         }
       } catch (platformError) {
-        logger.debug(
+        logger.info(
           "Could not get platform connection counts:",
           platformError.message
         );

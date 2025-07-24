@@ -1,4 +1,5 @@
 /**
+const logger = require("../utils/logger");
  * Product Linking Service
  * Matches order items with products in the database using multiple strategies
  */
@@ -107,7 +108,7 @@ class ProductLinkingService {
 
       return uniqueProducts;
     } catch (error) {
-      console.error('Error finding matching products:', error);
+      logger.error('Error finding matching products:', error);
       return [];
     }
   }
@@ -141,7 +142,7 @@ class ProductLinkingService {
 
       return itemsWithProducts;
     } catch (error) {
-      console.error('Error getting order items with products:', error);
+      logger.error('Error getting order items with products:', error);
       throw error;
     }
   }
@@ -158,7 +159,7 @@ class ProductLinkingService {
 
       return { success: true };
     } catch (error) {
-      console.error('Error linking order item with product:', error);
+      logger.error('Error linking order item with product:', error);
       throw error;
     }
   }
@@ -175,7 +176,7 @@ class ProductLinkingService {
 
       return { success: true };
     } catch (error) {
-      console.error('Error unlinking order item from product:', error);
+      logger.error('Error unlinking order item from product:', error);
       throw error;
     }
   }
@@ -212,7 +213,7 @@ class ProductLinkingService {
         images: product.images ? JSON.parse(product.images) : []
       }));
     } catch (error) {
-      console.error('Error searching products:', error);
+      logger.error('Error searching products:', error);
       throw error;
     }
   }

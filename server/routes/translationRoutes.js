@@ -1,4 +1,5 @@
 const express = require("express");
+const logger = require("../utils/logger");
 const router = express.Router();
 const fs = require("fs").promises;
 const path = require("path");
@@ -36,7 +37,7 @@ router.get("/:language", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error loading translations:", error);
+    logger.error("Error loading translations:", error);
     res.status(500).json({
       success: false,
       message: "Failed to load translations",
@@ -78,7 +79,7 @@ router.put("/:language", async (req, res) => {
       const currentContent = await fs.readFile(filePath, "utf8");
       await fs.writeFile(backupPath, currentContent);
     } catch (error) {
-      console.warn("Could not create backup:", error);
+      logger.warn("Could not create backup:", error);
     }
 
     // Write new translations
@@ -93,7 +94,7 @@ router.put("/:language", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error updating translations:", error);
+    logger.error("Error updating translations:", error);
     res.status(500).json({
       success: false,
       message: "Failed to update translations",
@@ -126,7 +127,7 @@ router.get("/", async (req, res) => {
           translationCount: flatCount,
         });
       } catch (error) {
-        console.warn(`Could not load language ${lang}:`, error);
+        logger.warn(`Could not load language ${lang}:`, error);
       }
     }
 
@@ -135,7 +136,7 @@ router.get("/", async (req, res) => {
       data: languages,
     });
   } catch (error) {
-    console.error("Error listing languages:", error);
+    logger.error("Error listing languages:", error);
     res.status(500).json({
       success: false,
       message: "Failed to list languages",
@@ -186,7 +187,7 @@ router.post("/:language/keys", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error adding translation key:", error);
+    logger.error("Error adding translation key:", error);
     res.status(500).json({
       success: false,
       message: "Failed to add translation key",
@@ -235,7 +236,7 @@ router.delete("/:language/keys/:key", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error deleting translation key:", error);
+    logger.error("Error deleting translation key:", error);
     res.status(500).json({
       success: false,
       message: "Failed to delete translation key",

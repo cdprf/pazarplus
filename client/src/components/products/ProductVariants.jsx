@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Package2,
@@ -255,7 +256,7 @@ const ProductVariants = ({ product }) => {
       const variants = await PlatformVariantsAPI.getProductVariants(product.id);
       setVariants(variants);
     } catch (error) {
-      console.error("Fetch variants error:", error);
+      logger.error("Fetch variants error:", error);
       showAlert(error.message || "Varyantlar getirilemedi", "error");
     } finally {
       setLoading(false);
@@ -293,7 +294,7 @@ const ProductVariants = ({ product }) => {
       showAlert("Varyant başarıyla silindi", "success");
       fetchVariants();
     } catch (error) {
-      console.error("Delete variant error:", error);
+      logger.error("Delete variant error:", error);
       showAlert(error.message || "Varyant silinemedi", "error");
     }
   };
@@ -305,7 +306,7 @@ const ProductVariants = ({ product }) => {
       showAlert("Varyant yayınlanıyor...", "info");
       fetchVariants();
     } catch (error) {
-      console.error("Publish variant error:", error);
+      logger.error("Publish variant error:", error);
       showAlert(error.message || "Varyant yayınlanamadı", "error");
     }
   };
@@ -317,7 +318,7 @@ const ProductVariants = ({ product }) => {
       showAlert("Varyant senkronize ediliyor...", "info");
       fetchVariants();
     } catch (error) {
-      console.error("Sync variant error:", error);
+      logger.error("Sync variant error:", error);
       showAlert(error.message || "Varyant senkronize edilemedi", "error");
     }
   };
@@ -325,7 +326,7 @@ const ProductVariants = ({ product }) => {
   // Handle view variant
   const handleViewVariant = (variant) => {
     // TODO: Implement variant detail view
-    console.log("View variant:", variant);
+    logger.info("View variant:", variant);
   };
 
   // Handle modal close

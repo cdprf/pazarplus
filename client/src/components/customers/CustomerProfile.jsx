@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * Customer Profile Component
  * Shows customer details and order history based on email/name matching
@@ -61,7 +62,7 @@ const CustomerProfile = () => {
       try {
         await api.post("/customers/sync");
       } catch (syncError) {
-        console.warn(
+        logger.warn(
           "Customer sync failed, proceeding with existing data:",
           syncError.message
         );
@@ -106,7 +107,7 @@ const CustomerProfile = () => {
           return;
         }
       } catch (customerError) {
-        console.warn(
+        logger.warn(
           "Customer not found in customers table, falling back to orders search"
         );
       }
@@ -175,14 +176,14 @@ const CustomerProfile = () => {
           setCustomerQuestions(questionsResponse.data.data || []);
         }
       } catch (questionsError) {
-        console.warn(
+        logger.warn(
           "Error fetching customer questions:",
           questionsError.message
         );
         // Don't show error to user as questions are additional info
       }
     } catch (error) {
-      console.error("Error fetching customer data:", error);
+      logger.error("Error fetching customer data:", error);
       showNotification("Müşteri bilgileri yüklenirken hata oluştu", "error");
     } finally {
       setLoading(false);
@@ -385,7 +386,7 @@ const CustomerProfile = () => {
         const jsonString = charArray.join("");
         return JSON.parse(jsonString);
       } catch (error) {
-        console.warn("Failed to parse shipping address:", error);
+        logger.warn("Failed to parse shipping address:", error);
         return null;
       }
     }
@@ -395,7 +396,7 @@ const CustomerProfile = () => {
       try {
         return JSON.parse(addressData);
       } catch (error) {
-        console.warn("Failed to parse address string:", error);
+        logger.warn("Failed to parse address string:", error);
         return null;
       }
     }

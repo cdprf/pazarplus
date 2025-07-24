@@ -1,4 +1,5 @@
 const Joi = require("joi");
+const logger = require("../utils/logger");
 const path = require("path");
 const config = require("./config");
 
@@ -106,7 +107,10 @@ const loadConfig = () => {
  */
 const getDatabaseConfig = (config) => {
   const baseConfig = {
-    logging: config.NODE_ENV === "development" ? console.log : false,
+    logging:
+      config.NODE_ENV === "development"
+        ? (msg) => logger.info("DB Query:", { query: msg })
+        : false,
     define: {
       timestamps: true,
       underscored: false,

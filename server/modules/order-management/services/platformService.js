@@ -42,7 +42,7 @@ const testConnection = async (connection) => {
     const service = PlatformServiceFactory.createService(connection);
     return await service.testConnection();
   } catch (error) {
-    console.error(`Connection test failed for ${connection.platformType}:`, error);
+    logger.error(`Connection test failed for ${connection.platformType}:`, error);
     return {
       success: false,
       error: error.message
@@ -61,7 +61,7 @@ const syncOrders = async (connection, userId) => {
     const service = PlatformServiceFactory.createService(connection);
     return await service.syncOrders(userId);
   } catch (error) {
-    console.error(`Order sync failed for ${connection.platformType}:`, error);
+    logger.error(`Order sync failed for ${connection.platformType}:`, error);
     return {
       success: false,
       error: error.message
@@ -81,7 +81,7 @@ const updateOrderStatus = async (connection, orderId, status) => {
     const service = PlatformServiceFactory.createService(connection);
     return await service.updateOrderStatus(orderId, status);
   } catch (error) {
-    console.error(`Order status update failed for ${connection.platformType}:`, error);
+    logger.error(`Order status update failed for ${connection.platformType}:`, error);
     return {
       success: false,
       error: error.message

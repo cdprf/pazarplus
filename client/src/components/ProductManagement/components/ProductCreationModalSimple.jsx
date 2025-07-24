@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React from "react";
 import { Modal, Button, Alert } from "react-bootstrap";
 import "./ProductCreationModalSimple.css";
@@ -6,7 +7,7 @@ import "./ProductCreationModalSimple.css";
  * Simple Debug Modal to test modal display
  */
 const ProductCreationModal = ({ show, onHide, onSuccess }) => {
-  console.log("ProductCreationModal rendering with show =", show);
+  logger.info("ProductCreationModal rendering with show =", show);
 
   return (
     <div>

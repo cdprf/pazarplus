@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import { Modal, Button, Input } from "../../ui";
 import { useAlert } from "../../../contexts/AlertContext";
@@ -68,7 +69,7 @@ const PlatformVariantModal = ({
           throw new Error(data.message || "Sync failed");
         }
       } catch (error) {
-        console.error("Error syncing categories:", error);
+        logger.error("Error syncing categories:", error);
         showAlert(`Failed to sync categories: ${error.message}`, "error");
       }
     },
@@ -108,7 +109,7 @@ const PlatformVariantModal = ({
           throw new Error(data.message || "Failed to fetch categories");
         }
       } catch (error) {
-        console.error("Error fetching categories:", error);
+        logger.error("Error fetching categories:", error);
         showAlert(`Failed to fetch categories: ${error.message}`, "error");
       } finally {
         setLoading(false);
@@ -148,7 +149,7 @@ const PlatformVariantModal = ({
           throw new Error(data.message || "Failed to fetch category fields");
         }
       } catch (error) {
-        console.error("Error fetching category fields:", error);
+        logger.error("Error fetching category fields:", error);
         showAlert(`Failed to fetch category fields: ${error.message}`, "error");
       } finally {
         setLoading(false);
@@ -253,7 +254,7 @@ const PlatformVariantModal = ({
         throw new Error(data.message || "Failed to create product variant");
       }
     } catch (error) {
-      console.error("Error creating variant:", error);
+      logger.error("Error creating variant:", error);
       showAlert(`Failed to create variant: ${error.message}`, "error");
     } finally {
       setLoading(false);

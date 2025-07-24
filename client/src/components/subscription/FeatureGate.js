@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React, { useState, useEffect } from "react";
 import { Lock, Crown, Star } from "lucide-react";
 import { useSubscription } from "../../hooks/useSubscription";
@@ -23,7 +24,7 @@ const FeatureGate = ({
       const access = await hasFeatureAccess(feature);
       setHasAccess(access);
     } catch (error) {
-      console.error("Feature access check failed:", error);
+      logger.error("Feature access check failed:", error);
       setHasAccess(false);
     } finally {
       setLoading(false);
@@ -68,10 +69,10 @@ const UpgradePrompt = ({ feature, planName, onUpgrade }) => {
       const success = await onUpgrade("pro"); // Default to pro plan
       if (success) {
         // Handle successful upgrade
-        console.log("Upgrade successful");
+        logger.info("Upgrade successful");
       }
     } catch (error) {
-      console.error("Upgrade failed:", error);
+      logger.error("Upgrade failed:", error);
     } finally {
       setUpgrading(false);
     }
@@ -164,7 +165,7 @@ export const useFeatureAccess = (feature) => {
       const access = await hasFeatureAccess(feature);
       setHasAccess(access);
     } catch (error) {
-      console.error("Feature access check failed:", error);
+      logger.error("Feature access check failed:", error);
       setHasAccess(false);
     } finally {
       setLoading(false);

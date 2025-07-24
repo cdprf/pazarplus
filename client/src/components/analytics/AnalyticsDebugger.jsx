@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import analyticsService from "../../services/analyticsService";
 
@@ -12,7 +13,7 @@ const AnalyticsDebugger = () => {
 
   useEffect(() => {
     const testAnalyticsAPI = async () => {
-      console.log("🔍 Starting analytics API debug test...");
+      logger.info("🔍 Starting analytics API debug test...");
       const startTime = Date.now();
 
       try {
@@ -22,7 +23,7 @@ const AnalyticsDebugger = () => {
         const result = await analyticsService.getDashboardAnalytics("30d");
         const endTime = Date.now();
 
-        console.log("✅ Analytics API Response:", result);
+        logger.info("✅ Analytics API Response:", result);
 
         setDebugInfo({
           loading: false,
@@ -33,7 +34,7 @@ const AnalyticsDebugger = () => {
         });
       } catch (error) {
         const endTime = Date.now();
-        console.error("❌ Analytics API Error:", error);
+        logger.error("❌ Analytics API Error:", error);
 
         setDebugInfo({
           loading: false,

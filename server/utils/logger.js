@@ -1,39 +1,39 @@
-const winston = require('winston');
-const path = require('path');
-const fs = require('fs');
+const winston = require("winston");
+const path = require("path");
+const fs = require("fs");
 
 // Try to load winston-daily-rotate-file, use basic file transport if not available
 let DailyRotateFile;
 let useDailyRotate = true;
 
 try {
-  DailyRotateFile = require('winston-daily-rotate-file');
+  DailyRotateFile = require("winston-daily-rotate-file");
 } catch (error) {
-  console.warn(
-    'winston-daily-rotate-file not available, using basic file transport'
+  logger.warn(
+    "winston-daily-rotate-file not available, using basic file transport"
   );
   useDailyRotate = false;
 }
 
 // Load environment configuration
-require('dotenv').config();
+require("dotenv").config();
 
 // Create logs directory if it doesn't exist (skip in production to avoid permission issues)
 const logsDir = path.resolve(
   __dirname,
-  process.env.LOG_FILE_PATH || '../../logs'
+  process.env.LOG_FILE_PATH || "../../logs"
 );
 
 // Only create logs directory in development or if we have write permissions
 let canWriteLogs = true;
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== "production") {
   try {
     if (!fs.existsSync(logsDir)) {
       fs.mkdirSync(logsDir, { recursive: true });
     }
   } catch (error) {
-    console.warn(
-      'Cannot create logs directory, file logging disabled:',
+    logger.warn(
+      "Cannot create logs directory, file logging disabled:",
       error.message
     );
     canWriteLogs = false;
@@ -45,17 +45,17 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Define the custom format for structured logging
 const customFormat = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
+  winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss.SSS" }),
   winston.format.errors({ stack: true }),
   winston.format.json(),
   winston.format.printf((info) => {
     const { timestamp, level, message, service, ...meta } = info;
 
     // For console output, use a more readable format
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === "development") {
       const metaString = Object.keys(meta).length
         ? `\n${JSON.stringify(meta, null, 2)}`
-        : '';
+        : "";
       return `${timestamp} [${level.toUpperCase()}] [${service}]: ${message}${metaString}`;
     }
 
@@ -65,7 +65,7 @@ const customFormat = winston.format.combine(
       level,
       message,
       service,
-      ...meta
+      ...meta,
     });
   })
 );
@@ -73,16 +73,16 @@ const customFormat = winston.format.combine(
 // Console format for development
 const consoleFormat = winston.format.combine(
   winston.format.colorize(),
-  winston.format.timestamp({ format: 'HH:mm:ss' }),
+  winston.format.timestamp({ format: "HH:mm:ss" }),
   winston.format.printf((info) => {
     const { timestamp, level, message, service, ...meta } = info;
     const metaString =
       Object.keys(meta).length &&
-      Object.keys(meta).some((key) => key !== 'service')
+      Object.keys(meta).some((key) => key !== "service")
         ? ` ${JSON.stringify(meta, null, 0)}`
-        : '';
+        : "";
     return `${timestamp} [${level}] [${
-      service || 'app'
+      service || "app"
     }]: ${message}${metaString}`;
   })
 );
@@ -101,15 +101,15 @@ const createFileTransport = (
   if (useDailyRotate && DailyRotateFile) {
     return new DailyRotateFile({
       filename: path.join(logsDir, `${filename}-%DATE%.log`),
-      datePattern: 'YYYY-MM-DD',
+      datePattern: "YYYY-MM-DD",
       level: level,
-      maxSize: maxSize || process.env.LOG_MAX_SIZE || '20m',
-      maxFiles: maxFiles || process.env.LOG_MAX_FILES || '14d',
+      maxSize: maxSize || process.env.LOG_MAX_SIZE || "20m",
+      maxFiles: maxFiles || process.env.LOG_MAX_FILES || "14d",
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.json()
       ),
-      auditFile: path.join(logsDir, `.${filename}-audit.json`)
+      auditFile: path.join(logsDir, `.${filename}-audit.json`),
     });
   } else {
     // Fallback to basic file transport
@@ -121,62 +121,62 @@ const createFileTransport = (
       format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.json()
-      )
+      ),
     });
   }
 };
 
 // Create the logger instance with enhanced configuration
 const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
+  level: process.env.LOG_LEVEL || "info",
   defaultMeta: {
-    service: 'pazar-plus',
-    environment: process.env.NODE_ENV || 'development',
-    version: require('../../package.json').version
+    service: "pazar-plus",
+    environment: process.env.NODE_ENV || "development",
+    version: require("../../package.json").version,
   },
   transports: [
     // Error logs
-    createFileTransport('error', 'error'),
+    createFileTransport("error", "error"),
 
     // Application logs
-    createFileTransport('app'),
+    createFileTransport("app"),
 
     // Debug logs (only in development)
-    ...(process.env.NODE_ENV === 'development'
-      ? [createFileTransport('debug', 'debug')]
+    ...(process.env.NODE_ENV === "development"
+      ? [createFileTransport("debug", "debug")]
       : []),
 
     // Console output with error handling
-    ...(process.env.NODE_ENV !== 'production'
+    ...(process.env.NODE_ENV !== "production"
       ? [
-        new winston.transports.Console({
-          format: consoleFormat,
-          level: process.env.NODE_ENV === 'development' ? 'debug' : 'info',
-          handleExceptions: false, // Prevent exception loops
-          handleRejections: false // Prevent rejection loops
-        })
-      ]
+          new winston.transports.Console({
+            format: consoleFormat,
+            level: process.env.NODE_ENV === "development" ? "debug" : "info",
+            handleExceptions: false, // Prevent exception loops
+            handleRejections: false, // Prevent rejection loops
+          }),
+        ]
       : [
-        // In production, always include console transport for Render logs
-        new winston.transports.Console({
-          format: winston.format.combine(
-            winston.format.timestamp(),
-            winston.format.json()
-          ),
-          level: 'info',
-          handleExceptions: false,
-          handleRejections: false
-        })
-      ])
+          // In production, always include console transport for Render logs
+          new winston.transports.Console({
+            format: winston.format.combine(
+              winston.format.timestamp(),
+              winston.format.json()
+            ),
+            level: "info",
+            handleExceptions: false,
+            handleRejections: false,
+          }),
+        ]),
   ].filter(Boolean), // Filter out null transports
 
   // Handle uncaught exceptions and unhandled rejections
   // NOTE: Removed console transport from exception handlers to prevent EPIPE loops
-  exceptionHandlers: [createFileTransport('exceptions')].filter(Boolean),
+  exceptionHandlers: [createFileTransport("exceptions")].filter(Boolean),
 
-  rejectionHandlers: [createFileTransport('rejections')].filter(Boolean),
+  rejectionHandlers: [createFileTransport("rejections")].filter(Boolean),
 
-  exitOnError: false
+  exitOnError: false,
 });
 
 // Add custom methods for structured logging
@@ -186,16 +186,60 @@ logger.logRequest = (req, res, responseTime) => {
     url: req.originalUrl,
     statusCode: res.statusCode,
     responseTime: `${responseTime}ms`,
-    userAgent: req.get('User-Agent'),
+    userAgent: req.get("User-Agent"),
     ip: req.ip || req.connection.remoteAddress,
-    userId: req.user?.id || null
+    userId: req.user?.id || null,
+    apiVersion: req.apiVersion?.resolved || "v1",
+    contentLength: req.headers["content-length"] || 0,
+    referer: req.get("Referer") || null,
+    timestamp: new Date().toISOString(),
   };
 
   if (res.statusCode >= 400) {
-    logger.warn('HTTP Request Error', logData);
+    logger.warn("HTTP Request Error", logData);
   } else {
-    logger.info('HTTP Request', logData);
+    logger.info("HTTP Request", logData);
   }
+};
+
+// Enhanced operation logging
+logger.logOperation = (operation, context = {}) => {
+  const logData = {
+    operation,
+    timestamp: new Date().toISOString(),
+    ...context,
+  };
+
+  logger.info(`Operation: ${operation}`, logData);
+};
+
+// Endpoint access logging
+logger.logEndpoint = (endpoint, req, context = {}) => {
+  const logData = {
+    endpoint,
+    method: req.method,
+    ip: req.ip || req.connection.remoteAddress,
+    userId: req.user?.id || null,
+    userEmail: req.user?.email || null,
+    userAgent: req.get("User-Agent"),
+    timestamp: new Date().toISOString(),
+    apiVersion: req.apiVersion?.resolved || "v1",
+    ...context,
+  };
+
+  logger.info(`Endpoint Access: ${endpoint}`, logData);
+};
+
+// Service interaction logging
+logger.logServiceCall = (service, action, context = {}) => {
+  const logData = {
+    service,
+    action,
+    timestamp: new Date().toISOString(),
+    ...context,
+  };
+
+  logger.info(`Service Call: ${service}.${action}`, logData);
 };
 
 logger.logError = (error, context = {}) => {
@@ -204,31 +248,31 @@ logger.logError = (error, context = {}) => {
       name: error.name,
       message: error.message,
       stack: error.stack,
-      code: error.code
+      code: error.code,
     },
-    context
+    context,
   });
 };
 
 // Add error handling for transports to prevent EPIPE loops
-logger.on('error', (error) => {
-  if (error.code === 'EPIPE') {
+logger.on("error", (error) => {
+  if (error.code === "EPIPE") {
     // Silently ignore EPIPE errors to prevent infinite loops
     return;
   }
   // For other errors, try to log to a file only
   try {
-    console.error('[LOGGER ERROR]:', error.message);
+    logger.error("[LOGGER ERROR]:", error.message);
   } catch (e) {
     // If console fails, just ignore
   }
 });
 
 // Handle console transport errors specifically
-const consoleTransport = logger.transports.find((t) => t.name === 'console');
+const consoleTransport = logger.transports.find((t) => t.name === "console");
 if (consoleTransport) {
-  consoleTransport.on('error', (error) => {
-    if (error.code === 'EPIPE') {
+  consoleTransport.on("error", (error) => {
+    if (error.code === "EPIPE") {
       // Silently ignore EPIPE errors
       return;
     }
@@ -237,17 +281,17 @@ if (consoleTransport) {
 
 logger.logBusinessEvent = (event, data = {}) => {
   logger.info(`Business Event: ${event}`, {
-    eventType: 'business',
+    eventType: "business",
     event,
-    ...data
+    ...data,
   });
 };
 
 // Log system startup
-logger.info('Logger initialized', {
+logger.info("Logger initialized", {
   logLevel: logger.level,
   environment: process.env.NODE_ENV,
-  logsDirectory: logsDir
+  logsDirectory: logsDir,
 });
 
 module.exports = logger;

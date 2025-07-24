@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { cn } from "../../utils/cn";
 // Use Lucide React icons instead of Heroicons to avoid import issues
@@ -76,7 +77,7 @@ export const Toast = ({
         onClose?.(id);
       } catch (error) {
         if (process.env.NODE_ENV === "development") {
-          console.error("Error in toast onClose callback:", error);
+          logger.error("Error in toast onClose callback:", error);
         }
       }
     }, 300); // Match exit animation duration
@@ -86,7 +87,7 @@ export const Toast = ({
   useEffect(() => {
     // Debug logging (only in development)
     if (process.env.NODE_ENV === "development") {
-      console.log("🍞 Toast mounted:", {
+      logger.info("🍞 Toast mounted:", {
         id,
         title,
         message: safeMessage,
@@ -126,7 +127,7 @@ export const Toast = ({
       if (timerRef.current) clearTimeout(timerRef.current);
       if (progressRef.current) cancelAnimationFrame(progressRef.current);
       if (process.env.NODE_ENV === "development") {
-        console.log("🍞 Toast unmounted:", id);
+        logger.info("🍞 Toast unmounted:", id);
       }
     };
   }, [

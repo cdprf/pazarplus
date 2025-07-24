@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * Order Actions Component - Handles all order operations
  * Follows Pazar+ Design System patterns for buttons and actions
@@ -39,18 +40,18 @@ const OrderActions = ({
   // Enhanced print shipping slip using new service
   const handlePrintShippingSlip = useCallback(
     async (orderId) => {
-      console.log(
+      logger.info(
         "🚀 Enhanced handlePrintShippingSlip called with orderId:",
         orderId
       );
 
       if (isPrintingShippingSlip) {
-        console.log("⚠️ Already printing, ignoring request");
+        logger.info("⚠️ Already printing, ignoring request");
         return;
       }
 
       if (!orderId) {
-        console.log("❌ No orderId provided");
+        logger.info("❌ No orderId provided");
         showAlert("Sipariş kimliği eksik", "error");
         return;
       }
@@ -76,20 +77,20 @@ const OrderActions = ({
             }
           }
         } catch (templateError) {
-          console.warn(
+          logger.warn(
             "Template detection failed, proceeding without template:",
             templateError
           );
         }
 
-        console.log(
+        logger.info(
           "🔍 Template check - defaultTemplateId:",
           defaultTemplateId
         );
 
         // Check if a template is available before proceeding
         if (!defaultTemplateId) {
-          console.log("❌ No shipping template available - showing alert");
+          logger.info("❌ No shipping template available - showing alert");
           showAlert(
             "No shipping template found. Please create or link a shipping template to this order before printing.",
             "warning"
@@ -98,7 +99,7 @@ const OrderActions = ({
           return;
         }
 
-        console.log("✅ Template found, proceeding with PDF generation");
+        logger.info("✅ Template found, proceeding with PDF generation");
 
         // Use enhanced PDF service
         const result = await enhancedPDFService.generateAndOpenShippingSlip(
@@ -118,7 +119,7 @@ const OrderActions = ({
           throw new Error(result.message || result.error);
         }
       } catch (error) {
-        console.error("❌ Error printing shipping slip:", error);
+        logger.error("❌ Error printing shipping slip:", error);
         showAlert(
           `Gönderi belgesi yazdırılırken hata oluştu: ${error.message}`,
           "error"
@@ -134,7 +135,7 @@ const OrderActions = ({
   const handlePrintInvoice = useCallback(
     async (orderId) => {
       if (isPrintingInvoice) {
-        console.log("⚠️ Already printing invoice, ignoring request");
+        logger.info("⚠️ Already printing invoice, ignoring request");
         return;
       }
 
@@ -160,7 +161,7 @@ const OrderActions = ({
           throw new Error(result.message || result.error);
         }
       } catch (error) {
-        console.error("Error printing invoice:", error);
+        logger.error("Error printing invoice:", error);
         showAlert(
           `Fatura yazdırılırken hata oluştu: ${error.message}`,
           "error"
@@ -176,7 +177,7 @@ const OrderActions = ({
   const handleQNBFinansInvoice = useCallback(
     async (orderId, documentType = "auto") => {
       if (isPrintingInvoice) {
-        console.log("⚠️ Already printing QNB Finans invoice, ignoring request");
+        logger.info("⚠️ Already printing QNB Finans invoice, ignoring request");
         return;
       }
 
@@ -216,7 +217,7 @@ const OrderActions = ({
           throw new Error(result.message || result.error);
         }
       } catch (error) {
-        console.error("Error generating QNB Finans invoice:", error);
+        logger.error("Error generating QNB Finans invoice:", error);
         showAlert(
           `QNB Finans fatura oluşturulurken hata oluştu: ${qnbFinansService.formatErrorMessage(
             error

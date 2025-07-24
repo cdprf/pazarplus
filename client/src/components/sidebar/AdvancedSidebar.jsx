@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
@@ -109,7 +110,7 @@ const AdvancedSidebar = ({ isOpen, onToggle, className, ...props }) => {
       await logout();
       navigate("/login");
     } catch (error) {
-      console.error("Logout failed:", error);
+      logger.error("Logout failed:", error);
       setHasError(true);
     } finally {
       setIsLoading(false);

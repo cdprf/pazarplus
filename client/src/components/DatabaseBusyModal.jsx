@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   X,
@@ -42,7 +43,7 @@ const DatabaseBusyModal = ({ isOpen, onClose, onUserDecision }) => {
           }
           break;
         default:
-          console.log("Unhandled WebSocket message type:", data.type);
+          logger.info("Unhandled WebSocket message type:", data.type);
       }
     },
     [userInteraction]
@@ -73,7 +74,7 @@ const DatabaseBusyModal = ({ isOpen, onClose, onUserDecision }) => {
     );
 
     ws.onopen = () => {
-      console.log("Database status WebSocket connected");
+      logger.info("Database status WebSocket connected");
       setWsConnection(ws);
       setIsConnecting(false);
     };
@@ -83,18 +84,18 @@ const DatabaseBusyModal = ({ isOpen, onClose, onUserDecision }) => {
         const data = JSON.parse(event.data);
         handleWebSocketMessage(data);
       } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
+        logger.error("Error parsing WebSocket message:", error);
       }
     };
 
     ws.onclose = () => {
-      console.log("Database status WebSocket disconnected");
+      logger.info("Database status WebSocket disconnected");
       setWsConnection(null);
       setIsConnecting(false);
     };
 
     ws.onerror = (error) => {
-      console.error("Database status WebSocket error:", error);
+      logger.error("Database status WebSocket error:", error);
       setIsConnecting(false);
     };
   }, [handleWebSocketMessage]);
@@ -130,15 +131,15 @@ const DatabaseBusyModal = ({ isOpen, onClose, onUserDecision }) => {
       });
 
       if (response.ok) {
-        console.log(`User decision '${action}' sent successfully`);
+        logger.info(`User decision '${action}' sent successfully`);
         if (onUserDecision) {
           onUserDecision(action);
         }
       } else {
-        console.error("Failed to send user decision");
+        logger.error("Failed to send user decision");
       }
     } catch (error) {
-      console.error("Error sending user decision:", error);
+      logger.error("Error sending user decision:", error);
     }
   };
 

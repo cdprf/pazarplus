@@ -178,7 +178,7 @@ class DatabaseOptimizer {
         try {
           await sequelize.query(index.query);
           createdCount++;
-          logger.debug(`Created/verified index: ${index.name}`);
+          logger.info(`Created/verified index: ${index.name}`);
         } catch (error) {
           if (error.message.includes('already exists')) {
             skippedCount++;

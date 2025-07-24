@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * Enhanced SKU Input Component
  * Provides intelligent SKU generation, validation, and brand management
@@ -69,7 +70,7 @@ const SKUInput = ({
           }))
         );
       } catch (error) {
-        console.error("Error loading SKU configuration:", error);
+        logger.error("Error loading SKU configuration:", error);
       }
     };
 
@@ -207,7 +208,7 @@ const SKUInput = ({
       onChange(skuResponse.sku);
       setShowGenerator(false);
     } catch (error) {
-      console.error("Error generating SKU:", error);
+      logger.error("Error generating SKU:", error);
     } finally {
       setIsGenerating(false);
     }
@@ -232,7 +233,7 @@ const SKUInput = ({
 
       onChange(skuResponse.sku);
     } catch (error) {
-      console.error("Error generating SKU:", error);
+      logger.error("Error generating SKU:", error);
     } finally {
       setIsGenerating(false);
     }
@@ -251,17 +252,17 @@ const SKUInput = ({
         case "create_barcode_sku_mapping":
           // Open a modal to create mapping between barcode and SKU
           // This would be implemented in a parent component or modal
-          console.log("Create barcode-SKU mapping for:", value);
+          logger.info("Create barcode-SKU mapping for:", value);
           break;
 
         case "use_as_sku":
           // Allow using barcode as SKU (not recommended)
           // Keep the current value but mark it as acceptable
-          console.log("Using barcode as SKU:", value);
+          logger.info("Using barcode as SKU:", value);
           break;
 
         default:
-          console.log("Unknown barcode action:", action);
+          logger.info("Unknown barcode action:", action);
       }
     },
     [value, onChange]

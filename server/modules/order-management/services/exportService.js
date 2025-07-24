@@ -9,7 +9,7 @@ try {
   json2csv = { Parser };
   ExcelJS = require('exceljs');
 } catch (error) {
-  console.warn('Export service dependencies not available:', error.message);
+  logger.warn('Export service dependencies not available:', error.message);
   exportEnabled = false;
 
   // Create fallback implementations

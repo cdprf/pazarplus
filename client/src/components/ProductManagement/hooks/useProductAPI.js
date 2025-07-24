@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import { useCallback, useRef } from "react";
 import { API_BASE_URL } from "../utils/constants";
 
@@ -22,7 +23,7 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
 
       // If an identical request is already in progress, return that promise
       if (activeRequestsRef.current.has(requestSignature)) {
-        console.log(`[API] Reusing existing request: ${requestKey}`);
+        logger.info(`[API] Reusing existing request: ${requestKey}`);
         return await activeRequestsRef.current.get(requestSignature);
       }
 
@@ -37,7 +38,7 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
         existingController &&
         !activeRequestsRef.current.has(requestSignature)
       ) {
-        console.log(`[API] Cancelling previous request: ${requestKey}`);
+        logger.info(`[API] Cancelling previous request: ${requestKey}`);
         existingController.abort();
       }
 
@@ -48,7 +49,7 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
       // Create the request promise
       const requestPromise = (async () => {
         try {
-          console.log(`[API] Starting request: ${requestKey}`);
+          logger.info(`[API] Starting request: ${requestKey}`);
 
           // Handle timeout option
           let timeoutId;
@@ -79,14 +80,14 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
           }
 
-          console.log(`[API] Request completed: ${requestKey}`);
+          logger.info(`[API] Request completed: ${requestKey}`);
           return response.json();
         } catch (error) {
           if (error.name === "AbortError") {
-            console.log(`[API] Request aborted: ${requestKey}`);
+            logger.info(`[API] Request aborted: ${requestKey}`);
             return null;
           }
-          console.error(`[API] Request failed: ${requestKey}`, error.message);
+          logger.error(`[API] Request failed: ${requestKey}`, error.message);
           throw error;
         }
       })();
@@ -126,7 +127,7 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
           queryParams.set("search", params.search.trim());
         }
 
-        console.log(
+        logger.info(
           "URL:",
           `${API_BASE_URL}/products?${queryParams.toString()}`
         );
@@ -191,12 +192,12 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
         return getDefaultStats();
       } else {
         // Handle the case where API returns success: false
-        console.warn("Product stats API returned unsuccessful response:", data);
+        logger.warn("Product stats API returned unsuccessful response:", data);
         return getDefaultStats();
       }
     } catch (error) {
       // More detailed error logging for debugging
-      console.error("fetchProductStats error details:", {
+      logger.error("fetchProductStats error details:", {
         message: error.message,
         status: error.status,
         stack: error.stack,
@@ -208,7 +209,7 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
         error.message?.includes("no connection found") ||
         error.status === 500
       ) {
-        console.warn(
+        logger.warn(
           "Product stats failed due to connection issues, returning defaults"
         );
       }
@@ -412,7 +413,7 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
               results.push({ success: true, product });
             }
           } catch (error) {
-            console.error(`Failed to update product ${productId}:`, error);
+            logger.error(`Failed to update product ${productId}:`, error);
             results.push({ success: false, error: error.message });
           }
         }
@@ -701,7 +702,7 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
           queryParams.set("search", params.search.trim());
         }
 
-        console.log(
+        logger.info(
           "URL:",
           `${API_BASE_URL}/products/main-products?${queryParams.toString()}`
         );

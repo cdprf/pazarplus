@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useContext, useEffect, useCallback } from "react";
 import {
   ShieldCheckIcon,
@@ -32,7 +33,7 @@ const AccountOverview = () => {
         lastSyncAt: user?.lastActivityAt,
       });
     } catch (error) {
-      console.error("Failed to fetch user stats:", error);
+      logger.error("Failed to fetch user stats:", error);
     }
   }, [user?.monthlyApiCalls, user?.lastActivityAt]);
 

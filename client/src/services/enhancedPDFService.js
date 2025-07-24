@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Enhanced PDF Service with network-aware functionality
  * Handles PDF generation and access across different devices
@@ -20,14 +21,14 @@ class EnhancedPDFService {
    */
   async generateAndOpenShippingSlip(orderId, templateId = null) {
     try {
-      console.log(
+      logger.info(
         `🖨️ [PDF Service] Generating shipping slip for order ${orderId} with template ${templateId}`
       );
 
       // Generate PDF using existing API
       const response = await api.shipping.generatePDF(orderId, templateId);
 
-      console.log(
+      logger.info(
         `📄 [PDF Service] API response for order ${orderId}:`,
         response.success ? "SUCCESS" : "FAILED"
       );
@@ -44,27 +45,27 @@ class EnhancedPDFService {
 
       // Construct network-accessible URL
       const pdfUrl = constructPDFURL(pdfPath);
-      console.log(
+      logger.info(
         `🔗 [PDF Service] Network-accessible PDF URL for order ${orderId}: ${pdfUrl}`
       );
 
       // Test accessibility before opening
       const isAccessible = await testPDFAccessibility(pdfUrl);
       if (!isAccessible) {
-        console.warn(
+        logger.warn(
           `⚠️ [PDF Service] PDF URL not accessible for order ${orderId}, may cause issues on other devices`
         );
       }
 
       // Open PDF with simplified method (no fallbacks to prevent duplicates)
       const filename = `shipping-slip-${orderId}.pdf`;
-      console.log(
+      logger.info(
         `🚀 [PDF Service] Opening PDF for order ${orderId}: ${filename}`
       );
 
       await openPDFWithFallbacks(pdfUrl, filename);
 
-      console.log(
+      logger.info(
         `✅ [PDF Service] Successfully opened PDF for order ${orderId}`
       );
 
@@ -75,7 +76,7 @@ class EnhancedPDFService {
         message: "Shipping slip generated and opened successfully",
       };
     } catch (error) {
-      console.error(
+      logger.error(
         `❌ [PDF Service] Error generating shipping slip for order ${orderId}:`,
         error
       );
@@ -94,7 +95,7 @@ class EnhancedPDFService {
    */
   async generateAndOpenInvoice(orderId) {
     try {
-      console.log(`🖨️ Generating invoice for order ${orderId}`);
+      logger.info(`🖨️ Generating invoice for order ${orderId}`);
 
       // Generate invoice using existing API
       const response = await api.orders.printInvoice(orderId);
@@ -111,12 +112,12 @@ class EnhancedPDFService {
 
       // Construct network-accessible URL
       const pdfUrl = constructPDFURL(pdfPath);
-      console.log(`🔗 Network-accessible invoice URL: ${pdfUrl}`);
+      logger.info(`🔗 Network-accessible invoice URL: ${pdfUrl}`);
 
       // Test accessibility
       const isAccessible = await testPDFAccessibility(pdfUrl);
       if (!isAccessible) {
-        console.warn(
+        logger.warn(
           "⚠️ Invoice PDF URL not accessible, may cause issues on other devices"
         );
       }
@@ -132,7 +133,7 @@ class EnhancedPDFService {
         message: "Invoice generated and opened successfully",
       };
     } catch (error) {
-      console.error("Error generating invoice:", error);
+      logger.error("Error generating invoice:", error);
       return {
         success: false,
         error: error.message,
@@ -190,7 +191,7 @@ class EnhancedPDFService {
       await openPDFWithFallbacks(accessibleUrl, filename);
       return true;
     } catch (error) {
-      console.error("Error opening PDF:", error);
+      logger.error("Error opening PDF:", error);
       throw error;
     }
   }

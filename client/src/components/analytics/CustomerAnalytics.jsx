@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import {
   OptimizedLineChart,
@@ -29,7 +30,7 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
         setLoading(true);
         setError(null);
 
-        console.log("🔍 Fetching customer analytics for timeframe:", timeframe);
+        logger.info("🔍 Fetching customer analytics for timeframe:", timeframe);
 
         // Fetch all customer analytics data
         const [customerData, cohorts, segmentation] = await Promise.all([
@@ -37,20 +38,20 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
           analyticsService
             .getCohortAnalysis(timeframe === "30d" ? "90d" : timeframe)
             .catch((err) => {
-              console.warn("Cohort analysis failed:", err);
+              logger.warn("Cohort analysis failed:", err);
               return null;
             }),
           analyticsService.getCustomerSegmentation
             ? analyticsService
                 .getCustomerSegmentation(timeframe)
                 .catch((err) => {
-                  console.warn("Customer segmentation failed:", err);
+                  logger.warn("Customer segmentation failed:", err);
                   return null;
                 })
             : Promise.resolve(null),
         ]);
 
-        console.log("✅ Customer analytics data received:", {
+        logger.info("✅ Customer analytics data received:", {
           customerSuccess: customerData?.success,
           hasCustomerData: !!customerData?.data,
           hasCohortData: !!cohorts,
@@ -61,7 +62,7 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
         // Process customer data
         if (customerData && (customerData.success || customerData.data)) {
           const processedData = customerData.data || customerData;
-          console.log("Processing customer data:", processedData);
+          logger.info("Processing customer data:", processedData);
 
           const normalizedData = {
             ...processedData,
@@ -98,7 +99,7 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
           };
           setData(normalizedData);
         } else {
-          console.warn("⚠️ No customer data received, setting empty data");
+          logger.warn("⚠️ No customer data received, setting empty data");
           setData({
             summary: {
               totalCustomers: 0,
@@ -124,10 +125,10 @@ const CustomerAnalytics = ({ timeframe = "30d" }) => {
 
         // Set cohort data with fallbacks
         const processedCohorts = cohorts?.success ? cohorts.data : cohorts;
-        console.log("Processing cohorts:", processedCohorts);
+        logger.info("Processing cohorts:", processedCohorts);
         setCohortData(processedCohorts || { cohorts: [], retention: [] });
       } catch (err) {
-        console.error("Customer analytics error:", err);
+        logger.error("Customer analytics error:", err);
         setError(err.message);
       } finally {
         setLoading(false);

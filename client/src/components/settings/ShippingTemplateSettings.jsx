@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import {
   Card,
@@ -69,21 +70,21 @@ const ShippingTemplateSettings = () => {
   const { toast } = useToast();
 
   const loadTemplates = React.useCallback(async () => {
-    console.log("🔧 DEBUG: loadTemplates called");
+    logger.info("🔧 DEBUG: loadTemplates called");
     try {
       setLoading(true);
-      console.log("🔧 DEBUG: Making API call to /shipping/templates");
+      logger.info("🔧 DEBUG: Making API call to /shipping/templates");
       const response = await api.get("/shipping/templates");
-      console.log("🔧 DEBUG: API response:", response.data);
+      logger.info("🔧 DEBUG: API response:", response.data);
 
       if (response.data.success) {
         const templatesData = response.data.data || [];
-        console.log("🔧 DEBUG: Setting templates:", templatesData);
+        logger.info("🔧 DEBUG: Setting templates:", templatesData);
         setTemplates(templatesData);
-        console.log("🔧 DEBUG: Templates updated successfully");
+        logger.info("🔧 DEBUG: Templates updated successfully");
       }
     } catch (error) {
-      console.error("🔧 DEBUG: Failed to load templates:", error);
+      logger.error("🔧 DEBUG: Failed to load templates:", error);
       toast({
         title: "Error",
         description: "Failed to load shipping templates",
@@ -101,7 +102,7 @@ const ShippingTemplateSettings = () => {
         setDefaultTemplateId(response.data.data.defaultTemplateId);
       }
     } catch (error) {
-      console.error("Failed to load default template:", error);
+      logger.error("Failed to load default template:", error);
     }
   }, []);
 
@@ -119,7 +120,7 @@ const ShippingTemplateSettings = () => {
         setTemplatePreviewSettings(JSON.parse(savedPreviewSettings));
       }
     } catch (error) {
-      console.error("Failed to load preview settings:", error);
+      logger.error("Failed to load preview settings:", error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadTemplates, loadDefaultTemplate]);
@@ -132,7 +133,7 @@ const ShippingTemplateSettings = () => {
         JSON.stringify(templatePreviewSettings)
       );
     } catch (error) {
-      console.error("Failed to save preview settings:", error);
+      logger.error("Failed to save preview settings:", error);
     }
   }, [templatePreviewSettings]);
 
@@ -149,7 +150,7 @@ const ShippingTemplateSettings = () => {
         });
       }
     } catch (error) {
-      console.error("Failed to set default template:", error);
+      logger.error("Failed to set default template:", error);
       toast({
         title: "Error",
         description: "Failed to set default template",
@@ -172,7 +173,7 @@ const ShippingTemplateSettings = () => {
         });
       }
     } catch (error) {
-      console.error("Failed to delete template:", error);
+      logger.error("Failed to delete template:", error);
       toast({
         title: "Error",
         description: "Failed to delete template",
@@ -200,7 +201,7 @@ const ShippingTemplateSettings = () => {
         });
       }
     } catch (error) {
-      console.error("Failed to duplicate template:", error);
+      logger.error("Failed to duplicate template:", error);
       toast({
         title: "Error",
         description: "Failed to duplicate template",
@@ -217,7 +218,7 @@ const ShippingTemplateSettings = () => {
         description: "Template exported successfully",
       });
     } catch (error) {
-      console.error("Failed to export template:", error);
+      logger.error("Failed to export template:", error);
       toast({
         title: "Error",
         description: "Failed to export template",
@@ -256,7 +257,7 @@ const ShippingTemplateSettings = () => {
         });
       }
     } catch (error) {
-      console.error("Failed to import template:", error);
+      logger.error("Failed to import template:", error);
       toast({
         title: "Error",
         description: "Failed to import template",
@@ -288,36 +289,36 @@ const ShippingTemplateSettings = () => {
         <ShippingSlipDesigner
           initialTemplate={selectedTemplate}
           onSave={async (template) => {
-            console.log(
+            logger.info(
               "🔧 DEBUG: onSave callback in ShippingTemplateSettings called"
             );
-            console.log("🔧 DEBUG: template received:", template);
+            logger.info("🔧 DEBUG: template received:", template);
 
             try {
-              console.log(
+              logger.info(
                 "🔧 DEBUG: Saving template with TemplateManager.save"
               );
               await TemplateManager.save(template);
-              console.log("🔧 DEBUG: Template saved successfully");
+              logger.info("🔧 DEBUG: Template saved successfully");
 
-              console.log("🔧 DEBUG: Calling loadTemplates()");
+              logger.info("🔧 DEBUG: Calling loadTemplates()");
               await loadTemplates();
-              console.log("🔧 DEBUG: loadTemplates() completed");
+              logger.info("🔧 DEBUG: loadTemplates() completed");
 
-              console.log(
+              logger.info(
                 "🔧 DEBUG: Hiding designer and clearing selected template"
               );
               setShowDesigner(false);
               setSelectedTemplate(null);
 
-              console.log("🔧 DEBUG: Showing success toast");
+              logger.info("🔧 DEBUG: Showing success toast");
               toast({
                 title: "Success",
                 description: "Template saved successfully",
               });
-              console.log("🔧 DEBUG: onSave callback completed successfully");
+              logger.info("🔧 DEBUG: onSave callback completed successfully");
             } catch (error) {
-              console.error("🔧 DEBUG: Error in onSave callback:", error);
+              logger.error("🔧 DEBUG: Error in onSave callback:", error);
               toast({
                 title: "Error",
                 description: "Failed to refresh templates after save",

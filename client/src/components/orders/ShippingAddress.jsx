@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * Enhanced Shipping Address Display Component
  * Follows Pazar+ Design System patterns with improved layout and functionality
@@ -157,7 +158,7 @@ const ShippingAddress = ({
       await navigator.clipboard.writeText(formatCompleteAddress());
       // You could add a toast notification here
     } catch (error) {
-      console.error("Failed to copy address:", error);
+      logger.error("Failed to copy address:", error);
     }
   };
 

@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { Form, Button, Dropdown, Alert, Spinner, Modal } from "react-bootstrap";
 import {
@@ -180,7 +181,7 @@ const DateRangePicker = ({
           setTempEndDate(preset.endDate);
         }
       } catch (err) {
-        console.error("Date preset selection error:", err);
+        logger.error("Date preset selection error:", err);
         onError?.(err);
       }
     },
@@ -213,7 +214,7 @@ const DateRangePicker = ({
           }
         }
       } catch (err) {
-        console.error("Date change error:", err);
+        logger.error("Date change error:", err);
         onError?.(err);
       }
     },
@@ -243,7 +244,7 @@ const DateRangePicker = ({
       onApply?.(tempStartDate, tempEndDate);
       setShowCustomModal(false);
     } catch (err) {
-      console.error("Apply date range error:", err);
+      logger.error("Apply date range error:", err);
       onError?.(err);
     }
   }, [

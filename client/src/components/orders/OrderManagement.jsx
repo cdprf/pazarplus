@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -114,7 +115,7 @@ const OrderManagement = React.memo(() => {
   // Update stats from actual order data
   const updateStatsFromOrders = useCallback((ordersData) => {
     if (!Array.isArray(ordersData)) {
-      console.warn("updateStatsFromOrders: Invalid orders data");
+      logger.warn("updateStatsFromOrders: Invalid orders data");
       return;
     }
 
@@ -163,7 +164,7 @@ const OrderManagement = React.memo(() => {
     });
 
     setStats(newStats);
-    console.log("Stats updated from orders:", newStats);
+    logger.info("Stats updated from orders:", newStats);
   }, []);
 
   // Utility functions with better error handling
@@ -178,7 +179,7 @@ const OrderManagement = React.memo(() => {
         minimumFractionDigits: 2,
       }).format(numAmount);
     } catch (error) {
-      console.warn("Currency formatting error:", error);
+      logger.warn("Currency formatting error:", error);
       return `${currency} ${amount}`;
     }
   }, []);
@@ -203,7 +204,7 @@ const OrderManagement = React.memo(() => {
         minute: "2-digit",
       });
     } catch (error) {
-      console.warn("Date formatting error:", error);
+      logger.warn("Date formatting error:", error);
       return "Tarih hatası";
     }
   }, []);
@@ -391,9 +392,9 @@ const OrderManagement = React.memo(() => {
         ...filters,
       };
 
-      console.log("🔍 [OrderManagement] Fetching orders with params:", params);
-      console.log("🔍 [OrderManagement] Search term:", `"${searchTerm}"`);
-      console.log(
+      logger.info("🔍 [OrderManagement] Fetching orders with params:", params);
+      logger.info("🔍 [OrderManagement] Search term:", `"${searchTerm}"`);
+      logger.info(
         "🔍 [OrderManagement] Search term length:",
         searchTerm.length
       );
@@ -401,7 +402,7 @@ const OrderManagement = React.memo(() => {
       const response = await api.orders.getOrders(params, {
         signal: abortControllerRef.current.signal,
       });
-      console.log("API Response:", response);
+      logger.info("API Response:", response);
 
       // Handle timeout responses that still return data structure
       if (response.error === "TIMEOUT") {
@@ -484,7 +485,7 @@ const OrderManagement = React.memo(() => {
           orderNumber: order.orderNumber || order.orderNo || order.id || "N/A",
         }));
 
-        console.log("Processed orders data:", {
+        logger.info("Processed orders data:", {
           ordersCount: mappedOrders.length,
           totalCount,
           totalPages: totalPagesCalculated,
@@ -502,7 +503,7 @@ const OrderManagement = React.memo(() => {
         throw new Error(response.message || "Failed to fetch orders");
       }
     } catch (error) {
-      console.error("Error fetching orders:", error);
+      logger.error("Error fetching orders:", error);
 
       // Handle abort errors gracefully (don't show error messages)
       if (
@@ -511,7 +512,7 @@ const OrderManagement = React.memo(() => {
         error.code === "ERR_CANCELED" ||
         error.message === "canceled"
       ) {
-        console.log("🔄 Request was cancelled, ignoring error");
+        logger.info("🔄 Request was cancelled, ignoring error");
         return;
       }
 
@@ -581,7 +582,7 @@ const OrderManagement = React.memo(() => {
 
   // Consolidated effect for all data fetching with proper debouncing
   useEffect(() => {
-    console.log(
+    logger.info(
       "🔍 [OrderManagement] Data fetch effect triggered, searchTerm:",
       `"${searchTerm}"`
     );
@@ -589,14 +590,14 @@ const OrderManagement = React.memo(() => {
     // Clear any existing timeout
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
-      console.log("🔍 [OrderManagement] Cleared previous debounce timeout");
+      logger.info("🔍 [OrderManagement] Cleared previous debounce timeout");
     }
 
     // Use debounce only for search, immediate fetch for other changes
     const delay = searchTerm ? 500 : 0;
 
     debounceRef.current = setTimeout(() => {
-      console.log(
+      logger.info(
         "🔍 [OrderManagement] Debounce timeout fired, calling fetchOrders"
       );
       fetchOrders();
@@ -724,12 +725,12 @@ const OrderManagement = React.memo(() => {
       setSyncing(true);
       setError(null);
 
-      console.log("🔄 Starting order sync...");
+      logger.info("🔄 Starting order sync...");
 
       // Check platform connections first
       try {
         const connectionsResponse = await api.platforms.getConnections();
-        console.log("📡 Platform connections:", connectionsResponse);
+        logger.info("📡 Platform connections:", connectionsResponse);
 
         if (
           !connectionsResponse.success ||
@@ -743,13 +744,13 @@ const OrderManagement = React.memo(() => {
           return;
         }
       } catch (connectionError) {
-        console.warn("Could not check platform connections:", connectionError);
+        logger.warn("Could not check platform connections:", connectionError);
         // Continue with sync anyway
       }
 
       // Proceed with sync
       const syncResponse = await api.orders.syncOrders();
-      console.log("✅ Sync response:", syncResponse);
+      logger.info("✅ Sync response:", syncResponse);
 
       if (syncResponse.success) {
         const {
@@ -777,7 +778,7 @@ const OrderManagement = React.memo(() => {
 
         // Log platform-specific results
         platforms.forEach((platform) => {
-          console.log(
+          logger.info(
             `🏪 ${platform.platformType}: ${
               platform.syncedCount || 0
             } senkronize, ${platform.errorCount || 0} hata`
@@ -792,7 +793,7 @@ const OrderManagement = React.memo(() => {
         );
       }
     } catch (error) {
-      console.error("❌ Error syncing orders:", error);
+      logger.error("❌ Error syncing orders:", error);
 
       // Provide more specific error messages
       let errorMessage = "Senkronizasyon sırasında bir hata oluştu";
@@ -831,7 +832,7 @@ const OrderManagement = React.memo(() => {
   }, []);
 
   const handleSearch = useCallback((value) => {
-    console.log("🔍 [OrderManagement] handleSearch called with:", `"${value}"`);
+    logger.info("🔍 [OrderManagement] handleSearch called with:", `"${value}"`);
     setSearchTerm(value);
     setCurrentPage(1);
   }, []);
@@ -926,7 +927,7 @@ const OrderManagement = React.memo(() => {
         handleCloseModal();
         fetchOrders();
       } catch (error) {
-        console.error("Error saving order:", error);
+        logger.error("Error saving order:", error);
         showAlert(
           `Sipariş ${
             modalMode === "create" ? "oluşturulurken" : "güncellenirken"
@@ -945,7 +946,7 @@ const OrderManagement = React.memo(() => {
         showAlert("Sipariş durumu başarıyla güncellendi", "success");
         fetchOrders();
       } catch (error) {
-        console.error("Error updating order status:", error);
+        logger.error("Error updating order status:", error);
         showAlert("Sipariş durumu güncellenirken bir hata oluştu", "error");
       }
     },
@@ -967,7 +968,7 @@ const OrderManagement = React.memo(() => {
       link.remove();
       showAlert("Siparişler başarıyla dışa aktarıldı", "success");
     } catch (error) {
-      console.error("Error exporting orders:", error);
+      logger.error("Error exporting orders:", error);
       showAlert("Eksport işlemi başarısız", "error");
     }
   }, [showAlert]);
@@ -975,50 +976,50 @@ const OrderManagement = React.memo(() => {
   // Print handlers
   const handlePrintShippingSlip = useCallback(
     async (orderId) => {
-      console.log("🚀 handlePrintShippingSlip called with orderId:", orderId);
+      logger.info("🚀 handlePrintShippingSlip called with orderId:", orderId);
 
       try {
-        console.log(`Starting shipping slip printing for order ID: ${orderId}`);
+        logger.info(`Starting shipping slip printing for order ID: ${orderId}`);
 
         if (!orderId) {
-          console.log("❌ No orderId provided");
+          logger.info("❌ No orderId provided");
           showAlert("Sipariş kimliği eksik", "error");
-          console.error("Attempted to print shipping slip without order ID");
+          logger.error("Attempted to print shipping slip without order ID");
           return;
         }
 
-        console.log("📋 Checking for default template...");
+        logger.info("📋 Checking for default template...");
         // Check if default template exists, if not check if any templates exist
         let defaultTemplateId = null;
         try {
           // First, try to get the default template
-          console.log("🔍 Calling api.shipping.getDefaultTemplate()");
+          logger.info("🔍 Calling api.shipping.getDefaultTemplate()");
           const defaultTemplateResponse =
             await api.shipping.getDefaultTemplate();
-          console.log("📄 Default template response:", defaultTemplateResponse);
+          logger.info("📄 Default template response:", defaultTemplateResponse);
 
           if (
             defaultTemplateResponse.success &&
             defaultTemplateResponse.data?.defaultTemplateId
           ) {
             defaultTemplateId = defaultTemplateResponse.data.defaultTemplateId;
-            console.log(`✅ Using default template: ${defaultTemplateId}`);
+            logger.info(`✅ Using default template: ${defaultTemplateId}`);
           } else {
-            console.log(
+            logger.info(
               "❌ No default template found, checking for any available templates"
             );
 
             // If no default template, check if any templates exist
-            console.log("🔍 Calling api.shipping.getTemplates()");
+            logger.info("🔍 Calling api.shipping.getTemplates()");
             const templatesResponse = await api.shipping.getTemplates();
-            console.log("📋 Available templates response:", templatesResponse);
+            logger.info("📋 Available templates response:", templatesResponse);
 
             if (
               !templatesResponse.success ||
               !templatesResponse.data ||
               templatesResponse.data.length === 0
             ) {
-              console.log("❌ No templates found, need to create one first");
+              logger.info("❌ No templates found, need to create one first");
               showAlert(
                 "Kargo şablonu bulunamadı. Lütfen önce bir şablon oluşturun.",
                 "warning"
@@ -1029,13 +1030,13 @@ const OrderManagement = React.memo(() => {
 
             // Use the first available template if no default is set
             defaultTemplateId = templatesResponse.data[0].id;
-            console.log(
+            logger.info(
               `✅ No default template, using first available: ${defaultTemplateId}`
             );
           }
         } catch (templateError) {
-          console.error("❌ Error getting templates:", templateError);
-          console.error("Template error details:", {
+          logger.error("❌ Error getting templates:", templateError);
+          logger.error("Template error details:", {
             message: templateError.message,
             response: templateError.response?.data,
             status: templateError.response?.status,
@@ -1044,15 +1045,15 @@ const OrderManagement = React.memo(() => {
           return;
         }
 
-        console.log(
+        logger.info(
           `🖨️ Generating PDF with orderId: ${orderId}, templateId: ${defaultTemplateId}`
         );
-        console.log("🔍 Calling api.shipping.generatePDF()");
+        logger.info("🔍 Calling api.shipping.generatePDF()");
         const response = await api.shipping.generatePDF(
           orderId,
           defaultTemplateId
         );
-        console.log("📄 Response from generatePDF:", response);
+        logger.info("📄 Response from generatePDF:", response);
 
         if (response.success && response.data?.labelUrl) {
           // Construct full URL for PDF access
@@ -1062,7 +1063,7 @@ const OrderManagement = React.memo(() => {
               : window.location.origin;
           const fullPdfUrl = `${baseUrl}${response.data.labelUrl}`;
 
-          console.log(`✅ Opening PDF URL: ${fullPdfUrl}`);
+          logger.info(`✅ Opening PDF URL: ${fullPdfUrl}`);
           const pdfWindow = window.open(fullPdfUrl, "_blank");
           if (pdfWindow) {
             pdfWindow.onload = () => {
@@ -1079,11 +1080,11 @@ const OrderManagement = React.memo(() => {
           // Refresh orders to show updated print status
           fetchOrders();
         } else {
-          console.error("❌ Invalid PDF response:", response);
+          logger.error("❌ Invalid PDF response:", response);
           showAlert(response.message || "PDF URL alınamadı", "error");
         }
       } catch (error) {
-        console.error("❌ Error printing shipping slip:", error);
+        logger.error("❌ Error printing shipping slip:", error);
 
         // Provide more specific error messages based on the error type
         const errorMessage =
@@ -1091,7 +1092,7 @@ const OrderManagement = React.memo(() => {
           error.message ||
           "Gönderi belgesi yazdırılırken bir hata oluştu";
         showAlert(errorMessage, "error");
-        console.error("Error details:", {
+        logger.error("Error details:", {
           message: error.message,
           response: error.response?.data,
           status: error.response?.status,
@@ -1119,7 +1120,7 @@ const OrderManagement = React.memo(() => {
           fetchOrders();
         }
       } catch (error) {
-        console.error("Error printing invoice:", error);
+        logger.error("Error printing invoice:", error);
         showAlert("Fatura yazdırma işlemi başarısız", "error");
       }
     },
@@ -1158,7 +1159,7 @@ const OrderManagement = React.memo(() => {
         );
       }
     } catch (error) {
-      console.error("Error deleting orders:", error);
+      logger.error("Error deleting orders:", error);
       showAlert("Siparişler silinirken hata oluştu", "error");
     }
   }, [selectedOrders, showAlert, fetchOrders]);
@@ -1178,7 +1179,7 @@ const OrderManagement = React.memo(() => {
           );
         }
       } catch (error) {
-        console.error("Error cancelling order:", error);
+        logger.error("Error cancelling order:", error);
         showAlert("Sipariş iptal edilirken hata oluştu", "error");
       }
     },
@@ -1208,7 +1209,7 @@ const OrderManagement = React.memo(() => {
           );
         }
       } catch (error) {
-        console.error("Error deleting order:", error);
+        logger.error("Error deleting order:", error);
         showAlert("Sipariş silinirken hata oluştu", "error");
       }
     },
@@ -1231,7 +1232,7 @@ const OrderManagement = React.memo(() => {
           );
         }
       } catch (error) {
-        console.error("Error accepting order:", error);
+        logger.error("Error accepting order:", error);
         showAlert("Sipariş onaylanırken bir hata oluştu", "error");
       }
     },
@@ -1280,7 +1281,7 @@ const OrderManagement = React.memo(() => {
         showAlert("Hiçbir sipariş onaylanamadı", "error");
       }
     } catch (error) {
-      console.error("Error in bulk accept:", error);
+      logger.error("Error in bulk accept:", error);
       showAlert("Toplu onaylama işlemi sırasında hata oluştu", "error");
     }
   }, [selectedOrders, orders, showAlert, fetchOrders]);
@@ -1288,7 +1289,7 @@ const OrderManagement = React.memo(() => {
   // Bulk print shipping slips
   const handleBulkPrintShippingSlips = useCallback(async () => {
     if (bulkPrintingShipping) {
-      console.log(
+      logger.info(
         "⚠️ Bulk shipping print already in progress, ignoring request"
       );
       return;
@@ -1299,13 +1300,13 @@ const OrderManagement = React.memo(() => {
       return;
     }
 
-    console.log("🔍 DEBUG: Original selectedOrders:", selectedOrders);
+    logger.info("🔍 DEBUG: Original selectedOrders:", selectedOrders);
 
     // Remove duplicates from selected orders
     const uniqueOrderIds = [...new Set(selectedOrders)];
 
-    console.log("🔍 DEBUG: Unique order IDs:", uniqueOrderIds);
-    console.log(
+    logger.info("🔍 DEBUG: Unique order IDs:", uniqueOrderIds);
+    logger.info(
       "🔍 DEBUG: Removed duplicates:",
       selectedOrders.length - uniqueOrderIds.length
     );
@@ -1339,7 +1340,7 @@ const OrderManagement = React.memo(() => {
           }
         }
       } catch (templateError) {
-        console.warn("Template detection failed:", templateError);
+        logger.warn("Template detection failed:", templateError);
       }
 
       if (!defaultTemplateId) {
@@ -1350,14 +1351,14 @@ const OrderManagement = React.memo(() => {
         return;
       }
 
-      console.log("🔍 DEBUG: Using template ID:", defaultTemplateId);
+      logger.info("🔍 DEBUG: Using template ID:", defaultTemplateId);
 
       // Process orders sequentially with delay to prevent browser popup blocking
       for (let i = 0; i < uniqueOrderIds.length; i++) {
         const orderId = uniqueOrderIds[i];
 
         try {
-          console.log(
+          logger.info(
             `🖨️ [${i + 1}/${
               uniqueOrderIds.length
             }] Starting shipping slip for order ${orderId}`
@@ -1365,7 +1366,7 @@ const OrderManagement = React.memo(() => {
 
           // Add a small delay before each request to ensure sequential processing
           if (i > 0) {
-            console.log(
+            logger.info(
               `⏳ Waiting 2 seconds before processing order ${orderId}...`
             );
             await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -1376,7 +1377,7 @@ const OrderManagement = React.memo(() => {
             defaultTemplateId
           );
 
-          console.log(
+          logger.info(
             `📄 [${i + 1}/${
               uniqueOrderIds.length
             }] Result for order ${orderId}:`,
@@ -1392,7 +1393,7 @@ const OrderManagement = React.memo(() => {
             );
           }
         } catch (error) {
-          console.error(
+          logger.error(
             `❌ [${i + 1}/${
               uniqueOrderIds.length
             }] Error for order ${orderId}:`,
@@ -1415,7 +1416,7 @@ const OrderManagement = React.memo(() => {
       }
 
       if (failed > 0 && failedOrders.length > 0) {
-        console.log("Failed shipping slip generations:", failedOrders);
+        logger.info("Failed shipping slip generations:", failedOrders);
       }
 
       setSelectedOrders([]);
@@ -1499,7 +1500,7 @@ const OrderManagement = React.memo(() => {
       }
 
       if (failed > 0 && failedOrders.length > 0) {
-        console.log(`Failed ${invoiceType} generations:`, failedOrders);
+        logger.info(`Failed ${invoiceType} generations:`, failedOrders);
       }
 
       setSelectedOrders([]);
@@ -1567,7 +1568,7 @@ const OrderManagement = React.memo(() => {
       }
 
       if (failed > 0 && failedOrders.length > 0) {
-        console.log("Failed order cancellations:", failedOrders);
+        logger.info("Failed order cancellations:", failedOrders);
       }
 
       setSelectedOrders([]);
@@ -1671,10 +1672,10 @@ const OrderManagement = React.memo(() => {
             break;
 
           default:
-            console.warn(`Unknown bulk action: ${actionId}`);
+            logger.warn(`Unknown bulk action: ${actionId}`);
         }
       } catch (error) {
-        console.error(`Error executing bulk action ${actionId}:`, error);
+        logger.error(`Error executing bulk action ${actionId}:`, error);
         showAlert(`Toplu işlem hatası: ${error.message}`, "error");
       }
     },
@@ -1913,7 +1914,7 @@ const OrderManagement = React.memo(() => {
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     value={searchTerm}
                     onChange={(e) => {
-                      console.log(
+                      logger.info(
                         "🔍 [OrderManagement] Input onChange fired:",
                         e.target.value
                       );

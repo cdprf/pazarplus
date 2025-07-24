@@ -109,9 +109,9 @@ async function createSampleProducts() {
     );
 
     // Log some examples
-    console.log('\nSample products created:');
+    logger.info('\nSample products created:');
     createdProducts.slice(0, 5).forEach((product) => {
-      console.log(
+      logger.info(
         `- ${product.name} (SKU: ${product.sku}, Price: ${product.price}₺)`
       );
     });
@@ -122,10 +122,10 @@ async function createSampleProducts() {
       where: { productId: null }
     });
 
-    console.log(`\nLinking Statistics:`);
-    console.log(`- Total Products: ${totalProducts}`);
-    console.log(`- Unlinked Order Items: ${totalUnlinkedItems}`);
-    console.log(
+    logger.info(`\nLinking Statistics:`);
+    logger.info(`- Total Products: ${totalProducts}`);
+    logger.info(`- Unlinked Order Items: ${totalUnlinkedItems}`);
+    logger.info(
       `- Potential for ${Math.min(
         createdProducts.length,
         totalUnlinkedItems
@@ -243,31 +243,31 @@ async function createVarietyProducts() {
 if (require.main === module) {
   (async () => {
     try {
-      console.log(
+      logger.info(
         '🔧 Creating sample products for product-order linking tests...\n'
       );
 
       const results = await createSampleProducts();
 
-      console.log(
+      logger.info(
         '\n🎯 Creating variety products for comprehensive testing...\n'
       );
 
       const varietyCount = await createVarietyProducts();
 
-      console.log(`\n✅ Sample product creation completed!`);
-      console.log(`📊 Summary:`);
-      console.log(`   - Matching products: ${results.created}`);
-      console.log(`   - Variety products: ${varietyCount}`);
-      console.log(
+      logger.info(`\n✅ Sample product creation completed!`);
+      logger.info(`📊 Summary:`);
+      logger.info(`   - Matching products: ${results.created}`);
+      logger.info(`   - Variety products: ${varietyCount}`);
+      logger.info(
         `   - Total products: ${results.totalProducts + varietyCount}`
       );
-      console.log(`   - Unlinked items: ${results.unlinkedItems}`);
-      console.log(`\n🚀 Product-order linking system is ready for testing!`);
+      logger.info(`   - Unlinked items: ${results.unlinkedItems}`);
+      logger.info(`\n🚀 Product-order linking system is ready for testing!`);
 
       process.exit(0);
     } catch (error) {
-      console.error('❌ Error:', error.message);
+      logger.error('❌ Error:', error.message);
       process.exit(1);
     }
   })();

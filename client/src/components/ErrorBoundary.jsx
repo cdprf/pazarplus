@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React from "react";
 import PropTypes from "prop-types";
 import ErrorState from "./common/ErrorState";
@@ -20,7 +21,7 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     // Log the error to an error reporting service
-    console.error("ErrorBoundary caught an error", error, errorInfo);
+    logger.error("ErrorBoundary caught an error", error, errorInfo);
     this.setState({ errorInfo });
 
     // Report to monitoring service if available
@@ -45,7 +46,7 @@ class ErrorBoundary extends React.Component {
         window.queryClient.clear();
       }
     } catch (error) {
-      console.warn("Could not clear query cache:", error);
+      logger.warn("Could not clear query cache:", error);
     }
     this.resetError();
   };

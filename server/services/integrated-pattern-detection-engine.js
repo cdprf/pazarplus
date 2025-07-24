@@ -1,3 +1,4 @@
+const logger = require("../utils/logger");
 /**
  * Integrated Pattern Detection Engine
  *
@@ -138,7 +139,7 @@ class IntegratedPatternDetectionEngine {
         results
       };
     } catch (error) {
-      console.error('Pattern detection failed:', error);
+      logger.error('Pattern detection failed:', error);
       return {
         success: false,
         error: error.message,

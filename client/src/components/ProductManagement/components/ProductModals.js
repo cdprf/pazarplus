@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   X,
@@ -563,7 +564,7 @@ const ProductFormModal = ({
             }}
             onChange={(variants) => {
               // You can store variants in formData if needed
-              console.log("Variants updated:", variants);
+              logger.info("Variants updated:", variants);
             }}
           />
         </div>

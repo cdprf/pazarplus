@@ -1,4 +1,5 @@
 const express = require("express");
+const logger = require("../utils/logger");
 const router = express.Router();
 const analyticsController = require("../controllers/analytics-controller");
 const { auth } = require("../middleware/auth"); // Fixed: destructure auth from middleware
@@ -81,7 +82,7 @@ router.get("/dashboard", async (req, res) => {
     const { timeframe = "30d" } = req.query;
     const userId = req.user.id;
 
-    console.log(
+    logger.info(
       `Dashboard analytics for user ${userId} with timeframe ${timeframe}`
     );
 
@@ -151,7 +152,7 @@ router.get("/dashboard", async (req, res) => {
         setTimeout(() => reject(new Error("Platform data query timeout")), 5000)
       ),
     ]).catch((error) => {
-      console.warn(
+      logger.warn(
         "Platform data query failed, using fallback:",
         error.message
       );
@@ -280,7 +281,7 @@ router.get("/dashboard", async (req, res) => {
         setTimeout(() => reject(new Error("Top products query timeout")), 5000)
       ),
     ]).catch((error) => {
-      console.warn("Top products query failed, using fallback:", error.message);
+      logger.warn("Top products query failed, using fallback:", error.message);
       return []; // Return empty array if query fails
     });
 
@@ -345,7 +346,7 @@ router.get("/dashboard", async (req, res) => {
         )
       ),
     ]).catch((error) => {
-      console.warn(
+      logger.warn(
         "Performance data query failed, using fallback:",
         error.message
       );
@@ -930,7 +931,7 @@ router.get("/dashboard", async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error("Dashboard analytics error:", error);
+    logger.error("Dashboard analytics error:", error);
 
     // Handle timeout errors specifically
     if (error.message.includes("timeout")) {
@@ -1218,7 +1219,7 @@ router.get("/revenue", async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error("Revenue analytics error:", error);
+    logger.error("Revenue analytics error:", error);
     res.status(500).json({
       success: false,
       message: "Error retrieving revenue analytics",
@@ -1625,7 +1626,7 @@ router.get("/products", async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error("Product analytics error:", error);
+    logger.error("Product analytics error:", error);
     res.status(500).json({
       success: false,
       message: "Error retrieving product analytics",
@@ -1986,7 +1987,7 @@ router.get("/customer-analytics", async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error("Customer analytics error:", error);
+    logger.error("Customer analytics error:", error);
     res.status(500).json({
       success: false,
       message: "Error retrieving customer analytics",
@@ -2329,7 +2330,7 @@ router.get("/products/simple", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Simple product analytics error:", error);
+    logger.error("Simple product analytics error:", error);
     res.status(500).json({
       success: false,
       message: "Error retrieving product analytics",
@@ -2524,7 +2525,7 @@ router.get("/financial-kpis", async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error("Financial KPIs error:", error);
+    logger.error("Financial KPIs error:", error);
     res.status(500).json({
       success: false,
       message: "Error retrieving financial KPIs",
@@ -2710,7 +2711,7 @@ router.get("/cohort-analysis", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Cohort analysis error:", error);
+    logger.error("Cohort analysis error:", error);
     res.status(500).json({
       success: false,
       message: "Error retrieving cohort analysis",

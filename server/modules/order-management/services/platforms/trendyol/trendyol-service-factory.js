@@ -24,10 +24,10 @@ function createTrendyolService(connectionData, forceGeneric = false) {
   const useGeneric = forceGeneric || config.platform?.useGenericModel || process.env.USE_GENERIC_PLATFORM_MODEL === 'true';
   
   if (useGeneric) {
-    logger.debug(`Creating generic Trendyol service for connection ${connectionData.id}`);
+    logger.info(`Creating generic Trendyol service for connection ${connectionData.id}`);
     return new TrendyolServiceGeneric(connectionData);
   } else {
-    logger.debug(`Creating legacy Trendyol service for connection ${connectionData.id}`);
+    logger.info(`Creating legacy Trendyol service for connection ${connectionData.id}`);
     return new TrendyolService(connectionData);
   }
 }

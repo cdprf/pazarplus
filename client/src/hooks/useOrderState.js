@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * useOrderState - Centralized order state management hook
  * Implements proper state management patterns with validation and history
@@ -326,7 +327,7 @@ export const useOrderState = (initialOrders = []) => {
         dispatch({ type: "SET_ERROR", payload: result.error });
       }
     } catch (error) {
-      console.error("Error fetching orders:", error);
+      logger.error("Error fetching orders:", error);
       dispatch({ type: "SET_ERROR", payload: error.message });
     } finally {
       dispatch({ type: "SET_LOADING", payload: false });
@@ -340,19 +341,19 @@ export const useOrderState = (initialOrders = []) => {
   // Separate function to fetch accurate stats from all orders
   const fetchStats = useCallback(async () => {
     try {
-      console.log("Fetching accurate stats for ALL orders...");
+      logger.info("Fetching accurate stats for ALL orders...");
 
       // We don't pass any filters to ensure we get stats for ALL orders regardless of current view
       const statsResult = await OrderService.fetchOrderStats();
 
       if (statsResult.success) {
         dispatch({ type: "SET_STATS", payload: statsResult.data });
-        console.log("Updated stats for all orders:", statsResult.data);
+        logger.info("Updated stats for all orders:", statsResult.data);
       } else {
-        console.error("Failed to fetch stats:", statsResult.error);
+        logger.error("Failed to fetch stats:", statsResult.error);
       }
     } catch (error) {
-      console.error("Error fetching stats:", error);
+      logger.error("Error fetching stats:", error);
     }
   }, []); // No dependencies to ensure it always fetches ALL orders
 
@@ -365,7 +366,7 @@ export const useOrderState = (initialOrders = []) => {
   // Effect for handling refresh trigger
   useEffect(() => {
     if (state.refreshTrigger > 0) {
-      console.log("Refresh triggered, fetching data...");
+      logger.info("Refresh triggered, fetching data...");
       // Fetch both orders (which respect current filters) and overall stats (which include all orders)
       fetchOrders();
       fetchStats();

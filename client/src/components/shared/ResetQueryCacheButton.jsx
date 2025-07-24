@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React from 'react';
 import { Button } from 'react-bootstrap';
 import { useQueryClient } from '@tanstack/react-query';
@@ -16,7 +17,7 @@ const ResetQueryCacheButton = ({
   const queryClient = useQueryClient();
 
   if (!queryClient) {
-    console.warn('ResetQueryCacheButton: useQueryClient hook failed, likely outside QueryClientProvider');
+    logger.warn('ResetQueryCacheButton: useQueryClient hook failed, likely outside QueryClientProvider');
     return null;
   }
 

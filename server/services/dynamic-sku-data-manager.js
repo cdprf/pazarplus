@@ -1,3 +1,4 @@
+const logger = require("../utils/logger");
 /**
  * Dynamic SKU Data Manager
  * Manages brands, product types, and patterns dynamically
@@ -72,7 +73,7 @@ class DynamicSKUDataManager {
 
     for (const [platformName, service] of Object.entries(platformServices)) {
       try {
-        console.log(`Learning from platform: ${platformName}`);
+        logger.info(`Learning from platform: ${platformName}`);
 
         const data = await this.extractPlatformData(service, platformName);
         platformData[platformName] = data;
@@ -80,7 +81,7 @@ class DynamicSKUDataManager {
         // Process learned data
         await this.processPlatformData(platformName, data);
       } catch (error) {
-        console.error(`Error learning from ${platformName}:`, error.message);
+        logger.error(`Error learning from ${platformName}:`, error.message);
       }
     }
 
@@ -130,7 +131,7 @@ class DynamicSKUDataManager {
       data.brands = Array.from(data.brands);
       data.categories = Array.from(data.categories);
     } catch (error) {
-      console.warn(
+      logger.warn(
         `Could not extract data from ${platformName}:`,
         error.message
       );

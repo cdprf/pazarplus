@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import axios from "axios";
 
 const API_BASE_URL =
@@ -28,7 +29,7 @@ class TranslationService {
       const response = await this.apiClient.get("/");
       return response.data;
     } catch (error) {
-      console.error("Error fetching supported languages:", error);
+      logger.error("Error fetching supported languages:", error);
       throw error;
     }
   }
@@ -41,7 +42,7 @@ class TranslationService {
       const response = await this.apiClient.get(`/${language}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching translations for ${language}:`, error);
+      logger.error(`Error fetching translations for ${language}:`, error);
       throw error;
     }
   }
@@ -56,7 +57,7 @@ class TranslationService {
       });
       return response.data;
     } catch (error) {
-      console.error(`Error updating translations for ${language}:`, error);
+      logger.error(`Error updating translations for ${language}:`, error);
       throw error;
     }
   }
@@ -72,7 +73,7 @@ class TranslationService {
       });
       return response.data;
     } catch (error) {
-      console.error(`Error adding translation key for ${language}:`, error);
+      logger.error(`Error adding translation key for ${language}:`, error);
       throw error;
     }
   }
@@ -87,7 +88,7 @@ class TranslationService {
       );
       return response.data;
     } catch (error) {
-      console.error(`Error deleting translation key for ${language}:`, error);
+      logger.error(`Error deleting translation key for ${language}:`, error);
       throw error;
     }
   }
@@ -117,7 +118,7 @@ class TranslationService {
       }
       throw new Error("Failed to fetch translations for export");
     } catch (error) {
-      console.error(`Error exporting translations for ${language}:`, error);
+      logger.error(`Error exporting translations for ${language}:`, error);
       throw error;
     }
   }
@@ -145,7 +146,7 @@ class TranslationService {
         reader.readAsText(file);
       });
     } catch (error) {
-      console.error(`Error importing translations for ${language}:`, error);
+      logger.error(`Error importing translations for ${language}:`, error);
       throw error;
     }
   }
@@ -210,7 +211,7 @@ class TranslationService {
         },
       };
     } catch (error) {
-      console.error("Error validating translations:", error);
+      logger.error("Error validating translations:", error);
       throw error;
     }
   }

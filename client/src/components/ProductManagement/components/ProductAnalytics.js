@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import { useNetworkAwareInterval } from "../../../hooks/useNetworkStatus";
 import {
@@ -130,7 +131,7 @@ const ProductAnalytics = ({
 
       setLastUpdated(new Date());
     } catch (err) {
-      console.error("Product analytics error:", err);
+      logger.error("Product analytics error:", err);
       setError(
         err.response?.data?.message ||
           err.message ||
@@ -153,7 +154,7 @@ const ProductAnalytics = ({
         setRealtimeData(response.data.data);
       }
     } catch (err) {
-      console.error("Real-time data error:", err);
+      logger.error("Real-time data error:", err);
     }
   }, [productId]);
 

@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
 import {
@@ -123,7 +124,7 @@ const AdvancedAnalyticsDashboard = ({
         if (showLoading) setLoading(true);
         setError(null);
 
-        console.log(
+        logger.info(
           "🔍 AdvancedAnalyticsDashboard: Starting to fetch all analytics data..."
         );
 
@@ -195,7 +196,7 @@ const AdvancedAnalyticsDashboard = ({
                 totalDataPoints += data.summary.totalOrders;
             }
 
-            console.log(`✅ ${name} analytics loaded successfully`);
+            logger.info(`✅ ${name} analytics loaded successfully`);
           } else {
             const isAuthError =
               result.reason?.response?.status === 401 ||
@@ -212,14 +213,14 @@ const AdvancedAnalyticsDashboard = ({
               error: result.reason?.message || "Unknown error",
               authError: isAuthError,
             };
-            console.error(`❌ ${name} analytics failed:`, result.reason);
+            logger.error(`❌ ${name} analytics failed:`, result.reason);
           }
         });
 
         setEndpointStatus(status);
         setLastUpdated(new Date());
 
-        console.log(
+        logger.info(
           `📊 Analytics Summary: ${successCount}/${endpoints.length} endpoints successful, ${totalDataPoints} total data points, ${authErrors} auth errors`
         );
 
@@ -236,7 +237,7 @@ const AdvancedAnalyticsDashboard = ({
           if (authErrors > 0) {
             setError("partial_auth_failure");
           } else {
-            console.warn(
+            logger.warn(
               `⚠️ Partial loading: ${
                 endpoints.length - successCount
               } endpoints failed`
@@ -244,7 +245,7 @@ const AdvancedAnalyticsDashboard = ({
           }
         }
       } catch (error) {
-        console.error("🚨 Critical error in analytics loading:", error);
+        logger.error("🚨 Critical error in analytics loading:", error);
         setError(error.message || "Failed to load analytics data");
         setEndpointStatus({});
       } finally {
@@ -315,11 +316,11 @@ const AdvancedAnalyticsDashboard = ({
         ].filter((result) => result.status === "rejected");
 
         if (failures.length > 0) {
-          console.warn(`${failures.length} analytics endpoints failed to load`);
+          logger.warn(`${failures.length} analytics endpoints failed to load`);
           // Still show partial data rather than complete failure
         }
       } catch (error) {
-        console.error("Error fetching analytics data:", error);
+        logger.error("Error fetching analytics data:", error);
         setError(error.message || "Failed to load analytics data");
       } finally {
         setLoading(false);

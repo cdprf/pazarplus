@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../utils/cn";
@@ -462,7 +463,7 @@ const SidebarErrorBoundary = ({ children, fallback }) => {
 
   useEffect(() => {
     const handleError = (error) => {
-      console.error("Sidebar navigation error:", error);
+      logger.error("Sidebar navigation error:", error);
       setHasError(true);
     };
 

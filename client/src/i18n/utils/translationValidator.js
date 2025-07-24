@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import { commonTranslations } from "../namespaces/common";
 import { businessTranslations } from "../namespaces/business";
 import { navigationTranslations } from "../namespaces/navigation";
@@ -113,7 +114,7 @@ export class TranslationValidator {
     };
 
     if (!this.allTranslations[namespace]) {
-      console.warn(`Unknown namespace: ${namespace}`);
+      logger.warn(`Unknown namespace: ${namespace}`);
       return result;
     }
 
@@ -122,7 +123,7 @@ export class TranslationValidator {
     const target = this.allTranslations[namespace][language];
 
     if (!reference || !target) {
-      console.warn(
+      logger.warn(
         `Missing translations for namespace: ${namespace}, language: ${language}`
       );
       return result;

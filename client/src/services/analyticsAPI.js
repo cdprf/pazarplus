@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 // Enhanced analytics API client for Dashboard
 import api from "./api";
 
@@ -12,7 +13,7 @@ class AnalyticsAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching dashboard analytics:", error);
+      logger.error("Error fetching dashboard analytics:", error);
       throw error;
     }
   }
@@ -27,7 +28,7 @@ class AnalyticsAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching business intelligence:", error);
+      logger.error("Error fetching business intelligence:", error);
       throw error;
     }
   }
@@ -42,7 +43,7 @@ class AnalyticsAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching revenue analytics:", error);
+      logger.error("Error fetching revenue analytics:", error);
       throw error;
     }
   }
@@ -57,7 +58,7 @@ class AnalyticsAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching platform performance:", error);
+      logger.error("Error fetching platform performance:", error);
       throw error;
     }
   }
@@ -72,7 +73,7 @@ class AnalyticsAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching inventory insights:", error);
+      logger.error("Error fetching inventory insights:", error);
       throw error;
     }
   }
@@ -87,7 +88,7 @@ class AnalyticsAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching order analytics:", error);
+      logger.error("Error fetching order analytics:", error);
       throw error;
     }
   }
@@ -102,7 +103,7 @@ class AnalyticsAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching customer analytics:", error);
+      logger.error("Error fetching customer analytics:", error);
       throw error;
     }
   }
@@ -117,7 +118,7 @@ class AnalyticsAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching financial KPIs:", error);
+      logger.error("Error fetching financial KPIs:", error);
       throw error;
     }
   }
@@ -132,7 +133,7 @@ class AnalyticsAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching predictive analytics:", error);
+      logger.error("Error fetching predictive analytics:", error);
       throw error;
     }
   }
@@ -147,7 +148,7 @@ class AnalyticsAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching market intelligence:", error);
+      logger.error("Error fetching market intelligence:", error);
       throw error;
     }
   }
@@ -162,7 +163,7 @@ class AnalyticsAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error fetching performance benchmarks:", error);
+      logger.error("Error fetching performance benchmarks:", error);
       throw error;
     }
   }
@@ -175,7 +176,7 @@ class AnalyticsAPI {
       const response = await api.post("/analytics/custom-report", reportConfig);
       return response.data;
     } catch (error) {
-      console.error("Error generating custom report:", error);
+      logger.error("Error generating custom report:", error);
       throw error;
     }
   }
@@ -198,7 +199,7 @@ class AnalyticsAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error exporting analytics:", error);
+      logger.error("Error exporting analytics:", error);
       throw error;
     }
   }
@@ -211,7 +212,7 @@ class AnalyticsAPI {
       const response = await api.get("/analytics/realtime");
       return response.data;
     } catch (error) {
-      console.error("Error fetching real-time metrics:", error);
+      logger.error("Error fetching real-time metrics:", error);
       throw error;
     }
   }
@@ -224,7 +225,7 @@ class AnalyticsAPI {
       const response = await api.get("/analytics/alerts");
       return response.data;
     } catch (error) {
-      console.error("Error fetching analytics alerts:", error);
+      logger.error("Error fetching analytics alerts:", error);
       throw error;
     }
   }
@@ -240,7 +241,7 @@ class AnalyticsAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error submitting insight feedback:", error);
+      logger.error("Error submitting insight feedback:", error);
       throw error;
     }
   }

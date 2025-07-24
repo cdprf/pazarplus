@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Platform-specific helper utilities
  */
@@ -148,7 +149,7 @@ export const formatCurrency = (amount, currency = "TRY") => {
       minimumFractionDigits: 2,
     }).format(numAmount);
   } catch (error) {
-    console.warn("Currency formatting error:", error);
+    logger.warn("Currency formatting error:", error);
     return `${currency} ${amount}`;
   }
 };
@@ -189,7 +190,7 @@ export const formatDate = (dateInput) => {
       minute: "2-digit",
     });
   } catch (error) {
-    console.warn("Date formatting error:", error);
+    logger.warn("Date formatting error:", error);
     return "Tarih hatası";
   }
 };

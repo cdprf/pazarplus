@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React, {
   createContext,
   useContext,
@@ -60,7 +61,7 @@ export const AuthProvider = ({ children }) => {
     if (!enableDevMode) return false;
 
     try {
-      console.log("🔧 Development mode: Attempting auto-authentication...");
+      logger.info("🔧 Development mode: Attempting auto-authentication...");
 
       // Use relative path to let setupProxy.js handle routing
       const response = await api.post("/auth/dev-token", { devMode: true });
@@ -73,11 +74,11 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("token", newToken);
         api.defaults.headers.common["Authorization"] = `Bearer ${newToken}`;
 
-        console.log("✅ Development auto-authentication successful", userData);
+        logger.info("✅ Development auto-authentication successful", userData);
         return true;
       }
     } catch (err) {
-      console.warn(
+      logger.warn(
         "⚠️ Development auto-authentication failed:",
         err.response?.data?.message || err.message
       );
@@ -94,7 +95,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     setUser(fallbackUser);
-    console.log("✅ Development fallback authentication active");
+    logger.info("✅ Development fallback authentication active");
     return true;
   }, [enableDevMode]);
 
@@ -171,7 +172,7 @@ export const AuthProvider = ({ children }) => {
           // Verify token is still valid
           const decoded = jwtDecode(token);
           if (decoded.exp * 1000 < Date.now()) {
-            console.log("Token expired, logging out");
+            logger.info("Token expired, logging out");
             handleLogout();
             setLoading(false);
             return;
@@ -186,12 +187,12 @@ export const AuthProvider = ({ children }) => {
 
           const response = await api.get("/auth/me");
           setUser(response.data.user);
-          console.log("User authenticated successfully:", response.data.user);
+          logger.info("User authenticated successfully:", response.data.user);
         } catch (err) {
-          console.error("Auth initialization error:", err);
+          logger.error("Auth initialization error:", err);
           // Only logout if it's an authentication error, not a network error
           if (err.response?.status === 401 || err.response?.status === 403) {
-            console.log("Authentication failed, logging out");
+            logger.info("Authentication failed, logging out");
             handleLogout();
 
             // Try development auto-login as fallback
@@ -203,7 +204,7 @@ export const AuthProvider = ({ children }) => {
               }
             }
           } else {
-            console.warn(
+            logger.warn(
               "Network error during auth verification, keeping session"
             );
             // For network errors, we'll keep the session but still set loading to false
@@ -212,7 +213,7 @@ export const AuthProvider = ({ children }) => {
               const decoded = jwtDecode(token);
               setUser({ id: decoded.id, authenticated: true });
             } catch (decodeErr) {
-              console.error("Failed to decode token:", decodeErr);
+              logger.error("Failed to decode token:", decodeErr);
               handleLogout();
 
               // Try development auto-login as final fallback
@@ -224,7 +225,7 @@ export const AuthProvider = ({ children }) => {
         }
       } else if (enableDevMode) {
         // No token in development mode - try auto-authentication
-        console.log(
+        logger.info(
           "🔧 No token found in development mode, attempting auto-authentication..."
         );
         await devAutoLogin();

@@ -139,7 +139,7 @@ class SequelizeMigrationRunner {
     } catch (error) {
       // Ignore duplicate key errors (migration already marked as executed)
       if (error.name === 'SequelizeUniqueConstraintError') {
-        this.logger.debug(
+        this.logger.info(
           `Migration ${migrationName} already marked as executed`
         );
         return;

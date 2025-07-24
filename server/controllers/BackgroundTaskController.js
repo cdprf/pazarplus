@@ -439,8 +439,8 @@ class BackgroundTaskController {
    * GET /api/background-tasks/stats
    */
   static async getStats(req, res) {
-    console.log('🔍 BackgroundTaskController.getStats called');
-    console.log(
+    logger.info('🔍 BackgroundTaskController.getStats called');
+    logger.info(
       'User:',
       req.user ? `${req.user.id} (${req.user.email})` : 'No user'
     );
@@ -448,14 +448,14 @@ class BackgroundTaskController {
     try {
       // Check if user is authenticated
       if (!req.user) {
-        console.log('❌ No user authenticated for stats');
+        logger.info('❌ No user authenticated for stats');
         return res.status(401).json({
           success: false,
           message: 'Authentication required'
         });
       }
 
-      console.log('✅ User authenticated for stats, proceeding...');
+      logger.info('✅ User authenticated for stats, proceeding...');
 
       const { timeframe = '24h' } = req.query;
 

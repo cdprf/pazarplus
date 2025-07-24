@@ -1,4 +1,5 @@
 const express = require("express");
+const logger = require("../utils/logger");
 const router = express.Router();
 const os = require("os");
 const config = require("../config/config");
@@ -43,7 +44,7 @@ router.get("/network-info", (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error getting network info:", error);
+    logger.error("Error getting network info:", error);
     res.status(500).json({
       success: false,
       message: "Failed to get network information",

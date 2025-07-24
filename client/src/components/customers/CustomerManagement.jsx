@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -65,7 +66,7 @@ const CustomerManagement = () => {
       try {
         await api.post("/customers/sync");
       } catch (syncError) {
-        console.warn(
+        logger.warn(
           "Customer sync failed, proceeding with existing data:",
           syncError.message
         );
@@ -96,7 +97,7 @@ const CustomerManagement = () => {
         }
       }
     } catch (error) {
-      console.error("Error fetching customers:", error);
+      logger.error("Error fetching customers:", error);
       showNotification("Müşteriler yüklenirken hata oluştu", "error");
     } finally {
       setLoading(false);
@@ -141,7 +142,7 @@ const CustomerManagement = () => {
 
       showNotification("Müşteriler başarıyla dışa aktarıldı", "success");
     } catch (error) {
-      console.error("Error exporting customers:", error);
+      logger.error("Error exporting customers:", error);
       showNotification("Müşteriler dışa aktarılırken hata oluştu", "error");
     }
   };

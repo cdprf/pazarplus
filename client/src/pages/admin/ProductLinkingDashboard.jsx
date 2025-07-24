@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import {
   Card,
@@ -58,7 +59,7 @@ const ProductLinkingDashboard = () => {
       setUnlinkedItems(itemsResponse.data.data.items);
       setTotalPages(itemsResponse.data.data.pagination.totalPages);
     } catch (error) {
-      console.error("Error loading data:", error);
+      logger.error("Error loading data:", error);
     }
     setLoading(false);
   }, [currentPage, filters]);
@@ -86,7 +87,7 @@ const ProductLinkingDashboard = () => {
         loadData(); // Reload data to show updated stats
       }
     } catch (error) {
-      console.error("Error running retroactive linking:", error);
+      logger.error("Error running retroactive linking:", error);
       alert("Error running retroactive linking. Check console for details.");
     }
     setProcessLoading(false);
@@ -101,7 +102,7 @@ const ProductLinkingDashboard = () => {
       setSuggestions(response.data.data.suggestions || []);
       setShowLinkModal(true);
     } catch (error) {
-      console.error("Error loading suggestions:", error);
+      logger.error("Error loading suggestions:", error);
       setSuggestions([]);
       setShowLinkModal(true);
     }
@@ -119,7 +120,7 @@ const ProductLinkingDashboard = () => {
       loadData(); // Reload data
       alert("Product linked successfully!");
     } catch (error) {
-      console.error("Error linking product:", error);
+      logger.error("Error linking product:", error);
       alert("Error linking product. Check console for details.");
     }
   };
@@ -131,7 +132,7 @@ const ProductLinkingDashboard = () => {
         loadData(); // Reload data
         alert("Product unlinked successfully!");
       } catch (error) {
-        console.error("Error unlinking product:", error);
+        logger.error("Error unlinking product:", error);
         alert("Error unlinking product. Check console for details.");
       }
     }

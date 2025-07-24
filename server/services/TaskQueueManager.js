@@ -178,14 +178,14 @@ class TaskQueueManager extends EventEmitter {
       // Check if we can process more tasks
       const availableSlots = this.maxConcurrentTasks - this.runningTasks.size;
       if (availableSlots <= 0) {
-        logger.debug(`No available slots for new tasks`, {
+        logger.info(`No available slots for new tasks`, {
           runningTasks: this.runningTasks.size,
           maxConcurrentTasks: this.maxConcurrentTasks
         });
         return;
       }
 
-      logger.debug(`Checking for queued tasks`, { availableSlots });
+      logger.info(`Checking for queued tasks`, { availableSlots });
 
       // Get queued tasks
       const queuedTasks = await BackgroundTaskService.getQueuedTasks({
@@ -193,7 +193,7 @@ class TaskQueueManager extends EventEmitter {
       });
 
       if (queuedTasks.length === 0) {
-        logger.debug('No queued tasks found');
+        logger.info('No queued tasks found');
         return;
       }
 
@@ -286,12 +286,12 @@ class TaskQueueManager extends EventEmitter {
 
       // Set up event listeners with metrics tracking
       taskExecution.on('progress', (progress) => {
-        logger.debug(`Task progress update`, { taskId, progress });
+        logger.info(`Task progress update`, { taskId, progress });
         this.emit('taskProgress', taskId, progress);
       });
 
       taskExecution.on('log', (log) => {
-        logger.debug(`Task log`, { taskId, log });
+        logger.info(`Task log`, { taskId, log });
         this.emit('taskLog', taskId, log);
       });
 
@@ -367,7 +367,7 @@ class TaskQueueManager extends EventEmitter {
 
       taskExecution.on('progress', async (progressData) => {
         try {
-          logger.debug(`Task progress update`, { taskId, progressData });
+          logger.info(`Task progress update`, { taskId, progressData });
           await BackgroundTaskService.updateProgress(
             taskId,
             progressData.current,
@@ -386,7 +386,7 @@ class TaskQueueManager extends EventEmitter {
 
       taskExecution.on('log', async (logData) => {
         try {
-          logger.debug(`Task log entry`, { taskId, logData });
+          logger.info(`Task log entry`, { taskId, logData });
           await BackgroundTaskService.addLog(
             taskId,
             logData.level,
@@ -405,7 +405,7 @@ class TaskQueueManager extends EventEmitter {
       // Add missing log event handler to persist logs to database
       taskExecution.on('log', async (logData) => {
         try {
-          logger.debug(`Task log entry`, { taskId, logData });
+          logger.info(`Task log entry`, { taskId, logData });
           await BackgroundTaskService.addLog(
             taskId,
             logData.level,
@@ -734,7 +734,7 @@ class TaskExecution extends EventEmitter {
       // Execute the task with enhanced logging callbacks
       const result = await executor.execute(this.task, {
         onProgress: (current, total, message, phase) => {
-          logger.debug(`Task progress`, {
+          logger.info(`Task progress`, {
             taskId: this.task.id,
             current,
             total,

@@ -698,7 +698,7 @@ class PlatformProductController {
 
       if (connectionId) {
         // Direct connection lookup by ID
-        this.logger.debug('🔗 Looking up connection by ID', {
+        this.logger.info('🔗 Looking up connection by ID', {
           connectionId,
           platformId
         });
@@ -725,7 +725,7 @@ class PlatformProductController {
         }
       } else {
         // Lookup connection by user ID
-        this.logger.debug('🔗 Searching for platform connection by user', {
+        this.logger.info('🔗 Searching for platform connection by user', {
           platformId,
           userId: userId ? `${userId.substring(0, 8)}***` : 'missing',
           searchCriteria: {
@@ -772,7 +772,7 @@ class PlatformProductController {
 
       // Create service instance based on platform
       let service;
-      this.logger.debug('🏭 Creating platform service instance', {
+      this.logger.info('🏭 Creating platform service instance', {
         platformId: platformId.toLowerCase(),
         connectionId: connection.id
       });
@@ -780,19 +780,19 @@ class PlatformProductController {
       switch (platformId.toLowerCase()) {
       case 'trendyol':
         service = new TrendyolService(connection.id);
-        this.logger.debug('✅ TrendyolService instance created', {
+        this.logger.info('✅ TrendyolService instance created', {
           connectionId: connection.id
         });
         break;
       case 'hepsiburada':
         service = new HepsiburadaService(connection.id);
-        this.logger.debug('✅ HepsiburadaService instance created', {
+        this.logger.info('✅ HepsiburadaService instance created', {
           connectionId: connection.id
         });
         break;
       case 'n11':
         service = new N11Service(connection.id);
-        this.logger.debug('✅ N11Service instance created', {
+        this.logger.info('✅ N11Service instance created', {
           connectionId: connection.id
         });
         break;
@@ -816,7 +816,7 @@ class PlatformProductController {
       });
 
       // Initialize the service to ensure it's ready for use
-      this.logger.debug('🔧 Initializing platform service', {
+      this.logger.info('🔧 Initializing platform service', {
         platformId,
         connectionId: connection.id
       });

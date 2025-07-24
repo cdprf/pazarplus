@@ -1,14 +1,15 @@
 const { sequelize, Order } = require('../models');
+const logger = require("../utils/logger");
 
 async function updateOrderSchema() {
   try {
-    console.log('🔄 Updating Order table schema...');
+    logger.info('🔄 Updating Order table schema...');
     
     // Add missing columns to the orders table
     const queryInterface = sequelize.getQueryInterface();
     
     const tableInfo = await queryInterface.describeTable('orders');
-    console.log('Current table columns:', Object.keys(tableInfo));
+    logger.info('Current table columns:', Object.keys(tableInfo));
     
     // Check and add missing columns
     const columnsToAdd = [
@@ -28,20 +29,20 @@ async function updateOrderSchema() {
     
     for (const column of columnsToAdd) {
       if (!tableInfo[column.name]) {
-        console.log(`Adding column: ${column.name}`);
+        logger.info(`Adding column: ${column.name}`);
         await queryInterface.addColumn('orders', column.name, {
           type: column.type,
           allowNull: true
         });
       } else {
-        console.log(`Column ${column.name} already exists`);
+        logger.info(`Column ${column.name} already exists`);
       }
     }
     
-    console.log('✅ Order table schema updated successfully!');
+    logger.info('✅ Order table schema updated successfully!');
     
   } catch (error) {
-    console.error('❌ Error updating schema:', error);
+    logger.error('❌ Error updating schema:', error);
     throw error;
   }
 }
@@ -49,10 +50,10 @@ async function updateOrderSchema() {
 // Run the migration
 updateOrderSchema()
   .then(() => {
-    console.log('Migration completed successfully');
+    logger.info('Migration completed successfully');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('Migration failed:', error);
+    logger.error('Migration failed:', error);
     process.exit(1);
   });

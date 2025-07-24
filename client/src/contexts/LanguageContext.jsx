@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React, { createContext, useContext, useState, useEffect } from "react";
 import i18n from "../i18n";
 
@@ -66,7 +67,7 @@ export const LanguageProvider = ({ children }) => {
 
       document.documentElement.lang = language;
     } catch (error) {
-      console.error("Error changing language:", error);
+      logger.error("Error changing language:", error);
     }
   };
 

@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useRef, useCallback } from "react";
 import {
   Modal,
@@ -192,7 +193,7 @@ const ProductCreationModal = ({ show, onHide, onSuccess }) => {
 
       handleClose();
     } catch (error) {
-      console.error("Error creating product:", error);
+      logger.error("Error creating product:", error);
       showAlert("Error creating product: " + error.message, "error");
     } finally {
       setLoading(false);
@@ -314,7 +315,7 @@ const ProductCreationModal = ({ show, onHide, onSuccess }) => {
           "success"
         );
       } catch (error) {
-        console.error("Error parsing file:", error);
+        logger.error("Error parsing file:", error);
         showAlert("Error parsing file. Please check the format.", "error");
       }
     };
@@ -379,7 +380,7 @@ const ProductCreationModal = ({ show, onHide, onSuccess }) => {
 
       handleClose();
     } catch (error) {
-      console.error("Error importing products:", error);
+      logger.error("Error importing products:", error);
       showAlert("Error importing products: " + error.message, "error");
     } finally {
       setLoading(false);
@@ -436,7 +437,7 @@ const ProductCreationModal = ({ show, onHide, onSuccess }) => {
 
       showAlert("Platform data fetched successfully!", "success");
     } catch (error) {
-      console.error("Error fetching platform data:", error);
+      logger.error("Error fetching platform data:", error);
       showAlert("Error fetching platform data: " + error.message, "error");
     } finally {
       setLoading(false);
@@ -503,7 +504,7 @@ const ProductCreationModal = ({ show, onHide, onSuccess }) => {
 
       handleClose();
     } catch (error) {
-      console.error("Error importing from platform:", error);
+      logger.error("Error importing from platform:", error);
       showAlert("Error importing from platform: " + error.message, "error");
     } finally {
       setLoading(false);
@@ -522,7 +523,7 @@ const ProductCreationModal = ({ show, onHide, onSuccess }) => {
       showAlert("Platform scraping feature coming soon!", "info");
       // Placeholder for actual implementation
     } catch (error) {
-      console.error("Error scraping platform data:", error);
+      logger.error("Error scraping platform data:", error);
       showAlert("Error fetching platform data", "error");
     } finally {
       setLoading(false);

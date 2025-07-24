@@ -581,7 +581,7 @@ class ProductMergeService {
 
       // Commit the entire batch transaction
       await transaction.commit();
-      logger.debug(
+      logger.info(
         `Batch processed successfully: ${savedProducts.length} products saved, ${errors.length} errors`
       );
 
@@ -736,7 +736,7 @@ class ProductMergeService {
       );
 
       product = existingProduct;
-      logger.debug(`Updated existing product: ${product.sku}`);
+      logger.info(`Updated existing product: ${product.sku}`);
     } else {
       // Create new product with required fields and all extracted data using transaction fallback
       const productData = {
@@ -885,7 +885,7 @@ class ProductMergeService {
             );
 
             if (platformData && platformData.product) {
-              logger.debug(
+              logger.info(
                 `Found existing product by platform data: ${source.platform}:${source.externalId} -> ${platformData.product.sku}`
               );
               return platformData.product;
@@ -937,7 +937,7 @@ class ProductMergeService {
         `upsert platform data for ${source.platform}:${source.externalId}`
       );
 
-      logger.debug(
+      logger.info(
         `${created ? 'Created' : 'Updated'} platform data for ${
           source.platform
         }: ${source.externalId}`
@@ -992,7 +992,7 @@ class ProductMergeService {
             `update existing platform data for ${source.platform}:${source.externalId}`
           );
 
-          logger.debug(
+          logger.info(
             `Successfully updated existing platform data for ${source.platform}: ${source.externalId}`
           );
           return existingPlatformData;

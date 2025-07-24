@@ -188,7 +188,7 @@ class NotificationService extends EventEmitter {
       timestamp: new Date()
     });
 
-    logger.debug(`Client ${clientId} subscribed to channels:`, channels);
+    logger.info(`Client ${clientId} subscribed to channels:`, channels);
   }
 
   /**
@@ -213,7 +213,7 @@ class NotificationService extends EventEmitter {
       timestamp: new Date()
     });
 
-    logger.debug(`Client ${clientId} unsubscribed from channels:`, channels);
+    logger.info(`Client ${clientId} unsubscribed from channels:`, channels);
   }
 
   /**
@@ -346,7 +346,7 @@ class NotificationService extends EventEmitter {
     // Store notification for later retrieval
     this.storeNotification(safeNotification);
 
-    logger.debug(
+    logger.info(
       `Broadcast notification sent to ${sentCount.success} clients, ${sentCount.failed} failed`
     );
 

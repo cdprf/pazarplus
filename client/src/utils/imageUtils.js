@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Image utilities for handling external images with SSL certificate issues
  */
@@ -92,7 +93,7 @@ export const SafeImage = ({ src, alt, onError, onLoad, ...props }) => {
   const handleError = (event) => {
     // If original image failed and we haven't tried proxy yet, try proxy
     if (!hasTriedProxy && shouldProxyImage(src)) {
-      console.log(`Image failed to load, trying proxy: ${src}`);
+      logger.info(`Image failed to load, trying proxy: ${src}`);
       setHasTriedProxy(true);
       setImageSrc(getProxiedImageUrl(src));
     } else {
@@ -147,7 +148,7 @@ export const useImageWithProxy = (originalUrl) => {
 
   const handleError = React.useCallback(() => {
     if (!hasTriedProxy && shouldProxyImage(originalUrl)) {
-      console.log(`Image failed to load, trying proxy: ${originalUrl}`);
+      logger.info(`Image failed to load, trying proxy: ${originalUrl}`);
       setHasTriedProxy(true);
       setSrc(getProxiedImageUrl(originalUrl));
     } else {

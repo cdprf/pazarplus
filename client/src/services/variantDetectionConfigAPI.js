@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Variant Detection Configuration API Client
  * Handles communication with the backend variant detection service
@@ -35,7 +36,7 @@ class VariantDetectionConfigAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error("Error getting variant detection status:", error);
+      logger.error("Error getting variant detection status:", error);
       throw error;
     }
   }
@@ -60,7 +61,7 @@ class VariantDetectionConfigAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error("Error starting variant detection service:", error);
+      logger.error("Error starting variant detection service:", error);
       throw error;
     }
   }
@@ -82,7 +83,7 @@ class VariantDetectionConfigAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error("Error stopping variant detection service:", error);
+      logger.error("Error stopping variant detection service:", error);
       throw error;
     }
   }
@@ -104,7 +105,7 @@ class VariantDetectionConfigAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error("Error getting variant detection config:", error);
+      logger.error("Error getting variant detection config:", error);
       throw error;
     }
   }
@@ -127,7 +128,7 @@ class VariantDetectionConfigAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error("Error updating variant detection config:", error);
+      logger.error("Error updating variant detection config:", error);
       throw error;
     }
   }
@@ -157,7 +158,7 @@ class VariantDetectionConfigAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error("Error running batch variant detection:", error);
+      logger.error("Error running batch variant detection:", error);
       throw error;
     }
   }

@@ -1,4 +1,5 @@
 /**
+const logger = require("../../../../utils/logger");
  * UBL Invoice Generator for QNB Finans e-Archive
  * Generates UBL 2.1 compliant XML for Turkish e-archive standards
  */
@@ -9,7 +10,7 @@ let xmlEnabled = true;
 try {
   xml2js = require('xml2js');
 } catch (error) {
-  console.warn('XML processing dependencies not available:', error.message);
+  logger.warn('XML processing dependencies not available:', error.message);
   xmlEnabled = false;
 
   // Create fallback XML implementation
@@ -32,7 +33,7 @@ const QNBHelpers = require('../utils/QNBHelpers');
 class UBLGenerator {
   constructor() {
     if (!xmlEnabled) {
-      console.warn('UBL Generator disabled - XML dependencies not available');
+      logger.warn('UBL Generator disabled - XML dependencies not available');
       return;
     }
 

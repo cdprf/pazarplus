@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import { Modal, Button } from "../ui";
 import { useAlert } from "../../contexts/AlertContext";
@@ -378,7 +379,7 @@ const PlatformVariantModal = ({
         );
         setCategories(categories);
       } catch (error) {
-        console.error("Fetch categories error:", error);
+        logger.error("Fetch categories error:", error);
         showAlert(error.message || "Kategoriler getirilemedi", "error");
         setCategories([]);
       } finally {
@@ -411,7 +412,7 @@ const PlatformVariantModal = ({
         };
         setFieldValues(initialValues);
       } catch (error) {
-        console.error("Fetch platform fields error:", error);
+        logger.error("Fetch platform fields error:", error);
         showAlert(error.message || "Platform alanları getirilemedi", "error");
         setFields([]);
       } finally {
@@ -529,7 +530,7 @@ const PlatformVariantModal = ({
       );
       onSave();
     } catch (error) {
-      console.error("Save variant error:", error);
+      logger.error("Save variant error:", error);
 
       // Handle validation errors
       if (error.validationErrors) {

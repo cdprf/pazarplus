@@ -391,7 +391,7 @@ class ShippingTemplatesController {
         });
       }
     } catch (error) {
-      console.error(`GeneratePDF ERROR: ${error.message}`, error);
+      logger.error(`GeneratePDF ERROR: ${error.message}`, error);
       logger.error(`Failed to generate PDF: ${error.message}`, {
         error,
         userId: req.user?.id

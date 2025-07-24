@@ -83,11 +83,11 @@ class QNBFinansService {
         config.environment
       );
 
-      console.log(`🔍 Debug - Account Type: ${serviceConfig.accountType}`);
-      console.log(
+      logger.info(`🔍 Debug - Account Type: ${serviceConfig.accountType}`);
+      logger.info(
         `🔍 Debug - User Service URL: ${serviceConfig.userServiceUrl}`
       );
-      console.log(`🔍 Debug - Username: ${username}`);
+      logger.info(`🔍 Debug - Username: ${username}`);
 
       const soapEnvelope = {
         'soapenv:Envelope': {
@@ -108,7 +108,7 @@ class QNBFinansService {
 
       const soapXML = this.xmlBuilder.buildObject(soapEnvelope);
 
-      console.log(`🔍 Debug - SOAP Request:`, soapXML);
+      logger.info(`🔍 Debug - SOAP Request:`, soapXML);
 
       const response = await axios.post(serviceConfig.userServiceUrl, soapXML, {
         headers: {

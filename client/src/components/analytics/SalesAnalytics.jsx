@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import {
   OptimizedLineChart,
@@ -33,7 +34,7 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
         setLoading(true);
         setError(null);
 
-        console.log(
+        logger.info(
           "🔍 Fetching sales analytics data for timeframe:",
           timeframe
         );
@@ -48,7 +49,7 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
           timeoutPromise,
         ]);
 
-        console.log("✅ Sales analytics data received:", {
+        logger.info("✅ Sales analytics data received:", {
           success: salesData?.success,
           hasData: !!salesData?.data,
           dataKeys: salesData?.data ? Object.keys(salesData.data) : [],
@@ -69,7 +70,7 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
           const rawData = salesData.data || salesData;
           const processedData = processAnalyticsData(rawData);
 
-          console.log("📊 Processed sales data:", {
+          logger.info("📊 Processed sales data:", {
             hasOrderSummary: !!processedData?.orderSummary,
             hasRevenue: !!processedData?.revenue,
             revenueTrendsLength: processedData?.revenue?.trends?.length || 0,
@@ -79,11 +80,11 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
 
           setData(processedData);
         } else {
-          console.warn("⚠️ No sales data received, setting empty data");
+          logger.warn("⚠️ No sales data received, setting empty data");
           setData(getEmptyData());
         }
       } catch (err) {
-        console.error("Error fetching sales analytics:", err);
+        logger.error("Error fetching sales analytics:", err);
 
         // Check if this is an authentication error
         const isAuthError =
@@ -94,11 +95,11 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
         const isTimeoutError = err.message === "Request timeout";
 
         if (isAuthError) {
-          console.warn("🔐 Authentication required for sales analytics");
+          logger.warn("🔐 Authentication required for sales analytics");
         } else if (isTimeoutError) {
-          console.warn("⏰ Analytics service timed out");
+          logger.warn("⏰ Analytics service timed out");
         } else {
-          console.warn("🔄 Analytics service error, using empty data");
+          logger.warn("🔄 Analytics service error, using empty data");
         }
 
         setError(null); // Don't show error, just use empty data for better UX
@@ -246,7 +247,7 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
 
   // Prepare chart data
   const chartData = revenueData.trends || [];
-  console.log("📊 Chart data preparation:", {
+  logger.info("📊 Chart data preparation:", {
     hasRevenueData: !!revenueData,
     revenueDataKeys: revenueData ? Object.keys(revenueData) : [],
     hasTrends: !!revenueData?.trends,

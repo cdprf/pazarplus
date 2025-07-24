@@ -1894,7 +1894,7 @@ class HepsiburadaService extends BasePlatformService {
                       if (Object.keys(updateData).length > 0) {
                         await existingOrderItem.update(updateData);
 
-                        this.logger.debug(
+                        this.logger.info(
                           `Updated OrderItem ${existingOrderItem.id} for order ${orderNumber}`,
                           {
                             itemId: existingOrderItem.id,
@@ -1932,7 +1932,7 @@ class HepsiburadaService extends BasePlatformService {
                           }
                         );
                       } else {
-                        this.logger.debug(
+                        this.logger.info(
                           `No changes needed for OrderItem ${existingOrderItem.id} in order ${orderNumber}`,
                           {
                             orderNumber,
@@ -2265,9 +2265,9 @@ class HepsiburadaService extends BasePlatformService {
               });
 
               if (created) {
-                this.logger.debug(`Created new order for ${orderNumber}`);
+                this.logger.info(`Created new order for ${orderNumber}`);
               } else {
-                this.logger.debug(
+                this.logger.info(
                   `Found existing order for ${orderNumber}, updating if needed`
                 );
               }
@@ -2526,7 +2526,7 @@ class HepsiburadaService extends BasePlatformService {
             normalizedOrders.push(result);
             successCount++;
 
-            this.logger.debug(
+            this.logger.info(
               `Successfully created new order for ${
                 order.orderNumber || order.OrderNumber || "unknown"
               }`
@@ -2833,7 +2833,7 @@ class HepsiburadaService extends BasePlatformService {
         };
       }
 
-      this.logger.debug(
+      this.logger.info(
         `Testing Hepsiburada connection for merchantId: ${credentials.merchantId}`
       );
 
@@ -2850,7 +2850,7 @@ class HepsiburadaService extends BasePlatformService {
           }
         );
 
-        this.logger.debug(`Connection test successful`);
+        this.logger.info(`Connection test successful`);
 
         return {
           success: true,
@@ -2937,7 +2937,7 @@ class HepsiburadaService extends BasePlatformService {
         return this.fetchAllProductsInternal(params);
       }
 
-      this.logger.debug(
+      this.logger.info(
         `Fetching Hepsiburada products with params: ${JSON.stringify(
           queryParams
         )}`
@@ -2946,7 +2946,7 @@ class HepsiburadaService extends BasePlatformService {
       // Use the working products endpoint from our testing
       const url = `/product/api/products/all-products-of-merchant/${this.merchantId}`;
 
-      this.logger.debug(`Attempting to fetch products from: ${url}`);
+      this.logger.info(`Attempting to fetch products from: ${url}`);
 
       // Try the products endpoint that we verified works
       try {
@@ -2958,7 +2958,7 @@ class HepsiburadaService extends BasePlatformService {
         );
 
         // Log response details for debugging
-        this.logger.debug(`Hepsiburada products API response:`, {
+        this.logger.info(`Hepsiburada products API response:`, {
           status: response.status,
           dataType: typeof response.data,
           responseStructure: {
@@ -3120,7 +3120,7 @@ class HepsiburadaService extends BasePlatformService {
           page: currentPage,
         };
 
-        this.logger.debug(
+        this.logger.info(
           `Fetching Hepsiburada products page ${currentPage + 1}...`
         );
 
@@ -3213,7 +3213,7 @@ class HepsiburadaService extends BasePlatformService {
 
       const queryParams = { ...defaultParams, ...params };
 
-      this.logger.debug(
+      this.logger.info(
         `Fetching Hepsiburada products with params: ${JSON.stringify(
           queryParams
         )}`
@@ -3222,7 +3222,7 @@ class HepsiburadaService extends BasePlatformService {
       // Use the working products endpoint from our testing
       const url = `/product/api/products/all-products-of-merchant/${this.merchantId}`;
 
-      this.logger.debug(`Attempting to fetch products from: ${url}`);
+      this.logger.info(`Attempting to fetch products from: ${url}`);
 
       // Try the products endpoint that we verified works
       try {
@@ -3234,7 +3234,7 @@ class HepsiburadaService extends BasePlatformService {
         );
 
         // Log response details for debugging
-        this.logger.debug(`Hepsiburada products API response:`, {
+        this.logger.info(`Hepsiburada products API response:`, {
           status: response.status,
           dataType: typeof response.data,
           responseStructure: {
@@ -3856,7 +3856,7 @@ class HepsiburadaService extends BasePlatformService {
         );
       });
 
-      this.logger.debug(
+      this.logger.info(
         `Updated product ${existingHepsiburadaProduct.merchantSku} in database`
       );
       return existingHepsiburadaProduct;
@@ -3989,7 +3989,7 @@ class HepsiburadaService extends BasePlatformService {
         return { mainProduct, hepsiburadaProduct };
       });
 
-      this.logger.debug(
+      this.logger.info(
         `Created new product ${result.hepsiburadaProduct.merchantSku} in database`
       );
       return result;

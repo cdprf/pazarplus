@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useRef } from "react";
 import { useAlert } from "../../../contexts/AlertContext";
 import { API_BASE_URL } from "../utils/constants";
@@ -139,7 +140,7 @@ const ProductCreationModalFull = ({ show, onHide, onSuccess }) => {
 
       handleClose();
     } catch (error) {
-      console.error("Error creating product:", error);
+      logger.error("Error creating product:", error);
       showAlert("Error creating product: " + error.message, "error");
     } finally {
       setLoading(false);
@@ -240,7 +241,7 @@ const ProductCreationModalFull = ({ show, onHide, onSuccess }) => {
           "success"
         );
       } catch (error) {
-        console.error("Error parsing file:", error);
+        logger.error("Error parsing file:", error);
         showAlert("Error parsing file. Please check the format.", "error");
       }
     };
@@ -306,7 +307,7 @@ const ProductCreationModalFull = ({ show, onHide, onSuccess }) => {
 
       handleClose();
     } catch (error) {
-      console.error("Error importing products:", error);
+      logger.error("Error importing products:", error);
       showAlert("Error importing products: " + error.message, "error");
     } finally {
       setLoading(false);
@@ -352,7 +353,7 @@ const ProductCreationModalFull = ({ show, onHide, onSuccess }) => {
         throw new Error(data.message || "No data received from platform");
       }
     } catch (error) {
-      console.error("Error fetching platform data:", error);
+      logger.error("Error fetching platform data:", error);
       showAlert(
         error.message ||
           "Failed to scrape platform data. Please check the URL and try again.",
@@ -1112,7 +1113,7 @@ const ProductCreationModalFull = ({ show, onHide, onSuccess }) => {
                       throw new Error(data.message || "Import failed");
                     }
                   } catch (error) {
-                    console.error("Error importing product directly:", error);
+                    logger.error("Error importing product directly:", error);
                     showAlert(
                       error.message || "Failed to import product directly",
                       "error"

@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useContext, useEffect } from "react";
 import {
   UserIcon,
@@ -97,7 +98,7 @@ const Settings = () => {
         setNotificationSettings(response.data);
       }
     } catch (error) {
-      console.error("Failed to load settings:", error);
+      logger.error("Failed to load settings:", error);
     }
   };
 
@@ -177,7 +178,7 @@ const Settings = () => {
       await api.settings.saveNotificationSettings(notificationSettings);
       showAlert("Bildirim ayarları güncellendi", "success");
     } catch (error) {
-      console.error("Notification settings save error:", error);
+      logger.error("Notification settings save error:", error);
       showAlert("Bildirim ayarları güncellenirken hata oluştu", "error");
     } finally {
       setLoading(false);
@@ -209,7 +210,7 @@ const Settings = () => {
         }
       }
     } catch (error) {
-      console.error("App settings save error:", error);
+      logger.error("App settings save error:", error);
       showAlert("Uygulama ayarları güncellenirken hata oluştu", "error");
     } finally {
       setLoading(false);

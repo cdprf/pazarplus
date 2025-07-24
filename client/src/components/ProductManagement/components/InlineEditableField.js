@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState } from "react";
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
@@ -35,7 +36,7 @@ const InlineEditableField = ({
       await onSave(processedValue);
       setIsEditing(false);
     } catch (error) {
-      console.error("Failed to save:", error);
+      logger.error("Failed to save:", error);
     } finally {
       setSaveLoading(false);
     }

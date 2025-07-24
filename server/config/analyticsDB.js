@@ -16,7 +16,7 @@ const analyticsDBConfig = {
   },
 
   // Analytics query optimization
-  logging: logger ? (sql) => logger.debug(sql) : false,
+  logging: logger ? (sql) => logger.info(sql) : false,
 
   // Retry configuration for analytics queries
   retry: {

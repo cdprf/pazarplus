@@ -145,7 +145,7 @@ class TrendyolService extends BasePlatformService {
    * @returns {object} Decrypted credentials
    */
   decryptCredentials(encryptedCredentials) {
-    this.logger.debug("Decrypting Trendyol credentials", {
+    this.logger.info("Decrypting Trendyol credentials", {
       credentialsType: typeof encryptedCredentials,
       connectionId: this.connectionId,
     });
@@ -195,7 +195,7 @@ class TrendyolService extends BasePlatformService {
       }
 
       const supplierId = credentials.supplierId || credentials.sellerId;
-      this.logger.debug(
+      this.logger.info(
         `Testing Trendyol connection for supplierId: ${supplierId}`
       );
 
@@ -209,7 +209,7 @@ class TrendyolService extends BasePlatformService {
         const startDate = yesterday.getTime();
         const endDate = now.getTime();
 
-        this.logger.debug(`Using timestamp range: ${startDate} to ${endDate}`);
+        this.logger.info(`Using timestamp range: ${startDate} to ${endDate}`);
 
         // Test the connection with timestamp formatting
         const response = await this.axiosInstance.get(
@@ -224,7 +224,7 @@ class TrendyolService extends BasePlatformService {
           }
         );
 
-        this.logger.debug(`Connection test successful`);
+        this.logger.info(`Connection test successful`);
 
         return {
           success: true,
@@ -359,7 +359,7 @@ class TrendyolService extends BasePlatformService {
       }
     }
 
-    this.logger.debug(
+    this.logger.info(
       `Fetching Trendyol orders (single page) with params: ${JSON.stringify(
         queryParams
       )}`
@@ -448,7 +448,7 @@ class TrendyolService extends BasePlatformService {
         size: params.size || 200,
       };
 
-      this.logger.debug(`Fetching Trendyol orders page ${currentPage + 1}...`);
+      this.logger.info(`Fetching Trendyol orders page ${currentPage + 1}...`);
 
       const result = await this.fetchSinglePage(pageParams);
 
@@ -604,7 +604,7 @@ class TrendyolService extends BasePlatformService {
 
           // Order doesn't exist - create a new one
           try {
-            this.logger.debug(
+            this.logger.info(
               `Creating new Trendyol order for ${order.orderNumber}`,
               {
                 customerName: order.shipmentAddress?.fullName || "Unknown",
@@ -697,7 +697,7 @@ class TrendyolService extends BasePlatformService {
                 connectionId: this.connectionId,
               });
             } else {
-              this.logger.debug(
+              this.logger.info(
                 `Found existing order for ${order.orderNumber}, skipping creation but updating order items`
               );
             }
@@ -834,7 +834,7 @@ class TrendyolService extends BasePlatformService {
                     }
                   }
                 } else {
-                  this.logger.debug(
+                  this.logger.info(
                     `Order items already exist for order ${order.orderNumber}, skipping creation`
                   );
                 }
@@ -860,7 +860,7 @@ class TrendyolService extends BasePlatformService {
             normalizedOrders.push(normalizedOrder);
             successCount++;
 
-            this.logger.debug(
+            this.logger.info(
               `Successfully created new order for ${order.orderNumber}`
             );
           } catch (error) {
@@ -1735,7 +1735,7 @@ class TrendyolService extends BasePlatformService {
           size: params.size || 1000,
         };
 
-        this.logger.debug(
+        this.logger.info(
           `Fetching Trendyol products page ${currentPage + 1}...`
         );
 
@@ -1851,7 +1851,7 @@ class TrendyolService extends BasePlatformService {
 
       const queryParams = { ...defaultParams, ...params };
 
-      this.logger.debug(
+      this.logger.info(
         `Fetching Trendyol products (single page) with params: ${JSON.stringify(
           queryParams
         )}`
@@ -2106,7 +2106,7 @@ class TrendyolService extends BasePlatformService {
         );
       });
 
-      this.logger.debug(
+      this.logger.info(
         `Updated product ${existingTrendyolProduct.externalProductId} in database`
       );
       return existingTrendyolProduct;
@@ -2270,7 +2270,7 @@ class TrendyolService extends BasePlatformService {
       // Use the correct working endpoint
       const endpoint = "/product-categories";
 
-      this.logger.debug("Making request to categories endpoint", {
+      this.logger.info("Making request to categories endpoint", {
         endpoint,
       });
 

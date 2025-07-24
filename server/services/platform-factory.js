@@ -58,7 +58,7 @@ class PlatformServiceFactory extends EventEmitter {
       if (
         existingService.getHealthStatus().connectionId === connectionData.id
       ) {
-        logger.debug(`Reusing existing service for ${serviceKey}`);
+        logger.info(`Reusing existing service for ${serviceKey}`);
         return existingService;
       }
     }

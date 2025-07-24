@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+const logger = require("../utils/logger");
 
 // Network IP Detection Utility
 // This script detects the machine's network IP address and sets it as an environment variable
@@ -53,8 +54,8 @@ function setNetworkEnvironment() {
   process.env.HOST_IP = networkIP;
   process.env.SERVER_HOST = networkIP;
 
-  console.log(`🌐 Network IP detected: ${networkIP}`);
-  console.log(
+  logger.info(`🌐 Network IP detected: ${networkIP}`);
+  logger.info(
     `📡 Server will be accessible at: http://${networkIP}:${config.server.port}`
   );
 
@@ -69,5 +70,5 @@ module.exports = {
 // If run directly
 if (require.main === module) {
   const ip = getNetworkIP();
-  console.log(ip);
+  logger.info(ip);
 }

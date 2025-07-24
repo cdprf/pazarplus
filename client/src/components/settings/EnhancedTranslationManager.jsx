@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import {
   Container,
@@ -62,7 +63,7 @@ const EnhancedTranslationManager = () => {
       const results = validator.validateAll();
       setValidationResults(results);
     } catch (error) {
-      console.error("Validation failed:", error);
+      logger.error("Validation failed:", error);
     } finally {
       setIsValidating(false);
     }
@@ -89,7 +90,7 @@ const EnhancedTranslationManager = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Export failed:", error);
+      logger.error("Export failed:", error);
     }
   };
 
@@ -109,7 +110,7 @@ const EnhancedTranslationManager = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Template generation failed:", error);
+      logger.error("Template generation failed:", error);
     }
   };
 

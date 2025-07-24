@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useMemo, useCallback } from "react";
 import {
   Card,
@@ -100,7 +101,7 @@ const MainVariantManager = ({
           onSelectionChange([]);
         }
       } catch (error) {
-        console.error("Error marking products as main:", error);
+        logger.error("Error marking products as main:", error);
         showAlert("Error marking products as main: " + error.message, "error");
       } finally {
         setLoading(false);
@@ -141,7 +142,7 @@ const MainVariantManager = ({
       }
 
       const result = await response.json();
-      console.log("Variant creation result:", result);
+      logger.info("Variant creation result:", result);
       showAlert(
         result.message || "Variant created successfully!",
         result.success ? "success" : "info"
@@ -162,7 +163,7 @@ const MainVariantManager = ({
         setTimeout(() => onRefresh(), 100);
       }
     } catch (error) {
-      console.error("Error creating variant:", error);
+      logger.error("Error creating variant:", error);
       showAlert("Error creating variant: " + error.message, "error");
     } finally {
       setLoading(false);
@@ -224,7 +225,7 @@ const MainVariantManager = ({
         onSelectionChange([]);
       }
     } catch (error) {
-      console.error("Error creating bulk variants:", error);
+      logger.error("Error creating bulk variants:", error);
       showAlert("Error creating bulk variants: " + error.message, "error");
     } finally {
       setLoading(false);

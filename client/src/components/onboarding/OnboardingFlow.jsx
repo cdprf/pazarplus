@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -205,7 +206,7 @@ const OnboardingFlow = () => {
         throw new Error(result.message || "Onboarding failed");
       }
     } catch (error) {
-      console.error("Onboarding error:", error);
+      logger.error("Onboarding error:", error);
       setErrors({ payment: error.message });
     } finally {
       setLoading(false);
@@ -241,7 +242,7 @@ const OnboardingFlow = () => {
         throw new Error(result.message || "Onboarding failed");
       }
     } catch (error) {
-      console.error("Onboarding error:", error);
+      logger.error("Onboarding error:", error);
       setErrors({ general: error.message });
     } finally {
       setLoading(false);

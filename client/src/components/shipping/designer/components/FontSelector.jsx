@@ -1,3 +1,4 @@
+import logger from "../../../../utils/logger";
 /**
  * Enhanced Font Selector Component
  * Provides a dropdown for selecting fonts with validation and preview
@@ -34,7 +35,7 @@ const FontSelector = ({
         setFontOptions(options);
         setGroupedOptions(grouped);
       } catch (error) {
-        console.error("Failed to load fonts:", error);
+        logger.error("Failed to load fonts:", error);
         // Use fallback fonts
         const fallbackFonts = fontService.getFallbackFonts();
         setFontOptions(
@@ -64,7 +65,7 @@ const FontSelector = ({
       const result = await fontService.validateText(textContent, value);
       setValidation(result);
     } catch (error) {
-      console.error("Text validation failed:", error);
+      logger.error("Text validation failed:", error);
       setValidation(null);
     }
   }, [textContent, value, showValidation]);

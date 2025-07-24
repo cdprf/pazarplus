@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React from "react";
 import { cn } from "../../utils/cn";
 
@@ -87,7 +88,7 @@ export const Badge = ({
 
     // For development mode, warn about invalid icon types
     if (process.env.NODE_ENV === "development") {
-      console.warn(
+      logger.warn(
         "Badge: Invalid icon type provided. Expected React component, JSX element, or function.",
         typeof icon,
         icon

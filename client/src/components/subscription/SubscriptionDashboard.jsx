@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -53,7 +54,7 @@ const SubscriptionDashboard = () => {
         setUsageStats(data.usageStats || {});
       }
     } catch (error) {
-      console.error("Failed to fetch subscription data:", error);
+      logger.error("Failed to fetch subscription data:", error);
     } finally {
       setLoading(false);
     }

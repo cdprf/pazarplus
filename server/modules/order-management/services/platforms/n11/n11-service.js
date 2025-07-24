@@ -220,7 +220,7 @@ class N11Service extends BasePlatformService {
         };
       }
 
-      this.logger.debug(
+      this.logger.info(
         `Testing N11 connection with appKey: ${credentials.appKey}`
       );
 
@@ -319,7 +319,7 @@ class N11Service extends BasePlatformService {
           size: 250 // Default page size
         };
 
-        this.logger.debug(`Fetching N11 products page ${currentPage + 1}...`);
+        this.logger.info(`Fetching N11 products page ${currentPage + 1}...`);
 
         try {
           const result = await this.fetchSingleProductPage(pageParams);
@@ -421,7 +421,7 @@ class N11Service extends BasePlatformService {
 
       const queryParams = { ...defaultParams, ...params };
 
-      this.logger.debug(
+      this.logger.info(
         `Fetching N11 products (single page) with params: ${JSON.stringify(
           queryParams
         )}`
@@ -820,7 +820,7 @@ class N11Service extends BasePlatformService {
 
     const queryParams = { ...defaultParams, ...filteredParams };
 
-    this.logger.debug(
+    this.logger.info(
       `Fetching N11 orders (single page) with params: ${JSON.stringify(
         queryParams
       )}`
@@ -893,7 +893,7 @@ class N11Service extends BasePlatformService {
         size: params.size || 100
       };
 
-      this.logger.debug(`Fetching N11 orders page ${currentPage + 1}...`);
+      this.logger.info(`Fetching N11 orders page ${currentPage + 1}...`);
 
       const result = await this.fetchSinglePage(pageParams);
 
@@ -1015,7 +1015,7 @@ class N11Service extends BasePlatformService {
         );
       });
 
-      this.logger.debug(
+      this.logger.info(
         `Updated product ${existingPlatformData.platformEntityId} in database`
       );
       return existingPlatformData;
@@ -1189,9 +1189,9 @@ class N11Service extends BasePlatformService {
             });
 
             if (created) {
-              this.logger.debug(`Created new order for ${order.id}`);
+              this.logger.info(`Created new order for ${order.id}`);
             } else {
-              this.logger.debug(
+              this.logger.info(
                 `Found existing order for ${order.id}, updating if needed`
               );
             }
@@ -1775,7 +1775,7 @@ class N11Service extends BasePlatformService {
         status: 'Picking' // Official N11 status for order acceptance
       };
 
-      this.logger.debug(`N11 order acceptance request data`, {
+      this.logger.info(`N11 order acceptance request data`, {
         externalOrderId,
         requestData,
         lineCount: lineIds.length
@@ -1880,7 +1880,7 @@ class N11Service extends BasePlatformService {
         throw new Error('External order ID is required');
       }
 
-      this.logger.debug(`Fetching N11 order details`, {
+      this.logger.info(`Fetching N11 order details`, {
         externalOrderId,
         connectionId: this.connectionId
       });
@@ -2004,7 +2004,7 @@ class N11Service extends BasePlatformService {
 
       const queryParams = { ...defaultParams, ...params };
 
-      this.logger.debug(
+      this.logger.info(
         `Fetching N11 categories with params: ${JSON.stringify(queryParams)}`
       );
 
@@ -2098,7 +2098,7 @@ class N11Service extends BasePlatformService {
         throw new Error('Category ID is required to fetch attributes');
       }
 
-      this.logger.debug(
+      this.logger.info(
         `Fetching N11 category attributes for ID: ${categoryId}`
       );
 
@@ -2202,7 +2202,7 @@ class N11Service extends BasePlatformService {
 
       const queryParams = { ...defaultParams, ...searchParams };
 
-      this.logger.debug(
+      this.logger.info(
         `Searching N11 catalog with params: ${JSON.stringify(queryParams)}`
       );
 

@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 /**
  * Background Variant Detection Service
  *
@@ -72,7 +73,7 @@ class BackgroundVariantDetectionService {
   start() {
     if (this.intervalId) return;
 
-    console.log("🚀 Starting Background Variant Detection Service");
+    logger.info("🚀 Starting Background Variant Detection Service");
 
     // Run initial analysis
     this.scheduleAnalysis();
@@ -97,7 +98,7 @@ class BackgroundVariantDetectionService {
     this.isProcessing = false;
     this.processingQueue = [];
 
-    console.log("⏹️ Background Variant Detection Service stopped");
+    logger.info("⏹️ Background Variant Detection Service stopped");
     this.notifyListeners("service_stopped");
   }
 
@@ -109,7 +110,7 @@ class BackgroundVariantDetectionService {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
-    console.log("⏸️ Background service paused");
+    logger.info("⏸️ Background service paused");
   }
 
   /**
@@ -118,7 +119,7 @@ class BackgroundVariantDetectionService {
   resume() {
     if (!this.intervalId) {
       this.start();
-      console.log("▶️ Background service resumed");
+      logger.info("▶️ Background service resumed");
     }
   }
 
@@ -167,7 +168,7 @@ class BackgroundVariantDetectionService {
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
     } catch (error) {
-      console.error("Error processing analysis queue:", error);
+      logger.error("Error processing analysis queue:", error);
     } finally {
       this.isProcessing = false;
     }
@@ -181,7 +182,7 @@ class BackgroundVariantDetectionService {
     const startTime = Date.now();
 
     try {
-      console.log(`🔍 Executing background analysis task ${task.id}`);
+      logger.info(`🔍 Executing background analysis task ${task.id}`);
 
       let products = task.products;
 
@@ -243,11 +244,11 @@ class BackgroundVariantDetectionService {
         duration: Date.now() - startTime,
       });
 
-      console.log(
+      logger.info(
         `✅ Analysis task ${task.id} completed in ${Date.now() - startTime}ms`
       );
     } catch (error) {
-      console.error(`❌ Analysis task ${task.id} failed:`, error);
+      logger.error(`❌ Analysis task ${task.id} failed:`, error);
       this.notifyListeners("analysis_error", {
         taskId: task.id,
         error: error.message,
@@ -268,7 +269,7 @@ class BackgroundVariantDetectionService {
       const data = await response.json();
       return data.products || data || [];
     } catch (error) {
-      console.error("Failed to fetch products from API:", error);
+      logger.error("Failed to fetch products from API:", error);
       return [];
     }
   }
@@ -324,7 +325,7 @@ class BackgroundVariantDetectionService {
         suggestion.products.some((p) => p.id === product.id)
       );
     } catch (error) {
-      console.error("Error getting product suggestions:", error);
+      logger.error("Error getting product suggestions:", error);
       return [];
     }
   }
@@ -387,7 +388,7 @@ class BackgroundVariantDetectionService {
   clearCache() {
     this.cache.clear();
     this.saveCache();
-    console.log("🗑️ Cache cleared");
+    logger.info("🗑️ Cache cleared");
   }
 
   /**
@@ -405,7 +406,7 @@ class BackgroundVariantDetectionService {
         JSON.stringify(cacheData)
       );
     } catch (error) {
-      console.warn("Failed to save cache:", error);
+      logger.warn("Failed to save cache:", error);
     }
   }
 
@@ -425,7 +426,7 @@ class BackgroundVariantDetectionService {
         }
       }
     } catch (error) {
-      console.warn("Failed to load cache:", error);
+      logger.warn("Failed to load cache:", error);
     }
   }
 
@@ -455,7 +456,7 @@ class BackgroundVariantDetectionService {
       try {
         listener(event, data);
       } catch (error) {
-        console.error("Error in background service listener:", error);
+        logger.error("Error in background service listener:", error);
       }
     });
   }

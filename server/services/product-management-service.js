@@ -248,7 +248,7 @@ class ProductManagementService {
       const patternInfo = this.analyzeStockCodePattern(sku);
 
       if (!patternInfo.isStructured) {
-        logger.debug(`Unstructured SKU, skipping auto-match: ${sku}`);
+        logger.info(`Unstructured SKU, skipping auto-match: ${sku}`);
         return null;
       }
 
@@ -481,7 +481,7 @@ class ProductManagementService {
       // Store learning data for future recommendations
       await this.storeLearnedPattern(learningData, transaction);
 
-      logger.debug(
+      logger.info(
         `Learned from variant creation: ${platformVariant.platformSku}`
       );
     } catch (error) {
@@ -510,7 +510,7 @@ class ProductManagementService {
 
       await this.storeLearnedPattern(learningData);
 
-      logger.debug(`Learned from synced product: ${syncedProduct.sku}`);
+      logger.info(`Learned from synced product: ${syncedProduct.sku}`);
     } catch (error) {
       logger.error('Error learning from synced product:', error);
       // Don't throw - learning is optional
@@ -524,7 +524,7 @@ class ProductManagementService {
     try {
       // For now, just log the pattern
       // In future, this could be stored in a dedicated learning table
-      logger.debug('Stored learned pattern:', learningData);
+      logger.info('Stored learned pattern:', learningData);
     } catch (error) {
       logger.error('Error storing learned pattern:', error);
     }

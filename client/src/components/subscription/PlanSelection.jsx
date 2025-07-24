@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -153,7 +154,7 @@ const PlanSelection = ({
         throw new Error(data.message || "Subscription upgrade failed");
       }
     } catch (error) {
-      console.error("Subscription upgrade error:", error);
+      logger.error("Subscription upgrade error:", error);
       alert("Abonelik yükseltme işlemi başarısız oldu. Lütfen tekrar deneyin.");
     } finally {
       setLoading(false);

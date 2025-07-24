@@ -216,7 +216,7 @@ class BasePlatformService {
     const cachedResult = this._connectionData.get(cacheKey);
 
     if (cachedResult && Date.now() - cachedResult.timestamp < 30000) {
-      this.logger.debug(
+      this.logger.info(
         `Using cached connection test result for ${this.getPlatformType()}`
       );
       return cachedResult.data;
@@ -600,7 +600,7 @@ class BasePlatformService {
    */
   clearConnectionCache() {
     this._connectionData.clear();
-    this.logger.debug(`Cleared connection cache for ${this.getPlatformType()}`);
+    this.logger.info(`Cleared connection cache for ${this.getPlatformType()}`);
   }
 
   /**

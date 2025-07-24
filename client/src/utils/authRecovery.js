@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Authentication Recovery Utility
  * Helps users resolve common JWT authentication issues
@@ -145,7 +146,7 @@ export class AuthRecovery {
         const cacheNames = await caches.keys();
         await Promise.all(cacheNames.map((name) => caches.delete(name)));
       } catch (error) {
-        console.warn("Failed to clear caches:", error);
+        logger.warn("Failed to clear caches:", error);
       }
     }
 
@@ -157,7 +158,7 @@ export class AuthRecovery {
     };
 
     // Log recovery details
-    console.log("🔧 Authentication Recovery Performed:", recovery);
+    logger.info("🔧 Authentication Recovery Performed:", recovery);
 
     // Show user notification if requested
     if (showAlert && issues.length > 0) {
@@ -185,7 +186,7 @@ export class AuthRecovery {
     // Listen for storage events (when user opens multiple tabs)
     window.addEventListener("storage", (event) => {
       if (this.storageKeys.includes(event.key) && !event.newValue) {
-        console.log("Auth data cleared in another tab, syncing...");
+        logger.info("Auth data cleared in another tab, syncing...");
         this.clearAllAuthData();
       }
     });
@@ -195,7 +196,7 @@ export class AuthRecovery {
       if (event.reason?.response?.status === 401) {
         const errorData = event.reason.response.data;
         if (errorData?.code === "INVALID_TOKEN_SIGNATURE") {
-          console.log("Invalid JWT signature detected, performing recovery...");
+          logger.info("Invalid JWT signature detected, performing recovery...");
           this.performRecovery({ showAlert: false });
         }
       }
@@ -205,7 +206,7 @@ export class AuthRecovery {
     setInterval(() => {
       const issues = this.detectAuthIssues();
       if (issues.length > 0) {
-        console.log("Periodic auth check found issues:", issues);
+        logger.info("Periodic auth check found issues:", issues);
         this.performRecovery({ showAlert: false });
       }
     }, 5 * 60 * 1000); // Check every 5 minutes
@@ -236,7 +237,7 @@ export const handleJWTError = (error) => {
     const errorData = error.response.data;
 
     if (errorData?.code === "INVALID_TOKEN_SIGNATURE") {
-      console.log("🔐 Invalid JWT signature - performing automatic recovery");
+      logger.info("🔐 Invalid JWT signature - performing automatic recovery");
       authRecovery.performRecovery({
         showAlert: true,
         redirectToLogin: true,
@@ -245,7 +246,7 @@ export const handleJWTError = (error) => {
     }
 
     if (errorData?.message?.includes("expired")) {
-      console.log("🕒 Token expired - performing automatic recovery");
+      logger.info("🕒 Token expired - performing automatic recovery");
       authRecovery.performRecovery({
         showAlert: false,
         redirectToLogin: true,

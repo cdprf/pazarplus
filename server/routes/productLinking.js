@@ -1,4 +1,5 @@
 /**
+const logger = require("../utils/logger");
  * Product Linking API Routes
  * Handles product-order linking functionality
  */
@@ -21,7 +22,7 @@ router.get('/orders/:orderId/items-with-products', auth, async (req, res) => {
       data: itemsWithProducts
     });
   } catch (error) {
-    console.error('Error getting order items with products:', error);
+    logger.error('Error getting order items with products:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get order items with products',
@@ -52,7 +53,7 @@ router.get('/products/search', auth, async (req, res) => {
       data: products
     });
   } catch (error) {
-    console.error('Error searching products:', error);
+    logger.error('Error searching products:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to search products',
@@ -81,7 +82,7 @@ router.post('/order-items/:itemId/link-product', auth, async (req, res) => {
       message: 'Order item linked with product successfully'
     });
   } catch (error) {
-    console.error('Error linking order item with product:', error);
+    logger.error('Error linking order item with product:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to link order item with product',
@@ -102,7 +103,7 @@ router.delete('/order-items/:itemId/unlink-product', auth, async (req, res) => {
       message: 'Order item unlinked from product successfully'
     });
   } catch (error) {
-    console.error('Error unlinking order item from product:', error);
+    logger.error('Error unlinking order item from product:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to unlink order item from product',

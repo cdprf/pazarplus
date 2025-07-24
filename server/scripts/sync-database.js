@@ -1,17 +1,18 @@
 const { sequelize } = require('../models');
+const logger = require("../utils/logger");
 
 const syncDatabase = async () => {
   try {
-    console.log('🔄 Syncing database...');
+    logger.info('🔄 Syncing database...');
 
     // Use force: false and alter: false to avoid dropping existing tables
     // This will only create missing tables
     await sequelize.sync({ force: false });
 
-    console.log('✅ Database sync completed successfully!');
-    console.log('📊 All missing tables have been created');
+    logger.info('✅ Database sync completed successfully!');
+    logger.info('📊 All missing tables have been created');
   } catch (error) {
-    console.error('❌ Error syncing database:', error);
+    logger.error('❌ Error syncing database:', error);
     throw error;
   }
 };
@@ -22,11 +23,11 @@ module.exports = { syncDatabase };
 if (require.main === module) {
   syncDatabase()
     .then(() => {
-      console.log('✅ Database sync complete, exiting...');
+      logger.info('✅ Database sync complete, exiting...');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('❌ Database sync failed:', error);
+      logger.error('❌ Database sync failed:', error);
       process.exit(1);
     });
 }

@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useCallback } from "react";
 import {
   Plus,
@@ -505,7 +506,7 @@ const InlineVariantDashboard = ({
                 className="flex-1 border border-gray-300 rounded-md px-3 py-2"
                 placeholder="New quantity"
               />
-              <Button onClick={() => console.log("Update stock")}>
+              <Button onClick={() => logger.info("Update stock")}>
                 Update
               </Button>
             </div>

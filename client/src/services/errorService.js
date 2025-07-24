@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Global error management service
  * Handles error reporting, logging, and user notifications
@@ -82,7 +83,7 @@ class ErrorService {
 
     // Console log in development
     if (process.env.NODE_ENV === "development") {
-      console.error("🚨 Error logged:", errorData);
+      logger.error("🚨 Error logged:", errorData);
     }
 
     // Call custom handlers
@@ -90,7 +91,7 @@ class ErrorService {
       try {
         handler(errorData);
       } catch (e) {
-        console.error("Error in error handler:", e);
+        logger.error("Error in error handler:", e);
       }
     });
 
@@ -129,7 +130,7 @@ class ErrorService {
         }),
       });
     } catch (error) {
-      console.warn("Failed to report error to external service:", error);
+      logger.warn("Failed to report error to external service:", error);
     }
   }
 

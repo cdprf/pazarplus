@@ -1,92 +1,87 @@
-const jwt = require('jsonwebtoken');
-const { User } = require('../models');
-const logger = require('../utils/logger');
-const config = require('../config/config');
+const jwt = require("jsonwebtoken");
+const { User } = require("../models");
+const logger = require("../utils/logger");
+const config = require("../config/config");
 
 /**
  * Authentication middleware to verify JWT tokens
  */
 const auth = async (req, res, next) => {
   try {
-    const authHeader = req.header('Authorization');
+    const authHeader = req.header("Authorization");
 
     // Enhanced debugging for token extraction
-    logger.debug('Auth middleware called', {
-      url: req.url,
+    logger.info("Auth middleware called", {
+      operation: "authentication",
+      path: req.path,
       method: req.method,
-      authHeader: authHeader
-        ? `Bearer ${authHeader.substring(7, 20)}...`
-        : 'missing',
-      userAgent: req.headers['user-agent']?.substring(0, 50)
+      ip: req.ip,
+      userAgent: req.get("User-Agent"),
+      hasAuthHeader: !!req.headers.authorization,
     });
-
-    const token = authHeader?.replace('Bearer ', '');
+    const token = authHeader?.replace("Bearer ", "");
 
     if (!token) {
-      logger.warn('Authentication failed: No token provided', {
+      logger.warn("Authentication failed: No token provided", {
         url: req.url,
-        ip: req.ip
+        ip: req.ip,
       });
       return res.status(401).json({
         success: false,
-        message: 'Access denied. No token provided.'
+        message: "Access denied. No token provided.",
       });
     }
 
     // Enhanced token validation with detailed logging
-    logger.debug('Attempting token verification', {
-      tokenLength: token.length,
-      tokenStart: token.substring(0, 20),
-      secretExists: !!config.jwt.secret,
-      secretLength: config.jwt.secret?.length
-    });
-
-    // Verify token using centralized config
+    logger.info("Attempting token verification", {
+      operation: "token_verification",
+      path: req.path,
+      ip: req.ip,
+      tokenType: token ? "Bearer" : "none",
+    }); // Verify token using centralized config
     const decoded = jwt.verify(token, config.jwt.secret);
 
-    logger.debug('Token decoded successfully', {
+    logger.info("Token decoded successfully", {
+      operation: "token_verification",
       userId: decoded.id,
-      tokenExp: decoded.exp,
-      tokenIat: decoded.iat,
-      // Include tenant info if present
-      tenantId: decoded.tenantId || null
-    });
-
-    // Find user with subscription information
+      email: decoded.email,
+      path: req.path,
+      ip: req.ip,
+    }); // Find user with subscription information
     const user = await User.findByPk(decoded.id, {
       include: [
         {
-          association: 'subscriptions',
+          association: "subscriptions",
           where: {
-            status: ['trial', 'active']
+            status: ["trial", "active"],
           },
           required: false,
           limit: 1,
-          order: [['createdAt', 'DESC']]
-        }
-      ]
+          order: [["createdAt", "DESC"]],
+        },
+      ],
     });
 
     if (!user) {
-      logger.warn('Authentication failed: User not found', {
+      logger.warn("Authentication failed: User not found", {
         userId: decoded.id,
-        url: req.url
+        url: req.url,
       });
       return res.status(401).json({
         success: false,
-        message: 'Invalid token - user not found.'
+        message: "Invalid token - user not found.",
       });
     }
 
     if (!user.isActive) {
-      logger.warn('Authentication failed: User not active', {
+      logger.warn("Authentication failed: User not active", {
         userId: decoded.id,
         userEmail: user.email,
-        url: req.url
+        url: req.url,
       });
       return res.status(401).json({
         success: false,
-        message: 'Invalid token - user not active.'
+        message: "Invalid token - user not active.",
       });
     }
 
@@ -97,98 +92,98 @@ const auth = async (req, res, next) => {
 
     // Update last activity
     user.update({ lastActivityAt: new Date() }).catch((err) => {
-      logger.warn('Failed to update last activity:', err.message);
+      logger.warn("Failed to update last activity:", err.message);
     });
 
-    logger.debug('Authentication successful', {
-      userId: user.id,
-      userEmail: user.email,
-      subscriptionPlan: user.subscriptionPlan,
-      tenantId: req.tenantId,
-      url: req.url
+    logger.info("Authentication successful", {
+      operation: "authentication",
+      userId: req.user.id,
+      email: req.user.email,
+      path: req.path,
+      method: req.method,
+      ip: req.ip,
     });
-
     next();
   } catch (error) {
     // Enhanced error logging with more details
-    logger.error('Authentication error occurred', {
+    logger.error("Authentication error occurred", {
       error: error.message,
       errorName: error.name,
       errorStack: error.stack,
       url: req.url,
       method: req.method,
       ip: req.ip,
-      userAgent: req.headers['user-agent']?.substring(0, 100),
-      authHeader: req.header('Authorization') ? 'present' : 'missing',
+      userAgent: req.headers["user-agent"]?.substring(0, 100),
+      authHeader: req.header("Authorization") ? "present" : "missing",
       tokenLength:
-        req.header('Authorization')?.replace('Bearer ', '')?.length || 0
+        req.header("Authorization")?.replace("Bearer ", "")?.length || 0,
     });
 
-    if (error.name === 'JsonWebTokenError') {
+    if (error.name === "JsonWebTokenError") {
       // Enhanced logging for JsonWebTokenError with specific handling for invalid signature
-      if (error.message === 'invalid signature') {
+      if (error.message === "invalid signature") {
         logger.warn(
-          'JWT invalid signature detected - likely old token with different secret',
+          "JWT invalid signature detected - likely old token with different secret",
           {
             url: req.url,
-            tokenLength: req.header('Authorization')?.replace('Bearer ', '')
+            tokenLength: req.header("Authorization")?.replace("Bearer ", "")
               ?.length
-              ? req.header('Authorization')?.replace('Bearer ', '')?.length
+              ? req.header("Authorization")?.replace("Bearer ", "")?.length
               : 0,
-            userAgent: req.headers['user-agent']?.substring(0, 50),
+            userAgent: req.headers["user-agent"]?.substring(0, 50),
             ip: req.ip,
-            suggestion: 'User should clear browser storage and re-login'
+            suggestion: "User should clear browser storage and re-login",
           }
         );
 
         return res.status(401).json({
           success: false,
-          message: 'Authentication token is invalid. Please login again.',
-          code: 'INVALID_TOKEN_SIGNATURE',
-          action: 'CLEAR_STORAGE_AND_RELOGIN'
+          message: "Authentication token is invalid. Please login again.",
+          code: "INVALID_TOKEN_SIGNATURE",
+          action: "CLEAR_STORAGE_AND_RELOGIN",
         });
       }
 
-      logger.warn('JWT validation failed', {
+      logger.warn("JWT validation failed", {
         reason: error.message,
         url: req.url,
-        tokenProvided: !!req.header('Authorization')
+        tokenProvided: !!req.header("Authorization"),
       });
       return res.status(401).json({
         success: false,
         message: `Invalid token: ${error.message}`,
-        code: 'INVALID_TOKEN'
+        code: "INVALID_TOKEN",
       });
     }
 
-    if (error.name === 'TokenExpiredError') {
-      logger.warn('Token expired', {
+    if (error.name === "TokenExpiredError") {
+      logger.warn("Token expired", {
         expiredAt: error.expiredAt,
-        url: req.url
+        url: req.url,
       });
       return res.status(401).json({
         success: false,
-        message: 'Token expired.',
-        expiredAt: error.expiredAt
+        message: "Token expired.",
+        expiredAt: error.expiredAt,
       });
     }
 
-    if (error.name === 'NotBeforeError') {
-      logger.warn('Token not yet valid', {
+    if (error.name === "NotBeforeError") {
+      logger.warn("Token not yet valid", {
         notBefore: error.date,
-        url: req.url
+        url: req.url,
       });
       return res.status(401).json({
         success: false,
-        message: 'Token not yet valid.'
+        message: "Token not yet valid.",
       });
     }
 
     // Generic JWT or other authentication errors
     return res.status(500).json({
       success: false,
-      message: 'Authentication error.',
-      ...(process.env.NODE_ENV === 'development' && { error: error.message })
+      message: "Authentication error.",
+      ...(process.env.NODE_ENV === "development" && { error: error.message }),
     });
   }
 };
@@ -202,7 +197,7 @@ const requireFeature = (featureName) => {
       if (!req.user) {
         return res.status(401).json({
           success: false,
-          message: 'Authentication required'
+          message: "Authentication required",
         });
       }
 
@@ -210,11 +205,11 @@ const requireFeature = (featureName) => {
       const hasAccess = req.user.hasFeatureAccess(featureName);
 
       if (!hasAccess) {
-        logger.warn('Feature access denied', {
+        logger.warn("Feature access denied", {
           userId: req.user.id,
           feature: featureName,
           subscriptionPlan: req.user.subscriptionPlan,
-          url: req.url
+          url: req.url,
         });
 
         return res.status(403).json({
@@ -222,16 +217,16 @@ const requireFeature = (featureName) => {
           message: `This feature requires a higher subscription plan`,
           requiredFeature: featureName,
           currentPlan: req.user.subscriptionPlan,
-          upgradeRequired: true
+          upgradeRequired: true,
         });
       }
 
       next();
     } catch (error) {
-      logger.error('Feature gate error:', error);
+      logger.error("Feature gate error:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to check feature access'
+        message: "Failed to check feature access",
       });
     }
   };
@@ -247,7 +242,7 @@ const checkUsageLimit = (metricType) => {
         return next(); // Skip if no subscription
       }
 
-      const { trackUsage } = require('../controllers/subscription-controller');
+      const { trackUsage } = require("../controllers/subscription-controller");
 
       // Track this API call
       await trackUsage(req.user.id, metricType);
@@ -257,17 +252,17 @@ const checkUsageLimit = (metricType) => {
       const usageRecord = await req.user.getUsageRecords({
         where: {
           metricType,
-          billingPeriodStart: { [require('sequelize').Op.lte]: currentMonth },
-          billingPeriodEnd: { [require('sequelize').Op.gte]: currentMonth }
-        }
+          billingPeriodStart: { [require("sequelize").Op.lte]: currentMonth },
+          billingPeriodEnd: { [require("sequelize").Op.gte]: currentMonth },
+        },
       });
 
       if (usageRecord.length > 0 && usageRecord[0].isOverLimit()) {
-        logger.warn('Usage limit exceeded', {
+        logger.warn("Usage limit exceeded", {
           userId: req.user.id,
           metricType,
           currentUsage: usageRecord[0].currentUsage,
-          limit: usageRecord[0].limit
+          limit: usageRecord[0].limit,
         });
 
         return res.status(429).json({
@@ -276,15 +271,15 @@ const checkUsageLimit = (metricType) => {
           usage: {
             current: usageRecord[0].currentUsage,
             limit: usageRecord[0].limit,
-            resetDate: usageRecord[0].billingPeriodEnd
+            resetDate: usageRecord[0].billingPeriodEnd,
           },
-          upgradeRequired: true
+          upgradeRequired: true,
         });
       }
 
       next();
     } catch (error) {
-      logger.error('Usage limit check error:', error);
+      logger.error("Usage limit check error:", error);
       next(); // Continue on error to avoid blocking the request
     }
   };
@@ -298,19 +293,19 @@ const adminAuth = async (req, res, next) => {
     // First run regular auth
     await auth(req, res, () => {
       // Check if user is admin
-      if (req.user.role !== 'admin') {
+      if (req.user.role !== "admin") {
         return res.status(403).json({
           success: false,
-          message: 'Access denied. Admin privileges required.'
+          message: "Access denied. Admin privileges required.",
         });
       }
       next();
     });
   } catch (error) {
-    logger.error('Admin authentication error:', error);
+    logger.error("Admin authentication error:", error);
     return res.status(500).json({
       success: false,
-      message: 'Authentication error.'
+      message: "Authentication error.",
     });
   }
 };
@@ -320,7 +315,7 @@ const adminAuth = async (req, res, next) => {
  */
 const optionalAuth = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const token = req.header("Authorization")?.replace("Bearer ", "");
 
     if (!token) {
       req.user = null;
@@ -348,7 +343,7 @@ const requireTenant = async (req, res, next) => {
     if (!req.user || !req.tenantId) {
       return res.status(403).json({
         success: false,
-        message: 'Tenant access required'
+        message: "Tenant access required",
       });
     }
 
@@ -357,10 +352,10 @@ const requireTenant = async (req, res, next) => {
 
     next();
   } catch (error) {
-    logger.error('Tenant middleware error:', error);
+    logger.error("Tenant middleware error:", error);
     res.status(500).json({
       success: false,
-      message: 'Tenant validation error'
+      message: "Tenant validation error",
     });
   }
 };
@@ -374,7 +369,7 @@ const requireRole = (roles) => {
       if (!req.user) {
         return res.status(401).json({
           success: false,
-          message: 'Authentication required'
+          message: "Authentication required",
         });
       }
 
@@ -384,16 +379,16 @@ const requireRole = (roles) => {
       if (!allowedRoles.includes(userRole)) {
         return res.status(403).json({
           success: false,
-          message: 'Insufficient permissions'
+          message: "Insufficient permissions",
         });
       }
 
       next();
     } catch (error) {
-      logger.error('Role middleware error:', error);
+      logger.error("Role middleware error:", error);
       res.status(500).json({
         success: false,
-        message: 'Role validation error'
+        message: "Role validation error",
       });
     }
   };
@@ -406,5 +401,5 @@ module.exports = {
   requireFeature,
   checkUsageLimit,
   requireTenant,
-  requireRole
+  requireRole,
 };

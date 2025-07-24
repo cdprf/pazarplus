@@ -1,4 +1,5 @@
 const { DataTypes, Op } = require('sequelize');
+const logger = require("../utils/logger");
 
 module.exports = (sequelize) => {
   const BackgroundTask = sequelize.define(
@@ -277,13 +278,13 @@ module.exports = (sequelize) => {
               }
             });
 
-            console.log(
+            logger.info(
               `[BACKGROUND_TASK] Task created - ID: ${
                 task.id || 'pending'
               }, Type: ${task.taskType}, User: ${task.userId}`
             );
           } catch (error) {
-            console.warn(
+            logger.warn(
               'BackgroundTask beforeCreate hook error:',
               error.message
             );
@@ -291,7 +292,7 @@ module.exports = (sequelize) => {
         },
         afterCreate: (task) => {
           try {
-            console.log(
+            logger.info(
               `[BACKGROUND_TASK] Task saved to database - ID: ${task.id}, Status: ${task.status}`
             );
             if (!task.logs) {task.logs = [];}
@@ -308,7 +309,7 @@ module.exports = (sequelize) => {
             });
             // Don't call save() here to avoid infinite loop
           } catch (error) {
-            console.warn(
+            logger.warn(
               'BackgroundTask afterCreate hook error:',
               error.message
             );
@@ -357,7 +358,7 @@ module.exports = (sequelize) => {
                 }
               });
 
-              console.log(
+              logger.info(
                 `[BACKGROUND_TASK] Status change - ID: ${task.id}, ${previousStatus} -> ${task.status}`
               );
             }
@@ -393,12 +394,12 @@ module.exports = (sequelize) => {
                 }
               });
 
-              console.error(
+              logger.error(
                 `[BACKGROUND_TASK] Task error - ID: ${task.id}, Error: ${task.error}`
               );
             }
           } catch (error) {
-            console.warn(
+            logger.warn(
               'BackgroundTask beforeUpdate hook error:',
               error.message
             );
@@ -408,24 +409,24 @@ module.exports = (sequelize) => {
           try {
             // Log completed tasks with detailed results
             if (task.status === 'completed' && task.result) {
-              console.log(
+              logger.info(
                 `[BACKGROUND_TASK] Task completed - ID: ${task.id}, Duration: ${task.actualDuration}s`
               );
             }
 
             // Log failed tasks
             if (task.status === 'failed') {
-              console.error(
+              logger.error(
                 `[BACKGROUND_TASK] Task failed - ID: ${task.id}, Error: ${task.error}`
               );
             }
 
             // Log cancelled tasks
             if (task.status === 'cancelled') {
-              console.log(`[BACKGROUND_TASK] Task cancelled - ID: ${task.id}`);
+              logger.info(`[BACKGROUND_TASK] Task cancelled - ID: ${task.id}`);
             }
           } catch (error) {
-            console.warn(
+            logger.warn(
               'BackgroundTask afterUpdate hook error:',
               error.message
             );
@@ -532,7 +533,7 @@ module.exports = (sequelize) => {
     };
 
     // Log progress updates to console for immediate visibility
-    console.log(
+    logger.info(
       `[BACKGROUND_TASK:${this.id}] Progress: ${percentage}% (${current}/${total}) - ${message}`
     );
 
@@ -633,7 +634,7 @@ module.exports = (sequelize) => {
       try {
         await this.save();
       } catch (saveError) {
-        console.warn(
+        logger.warn(
           `BackgroundTask save error on addLog: ${saveError.message}`
         );
         // Try one more time after a short delay
@@ -643,7 +644,7 @@ module.exports = (sequelize) => {
 
       return this;
     } catch (error) {
-      console.warn('BackgroundTask addLog error:', error.message, error.stack);
+      logger.warn('BackgroundTask addLog error:', error.message, error.stack);
       // Don't swallow errors completely - return the instance but don't hide the error
       return this;
     }
@@ -667,7 +668,7 @@ module.exports = (sequelize) => {
       }
     });
 
-    console.log(`[BACKGROUND_TASK:${this.id}] Task execution started`);
+    logger.info(`[BACKGROUND_TASK:${this.id}] Task execution started`);
     return this.save();
   };
 
@@ -704,7 +705,7 @@ module.exports = (sequelize) => {
       }
       return this.save();
     } catch (error) {
-      console.warn('BackgroundTask markAsCancelled error:', error.message);
+      logger.warn('BackgroundTask markAsCancelled error:', error.message);
       return Promise.resolve(this);
     }
   };
@@ -732,7 +733,7 @@ module.exports = (sequelize) => {
       );
       return this.save();
     } catch (error) {
-      console.warn('BackgroundTask retry error:', error.message);
+      logger.warn('BackgroundTask retry error:', error.message);
       return Promise.reject(error);
     }
   };

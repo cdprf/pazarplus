@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useEffect } from "react";
 import {
   Modal,
@@ -324,7 +325,7 @@ const VariantCreationModal = ({
         showAlert("Failed to create any variants", "error");
       }
     } catch (error) {
-      console.error("Error creating variants:", error);
+      logger.error("Error creating variants:", error);
       showAlert("Error creating variants", "error");
     } finally {
       setLoading(false);

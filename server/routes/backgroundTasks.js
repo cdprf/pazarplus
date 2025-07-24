@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require("../utils/logger");
 const router = express.Router();
 const { body, param, query } = require('express-validator');
 const BackgroundTaskController = require('../controllers/BackgroundTaskController');
@@ -6,8 +7,8 @@ const { auth } = require('../middleware/auth');
 
 // Apply authentication middleware to all routes
 router.use((req, res, next) => {
-  console.log('🔍 BackgroundTasks route middleware - checking auth');
-  console.log(
+  logger.info('🔍 BackgroundTasks route middleware - checking auth');
+  logger.info(
     'Authorization header:',
     req.headers.authorization ? 'Present' : 'Missing'
   );

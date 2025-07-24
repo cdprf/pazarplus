@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState } from "react";
 import api from "../../services/api";
 
@@ -25,7 +26,7 @@ const PrintDiagnostics = ({ order }) => {
 
     try {
       // Test API connectivity
-      console.log("🔍 Testing API connectivity...");
+      logger.info("🔍 Testing API connectivity...");
       const healthResponse = await api.get("/health");
       results.serverConnectivity.health = {
         success: true,
@@ -43,7 +44,7 @@ const PrintDiagnostics = ({ order }) => {
     // Test PDF generation if order is provided
     if (order?.id) {
       try {
-        console.log("🖨️ Testing PDF generation...");
+        logger.info("🖨️ Testing PDF generation...");
         const pdfResponse = await api.shipping.generatePDF(order.id);
         results.pdfGeneration = {
           success: pdfResponse.success,

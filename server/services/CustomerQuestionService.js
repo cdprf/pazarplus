@@ -1,4 +1,5 @@
 // Platform service imports
+const logger = require("../utils/logger");
 const TrendyolQuestionService = require("./TrendyolQuestionService");
 const HepsiBuradaQuestionService = require("./HepsiBuradaQuestionService");
 const N11QuestionService = require("./N11QuestionService");
@@ -258,7 +259,7 @@ class CustomerQuestionService {
               error.message
             );
             // Log the full error for debugging
-            console.error(
+            logger.error(
               `Failed to save question ${questionData.platform_question_id} from ${platform}:`,
               error
             );

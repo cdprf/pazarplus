@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /**
  * Enhanced Print Button Component
  * Network-aware PDF printing that works across devices
@@ -55,7 +56,7 @@ const PrintButton = ({
         throw new Error(result.message);
       }
     } catch (error) {
-      console.error("Print error:", error);
+      logger.error("Print error:", error);
       setLastResult({
         success: false,
         error: error.message,

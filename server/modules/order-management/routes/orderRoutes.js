@@ -1,4 +1,5 @@
 const express = require("express");
+const logger = require("../../../utils/logger");
 const router = express.Router();
 const orderController = require("../controllers/order-controller");
 const { auth } = require("../../../middleware/auth");
@@ -87,7 +88,7 @@ router.get("/sample", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Sample data generation error:", error);
+    logger.error("Sample data generation error:", error);
     return res.status(500).json({
       success: false,
       message: "Error generating sample data",

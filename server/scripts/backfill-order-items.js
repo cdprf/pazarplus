@@ -11,7 +11,7 @@ const logger = require('../utils/logger');
 
 async function backfillOrderItems() {
   try {
-    console.log('Starting order items backfill process...');
+    logger.info('Starting order items backfill process...');
 
     // Find all orders that have no order items
     const ordersWithoutItems = await Order.findAll({
@@ -29,10 +29,10 @@ async function backfillOrderItems() {
       (order) => !order.items || order.items.length === 0
     );
 
-    console.log(`Found ${ordersNeedingItems.length} orders without items`);
+    logger.info(`Found ${ordersNeedingItems.length} orders without items`);
 
     if (ordersNeedingItems.length === 0) {
-      console.log('No orders need backfilling. Exiting.');
+      logger.info('No orders need backfilling. Exiting.');
       return;
     }
 
@@ -42,7 +42,7 @@ async function backfillOrderItems() {
 
     for (const order of ordersNeedingItems) {
       try {
-        console.log(
+        logger.info(
           `Processing order ${order.orderNumber} (${order.platform})`
         );
 
@@ -54,7 +54,7 @@ async function backfillOrderItems() {
               ? JSON.parse(order.rawData)
               : order.rawData;
         } catch (parseError) {
-          console.warn(
+          logger.warn(
             `Failed to parse rawData for order ${order.orderNumber}: ${parseError.message}`
           );
           skippedCount++;
@@ -62,7 +62,7 @@ async function backfillOrderItems() {
         }
 
         if (!rawData) {
-          console.warn(`No rawData for order ${order.orderNumber}`);
+          logger.warn(`No rawData for order ${order.orderNumber}`);
           skippedCount++;
           continue;
         }
@@ -79,7 +79,7 @@ async function backfillOrderItems() {
         }
 
         if (!items || items.length === 0) {
-          console.warn(
+          logger.warn(
             `No items found in rawData for order ${order.orderNumber}, creating fallback item`
           );
 
@@ -123,7 +123,7 @@ async function backfillOrderItems() {
           });
 
           processedCount++;
-          console.log(`✓ Created fallback item for order ${order.orderNumber}`);
+          logger.info(`✓ Created fallback item for order ${order.orderNumber}`);
           continue;
         }
 
@@ -225,24 +225,24 @@ async function backfillOrderItems() {
         });
 
         processedCount++;
-        console.log(
+        logger.info(
           `✓ Created ${items.length} items for order ${order.orderNumber}`
         );
       } catch (error) {
-        console.error(
+        logger.error(
           `Failed to process order ${order.orderNumber}: ${error.message}`
         );
         errorCount++;
       }
     }
 
-    console.log('\n=== Backfill Summary ===');
-    console.log(`Processed: ${processedCount} orders`);
-    console.log(`Skipped: ${skippedCount} orders`);
-    console.log(`Errors: ${errorCount} orders`);
-    console.log(`Total: ${ordersNeedingItems.length} orders`);
+    logger.info('\n=== Backfill Summary ===');
+    logger.info(`Processed: ${processedCount} orders`);
+    logger.info(`Skipped: ${skippedCount} orders`);
+    logger.info(`Errors: ${errorCount} orders`);
+    logger.info(`Total: ${ordersNeedingItems.length} orders`);
   } catch (error) {
-    console.error('Backfill process failed:', error);
+    logger.error('Backfill process failed:', error);
     process.exit(1);
   }
 }
@@ -251,11 +251,11 @@ async function backfillOrderItems() {
 if (require.main === module) {
   backfillOrderItems()
     .then(() => {
-      console.log('Backfill process completed');
+      logger.info('Backfill process completed');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Backfill process failed:', error);
+      logger.error('Backfill process failed:', error);
       process.exit(1);
     });
 }

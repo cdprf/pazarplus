@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Product Intelligence API Service
  *
@@ -53,7 +54,7 @@ class ProductIntelligenceApi {
         }
 
         // Log detailed error information for debugging
-        console.error(`Product Intelligence API Error (${endpoint}):`, {
+        logger.error(`Product Intelligence API Error (${endpoint}):`, {
           status: response.status,
           statusText: response.statusText,
           url: url,
@@ -74,7 +75,7 @@ class ProductIntelligenceApi {
       return await response.json();
     } catch (error) {
       // Enhanced error logging
-      console.error(`Product Intelligence API Error (${endpoint}):`, {
+      logger.error(`Product Intelligence API Error (${endpoint}):`, {
         message: error.message,
         status: error.status,
         url: url,
@@ -184,7 +185,7 @@ class ProductIntelligenceApi {
     };
 
     try {
-      console.log("🔍 Attempting server-side analysis...", {
+      logger.info("🔍 Attempting server-side analysis...", {
         endpoint: "/analyze",
         productsCount: products.length,
         hasToken: !!this.getToken(),
@@ -196,7 +197,7 @@ class ProductIntelligenceApi {
         body: JSON.stringify({ products, options }),
       });
 
-      console.log("✅ Server-side analysis successful!", results);
+      logger.info("✅ Server-side analysis successful!", results);
 
       return {
         success: true,
@@ -206,7 +207,7 @@ class ProductIntelligenceApi {
         source: "server",
       };
     } catch (error) {
-      console.warn(
+      logger.warn(
         "⚠️ API analysis failed, using fallback pattern detection:",
         {
           error: error.message,
@@ -235,7 +236,7 @@ class ProductIntelligenceApi {
    * Generate fallback data with actual pattern detection for offline/error scenarios
    */
   _generateFallbackData(products, options = {}) {
-    console.log(
+    logger.info(
       "🔧 Generating fallback analysis for",
       products.length,
       "products"

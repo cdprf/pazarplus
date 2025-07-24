@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useEffect } from "react";
 import {
   Settings,
@@ -228,7 +229,7 @@ const IntelligentAnalysisConfig = ({
                 if (analyzeFunction) {
                   analyzeFunction();
                 } else {
-                  console.warn(
+                  logger.warn(
                     "No analyze function provided to IntelligentAnalysisConfig"
                   );
                 }

@@ -1,3 +1,4 @@
+import logger from "../../../../utils/logger";
 import React from "react";
 
 // Try to import react-barcode, fallback to custom implementation
@@ -5,7 +6,7 @@ let Barcode;
 try {
   Barcode = require("react-barcode").default || require("react-barcode");
 } catch (e) {
-  console.warn("react-barcode not available, using fallback barcode component");
+  logger.warn("react-barcode not available, using fallback barcode component");
 }
 
 // Try to import react-qr-code, fallback to custom implementation
@@ -13,7 +14,7 @@ let QRCode;
 try {
   QRCode = require("react-qr-code").default || require("react-qr-code");
 } catch (e) {
-  console.warn("react-qr-code not available, using fallback QR component");
+  logger.warn("react-qr-code not available, using fallback QR component");
 }
 
 // Fallback Barcode component

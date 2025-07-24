@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect } from "react";
 import {
   OptimizedAreaChart,
@@ -38,7 +39,7 @@ const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
         );
         setData(financialData);
       } catch (err) {
-        console.error("Error fetching financial analytics:", err);
+        logger.error("Error fetching financial analytics:", err);
         setError(err.message || "Failed to load financial analytics");
       } finally {
         setLoading(false);

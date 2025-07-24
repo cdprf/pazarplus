@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 /**
  * Pattern Management Interface
  *
@@ -125,7 +126,7 @@ function PatternManagementInterface({ products = [], onPatternsApplied }) {
   useEffect(() => {
     const runInitialAnalysis = async () => {
       if (products.length > 0) {
-        console.log(
+        logger.info(
           "DEBUG: Starting initial analysis with",
           products.length,
           "products"
@@ -138,20 +139,20 @@ function PatternManagementInterface({ products = [], onPatternsApplied }) {
             maxPatternLength: settings.maxPatternLength,
             enableSmartExclusions: settings.enableSmartExclusions,
           };
-          console.log("DEBUG: Analysis options:", options);
+          logger.info("DEBUG: Analysis options:", options);
 
           const result = await detector.analyzeProducts(products, options);
-          console.log("DEBUG: Analysis result:", result);
+          logger.info("DEBUG: Analysis result:", result);
           setAnalysis(result);
           showSnackbar("Analysis completed successfully", "success");
         } catch (error) {
-          console.error("Pattern analysis failed:", error);
+          logger.error("Pattern analysis failed:", error);
           showSnackbar("Analysis failed: " + error.message, "error");
         } finally {
           setLoading(false);
         }
       } else {
-        console.log("DEBUG: No products available for analysis");
+        logger.info("DEBUG: No products available for analysis");
       }
     };
 
@@ -179,7 +180,7 @@ function PatternManagementInterface({ products = [], onPatternsApplied }) {
       setAnalysis(result);
       showSnackbar("Analysis completed successfully", "success");
     } catch (error) {
-      console.error("Pattern analysis failed:", error);
+      logger.error("Pattern analysis failed:", error);
       showSnackbar("Analysis failed: " + error.message, "error");
     } finally {
       setLoading(false);
@@ -239,7 +240,7 @@ function PatternManagementInterface({ products = [], onPatternsApplied }) {
       setPreviewResults(results);
       showSnackbar("Preview generated successfully", "success");
     } catch (error) {
-      console.error("Preview failed:", error);
+      logger.error("Preview failed:", error);
       showSnackbar("Preview failed: " + error.message, "error");
     }
   };
@@ -277,7 +278,7 @@ function PatternManagementInterface({ products = [], onPatternsApplied }) {
       setPreviewMode(false);
       setPreviewResults(null);
     } catch (error) {
-      console.error("Apply patterns failed:", error);
+      logger.error("Apply patterns failed:", error);
       showSnackbar("Failed to apply patterns: " + error.message, "error");
     }
   };
@@ -344,8 +345,8 @@ function PatternManagementInterface({ products = [], onPatternsApplied }) {
   };
 
   const renderAnalyticsDashboard = () => {
-    console.log("DEBUG: renderAnalyticsDashboard called");
-    console.log("DEBUG: analysis state:", analysis);
+    logger.info("DEBUG: renderAnalyticsDashboard called");
+    logger.info("DEBUG: analysis state:", analysis);
 
     if (!analysis) {
       return (
@@ -371,8 +372,8 @@ function PatternManagementInterface({ products = [], onPatternsApplied }) {
       ? detectedPatterns
       : [];
 
-    console.log("DEBUG: analytics dashboard patterns:", patterns);
-    console.log("DEBUG: patterns.length:", patterns?.length);
+    logger.info("DEBUG: analytics dashboard patterns:", patterns);
+    logger.info("DEBUG: patterns.length:", patterns?.length);
 
     return (
       <Grid container spacing={3}>
@@ -553,11 +554,11 @@ function PatternManagementInterface({ products = [], onPatternsApplied }) {
   };
 
   const renderPatternSuggestions = () => {
-    console.log("DEBUG: renderPatternSuggestions called");
-    console.log("DEBUG: products.length:", products.length);
-    console.log("DEBUG: analysis:", analysis);
-    console.log("DEBUG: analysis?.suggestions:", analysis?.suggestions);
-    console.log(
+    logger.info("DEBUG: renderPatternSuggestions called");
+    logger.info("DEBUG: products.length:", products.length);
+    logger.info("DEBUG: analysis:", analysis);
+    logger.info("DEBUG: analysis?.suggestions:", analysis?.suggestions);
+    logger.info(
       "DEBUG: analysis?.detectedPatterns:",
       analysis?.detectedPatterns
     );
@@ -583,26 +584,26 @@ function PatternManagementInterface({ products = [], onPatternsApplied }) {
       return cleanPattern;
     });
 
-    console.log("DEBUG: final patterns array length:", patterns.length);
+    logger.info("DEBUG: final patterns array length:", patterns.length);
 
     // Add detailed logging of pattern structure
     if (patterns.length > 0) {
-      console.log("DEBUG: First pattern has:", Object.keys(patterns[0] || {}));
-      console.log(
+      logger.info("DEBUG: First pattern has:", Object.keys(patterns[0] || {}));
+      logger.info(
         "DEBUG: First pattern variants type:",
         typeof patterns[0]?.variants
       );
       if (Array.isArray(patterns[0]?.variants)) {
-        console.log(
+        logger.info(
           "DEBUG: First pattern variants count:",
           patterns[0].variants.length
         );
         if (patterns[0].variants.length > 0) {
-          console.log(
+          logger.info(
             "DEBUG: First variant type:",
             typeof patterns[0].variants[0]
           );
-          console.log(
+          logger.info(
             "DEBUG: First variant preview:",
             String(patterns[0].variants[0]).substring(0, 50)
           );
@@ -787,7 +788,7 @@ function PatternManagementInterface({ products = [], onPatternsApplied }) {
                       // Open pattern details modal
                       setSelectedPatternDetails(pattern);
                       setPatternDetailsDialog(true);
-                      console.log("Pattern details clicked:", pattern?.id);
+                      logger.info("Pattern details clicked:", pattern?.id);
                     }}
                   >
                     Details
@@ -994,7 +995,7 @@ function PatternManagementInterface({ products = [], onPatternsApplied }) {
                     enableSmartExclusions: true,
                   });
                   showSnackbar("Settings reset to defaults", "success");
-                  console.log("Reset to defaults clicked");
+                  logger.info("Reset to defaults clicked");
                 }}
               >
                 Reset to Defaults

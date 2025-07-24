@@ -5,7 +5,7 @@ try {
   multer = require("multer");
   sharp = require("sharp");
 } catch (error) {
-  console.warn("Media upload dependencies not available:", error.message);
+  logger.warn("Media upload dependencies not available:", error.message);
   mediaUploadEnabled = false;
 
   // Create fallback implementations

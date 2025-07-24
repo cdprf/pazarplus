@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Dynamic network configuration service
  * Automatically detects and uses the correct server configuration
@@ -23,13 +24,13 @@ class DynamicNetworkConfig {
       }
 
       this.initialized = true;
-      console.log("🌐 Dynamic network configuration initialized:", {
+      logger.info("🌐 Dynamic network configuration initialized:", {
         currentIP: this.currentIP,
         serverPort: this.serverPort,
         environment: process.env.NODE_ENV,
       });
     } catch (error) {
-      console.warn(
+      logger.warn(
         "⚠️ Network detection failed, using fallback configuration:",
         error.message
       );
@@ -44,7 +45,7 @@ class DynamicNetworkConfig {
     // First check environment variable set by server
     if (process.env.REACT_APP_CURRENT_NETWORK_IP) {
       this.currentIP = process.env.REACT_APP_CURRENT_NETWORK_IP;
-      console.log("🎯 Using server-provided network IP:", this.currentIP);
+      logger.info("🎯 Using server-provided network IP:", this.currentIP);
       return;
     }
 
@@ -60,10 +61,10 @@ class DynamicNetworkConfig {
       if (response.ok) {
         const config = await response.json();
         this.currentIP = config.ip;
-        console.log("🔍 Detected network IP from API:", this.currentIP);
+        logger.info("🔍 Detected network IP from API:", this.currentIP);
       }
     } catch (error) {
-      console.log("📡 Network API detection failed, using proxy configuration");
+      logger.info("📡 Network API detection failed, using proxy configuration");
     }
   }
 
@@ -127,7 +128,7 @@ class DynamicNetworkConfig {
     await this.detectServerIP();
 
     if (previousIP !== this.currentIP) {
-      console.log("🔄 Network IP changed:", {
+      logger.info("🔄 Network IP changed:", {
         from: previousIP,
         to: this.currentIP,
       });

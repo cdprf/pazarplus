@@ -9,7 +9,7 @@ let csvImportEnabled = true;
 try {
   csv = require('csv-parser');
 } catch (error) {
-  console.warn('CSV import dependencies not available:', error.message);
+  logger.warn('CSV import dependencies not available:', error.message);
   csvImportEnabled = false;
 
   // Create fallback CSV parser

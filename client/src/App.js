@@ -1,3 +1,4 @@
+import logger from "./utils/logger";
 import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -80,7 +81,7 @@ function App() {
   useEffect(() => {
     // Temporarily disabled to prevent network scanning interference
     // initializeNetworkForPDF();
-    console.log("🔧 Network discovery disabled - using proxy configuration");
+    logger.info("🔧 Network discovery disabled - using proxy configuration");
   }, []);
 
   return (

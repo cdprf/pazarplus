@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import axios from "axios";
 
 const API_BASE_URL =
@@ -35,7 +36,7 @@ class VariantDetectionAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error classifying product variant status:", error);
+      logger.error("Error classifying product variant status:", error);
       throw this.handleError(error);
     }
   }
@@ -56,7 +57,7 @@ class VariantDetectionAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error updating product variant status:", error);
+      logger.error("Error updating product variant status:", error);
       throw this.handleError(error);
     }
   }
@@ -73,7 +74,7 @@ class VariantDetectionAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error removing product variant status:", error);
+      logger.error("Error removing product variant status:", error);
       throw this.handleError(error);
     }
   }
@@ -95,7 +96,7 @@ class VariantDetectionAPI {
       );
       return response.data;
     } catch (error) {
-      console.error("Error running batch variant detection:", error);
+      logger.error("Error running batch variant detection:", error);
       throw this.handleError(error);
     }
   }

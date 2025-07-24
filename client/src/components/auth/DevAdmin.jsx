@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useContext, useCallback, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -41,7 +42,7 @@ const DevAdmin = () => {
       // Use replace to prevent back navigation after login
       navigate(returnTo, { replace: true });
     } catch (err) {
-      console.error('Development mode setup failed:', err);
+      logger.error('Development mode setup failed:', err);
       setError(err.message);
       setIsSettingUp(false);
       // Redirect to login on error

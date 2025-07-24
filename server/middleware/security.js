@@ -3,7 +3,7 @@ let slowDown;
 try {
   slowDown = require('express-slow-down');
 } catch (error) {
-  console.warn('express-slow-down not available, using rate limit only');
+  logger.warn('express-slow-down not available, using rate limit only');
   // Create a fallback that just returns a pass-through middleware
   slowDown = () => (req, res, next) => next();
 }

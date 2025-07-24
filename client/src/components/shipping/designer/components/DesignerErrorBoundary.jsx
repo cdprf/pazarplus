@@ -1,3 +1,4 @@
+import logger from "../../../../utils/logger";
 
 import React from 'react';
 
@@ -12,7 +13,7 @@ class DesignerErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Designer Error:', error, errorInfo);
+    logger.error('Designer Error:', error, errorInfo);
     
     // Report error to monitoring service if available
     if (window.reportError) {

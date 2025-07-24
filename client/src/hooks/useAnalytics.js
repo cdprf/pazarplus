@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import { useState, useEffect, useCallback } from "react";
 import analyticsAPI from "../services/analyticsAPI";
 
@@ -17,7 +18,7 @@ export const useAnalytics = (timeframe = "30d", options = {}) => {
       setData(analytics);
       setLastUpdated(new Date());
     } catch (err) {
-      console.error("Error fetching analytics:", err);
+      logger.error("Error fetching analytics:", err);
       setError(err.message || "Failed to fetch analytics");
     } finally {
       setIsLoading(false);
@@ -59,7 +60,7 @@ export const useBusinessIntelligence = (timeframe = "30d") => {
       );
       setData(intelligence);
     } catch (err) {
-      console.error("Error fetching business intelligence:", err);
+      logger.error("Error fetching business intelligence:", err);
       setError(err.message || "Failed to fetch business intelligence");
     } finally {
       setIsLoading(false);
@@ -94,7 +95,7 @@ export const useRevenueAnalytics = (timeframe = "30d", breakdown = "daily") => {
       );
       setData(revenue);
     } catch (err) {
-      console.error("Error fetching revenue analytics:", err);
+      logger.error("Error fetching revenue analytics:", err);
       setError(err.message || "Failed to fetch revenue analytics");
     } finally {
       setIsLoading(false);
@@ -126,7 +127,7 @@ export const usePlatformPerformance = (timeframe = "30d") => {
       const performance = await analyticsAPI.getPlatformPerformance(timeframe);
       setData(performance);
     } catch (err) {
-      console.error("Error fetching platform performance:", err);
+      logger.error("Error fetching platform performance:", err);
       setError(err.message || "Failed to fetch platform performance");
     } finally {
       setIsLoading(false);
@@ -158,7 +159,7 @@ export const useInventoryInsights = (timeframe = "30d") => {
       const insights = await analyticsAPI.getInventoryInsights(timeframe);
       setData(insights);
     } catch (err) {
-      console.error("Error fetching inventory insights:", err);
+      logger.error("Error fetching inventory insights:", err);
       setError(err.message || "Failed to fetch inventory insights");
     } finally {
       setIsLoading(false);
@@ -192,7 +193,7 @@ export const useRealTimeMetrics = (enabled = true) => {
       const metrics = await analyticsAPI.getRealTimeMetrics();
       setData(metrics);
     } catch (err) {
-      console.error("Error fetching real-time metrics:", err);
+      logger.error("Error fetching real-time metrics:", err);
       setError(err.message || "Failed to fetch real-time metrics");
     } finally {
       setIsLoading(false);
@@ -229,7 +230,7 @@ export const useAnalyticsAlerts = () => {
       const alerts = await analyticsAPI.getAnalyticsAlerts();
       setData(alerts || []);
     } catch (err) {
-      console.error("Error fetching analytics alerts:", err);
+      logger.error("Error fetching analytics alerts:", err);
       setError(err.message || "Failed to fetch analytics alerts");
     } finally {
       setIsLoading(false);
@@ -261,7 +262,7 @@ export const usePredictiveAnalytics = (timeframe = "30d") => {
       const predictions = await analyticsAPI.getPredictiveAnalytics(timeframe);
       setData(predictions);
     } catch (err) {
-      console.error("Error fetching predictive analytics:", err);
+      logger.error("Error fetching predictive analytics:", err);
       setError(err.message || "Failed to fetch predictive analytics");
     } finally {
       setIsLoading(false);
@@ -309,7 +310,7 @@ export const useAnalyticsExport = () => {
 
         return true;
       } catch (err) {
-        console.error("Error exporting analytics:", err);
+        logger.error("Error exporting analytics:", err);
         setError(err.message || "Failed to export analytics");
         return false;
       } finally {

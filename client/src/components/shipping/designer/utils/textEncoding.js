@@ -1,3 +1,4 @@
+import logger from "../../../../utils/logger";
 // Text encoding utilities using proper internationalization
 
 /**
@@ -112,7 +113,7 @@ export const sanitizeForBarcode = (text) => {
       .replace(/[^A-Za-z0-9\s\-.]/g, "") // Keep only safe characters
       .trim();
   } catch (error) {
-    console.warn("Barcode sanitization failed, using fallback:", error);
+    logger.warn("Barcode sanitization failed, using fallback:", error);
     // Fallback: keep only alphanumeric
     return text.replace(/[^A-Za-z0-9]/g, "");
   }

@@ -1,4 +1,5 @@
 const os = require("os");
+const logger = require("../utils/logger");
 const fs = require("fs");
 const path = require("path");
 const config = require("../config/config");
@@ -88,13 +89,13 @@ REACT_APP_SERVER_PORT=${config.server.port}
       // Write the new .env configuration
       fs.writeFileSync(this.clientMainEnvPath, envMainContent);
 
-      console.log(`✅ Updated client configuration with IP: ${ip}`);
-      console.log(
+      logger.info(`✅ Updated client configuration with IP: ${ip}`);
+      logger.info(
         `📡 Client will use proxy for API calls and WebSocket for localhost`
       );
       return true;
     } catch (error) {
-      console.error(`❌ Failed to update client configuration:`, error.message);
+      logger.error(`❌ Failed to update client configuration:`, error.message);
       return false;
     }
   }
@@ -104,7 +105,7 @@ REACT_APP_SERVER_PORT=${config.server.port}
    */
   initialize() {
     const currentIP = this.getCurrentIP();
-    console.log(`🌐 Detected network IP: ${currentIP}`);
+    logger.info(`🌐 Detected network IP: ${currentIP}`);
 
     // Update client configuration
     this.updateClientConfig(currentIP);
@@ -121,13 +122,13 @@ REACT_APP_SERVER_PORT=${config.server.port}
     setInterval(() => {
       const currentIP = this.getCurrentIP();
       if (currentIP !== lastIP) {
-        console.log(`🔄 Network IP changed from ${lastIP} to ${currentIP}`);
-        console.log(`📝 Updating client configuration files...`);
+        logger.info(`🔄 Network IP changed from ${lastIP} to ${currentIP}`);
+        logger.info(`📝 Updating client configuration files...`);
         this.updateClientConfig(currentIP);
         lastIP = currentIP;
 
         // Notify about restart requirement
-        console.log(
+        logger.info(
           `⚠️  Client restart recommended to pick up new network configuration`
         );
       }

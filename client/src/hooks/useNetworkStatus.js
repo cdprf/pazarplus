@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import { useState, useEffect, useCallback } from "react";
 import networkStatusService from "../services/networkStatusService";
 
@@ -47,7 +48,7 @@ export const useNetworkStatus = () => {
 export const useNetworkAwareFunction = (fn, options = {}) => {
   const { canMakeRequest, recordSuccess, recordFailure } = useNetworkStatus();
   const {
-    fallback = () => console.warn("Request blocked due to network status"),
+    fallback = () => logger.warn("Request blocked due to network status"),
     silent = false,
   } = options;
 
@@ -55,7 +56,7 @@ export const useNetworkAwareFunction = (fn, options = {}) => {
     async (...args) => {
       if (!canMakeRequest) {
         if (!silent) {
-          console.warn(
+          logger.warn(
             "🚫 Request blocked - server unreachable (circuit breaker active)"
           );
         }
@@ -102,7 +103,7 @@ export const useNetworkAwareInterval = (callback, delay, options = {}) => {
       if (!pauseOnNetworkError || canMakeRequest) {
         callback();
       } else {
-        console.log("⏸️  Skipping interval callback - server unreachable");
+        logger.info("⏸️  Skipping interval callback - server unreachable");
       }
     }, delay);
 

@@ -58,7 +58,7 @@ class ServerStabilityManager {
     if (error.code === 'EIO' || error.code === 'EPIPE') {
       // These are common in development environments
       // Log but don't crash the server
-      logger.debug(`I/O error on ${stream}`, {
+      logger.info(`I/O error on ${stream}`, {
         code: error.code,
         message: error.message,
         recoverable: true
@@ -82,7 +82,7 @@ class ServerStabilityManager {
     const recoverableErrors = ['EPIPE', 'EIO', 'ECONNRESET', 'ECONNREFUSED'];
 
     if (reason && recoverableErrors.includes(reason.code)) {
-      logger.debug('Recoverable promise rejection', {
+      logger.info('Recoverable promise rejection', {
         code: reason.code,
         message: reason.message
       });
@@ -113,7 +113,7 @@ class ServerStabilityManager {
   handleUncaughtException(error) {
     // Don't crash on I/O errors
     if (error.code === 'EIO' || error.code === 'EPIPE') {
-      logger.debug('Ignoring I/O related uncaught exception', {
+      logger.info('Ignoring I/O related uncaught exception', {
         code: error.code,
         message: error.message
       });
@@ -204,7 +204,7 @@ class ServerStabilityManager {
         try {
           connection.destroy();
         } catch (error) {
-          logger.debug('Error closing connection', { error: error.message });
+          logger.info('Error closing connection', { error: error.message });
         }
       }
 
@@ -216,7 +216,7 @@ class ServerStabilityManager {
             await job.stop();
           }
         } catch (error) {
-          logger.debug('Error stopping background job', {
+          logger.info('Error stopping background job', {
             error: error.message
           });
         }
@@ -228,7 +228,7 @@ class ServerStabilityManager {
         try {
           await handler();
         } catch (error) {
-          logger.debug('Error in cleanup handler', { error: error.message });
+          logger.info('Error in cleanup handler', { error: error.message });
         }
       }
 

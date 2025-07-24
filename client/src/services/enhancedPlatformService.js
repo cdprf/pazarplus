@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import io from "socket.io-client";
 import apiClient from "./api";
 
@@ -53,11 +54,11 @@ class EnhancedPlatformService {
 
       this.setupSocketListeners();
 
-      console.log(
+      logger.info(
         "Enhanced Platform Service: Connecting to WebSocket server..."
       );
     } catch (error) {
-      console.error(
+      logger.error(
         "Enhanced Platform Service: Failed to connect to WebSocket:",
         error
       );
@@ -69,19 +70,19 @@ class EnhancedPlatformService {
    */
   setupSocketListeners() {
     this.socket.on("connect", () => {
-      console.log("Enhanced Platform Service: WebSocket connected");
+      logger.info("Enhanced Platform Service: WebSocket connected");
       this.isConnected = true;
       this.emit("connectionStatusChanged", { connected: true });
     });
 
     this.socket.on("disconnect", () => {
-      console.log("Enhanced Platform Service: WebSocket disconnected");
+      logger.info("Enhanced Platform Service: WebSocket disconnected");
       this.isConnected = false;
       this.emit("connectionStatusChanged", { connected: false });
     });
 
     this.socket.on("connect_error", (error) => {
-      console.error("Enhanced Platform Service: Connection error:", error);
+      logger.error("Enhanced Platform Service: Connection error:", error);
       this.emit("connectionError", { error });
     });
 
@@ -161,7 +162,7 @@ class EnhancedPlatformService {
     this.emit("notification", notification);
     this.emit(`notification:${type}`, notification);
 
-    console.log(
+    logger.info(
       `Enhanced Platform Service: Received ${type} notification:`,
       data
     );
@@ -199,7 +200,7 @@ class EnhancedPlatformService {
         try {
           callback(data);
         } catch (error) {
-          console.error(
+          logger.error(
             `Enhanced Platform Service: Error in event listener for ${event}:`,
             error
           );
@@ -252,7 +253,7 @@ class EnhancedPlatformService {
       });
       return response.data;
     } catch (error) {
-      console.error("Enhanced Platform Service: Sync failed:", error);
+      logger.error("Enhanced Platform Service: Sync failed:", error);
       throw error;
     }
   }
@@ -265,7 +266,7 @@ class EnhancedPlatformService {
       const response = await apiClient.get("/v1/enhanced-platforms/conflicts");
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         "Enhanced Platform Service: Failed to get conflicts:",
         error
       );
@@ -284,7 +285,7 @@ class EnhancedPlatformService {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         "Enhanced Platform Service: Failed to resolve conflict:",
         error
       );
@@ -302,7 +303,7 @@ class EnhancedPlatformService {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         "Enhanced Platform Service: Failed to get inventory:",
         error
       );
@@ -318,7 +319,7 @@ class EnhancedPlatformService {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         "Enhanced Platform Service: Failed to update inventory:",
         error
       );
@@ -334,7 +335,7 @@ class EnhancedPlatformService {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         "Enhanced Platform Service: Failed to reserve stock:",
         error
       );
@@ -349,7 +350,7 @@ class EnhancedPlatformService {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         "Enhanced Platform Service: Failed to confirm reservation:",
         error
       );
@@ -364,7 +365,7 @@ class EnhancedPlatformService {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         "Enhanced Platform Service: Failed to release reservation:",
         error
       );
@@ -387,7 +388,7 @@ class EnhancedPlatformService {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         "Enhanced Platform Service: Failed to get analytics:",
         error
       );
@@ -403,7 +404,7 @@ class EnhancedPlatformService {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         "Enhanced Platform Service: Failed to bulk update inventory:",
         error
       );
@@ -418,7 +419,7 @@ class EnhancedPlatformService {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         "Enhanced Platform Service: Failed to get reservations:",
         error
       );
@@ -433,7 +434,7 @@ class EnhancedPlatformService {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         "Enhanced Platform Service: Failed to get inventory status:",
         error
       );
@@ -451,7 +452,7 @@ class EnhancedPlatformService {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         "Enhanced Platform Service: Failed to get recent notifications:",
         error
       );
@@ -466,7 +467,7 @@ class EnhancedPlatformService {
       );
       return response.data;
     } catch (error) {
-      console.error(
+      logger.error(
         "Enhanced Platform Service: Failed to get notification stats:",
         error
       );

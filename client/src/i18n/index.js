@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import Backend from "i18next-http-backend";
@@ -131,7 +132,7 @@ const i18nConfig = {
   saveMissing: process.env.NODE_ENV === "development",
   missingKeyHandler: function (lng, ns, key, fallbackValue) {
     if (process.env.NODE_ENV === "development") {
-      console.warn(`Missing translation key: ${key} for language: ${lng}`);
+      logger.warn(`Missing translation key: ${key} for language: ${lng}`);
     }
   },
 
@@ -166,7 +167,7 @@ const initializeI18n = async () => {
       .use(initReactI18next)
       .init(i18nConfig);
 
-    console.log("i18n initialized successfully");
+    logger.info("i18n initialized successfully");
 
     // Add event listeners for language changes
     i18n.on("languageChanged", (lng) => {
@@ -184,7 +185,7 @@ const initializeI18n = async () => {
       ? "rtl"
       : "ltr";
   } catch (error) {
-    console.error("i18n initialization failed:", error);
+    logger.error("i18n initialization failed:", error);
 
     // Fallback initialization with minimal config
     try {
@@ -194,9 +195,9 @@ const initializeI18n = async () => {
         interpolation: { escapeValue: false },
         react: { useSuspense: false },
       });
-      console.log("i18n initialized with fallback configuration");
+      logger.info("i18n initialized with fallback configuration");
     } catch (fallbackError) {
-      console.error("i18n fallback initialization failed:", fallbackError);
+      logger.error("i18n fallback initialization failed:", fallbackError);
     }
   }
 };

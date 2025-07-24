@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import React, { useState, useCallback } from "react";
 import { List, Grid3X3, Package, Settings } from "lucide-react";
 
@@ -202,7 +203,7 @@ const ProductDisplay = ({
     try {
       localStorage.setItem("productTableSettings", JSON.stringify(newSettings));
     } catch (error) {
-      console.error("Error saving table settings:", error);
+      logger.error("Error saving table settings:", error);
       // Could show a toast notification here
     }
   }, []);
@@ -216,7 +217,7 @@ const ProductDisplay = ({
         setTableSettings(parsedSettings);
       }
     } catch (error) {
-      console.error("Error loading table settings:", error);
+      logger.error("Error loading table settings:", error);
       // Fall back to default settings - already set in state
     }
   }, []);
@@ -233,7 +234,7 @@ const ProductDisplay = ({
       try {
         await onPageChange?.(newPage);
       } catch (error) {
-        console.error("Error changing page:", error);
+        logger.error("Error changing page:", error);
       } finally {
         // Add small delay to prevent flickering
         setTimeout(() => setIsPageChanging(false), 100);
@@ -529,22 +530,22 @@ const ProductDisplay = ({
                   onSort={onSort}
                   onDuplicate={(product) => {
                     // TODO: Implement product duplication
-                    console.warn(
+                    logger.warn(
                       "Product duplication not implemented yet",
                       product
                     );
                   }}
                   onExportProduct={(product) => {
                     // TODO: Implement product export
-                    console.warn("Product export not implemented yet", product);
+                    logger.warn("Product export not implemented yet", product);
                   }}
                   onViewAnalytics={(product) => {
                     // TODO: Implement analytics view
-                    console.warn("Analytics view not implemented yet", product);
+                    logger.warn("Analytics view not implemented yet", product);
                   }}
                   onCopyLink={(product) => {
                     // TODO: Implement link copying
-                    console.warn("Link copying not implemented yet", product);
+                    logger.warn("Link copying not implemented yet", product);
                   }}
                   // Variant Detection props
                   onRemoveVariantStatus={onRemoveVariantStatus}

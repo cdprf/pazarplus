@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   RefreshCw,
@@ -99,7 +100,7 @@ const PlatformCategoriesManagement = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching categories:", error);
+        logger.error("Error fetching categories:", error);
         showAlert(`Kategoriler yüklenirken hata: ${error.message}`, "error");
       } finally {
         setLoading(false);
@@ -120,7 +121,7 @@ const PlatformCategoriesManagement = () => {
         setSyncStatus(data.data);
       }
     } catch (error) {
-      console.error("Error fetching sync status:", error);
+      logger.error("Error fetching sync status:", error);
     }
   }, []);
 
@@ -150,7 +151,7 @@ const PlatformCategoriesManagement = () => {
         throw new Error(data.message || "Sync failed");
       }
     } catch (error) {
-      console.error("Error syncing categories:", error);
+      logger.error("Error syncing categories:", error);
       showAlert(`Senkronizasyon hatası: ${error.message}`, "error");
     } finally {
       setSyncing(false);
@@ -201,7 +202,7 @@ const PlatformCategoriesManagement = () => {
         setSelectedCategory((prev) => ({ ...prev, fields: data.data }));
       }
     } catch (error) {
-      console.error("Error fetching category properties:", error);
+      logger.error("Error fetching category properties:", error);
     }
   };
 
@@ -248,7 +249,7 @@ const PlatformCategoriesManagement = () => {
           );
         }
       } catch (error) {
-        console.error("Error fetching available categories:", error);
+        logger.error("Error fetching available categories:", error);
 
         // Handle 404 errors gracefully
         if (
@@ -328,7 +329,7 @@ const PlatformCategoriesManagement = () => {
         throw new Error(data.message || "Import failed");
       }
     } catch (error) {
-      console.error("Error importing categories:", error);
+      logger.error("Error importing categories:", error);
       showAlert(`İçe aktarma hatası: ${error.message}`, "error");
     } finally {
       setImporting(false);
@@ -354,7 +355,7 @@ const PlatformCategoriesManagement = () => {
         setProductModel(data.data);
       }
     } catch (error) {
-      console.error("Error fetching product model:", error);
+      logger.error("Error fetching product model:", error);
     }
   }, []);
 

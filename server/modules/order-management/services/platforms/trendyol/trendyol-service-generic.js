@@ -42,7 +42,7 @@ class TrendyolServiceGeneric {
 
     // Configure request interceptor to log API calls
     this.apiClient.interceptors.request.use((config) => {
-      logger.debug(
+      logger.info(
         `Trendyol API Request: ${config.method.toUpperCase()} ${config.url}`,
         {
           connectionId: this.connectionId,
@@ -338,7 +338,7 @@ class TrendyolServiceGeneric {
 
       await transaction.commit();
 
-      logger.debug(
+      logger.info(
         `Updated order ${existingOrder.externalOrderId} from Trendyol`
       );
       return existingOrder;
@@ -466,7 +466,7 @@ class TrendyolServiceGeneric {
 
       await transaction.commit();
 
-      logger.debug(`Created new order ${order.externalOrderId} from Trendyol`);
+      logger.info(`Created new order ${order.externalOrderId} from Trendyol`);
       return order;
     } catch (error) {
       await transaction.rollback();
@@ -738,7 +738,7 @@ class TrendyolServiceGeneric {
 
       await transaction.commit();
 
-      logger.debug(
+      logger.info(
         `Updated product ${existingPlatformData.platformEntityId} from Trendyol`
       );
       return existingPlatformData;
@@ -831,7 +831,7 @@ class TrendyolServiceGeneric {
 
       await transaction.commit();
 
-      logger.debug(
+      logger.info(
         `Created new product ${platformData.platformEntityId} from Trendyol`
       );
       return { product, platformData };

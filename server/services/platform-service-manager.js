@@ -76,7 +76,7 @@ class PlatformServiceManager extends EventEmitter {
         ...options,
       };
 
-      console.log(
+      logger.info(
         `Fetching orders from ${connection.platformType} with options:`,
         fetchOptions
       );
@@ -98,7 +98,7 @@ class PlatformServiceManager extends EventEmitter {
         connectionId: connection.id,
       };
     } catch (error) {
-      console.error(
+      logger.error(
         `Error fetching orders from ${connection.platformType}:`,
         error
       );
@@ -125,7 +125,7 @@ class PlatformServiceManager extends EventEmitter {
           normalizedOrders.push(normalizedOrder);
         }
       } catch (error) {
-        console.warn(
+        logger.warn(
           `Failed to normalize order ${order.id || order.orderNumber}:`,
           error
         );
@@ -411,7 +411,7 @@ class PlatformServiceManager extends EventEmitter {
         return mapOrderStatus(serviceResult, platform); // Ensure result is valid
       }
     } catch (error) {
-      console.warn(
+      logger.warn(
         `Could not get platform service for ${platform}:`,
         error.message
       );
@@ -605,7 +605,7 @@ class PlatformServiceManager extends EventEmitter {
               items = [nestedData.details]; // Single item in details
             }
           } catch (error) {
-            console.warn(
+            logger.warn(
               "Failed to parse nested rawData for items:",
               error.message
             );
@@ -858,7 +858,7 @@ class PlatformServiceManager extends EventEmitter {
     const startTime = Date.now();
 
     try {
-      console.log(
+      logger.info(
         `Starting order sync for ${connection.platformType} (${connection.name})`
       );
 
@@ -867,7 +867,7 @@ class PlatformServiceManager extends EventEmitter {
       const endTime = Date.now();
       const duration = endTime - startTime;
 
-      console.log(
+      logger.info(
         `Order sync completed for ${connection.platformType} in ${duration}ms`,
         {
           success: result.success,
@@ -882,7 +882,7 @@ class PlatformServiceManager extends EventEmitter {
         syncedAt: new Date(endTime),
       };
     } catch (error) {
-      console.error(`Order sync failed for ${connection.platformType}:`, error);
+      logger.error(`Order sync failed for ${connection.platformType}:`, error);
 
       return {
         success: false,
@@ -1041,7 +1041,7 @@ class PlatformServiceManager extends EventEmitter {
 
       // If no active connections, return early
       if (platformConnections.length === 0) {
-        logger.debug("No active platform connections found for sync");
+        logger.info("No active platform connections found for sync");
         return results;
       }
 
@@ -1793,17 +1793,17 @@ class PlatformServiceManager extends EventEmitter {
       try {
         // Only run sync if not already processing
         if (this.isProcessing) {
-          logger.debug("Sync already in progress, skipping scheduled sync");
+          logger.info("Sync already in progress, skipping scheduled sync");
           return;
         }
 
         this.isProcessing = true;
-        logger.debug("Starting scheduled platform sync");
+        logger.info("Starting scheduled platform sync");
 
         // Use a shorter sync window for periodic syncs
         const results = await this.syncOrdersWithConflictResolution();
 
-        logger.debug("Scheduled sync completed successfully", {
+        logger.info("Scheduled sync completed successfully", {
           totalProcessed: results.totalProcessed,
           duration: results.syncDuration,
         });

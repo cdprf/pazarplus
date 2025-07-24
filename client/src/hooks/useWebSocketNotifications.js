@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNotification } from "../contexts/NotificationContext";
 
@@ -17,7 +18,7 @@ export const useWebSocketNotifications = () => {
   const connect = useCallback(() => {
     // Skip connection attempts if we've already failed multiple times
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-      console.log(
+      logger.info(
         "⚠️ WebSocket connection disabled after multiple failures. Using offline mode."
       );
       setConnectionError("WebSocket unavailable - using offline mode");
@@ -40,7 +41,7 @@ export const useWebSocketNotifications = () => {
             return `${protocol}//${host}/ws/notifications`;
           })(); // Use backend server for production
 
-      console.log(
+      logger.info(
         `🔌 Connecting to notifications WebSocket (attempt ${
           reconnectAttemptsRef.current + 1
         }/${maxReconnectAttempts}):`,
@@ -50,7 +51,7 @@ export const useWebSocketNotifications = () => {
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
-        console.log("✅ WebSocket notification connection established");
+        logger.info("✅ WebSocket notification connection established");
         setIsConnected(true);
         setConnectionError(null);
         reconnectAttemptsRef.current = 0;
@@ -73,9 +74,9 @@ export const useWebSocketNotifications = () => {
                   ],
                 })
               );
-              console.log("📤 Subscription message sent successfully");
+              logger.info("📤 Subscription message sent successfully");
             } catch (error) {
-              console.error("Failed to send subscription message:", error);
+              logger.error("Failed to send subscription message:", error);
             }
           }
         }, 100); // Small delay to ensure connection is ready
@@ -84,12 +85,12 @@ export const useWebSocketNotifications = () => {
       wsRef.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log("📨 Notification received:", message);
+          logger.info("📨 Notification received:", message);
 
           // Handle different notification types
           switch (message.type) {
             case "connection_established":
-              console.log(
+              logger.info(
                 "🎉 Notification service connected:",
                 message.clientId
               );
@@ -137,7 +138,7 @@ export const useWebSocketNotifications = () => {
               break;
 
             case "sync_completed":
-              console.log("🔄 Sync completed message received:", message);
+              logger.info("🔄 Sync completed message received:", message);
               const platform =
                 message.data?.platform ||
                 message.data?.source ||
@@ -152,7 +153,7 @@ export const useWebSocketNotifications = () => {
                 message.items ||
                 0;
 
-              console.log("🔍 Parsed sync data:", {
+              logger.info("🔍 Parsed sync data:", {
                 platform,
                 itemCount,
                 rawData: message.data,
@@ -199,28 +200,28 @@ export const useWebSocketNotifications = () => {
               break;
 
             case "subscription_updated":
-              console.log("📋 Subscriptions updated:", message.subscriptions);
+              logger.info("📋 Subscriptions updated:", message.subscriptions);
               break;
 
             case "recent_notifications":
-              console.log("📜 Recent notifications:", message.notifications);
+              logger.info("📜 Recent notifications:", message.notifications);
               // Could populate initial notifications here if needed
               break;
 
             default:
-              console.log(
+              logger.info(
                 "📨 Unknown notification type:",
                 message.type,
                 message
               );
           }
         } catch (error) {
-          console.error("❌ Failed to parse notification message:", error);
+          logger.error("❌ Failed to parse notification message:", error);
         }
       };
 
       wsRef.current.onclose = (event) => {
-        console.log(
+        logger.info(
           "🔌 WebSocket notification connection closed:",
           event.code,
           event.reason
@@ -236,7 +237,7 @@ export const useWebSocketNotifications = () => {
             1000 * Math.pow(2, reconnectAttemptsRef.current),
             10000 // Reduce max delay to 10 seconds
           );
-          console.log(
+          logger.info(
             `🔄 Attempting to reconnect in ${delay}ms (attempt ${
               reconnectAttemptsRef.current + 1
             }/${maxReconnectAttempts})`
@@ -248,7 +249,7 @@ export const useWebSocketNotifications = () => {
           }, delay);
         } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
           setConnectionError("WebSocket connection unavailable");
-          console.warn(
+          logger.warn(
             "⚠️ WebSocket connection failed. Notifications will work in offline mode."
           );
           // Don't reset attempts automatically - let the user refresh if they want to try again
@@ -258,12 +259,12 @@ export const useWebSocketNotifications = () => {
       wsRef.current.onerror = (error) => {
         // Only log errors for the first few attempts to avoid spam
         if (reconnectAttemptsRef.current < 2) {
-          console.error("❌ WebSocket notification error:", error);
+          logger.error("❌ WebSocket notification error:", error);
         }
         setConnectionError("WebSocket connection failed");
       };
     } catch (error) {
-      console.error("❌ Failed to create WebSocket connection:", error);
+      logger.error("❌ Failed to create WebSocket connection:", error);
       setConnectionError("Failed to establish WebSocket connection");
     }
   }, [addNotification]);
@@ -284,7 +285,7 @@ export const useWebSocketNotifications = () => {
   };
 
   const retryConnection = () => {
-    console.log("🔄 Manual retry requested");
+    logger.info("🔄 Manual retry requested");
     disconnect();
     reconnectAttemptsRef.current = 0;
     setConnectionError(null);

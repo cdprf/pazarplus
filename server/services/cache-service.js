@@ -2,7 +2,7 @@ let Redis;
 try {
   Redis = require("redis");
 } catch (error) {
-  console.warn("Redis module not available, using in-memory cache only");
+  logger.warn("Redis module not available, using in-memory cache only");
   Redis = null;
 }
 const logger = require("../utils/logger");

@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 /**
  * Enhanced Pattern Management Interface
  *
@@ -112,14 +113,14 @@ const PatternManagement = ({
 
       setAnalysisResults(results);
     } catch (error) {
-      console.error("Analysis failed:", error);
+      logger.error("Analysis failed:", error);
 
       // Fallback to direct analysis
       try {
         const results = await detector.analyzeProducts(products);
         setAnalysisResults(results);
       } catch (fallbackError) {
-        console.error("Fallback analysis failed:", fallbackError);
+        logger.error("Fallback analysis failed:", fallbackError);
       }
     } finally {
       setIsAnalyzing(false);
@@ -135,7 +136,7 @@ const PatternManagement = ({
           setIsAnalyzing(false);
           break;
         case "analysis_error":
-          console.error("Background analysis error:", data.error);
+          logger.error("Background analysis error:", data.error);
           setIsAnalyzing(false);
           break;
         case "service_started":
@@ -217,7 +218,7 @@ const PatternManagement = ({
       // Re-analyze after applying
       setTimeout(() => performAnalysis(), 1000);
     } catch (error) {
-      console.error("Failed to apply suggestions:", error);
+      logger.error("Failed to apply suggestions:", error);
     }
   };
 

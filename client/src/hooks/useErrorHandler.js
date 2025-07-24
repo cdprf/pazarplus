@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -26,7 +27,7 @@ export const useErrorHandler = () => {
 
       // Log error if enabled
       if (logError) {
-        console.error("Error handled by useErrorHandler:", error);
+        logger.error("Error handled by useErrorHandler:", error);
       }
 
       // Determine error type and message

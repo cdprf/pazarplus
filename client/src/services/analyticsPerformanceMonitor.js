@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Analytics Performance Monitor
  * Tracks and reports performance metrics for analytics operations
@@ -85,7 +86,7 @@ class AnalyticsPerformanceMonitor {
 
     // Log significant events
     if (data.duration > this.thresholds.api_response_time) {
-      console.warn(
+      logger.warn(
         `🐌 Slow analytics operation: ${
           data.operationId
         } took ${data.duration.toFixed(2)}ms`
@@ -227,7 +228,7 @@ class AnalyticsPerformanceMonitor {
     const threshold = this.thresholds[metric];
     if (threshold && value > threshold) {
       const message = `⚠️ Analytics threshold exceeded: ${metric} = ${value} (threshold: ${threshold})`;
-      console.warn(message, context);
+      logger.warn(message, context);
 
       // Could trigger alerts here
       this.triggerAlert(metric, value, threshold, context);
@@ -350,9 +351,9 @@ class AnalyticsPerformanceMonitor {
       //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify(data)
       // });
-      console.log("📊 Monitoring data:", data);
+      logger.info("📊 Monitoring data:", data);
     } catch (error) {
-      console.error("Failed to send monitoring data:", error);
+      logger.error("Failed to send monitoring data:", error);
     }
   }
 

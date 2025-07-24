@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 /**
  * Enhanced Product Bulk Actions - Component for bulk operations on selected products
  * Implements Pazar+ Design System patterns with advanced product management features
@@ -1011,7 +1012,7 @@ const BulkOperationsComponent = ({
         throw new Error(result.error || "Operation failed");
       }
     } catch (error) {
-      console.error("Bulk operation error:", error);
+      logger.error("Bulk operation error:", error);
       setOperationProgress({
         total: selectedVariants.length,
         completed: 0,

@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import { useState, useCallback } from "react";
 import api from "../../services/api";
 
@@ -58,7 +59,7 @@ export const usePrintFunctionality = () => {
           ? response.data.labelUrl
           : `${baseUrl}${response.data.labelUrl}`;
 
-        console.log(`🖨️ Opening shipping slip: ${fullUrl}`);
+        logger.info(`🖨️ Opening shipping slip: ${fullUrl}`);
 
         window.open(fullUrl, "_blank");
         return { success: true, url: fullUrl };

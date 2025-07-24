@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -41,9 +42,9 @@ const ProductDetail = () => {
   const fetchProduct = useCallback(async () => {
     try {
       setLoading(true);
-      console.log(`🔍 Fetching product with ID: ${id}`);
+      logger.info(`🔍 Fetching product with ID: ${id}`);
       const response = await api.get(`/products/${id}`);
-      console.log("✅ Product fetched successfully:", response.data);
+      logger.info("✅ Product fetched successfully:", response.data);
 
       // Handle both success: true/false response formats
       const productData = response.data.success
@@ -52,11 +53,11 @@ const ProductDetail = () => {
       setProduct(productData);
       setEditedProduct(productData);
     } catch (error) {
-      console.error("❌ Error fetching product:", error);
+      logger.error("❌ Error fetching product:", error);
 
       if (error.response) {
-        console.error("Response status:", error.response.status);
-        console.error("Response data:", error.response.data);
+        logger.error("Response status:", error.response.status);
+        logger.error("Response data:", error.response.data);
 
         if (error.response.status === 401) {
           showNotification("Please log in to view product details", "error");
@@ -92,7 +93,7 @@ const ProductDetail = () => {
       setEditing(false);
       showNotification("Product updated successfully", "success");
     } catch (error) {
-      console.error("Error updating product:", error);
+      logger.error("Error updating product:", error);
       showNotification("Error updating product", "error");
     }
   };

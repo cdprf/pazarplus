@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
@@ -84,7 +85,7 @@ const Navbar = ({ toggleSidebar }) => {
         );
 
         if (!isMounted || abortControllerRef.current?.signal.aborted) {
-          console.log("📊 Order count request was cancelled");
+          logger.info("📊 Order count request was cancelled");
           return;
         }
 
@@ -111,7 +112,7 @@ const Navbar = ({ toggleSidebar }) => {
             );
 
             if (!isMounted || abortControllerRef.current?.signal.aborted) {
-              console.log("📊 Order stats request was cancelled");
+              logger.info("📊 Order stats request was cancelled");
               return;
             }
 
@@ -136,7 +137,7 @@ const Navbar = ({ toggleSidebar }) => {
             }
 
             setOrderCounts(counts);
-            console.log("Order counts updated:", counts);
+            logger.info("Order counts updated:", counts);
           } catch (statsError) {
             // If stats fetch fails, just use basic counts
             if (
@@ -158,7 +159,7 @@ const Navbar = ({ toggleSidebar }) => {
           error.message === "canceled" ||
           error.code === "ERR_CANCELED"
         ) {
-          console.log(
+          logger.info(
             "📊 Navbar order count request was cancelled (normal behavior)"
           );
           return;
@@ -172,7 +173,7 @@ const Navbar = ({ toggleSidebar }) => {
           error.code === "ERR_CANCELED" ||
           error.message === "canceled"
         ) {
-          console.log(
+          logger.info(
             "🔄 Navbar order count request was cancelled (expected behavior)"
           );
           return;
@@ -183,12 +184,12 @@ const Navbar = ({ toggleSidebar }) => {
           error.code === "ECONNABORTED" ||
           error.message?.includes("timeout")
         ) {
-          console.log(
+          logger.info(
             "⏱️ Navbar order count request timed out, keeping previous values"
           );
           // Don't show timeout errors prominently in navbar
         } else {
-          console.error("Navbar order count fetch failed:", error.message);
+          logger.error("Navbar order count fetch failed:", error.message);
         }
 
         // Don't make additional requests on error - this can cause cascade failures

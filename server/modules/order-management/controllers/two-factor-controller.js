@@ -1,4 +1,5 @@
 const express = require('express');
+const logger = require("../../../utils/logger");
 const { body, validationResult } = require('express-validator');
 const User = require('../../../models/User');
 const { authenticateToken } = require('../../../middleware/auth');
@@ -24,7 +25,7 @@ router.post('/generate', async (req, res) => {
       secret
     });
   } catch (error) {
-    console.error('2FA generation error:', error);
+    logger.error('2FA generation error:', error);
     res.status(500).json({
       success: false,
       message: 'Error generating 2FA credentials'
@@ -72,7 +73,7 @@ router.post('/enable', async (req, res) => {
       backupCodes
     });
   } catch (error) {
-    console.error('2FA enable error:', error);
+    logger.error('2FA enable error:', error);
     res.status(500).json({
       success: false,
       message: 'Error enabling 2FA'
@@ -108,7 +109,7 @@ router.post('/verify', async (req, res) => {
       message: '2FA verification successful'
     });
   } catch (error) {
-    console.error('2FA verification error:', error);
+    logger.error('2FA verification error:', error);
     res.status(500).json({
       success: false,
       message: 'Error verifying 2FA token'
@@ -136,7 +137,7 @@ router.post('/verify-backup', async (req, res) => {
       message: 'Backup code verification successful'
     });
   } catch (error) {
-    console.error('Backup code verification error:', error);
+    logger.error('Backup code verification error:', error);
     res.status(500).json({
       success: false,
       message: 'Error verifying backup code'
@@ -163,7 +164,7 @@ router.post('/disable', async (req, res) => {
       message: '2FA disabled successfully'
     });
   } catch (error) {
-    console.error('2FA disable error:', error);
+    logger.error('2FA disable error:', error);
     res.status(500).json({
       success: false,
       message: 'Error disabling 2FA'
@@ -196,7 +197,7 @@ router.post('/backup-codes', async (req, res) => {
       backupCodes
     });
   } catch (error) {
-    console.error('Backup codes generation error:', error);
+    logger.error('Backup codes generation error:', error);
     res.status(500).json({
       success: false,
       message: 'Error generating backup codes'

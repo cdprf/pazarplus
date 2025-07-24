@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React from "react";
 
 // Utility functions for pagination logic
@@ -58,7 +59,7 @@ const Pagination = ({
   // Validate onPageChange callback
   const handlePageChange = (page) => {
     if (typeof onPageChange !== "function") {
-      console.warn("Pagination: onPageChange is not a function");
+      logger.warn("Pagination: onPageChange is not a function");
       return;
     }
 

@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import React from "react";
 import {
   ExclamationTriangleIcon,
@@ -29,7 +30,7 @@ class AnalyticsErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     // Log error details
-    console.error(
+    logger.error(
       "Analytics Error Boundary caught an error:",
       error,
       errorInfo
@@ -64,7 +65,7 @@ class AnalyticsErrorBoundary extends React.Component {
       };
 
       // You can send this to your error tracking service
-      console.log("Error Report:", errorReport);
+      logger.info("Error Report:", errorReport);
 
       // Optional: Send to backend
       // fetch('/api/errors/report', {
@@ -73,7 +74,7 @@ class AnalyticsErrorBoundary extends React.Component {
       //   body: JSON.stringify(errorReport)
       // });
     } catch (reportingError) {
-      console.error("Failed to report error:", reportingError);
+      logger.error("Failed to report error:", reportingError);
     }
   };
 
@@ -191,7 +192,7 @@ export const useAnalyticsErrorHandler = () => {
   const [error, setError] = React.useState(null);
 
   const handleError = React.useCallback((error, context = "analytics") => {
-    console.error(`${context} error:`, error);
+    logger.error(`${context} error:`, error);
     setError({ error, context, timestamp: new Date() });
   }, []);
 

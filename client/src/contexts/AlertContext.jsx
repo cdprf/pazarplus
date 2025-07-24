@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import React, { createContext, useState, useCallback, useContext } from "react";
 import ToastContainer from "../components/ui/ToastContainer";
 
@@ -142,7 +143,7 @@ export const AlertProvider = ({ children }) => {
   // Debug logging to trace alert creation
   const showAlert = useCallback(
     (message, variant = "info", title = "", duration = 5000) => {
-      console.log("🚨 AlertContext.showAlert called:", {
+      logger.info("🚨 AlertContext.showAlert called:", {
         message,
         variant,
         title,
@@ -158,7 +159,7 @@ export const AlertProvider = ({ children }) => {
         duration: duration,
       };
 
-      console.log("🚨 Creating toast with method:", variant, options);
+      logger.info("🚨 Creating toast with method:", variant, options);
       return method(message, options);
     },
     [success, error, warning, info]

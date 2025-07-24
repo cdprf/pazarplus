@@ -1,3 +1,4 @@
+import logger from "../../../../utils/logger";
 import React, { useState, useRef } from "react";
 import { Save, Download, Upload, FolderOpen } from "lucide-react";
 import { PAPER_SIZE_PRESETS } from "../constants/paperSizes.js";
@@ -53,7 +54,7 @@ const TemplateSettingsPanel = ({
         const templateData = await readJSONFile(file);
         onImport(templateData);
       } catch (error) {
-        console.error("Error importing template:", error);
+        logger.error("Error importing template:", error);
         alert(
           "Şablon dosyası içe aktarılırken hata oluştu. Lütfen geçerli bir JSON dosyası seçin."
         );

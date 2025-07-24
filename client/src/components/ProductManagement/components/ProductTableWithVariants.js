@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 // Enhanced ProductTableWithVariants with AI-Powered Variant Management
 // Integrates with Product Intelligence API for advanced pattern detection and suggestions
 
@@ -154,7 +155,7 @@ const ProductTableWithVariants = ({
           throw new Error(analysisResult.error?.message || "Analysis failed");
         }
       } catch (error) {
-        console.error("API Analysis failed:", error);
+        logger.error("API Analysis failed:", error);
         setAnalysisError(error.message);
         setAnalysisResults({
           suggestions: [],
@@ -348,7 +349,7 @@ const ProductTableWithVariants = ({
         // Refresh analysis to get updated suggestions
         setTimeout(() => performApiAnalysis(true), 1000);
       } catch (error) {
-        console.error("Error accepting suggestion:", error);
+        logger.error("Error accepting suggestion:", error);
         setAnalysisError("Failed to accept suggestion");
       } finally {
         setIsAnalyzing(false);
@@ -380,7 +381,7 @@ const ProductTableWithVariants = ({
         // Refresh analysis to get updated suggestions
         setTimeout(() => performApiAnalysis(true), 1000);
       } catch (error) {
-        console.error("Error rejecting suggestion:", error);
+        logger.error("Error rejecting suggestion:", error);
         setAnalysisError("Failed to reject suggestion");
       } finally {
         setIsAnalyzing(false);
@@ -423,7 +424,7 @@ const ProductTableWithVariants = ({
         // Refresh analysis to get updated suggestions
         setTimeout(() => performApiAnalysis(true), 1000);
       } catch (error) {
-        console.error("Error creating manual group:", error);
+        logger.error("Error creating manual group:", error);
         setAnalysisError("Failed to create manual group");
       } finally {
         setIsAnalyzing(false);

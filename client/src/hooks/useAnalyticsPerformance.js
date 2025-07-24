@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 
 /**
@@ -247,7 +248,7 @@ export const usePerformanceMonitoring = (componentName) => {
 
     // Log performance metrics for development
     if (process.env.NODE_ENV === "development") {
-      console.log(`${componentName} render time: ${renderTime}ms`);
+      logger.info(`${componentName} render time: ${renderTime}ms`);
     }
 
     renderStartTime.current = Date.now();
@@ -320,7 +321,7 @@ export const useAnalyticsCache = (key, fetcher, options = {}) => {
             })
           );
         } catch (cacheError) {
-          console.warn("Failed to cache analytics data:", cacheError);
+          logger.warn("Failed to cache analytics data:", cacheError);
         }
       } catch (err) {
         setError(err);
@@ -346,7 +347,7 @@ export const useAnalyticsCache = (key, fetcher, options = {}) => {
         }
       }
     } catch (cacheError) {
-      console.warn("Failed to load cached analytics data:", cacheError);
+      logger.warn("Failed to load cached analytics data:", cacheError);
     }
 
     // No valid cache, fetch fresh data

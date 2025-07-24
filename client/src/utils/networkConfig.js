@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * Automatic network configuration for development
  * This utility automatically detects the server IP when working on different networks
@@ -31,7 +32,7 @@ export const getNetworkInfo = async () => {
       return cachedNetworkInfo;
     }
   } catch (error) {
-    console.log("Could not fetch network info from server:", error.message);
+    logger.info("Could not fetch network info from server:", error.message);
   }
 
   // Fallback: detect client-side
@@ -63,7 +64,7 @@ export const getApiBaseUrl = async () => {
     // In production, use the full URL
     return networkInfo.apiBaseUrl || "/api";
   } catch (error) {
-    console.warn("Failed to get API base URL, using fallback:", error);
+    logger.warn("Failed to get API base URL, using fallback:", error);
     return "/api";
   }
 };
@@ -82,7 +83,7 @@ export const getServerHost = async () => {
 
     return window.location.hostname;
   } catch (error) {
-    console.warn("Failed to get server host, using fallback:", error);
+    logger.warn("Failed to get server host, using fallback:", error);
     return window.location.hostname;
   }
 };
@@ -95,7 +96,7 @@ export const getServerPort = async () => {
     const networkInfo = await getNetworkInfo();
     return networkInfo.serverPort || 5001;
   } catch (error) {
-    console.warn("Failed to get server port, using fallback:", error);
+    logger.warn("Failed to get server port, using fallback:", error);
     return 5001;
   }
 };
@@ -117,7 +118,7 @@ export const checkServerHealth = async () => {
     const response = await fetch("/api/network/network-health");
     return response.ok;
   } catch (error) {
-    console.warn("Server health check failed:", error);
+    logger.warn("Server health check failed:", error);
     return false;
   }
 };
@@ -134,7 +135,7 @@ export const startNetworkMonitoring = (callback) => {
       const currentIP = networkInfo.primaryIP;
 
       if (lastIP && lastIP !== currentIP) {
-        console.log(`Network change detected: ${lastIP} -> ${currentIP}`);
+        logger.info(`Network change detected: ${lastIP} -> ${currentIP}`);
         if (callback) {
           callback(networkInfo);
         }
@@ -142,7 +143,7 @@ export const startNetworkMonitoring = (callback) => {
 
       lastIP = currentIP;
     } catch (error) {
-      console.warn("Network monitoring check failed:", error);
+      logger.warn("Network monitoring check failed:", error);
     }
   };
 

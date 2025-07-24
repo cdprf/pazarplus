@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger";
 import { useCallback, useMemo, useRef } from "react";
 
 /**
@@ -197,7 +198,7 @@ export const useProductPerformance = (state, actions, showAlert) => {
   // Error handling with user feedback
   const handleError = useCallback(
     (error, context = "") => {
-      console.error(`[ProductManagement${context}]:`, error);
+      logger.error(`[ProductManagement${context}]:`, error);
 
       let userMessage = "Bir hata oluştu. Lütfen tekrar deneyiniz.";
 

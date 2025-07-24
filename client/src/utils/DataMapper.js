@@ -1,3 +1,4 @@
+import logger from "../utils/logger";
 /**
  * DataMapper utility for mapping data fields to template elements
  * Used by the ShippingSlipDesigner to map order data to template elements
@@ -35,7 +36,7 @@ class DataMapper {
 
       return result === undefined || result === null ? defaultValue : result;
     } catch (error) {
-      console.error(
+      logger.error(
         `DataMapper error: Failed to extract path "${path}"`,
         error
       );
@@ -64,7 +65,7 @@ class DataMapper {
 
       return result;
     } catch (error) {
-      console.error("DataMapper error: Failed to map data", error);
+      logger.error("DataMapper error: Failed to map data", error);
       return result;
     }
   }
@@ -124,7 +125,7 @@ class DataMapper {
             };
         }
       } catch (error) {
-        console.error(
+        logger.error(
           `DataMapper error: Failed to apply data to element ${element.id}`,
           error
         );
@@ -219,7 +220,7 @@ class DataMapper {
           return values.length > 0 ? values.join(" ") : element.content || "";
       }
     } catch (error) {
-      console.error(
+      logger.error(
         `DataMapper error: Failed to map element data for element ${element.id}`,
         error
       );

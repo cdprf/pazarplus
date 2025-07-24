@@ -171,14 +171,14 @@ class BackgroundVariantDetectionService {
     }
 
     const startTime = Date.now();
-    logger.debug('Starting background variant detection batch');
+    logger.info('Starting background variant detection batch');
 
     try {
       // Find products that need variant detection
       const products = await this.findProductsNeedingDetection();
 
       if (products.length === 0) {
-        logger.debug('No products found needing variant detection');
+        logger.info('No products found needing variant detection');
         return;
       }
 
@@ -308,7 +308,7 @@ class BackgroundVariantDetectionService {
    */
   async processProduct(product) {
     try {
-      logger.debug(
+      logger.info(
         `Processing product for variant detection: ${product.name} (${product.id})`
       );
 
@@ -328,7 +328,7 @@ class BackgroundVariantDetectionService {
 
       // Only update if confidence is above threshold
       if (classification.confidence < this.config.minConfidenceThreshold) {
-        logger.debug(
+        logger.info(
           `Skipping product ${product.id} - confidence too low: ${classification.confidence}`
         );
 
@@ -345,7 +345,7 @@ class BackgroundVariantDetectionService {
       const hasChanged = this.hasClassificationChanged(product, classification);
 
       if (!hasChanged) {
-        logger.debug(
+        logger.info(
           `Skipping product ${product.id} - no significant changes detected`
         );
 

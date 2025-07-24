@@ -1,5 +1,5 @@
-const express = require('express');
-console.log('Order Management Routes: Creating express router');
+const express = require("express");
+const logger = require("../../../utils/logger");
 
 // Initialize variables for route modules
 let orderRoutes,
@@ -19,155 +19,164 @@ const router = express.Router();
 
 // Import route modules with try/catch blocks
 try {
-  console.log('Order Management Routes: About to require orderRoutes');
-  orderRoutes = require('./orderRoutes');
-  console.log('Order Management Routes: orderRoutes loaded successfully');
+  orderRoutes = require("./orderRoutes");
 } catch (error) {
-  console.error('Failed to load orderRoutes:', error);
+  logger.error("Failed to load orderRoutes", {
+    operation: "route_loading",
+    module: "orderRoutes",
+    error: error.message,
+  });
   // Create dummy router
   orderRoutes = express.Router();
   orderRoutes.use((req, res) => {
-    res.status(500).json({ error: 'Order routes unavailable' });
+    res.status(500).json({ error: "Order routes unavailable" });
   });
 }
 
 try {
-  console.log('Order Management Routes: About to require adminRoutes');
-  adminRoutes = require('./adminRoutes');
-  console.log('Order Management Routes: adminRoutes loaded successfully');
+  adminRoutes = require("./adminRoutes");
 } catch (error) {
-  console.error('Failed to load adminRoutes:', error);
+  logger.error("Failed to load adminRoutes", {
+    operation: "route_loading",
+    module: "adminRoutes",
+    error: error.message,
+  });
   adminRoutes = express.Router();
 }
 
 try {
-  console.log('Order Management Routes: About to require exportRoutes');
-  exportRoutes = require('./exportRoutes');
-  console.log('Order Management Routes: exportRoutes loaded successfully');
+  exportRoutes = require("./exportRoutes");
 } catch (error) {
-  console.error('Failed to load exportRoutes:', error);
+  logger.error("Failed to load exportRoutes", {
+    operation: "route_loading",
+    module: "exportRoutes",
+    error: error.message,
+  });
   exportRoutes = express.Router();
 }
 
 try {
-  console.log('Order Management Routes: About to require csvRoutes');
-  csvRoutes = require('./csvRoutes');
-  console.log('Order Management Routes: csvRoutes loaded successfully');
+  csvRoutes = require("./csvRoutes");
 } catch (error) {
-  console.error('Failed to load csvRoutes:', error);
+  logger.error("Failed to load csvRoutes", {
+    operation: "route_loading",
+    module: "csvRoutes",
+    error: error.message,
+  });
   csvRoutes = express.Router();
 }
 
 try {
-  console.log('Order Management Routes: About to require connections');
-  connections = require('../../../routes/connections');
-  console.log('Order Management Routes: connections loaded successfully');
+  connections = require("../../../routes/connections");
 } catch (error) {
-  console.error('Failed to load connections:', error);
+  logger.error("Failed to load connections", {
+    operation: "route_loading",
+    module: "connections",
+    error: error.message,
+  });
   connections = express.Router();
 }
 
 try {
-  console.log('Order Management Routes: About to require settingsRoutes');
-  settingsRoutes = require('./settingsRoutes');
-  console.log('Order Management Routes: settingsRoutes loaded successfully');
+  settingsRoutes = require("./settingsRoutes");
 } catch (error) {
-  console.error('Failed to load settingsRoutes:', error);
+  logger.error("Failed to load settingsRoutes", {
+    operation: "route_loading",
+    module: "settingsRoutes",
+    error: error.message,
+  });
   settingsRoutes = express.Router();
 }
 
 try {
-  console.log(
-    'Order Management Routes: About to require platformTemplatesRoutes'
-  );
-  platformTemplatesRoutes = require('./platform-templates-routes');
-  console.log(
-    'Order Management Routes: platformTemplatesRoutes loaded successfully'
-  );
+  platformTemplatesRoutes = require("./platform-templates-routes");
 } catch (error) {
-  console.error('Failed to load platformTemplatesRoutes:', error);
+  logger.error("Failed to load platformTemplatesRoutes", {
+    operation: "route_loading",
+    module: "platformTemplatesRoutes",
+    error: error.message,
+  });
   platformTemplatesRoutes = express.Router();
 }
 
 try {
-  console.log('Order Management Routes: About to require qnbFinansRoutes');
-  qnbFinansRoutes = require('./qnbFinansRoutes');
-  console.log('Order Management Routes: qnbFinansRoutes loaded successfully');
+  qnbFinansRoutes = require("./qnbFinansRoutes");
 } catch (error) {
-  console.error('Failed to load qnbFinansRoutes:', error);
+  logger.error("Failed to load qnbFinansRoutes", {
+    operation: "route_loading",
+    module: "qnbFinansRoutes",
+    error: error.message,
+  });
   qnbFinansRoutes = express.Router();
 }
 
 try {
-  console.log('Order Management Routes: About to require productLinkingRoutes');
-  productLinkingRoutes = require('./productLinkingRoutes');
-  console.log(
-    'Order Management Routes: productLinkingRoutes loaded successfully'
-  );
+  productLinkingRoutes = require("./productLinkingRoutes");
 } catch (error) {
-  console.error('Failed to load productLinkingRoutes:', error);
+  logger.error("Failed to load productLinkingRoutes", {
+    operation: "route_loading",
+    module: "productLinkingRoutes",
+    error: error.message,
+  });
   productLinkingRoutes = express.Router();
 }
 
 try {
-  console.log(
-    'Order Management Routes: About to require productLinkingJobRoutes'
-  );
-  productLinkingJobRoutes = require('./productLinkingJobRoutes');
-  console.log(
-    'Order Management Routes: productLinkingJobRoutes loaded successfully'
-  );
+  productLinkingJobRoutes = require("./productLinkingJobRoutes");
 } catch (error) {
-  console.error('Failed to load productLinkingJobRoutes:', error);
+  logger.error("Failed to load productLinkingJobRoutes", {
+    operation: "route_loading",
+    module: "productLinkingJobRoutes",
+    error: error.message,
+  });
   productLinkingJobRoutes = express.Router();
 }
 
 // Import ProductLinkingService
 try {
-  console.log('Order Management Routes: About to import ProductLinkingService');
-  ProductLinkingService = require('../../../services/ProductLinkingService');
-  console.log(
-    'Order Management Routes: ProductLinkingService loaded successfully'
-  );
+  ProductLinkingService = require("../../../services/ProductLinkingService");
 } catch (error) {
-  console.error('Error loading ProductLinkingService:', error);
+  logger.error("Error loading ProductLinkingService", {
+    operation: "service_loading",
+    service: "ProductLinkingService",
+    error: error.message,
+  });
   // Create a fallback service
   ProductLinkingService = {
     getOrderItemsWithProducts: async () => [],
     searchProducts: async () => [],
     linkOrderItemWithProduct: async () => ({
       success: false,
-      error: 'Service unavailable'
-    })
+      error: "Service unavailable",
+    }),
   };
 }
 
 // Import authentication middleware
-const { auth: authenticateToken } = require('../../../middleware/auth');
-
-console.log('Order Management Routes: Setting up API endpoints');
+const { auth: authenticateToken } = require("../../../middleware/auth");
 
 // Mount sub-routers with error handling
 try {
-  router.use('/orders', orderRoutes);
-  router.use('/admin', adminRoutes);
-  router.use('/export', exportRoutes);
-  router.use('/csv', csvRoutes);
-  router.use('/connections', connections);
-  router.use('/settings', settingsRoutes);
-  router.use('/templates', platformTemplatesRoutes);
-  router.use('/qnb-finans', qnbFinansRoutes);
-  router.use('/product-linking', productLinkingRoutes);
-  router.use('/product-linking-jobs', productLinkingJobRoutes);
-
-  console.log('Order Management Routes: All routes mounted successfully');
+  router.use("/orders", orderRoutes);
+  router.use("/admin", adminRoutes);
+  router.use("/export", exportRoutes);
+  router.use("/csv", csvRoutes);
+  router.use("/connections", connections);
+  router.use("/settings", settingsRoutes);
+  router.use("/templates", platformTemplatesRoutes);
+  router.use("/qnb-finans", qnbFinansRoutes);
+  router.use("/product-linking", productLinkingRoutes);
+  router.use("/product-linking-jobs", productLinkingJobRoutes);
 } catch (error) {
-  console.error('Error mounting order management routes:', error);
+  logger.error("Error mounting order management routes", {
+    operation: "route_mounting",
+    error: error.message,
+  });
 }
 
 // Enhanced Product Linking API - Direct endpoints with error handling
 router.get(
-  '/orders/:orderId/items-with-products',
+  "/orders/:orderId/items-with-products",
   authenticateToken,
   async (req, res) => {
     try {
@@ -177,40 +186,52 @@ router.get(
 
       res.json({
         success: true,
-        data: itemsWithProducts
+        data: itemsWithProducts,
       });
     } catch (error) {
-      console.error('Error getting order items with products:', error);
+      logger.error("Error getting order items with products", {
+        operation: "get_order_items_with_products",
+        orderId,
+        ip: req.ip,
+        userId: req.user?.id,
+        error: error.message,
+      });
       res.status(500).json({
         success: false,
-        error: 'Failed to get order items with products'
+        error: "Failed to get order items with products",
       });
     }
   }
 );
 
 // Search products for linking
-router.get('/products/search', authenticateToken, async (req, res) => {
+router.get("/products/search", authenticateToken, async (req, res) => {
   try {
     const { query, limit = 10 } = req.query;
     const products = await ProductLinkingService.searchProducts(query, limit);
 
     res.json({
       success: true,
-      data: products
+      data: products,
     });
   } catch (error) {
-    console.error('Error searching products:', error);
+    logger.error("Error searching products", {
+      operation: "search_products",
+      query: req.query.query,
+      ip: req.ip,
+      userId: req.user?.id,
+      error: error.message,
+    });
     res.status(500).json({
       success: false,
-      error: 'Failed to search products'
+      error: "Failed to search products",
     });
   }
 });
 
 // Link order item with product
 router.post(
-  '/orders/:orderId/items/:itemId/link',
+  "/orders/:orderId/items/:itemId/link",
   authenticateToken,
   async (req, res) => {
     try {
@@ -225,14 +246,21 @@ router.post(
 
       res.json(result);
     } catch (error) {
-      console.error('Error linking order item with product:', error);
+      logger.error("Error linking order item with product", {
+        operation: "link_order_item_product",
+        orderId,
+        itemId,
+        productId: req.body.productId,
+        ip: req.ip,
+        userId: req.user?.id,
+        error: error.message,
+      });
       res.status(500).json({
         success: false,
-        error: 'Failed to link order item with product'
+        error: "Failed to link order item with product",
       });
     }
   }
 );
 
-console.log('Order Management Routes: Module exports complete');
 module.exports = router;
