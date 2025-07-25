@@ -109,7 +109,6 @@ const config = {
     // Production domains
     "https://yarukai.com",
     "https://www.yarukai.com",
-    "https://yarukai.com/api",
     // Allow connections from any device on the local network
     // These can be overridden by environment variables
     ...(process.env.ADDITIONAL_CORS_ORIGINS

@@ -215,12 +215,7 @@ app.use((req, res, next) => {
       res.header("Access-Control-Allow-Origin", origin);
     }
     // Allow production domains
-    else if (
-      config.CORS_ORIGINS.includes(origin) ||
-      origin === "https://yarukai.com" ||
-      origin === "https://www.yarukai.com" ||
-      origin === "https://yarukai.com/api"
-    ) {
+    else if (config.CORS_ORIGINS.includes(origin)) {
       res.header("Access-Control-Allow-Origin", origin);
     }
     // Allow local network IPs

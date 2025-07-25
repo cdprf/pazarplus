@@ -65,7 +65,7 @@ try {
   const placeholderRoutes = require("./placeholder");
 
   // Import background tasks routes
-  const backgroundTasksRoutes = require("./unified-product-intelligence");
+  const backgroundTasksRoutes = require("./backgroundTasks");
 
   // Unified Product Intelligence routes
   const unifiedIntelligenceRoutes = require("./unified-product-intelligence");
