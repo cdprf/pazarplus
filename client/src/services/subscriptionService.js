@@ -14,7 +14,7 @@ const getApiBaseUrl = () => {
     // Default to localhost for desktop development
     return process.env.REACT_APP_API_URL || "http://localhost:5001/api";
   }
-  return process.env.REACT_APP_API_URL || "https://pazarplus.onrender.com/api";
+  return process.env.REACT_APP_API_URL || "https://yarukai.com/api";
 };
 
 const API_BASE_URL = getApiBaseUrl();

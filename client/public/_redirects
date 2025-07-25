@@ -2,14 +2,14 @@
 # This file handles client-side routing for single page applications
 
 # Backend file routes - PDF files, downloads, etc.
-/shipping/*.pdf  https://pazarplus.onrender.com/shipping/:splat  200
-/downloads/*     https://pazarplus.onrender.com/downloads/:splat  200
-/uploads/*       https://pazarplus.onrender.com/uploads/:splat    200
-/files/*         https://pazarplus.onrender.com/files/:splat      200
+/shipping/*.pdf  https://yarukai.com/shipping/:splat  200
+/downloads/*     https://yarukai.com/downloads/:splat  200
+/uploads/*       https://yarukai.com/uploads/:splat    200
+/files/*         https://yarukai.com/files/:splat      200
 
 # API proxying
-/api/*  https://pazarplus.onrender.com/api/:splat  200
-/health https://pazarplus.onrender.com/health      200
+/api/*  https://yarukai.com/api/:splat  200
+/health https://yarukai.com/health      200
 
 # SPA fallback - MUST be last rule
 # All other routes should serve index.html with 200 status

@@ -22,8 +22,7 @@ export const useWebSocketQuery = (queryKey, events, options = {}) => {
       ? `ws://localhost:5001/ws/notifications` // Connect directly to backend in development
       : (() => {
           const serverUrl =
-            process.env.REACT_APP_SERVER_URL ||
-            "https://pazarplus.onrender.com";
+            process.env.REACT_APP_SERVER_URL || "https://yarukai.com/api";
           const protocol = serverUrl.startsWith("https") ? "wss:" : "ws:";
           const host = serverUrl
             .replace(/^https?:\/\//, "")

@@ -106,6 +106,10 @@ const config = {
     process.env.CLIENT_URL || "http://localhost:3000",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    // Production domains
+    "https://yarukai.com",
+    "https://www.yarukai.com",
+    "https://yarukai.com/api",
     // Allow connections from any device on the local network
     // These can be overridden by environment variables
     ...(process.env.ADDITIONAL_CORS_ORIGINS

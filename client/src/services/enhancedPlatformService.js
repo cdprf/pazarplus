@@ -34,7 +34,7 @@ class EnhancedPlatformService {
       // Default to localhost for desktop development
       return process.env.REACT_APP_SERVER_URL || "http://localhost:5001";
     }
-    return process.env.REACT_APP_SERVER_URL || "https://pazarplus.onrender.com";
+    return process.env.REACT_APP_SERVER_URL || "https://yarukai.com/api";
   }
 
   /**
