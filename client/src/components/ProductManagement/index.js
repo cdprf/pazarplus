@@ -48,35 +48,35 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
     sku: product?.sku || "",
     barcode: product?.barcode || "",
     description: product?.description || "",
-    
+
     // Categorization & Brand
     category: product?.category || "",
     brand: product?.brand || "",
     manufacturer: product?.manufacturer || "",
-    
+
     // Pricing
     price: product?.price || 0,
     costPrice: product?.costPrice || 0,
     basePrice: product?.basePrice || product?.price || 0,
-    
+
     // Stock management
     stockQuantity: product?.stockQuantity || 0,
     minStockLevel: product?.minStockLevel || 0,
-    
+
     // Physical attributes
     weight: product?.weight || "",
     dimensions: product?.dimensions || { length: "", width: "", height: "" },
-    
+
     // Product status
     status: product?.status || "active",
-    
+
     // Media & Images
     images: product?.images || [],
-    
+
     // Additional attributes
     tags: product?.tags || [],
     vatRate: product?.vatRate || 18,
-    
+
     // Platform sync fields
     attributes: product?.attributes || {},
   });
@@ -104,11 +104,14 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
         minStockLevel: parseInt(formData.minStockLevel) || 0,
         weight: parseFloat(formData.weight) || null,
         vatRate: parseFloat(formData.vatRate) || 18,
-        dimensions: formData.dimensions.length && formData.dimensions.width && formData.dimensions.height 
-          ? formData.dimensions 
-          : null,
+        dimensions:
+          formData.dimensions.length &&
+          formData.dimensions.width &&
+          formData.dimensions.height
+            ? formData.dimensions
+            : null,
       };
-      
+
       await onSave(cleanData);
     } finally {
       setSaving(false);
@@ -124,8 +127,8 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
       ...prev,
       dimensions: {
         ...prev.dimensions,
-        [dimension]: value
-      }
+        [dimension]: value,
+      },
     }));
   }, []);
 
@@ -249,7 +252,9 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
               id="manufacturer"
               type="text"
               value={formData.manufacturer}
-              onChange={(e) => handleInputChange("manufacturer", e.target.value)}
+              onChange={(e) =>
+                handleInputChange("manufacturer", e.target.value)
+              }
               className="form-input"
               placeholder="Ürün üreticisi"
             />
@@ -321,7 +326,10 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
               min="0"
               value={formData.stockQuantity}
               onChange={(e) =>
-                handleInputChange("stockQuantity", parseInt(e.target.value) || 0)
+                handleInputChange(
+                  "stockQuantity",
+                  parseInt(e.target.value) || 0
+                )
               }
               className="form-input"
               placeholder="0"
@@ -339,7 +347,10 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
               min="0"
               value={formData.minStockLevel}
               onChange={(e) =>
-                handleInputChange("minStockLevel", parseInt(e.target.value) || 0)
+                handleInputChange(
+                  "minStockLevel",
+                  parseInt(e.target.value) || 0
+                )
               }
               className="form-input"
               placeholder="0"
@@ -408,7 +419,9 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
                 type="number"
                 placeholder="Uzunluk"
                 value={formData.dimensions?.length || ""}
-                onChange={(e) => handleDimensionChange("length", e.target.value)}
+                onChange={(e) =>
+                  handleDimensionChange("length", e.target.value)
+                }
                 className="form-input"
                 min="0"
                 step="0.1"
@@ -426,7 +439,9 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
                 type="number"
                 placeholder="Yükseklik"
                 value={formData.dimensions?.height || ""}
-                onChange={(e) => handleDimensionChange("height", e.target.value)}
+                onChange={(e) =>
+                  handleDimensionChange("height", e.target.value)
+                }
                 className="form-input"
                 min="0"
                 step="0.1"
@@ -444,7 +459,8 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
               Platform Senkronizasyon Ayarları
             </h3>
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              Bu ayarlar ürünün e-ticaret platformlarıyla nasıl senkronize edileceğini belirler.
+              Bu ayarlar ürünün e-ticaret platformlarıyla nasıl senkronize
+              edileceğini belirler.
             </p>
           </div>
 
@@ -488,11 +504,7 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
         >
           İptal
         </Button>
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={saving}
-        >
+        <Button type="submit" variant="primary" disabled={saving}>
           {saving && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />}
           {product ? "Güncelle" : "Kaydet"}
         </Button>
