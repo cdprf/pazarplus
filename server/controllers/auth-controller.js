@@ -147,19 +147,19 @@ const generateResetToken = () => {
 // Register user with enhanced multi-tenant support
 const register = async (req, res) => {
   const startTime = Date.now();
-  
+
   // Log registration attempt with comprehensive details
   logger.logOperation("User registration attempt", {
     operation: "user_registration",
     ip: req.ip,
     userAgent: req.get("User-Agent"),
     requestHeaders: {
-      'content-type': req.get('Content-Type'),
-      'origin': req.get('Origin'),
-      'referer': req.get('Referer')
+      "content-type": req.get("Content-Type"),
+      origin: req.get("Origin"),
+      referer: req.get("Referer"),
     },
     bodyKeys: Object.keys(req.body),
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 
   try {
@@ -181,8 +181,8 @@ const register = async (req, res) => {
       hasUsername: !!username,
       hasEmail: !!email,
       hasPassword: !!password,
-      emailFormat: email ? email.includes('@') : false,
-      passwordLength: password ? password.length : 0
+      emailFormat: email ? email.includes("@") : false,
+      passwordLength: password ? password.length : 0,
     });
 
     // Enhanced input validation
@@ -191,15 +191,15 @@ const register = async (req, res) => {
         missingFields: {
           username: !username,
           email: !email,
-          password: !password
+          password: !password,
         },
         receivedData: {
           username: !!username,
           email: !!email,
-          password: !!password
-        }
+          password: !!password,
+        },
       });
-      
+
       return res.status(400).json({
         success: false,
         message: "Username, email, and password are required",
@@ -208,7 +208,7 @@ const register = async (req, res) => {
 
     // Check if user already exists
     logger.info("Checking for existing user", { email });
-    
+
     const existingUser = await User.findOne({
       where: { email },
     });
@@ -217,9 +217,9 @@ const register = async (req, res) => {
       logger.warn("Registration failed - user already exists", {
         email,
         existingUserId: existingUser.id,
-        existingUserCreatedAt: existingUser.createdAt
+        existingUserCreatedAt: existingUser.createdAt,
       });
-      
+
       return res.status(400).json({
         success: false,
         message: "User already exists with this email",
@@ -229,22 +229,22 @@ const register = async (req, res) => {
     // Hash password with increased salt rounds for better security
     logger.info("Starting password hashing", {
       saltRounds: 12,
-      passwordProvided: !!password
+      passwordProvided: !!password,
     });
-    
+
     const salt = await bcrypt.genSalt(12); // Increased from 10 to 12 for better security
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Generate unique referral code
     const referralCode = crypto.randomBytes(4).toString("hex").toUpperCase();
-    
+
     logger.info("Creating new user record", {
       username,
       email,
       hasCompanyName: !!companyName,
       hasBusinessType: !!businessType,
       hasMonthlyRevenue: !!monthlyRevenue,
-      referralCode
+      referralCode,
     });
 
     // Create user with enhanced multi-tenant fields
@@ -284,14 +284,14 @@ const register = async (req, res) => {
       userId: user.id,
       username: user.username,
       email: user.email,
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
     });
 
     // Generate tenant-aware token
     logger.info("Generating authentication token", {
-      userId: user.id
+      userId: user.id,
     });
-    
+
     const token = generateToken(user);
 
     // Log successful registration with comprehensive details
@@ -305,7 +305,7 @@ const register = async (req, res) => {
       registrationTimeMs: registrationTime,
       ip: req.ip,
       userAgent: req.get("User-Agent"),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     res.status(201).json({
@@ -333,14 +333,14 @@ const register = async (req, res) => {
     });
   } catch (error) {
     const registrationTime = Date.now() - startTime;
-    
+
     // Enhanced error logging with comprehensive context
     logger.error("Registration error occurred", {
       error: {
         message: error.message,
         name: error.name,
         code: error.code,
-        stack: error.stack
+        stack: error.stack,
       },
       requestContext: {
         ip: req.ip,
@@ -348,46 +348,49 @@ const register = async (req, res) => {
         method: req.method,
         url: req.originalUrl,
         headers: {
-          'content-type': req.get('Content-Type'),
-          'origin': req.get('Origin'),
-          'referer': req.get('Referer')
-        }
+          "content-type": req.get("Content-Type"),
+          origin: req.get("Origin"),
+          referer: req.get("Referer"),
+        },
       },
       registrationData: {
         hasUsername: !!req.body.username,
         hasEmail: !!req.body.email,
         hasPassword: !!req.body.password,
         email: req.body.email, // Include email for debugging
-        username: req.body.username // Include username for debugging
+        username: req.body.username, // Include username for debugging
       },
       timing: {
         registrationTimeMs: registrationTime,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
       // Database-specific error details if available
-      ...(error.name === 'SequelizeValidationError' && {
-        validationErrors: error.errors?.map(err => ({
+      ...(error.name === "SequelizeValidationError" && {
+        validationErrors: error.errors?.map((err) => ({
           field: err.path,
           message: err.message,
-          value: err.value
-        }))
+          value: err.value,
+        })),
       }),
-      ...(error.name === 'SequelizeUniqueConstraintError' && {
+      ...(error.name === "SequelizeUniqueConstraintError" && {
         constraintError: {
           fields: error.fields,
-          value: error.value
-        }
-      })
+          value: error.value,
+        },
+      }),
     });
-    
+
     // Log detailed error for debugging
-    logger.error(`Registration failed for ${req.body.email || 'unknown email'}`, {
-      operation: 'user_registration_failed',
-      error: error.message,
-      errorCode: error.code,
-      stack: error.stack.split('\n').slice(0, 5) // First 5 lines of stack trace
-    });
-    
+    logger.error(
+      `Registration failed for ${req.body.email || "unknown email"}`,
+      {
+        operation: "user_registration_failed",
+        error: error.message,
+        errorCode: error.code,
+        stack: error.stack.split("\n").slice(0, 5), // First 5 lines of stack trace
+      }
+    );
+
     res.status(500).json({
       success: false,
       message: "Server error during registration",

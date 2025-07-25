@@ -1,3 +1,5 @@
+const logger = require("../utils/logger");
+
 let Redis;
 try {
   Redis = require("redis");
@@ -5,7 +7,6 @@ try {
   logger.warn("Redis module not available, using in-memory cache only");
   Redis = null;
 }
-const logger = require("../utils/logger");
 
 /**
  * Redis Cache Service
