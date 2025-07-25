@@ -84,6 +84,18 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
   const [saving, setSaving] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("basic");
 
+  // Create category options including the product's original category if not in predefined list
+  const categoryOptions = React.useMemo(() => {
+    const categories = [...CATEGORIES];
+
+    // If editing a product and its category is not in the predefined list, add it
+    if (product?.category && !categories.includes(product.category)) {
+      categories.unshift(product.category);
+    }
+
+    return categories;
+  }, [product?.category]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -222,7 +234,7 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
               required
             >
               <option value="">Kategori seçin</option>
-              {CATEGORIES.map((category) => (
+              {categoryOptions.map((category) => (
                 <option key={category} value={category}>
                   {category}
                 </option>
@@ -537,6 +549,7 @@ const ProductManagement = () => {
     bulkUpdateProducts,
     bulkDeleteProducts,
     syncProducts,
+    syncProductToPlatforms,
     importProducts,
     exportProducts,
     cleanup,
@@ -736,7 +749,71 @@ const ProductManagement = () => {
     [actions]
   );
 
-  // Filter and search handlers
+  // Inline update handler for price and stock
+  const handleInlineUpdate = useCallback(
+    async (productId, field, value) => {
+      try {
+        // Validate the value
+        const numericValue = parseFloat(value);
+        if (isNaN(numericValue) || numericValue < 0) {
+          showAlert("Lütfen geçerli bir değer girin", "error");
+          return false;
+        }
+
+        // Prepare update data
+        const updateData = {};
+        if (field === "price") {
+          updateData.price = numericValue;
+        } else if (field === "stockQuantity") {
+          updateData.stockQuantity = Math.floor(numericValue); // Stock should be integer
+        }
+
+        // Update the product
+        await updateProduct(productId, updateData);
+
+        // Sync the product to platforms after update
+        try {
+          await syncProductToPlatforms(productId, "update", [field]);
+          console.log("Platform sync completed successfully");
+        } catch (syncError) {
+          console.warn("Platform sync error:", syncError);
+          // Don't fail the update if sync fails
+        }
+
+        // Refresh the products list
+        await fetchProducts({
+          page: state.currentPage,
+          limit: state.itemsPerPage,
+          sortField: state.sortField,
+          sortOrder: state.sortOrder,
+          filters: state.filters,
+          search: state.searchValue,
+        });
+
+        showAlert(
+          "Ürün güncellendi ve platformlara senkronize edildi",
+          "success"
+        );
+        return true;
+      } catch (error) {
+        handleError(error, " - Inline update");
+        return false;
+      }
+    },
+    [
+      updateProduct,
+      syncProductToPlatforms,
+      fetchProducts,
+      state.currentPage,
+      state.itemsPerPage,
+      state.sortField,
+      state.sortOrder,
+      state.filters,
+      state.searchValue,
+      showAlert,
+      handleError,
+    ]
+  ); // Filter and search handlers
   const handleFilterChange = useCallback(
     (filters) => {
       actions.setFilters(filters);
@@ -1214,6 +1291,7 @@ const ProductManagement = () => {
               onCreateVariant={handleCreateVariant}
               onAddProduct={handleAddProduct}
               onSync={handleSync}
+              onInlineUpdate={handleInlineUpdate}
               sortField={state.sortField}
               sortOrder={state.sortOrder}
               onSort={handleSort}

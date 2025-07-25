@@ -536,6 +536,35 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
     }
   }, [createAPICall, updateState, showAlert, handleError]);
 
+  // Sync single product to platforms
+  const syncProductToPlatforms = useCallback(
+    async (productId, operation = "update", fields = []) => {
+      try {
+        const data = await createAPICall(
+          `${API_BASE_URL}/products/${productId}/sync`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              operation,
+              fields,
+            }),
+          },
+          `syncProduct_${productId}`
+        );
+
+        return data;
+      } catch (error) {
+        // Don't show alert for sync errors to avoid spam
+        console.warn("Product sync failed:", error);
+        throw error;
+      }
+    },
+    [createAPICall]
+  );
+
   // Import products
   const importProducts = useCallback(
     async (file) => {
@@ -757,6 +786,7 @@ export const useProductAPI = (updateState, showAlert, handleError) => {
     bulkUpdateProducts,
     bulkDeleteProducts,
     syncProducts,
+    syncProductToPlatforms,
     importProducts,
     exportProducts,
     cleanup,

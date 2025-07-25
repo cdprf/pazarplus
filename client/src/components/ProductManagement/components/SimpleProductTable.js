@@ -6,7 +6,6 @@ import {
   ArrowUpDown,
   Package,
   Tag,
-  DollarSign,
   MoreHorizontal,
   Copy,
   ExternalLink,
@@ -28,6 +27,7 @@ const SimpleProductTable = ({
   onDelete,
   onImageClick,
   onProductNameClick,
+  onInlineUpdate,
   sortField,
   sortOrder,
   onSort,
@@ -43,6 +43,8 @@ const SimpleProductTable = ({
   onBatchVariantDetection,
 }) => {
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [editingCell, setEditingCell] = useState(null); // { productId, field }
+  const [editValue, setEditValue] = useState("");
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -50,6 +52,38 @@ const SimpleProductTable = ({
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
+
+  // Handle inline editing
+  const startEditing = (productId, field, currentValue) => {
+    setEditingCell({ productId, field });
+    setEditValue(currentValue.toString());
+  };
+
+  const cancelEditing = () => {
+    setEditingCell(null);
+    setEditValue("");
+  };
+
+  const saveEdit = async (productId, field) => {
+    if (!onInlineUpdate) {
+      cancelEditing();
+      return;
+    }
+
+    const success = await onInlineUpdate(productId, field, editValue);
+    if (success) {
+      cancelEditing();
+    }
+  };
+
+  const handleKeyPress = (e, productId, field) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveEdit(productId, field);
+    } else if (e.key === "Escape") {
+      cancelEditing();
+    }
+  };
   const handleSort = (field) => {
     onSort?.(field);
   };
@@ -94,12 +128,6 @@ const SimpleProductTable = ({
       currency: "TRY",
       minimumFractionDigits: 2,
     }).format(price);
-  };
-
-  const getStockStatus = (stock) => {
-    if (stock === 0) return { color: "text-red-600", text: "Stokta Yok" };
-    if (stock <= 5) return { color: "text-yellow-600", text: "Düşük Stok" };
-    return { color: "text-green-600", text: "Stokta Var" };
   };
 
   if (products.length === 0) {
@@ -242,7 +270,6 @@ const SimpleProductTable = ({
         <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
           {products.map((product) => {
             const statusConfig = getStatusBadge(product.status);
-            const stockStatus = getStockStatus(product.stockQuantity);
 
             return (
               <tr
@@ -426,22 +453,70 @@ const SimpleProductTable = ({
                 {/* Price */}
                 <td className="px-6 py-4 whitespace-normal">
                   <div className="flex items-center">
-                    <DollarSign className="h-4 w-4 mr-1 text-gray-400" />
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">
-                      {formatPrice(product.price)}
-                    </span>
+                    {editingCell?.productId === product.id &&
+                    editingCell?.field === "price" ? (
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={(e) =>
+                          handleKeyPress(e, product.id, "price")
+                        }
+                        onBlur={() => saveEdit(product.id, "price")}
+                        className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autoFocus
+                      />
+                    ) : (
+                      <span
+                        className="font-semibold text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 py-1 rounded"
+                        onClick={() =>
+                          onInlineUpdate &&
+                          startEditing(product.id, "price", product.price || 0)
+                        }
+                        title="Fiyatı düzenlemek için tıklayın"
+                      >
+                        {formatPrice(product.price)}
+                      </span>
+                    )}
                   </div>
                 </td>
 
                 {/* Stock */}
                 <td className="px-6 py-4 whitespace-normal">
                   <div className="flex items-center space-x-2">
-                    <span className="font-medium text-gray-900 dark:text-gray-100">
-                      {product.stockQuantity || 0}
-                    </span>
-                    <span className={`text-xs ${stockStatus.color}`}>
-                      {stockStatus.text}
-                    </span>
+                    {editingCell?.productId === product.id &&
+                    editingCell?.field === "stockQuantity" ? (
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={(e) =>
+                          handleKeyPress(e, product.id, "stockQuantity")
+                        }
+                        onBlur={() => saveEdit(product.id, "stockQuantity")}
+                        className="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autoFocus
+                      />
+                    ) : (
+                      <span
+                        className="font-medium text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 py-1 rounded"
+                        onClick={() =>
+                          onInlineUpdate &&
+                          startEditing(
+                            product.id,
+                            "stockQuantity",
+                            product.stockQuantity || 0
+                          )
+                        }
+                        title="Stok miktarını düzenlemek için tıklayın"
+                      >
+                        {product.stockQuantity || 0}
+                      </span>
+                    )}
                   </div>
                 </td>
 

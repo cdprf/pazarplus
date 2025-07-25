@@ -89,6 +89,7 @@ const ProductDisplay = ({
   onAddProduct,
   onImportProducts,
   onSync,
+  onInlineUpdate,
   // Sorting
   sortField,
   sortOrder,
@@ -522,6 +523,7 @@ const ProductDisplay = ({
                   onEdit={onEdit}
                   onDelete={onDelete}
                   onImageClick={onImageClick}
+                  onInlineUpdate={onInlineUpdate}
                   selectedProducts={selectedProducts}
                   onSelectProduct={onSelectProduct}
                   onSelectAll={onSelectAll}

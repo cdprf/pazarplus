@@ -113,10 +113,16 @@ const Analytics = () => {
 
   // Timeframe options
   const timeframeOptions = [
-    { value: "7d", label: "Last 7 days" },
-    { value: "30d", label: "Last 30 days" },
-    { value: "90d", label: "Last 3 months" },
-    { value: "1y", label: "Last year" },
+    { value: "7d", label: t("analytics.timeframe.last7days", {}, "Son 7 gün") },
+    {
+      value: "30d",
+      label: t("analytics.timeframe.last30days", {}, "Son 30 gün"),
+    },
+    {
+      value: "90d",
+      label: t("analytics.timeframe.last3months", {}, "Son 3 ay"),
+    },
+    { value: "1y", label: t("analytics.timeframe.lastYear", {}, "Son yıl") },
   ];
 
   const renderContent = () => {
@@ -179,11 +185,15 @@ const Analytics = () => {
                     </div>
                     <div>
                       <h1 className="text-3xl lg:text-4xl font-bold text-white">
-                        Analytics Dashboard
+                        {t("analytics.dashboard.title", {}, "Analitik Paneli")}
                       </h1>
                       <p className="text-white/80 mt-1 text-lg">
                         {currentTab?.description ||
-                          "Business intelligence and performance insights"}
+                          t(
+                            "analytics.dashboard.subtitle",
+                            {},
+                            "İş zekası ve performans görüşleri"
+                          )}
                       </p>
                     </div>
                   </div>
@@ -193,12 +203,13 @@ const Analytics = () => {
                     <div className="flex items-center space-x-2">
                       <ClockIcon className="h-4 w-4" />
                       <span>
-                        Last updated: {lastUpdated.toLocaleTimeString()}
+                        {t("analytics.lastUpdated", {}, "Son güncelleme")}:{" "}
+                        {lastUpdated.toLocaleTimeString()}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                      <span>Live data</span>
+                      <span>{t("analytics.liveData", {}, "Canlı veri")}</span>
                     </div>
                   </div>
                 </div>
@@ -244,7 +255,7 @@ const Analytics = () => {
                   {/* Export Button */}
                   <button className="flex items-center px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-lg hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all duration-200">
                     <DocumentArrowDownIcon className="h-5 w-5 mr-2" />
-                    Export
+                    {t("analytics.export", {}, "Dışa Aktar")}
                   </button>
                 </div>
               </div>

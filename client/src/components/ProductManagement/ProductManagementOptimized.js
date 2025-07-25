@@ -81,6 +81,18 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
   const [saving, setSaving] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("basic");
 
+  // Create category options including the product's original category if not in predefined list
+  const categoryOptions = React.useMemo(() => {
+    const categories = [...CATEGORIES];
+
+    // If editing a product and its category is not in the predefined list, add it
+    if (product?.category && !categories.includes(product.category)) {
+      categories.unshift(product.category);
+    }
+
+    return categories;
+  }, [product?.category]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -219,7 +231,7 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
               required
             >
               <option value="">Kategori seçin</option>
-              {CATEGORIES.map((category) => (
+              {categoryOptions.map((category) => (
                 <option key={category} value={category}>
                   {category}
                 </option>

@@ -1,6 +1,7 @@
 import logger from "../../utils/logger.js";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "../../i18n/hooks/useTranslation";
 import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
 import analyticsService from "../../services/analyticsService";
 import {
@@ -36,6 +37,7 @@ import { BellIcon } from "@heroicons/react/24/solid";
  * Features AI-powered insights, predictive analytics, and actionable recommendations
  */
 const BusinessIntelligenceDashboard = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [timeframe, setTimeframe] = useState("30d");
   const [analytics, setAnalytics] = useState(null);
@@ -78,9 +80,7 @@ const BusinessIntelligenceDashboard = () => {
             return null;
           }),
           analyticsService.getProductAnalytics(timeframe).catch((err) => {
-            logger.warn(
-              "Product analytics failed, continuing with other data"
-            );
+            logger.warn("Product analytics failed, continuing with other data");
             return null;
           }),
           analyticsService.getFinancialAnalytics(timeframe).catch((err) => {
@@ -513,12 +513,21 @@ const BusinessIntelligenceDashboard = () => {
 
   const timeframeOptions = useMemo(
     () => [
-      { value: "7d", label: "Last 7 days" },
-      { value: "30d", label: "Last 30 days" },
-      { value: "90d", label: "Last 90 days" },
-      { value: "1y", label: "Last year" },
+      {
+        value: "7d",
+        label: t("analytics.timeframe.last7days", {}, "Son 7 gün"),
+      },
+      {
+        value: "30d",
+        label: t("analytics.timeframe.last30days", {}, "Son 30 gün"),
+      },
+      {
+        value: "90d",
+        label: t("analytics.timeframe.last3months", {}, "Son 3 ay"),
+      },
+      { value: "1y", label: t("analytics.timeframe.lastYear", {}, "Son yıl") },
     ],
-    []
+    [t]
   );
 
   // Loading state
@@ -586,10 +595,14 @@ const BusinessIntelligenceDashboard = () => {
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
-              Business Intelligence
+              {t("analytics.businessIntelligence.title", {}, "İş Zekası")}
             </h2>
             <p className="text-gray-500">
-              AI-powered insights and recommendations
+              {t(
+                "analytics.businessIntelligence.subtitle",
+                {},
+                "Yapay zeka destekli görüşler ve öneriler"
+              )}
             </p>
           </div>
         </div>
@@ -598,11 +611,14 @@ const BusinessIntelligenceDashboard = () => {
           <div className="text-center max-w-md mx-auto p-6">
             <ExclamationTriangleIcon className="h-16 w-16 text-yellow-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No Insights Generated
+              {t("analytics.noInsights.title", {}, "Görüş Oluşturulmadı")}
             </h3>
             <p className="text-gray-500 mb-6">
-              We have analytics data but couldn't generate business insights.
-              This could be due to insufficient data patterns or recent changes.
+              {t(
+                "analytics.noInsights.description",
+                {},
+                "Analitik verilere sahibiz ancak iş görüşleri oluşturamadık. Bu durum yetersiz veri deseni veya son değişiklikler nedeniyle olabilir."
+              )}
             </p>
             <button
               onClick={fetchAnalytics}
@@ -610,7 +626,7 @@ const BusinessIntelligenceDashboard = () => {
               aria-label="Generate new insights"
             >
               <ArrowPathIcon className="h-4 w-4" />
-              Generate Insights
+              {t("analytics.generateInsights", {}, "Görüş Oluştur")}
             </button>
           </div>
         </div>
@@ -626,28 +642,43 @@ const BusinessIntelligenceDashboard = () => {
             <ExclamationTriangleIcon className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
             <div className="flex-1">
               <h3 className="text-red-800 font-medium mb-1">
-                Unable to load analytics data
+                {t(
+                  "analytics.error.title",
+                  {},
+                  "Analitik verileri yüklenemedi"
+                )}
               </h3>
               <p className="text-red-700 mb-3">{error}</p>
               {error.includes("Access denied") || error.includes("401") ? (
                 <p className="text-red-600 text-sm mb-3">
-                  Please ensure you are logged in to view analytics data.
+                  {t(
+                    "analytics.error.accessDenied",
+                    {},
+                    "Analitik verilerini görüntülemek için giriş yapmış olduğunuzdan emin olun."
+                  )}
                 </p>
               ) : error.includes("timeout") ? (
                 <p className="text-red-600 text-sm mb-3">
-                  The analytics service is taking too long to respond. Please
-                  try again.
+                  {t(
+                    "analytics.error.timeout",
+                    {},
+                    "Analitik servisi yanıt vermekte çok uzun süre alıyor. Lütfen tekrar deneyin."
+                  )}
                 </p>
               ) : (
                 <p className="text-red-600 text-sm mb-3">
-                  There was an issue connecting to the analytics service.
+                  {t(
+                    "analytics.error.connection",
+                    {},
+                    "Analitik servisine bağlanırken bir sorun oluştu."
+                  )}
                 </p>
               )}
               <button
                 onClick={fetchAnalytics}
                 className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
               >
-                Retry
+                {t("analytics.retry", {}, "Tekrar Dene")}
               </button>
             </div>
           </div>
@@ -667,13 +698,22 @@ const BusinessIntelligenceDashboard = () => {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-primary mb-2">
-              Business Intelligence Dashboard
+              {t(
+                "analytics.businessIntelligenceDashboard",
+                {},
+                "İş Zekası Paneli"
+              )}
             </h2>
             <p className="text-secondary">
-              AI-powered insights and predictive analytics
+              {t(
+                "analytics.aiPoweredInsights",
+                {},
+                "Yapay zeka destekli görüşler ve tahmine dayalı analizler"
+              )}
               {lastUpdated && (
                 <span className="ml-2 text-muted text-sm">
-                  • Last updated: {lastUpdated.toLocaleTimeString()}
+                  • {t("analytics.lastUpdated", {}, "Son güncelleme")}:{" "}
+                  {lastUpdated.toLocaleTimeString()}
                 </span>
               )}
             </p>
@@ -734,7 +774,7 @@ const BusinessIntelligenceDashboard = () => {
         {/* Key Performance Indicators */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <KPICard
-            title="Total Revenue"
+            title={t("analytics.kpi.totalRevenue", {}, "Toplam Gelir")}
             value={
               analytics?.summary?.totalRevenue ||
               analytics?.orderSummary?.totalRevenue ||
@@ -750,12 +790,16 @@ const BusinessIntelligenceDashboard = () => {
             icon={BanknotesIcon}
             color="primary"
             format="currency"
-            subtitle="Current period revenue"
+            subtitle={t(
+              "analytics.kpi.currentPeriodRevenue",
+              {},
+              "Mevcut dönem geliri"
+            )}
             testId="revenue-kpi"
           />
 
           <KPICard
-            title="Total Orders"
+            title={t("analytics.kpi.totalOrders", {}, "Toplam Siparişler")}
             value={analytics?.orderSummary?.totalOrders || 0}
             change={
               analytics?.orderSummary?.orderGrowth ||
@@ -765,7 +809,11 @@ const BusinessIntelligenceDashboard = () => {
             icon={ChartBarIcon}
             color="success"
             format="number"
-            subtitle={`Avg: ${formatCurrency(
+            subtitle={`${t(
+              "analytics.kpi.average",
+              {},
+              "Ort"
+            )}: ${formatCurrency(
               analytics?.orderSummary?.avgOrderValue ||
                 analytics?.orderSummary?.averageOrderValue ||
                 analytics?.summary?.averageOrderValue ||
@@ -775,29 +823,37 @@ const BusinessIntelligenceDashboard = () => {
           />
 
           <KPICard
-            title="Active Platforms"
+            title={t("analytics.kpi.activePlatforms", {}, "Aktif Platformlar")}
             value={analytics?.platforms?.length || 0}
             icon={GlobeAltIcon}
             color="info"
             subtitle={
               analytics?.platforms?.length > 0
-                ? "Connected & syncing"
-                : "No platforms"
+                ? t("analytics.kpi.connectedSyncing", {}, "Bağlı ve senkronize")
+                : t("analytics.kpi.noPlatforms", {}, "Platform yok")
             }
-            badge={analytics?.platforms?.length > 0 ? "LIVE" : "SETUP"}
+            badge={
+              analytics?.platforms?.length > 0
+                ? t("analytics.kpi.live", {}, "CANLI")
+                : t("analytics.kpi.setup", {}, "KURULUM")
+            }
             testId="platforms-kpi"
           />
 
           <KPICard
-            title="AI Insights"
+            title={t("analytics.kpi.aiInsights", {}, "Yapay Zeka Görüşleri")}
             value={businessIntelligence?.recommendations?.length || 0}
             icon={BellIcon}
             color="warning"
-            subtitle="Actionable recommendations"
+            subtitle={t(
+              "analytics.kpi.actionableRecommendations",
+              {},
+              "Uygulanabilir öneriler"
+            )}
             badge={
               (businessIntelligence?.recommendations?.length || 0) > 0
-                ? "ACTION REQUIRED"
-                : "UP TO DATE"
+                ? t("analytics.kpi.actionRequired", {}, "EYLEM GEREKLİ")
+                : t("analytics.kpi.upToDate", {}, "GÜNCEL")
             }
             testId="insights-kpi"
             onClick={() => {
@@ -822,12 +878,18 @@ const BusinessIntelligenceDashboard = () => {
                   <ChartBarIcon className="h-12 w-12 text-blue-500 dark:text-blue-400" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                  Welcome to Analytics Dashboard
+                  {t(
+                    "analytics.welcome.title",
+                    {},
+                    "Analitik Paneline Hoş Geldiniz"
+                  )}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                  Your analytics dashboard is ready! Start by connecting your
-                  sales platforms and importing order data to see powerful
-                  insights and recommendations.
+                  {t(
+                    "analytics.welcome.description",
+                    {},
+                    "Analitik paneliniz hazır! Güçlü görüşler ve öneriler görmek için satış platformlarınızı bağlayarak ve sipariş verilerinizi içe aktararak başlayın."
+                  )}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <button
@@ -835,33 +897,57 @@ const BusinessIntelligenceDashboard = () => {
                     className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                   >
                     <GlobeAltIcon className="h-5 w-5 mr-2" />
-                    Connect Platforms
+                    {t(
+                      "analytics.welcome.connectPlatforms",
+                      {},
+                      "Platformları Bağla"
+                    )}
                   </button>
                   <button
                     onClick={() => navigate("/orders")}
                     className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     <ShoppingCartIcon className="h-5 w-5 mr-2" />
-                    View Orders
+                    {t(
+                      "analytics.welcome.viewOrders",
+                      {},
+                      "Siparişleri Görüntüle"
+                    )}
                   </button>
                 </div>
 
                 <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                   <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-                    What you'll see once you have data:
+                    {t(
+                      "analytics.welcome.whatYouWillSee",
+                      {},
+                      "Veriniz olduğunda görecekleriniz:"
+                    )}
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 dark:text-gray-400">
                     <div className="flex items-center">
                       <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
-                      Revenue trends & forecasts
+                      {t(
+                        "analytics.welcome.revenueTrends",
+                        {},
+                        "Gelir trendleri ve tahminler"
+                      )}
                     </div>
                     <div className="flex items-center">
                       <div className="w-2 h-2 bg-blue-400 rounded-full mr-2"></div>
-                      Platform performance comparison
+                      {t(
+                        "analytics.welcome.platformComparison",
+                        {},
+                        "Platform performans karşılaştırması"
+                      )}
                     </div>
                     <div className="flex items-center">
                       <div className="w-2 h-2 bg-purple-400 rounded-full mr-2"></div>
-                      AI-powered business insights
+                      {t(
+                        "analytics.welcome.aiInsights",
+                        {},
+                        "Yapay zeka destekli iş görüşleri"
+                      )}
                     </div>
                   </div>
                 </div>
@@ -876,7 +962,11 @@ const BusinessIntelligenceDashboard = () => {
               <div className="flex items-center text-primary">
                 <BellIcon className="h-5 w-5 mr-3 text-primary-600" />
                 <h3 className="text-lg font-semibold">
-                  AI-Powered Recommendations
+                  {t(
+                    "analytics.recommendations.title",
+                    {},
+                    "Yapay Zeka Destekli Öneriler"
+                  )}
                 </h3>
               </div>
             </div>
@@ -896,27 +986,55 @@ const BusinessIntelligenceDashboard = () => {
                             rec.priority || "medium"
                           )}`}
                         >
-                          {rec.priority || "medium"} Priority
+                          {t(
+                            `analytics.priority.${rec.priority || "medium"}`,
+                            {},
+                            rec.priority === "high"
+                              ? "Yüksek"
+                              : rec.priority === "low"
+                              ? "Düşük"
+                              : "Orta"
+                          )}{" "}
+                          {t("analytics.priority.label", {}, "Öncelik")}
                         </span>
                         <span className="text-sm text-muted">
-                          {rec.category || "General"}
+                          {t(
+                            `analytics.category.${rec.category || "general"}`,
+                            {},
+                            rec.category || "Genel"
+                          )}
                         </span>
                       </div>
                       <h4 className="text-primary font-medium mb-2">
-                        {rec.title || "Recommendation"}
+                        {rec.title ||
+                          t("analytics.recommendation.default", {}, "Öneri")}
                       </h4>
                       <p className="text-secondary text-sm mb-4">
-                        {rec.description || "No details available"}
+                        {rec.description ||
+                          t(
+                            "analytics.recommendation.noDetails",
+                            {},
+                            "Detay mevcut değil"
+                          )}
                       </p>
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-medium text-success-600">
-                          {rec.estimatedImpact || "High Impact"}
+                          {rec.estimatedImpact ||
+                            t(
+                              "analytics.recommendation.highImpact",
+                              {},
+                              "Yüksek Etki"
+                            )}
                         </span>
                         <button
                           onClick={() => setSelectedRecommendation(rec)}
                           className="btn btn-ghost btn-sm text-primary-600 hover:bg-primary-50"
                         >
-                          View Details
+                          {t(
+                            "analytics.recommendation.viewDetails",
+                            {},
+                            "Detayları Görüntüle"
+                          )}
                         </button>
                       </div>
                     </div>
@@ -933,7 +1051,11 @@ const BusinessIntelligenceDashboard = () => {
             <div className="card h-full">
               <div className="card-header">
                 <h3 className="text-lg font-semibold text-primary">
-                  Revenue Trends & Forecast
+                  {t(
+                    "analytics.charts.revenueTrends",
+                    {},
+                    "Gelir Trendleri ve Tahmin"
+                  )}
                 </h3>
               </div>
               <div className="card-body">
@@ -943,13 +1065,25 @@ const BusinessIntelligenceDashboard = () => {
                     height={350}
                     xKey="date"
                     yKey="revenue"
-                    title="Revenue Trends"
+                    title={t(
+                      "analytics.charts.revenueTrendsTitle",
+                      {},
+                      "Gelir Trendleri"
+                    )}
                   />
                 ) : (
                   <ChartPlaceholder
                     icon={ChartBarIcon}
-                    title="Revenue Trends Chart"
-                    description="Revenue trend data will appear here once orders are processed."
+                    title={t(
+                      "analytics.charts.revenueTrendsChart",
+                      {},
+                      "Gelir Trendleri Grafiği"
+                    )}
+                    description={t(
+                      "analytics.charts.revenueTrendsDescription",
+                      {},
+                      "Siparişler işlendikten sonra gelir trend verileri burada görünecek."
+                    )}
                     height={350}
                   />
                 )}
@@ -961,10 +1095,18 @@ const BusinessIntelligenceDashboard = () => {
             <div className="card h-full">
               <div className="card-header">
                 <h3 className="text-lg font-semibold text-primary">
-                  Platform Performance
+                  {t(
+                    "analytics.charts.platformPerformance",
+                    {},
+                    "Platform Performansı"
+                  )}
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Based on net orders (orders received - returns)
+                  {t(
+                    "analytics.charts.platformPerformanceSubtitle",
+                    {},
+                    "Net siparişlere göre (alınan siparişler - iadeler)"
+                  )}
                 </p>
               </div>
               <div className="card-body">
@@ -974,7 +1116,11 @@ const BusinessIntelligenceDashboard = () => {
                       name:
                         platform.name ||
                         platform.platform ||
-                        "Unknown Platform",
+                        t(
+                          "analytics.charts.unknownPlatform",
+                          {},
+                          "Bilinmeyen Platform"
+                        ),
                       value:
                         (platform.totalOrders || platform.orders || 0) -
                         (platform.returnedOrders || platform.returns || 0),
@@ -994,8 +1140,16 @@ const BusinessIntelligenceDashboard = () => {
                 ) : (
                   <ChartPlaceholder
                     icon={GlobeAltIcon}
-                    title="Platform Performance"
-                    description="Platform performance data will appear here once platforms are connected."
+                    title={t(
+                      "analytics.charts.platformPerformanceTitle",
+                      {},
+                      "Platform Performansı"
+                    )}
+                    description={t(
+                      "analytics.charts.platformPerformanceDescription",
+                      {},
+                      "Platformlar bağlandıktan sonra platform performans verileri burada görünecek."
+                    )}
                     height={350}
                   />
                 )}
@@ -1009,7 +1163,11 @@ const BusinessIntelligenceDashboard = () => {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">
-                Top Performing Products
+                {t(
+                  "analytics.charts.topPerformingProducts",
+                  {},
+                  "En İyi Performans Gösteren Ürünler"
+                )}
               </h3>
             </div>
             <div className="p-6">
@@ -1023,7 +1181,11 @@ const BusinessIntelligenceDashboard = () => {
                       product.productName ||
                       product.product_name ||
                       product.Product?.name ||
-                      "Unknown Product";
+                      t(
+                        "analytics.charts.unknownProduct",
+                        {},
+                        "Bilinmeyen Ürün"
+                      );
 
                     const productSku =
                       product.sku ||
@@ -1031,7 +1193,7 @@ const BusinessIntelligenceDashboard = () => {
                       product.productSku ||
                       product.product_sku ||
                       product.Product?.sku ||
-                      "N/A";
+                      t("analytics.charts.notAvailable", {}, "Mevcut Değil");
 
                     const productCategory =
                       product.category ||
@@ -1039,7 +1201,7 @@ const BusinessIntelligenceDashboard = () => {
                       product.category_name ||
                       product.productCategory ||
                       product.Product?.category ||
-                      "Uncategorized";
+                      t("analytics.charts.uncategorized", {}, "Kategorisiz");
 
                     const revenue =
                       product.totalRevenue ||
@@ -1070,7 +1232,8 @@ const BusinessIntelligenceDashboard = () => {
                           </p>
                           {product.platform && (
                             <p className="text-xs text-blue-600 mt-1">
-                              Platform: {product.platform}
+                              {t("analytics.charts.platform", {}, "Platform")}:{" "}
+                              {product.platform}
                             </p>
                           )}
                         </div>
@@ -1078,7 +1241,9 @@ const BusinessIntelligenceDashboard = () => {
                           <div className="font-semibold text-green-600">
                             {formatCurrency(revenue)}
                           </div>
-                          <p className="text-sm text-gray-500">{sold} sold</p>
+                          <p className="text-sm text-gray-500">
+                            {sold} {t("analytics.charts.sold", {}, "satıldı")}
+                          </p>
                         </div>
                       </div>
                     );
@@ -1101,7 +1266,7 @@ const BusinessIntelligenceDashboard = () => {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">
-                Financial KPIs
+                {t("analytics.financialKPIs.title", {}, "Finansal KPI'lar")}
               </h3>
             </div>
             <div className="p-6">
@@ -1118,7 +1283,13 @@ const BusinessIntelligenceDashboard = () => {
                           0
                       )}
                     </div>
-                    <div className="text-sm text-gray-500">Revenue Growth</div>
+                    <div className="text-sm text-gray-500">
+                      {t(
+                        "analytics.financialKPIs.revenueGrowth",
+                        {},
+                        "Gelir Artışı"
+                      )}
+                    </div>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <div className="text-2xl font-bold text-blue-600 mb-1">
@@ -1129,7 +1300,13 @@ const BusinessIntelligenceDashboard = () => {
                           0
                       )}
                     </div>
-                    <div className="text-sm text-gray-500">Avg Order Value</div>
+                    <div className="text-sm text-gray-500">
+                      {t(
+                        "analytics.financialKPIs.avgOrderValue",
+                        {},
+                        "Ort. Sipariş Değeri"
+                      )}
+                    </div>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <div className="text-2xl font-bold text-cyan-600 mb-1">
@@ -1140,7 +1317,13 @@ const BusinessIntelligenceDashboard = () => {
                           0
                       )}
                     </div>
-                    <div className="text-sm text-gray-500">Customer LTV</div>
+                    <div className="text-sm text-gray-500">
+                      {t(
+                        "analytics.financialKPIs.customerLTV",
+                        {},
+                        "Müşteri Yaşam Değeri"
+                      )}
+                    </div>
                   </div>
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
                     <div className="text-2xl font-bold text-yellow-600 mb-1">
@@ -1152,17 +1335,30 @@ const BusinessIntelligenceDashboard = () => {
                           0
                       )}
                     </div>
-                    <div className="text-sm text-gray-500">Gross Margin</div>
+                    <div className="text-sm text-gray-500">
+                      {t(
+                        "analytics.financialKPIs.grossMargin",
+                        {},
+                        "Brüt Kar Marjı"
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : (
                 <div className="text-center py-8">
                   <p className="text-gray-500 mb-2">
-                    No financial data available for the selected timeframe.
+                    {t(
+                      "analytics.financialKPIs.noData",
+                      {},
+                      "Seçili zaman dilimi için finansal veri mevcut değil."
+                    )}
                   </p>
                   <p className="text-sm text-gray-400">
-                    Financial KPIs will appear here once order data is
-                    available.
+                    {t(
+                      "analytics.financialKPIs.dataDescription",
+                      {},
+                      "Sipariş verisi mevcut olduğunda finansal KPI'lar burada görünecek."
+                    )}
                   </p>
                 </div>
               )}
@@ -1175,7 +1371,11 @@ const BusinessIntelligenceDashboard = () => {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-full">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">
-                Order Status Breakdown
+                {t(
+                  "analytics.charts.orderStatusBreakdown",
+                  {},
+                  "Sipariş Durumu Dağılımı"
+                )}
               </h3>
             </div>
             <div className="p-6">
