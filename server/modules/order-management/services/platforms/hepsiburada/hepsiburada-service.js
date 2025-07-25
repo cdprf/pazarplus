@@ -4354,82 +4354,277 @@ class HepsiburadaService extends BasePlatformService {
   }
 
   /**
-   * Update product information on Hepsiburada
-   * @param {string} merchantSku - Merchant SKU of the product to update
-   * @param {Object} updateData - Data to update
-   * @returns {Promise<Object>} - Update result
+   * Update product information on Hepsiburada using official API structure
+   * Based on: https://developers.hepsiburada.com/hepsiburada/reference/ürün-güncelleme-önemli-bilgiler
+   * @param {Object|Array} productData - Product data or array of products to update
+   * @returns {Promise<Object>} - Update result with trackingId
    */
-  async updateProduct(merchantSku, updateData) {
+  async updateProduct(productData) {
     try {
       await this.initialize();
-      const productsAxios = this.createProductsAxiosInstance();
+      const credentials = this.decryptCredentials(this.connection.credentials);
+      const { merchantId } = credentials;
 
-      if (!merchantSku) {
-        throw new Error("Merchant SKU is required for product update");
+      if (!merchantId) {
+        throw new Error(
+          "Missing merchantId in credentials for Hepsiburada API"
+        );
       }
 
-      // Format update data according to Hepsiburada requirements
-      const hepsiburadaUpdateData = {};
+      // Handle both single product and array of products
+      const products = Array.isArray(productData) ? productData : [productData];
 
-      if (updateData.price !== undefined) {
-        hepsiburadaUpdateData.price = parseFloat(updateData.price);
+      if (products.length === 0) {
+        throw new Error("At least one product is required for update");
       }
 
-      if (updateData.stock !== undefined) {
-        hepsiburadaUpdateData.baseAttributes =
-          hepsiburadaUpdateData.baseAttributes || [];
-        hepsiburadaUpdateData.baseAttributes.push({
-          name: "stock",
-          value: updateData.stock.toString(),
-        });
-      }
+      // Transform products according to official Hepsiburada API structure
+      const hepsibudaItems = products.map((product) => {
+        // Extract hbSku - required and cannot be updated according to docs
+        const hbSku =
+          product.hbSku ||
+          product.merchantSku ||
+          product.sku ||
+          product.stockCode;
 
-      if (updateData.title) {
-        hepsiburadaUpdateData.productName = updateData.title;
-      }
+        if (!hbSku) {
+          throw new Error(
+            "hbSku is required for Hepsiburada product update (cannot be changed once set)"
+          );
+        }
 
-      if (updateData.description) {
-        hepsiburadaUpdateData.description = updateData.description;
-      }
+        // Build official Hepsiburada API structure
+        const hepsibudaItem = {
+          // Required fields
+          merchantId: merchantId.toString(),
+          hbSku: hbSku.toString(), // Cannot be updated but required for identification
+        };
 
-      if (updateData.status) {
-        hepsiburadaUpdateData.status = updateData.status;
-      }
+        // Optional product name
+        if (product.productName || product.title || product.name) {
+          hepsibudaItem.productName =
+            product.productName || product.title || product.name;
+        }
 
-      this.logger.info(`Updating product on Hepsiburada`, {
-        merchantSku,
-        updateFields: Object.keys(updateData),
+        // Optional product description
+        if (product.productDescription || product.description) {
+          hepsibudaItem.productDescription =
+            product.productDescription || product.description;
+        }
+
+        // Images (image1 to image5)
+        if (product.images && Array.isArray(product.images)) {
+          const images = product.images.slice(0, 5); // Maximum 5 images
+          images.forEach((imageUrl, index) => {
+            if (imageUrl && typeof imageUrl === "string") {
+              hepsibudaItem[`image${index + 1}`] = imageUrl;
+            }
+          });
+
+          // Set remaining image slots to null
+          for (let i = images.length; i < 5; i++) {
+            hepsibudaItem[`image${i + 1}`] = null;
+          }
+        } else {
+          // Set all image slots to null if no images provided
+          for (let i = 1; i <= 5; i++) {
+            hepsibudaItem[`image${i}`] = null;
+          }
+        }
+
+        // Optional video
+        hepsibudaItem.video = product.video || null;
+
+        // Attributes (category-specific)
+        if (product.attributes && typeof product.attributes === "object") {
+          hepsibudaItem.attributes = product.attributes;
+        } else {
+          hepsibudaItem.attributes = {};
+        }
+
+        // VAT rate (KDV)
+        if (product.kdv !== undefined || product.vatRate !== undefined) {
+          hepsibudaItem.kdv = String(product.kdv || product.vatRate || 18);
+        }
+
+        // Warranty period
+        if (product.warrantyPeriod !== undefined) {
+          hepsibudaItem.warrantyPeriod = String(product.warrantyPeriod);
+        }
+
+        // Desi (dimensional weight)
+        if (
+          product.desi !== undefined ||
+          product.dimensionalWeight !== undefined
+        ) {
+          hepsibudaItem.desi = String(
+            product.desi || product.dimensionalWeight || 0
+          );
+        }
+
+        // Is customizable
+        if (product.isCustomizable !== undefined) {
+          hepsibudaItem.isCustomizable = String(product.isCustomizable);
+        } else {
+          hepsibudaItem.isCustomizable = "false";
+        }
+
+        // Barcode
+        if (product.barcode) {
+          hepsibudaItem.barcode = product.barcode;
+        }
+
+        return hepsibudaItem;
       });
 
-      // Note: This endpoint needs to be verified with official documentation
-      const endpoint = `/products/${merchantSku}`;
+      this.logger.info(
+        "Preparing Hepsiburada product update with official API structure",
+        {
+          merchantId,
+          itemCount: hepsibudaItems.length,
+          endpoint: "/product/api/products/update",
+          firstItem: hepsibudaItems[0]
+            ? {
+                merchantId: hepsibudaItems[0].merchantId,
+                hbSku: hepsibudaItems[0].hbSku,
+                productName: hepsibudaItems[0].productName,
+              }
+            : null,
+          connectionId: this.connectionId,
+        }
+      );
 
-      const response = await productsAxios.put(endpoint, hepsiburadaUpdateData);
+      // Official Hepsiburada API endpoint for product updates
+      const endpoint = "/product/api/products/update";
 
-      this.logger.info(`Product updated successfully on Hepsiburada`, {
-        merchantSku,
-        response: response.data,
+      this.logger.info("Making Hepsiburada API request", {
+        method: "PUT",
+        endpoint,
+        itemCount: hepsibudaItems.length,
+        baseUrl: this.axiosInstance.defaults.baseURL,
+      });
+
+      // Use PUT method with direct array as body (official Hepsiburada structure)
+      const response = await this.axiosInstance.put(endpoint, hepsibudaItems, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      this.logger.info("Hepsiburada product update successful", {
+        merchantId,
+        itemCount: hepsibudaItems.length,
+        trackingId: response.data?.data?.trackingId,
+        success: response.data?.success,
+        code: response.data?.code,
+        responseStatus: response.status,
+        connectionId: this.connectionId,
       });
 
       return {
-        success: true,
-        message: "Product updated successfully on Hepsiburada",
+        success: response.data?.success || true,
+        trackingId: response.data?.data?.trackingId,
+        itemCount: hepsibudaItems.length,
+        message: `Product update initiated for ${hepsibudaItems.length} item(s). Use trackingId to track status.`,
+        code: response.data?.code,
+        version: response.data?.version,
+        endpoint,
+        statusCode: response.status,
         data: response.data,
+        // Include tracking information
+        trackingInfo: {
+          trackingId: response.data?.data?.trackingId,
+          note: "Use trackingId to check processing status with Hepsiburada tracking API",
+        },
       };
     } catch (error) {
+      const errorDetails = {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        apiError: error.response?.data,
+        connectionId: this.connectionId,
+        endpoint: error.config?.url,
+        method: error.config?.method,
+      };
+
       this.logger.error(
         `Failed to update product on Hepsiburada: ${error.message}`,
-        {
-          error,
-          merchantSku,
-          connectionId: this.connectionId,
-        }
+        errorDetails
       );
 
       return {
         success: false,
         message: `Failed to update product: ${error.message}`,
         error: error.response?.data || error.message,
+        statusCode: error.response?.status,
+        details: errorDetails,
+      };
+    }
+  }
+
+  /**
+   * Check tracking status using official Hepsiburada API
+   * @param {string} trackingId - Tracking ID returned from updateProduct
+   * @returns {Promise<Object>} - Tracking status and results
+   */
+  async checkTrackingStatus(trackingId) {
+    try {
+      await this.initialize();
+
+      if (!trackingId) {
+        throw new Error("Tracking ID is required to check status");
+      }
+
+      // Note: This endpoint structure needs to be verified with official Hepsiburada docs
+      // The exact tracking endpoint may vary
+      const endpoint = `/product/api/products/tracking/${trackingId}`;
+
+      this.logger.info("Checking Hepsiburada tracking status", {
+        trackingId,
+        endpoint,
+        connectionId: this.connectionId,
+      });
+
+      const response = await this.axiosInstance.get(endpoint);
+
+      const trackingData = response.data;
+
+      this.logger.info("Hepsiburada tracking status retrieved", {
+        trackingId,
+        success: trackingData?.success,
+        code: trackingData?.code,
+        dataCount: trackingData?.data?.length || 0,
+      });
+
+      return {
+        success: trackingData?.success || true,
+        trackingId,
+        code: trackingData?.code,
+        version: trackingData?.version,
+        message: trackingData?.message,
+        data: trackingData?.data || [],
+        isCompleted: trackingData?.code === 0, // Success code is 0
+        hasErrors: trackingData?.code !== 0,
+        trackingResponse: trackingData,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to check Hepsiburada tracking status: ${error.message}`,
+        {
+          error: error.message,
+          trackingId,
+          status: error.response?.status,
+          apiError: error.response?.data,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to check tracking status: ${error.message}`,
+        error: error.response?.data || error.message,
+        trackingId,
       };
     }
   }

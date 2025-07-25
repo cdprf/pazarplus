@@ -1,4 +1,4 @@
-import logger from "../../../utils/logger";
+import logger from "../../../utils/logger.js";
 import React, { useState, useRef } from "react";
 import { Upload, X, Image, Video, FileText } from "lucide-react";
 import { Button } from "../../ui";

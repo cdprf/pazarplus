@@ -1,4 +1,4 @@
-import logger from "../../../utils/logger";
+import logger from "../../../utils/logger.js";
 import React, { useState, useCallback } from "react";
 import { List, Grid3X3, Package, Settings } from "lucide-react";
 

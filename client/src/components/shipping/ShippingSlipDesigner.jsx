@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Palette,

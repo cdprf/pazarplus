@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 /**
  * Order Actions Component - Handles all order operations
  * Follows Pazar+ Design System patterns for buttons and actions

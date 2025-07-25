@@ -1,4 +1,4 @@
-import logger from "../../../utils/logger";
+import logger from "../../../utils/logger.js";
 /**
  * Product Variimport SKUInput from '../../common/SKUInput';nt Manager Component
  * Manages product variants with your structured SKU system

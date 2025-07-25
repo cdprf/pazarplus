@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import React from 'react';
 import { Button } from 'react-bootstrap';
 import { useQueryClient } from '@tanstack/react-query';

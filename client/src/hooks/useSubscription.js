@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 import { useState, useEffect, useContext, createContext } from "react";
 import { subscriptionService } from "../services/subscriptionService";
 

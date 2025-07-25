@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 /**
  * OrderFilters - Enhanced with Pazar+ Design System
  * Implements consistent form patterns, accessibility, and enhanced UX

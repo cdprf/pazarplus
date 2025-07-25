@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "../i18n/hooks/useTranslation";
 import { useNotification } from "../contexts/NotificationContext";
 import { useWebSocketNotifications } from "../hooks/useWebSocketNotifications";
 import { Button, Badge } from "../components/ui";
@@ -16,6 +17,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 const Notifications = () => {
+  const { t } = useTranslation();
   const {
     notifications,
     markAsRead,
@@ -118,31 +120,39 @@ const Notifications = () => {
   ).length;
 
   const filterOptions = [
-    { value: "all", label: "All", count: notifications.length },
-    { value: "unread", label: "Unread", count: unreadCount },
+    {
+      value: "all",
+      label: t("notifications.filterOptions.all", "Tümü"),
+      count: notifications.length,
+    },
+    {
+      value: "unread",
+      label: t("notifications.filterOptions.unread", "Okunmamış"),
+      count: unreadCount,
+    },
     {
       value: "order",
-      label: "Orders",
+      label: t("notifications.filterOptions.order", "Siparişler"),
       count: notifications.filter((n) => n.type === "order").length,
     },
     {
       value: "shipping",
-      label: "Shipping",
+      label: t("notifications.filterOptions.shipping", "Kargo"),
       count: notifications.filter((n) => n.type === "shipping").length,
     },
     {
       value: "sync",
-      label: "Sync",
+      label: t("notifications.filterOptions.sync", "Senkronizasyon"),
       count: notifications.filter((n) => n.type === "sync").length,
     },
     {
       value: "inventory",
-      label: "Inventory",
+      label: t("notifications.filterOptions.inventory", "Envanter"),
       count: notifications.filter((n) => n.type === "inventory").length,
     },
     {
       value: "error",
-      label: "Errors",
+      label: t("notifications.filterOptions.error", "Hatalar"),
       count: notifications.filter((n) => n.type === "error").length,
     },
   ];
@@ -155,10 +165,13 @@ const Notifications = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Notifications
+                {t("notifications.title", "Bildirimler")}
               </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-2">
-                Stay updated with your order management activities
+                {t(
+                  "notifications.subtitle",
+                  "Sipariş yönetimi aktivitelerinizden haberdar olun"
+                )}
               </p>
             </div>
             <div className="flex items-center space-x-2">
@@ -231,7 +244,7 @@ const Notifications = () => {
               <div className="flex items-center space-x-2">
                 <FunnelIcon className="h-4 w-4 text-gray-500" />
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Filter:
+                  {t("notifications.filter", "Filtre:")}
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -277,7 +290,7 @@ const Notifications = () => {
                   className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                 >
                   <CheckIcon className="h-4 w-4 mr-2" />
-                  Mark All Read
+                  {t("notifications.markAllRead", "Tümünü Okundu İşaretle")}
                 </Button>
               )}
 
@@ -289,7 +302,7 @@ const Notifications = () => {
                   className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                 >
                   <TrashIcon className="h-4 w-4 mr-2" />
-                  Clear All
+                  {t("notifications.clearAll", "Tümünü Temizle")}
                 </Button>
               )}
             </div>
@@ -393,13 +406,34 @@ const Notifications = () => {
               <BellIcon className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                 {filter === "all"
-                  ? "No notifications"
-                  : `No ${filter} notifications`}
+                  ? t("notifications.empty.noNotifications", "Bildirim yok")
+                  : t(
+                      "notifications.empty.noFilteredNotifications",
+                      "{{filter}} bildirimi yok",
+                      {
+                        filter: t(
+                          `notifications.filterOptions.${filter}`,
+                          filter
+                        ),
+                      }
+                    )}
               </h3>
               <p className="text-gray-600 dark:text-gray-400">
                 {filter === "all"
-                  ? "You're all caught up! New notifications will appear here."
-                  : `No notifications match the ${filter} filter.`}
+                  ? t(
+                      "notifications.empty.allCaughtUp",
+                      "Hepsi tamam! Yeni bildirimler burada görünecek."
+                    )
+                  : t(
+                      "notifications.empty.noFilterMatch",
+                      "{{filter}} filtresiyle eşleşen bildirim yok.",
+                      {
+                        filter: t(
+                          `notifications.filterOptions.${filter}`,
+                          filter
+                        ),
+                      }
+                    )}
               </p>
             </div>
           )}

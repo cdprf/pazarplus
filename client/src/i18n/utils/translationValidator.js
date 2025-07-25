@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../../utils/logger.js";
 import { commonTranslations } from "../namespaces/common";
 import { businessTranslations } from "../namespaces/business";
 import { navigationTranslations } from "../namespaces/navigation";

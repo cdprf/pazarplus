@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import React, { useState, useCallback, useMemo } from "react";
 import { Nav, Badge, Spinner, Alert } from "react-bootstrap";
 import {

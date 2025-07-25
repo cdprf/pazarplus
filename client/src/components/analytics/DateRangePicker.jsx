@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { Form, Button, Dropdown, Alert, Spinner, Modal } from "react-bootstrap";
 import {

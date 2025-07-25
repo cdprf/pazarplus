@@ -1,4 +1,3 @@
-import logger from "../utils/logger";
 const { createProxyMiddleware } = require("http-proxy-middleware");
 
 module.exports = function (app) {
@@ -15,12 +14,12 @@ module.exports = function (app) {
       secure: false,
       logLevel: "info",
       onError: (err, req, res) => {
-        logger.info("Proxy error:", err.message);
-        logger.info("Request URL:", req.url);
-        logger.info("Target:", `http://${SERVER_HOST}:${SERVER_PORT}`);
+        console.log("Proxy error:", err.message);
+        console.log("Request URL:", req.url);
+        console.log("Target:", `http://${SERVER_HOST}:${SERVER_PORT}`);
       },
       onProxyReq: (proxyReq, req, res) => {
-        logger.info(
+        console.log(
           `Proxying ${req.method} ${req.url} -> http://${SERVER_HOST}:${SERVER_PORT}${req.url}`
         );
       },
@@ -37,20 +36,20 @@ module.exports = function (app) {
       ws: true, // Enable WebSocket proxying
       logLevel: "debug", // Increased log level
       onError: (err, req, res) => {
-        logger.info("WebSocket proxy error:", err.message);
-        logger.info("WebSocket Request URL:", req.url);
-        logger.info("WebSocket Target:", `ws://${SERVER_HOST}:${SERVER_PORT}`);
+        console.log("WebSocket proxy error:", err.message);
+        console.log("WebSocket Request URL:", req.url);
+        console.log("WebSocket Target:", `ws://${SERVER_HOST}:${SERVER_PORT}`);
       },
       onProxyReqWs: (proxyReq, req, socket, options, head) => {
-        logger.info(
+        console.log(
           `Proxying WebSocket ${req.url} -> ws://${SERVER_HOST}:${SERVER_PORT}${req.url}`
         );
       },
       onOpen: (proxySocket) => {
-        logger.info("WebSocket proxy connection opened");
+        console.log("WebSocket proxy connection opened");
       },
       onClose: (res, socket, head) => {
-        logger.info("WebSocket proxy connection closed");
+        console.log("WebSocket proxy connection closed");
       },
     })
   );

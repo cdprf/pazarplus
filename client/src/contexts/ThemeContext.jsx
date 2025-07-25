@@ -12,19 +12,14 @@ export const useTheme = () => {
 
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
-    // Check for saved theme preference or default to system preference
+    // Check for saved theme preference first
     const savedTheme = localStorage.getItem("pazar-theme");
     if (savedTheme) {
       return savedTheme;
     }
 
-    // Check system preference
-    if (typeof window !== "undefined") {
-      return window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
-    }
-
+    // For new users, default to light theme regardless of system preference
+    // This ensures a consistent experience for first-time visitors
     return "light";
   });
 

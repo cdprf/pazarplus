@@ -2168,6 +2168,282 @@ class TrendyolService extends BasePlatformService {
   }
 
   /**
+   * Update product(s) on Trendyol marketplace using official API structure
+   * Based on: https://developers.trendyol.com/docs/marketplace/urun-entegrasyonu/trendyol-urun-bilgisi-guncelleme
+   * @param {Object|Array} productData - Product data or array of products to update
+   * @returns {Promise<Object>} Update result with batchRequestId
+   */
+  async updateProduct(productData) {
+    try {
+      await this.initialize();
+      const credentials = this.decryptCredentials(this.connection.credentials);
+      const { supplierId } = credentials;
+
+      if (!supplierId) {
+        throw new Error("Missing supplierId in credentials for Trendyol API");
+      }
+
+      // Ensure productData is in array format for Trendyol API
+      const items = Array.isArray(productData) ? productData : [productData];
+
+      // Validate maximum items limit (official Trendyol limit)
+      if (items.length > 1000) {
+        throw new Error(
+          "Maximum 1000 items allowed per request (Trendyol limit)"
+        );
+      }
+
+      // Transform items according to official Trendyol API structure
+      const trendyolItems = items.map((item) => {
+        // Validate required fields for updates
+        if (!item.barcode && !item.stockCode && !item.sku) {
+          throw new Error(
+            "Product must have barcode, stockCode, or sku for Trendyol updates"
+          );
+        }
+
+        // Build official Trendyol API structure
+        const trendyolItem = {
+          // Required fields according to official docs
+          barcode: item.barcode || item.sku || item.stockCode,
+          title: item.title || item.productName || item.name,
+          productMainId: item.productMainId || item.id,
+          brandId: parseInt(item.brandId, 10) || null,
+          categoryId: parseInt(item.categoryId, 10) || null,
+          stockCode: item.stockCode || item.sku || item.barcode,
+          dimensionalWeight: parseFloat(
+            item.dimensionalWeight || item.weight || 0
+          ),
+          description: item.description || "",
+          vatRate: parseInt(item.vatRate || 18, 10),
+          currencyType: "TRY", // Always TRY according to docs
+        };
+
+        // Optional delivery duration
+        if (item.deliveryDuration !== undefined) {
+          trendyolItem.deliveryDuration = parseInt(item.deliveryDuration, 10);
+        }
+
+        // Optional delivery options for fast delivery
+        if (item.fastDeliveryType || item.deliveryOption) {
+          trendyolItem.deliveryOption = {
+            deliveryDuration: parseInt(
+              item.deliveryOption?.deliveryDuration ||
+                item.deliveryDuration ||
+                1,
+              10
+            ),
+            fastDeliveryType:
+              item.fastDeliveryType ||
+              item.deliveryOption?.fastDeliveryType ||
+              "FAST_DELIVERY",
+          };
+        }
+
+        // Images - must be HTTPS URLs according to docs
+        if (item.images && Array.isArray(item.images)) {
+          trendyolItem.images = item.images
+            .filter((url) => url && typeof url === "string")
+            .slice(0, 8) // Maximum 8 images per product
+            .map((url) => ({ url }));
+        }
+
+        // Attributes - category-specific attributes
+        if (item.attributes && Array.isArray(item.attributes)) {
+          trendyolItem.attributes = item.attributes.map((attr) => {
+            if (attr.attributeValueId) {
+              return {
+                attributeId: parseInt(attr.attributeId, 10),
+                attributeValueId: parseInt(attr.attributeValueId, 10),
+              };
+            } else {
+              return {
+                attributeId: parseInt(attr.attributeId, 10),
+                customAttributeValue: String(
+                  attr.customAttributeValue || attr.value || ""
+                ),
+              };
+            }
+          });
+        }
+
+        // Optional cargo company
+        if (item.cargoCompanyId !== undefined) {
+          trendyolItem.cargoCompanyId = parseInt(item.cargoCompanyId, 10);
+        }
+
+        // Optional address IDs
+        if (item.shipmentAddressId !== undefined) {
+          trendyolItem.shipmentAddressId = parseInt(item.shipmentAddressId, 10);
+        }
+
+        if (item.returningAddressId !== undefined) {
+          trendyolItem.returningAddressId = parseInt(
+            item.returningAddressId,
+            10
+          );
+        }
+
+        return trendyolItem;
+      });
+
+      this.logger.info(
+        "Preparing Trendyol product update with official API structure",
+        {
+          supplierId,
+          itemCount: trendyolItems.length,
+          endpoint: `/integration/product/sellers/${supplierId}/products`,
+          firstItem: trendyolItems[0]
+            ? {
+                barcode: trendyolItems[0].barcode,
+                title: trendyolItems[0].title,
+                productMainId: trendyolItems[0].productMainId,
+                stockCode: trendyolItems[0].stockCode,
+              }
+            : null,
+          connectionId: this.connectionId,
+        }
+      );
+
+      // Official Trendyol API endpoint for product updates
+      const endpoint = `/integration/product/sellers/${supplierId}/products`;
+      const requestData = { items: trendyolItems };
+
+      this.logger.info("Making Trendyol API request", {
+        method: "PUT",
+        endpoint,
+        itemCount: trendyolItems.length,
+        baseUrl: this.axiosInstance.defaults.baseURL,
+      });
+
+      // Use PUT method as specified in official documentation
+      const response = await this.axiosInstance.put(endpoint, requestData, {
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "PazarPlus/1.0",
+        },
+      });
+
+      this.logger.info("Trendyol product update successful", {
+        supplierId,
+        itemCount: trendyolItems.length,
+        batchRequestId: response.data?.batchRequestId,
+        responseStatus: response.status,
+        connectionId: this.connectionId,
+      });
+
+      return {
+        success: true,
+        batchRequestId: response.data?.batchRequestId,
+        itemCount: trendyolItems.length,
+        message: `Product update initiated for ${trendyolItems.length} item(s). Use batchRequestId to track status.`,
+        endpoint,
+        statusCode: response.status,
+        data: response.data,
+        // Include tracking information
+        trackingInfo: {
+          batchRequestId: response.data?.batchRequestId,
+          statusCheckEndpoint: `/integration/suppliers/${supplierId}/batch-requests/${response.data?.batchRequestId}`,
+          note: "Use getBatchRequestResult service to check processing status",
+        },
+      };
+    } catch (error) {
+      const errorDetails = {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        apiError: error.response?.data,
+        connectionId: this.connectionId,
+        endpoint: error.config?.url,
+        method: error.config?.method,
+      };
+
+      this.logger.error(
+        `Failed to update product on Trendyol: ${error.message}`,
+        errorDetails
+      );
+
+      return {
+        success: false,
+        message: `Failed to update product: ${error.message}`,
+        error: error.response?.data || error.message,
+        statusCode: error.response?.status,
+        details: errorDetails,
+      };
+    }
+  }
+
+  /**
+   * Check batch request status using official Trendyol API
+   * @param {string} batchRequestId - Batch request ID returned from updateProduct
+   * @returns {Promise<Object>} - Batch processing status and results
+   */
+  async checkBatchRequestStatus(batchRequestId) {
+    try {
+      await this.initialize();
+      const credentials = this.decryptCredentials(this.connection.credentials);
+      const { supplierId } = credentials;
+
+      if (!batchRequestId) {
+        throw new Error("Batch request ID is required to check status");
+      }
+
+      const endpoint = `/integration/suppliers/${supplierId}/batch-requests/${batchRequestId}`;
+
+      this.logger.info("Checking Trendyol batch request status", {
+        batchRequestId,
+        endpoint,
+        supplierId,
+        connectionId: this.connectionId,
+      });
+
+      const response = await this.axiosInstance.get(endpoint);
+
+      const batchData = response.data;
+
+      this.logger.info("Trendyol batch request status retrieved", {
+        batchRequestId,
+        status: batchData?.status,
+        creationDate: batchData?.creationDate,
+        totalItemCount: batchData?.items?.length || 0,
+      });
+
+      return {
+        success: true,
+        batchRequestId,
+        status: batchData?.status,
+        creationDate: batchData?.creationDate,
+        totalItemCount: batchData?.items?.length || 0,
+        items: batchData?.items || [],
+        isCompleted:
+          batchData?.status === "SUCCESS" || batchData?.status === "FAILED",
+        isProcessing:
+          batchData?.status === "IN_PROGRESS" ||
+          batchData?.status === "WAITING",
+        data: batchData,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to check Trendyol batch status: ${error.message}`,
+        {
+          error: error.message,
+          batchRequestId,
+          status: error.response?.status,
+          apiError: error.response?.data,
+          connectionId: this.connectionId,
+        }
+      );
+
+      return {
+        success: false,
+        message: `Failed to check batch status: ${error.message}`,
+        error: error.response?.data || error.message,
+        batchRequestId,
+      };
+    }
+  }
+
+  /**
    * Get batch request result for tracking product creation status
    * @param {string} batchRequestId - Batch request ID from createProduct
    * @returns {Promise<Object>} Batch processing status and results

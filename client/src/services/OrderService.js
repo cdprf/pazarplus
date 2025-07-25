@@ -3,7 +3,7 @@
  */
 
 import api from "./api";
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 
 class OrderService {
   // Enhanced sync with platform connection checking

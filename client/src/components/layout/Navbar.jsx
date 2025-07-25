@@ -1,6 +1,7 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "../../i18n/hooks/useTranslation";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useNotification } from "../../contexts/NotificationContext";
@@ -31,6 +32,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 const Navbar = ({ toggleSidebar }) => {
+  const { t } = useTranslation();
   const { user, logout, isAuthenticated } = useAuth();
   const { theme, setLightTheme, setDarkTheme, followSystemTheme, systemTheme } =
     useTheme();
@@ -213,8 +215,8 @@ const Navbar = ({ toggleSidebar }) => {
 
     fetchOrderCounts();
 
-    // Refresh counts every 60 seconds (reduced frequency to prevent server overload)
-    const interval = setInterval(fetchOrderCounts, 60000);
+    // Refresh counts every 2 minutes to reduce server load
+    const interval = setInterval(fetchOrderCounts, 120000);
 
     return () => {
       isMounted = false;
@@ -332,28 +334,28 @@ const Navbar = ({ toggleSidebar }) => {
   // Enhanced quick navigation items
   const quickNavItems = [
     {
-      name: "Dashboard",
+      name: t("navigation.dashboard", {}, "Ana Sayfa"),
       path: "/",
       icon: HomeIcon,
       description: "Overview & insights",
       badge: null,
     },
     {
-      name: "Orders",
+      name: t("navigation.orders", {}, "Siparişler"),
       path: "/orders",
       icon: ShoppingCartIcon,
       description: "Manage orders",
       badge: orderCounts.newOrders > 0 ? orderCounts.newOrders : null,
     },
     {
-      name: "Analytics",
+      name: t("navigation.analytics", {}, "Analitik"),
       path: "/analytics",
       icon: ChartBarIcon,
       description: "Sales insights",
       badge: null,
     },
     {
-      name: "Customers",
+      name: t("navigation.customers", {}, "Müşteriler"),
       path: "/customers",
       icon: UserGroupIcon,
       description: "Customer data",
@@ -367,15 +369,22 @@ const Navbar = ({ toggleSidebar }) => {
     if (navItem) return navItem.name;
 
     // Handle sub-routes
-    if (currentPath.startsWith("/orders")) return "Orders";
-    if (currentPath.startsWith("/products")) return "Products";
-    if (currentPath.startsWith("/customers")) return "Customers";
-    if (currentPath.startsWith("/analytics")) return "Analytics";
-    if (currentPath.startsWith("/settings")) return "Settings";
-    if (currentPath.startsWith("/platforms")) return "Platforms";
-    if (currentPath.startsWith("/shipping")) return "Shipping";
+    if (currentPath.startsWith("/orders"))
+      return t("navigation.orders", {}, "Siparişler");
+    if (currentPath.startsWith("/products"))
+      return t("navigation.products", {}, "Ürünler");
+    if (currentPath.startsWith("/customers"))
+      return t("navigation.customers", {}, "Müşteriler");
+    if (currentPath.startsWith("/analytics"))
+      return t("navigation.analytics", {}, "Analitik");
+    if (currentPath.startsWith("/settings"))
+      return t("navigation.settings", {}, "Ayarlar");
+    if (currentPath.startsWith("/platforms"))
+      return t("navigation.platforms", {}, "Platformlar");
+    if (currentPath.startsWith("/shipping"))
+      return t("navigation.shipping", {}, "Kargo");
 
-    return "Dashboard";
+    return t("navigation.dashboard", {}, "Ana Sayfa");
   };
 
   return (
@@ -709,7 +718,11 @@ const Navbar = ({ toggleSidebar }) => {
                             navigate("/notifications");
                           }}
                         >
-                          View All Notifications
+                          {t(
+                            "navbar.viewAllNotifications",
+                            {},
+                            "Tüm Bildirimleri Görüntüle"
+                          )}
                         </Button>
                         <Button
                           variant="ghost"
@@ -720,7 +733,11 @@ const Navbar = ({ toggleSidebar }) => {
                             navigate("/settings");
                           }}
                         >
-                          Notification Settings
+                          {t(
+                            "navbar.notificationSettings",
+                            {},
+                            "Bildirim Ayarları"
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -789,7 +806,7 @@ const Navbar = ({ toggleSidebar }) => {
                           className="flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                         >
                           <UserIcon className="h-4 w-4 mr-3" />
-                          View Profile
+                          {t("navbar.viewProfile", {}, "Profili Görüntüle")}
                         </Link>
                         <Link
                           to="/settings"
@@ -797,7 +814,7 @@ const Navbar = ({ toggleSidebar }) => {
                           className="flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                         >
                           <CogIcon className="h-4 w-4 mr-3" />
-                          Settings
+                          {t("navigation.settings", {}, "Ayarlar")}
                         </Link>
                         <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
                         <button
@@ -805,7 +822,7 @@ const Navbar = ({ toggleSidebar }) => {
                           className="w-full flex items-center px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         >
                           <ArrowRightOnRectangleIcon className="h-4 w-4 mr-3" />
-                          Logout
+                          {t("navbar.logout", {}, "Çıkış Yap")}
                         </button>
                       </div>
                     </div>

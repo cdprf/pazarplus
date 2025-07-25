@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 import React from "react";
 import PropTypes from "prop-types";
 import ErrorState from "./common/ErrorState";

@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 /**
  * Network Status Component for PDF Printing
  * Shows current network configuration and provides recommendations

@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * Automatic network configuration for development
  * This utility automatically detects the server IP when working on different networks

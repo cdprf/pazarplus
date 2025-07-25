@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * Analytics Performance Monitor
  * Tracks and reports performance metrics for analytics operations

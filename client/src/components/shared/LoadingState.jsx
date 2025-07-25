@@ -1,19 +1,19 @@
-import React from 'react';
-import { Spinner } from 'react-bootstrap';
-import PropTypes from 'prop-types';
+import React from "react";
+import { Spinner } from "react-bootstrap";
+import PropTypes from "prop-types";
 
-const LoadingState = ({ 
-  loading, 
-  error, 
-  children, 
-  loadingMessage = 'Loading...', 
+const LoadingState = ({
+  loading,
+  error,
+  children,
+  loadingMessage = "Yükleniyor...",
   errorFallback,
-  spinnerVariant = 'primary',
-  center = true 
+  spinnerVariant = "primary",
+  center = true,
 }) => {
   if (loading) {
     return (
-      <div className={`p-4 ${center ? 'text-center' : ''}`}>
+      <div className={`p-4 ${center ? "text-center" : ""}`}>
         <Spinner animation="border" role="status" variant={spinnerVariant}>
           <span className="visually-hidden">{loadingMessage}</span>
         </Spinner>
@@ -24,16 +24,21 @@ const LoadingState = ({
 
   if (error) {
     // Convert error object to string if necessary
-    const errorMessage = typeof error === 'object' 
-      ? (error instanceof Error ? error.message : JSON.stringify(error)) 
-      : error;
-      
-    return errorFallback || (
-      <div className={`p-4 ${center ? 'text-center' : ''}`}>
-        <div className="text-danger">
-          <p>{errorMessage}</p>
+    const errorMessage =
+      typeof error === "object"
+        ? error instanceof Error
+          ? error.message
+          : JSON.stringify(error)
+        : error;
+
+    return (
+      errorFallback || (
+        <div className={`p-4 ${center ? "text-center" : ""}`}>
+          <div className="text-danger">
+            <p>{errorMessage}</p>
+          </div>
         </div>
-      </div>
+      )
     );
   }
 
@@ -47,7 +52,7 @@ LoadingState.propTypes = {
   loadingMessage: PropTypes.string,
   errorFallback: PropTypes.node,
   spinnerVariant: PropTypes.string,
-  center: PropTypes.bool
+  center: PropTypes.bool,
 };
 
 export default LoadingState;

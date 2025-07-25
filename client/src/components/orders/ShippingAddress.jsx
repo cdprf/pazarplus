@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 /**
  * Enhanced Shipping Address Display Component
  * Follows Pazar+ Design System patterns with improved layout and functionality

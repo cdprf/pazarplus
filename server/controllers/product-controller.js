@@ -21,6 +21,7 @@ const MediaUploadService = require("../services/media-upload-service");
 const PlatformScrapingService = require("../services/platform-scraping-service");
 const VariantDetector = require("../services/variant-detector");
 const backgroundVariantDetectionService = require("../services/background-variant-detection-service");
+const PlatformSyncService = require("../services/platform-sync-service");
 // const SKUSystemManager = require("../../sku-system-manager"); // TEMPORARILY COMMENTED OUT - MODULE MISSING
 const {
   ProductVariant,
@@ -804,6 +805,33 @@ class ProductController {
 
       await product.update(updates);
 
+      // Get the updated product with fresh data
+      const updatedProduct = await product.reload();
+
+      // Sync changes to all connected platforms (asynchronously)
+      const platformSyncPromise = PlatformSyncService.syncProductToAllPlatforms(
+        userId,
+        updatedProduct,
+        "update",
+        updates
+      ).catch((error) => {
+        logger.error("Platform sync failed for product update:", {
+          productId: product.id,
+          error: error.message,
+        });
+      });
+
+      // Don't wait for platform sync to complete - respond immediately
+      platformSyncPromise.then((syncResult) => {
+        if (syncResult) {
+          logger.info("✅ Platform sync completed for product:", {
+            productId: product.id,
+            synced: syncResult.synced,
+            total: syncResult.total,
+          });
+        }
+      });
+
       // Trigger background variant detection for the updated product
       setTimeout(() => {
         backgroundVariantDetectionService
@@ -819,7 +847,8 @@ class ProductController {
       res.json({
         success: true,
         message: "Product updated successfully",
-        data: product,
+        data: updatedProduct,
+        syncInProgress: true, // Indicate that platform sync is happening
       });
     } catch (error) {
       logger.error("Failed to update product:", error);
@@ -3345,15 +3374,43 @@ class ProductController {
 
       await product.update(standardUpdateData);
 
+      // Get the updated product with fresh data
+      const updatedProduct = await product.reload();
+
+      // Sync changes to all connected platforms (asynchronously)
+      const platformSyncPromise = PlatformSyncService.syncProductToAllPlatforms(
+        userId,
+        updatedProduct,
+        "update",
+        standardUpdateData
+      ).catch((error) => {
+        logger.error("Platform sync failed for main product update:", {
+          productId: product.id,
+          error: error.message,
+        });
+      });
+
+      // Don't wait for platform sync to complete - respond immediately
+      platformSyncPromise.then((syncResult) => {
+        if (syncResult) {
+          logger.info("✅ Platform sync completed for main product:", {
+            productId: product.id,
+            synced: syncResult.synced,
+            total: syncResult.total,
+          });
+        }
+      });
+
       res.json({
         success: true,
         data: {
-          ...product.toJSON(),
-          baseSku: product.sku,
-          basePrice: product.price,
-          stockQuantity: product.stock,
+          ...updatedProduct.toJSON(),
+          baseSku: updatedProduct.sku,
+          basePrice: updatedProduct.price,
+          stockQuantity: updatedProduct.stock,
         },
         message: "Main product updated successfully",
+        syncInProgress: true, // Indicate that platform sync is happening
       });
     } catch (error) {
       logger.error("Error updating main product:", error);
@@ -3639,10 +3696,45 @@ class ProductController {
 
       await variant.update(updateData);
 
+      // Get the updated variant with fresh data
+      const updatedVariant = await variant.reload({
+        include: [
+          {
+            model: MainProduct,
+            as: "mainProduct",
+          },
+        ],
+      });
+
+      // Sync changes to the specific platform (asynchronously)
+      const platformSyncPromise = PlatformSyncService.syncProductToAllPlatforms(
+        userId,
+        updatedVariant,
+        "update",
+        updateData
+      ).catch((error) => {
+        logger.error("Platform sync failed for variant update:", {
+          variantId: variant.id,
+          error: error.message,
+        });
+      });
+
+      // Don't wait for platform sync to complete - respond immediately
+      platformSyncPromise.then((syncResult) => {
+        if (syncResult) {
+          logger.info("✅ Platform sync completed for variant:", {
+            variantId: variant.id,
+            synced: syncResult.synced,
+            total: syncResult.total,
+          });
+        }
+      });
+
       res.json({
         success: true,
-        data: variant,
+        data: updatedVariant,
         message: "Platform variant updated successfully",
+        syncInProgress: true, // Indicate that platform sync is happening
       });
     } catch (error) {
       logger.error("Error updating platform variant:", error);
@@ -5203,20 +5295,113 @@ class ProductController {
   }
 
   /**
-   * Import products from CSV file
+   * Import products from CSV/Excel file
    */
   async importProductsFromCSV(req, res) {
     try {
-      // TODO: Implement CSV import functionality
-      res.status(501).json({
-        success: false,
-        message: "CSV import functionality not yet implemented",
+      const userId = req.user.id;
+      const ProductImportService = require("../services/product-import-service");
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No file uploaded",
+        });
+      }
+
+      // Check if file format is supported
+      if (!ProductImportService.isFormatSupported(req.file.originalname)) {
+        return res.status(400).json({
+          success: false,
+          message: "Unsupported file format. Please upload CSV or Excel files.",
+          supportedFormats: ProductImportService.getSupportedFormats(),
+        });
+      }
+
+      logger.info(`Starting product import for user ${userId}`, {
+        filename: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+      });
+
+      // Parse the uploaded file
+      const parsedData = await ProductImportService.parseFile(req.file);
+
+      // Suggest field mappings
+      const mappingSuggestions =
+        ProductImportService.suggestFieldMappings(parsedData);
+
+      // If this is just a preview request, return the parsed data and suggestions
+      if (req.body.preview === "true") {
+        return res.json({
+          success: true,
+          data: {
+            preview: {
+              headers: parsedData.headers,
+              sampleRows: parsedData.rows.slice(0, 5),
+              totalRows: parsedData.totalRows,
+              format: parsedData.format,
+            },
+            mappingSuggestions,
+          },
+          message:
+            "File parsed successfully. Review and confirm field mappings.",
+        });
+      }
+
+      // Get field mappings and import options from request
+      const fieldMappings =
+        req.body.fieldMappings || mappingSuggestions.mappings;
+      const importOptions = {
+        classificationMode: req.body.classificationMode || "manual",
+        mainProductMapping: req.body.mainProductMapping || {},
+        variantGrouping: req.body.variantGrouping || "name",
+        createMissing: req.body.createMissing !== false,
+        updateExisting: req.body.updateExisting === true,
+        dryRun: req.body.dryRun === true,
+      };
+
+      // Validate the import data
+      const validationResult = ProductImportService.validateImportData(
+        parsedData,
+        fieldMappings
+      );
+
+      if (validationResult.hasErrors && !req.body.ignoreErrors) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation errors found in import data",
+          validationResult,
+          errors: validationResult.invalidData.slice(0, 10), // Return first 10 errors
+        });
+      }
+
+      // Perform the import
+      const importResult = await ProductImportService.importProducts(
+        validationResult,
+        importOptions,
+        userId
+      );
+
+      logger.info(`Product import completed for user ${userId}`, importResult);
+
+      res.json({
+        success: true,
+        data: {
+          importResult,
+          validationResult: {
+            totalRows: validationResult.totalRows,
+            validRows: validationResult.validRows,
+            invalidRows: validationResult.invalidRows,
+          },
+        },
+        message: `Import completed. Created ${importResult.created} products, skipped ${importResult.skipped}, errors: ${importResult.errors}`,
       });
     } catch (error) {
-      logger.error("Error importing products from CSV:", error);
+      logger.error("Error importing products from CSV/Excel:", error);
       res.status(500).json({
         success: false,
-        message: "Failed to import products from CSV",
+        message: "Failed to import products",
         error: error.message,
       });
     }
@@ -5227,16 +5412,205 @@ class ProductController {
    */
   async getCSVTemplate(req, res) {
     try {
-      // TODO: Implement CSV template generation
-      res.status(501).json({
-        success: false,
-        message: "CSV template functionality not yet implemented",
-      });
+      const ProductImportService = require("../services/product-import-service");
+
+      const csvTemplate = ProductImportService.generateCSVTemplate();
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="product_import_template.csv"'
+      );
+      res.send(csvTemplate);
     } catch (error) {
       logger.error("Error getting CSV template:", error);
       res.status(500).json({
         success: false,
-        message: "Failed to get CSV template",
+        message: "Failed to generate CSV template",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Preview import file before actual import
+   */
+  async previewImportFile(req, res) {
+    try {
+      const ProductImportService = require("../services/product-import-service");
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No file uploaded",
+        });
+      }
+
+      logger.info("Previewing import file:", {
+        filename: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+      });
+
+      // Parse the file
+      const parsedData = await ProductImportService.parseFile(req.file);
+
+      // Suggest field mappings
+      const mappingSuggestions =
+        ProductImportService.suggestFieldMappings(parsedData);
+
+      // Get sample data for preview
+      const preview = {
+        headers: parsedData.headers,
+        sampleRows: parsedData.rows.slice(0, 10), // First 10 rows
+        totalRows: parsedData.totalRows,
+        format: parsedData.format,
+      };
+
+      res.json({
+        success: true,
+        data: {
+          preview,
+          mappingSuggestions,
+          supportedFields: [
+            { key: "name", label: "Product Name", required: true },
+            { key: "description", label: "Description", required: false },
+            { key: "sku", label: "SKU", required: false },
+            { key: "barcode", label: "Barcode", required: false },
+            { key: "category", label: "Category", required: false },
+            { key: "brand", label: "Brand", required: false },
+            { key: "price", label: "Price", required: false },
+            { key: "costPrice", label: "Cost Price", required: false },
+            { key: "stock", label: "Stock Quantity", required: false },
+            { key: "weight", label: "Weight", required: false },
+            { key: "status", label: "Status", required: false },
+            { key: "platform", label: "Platform", required: false },
+            { key: "size", label: "Size", required: false },
+            { key: "color", label: "Color", required: false },
+            { key: "material", label: "Material", required: false },
+          ],
+        },
+        message: "File preview generated successfully",
+      });
+    } catch (error) {
+      logger.error("Error previewing import file:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to preview import file",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Validate import data with field mappings
+   */
+  async validateImportData(req, res) {
+    try {
+      const ProductImportService = require("../services/product-import-service");
+      const { parsedData, fieldMappings } = req.body;
+
+      if (!parsedData || !fieldMappings) {
+        return res.status(400).json({
+          success: false,
+          message: "Parsed data and field mappings are required",
+        });
+      }
+
+      const validationResult = ProductImportService.validateImportData(
+        parsedData,
+        fieldMappings
+      );
+
+      res.json({
+        success: true,
+        data: validationResult,
+        message: `Validation completed. ${validationResult.validRows} valid rows, ${validationResult.invalidRows} invalid rows`,
+      });
+    } catch (error) {
+      logger.error("Error validating import data:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to validate import data",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get import configuration options
+   */
+  async getImportOptions(req, res) {
+    try {
+      const userId = req.user.id;
+
+      // Get existing main products for variant mapping
+      const mainProducts = await MainProduct.findAll({
+        where: { userId },
+        attributes: ["id", "name", "baseSku", "category"],
+        order: [["name", "ASC"]],
+        limit: 100,
+      });
+
+      const importOptions = {
+        classificationModes: [
+          {
+            value: "manual",
+            label: "Manual Classification",
+            description: "Manually specify which products are main or variants",
+          },
+          {
+            value: "auto",
+            label: "Auto Detection",
+            description:
+              "Automatically detect variants based on naming patterns",
+          },
+          {
+            value: "all_main",
+            label: "All Main Products",
+            description: "Import all items as main products",
+          },
+          {
+            value: "all_variants",
+            label: "All Variants",
+            description: "Import all items as variants of existing products",
+          },
+        ],
+        groupingOptions: [
+          {
+            value: "name",
+            label: "Group by Name",
+            description: "Group variants by product name",
+          },
+          {
+            value: "sku",
+            label: "Group by SKU",
+            description: "Group variants by SKU pattern",
+          },
+          {
+            value: "category",
+            label: "Group by Category",
+            description: "Group variants by category",
+          },
+        ],
+        availableMainProducts: mainProducts.map((product) => ({
+          id: product.id,
+          name: product.name,
+          sku: product.baseSku,
+          category: product.category,
+        })),
+      };
+
+      res.json({
+        success: true,
+        data: importOptions,
+        message: "Import options retrieved successfully",
+      });
+    } catch (error) {
+      logger.error("Error getting import options:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get import options",
         error: error.message,
       });
     }
@@ -5739,6 +6113,135 @@ class ProductController {
 
   async importFromCSV(req, res) {
     return this.importProductsFromCSV(req, res);
+  }
+
+  /**
+   * Manually sync product to platforms
+   */
+  async syncProductToPlatforms(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      const { platforms, operation = "update" } = req.body;
+
+      // Find the product (main or variant)
+      let product = await MainProduct.findOne({
+        where: { id, userId },
+      });
+
+      if (!product) {
+        product = await PlatformVariant.findOne({
+          where: { id, userId },
+        });
+      }
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      // Sync to all platforms or specific platforms
+      const syncResult = await PlatformSyncService.syncProductToAllPlatforms(
+        userId,
+        product,
+        operation,
+        product.toJSON()
+      );
+
+      res.json({
+        success: true,
+        message: "Platform sync completed",
+        data: syncResult,
+      });
+    } catch (error) {
+      logger.error("Manual platform sync failed:", error);
+      res.status(500).json({
+        success: false,
+        message: "Platform sync failed",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get sync status for a product
+   */
+  async getProductSyncStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+
+      const syncStatus = await PlatformSyncService.getSyncStatus(id);
+
+      res.json({
+        success: true,
+        data: syncStatus,
+      });
+    } catch (error) {
+      logger.error("Failed to get sync status:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get sync status",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Sync specific fields to platforms
+   */
+  async syncSpecificFields(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      const { fields } = req.body;
+
+      if (!fields || !Array.isArray(fields) || fields.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Fields array is required",
+        });
+      }
+
+      // Find the product
+      let product = await MainProduct.findOne({
+        where: { id, userId },
+      });
+
+      if (!product) {
+        product = await PlatformVariant.findOne({
+          where: { id, userId },
+        });
+      }
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      const syncResult = await PlatformSyncService.syncSpecificFields(
+        userId,
+        product,
+        fields
+      );
+
+      res.json({
+        success: true,
+        message: "Field sync completed",
+        data: syncResult,
+      });
+    } catch (error) {
+      logger.error("Field sync failed:", error);
+      res.status(500).json({
+        success: false,
+        message: "Field sync failed",
+        error: error.message,
+      });
+    }
   }
 }
 

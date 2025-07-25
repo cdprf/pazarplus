@@ -1,8 +1,8 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import axios from "axios";
 
 const API_BASE_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:3000/api";
+  process.env.REACT_APP_API_URL || "http://localhost:5001/api";
 
 class TranslationService {
   constructor() {

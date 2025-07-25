@@ -1,4 +1,4 @@
-import logger from "../../../utils/logger";
+import logger from "../../../utils/logger.js";
 import React, { useState } from "react";
 import { Edit, X } from "lucide-react";
 import { Button } from "../../ui";

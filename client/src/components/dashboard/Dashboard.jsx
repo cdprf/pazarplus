@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "../../i18n/hooks/useTranslation";
 import {
   CubeIcon,
   ArrowTrendingUpIcon,
@@ -38,6 +39,7 @@ import OrdersChart from "./OrdersChart";
 import "../../index.css";
 
 const Dashboard = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { showAlert } = useAlert();
   const [selectedPeriod, setSelectedPeriod] = useState("30d");
@@ -98,9 +100,9 @@ const Dashboard = () => {
   const handleSyncData = async () => {
     try {
       await refetch();
-      showAlert("Dashboard data refreshed successfully", "success");
+      showAlert(t("dashboard.refreshSuccess"), "success");
     } catch (error) {
-      showAlert("Failed to refresh dashboard data", "error");
+      showAlert(t("dashboard.refreshError"), "error");
     }
   };
 
@@ -237,7 +239,7 @@ const Dashboard = () => {
             </div>
             <div className="flex-1">
               <h1 className="page-title flex items-center" id="dashboard-title">
-                Dashboard Overview
+                {t("navigation.dashboard")}
                 {isRealTimeActive && (
                   <span
                     className="real-time-indicator ml-3"

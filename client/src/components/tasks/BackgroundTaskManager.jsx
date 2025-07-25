@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
 import {

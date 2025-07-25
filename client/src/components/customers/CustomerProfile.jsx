@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 /**
  * Customer Profile Component
  * Shows customer details and order history based on email/name matching

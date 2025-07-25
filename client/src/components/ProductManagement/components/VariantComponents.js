@@ -1,4 +1,4 @@
-import logger from "../../../utils/logger";
+import logger from "../../../utils/logger.js";
 // Enhanced Variant Management Components
 // Components for automatic detection, manual grouping, and suggestions
 

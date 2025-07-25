@@ -1,4 +1,4 @@
-import logger from "../../../utils/logger";
+import logger from "../../../utils/logger.js";
 import React, { useState, useRef, useCallback } from "react";
 import {
   Modal,

@@ -1,4 +1,4 @@
-import logger from "../../../../utils/logger";
+import logger from "../../../../utils/logger.js";
 import React, { useEffect, useRef } from "react";
 import QRCode from "qrcode";
 

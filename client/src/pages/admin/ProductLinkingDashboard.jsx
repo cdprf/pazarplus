@@ -1,5 +1,6 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "../../i18n/hooks/useTranslation";
 import {
   Card,
   Row,
@@ -17,6 +18,7 @@ import { FiLink, FiRefreshCw, FiFilter, FiSearch, FiX } from "react-icons/fi";
 import api from "../../services/api";
 
 const ProductLinkingDashboard = () => {
+  const { t } = useTranslation();
   const [stats, setStats] = useState(null);
   const [unlinkedItems, setUnlinkedItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,13 +84,25 @@ const ProductLinkingDashboard = () => {
 
       if (response.data.success) {
         alert(
-          `Retroactive linking completed! Processed: ${response.data.data.processedItems}, Linked: ${response.data.data.linkedItems}`
+          t(
+            "admin.productLinking.retroactiveCompleted",
+            "Geçmişe dönük bağlantı tamamlandı! İşlenen: {{processed}}, Bağlanan: {{linked}}",
+            {
+              processed: response.data.data.processedItems,
+              linked: response.data.data.linkedItems,
+            }
+          )
         );
         loadData(); // Reload data to show updated stats
       }
     } catch (error) {
       logger.error("Error running retroactive linking:", error);
-      alert("Error running retroactive linking. Check console for details.");
+      alert(
+        t(
+          "admin.productLinking.retroactiveError",
+          "Geçmişe dönük bağlantı çalıştırılırken hata oluştu. Detaylar için konsolu kontrol edin."
+        )
+      );
     }
     setProcessLoading(false);
   };
@@ -164,11 +178,16 @@ const ProductLinkingDashboard = () => {
   return (
     <div className="product-linking-dashboard">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Product-Order Linking Management</h2>
+        <h2>
+          {t("admin.productLinking.title", "Ürün-Sipariş Bağlantısı Yönetimi")}
+        </h2>
         <div className="d-flex gap-2">
           <Form.Control
             type="text"
-            placeholder="Search products..."
+            placeholder={t(
+              "admin.productLinking.searchPlaceholder",
+              "Ürün ara..."
+            )}
             style={{ width: "200px" }}
             className="me-2"
           />
@@ -186,7 +205,10 @@ const ProductLinkingDashboard = () => {
             ) : (
               <>
                 <FiRefreshCw className="me-2" />
-                Run Retroactive Linking
+                {t(
+                  "admin.productLinking.runRetroactive",
+                  "Geçmişe Dönük Bağlantı Çalıştır"
+                )}
               </>
             )}
           </Button>
@@ -202,7 +224,12 @@ const ProductLinkingDashboard = () => {
                 <h5 className="text-primary">
                   {stats.summary.totalOrderItems}
                 </h5>
-                <p className="mb-0">Total Order Items</p>
+                <p className="mb-0">
+                  {t(
+                    "admin.productLinking.totalOrderItems",
+                    "Toplam Sipariş Ürünleri"
+                  )}
+                </p>
               </Card.Body>
             </Card>
           </Col>
@@ -212,7 +239,9 @@ const ProductLinkingDashboard = () => {
                 <h5 className="text-success">
                   {stats.summary.linkedOrderItems}
                 </h5>
-                <p className="mb-0">Linked Items</p>
+                <p className="mb-0">
+                  {t("admin.productLinking.linkedItems", "Bağlanmış Ürünler")}
+                </p>
               </Card.Body>
             </Card>
           </Col>
@@ -222,7 +251,12 @@ const ProductLinkingDashboard = () => {
                 <h5 className="text-danger">
                   {stats.summary.unlinkedOrderItems}
                 </h5>
-                <p className="mb-0">Unlinked Items</p>
+                <p className="mb-0">
+                  {t(
+                    "admin.productLinking.unlinkedItems",
+                    "Bağlanmamış Ürünler"
+                  )}
+                </p>
               </Card.Body>
             </Card>
           </Col>
@@ -232,7 +266,9 @@ const ProductLinkingDashboard = () => {
                 <h5 className="text-info">
                   {stats.summary.overallLinkingRate}%
                 </h5>
-                <p className="mb-0">Linking Rate</p>
+                <p className="mb-0">
+                  {t("admin.productLinking.linkingRate", "Bağlantı Oranı")}
+                </p>
               </Card.Body>
             </Card>
           </Col>
@@ -242,7 +278,9 @@ const ProductLinkingDashboard = () => {
       {/* Platform Breakdown */}
       {stats && stats.platformBreakdown.length > 0 && (
         <Card className="mb-4">
-          <Card.Header>Platform Breakdown</Card.Header>
+          <Card.Header>
+            {t("admin.productLinking.platformBreakdown", "Platform Dağılımı")}
+          </Card.Header>
           <Card.Body>
             <Row>
               {stats.platformBreakdown.map((platform) => (
@@ -286,14 +324,18 @@ const ProductLinkingDashboard = () => {
           <Row>
             <Col md={3}>
               <Form.Group>
-                <Form.Label>Platform</Form.Label>
+                <Form.Label>
+                  {t("admin.productLinking.platform", "Platform")}
+                </Form.Label>
                 <Form.Select
                   value={filters.platform}
                   onChange={(e) =>
                     handleFilterChange("platform", e.target.value)
                   }
                 >
-                  <option value="">All Platforms</option>
+                  <option value="">
+                    {t("admin.productLinking.allPlatforms", "Tüm Platformlar")}
+                  </option>
                   <option value="trendyol">Trendyol</option>
                   <option value="hepsiburada">Hepsiburada</option>
                   <option value="n11">N11</option>

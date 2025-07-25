@@ -1,4 +1,4 @@
-import logger from "../../../utils/logger";
+import logger from "../../../utils/logger.js";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAlert } from "../../../contexts/AlertContext";
@@ -10,6 +10,7 @@ import ProductCreationModal from "./ProductCreationModalFull.jsx";
 import VariantCreationModal from "./VariantCreationModal.jsx";
 import PlatformFieldMapping from "./PlatformFieldMapping.jsx";
 import MainVariantManager from "./MainVariantManager.jsx";
+import ProductImportModal from "./ProductImportModal.jsx";
 
 // Advanced Product Management API
 const productAPI = {
@@ -219,6 +220,7 @@ const ProductManagement = () => {
   const [showFieldMappingModal, setShowFieldMappingModal] = useState(false);
   const [fieldMappingData, setFieldMappingData] = useState(null);
   const [showMainVariantManager, setShowMainVariantManager] = useState(false);
+  const [showProductImportModal, setShowProductImportModal] = useState(false);
 
   // Load main products - fixed to prevent infinite loop
   const loadMainProducts = useCallback(async () => {
@@ -308,6 +310,23 @@ const ProductManagement = () => {
     } else {
       loadMainProducts(); // Fallback to reload all
     }
+  };
+
+  // Handle product import success
+  const handleProductImportSuccess = (importResults) => {
+    logger.info("Product import completed:", importResults);
+    if (importResults) {
+      const { created, updated, mainProducts: newMainProducts } = importResults;
+      showAlert(
+        `Products imported successfully! Created: ${created}, Updated: ${updated}`,
+        "success"
+      );
+      loadMainProducts(); // Reload all products to see new imports
+    } else {
+      showAlert("Products imported successfully", "success");
+      loadMainProducts();
+    }
+    setShowProductImportModal(false);
   };
 
   // Handle variant creation
@@ -814,7 +833,7 @@ const ProductManagement = () => {
         onAddProduct={() => handleCreateMainProduct({})}
         onImportProducts={() => {
           logger.info("🎯 Import Products button clicked!");
-          setShowProductCreationModal(true);
+          setShowProductImportModal(true);
         }}
         onSync={loadMainProducts}
         onViewModeChange={setViewMode}
@@ -895,6 +914,14 @@ const ProductManagement = () => {
           </div>
         </div>
       )}
+
+      {/* Product Import Modal */}
+      <ProductImportModal
+        show={showProductImportModal}
+        onHide={() => setShowProductImportModal(false)}
+        onSuccess={handleProductImportSuccess}
+        showAlert={showAlert}
+      />
     </div>
   );
 };

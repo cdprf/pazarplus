@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * Network Status Service
  * Implements circuit breaker pattern to handle server connectivity gracefully

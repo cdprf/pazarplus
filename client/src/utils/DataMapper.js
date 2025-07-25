@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * DataMapper utility for mapping data fields to template elements
  * Used by the ShippingSlipDesigner to map order data to template elements

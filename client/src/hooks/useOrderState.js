@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * useOrderState - Centralized order state management hook
  * Implements proper state management patterns with validation and history

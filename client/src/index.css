@@ -727,7 +727,7 @@ body {
 /* === Stat Icon Variants === */
 .stat-icon-primary {
   background-color: #dbeafe;
-  color: #2563eb;
+  color: #ffffff;
 }
 
 [data-theme="dark"] .stat-icon-primary {

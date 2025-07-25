@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "../i18n/hooks/useTranslation";
 import BusinessIntelligenceDashboard from "../components/analytics/BusinessIntelligenceDashboard";
 import SalesAnalytics from "../components/analytics/SalesAnalytics";
 import ProductAnalytics from "../components/analytics/ProductAnalytics";
@@ -20,6 +21,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 const Analytics = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("overview");
   const [timeframe, setTimeframe] = useState("30d");
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -30,55 +32,83 @@ const Analytics = () => {
     () => [
       {
         id: "overview",
-        label: "Overview",
+        label: t("analytics.overview", {}, "Genel Bakış"),
         icon: ChartBarIcon,
-        description: "Complete business intelligence dashboard",
+        description: t(
+          "analytics.overviewDesc",
+          {},
+          "Kapsamlı iş zekası dashboard"
+        ),
         color: "primary",
       },
       {
         id: "sales",
-        label: "Sales",
+        label: t("analytics.sales", {}, "Satışlar"),
         icon: BanknotesIcon,
-        description: "Sales performance and revenue trends",
+        description: t(
+          "analytics.salesDesc",
+          {},
+          "Satış performansı ve gelir trendleri"
+        ),
         color: "success",
       },
       {
         id: "products",
-        label: "Products",
+        label: t("analytics.products", {}, "Ürünler"),
         icon: CubeIcon,
-        description: "Product performance and inventory insights",
+        description: t(
+          "analytics.productsDesc",
+          {},
+          "Ürün performansı ve stok analizi"
+        ),
         color: "warning",
       },
       {
         id: "platforms",
-        label: "Platforms",
+        label: t("analytics.platforms", {}, "Platformlar"),
         icon: GlobeAltIcon,
-        description: "Multi-platform comparison and analysis",
+        description: t(
+          "analytics.platformsDesc",
+          {},
+          "Çok platformlu karşılaştırma ve analiz"
+        ),
         color: "info",
       },
       {
         id: "customers",
-        label: "Customers",
+        label: t("analytics.customers", {}, "Müşteriler"),
         icon: UserGroupIcon,
-        description: "Customer analytics and segmentation",
+        description: t(
+          "analytics.customersDesc",
+          {},
+          "Müşteri analizi ve segmentasyon"
+        ),
         color: "purple",
       },
       {
         id: "financial",
-        label: "Financial",
+        label: t("analytics.financial", {}, "Finansal"),
         icon: PresentationChartLineIcon,
-        description: "Financial KPIs and profitability analysis",
+        description: t(
+          "analytics.financialDesc",
+          {},
+          "Finansal KPI'lar ve karlılık analizi"
+        ),
         color: "teal",
       },
       {
         id: "operational",
-        label: "Operational",
+        label: t("analytics.operational", {}, "Operasyonel"),
         icon: CogIcon,
-        description: "Operational metrics and efficiency",
+        description: t(
+          "analytics.operationalDesc",
+          {},
+          "Operasyonel metrikler ve verimlilik"
+        ),
         color: "gray",
       },
     ],
-    []
+    [t]
   );
 
   // Timeframe options

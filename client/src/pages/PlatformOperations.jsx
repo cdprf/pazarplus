@@ -1,5 +1,6 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "../i18n/hooks/useTranslation";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -28,6 +29,7 @@ import api from "../services/api";
 import { useAlert } from "../contexts/AlertContext";
 
 const PlatformOperations = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { showAlert } = useAlert();
 
@@ -664,10 +666,13 @@ const PlatformOperations = () => {
                 <Settings className="h-8 w-8 icon-contrast-primary" />
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    Platform Operations
+                    {t("platformOperations.title", "Platform İşlemleri")}
                   </h1>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Monitor and manage background tasks and platform operations
+                    {t(
+                      "platformOperations.subtitle",
+                      "Arka plan görevlerini ve platform işlemlerini izleyin ve yönetin"
+                    )}
                   </p>
                 </div>
               </div>

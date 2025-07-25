@@ -1,4 +1,4 @@
-import logger from "../../../utils/logger";
+import logger from "../../../utils/logger.js";
 import { useCallback, useRef } from "react";
 import { API_BASE_URL } from "../utils/constants";
 

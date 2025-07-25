@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "../../i18n/hooks/useTranslation";
 import {
   Form,
   Button,
@@ -13,6 +14,7 @@ import { Link } from "react-router-dom";
 import api from "../../services/api";
 
 const ForgotPassword = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -44,19 +46,27 @@ const ForgotPassword = () => {
           <Col md={6}>
             <Card>
               <Card.Body className="text-center">
-                <h2 className="mb-4">Check Your Email</h2>
+                <h2 className="mb-4">
+                  {t("auth.checkYourEmail", {}, "E-postanızı Kontrol Edin")}
+                </h2>
                 <Alert variant="success">
                   <p>
-                    If an account exists with this email, you will receive a
-                    password reset link shortly.
+                    {t(
+                      "auth.resetLinkSent",
+                      {},
+                      "Bu e-posta adresi ile bir hesap mevcutsa, kısa süre içinde şifre sıfırlama bağlantısı alacaksınız."
+                    )}
                   </p>
                   <p>
-                    Please check your inbox and follow the instructions to reset
-                    your password.
+                    {t(
+                      "auth.checkInboxInstructions",
+                      {},
+                      "Lütfen gelen kutunuzu kontrol edin ve şifrenizi sıfırlamak için talimatları takip edin."
+                    )}
                   </p>
                 </Alert>
                 <Link to="/login" className="btn btn-primary">
-                  Return to Login
+                  {t("auth.returnToLogin", {}, "Girişe Dön")}
                 </Link>
               </Card.Body>
             </Card>
@@ -72,7 +82,9 @@ const ForgotPassword = () => {
         <Col md={6}>
           <Card>
             <Card.Body>
-              <h2 className="text-center mb-4">Reset Password</h2>
+              <h2 className="text-center mb-4">
+                {t("auth.resetPassword", {}, "Şifre Sıfırla")}
+              </h2>
               {error && (
                 <Alert variant="danger" className="mb-4">
                   {error}
@@ -80,7 +92,9 @@ const ForgotPassword = () => {
               )}
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Email Address</Form.Label>
+                  <Form.Label>
+                    {t("auth.emailAddress", {}, "E-posta Adresi")}
+                  </Form.Label>
                   <Form.Control
                     type="email"
                     value={email}
@@ -89,7 +103,11 @@ const ForgotPassword = () => {
                     disabled={loading}
                   />
                   <Form.Text className="text-muted">
-                    Enter the email address associated with your account.
+                    {t(
+                      "auth.enterEmailInstruction",
+                      {},
+                      "Hesabınızla ilişkili e-posta adresini girin."
+                    )}
                   </Form.Text>
                 </Form.Group>
 
@@ -109,16 +127,26 @@ const ForgotPassword = () => {
                         aria-hidden="true"
                         className="me-2"
                       />
-                      Sending Reset Link...
+                      {t(
+                        "auth.sendingResetLink",
+                        {},
+                        "Sıfırlama bağlantısı gönderiliyor..."
+                      )}
                     </>
                   ) : (
-                    "Send Reset Link"
+                    t("auth.sendResetLink", {}, "Sıfırlama Bağlantısı Gönder")
                   )}
                 </Button>
               </Form>
 
               <div className="text-center mt-3">
-                <Link to="/login">Remember your password? Login</Link>
+                <Link to="/login">
+                  {t(
+                    "auth.rememberPassword",
+                    {},
+                    "Şifrenizi hatırladınız mı? Giriş Yap"
+                  )}
+                </Link>
               </div>
             </Card.Body>
           </Card>

@@ -39,32 +39,77 @@ import { CATEGORIES } from "./utils/constants";
 import "./ProductManagement.css";
 
 /**
- * Optimized Product Form Component
+ * Enhanced Product Form Component - Matches Platform Sync Service Fields
  */
 const ProductForm = React.memo(({ product, onSave, onCancel }) => {
   const [formData, setFormData] = React.useState({
+    // Basic product info
     name: product?.name || "",
     sku: product?.sku || "",
+    barcode: product?.barcode || "",
     description: product?.description || "",
+    
+    // Categorization & Brand
     category: product?.category || "",
+    brand: product?.brand || "",
+    manufacturer: product?.manufacturer || "",
+    
+    // Pricing
     price: product?.price || 0,
+    costPrice: product?.costPrice || 0,
+    basePrice: product?.basePrice || product?.price || 0,
+    
+    // Stock management
     stockQuantity: product?.stockQuantity || 0,
+    minStockLevel: product?.minStockLevel || 0,
+    
+    // Physical attributes
+    weight: product?.weight || "",
+    dimensions: product?.dimensions || { length: "", width: "", height: "" },
+    
+    // Product status
     status: product?.status || "active",
+    
+    // Media & Images
+    images: product?.images || [],
+    
+    // Additional attributes
+    tags: product?.tags || [],
+    vatRate: product?.vatRate || 18,
+    
+    // Platform sync fields
+    attributes: product?.attributes || {},
   });
 
   const [saving, setSaving] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState("basic");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Basic validation
+    // Enhanced validation
     if (!formData.name.trim() || !formData.sku.trim() || !formData.category) {
       return;
     }
 
     setSaving(true);
     try {
-      await onSave(formData);
+      // Clean data before sending
+      const cleanData = {
+        ...formData,
+        price: parseFloat(formData.price) || 0,
+        costPrice: parseFloat(formData.costPrice) || 0,
+        basePrice: parseFloat(formData.basePrice) || 0,
+        stockQuantity: parseInt(formData.stockQuantity) || 0,
+        minStockLevel: parseInt(formData.minStockLevel) || 0,
+        weight: parseFloat(formData.weight) || null,
+        vatRate: parseFloat(formData.vatRate) || 18,
+        dimensions: formData.dimensions.length && formData.dimensions.width && formData.dimensions.height 
+          ? formData.dimensions 
+          : null,
+      };
+      
+      await onSave(cleanData);
     } finally {
       setSaving(false);
     }
@@ -74,140 +119,372 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   }, []);
 
+  const handleDimensionChange = useCallback((dimension, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      dimensions: {
+        ...prev.dimensions,
+        [dimension]: value
+      }
+    }));
+  }, []);
+
+  const tabs = [
+    { id: "basic", label: "Temel Bilgiler", icon: "📦" },
+    { id: "pricing", label: "Fiyat & Stok", icon: "💰" },
+    { id: "details", label: "Detaylar", icon: "📋" },
+    { id: "platforms", label: "Platform Ayarları", icon: "🌐" },
+  ];
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="form-group">
-          <label className="form-label" htmlFor="name">
-            Ürün Adı <span className="form-required">*</span>
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={formData.name}
-            onChange={(e) => handleInputChange("name", e.target.value)}
-            className="form-input"
-            placeholder="Ürün adını girin"
-            required
-            aria-describedby="name-help"
-          />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="sku">
-            SKU <span className="form-required">*</span>
-          </label>
-          <input
-            id="sku"
-            type="text"
-            value={formData.sku}
-            onChange={(e) => handleInputChange("sku", e.target.value)}
-            className="form-input"
-            placeholder="Ürün kodunu girin"
-            required
-            aria-describedby="sku-help"
-          />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="category">
-            Kategori <span className="form-required">*</span>
-          </label>
-          <select
-            id="category"
-            value={formData.category}
-            onChange={(e) => handleInputChange("category", e.target.value)}
-            className="form-input"
-            required
-            aria-describedby="category-help"
-          >
-            <option value="">Kategori seçin</option>
-            {CATEGORIES.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="price">
-            Fiyat (₺) <span className="form-required">*</span>
-          </label>
-          <input
-            id="price"
-            type="number"
-            step="0.01"
-            min="0"
-            value={formData.price}
-            onChange={(e) =>
-              handleInputChange("price", parseFloat(e.target.value) || 0)
-            }
-            className="form-input"
-            placeholder="0.00"
-            required
-            aria-describedby="price-help"
-          />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="stock">
-            Stok Miktarı <span className="form-required">*</span>
-          </label>
-          <input
-            id="stock"
-            type="number"
-            min="0"
-            value={formData.stockQuantity}
-            onChange={(e) =>
-              handleInputChange("stockQuantity", parseInt(e.target.value) || 0)
-            }
-            className="form-input"
-            placeholder="0"
-            required
-            aria-describedby="stock-help"
-          />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="status">
-            Durum
-          </label>
-          <select
-            id="status"
-            value={formData.status}
-            onChange={(e) => handleInputChange("status", e.target.value)}
-            className="form-input"
-            aria-describedby="status-help"
-          >
-            <option value="active">Aktif</option>
-            <option value="inactive">Pasif</option>
-            <option value="draft">Taslak</option>
-          </select>
-        </div>
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="-mb-px flex space-x-8">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === tab.id
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <span className="mr-2">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </nav>
       </div>
 
-      <div className="form-group">
-        <label className="form-label" htmlFor="description">
-          Açıklama
-        </label>
-        <textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => handleInputChange("description", e.target.value)}
-          rows={3}
-          className="form-input"
-          placeholder="Ürün açıklaması"
-          aria-describedby="description-help"
-        />
-      </div>
+      {/* Basic Information Tab */}
+      {activeTab === "basic" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="form-group">
+            <label className="form-label" htmlFor="name">
+              Ürün Adı <span className="form-required">*</span>
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={formData.name}
+              onChange={(e) => handleInputChange("name", e.target.value)}
+              className="form-input"
+              placeholder="Ürün adını girin"
+              required
+            />
+          </div>
 
-      <div className="modal-footer">
+          <div className="form-group">
+            <label className="form-label" htmlFor="sku">
+              SKU <span className="form-required">*</span>
+            </label>
+            <input
+              id="sku"
+              type="text"
+              value={formData.sku}
+              onChange={(e) => handleInputChange("sku", e.target.value)}
+              className="form-input"
+              placeholder="Ürün kodunu girin"
+              required
+              disabled={!!product} // SKU shouldn't be editable for existing products
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="barcode">
+              Barkod
+            </label>
+            <input
+              id="barcode"
+              type="text"
+              value={formData.barcode}
+              onChange={(e) => handleInputChange("barcode", e.target.value)}
+              className="form-input"
+              placeholder="Ürün barkodu"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="category">
+              Kategori <span className="form-required">*</span>
+            </label>
+            <select
+              id="category"
+              value={formData.category}
+              onChange={(e) => handleInputChange("category", e.target.value)}
+              className="form-input"
+              required
+            >
+              <option value="">Kategori seçin</option>
+              {CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="brand">
+              Marka
+            </label>
+            <input
+              id="brand"
+              type="text"
+              value={formData.brand}
+              onChange={(e) => handleInputChange("brand", e.target.value)}
+              className="form-input"
+              placeholder="Ürün markası"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="manufacturer">
+              Üretici
+            </label>
+            <input
+              id="manufacturer"
+              type="text"
+              value={formData.manufacturer}
+              onChange={(e) => handleInputChange("manufacturer", e.target.value)}
+              className="form-input"
+              placeholder="Ürün üreticisi"
+            />
+          </div>
+
+          <div className="form-group md:col-span-2">
+            <label className="form-label" htmlFor="description">
+              Açıklama
+            </label>
+            <textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => handleInputChange("description", e.target.value)}
+              rows={4}
+              className="form-input"
+              placeholder="Ürün açıklaması"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Pricing & Stock Tab */}
+      {activeTab === "pricing" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="form-group">
+            <label className="form-label" htmlFor="price">
+              Satış Fiyatı (₺) <span className="form-required">*</span>
+            </label>
+            <input
+              id="price"
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.price}
+              onChange={(e) =>
+                handleInputChange("price", parseFloat(e.target.value) || 0)
+              }
+              className="form-input"
+              placeholder="0.00"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="costPrice">
+              Alış Fiyatı (₺)
+            </label>
+            <input
+              id="costPrice"
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.costPrice}
+              onChange={(e) =>
+                handleInputChange("costPrice", parseFloat(e.target.value) || 0)
+              }
+              className="form-input"
+              placeholder="0.00"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="stock">
+              Stok Miktarı <span className="form-required">*</span>
+            </label>
+            <input
+              id="stock"
+              type="number"
+              min="0"
+              value={formData.stockQuantity}
+              onChange={(e) =>
+                handleInputChange("stockQuantity", parseInt(e.target.value) || 0)
+              }
+              className="form-input"
+              placeholder="0"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="minStock">
+              Minimum Stok Seviyesi
+            </label>
+            <input
+              id="minStock"
+              type="number"
+              min="0"
+              value={formData.minStockLevel}
+              onChange={(e) =>
+                handleInputChange("minStockLevel", parseInt(e.target.value) || 0)
+              }
+              className="form-input"
+              placeholder="0"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="vatRate">
+              KDV Oranı (%)
+            </label>
+            <input
+              id="vatRate"
+              type="number"
+              min="0"
+              max="100"
+              value={formData.vatRate}
+              onChange={(e) =>
+                handleInputChange("vatRate", parseFloat(e.target.value) || 18)
+              }
+              className="form-input"
+              placeholder="18"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="status">
+              Durum
+            </label>
+            <select
+              id="status"
+              value={formData.status}
+              onChange={(e) => handleInputChange("status", e.target.value)}
+              className="form-input"
+            >
+              <option value="active">Aktif</option>
+              <option value="inactive">Pasif</option>
+              <option value="draft">Taslak</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* Details Tab */}
+      {activeTab === "details" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="form-group">
+            <label className="form-label" htmlFor="weight">
+              Ağırlık (gr)
+            </label>
+            <input
+              id="weight"
+              type="number"
+              min="0"
+              step="0.1"
+              value={formData.weight}
+              onChange={(e) => handleInputChange("weight", e.target.value)}
+              className="form-input"
+              placeholder="0"
+            />
+          </div>
+
+          <div className="form-group md:col-span-2">
+            <label className="form-label">Boyutlar (cm)</label>
+            <div className="grid grid-cols-3 gap-2">
+              <input
+                type="number"
+                placeholder="Uzunluk"
+                value={formData.dimensions?.length || ""}
+                onChange={(e) => handleDimensionChange("length", e.target.value)}
+                className="form-input"
+                min="0"
+                step="0.1"
+              />
+              <input
+                type="number"
+                placeholder="Genişlik"
+                value={formData.dimensions?.width || ""}
+                onChange={(e) => handleDimensionChange("width", e.target.value)}
+                className="form-input"
+                min="0"
+                step="0.1"
+              />
+              <input
+                type="number"
+                placeholder="Yükseklik"
+                value={formData.dimensions?.height || ""}
+                onChange={(e) => handleDimensionChange("height", e.target.value)}
+                className="form-input"
+                min="0"
+                step="0.1"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Platform Settings Tab */}
+      {activeTab === "platforms" && (
+        <div className="space-y-4">
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+            <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+              Platform Senkronizasyon Ayarları
+            </h3>
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              Bu ayarlar ürünün e-ticaret platformlarıyla nasıl senkronize edileceğini belirler.
+            </p>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Platform Özellikleri</label>
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="autoSync"
+                  className="form-checkbox"
+                  defaultChecked
+                />
+                <label htmlFor="autoSync" className="ml-2 text-sm">
+                  Otomatik platform senkronizasyonu
+                </label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="stockSync"
+                  className="form-checkbox"
+                  defaultChecked
+                />
+                <label htmlFor="stockSync" className="ml-2 text-sm">
+                  Stok seviyesi senkronizasyonu
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Form Actions */}
+      <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200 dark:border-gray-700">
         <Button
-          onClick={onCancel}
-          variant="ghost"
-          disabled={saving}
           type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={saving}
         >
           İptal
         </Button>
@@ -215,7 +492,6 @@ const ProductForm = React.memo(({ product, onSave, onCancel }) => {
           type="submit"
           variant="primary"
           disabled={saving}
-          aria-describedby="save-help"
         >
           {saving && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />}
           {product ? "Güncelle" : "Kaydet"}

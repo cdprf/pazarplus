@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 
 export const useWebSocketQuery = (queryKey, events, options = {}) => {
   const [data, setData] = useState(null);

@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * Order History - Undo/Redo system for order operations
  * Implements Command Pattern for order history management

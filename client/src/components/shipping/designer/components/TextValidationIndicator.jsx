@@ -1,4 +1,4 @@
-import logger from "../../../../utils/logger";
+import logger from "../../../../utils/logger.js";
 /**
  * Text Validation Indicator Component
  * Shows inline validation messages and encoding issues

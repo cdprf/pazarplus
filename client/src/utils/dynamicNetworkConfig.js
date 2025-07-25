@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * Dynamic network configuration service
  * Automatically detects and uses the correct server configuration

@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 import { useAlert } from "../../contexts/AlertContext";
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 
 const ImportExport = () => {
   const [importing, setImporting] = useState(false);

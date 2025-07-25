@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -2116,11 +2116,18 @@ const OrderManagement = React.memo(() => {
 
         {/* Enhanced Bulk Actions */}
         {selectedOrders.length > 0 && (
-          <OrderBulkActions
-            selectedOrders={selectedOrders}
-            onBulkAction={handleBulkAction}
-            onClearSelection={() => setSelectedOrders([])}
-          />
+          <>
+            {console.log(
+              "OrderManagement: About to render BulkActions with selectedOrders:",
+              selectedOrders
+            )}
+            <OrderBulkActions
+              selectedOrders={selectedOrders}
+              orders={orders}
+              onBulkAction={handleBulkAction}
+              onClearSelection={() => setSelectedOrders([])}
+            />
+          </>
         )}
 
         {/* Orders Table */}

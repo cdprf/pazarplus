@@ -1,4 +1,13 @@
 .language-switcher {
+  .nav-link {
+    color: #374151 !important; /* gray-700 for light theme */
+    text-decoration: none;
+
+    &:hover {
+      color: #111827 !important; /* gray-900 for light theme */
+    }
+  }
+
   .language-dropdown-menu {
     min-width: 250px;
     max-width: 300px;
@@ -6,19 +15,22 @@
     border-radius: 0.5rem;
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
     padding: 0.5rem 0;
+    background-color: white;
   }
 
   .language-dropdown-item {
     padding: 0.5rem 1rem;
     border: none;
     background: none;
+    color: #374151; /* gray-700 */
 
     &:hover {
-      background-color: var(--bs-gray-100);
+      background-color: #f3f4f6; /* gray-100 */
+      color: #111827; /* gray-900 */
     }
 
     &.active {
-      background-color: var(--bs-primary);
+      background-color: #3b82f6; /* blue-500 */
       color: white;
 
       .language-check {
@@ -36,11 +48,6 @@
     display: flex;
     align-items: center;
     width: 100%;
-
-    .language-flag {
-      font-size: 1.2em;
-      margin-right: 0.75rem;
-    }
 
     .language-info {
       flex: 1;
@@ -63,6 +70,7 @@
     .language-check {
       margin-left: auto;
       color: var(--bs-success);
+      font-weight: bold;
     }
 
     &.active .language-check {
@@ -75,10 +83,6 @@
 
     .language-dropdown-menu {
       min-width: 200px;
-    }
-
-    .language-flag {
-      font-size: 1em !important;
     }
   }
 
@@ -97,21 +101,19 @@
   .language-btn {
     display: flex;
     align-items: center;
-    padding: 0.375rem 0.5rem;
-    border: 1px solid var(--bs-gray-300);
+    padding: 0.375rem 0.75rem;
+    border: 1px solid var(--bs-border-color);
     border-radius: 0.25rem;
-    background: white;
-    color: var(--bs-gray-700);
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
     font-size: 0.875rem;
     transition: all 0.15s ease-in-out;
-
-    .language-flag {
-      font-size: 1em;
-    }
+    cursor: pointer;
 
     &:hover {
-      background-color: var(--bs-gray-100);
-      border-color: var(--bs-gray-400);
+      background-color: var(--bs-secondary-bg);
+      border-color: var(--bs-border-color-translucent);
+      color: var(--bs-emphasis-color);
     }
 
     &.active {
@@ -136,11 +138,6 @@
 [dir="rtl"] {
   .language-switcher {
     .language-item {
-      .language-flag {
-        margin-right: 0;
-        margin-left: 0.75rem;
-      }
-
       .language-info {
         align-items: flex-end;
       }
@@ -151,43 +148,56 @@
       }
     }
   }
-
-  .language-switcher-buttons {
-    .language-btn {
-      .language-flag {
-        margin-left: 0.25rem;
-        margin-right: 0;
-      }
-    }
-  }
 }
 
 /* Dark theme support */
-[data-bs-theme="dark"] {
+[data-bs-theme="dark"],
+.dark {
   .language-switcher {
+    .nav-link {
+      color: #d1d5db !important; /* gray-300 for dark theme */
+
+      &:hover {
+        color: #f9fafb !important; /* gray-50 for dark theme */
+      }
+    }
+
     .language-dropdown-menu {
-      background-color: var(--bs-dark);
-      border-color: var(--bs-gray-600);
+      background-color: #1f2937; /* gray-800 */
+      border-color: #4b5563; /* gray-600 */
     }
 
     .language-dropdown-item {
-      color: var(--bs-gray-100);
+      color: #d1d5db; /* gray-300 */
 
       &:hover {
-        background-color: var(--bs-gray-700);
+        background-color: #374151; /* gray-700 */
+        color: #f9fafb; /* gray-50 */
+      }
+
+      &.active {
+        background-color: #3b82f6; /* blue-500 */
+        color: white;
       }
     }
   }
 
   .language-switcher-buttons {
     .language-btn {
-      background: var(--bs-dark);
-      color: var(--bs-gray-100);
-      border-color: var(--bs-gray-600);
+      background: #1f2937; /* gray-800 */
+      color: #d1d5db; /* gray-300 */
+      border-color: #4b5563; /* gray-600 */
 
       &:hover {
-        background-color: var(--bs-gray-700);
-        border-color: var(--bs-gray-500);
+        background-color: #374151; /* gray-700 */
+        border-color: #6b7280; /* gray-500 */
+        color: #f9fafb; /* gray-50 */
+      }
+
+      &.active {
+        background-color: #3b82f6; /* blue-500 */
+        border-color: #3b82f6; /* blue-500 */
+        color: white;
       }
     }
   }

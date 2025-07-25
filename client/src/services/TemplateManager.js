@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * TemplateManager service for managing shipping slip templates
  * Used by ShippingSlipDesigner to load, save, and manage templates

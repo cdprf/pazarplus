@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 /**
  * Enhanced Print Button Component
  * Network-aware PDF printing that works across devices

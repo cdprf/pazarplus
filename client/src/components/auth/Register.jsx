@@ -1,6 +1,7 @@
 // frontend/src/components/auth/Register.jsx
 
 import React, { useState, useContext, useEffect } from "react";
+import { useTranslation } from "../../i18n/hooks/useTranslation";
 import {
   Form,
   Button,
@@ -17,6 +18,7 @@ import { AlertContext } from "../../contexts/AlertContext";
 import PasswordStrengthMeter from "./PasswordStrengthMeter";
 
 const Register = () => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -228,7 +230,9 @@ const Register = () => {
         <Col md={6}>
           <Card>
             <Card.Body>
-              <h2 className="text-center mb-4">Register</h2>
+              <h2 className="text-center mb-4">
+                {t("auth.register", {}, "Kayıt Ol")}
+              </h2>
 
               {validationError && (
                 <Alert
@@ -242,12 +246,25 @@ const Register = () => {
 
               {registrationSuccess && (
                 <Alert variant="success" className="text-center">
-                  <Alert.Heading>🎉 Registration Successful!</Alert.Heading>
-                  <p>Your account has been created successfully.</p>
+                  <Alert.Heading>
+                    🎉 {t("auth.registrationSuccessful", {}, "Kayıt Başarılı!")}
+                  </Alert.Heading>
+                  <p>
+                    {t(
+                      "auth.accountCreated",
+                      {},
+                      "Hesabınız başarıyla oluşturuldu."
+                    )}
+                  </p>
                   <hr />
                   <p className="mb-0">
-                    Redirecting to login page in{" "}
-                    <strong>{redirectCountdown}</strong> seconds...
+                    {t(
+                      "auth.redirectingToLogin",
+                      {},
+                      "Giriş sayfasına yönlendiriliyorsunuz"
+                    )}{" "}
+                    <strong>{redirectCountdown}</strong>{" "}
+                    {t("auth.seconds", {}, "saniye...")}
                   </p>
                   <Button
                     variant="outline-success"
@@ -256,14 +273,17 @@ const Register = () => {
                     onClick={() =>
                       navigate("/login", {
                         state: {
-                          message:
-                            "Please log in with your new account credentials.",
+                          message: t(
+                            "auth.loginWithNewCredentials",
+                            {},
+                            "Lütfen yeni hesap bilgilerinizle giriş yapın."
+                          ),
                           email: formData.email,
                         },
                       })
                     }
                   >
-                    Go to Login Now
+                    {t("auth.goToLoginNow", {}, "Şimdi Giriş Yap")}
                   </Button>
                 </Alert>
               )}
@@ -273,7 +293,9 @@ const Register = () => {
                 style={{ display: registrationSuccess ? "none" : "block" }}
               >
                 <Form.Group className="mb-3">
-                  <Form.Label>Username</Form.Label>
+                  <Form.Label>
+                    {t("auth.username", {}, "Kullanıcı Adı")}
+                  </Form.Label>
                   <Form.Control
                     type="text"
                     name="username"
@@ -288,7 +310,7 @@ const Register = () => {
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Email</Form.Label>
+                  <Form.Label>{t("auth.email", {}, "E-posta")}</Form.Label>
                   <Form.Control
                     type="email"
                     name="email"
@@ -303,7 +325,7 @@ const Register = () => {
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Full Name</Form.Label>
+                  <Form.Label>{t("auth.fullName", {}, "Ad Soyad")}</Form.Label>
                   <Form.Control
                     type="text"
                     name="fullName"
@@ -318,7 +340,7 @@ const Register = () => {
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Password</Form.Label>
+                  <Form.Label>{t("auth.password", {}, "Şifre")}</Form.Label>
                   <Form.Control
                     type="password"
                     name="password"
@@ -337,7 +359,9 @@ const Register = () => {
                 </Form.Group>
 
                 <Form.Group className="mb-4">
-                  <Form.Label>Confirm Password</Form.Label>
+                  <Form.Label>
+                    {t("auth.confirmPassword", {}, "Şifre Tekrar")}
+                  </Form.Label>
                   <Form.Control
                     type="password"
                     name="confirmPassword"
@@ -367,16 +391,22 @@ const Register = () => {
                         aria-hidden="true"
                         className="me-2"
                       />
-                      Registering...
+                      {t("auth.registering", {}, "Kayıt yapılıyor...")}
                     </>
                   ) : (
-                    "Register"
+                    t("auth.register", {}, "Kayıt Ol")
                   )}
                 </Button>
               </Form>
 
               <div className="text-center mt-3">
-                <Link to="/login">Already have an account? Login</Link>
+                <Link to="/login">
+                  {t(
+                    "auth.alreadyHaveAccount",
+                    {},
+                    "Zaten hesabınız var mı? Giriş Yap"
+                  )}
+                </Link>
               </div>
             </Card.Body>
           </Card>

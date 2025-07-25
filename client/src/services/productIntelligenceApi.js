@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * Product Intelligence API Service
  *
@@ -207,14 +207,11 @@ class ProductIntelligenceApi {
         source: "server",
       };
     } catch (error) {
-      logger.warn(
-        "⚠️ API analysis failed, using fallback pattern detection:",
-        {
-          error: error.message,
-          status: error.status,
-          hasToken: !!this.getToken(),
-        }
-      );
+      logger.warn("⚠️ API analysis failed, using fallback pattern detection:", {
+        error: error.message,
+        status: error.status,
+        hasToken: !!this.getToken(),
+      });
 
       // Generate fallback data with actual pattern detection
       const fallbackData = this._generateFallbackData(products, options);

@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 import React, { createContext, useState, useCallback, useContext } from "react";
 import ToastContainer from "../components/ui/ToastContainer";
 

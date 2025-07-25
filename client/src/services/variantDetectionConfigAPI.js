@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * Variant Detection Configuration API Client
  * Handles communication with the backend variant detection service

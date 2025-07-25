@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 // Enhanced analytics API client for Dashboard
 import api from "./api";
 

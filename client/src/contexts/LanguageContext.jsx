@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 import React, { createContext, useContext, useState, useEffect } from "react";
 import i18n from "../i18n";
 
@@ -72,8 +72,8 @@ export const LanguageProvider = ({ children }) => {
   };
 
   const supportedLanguages = [
-    { code: "tr", name: "Türkçe", flag: "🇹🇷" },
-    { code: "en", name: "English", flag: "🇺🇸" },
+    { code: "tr", name: "Türkçe", nativeName: "Türkçe" },
+    { code: "en", name: "English", nativeName: "English" },
   ];
 
   const value = {

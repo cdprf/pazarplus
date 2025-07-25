@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { cn } from "../../utils/cn";
 // Use Lucide React icons instead of Heroicons to avoid import issues

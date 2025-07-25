@@ -1,6 +1,12 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import React, { useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
+import {
+  CreditCardIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
+import { useTranslation } from "../../i18n/hooks/useTranslation";
 import {
   Container,
   Row,

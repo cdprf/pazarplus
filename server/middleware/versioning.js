@@ -81,8 +81,8 @@ const apiVersioning = (req, res, next) => {
   // Log version usage for analytics
   logger.info("API Version Request", {
     operation: "api_versioning",
-    requested: req.apiVersion.requested,
-    resolved: req.apiVersion.resolved,
+    requested: req.apiVersion?.requested || null,
+    resolved: req.apiVersion?.resolved || "v1",
     path: req.path,
     method: req.method,
     ip: req.ip,

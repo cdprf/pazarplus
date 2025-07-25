@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import React, { useState, useEffect, useCallback } from "react";
 import { Modal, Button } from "../ui";
 import { useAlert } from "../../contexts/AlertContext";

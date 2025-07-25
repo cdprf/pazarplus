@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * Network utilities for handling cross-device PDF access
  * Provides robust URL construction and PDF access methods

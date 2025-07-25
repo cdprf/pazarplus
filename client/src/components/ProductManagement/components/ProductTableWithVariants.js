@@ -1,4 +1,4 @@
-import logger from "../../../utils/logger";
+import logger from "../../../utils/logger.js";
 // Enhanced ProductTableWithVariants with AI-Powered Variant Management
 // Integrates with Product Intelligence API for advanced pattern detection and suggestions
 

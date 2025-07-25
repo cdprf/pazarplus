@@ -1,4 +1,4 @@
-import logger from "../../../utils/logger";
+import logger from "../../../utils/logger.js";
 // Import all CSS files
 import './modern.css';
 import './modern-tables.css';

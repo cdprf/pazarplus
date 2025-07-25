@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 /**
  * Enhanced SKU Input Component
  * Provides intelligent SKU generation, validation, and brand management

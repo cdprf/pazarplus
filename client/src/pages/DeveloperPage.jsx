@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "../i18n/hooks/useTranslation";
 import {
   CodeBracketIcon,
   Cog6ToothIcon,
@@ -7,8 +8,10 @@ import {
 } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 import DeveloperSettings from "../components/settings/DeveloperSettings";
+import PerformanceDashboard from "../components/developer/PerformanceDashboard";
 
 const DeveloperPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   // Only show in development or if debug mode is enabled
@@ -18,10 +21,13 @@ const DeveloperPage = () => {
         <div className="bg-white rounded-lg shadow p-6 text-center dark:bg-gray-800">
           <BugAntIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Developer Tools
+            {t("developer.title", "Geliştirici Araçları")}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Developer tools are only available in development mode.
+            {t(
+              "developer.notAvailable",
+              "Geliştirici araçları sadece geliştirme modunda kullanılabilir."
+            )}
           </p>
           <button
             onClick={() => navigate(-1)}
@@ -53,10 +59,13 @@ const DeveloperPage = () => {
             </div>
             <div className="flex-1">
               <h1 className="page-title" id="developer-title">
-                Developer Tools
+                {t("developer.title", "Geliştirici Araçları")}
               </h1>
               <p className="page-subtitle mt-1">
-                Configure debugging tools and development settings
+                {t(
+                  "developer.subtitle",
+                  "Hata ayıklama araçlarını ve geliştirme ayarlarını yapılandırın"
+                )}
               </p>
             </div>
           </div>
@@ -118,6 +127,9 @@ const DeveloperPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Performance Dashboard - only in development */}
+      {process.env.NODE_ENV === "development" && <PerformanceDashboard />}
     </div>
   );
 };

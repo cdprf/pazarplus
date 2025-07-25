@@ -1,5 +1,5 @@
-import logger from "./utils/logger";
-import React, { useEffect } from "react";
+import logger from "./utils/logger.js";
+import React, { useEffect, Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -11,77 +11,171 @@ import { DeveloperSettingsProvider } from "./contexts/DeveloperSettingsContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ToastManager from "./components/common/ToastManager";
-
-// Initialize i18n
+import LoadingSkeleton from "./components/ui/LoadingSkeleton";
+import performanceMonitor from "./services/performanceMonitor";
 import "./i18n";
-
-// Import CSS
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
-// import "./debug-modal.css"; // Temporary debug CSS - removed
-
-// Import network initialization for PDF printing
-// Network initialization (temporarily disabled)
-// import { initializeNetworkForPDF } from "./services/networkInitialization";
-
-// Import components
 import Layout from "./components/layout/Layout.jsx";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import PublicRoute from "./components/auth/PublicRoute";
-
-// Import pages and components (consolidated)
 import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 import ForgotPassword from "./components/auth/ForgotPassword";
 import ResetPassword from "./components/auth/ResetPassword";
 import Dashboard from "./components/dashboard/Dashboard";
-import Orders from "./pages/Orders"; // Consolidated order management
-import OrderDetail from "./components/orders/OrderDetail";
-import ProductDetail from "./components/products/ProductDetail"; // Product detail page
-import ProductManagement from "./components/ProductManagement/index.js"; // Modernized product management
-import AdvancedProductManagement from "./components/ProductManagement/components/ProductManagement"; // Advanced product management system
-import VariantDetectionConfigurationPage from "./components/ProductManagement/VariantDetectionConfig/VariantDetectionConfigurationPage"; // Variant detection configuration
-import CustomerManagement from "./components/customers/CustomerManagement";
-import CustomerProfile from "./components/customers/CustomerProfile";
-import ShippingManagement from "./components/shipping/ShippingManagement";
-import ShippingSlipDesigner from "./components/shipping/ShippingSlipDesigner";
-import ImportExport from "./components/common/ImportExport";
-import PlatformConnections from "./components/platforms/PlatformConnections";
-import PlatformSettings from "./components/platforms/PlatformSettings";
-import PlatformAnalytics from "./components/platforms/PlatformAnalytics";
-import PlatformSyncHistory from "./components/platforms/PlatformSyncHistory";
-import ProductLinkingDashboard from "./pages/admin/ProductLinkingDashboard";
-import Analytics from "./pages/Analytics"; // Analytics dashboard
-import Notifications from "./pages/Notifications"; // Notifications page
-import PlatformOperations from "./pages/PlatformOperations"; // Platform Operations
-import TaskDetails from "./pages/TaskDetails"; // Task Details page
-import CustomerQuestions from "./components/CustomerQuestions"; // Customer Questions Management
-import Settings from "./components/settings/Settings";
-import Profile from "./components/profile/Profile"; // User Profile page
-import PrintSettings from "./components/settings/PrintSettings";
-import DatabaseBusyModal from "./components/DatabaseBusyModal"; // Database transaction management modal
-import PlatformCategoriesManagement from "./components/PlatformCategoriesManagement.jsx";
-import ErrorPage from "./pages/ErrorPage"; // Error page component
-import BackgroundTaskManager from "./components/tasks/BackgroundTaskManager"; // Background task management
-import DeveloperPage from "./pages/DeveloperPage"; // Developer tools page
 
-// Create a query client
+// Development-only components
+const PerformanceDashboard = lazy(() =>
+  import("./components/developer/PerformanceDashboard")
+);
+
+// Lazy load heavy components
+const Orders = lazy(() => import("./pages/Orders"));
+const OrderDetail = lazy(() => import("./components/orders/OrderDetail"));
+const ProductDetail = lazy(() => import("./components/products/ProductDetail"));
+const ProductManagement = lazy(() =>
+  import("./components/ProductManagement/index.js")
+);
+const AdvancedProductManagement = lazy(() =>
+  import("./components/ProductManagement/components/ProductManagement")
+);
+const VariantDetectionConfigurationPage = lazy(() =>
+  import(
+    "./components/ProductManagement/VariantDetectionConfig/VariantDetectionConfigurationPage"
+  )
+);
+const CustomerManagement = lazy(() =>
+  import("./components/customers/CustomerManagement")
+);
+const CustomerProfile = lazy(() =>
+  import("./components/customers/CustomerProfile")
+);
+const ShippingManagement = lazy(() =>
+  import("./components/shipping/ShippingManagement")
+);
+const ShippingSlipDesigner = lazy(() =>
+  import("./components/shipping/ShippingSlipDesigner")
+);
+const ImportExport = lazy(() => import("./components/common/ImportExport"));
+const PlatformConnections = lazy(() =>
+  import("./components/platforms/PlatformConnections")
+);
+const PlatformSettings = lazy(() =>
+  import("./components/platforms/PlatformSettings")
+);
+const PlatformAnalytics = lazy(() =>
+  import("./components/platforms/PlatformAnalytics")
+);
+const PlatformSyncHistory = lazy(() =>
+  import("./components/platforms/PlatformSyncHistory")
+);
+const ProductLinkingDashboard = lazy(() =>
+  import("./pages/admin/ProductLinkingDashboard")
+);
+const Analytics = lazy(() => import("./pages/Analytics"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const PlatformOperations = lazy(() => import("./pages/PlatformOperations"));
+const TaskDetails = lazy(() => import("./pages/TaskDetails"));
+const CustomerQuestions = lazy(() => import("./components/CustomerQuestions"));
+const Settings = lazy(() => import("./components/settings/Settings"));
+const Config = lazy(() => import("./components/config/Config"));
+const Profile = lazy(() => import("./components/profile/Profile"));
+const PrintSettings = lazy(() => import("./components/settings/PrintSettings"));
+const DatabaseBusyModal = lazy(() => import("./components/DatabaseBusyModal"));
+const PlatformCategoriesManagement = lazy(() =>
+  import("./components/PlatformCategoriesManagement.jsx")
+);
+const ErrorPage = lazy(() => import("./pages/ErrorPage"));
+const BackgroundTaskManager = lazy(() =>
+  import("./components/tasks/BackgroundTaskManager")
+);
+const DeveloperPage = lazy(() => import("./pages/DeveloperPage"));
+
+// Create an enhanced query client with performance optimizations
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      retry: (failureCount, error) => {
+        // Smart retry logic
+        if (error?.response?.status === 404) return false;
+        return failureCount < 2;
+      },
       refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
       staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+      networkMode: "online", // Only fetch when online
+    },
+    mutations: {
+      retry: 1,
+      networkMode: "online",
     },
   },
 });
 
+// Performance loading component
+const PageLoader = () => (
+  <div
+    className="d-flex justify-content-center align-items-center"
+    style={{ minHeight: "60vh" }}
+  >
+    <LoadingSkeleton />
+  </div>
+);
+
 function App() {
   // Initialize network configuration for PDF printing on app start
   useEffect(() => {
+    const appStartTime = performance.now();
+
     // Temporarily disabled to prevent network scanning interference
     // initializeNetworkForPDF();
     logger.info("🔧 Network discovery disabled - using proxy configuration");
+
+    // Performance monitoring
+    performanceMonitor.trackPageLoad("App", appStartTime);
+
+    // Preload critical components after initial render
+    const preloadComponents = async () => {
+      try {
+        const componentStartTime = performance.now();
+
+        // Preload the most commonly used components
+        await Promise.all([
+          import("./pages/Orders"),
+          import("./components/settings/Settings"),
+          import("./pages/Analytics"),
+        ]);
+
+        performanceMonitor.trackComponentLoad(
+          "CriticalComponents",
+          componentStartTime
+        );
+
+        const loadTime = performance.now() - appStartTime;
+        logger.info(`🚀 App initialized in ${loadTime.toFixed(2)}ms`);
+        logger.info("📦 Critical components preloaded");
+      } catch (error) {
+        logger.warn("⚠️ Component preloading failed:", error);
+      }
+    };
+
+    // Preload after a short delay to not block initial render
+    const timer = setTimeout(preloadComponents, 1000);
+
+    // Set up periodic performance reporting in development
+    let perfTimer;
+    if (process.env.NODE_ENV === "development") {
+      perfTimer = setInterval(() => {
+        performanceMonitor.printSummary();
+      }, 30000); // Every 30 seconds
+    }
+
+    return () => {
+      clearTimeout(timer);
+      if (perfTimer) clearInterval(perfTimer);
+    };
   }, []);
 
   return (
@@ -100,7 +194,9 @@ function App() {
                           <ToastManager />
 
                           {/* Database transaction management modal - globally available */}
-                          <DatabaseBusyModal />
+                          <Suspense fallback={<div>Yükleniyor...</div>}>
+                            <DatabaseBusyModal />
+                          </Suspense>
 
                           <Routes>
                             {/* Public routes */}
@@ -150,30 +246,67 @@ function App() {
                               <Route path="dashboard" element={<Dashboard />} />
 
                               {/* Orders - enhanced with sub-routes */}
-                              <Route path="orders" element={<Orders />} />
+                              <Route
+                                path="orders"
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <Orders />
+                                  </Suspense>
+                                }
+                              />
                               <Route
                                 path="orders/:id"
-                                element={<OrderDetail />}
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <OrderDetail />
+                                  </Suspense>
+                                }
                               />
-                              <Route path="orders/new" element={<Orders />} />
+                              <Route
+                                path="orders/new"
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <Orders />
+                                  </Suspense>
+                                }
+                              />
                               <Route
                                 path="orders/completed"
-                                element={<Orders />}
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <Orders />
+                                  </Suspense>
+                                }
                               />
 
                               {/* Product Detail */}
                               <Route
                                 path="products/:id"
-                                element={<ProductDetail />}
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <ProductDetail />
+                                  </Suspense>
+                                }
                               />
 
                               {/* Analytics */}
-                              <Route path="analytics" element={<Analytics />} />
+                              <Route
+                                path="analytics"
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <Analytics />
+                                  </Suspense>
+                                }
+                              />
 
                               {/* Notifications */}
                               <Route
                                 path="notifications"
-                                element={<Notifications />}
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <Notifications />
+                                  </Suspense>
+                                }
                               />
 
                               {/* ============================================ */}
@@ -181,12 +314,20 @@ function App() {
                               {/* ============================================ */}
                               <Route
                                 path="products"
-                                element={<ProductManagement />}
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <ProductManagement />
+                                  </Suspense>
+                                }
                               />
                               {/* Base products route using legacy system */}
                               <Route
                                 path="products/base"
-                                element={<ProductManagement />}
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <ProductManagement />
+                                  </Suspense>
+                                }
                               />
 
                               {/* ============================================ */}
@@ -195,29 +336,53 @@ function App() {
                               {/* Access the NEW advanced system at /products/enhanced */}
                               <Route
                                 path="products/enhanced"
-                                element={<AdvancedProductManagement />}
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <AdvancedProductManagement />
+                                  </Suspense>
+                                }
                               />
                               <Route
                                 path="products/enhanced/:id"
-                                element={<AdvancedProductManagement />}
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <AdvancedProductManagement />
+                                  </Suspense>
+                                }
                               />
                               {/* ============================================ */}
                               <Route
                                 path="products/:id/edit"
-                                element={<ProductManagement />}
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <ProductManagement />
+                                  </Suspense>
+                                }
                               />
                               <Route
                                 path="products/categories"
-                                element={<PlatformCategoriesManagement />}
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <PlatformCategoriesManagement />
+                                  </Suspense>
+                                }
                               />
                               <Route
                                 path="products/pricing"
-                                element={<ProductManagement />}
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <ProductManagement />
+                                  </Suspense>
+                                }
                               />
                               {/* Variant Detection Configuration */}
                               <Route
                                 path="products/variant-detection"
-                                element={<VariantDetectionConfigurationPage />}
+                                element={
+                                  <Suspense fallback={<PageLoader />}>
+                                    <VariantDetectionConfigurationPage />
+                                  </Suspense>
+                                }
                               />
 
                               {/* Customer Management */}
@@ -350,6 +515,7 @@ function App() {
 
                               {/* Settings - enhanced with sub-routes */}
                               <Route path="settings" element={<Settings />} />
+                              <Route path="config" element={<Config />} />
                               <Route
                                 path="settings/general"
                                 element={<Settings />}
@@ -425,6 +591,13 @@ function App() {
           </ErrorProvider>
         </Router>
       </ErrorBoundary>
+
+      {/* Performance Dashboard for development */}
+      {process.env.NODE_ENV === "development" && (
+        <Suspense fallback={null}>
+          <PerformanceDashboard />
+        </Suspense>
+      )}
     </QueryClientProvider>
   );
 }

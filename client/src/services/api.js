@@ -1,7 +1,8 @@
 import axios from "axios";
 import { handleJWTError } from "../utils/authRecovery";
 import networkStatusService from "./networkStatusService";
-import logger from "../utils/logger";
+import performanceMonitor from "./performanceMonitor";
+import logger from "../utils/logger.js";
 
 // Create a safe wrapper to handle different import structures
 const networkService = networkStatusService?.default ||
@@ -51,9 +52,12 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token and start performance tracking
 api.interceptors.request.use(
   (config) => {
+    // Start performance tracking
+    config.metadata = { startTime: performance.now() };
+
     // Check circuit breaker before making request
     try {
       if (
@@ -106,9 +110,17 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor
+// Response interceptor with performance tracking
 api.interceptors.response.use(
   (response) => {
+    // Track API performance
+    const startTime = response.config.metadata?.startTime;
+    if (startTime) {
+      const duration = performance.now() - startTime;
+      const endpoint = response.config.url;
+      performanceMonitor.trackApiCall(endpoint, duration, true);
+    }
+
     // Record successful response
     try {
       if (
@@ -134,6 +146,13 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Track API errors
+    const startTime = error.config?.metadata?.startTime;
+    if (startTime) {
+      const duration = performance.now() - startTime;
+      const endpoint = error.config?.url || "unknown";
+      performanceMonitor.trackApiCall(endpoint, duration, false);
+    }
     // Record failed response for network status tracking
     if (
       error.code === "ECONNREFUSED" ||

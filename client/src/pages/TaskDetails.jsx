@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -21,11 +21,13 @@ import {
 import { Button, Card, CardContent, Badge } from "../components/ui";
 import api from "../services/api";
 import { useAlert } from "../contexts/AlertContext";
+import { useTranslation } from "../i18n/hooks/useTranslation";
 
 const TaskDetails = () => {
   const { taskId } = useParams();
   const navigate = useNavigate();
   const { showAlert } = useAlert();
+  const { t } = useTranslation();
 
   const [task, setTask] = useState(null);
   const [taskLogs, setTaskLogs] = useState([]);
@@ -70,27 +72,28 @@ const TaskDetails = () => {
     return (
       <Badge className={config.color}>
         <IconComponent className="h-3 w-3 mr-1" />
-        {status?.charAt(0).toUpperCase() + status?.slice(1) || "Unknown"}
+        {status?.charAt(0).toUpperCase() + status?.slice(1) ||
+          t("tasks.unknown")}
       </Badge>
     );
   };
 
   // Format progress display
   const formatProgress = (task) => {
-    if (!task) return "No progress data";
+    if (!task) return t("tasks.noProgressData");
 
     const { status, progress } = task;
 
     if (status === "completed") {
-      return "Completed";
+      return t("tasks.completed");
     } else if (status === "failed") {
-      return progress?.error || "Failed";
+      return progress?.error || t("tasks.failed");
     } else if (status === "cancelled") {
-      return "Cancelled";
+      return t("tasks.cancelled");
     } else if (status === "pending") {
-      return "Waiting to start...";
+      return t("tasks.waitingToStart");
     } else if (status === "paused") {
-      return `Paused at ${Math.round(progress?.percentage || 0)}%`;
+      return `${t("tasks.paused")} ${Math.round(progress?.percentage || 0)}%`;
     } else if (status === "running") {
       const percentage = Math.round(progress?.percentage || 0);
       const processed = progress?.processed || 0;
@@ -99,16 +102,16 @@ const TaskDetails = () => {
       if (total > 0) {
         return `${percentage}% (${processed}/${total})`;
       } else {
-        return `${percentage}% processed`;
+        return `${percentage}% ${t("tasks.processed")}`;
       }
     }
 
-    return "No progress data";
+    return t("tasks.noProgressData");
   };
 
   // Format duration
   const formatDuration = (startTime, endTime) => {
-    if (!startTime) return "Not started";
+    if (!startTime) return t("tasks.notStarted");
 
     const start = new Date(startTime);
     const end = endTime ? new Date(endTime) : new Date();
@@ -134,42 +137,45 @@ const TaskDetails = () => {
     if (!task) return {};
 
     const runtimeInfo = {
-      "Task ID": task.id,
-      "Task Type": task.taskType?.replace(/_/g, " ").toUpperCase() || "Unknown",
-      Priority:
+      [t("tasks.taskId")]: task.id,
+      [t("tasks.taskType")]:
+        task.taskType?.replace(/_/g, " ").toUpperCase() || t("tasks.unknown"),
+      [t("tasks.priority")]:
         task.priority?.charAt(0).toUpperCase() + task.priority?.slice(1) ||
-        "Unknown",
-      Status:
+        t("tasks.unknown"),
+      [t("tasks.status")]:
         task.status?.charAt(0).toUpperCase() + task.status?.slice(1) ||
-        "Unknown",
-      Created: task.createdAt
+        t("tasks.unknown"),
+      [t("tasks.created")]: task.createdAt
         ? new Date(task.createdAt).toLocaleString()
-        : "Unknown",
-      Started: task.startedAt
+        : t("tasks.unknown"),
+      [t("tasks.started")]: task.startedAt
         ? new Date(task.startedAt).toLocaleString()
-        : "Not started",
-      Completed: task.completedAt
+        : t("tasks.notStarted"),
+      [t("tasks.completed")]: task.completedAt
         ? new Date(task.completedAt).toLocaleString()
-        : "Not completed",
-      Duration: formatDuration(task.startedAt, task.completedAt),
-      "Retry Count": `${task.retryCount || 0}/${task.maxRetries || 3}`,
+        : t("tasks.notCompleted"),
+      [t("tasks.duration")]: formatDuration(task.startedAt, task.completedAt),
+      [t("tasks.retryCount")]: `${task.retryCount || 0}/${
+        task.maxRetries || 3
+      }`,
     };
 
     // Add platform info if available
     if (task.metadata?.platform) {
-      runtimeInfo["Platform"] =
+      runtimeInfo[t("tasks.platform")] =
         task.metadata.platform.charAt(0).toUpperCase() +
         task.metadata.platform.slice(1);
     }
 
     // Add description if available
     if (task.metadata?.description) {
-      runtimeInfo["Description"] = task.metadata.description;
+      runtimeInfo[t("tasks.description")] = task.metadata.description;
     }
 
     // Add error info if failed
     if (task.status === "failed" && task.progress?.error) {
-      runtimeInfo["Error"] = task.progress.error;
+      runtimeInfo[t("tasks.error")] = task.progress.error;
     }
 
     return runtimeInfo;
@@ -197,21 +203,23 @@ const TaskDetails = () => {
         setTaskLogs(logs);
       } else {
         throw new Error(
-          response.data?.message || "Failed to load task details"
+          response.data?.message ||
+            t("tasks.failedToLoadTask", { error: "API Error" })
         );
       }
     } catch (error) {
       logger.error("Error loading task details:", error);
       showAlert(
-        "Failed to load task details: " +
-          (error.response?.data?.message || error.message),
+        t("tasks.failedToLoadTask", {
+          error: error.response?.data?.message || error.message,
+        }),
         "error"
       );
       navigate("/platform-operations");
     } finally {
       setLoading(false);
     }
-  }, [taskId, showAlert, navigate]);
+  }, [taskId, showAlert, navigate, t]);
 
   // Task action handlers
   const handleTaskAction = async (action) => {
@@ -224,16 +232,21 @@ const TaskDetails = () => {
       );
 
       if (response.data.success) {
-        showAlert(`Task ${action} successfully`, "success");
+        showAlert(t("tasks.taskActionSuccess", { action }), "success");
         await loadTaskDetails(); // Reload task details
       } else {
-        throw new Error(response.data?.message || `Failed to ${action} task`);
+        throw new Error(
+          response.data?.message ||
+            t("tasks.taskActionFailed", { action, error: "API Error" })
+        );
       }
     } catch (error) {
       logger.error(`Error ${action} task:`, error);
       showAlert(
-        `Failed to ${action} task: ` +
-          (error.response?.data?.message || error.message),
+        t("tasks.taskActionFailed", {
+          action,
+          error: error.response?.data?.message || error.message,
+        }),
         "error"
       );
     } finally {
@@ -272,7 +285,7 @@ const TaskDetails = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center space-x-3">
           <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-          <span className="text-gray-600">Loading task details...</span>
+          <span className="text-gray-600">{t("tasks.loadingTaskDetails")}</span>
         </div>
       </div>
     );
@@ -284,14 +297,12 @@ const TaskDetails = () => {
         <div className="text-center">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Task Not Found
+            {t("tasks.taskNotFound")}
           </h2>
-          <p className="text-gray-600 mb-4">
-            The requested task could not be found.
-          </p>
+          <p className="text-gray-600 mb-4">{t("tasks.taskNotFoundMessage")}</p>
           <Button onClick={() => navigate("/platform-operations")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Operations
+            {t("tasks.backToOperations")}
           </Button>
         </div>
       </div>

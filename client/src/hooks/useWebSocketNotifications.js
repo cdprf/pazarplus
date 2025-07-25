@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNotification } from "../contexts/NotificationContext";
 
@@ -243,10 +243,20 @@ export const useWebSocketNotifications = () => {
             }/${maxReconnectAttempts})`
           );
 
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttemptsRef.current++;
-            connect();
-          }, delay);
+          // Use requestIdleCallback for non-critical reconnection to avoid performance violations
+          if (window.requestIdleCallback) {
+            window.requestIdleCallback(() => {
+              reconnectTimeoutRef.current = setTimeout(() => {
+                reconnectAttemptsRef.current++;
+                connect();
+              }, delay);
+            });
+          } else {
+            reconnectTimeoutRef.current = setTimeout(() => {
+              reconnectAttemptsRef.current++;
+              connect();
+            }, delay);
+          }
         } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
           setConnectionError("WebSocket connection unavailable");
           logger.warn(

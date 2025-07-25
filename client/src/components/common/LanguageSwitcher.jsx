@@ -1,7 +1,6 @@
 import React from "react";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { Dropdown, Badge } from "react-bootstrap";
-import { FaGlobe, FaCheck } from "react-icons/fa";
 import "./LanguageSwitcher.css";
 
 const LanguageSwitcher = ({
@@ -18,14 +17,12 @@ const LanguageSwitcher = ({
     {
       code: "tr",
       name: "Türkçe",
-      flag: "🇹🇷",
       nativeName: "Türkçe",
       completion: 100,
     },
     {
       code: "en",
       name: "English",
-      flag: "🇺🇸",
       nativeName: "English",
       completion: 100,
     },
@@ -51,13 +48,12 @@ const LanguageSwitcher = ({
   if (!isI18nReady) {
     return (
       <div
-        className={`d-flex align-items-center text-muted ${
+        className={`flex items-center text-gray-500 ${
           size === "small" ? "small" : ""
         } ${className}`}
         style={{ fontSize: size === "small" ? "0.75rem" : "0.875rem" }}
       >
-        <FaGlobe className="me-1" />
-        <span>Loading...</span>
+        <span>Yükleniyor...</span>
       </div>
     );
   }
@@ -69,18 +65,18 @@ const LanguageSwitcher = ({
         {languages.map((language) => (
           <button
             key={language.code}
+            type="button"
             onClick={() => handleLanguageChange(language.code)}
             className={`language-btn ${
               language.code === currentLang.code ? "active" : ""
             }`}
             disabled={!isI18nReady}
           >
-            <span className="language-flag">{language.flag}</span>
-            <span className="d-none d-md-inline ms-1">{language.name}</span>
+            <span className="hidden md:inline ml-1">{language.name}</span>
             {showCompletionStatus && language.completion < 100 && (
               <Badge
                 bg={getCompletionColor(language.completion)}
-                className="ms-1"
+                className="ml-1"
               >
                 {language.completion}%
               </Badge>
@@ -97,16 +93,14 @@ const LanguageSwitcher = ({
       <Dropdown.Toggle
         variant="link"
         id="language-dropdown"
-        className="nav-link text-light d-flex align-items-center p-0 border-0 shadow-none"
+        className="flex items-center p-0 border-0 shadow-none text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-gray-50"
         style={{ background: "none" }}
       >
-        <FaGlobe className="me-1" />
-        <span className="me-1">{currentLang.flag}</span>
-        <span className="d-none d-md-inline">{currentLang.name}</span>
+        <span className="mr-1">{currentLang.name}</span>
         {showCompletionStatus && currentLang.completion < 100 && (
           <Badge
             bg={getCompletionColor(currentLang.completion)}
-            className="ms-1"
+            className="ml-1"
           >
             {currentLang.completion}%
           </Badge>
@@ -124,12 +118,11 @@ const LanguageSwitcher = ({
             key={language.code}
             onClick={() => handleLanguageChange(language.code)}
             active={language.code === currentLang.code}
-            className={`language-dropdown-item d-flex align-items-center py-2 ${
+            className={`language-dropdown-item flex items-center py-2 ${
               language.code === currentLang.code ? "active" : ""
             }`}
           >
             <div className="language-item">
-              <span className="language-flag me-3">{language.flag}</span>
               <div className="language-info">
                 <div className="language-name fw-medium">{language.name}</div>
                 {language.nativeName &&
@@ -138,9 +131,9 @@ const LanguageSwitcher = ({
                   )}
               </div>
               {showCompletionStatus && (
-                <div className="ms-auto">
+                <div className="ml-auto">
                   {language.completion === 100 ? (
-                    <FaCheck className="language-check text-success" />
+                    <span className="language-check text-green-600">✓</span>
                   ) : (
                     <Badge bg={getCompletionColor(language.completion)}>
                       {language.completion}%
@@ -149,7 +142,7 @@ const LanguageSwitcher = ({
                 </div>
               )}
               {language.code === currentLang.code && !showCompletionStatus && (
-                <FaCheck className="language-check ms-auto" />
+                <span className="language-check ml-auto text-green-600">✓</span>
               )}
             </div>
           </Dropdown.Item>

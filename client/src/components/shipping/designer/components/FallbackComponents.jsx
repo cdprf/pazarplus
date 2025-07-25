@@ -1,4 +1,4 @@
-import logger from "../../../../utils/logger";
+import logger from "../../../../utils/logger.js";
 import React from "react";
 
 // Try to import react-barcode, fallback to custom implementation

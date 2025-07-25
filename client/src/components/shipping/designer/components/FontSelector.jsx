@@ -1,4 +1,4 @@
-import logger from "../../../../utils/logger";
+import logger from "../../../../utils/logger.js";
 /**
  * Enhanced Font Selector Component
  * Provides a dropdown for selecting fonts with validation and preview

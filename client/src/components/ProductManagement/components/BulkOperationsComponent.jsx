@@ -1,4 +1,4 @@
-import logger from "../../../utils/logger";
+import logger from "../../../utils/logger.js";
 /**
  * Enhanced Product Bulk Actions - Component for bulk operations on selected products
  * Implements Pazar+ Design System patterns with advanced product management features

@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 import { useState, useEffect, useCallback } from "react";
 import api from "../services/api";
 

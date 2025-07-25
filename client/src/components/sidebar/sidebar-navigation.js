@@ -1,8 +1,9 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useAlert } from "../../contexts/AlertContext";
 import { useNetworkAwareInterval } from "../../hooks/useNetworkStatus";
+import { useTranslation } from "../../i18n/hooks/useTranslation";
 import api from "../../services/api";
 import requestQueue from "../../utils/requestQueue";
 import {
@@ -140,13 +141,13 @@ export const useOrderCounts = () => {
 };
 
 // Navigation sections factory (moved outside component for performance)
-const createNavigationSections = (orderCounts, userPermissions = []) => [
+const createNavigationSections = (orderCounts, userPermissions = [], t) => [
   {
     id: "main",
     title: null,
     items: [
       {
-        name: "Dashboard",
+        name: t("navigation.dashboard", {}, "Ana Sayfa"),
         href: "/",
         icon: HomeIcon,
         description: "Genel bakış ve özetler",
@@ -156,12 +157,12 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
   },
   {
     id: "commerce",
-    title: "E-Commerce",
+    title: t("navigation.ecommerce", {}, "E-Ticaret"),
     collapsible: true,
     defaultOpen: true,
     items: [
       {
-        name: "Orders",
+        name: t("navigation.orders", {}, "Siparişler"),
         href: "/orders",
         icon: ShoppingCartIcon,
         description: "Sipariş listesi",
@@ -209,7 +210,7 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
         ],
       },
       {
-        name: "Products",
+        name: t("navigation.products", {}, "Ürünler"),
         href: "/products",
         icon: ArchiveBoxIcon,
         description: "Ürün kataloğu",
@@ -243,63 +244,63 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
         ],
       },
       {
-        name: "Customers",
+        name: t("navigation.customers", {}, "Müşteriler"),
         href: "/customers",
         icon: UserGroupIcon,
         description: "Müşteri bilgileri",
         ariaLabel: "Müşteri yönetimi",
         subItems: [
           {
-            name: "Customer List",
+            name: "Müşteri Listesi",
             href: "/customers",
             ariaLabel: "Müşteri listesi",
           },
           {
-            name: "Customer Profiles",
+            name: "Müşteri Profilleri",
             href: "/customers/profiles",
             ariaLabel: "Müşteri profilleri",
           },
           {
-            name: "Customer Questions",
+            name: "Müşteri Soruları",
             href: "/customer-questions",
             ariaLabel: "Müşteri soruları ve cevapları",
           },
           {
-            name: "Customer Analytics",
+            name: "Müşteri Analitikleri",
             href: "/customers/analytics",
             ariaLabel: "Müşteri analitikleri",
           },
           {
-            name: "Customer Orders",
+            name: "Müşteri Siparişleri",
             href: "/customers/orders",
             ariaLabel: "Müşteri siparişleri",
           },
           {
-            name: "Customer Segments",
+            name: "Müşteri Segmentleri",
             href: "/customers/segments",
             ariaLabel: "Müşteri segmentleri",
           },
         ],
       },
       {
-        name: "Analytics",
+        name: t("navigation.analytics", {}, "Analitik"),
         href: "/analytics",
         icon: ChartBarIcon,
         description: "Satış analizi",
         ariaLabel: "Analitik raporlar",
         subItems: [
           {
-            name: "Sales Report",
+            name: "Satış Raporu",
             href: "/analytics/sales",
             ariaLabel: "Satış raporları",
           },
           {
-            name: "Performance",
+            name: "Performans",
             href: "/analytics/performance",
             ariaLabel: "Performans analizi",
           },
           {
-            name: "Trends",
+            name: "Trendler",
             href: "/analytics/trends",
             ariaLabel: "Trend analizi",
           },
@@ -309,12 +310,16 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
   },
   {
     id: "platforms",
-    title: "Platforms & Integration",
+    title: t(
+      "navigation.platformsIntegration",
+      {},
+      "Platformlar ve Entegrasyon"
+    ),
     collapsible: true,
     defaultOpen: true,
     items: [
       {
-        name: "Platform Connections",
+        name: t("navigation.platformConnections", {}, "Platform Bağlantıları"),
         href: "/platforms",
         icon: BuildingStorefrontIcon,
         description: "Marketplace entegrasyonları",
@@ -348,7 +353,7 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
         ],
       },
       {
-        name: "Platform Operations",
+        name: t("navigation.platformOperations", {}, "Platform İşlemleri"),
         href: "/platform-operations",
         icon: BoltIcon,
         description: "Background tasks and operations",
@@ -356,7 +361,7 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
         badge: "new",
       },
       {
-        name: "Shipping",
+        name: t("navigation.shipping", {}, "Kargo"),
         href: "/shipping",
         icon: TruckIcon,
         description: "Lojistik yönetimi",
@@ -378,12 +383,12 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
             ariaLabel: "Kargo firması yönetimi",
           },
           {
-            name: "Rates",
+            name: "Tarifeler",
             href: "/shipping/rates",
             ariaLabel: "Kargo ücret tarifeleri",
           },
           {
-            name: "Slip Designer",
+            name: "Fiş Tasarımcısı",
             href: "/shipping/slip-designer",
             ariaLabel: "Kargo fişi tasarım stüdyosu",
             badge: "new",
@@ -391,7 +396,7 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
         ],
       },
       {
-        name: "Payments",
+        name: t("navigation.payments", {}, "Ödemeler"),
         href: "/payments",
         icon: CreditCardIcon,
         description: "Ödeme işlemleri",
@@ -402,60 +407,60 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
   },
   {
     id: "tools",
-    title: "Tools & Utilities",
+    title: t("navigation.toolsUtilities", {}, "Araçlar ve Yardımcılar"),
     collapsible: true,
     defaultOpen: false,
     items: [
       {
-        name: "Import/Export",
+        name: t("navigation.importExport", {}, "İçe/Dışa Aktarım"),
         href: "/import-export",
         icon: CloudArrowUpIcon,
         description: "Veri yönetimi",
         ariaLabel: "Veri içe/dışa aktarım",
         subItems: [
           {
-            name: "Import CSV",
+            name: "CSV İçe Aktar",
             href: "/import-export?tab=import",
             ariaLabel: "CSV dosyası içe aktarım",
           },
           {
-            name: "Export Data",
+            name: "Veri Dışa Aktar",
             href: "/import-export?tab=export",
             ariaLabel: "Veri dışa aktar",
           },
           {
-            name: "Bulk Operations",
+            name: "Toplu İşlemler",
             href: "/import-export?tab=bulk",
             ariaLabel: "Toplu işlemler",
           },
         ],
       },
       {
-        name: "Compliance",
+        name: t("navigation.compliance", {}, "Uyumluluk"),
         href: "/compliance",
         icon: ShieldCheckIcon,
         description: "KVKK & düzenlemeler",
         ariaLabel: "Uyumluluk ve düzenlemeler",
       },
       {
-        name: "Reports",
+        name: t("navigation.reports", {}, "Raporlar"),
         href: "/reports",
         icon: DocumentTextIcon,
         description: "Rapor oluşturma",
         ariaLabel: "Rapor sistemleri",
         subItems: [
           {
-            name: "Sales Reports",
+            name: "Satış Raporları",
             href: "/reports/sales",
             ariaLabel: "Satış raporları",
           },
           {
-            name: "Tax Reports",
+            name: "Vergi Raporları",
             href: "/reports/tax",
             ariaLabel: "Vergi raporları",
           },
           {
-            name: "Inventory Reports",
+            name: "Stok Raporları",
             href: "/reports/inventory",
             ariaLabel: "Stok raporları",
           },
@@ -465,12 +470,12 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
   },
   {
     id: "system",
-    title: "System",
+    title: t("navigation.system", {}, "Sistem"),
     collapsible: true,
     defaultOpen: false,
     items: [
       {
-        name: "Settings",
+        name: t("navigation.settings", {}, "Ayarlar"),
         href: "/settings",
         icon: Cog6ToothIcon,
         description: "Sistem yapılandırması",
@@ -478,37 +483,44 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
         subItems: [
           { name: "Genel", href: "/settings", ariaLabel: "Genel ayarlar" },
           {
-            name: "Print Settings",
+            name: "Yazdırma Ayarları",
             href: "/print-settings",
             ariaLabel: "Yazdırma ayarları",
             badge: "new",
           },
           {
-            name: "Notifications",
+            name: "Bildirimler",
             href: "/settings/notifications",
             ariaLabel: "Bildirim ayarları",
           },
           {
-            name: "API Keys",
+            name: "API Anahtarları",
             href: "/settings/api",
             ariaLabel: "API anahtar yönetimi",
           },
           {
-            name: "Users",
+            name: "Kullanıcılar",
             href: "/settings/users",
             ariaLabel: "Kullanıcı yönetimi",
           },
         ],
       },
       {
-        name: "Product Linking",
+        name: t("navigation.config", {}, "Yapılandırma"),
+        href: "/config",
+        icon: Cog6ToothIcon,
+        description: "Uygulama yapılandırması",
+        ariaLabel: "Uygulama ayarları",
+      },
+      {
+        name: t("navigation.productLinking", {}, "Ürün Bağlama"),
         href: "/admin/product-linking",
         icon: LinkIcon,
         description: "Ürün bağlama işlemleri",
         ariaLabel: "Ürün bağlama dashboard",
       },
       {
-        name: "Background Tasks",
+        name: t("navigation.backgroundTasks", {}, "Arka Plan Görevleri"),
         href: "/admin/background-tasks",
         icon: CommandLineIcon,
         description: "Arka plan görev yönetimi",
@@ -532,7 +544,7 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
         ],
       },
       {
-        name: "Help & Support",
+        name: t("navigation.helpSupport", {}, "Yardım ve Destek"),
         href: "/support",
         icon: QuestionMarkCircleIcon,
         description: "Yardım alın",
@@ -564,9 +576,11 @@ const createNavigationSections = (orderCounts, userPermissions = []) => [
 
 // Memoized navigation sections hook
 const useNavigationSections = (orderCounts, userPermissions) => {
+  const { t } = useTranslation();
+
   return useMemo(
-    () => createNavigationSections(orderCounts, userPermissions),
-    [orderCounts, userPermissions]
+    () => createNavigationSections(orderCounts, userPermissions, t),
+    [orderCounts, userPermissions, t]
   );
 };
 

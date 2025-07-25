@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import React from "react";
 import { Printer } from "lucide-react";
 import api from "../../services/api";

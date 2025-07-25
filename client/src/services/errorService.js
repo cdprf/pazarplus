@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * Global error management service
  * Handles error reporting, logging, and user notifications

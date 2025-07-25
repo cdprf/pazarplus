@@ -310,6 +310,9 @@ const BULK_ACTIONS = {
   },
 };
 
+// Stable default object to prevent useMemo re-calculations
+const DEFAULT_CUSTOM_ACTIONS = {};
+
 const OrderBulkActions = ({
   selectedOrders = [],
   onBulkAction,
@@ -327,7 +330,7 @@ const OrderBulkActions = ({
   // Additional props for enhanced functionality
   onActionComplete,
   onActionError,
-  customActions = {},
+  customActions = DEFAULT_CUSTOM_ACTIONS,
   theme = "default",
 }) => {
   // State management
@@ -468,19 +471,15 @@ const OrderBulkActions = ({
             }));
 
             // Call the actual bulk action
-            const result = await onBulkAction(
-              `${categoryKey}_${actionKey}`,
-              batch,
-              {
-                ...options,
-                ...actionOptions,
-                categoryKey,
-                actionKey,
-                batchIndex,
-                totalBatches: batches.length,
-                action,
-              }
-            );
+            const result = await onBulkAction(actionKey, batch, {
+              ...options,
+              ...actionOptions,
+              categoryKey,
+              actionKey,
+              batchIndex,
+              totalBatches: batches.length,
+              action,
+            });
 
             results.push(result);
 
@@ -540,11 +539,11 @@ const OrderBulkActions = ({
               // Simple retry logic - could be enhanced
               try {
                 await new Promise((resolve) => setTimeout(resolve, 1000));
-                const retryResult = await onBulkAction(
-                  `${categoryKey}_${actionKey}`,
-                  batch,
-                  { ...options, ...actionOptions, isRetry: true }
-                );
+                const retryResult = await onBulkAction(actionKey, batch, {
+                  ...options,
+                  ...actionOptions,
+                  isRetry: true,
+                });
                 results.push(retryResult);
               } catch (retryError) {
                 errors.push({
@@ -623,16 +622,23 @@ const OrderBulkActions = ({
   // Enhanced action handler with progress tracking
   const handleBulkAction = useCallback(
     async (categoryKey, actionKey) => {
+      console.log("handleBulkAction called with:", { categoryKey, actionKey });
       const action = ENHANCED_BULK_ACTIONS[categoryKey]?.actions?.[actionKey];
-      if (!action) return;
+      console.log("Found action:", action);
+      if (!action) {
+        console.warn("No action found for:", { categoryKey, actionKey });
+        return;
+      }
 
       // Show confirmation if required
       if (action.confirmRequired || action.destructive) {
+        console.log("Showing confirmation for action:", action.label);
         setActionToConfirm({ categoryKey, actionKey, action });
         setShowConfirmation(true);
         return;
       }
 
+      console.log("Executing bulk action directly:", action.label);
       await executeBulkAction(categoryKey, actionKey, action);
     },
     [executeBulkAction]
@@ -674,6 +680,13 @@ const OrderBulkActions = ({
   if (selectedCount === 0) {
     return null;
   }
+
+  console.log("BulkActions rendering with:", {
+    selectedCount,
+    theme,
+    eligibleActions,
+  });
+  console.log("eligibleActions keys:", Object.keys(eligibleActions));
 
   // If theme is "simple", use the StatusUpdateBulkAction
   if (theme === "simple") {
@@ -727,9 +740,13 @@ const OrderBulkActions = ({
                     key={categoryKey}
                     category={category}
                     categoryKey={categoryKey}
-                    onAction={(actionKey) =>
-                      handleBulkAction(categoryKey, actionKey)
-                    }
+                    onAction={(actionKey) => {
+                      console.log(
+                        "onAction called from ActionCategoryDropdown:",
+                        { categoryKey, actionKey }
+                      );
+                      handleBulkAction(categoryKey, actionKey);
+                    }}
                     disabled={loading}
                   />
                 )
@@ -976,7 +993,7 @@ const OrderBulkActions = ({
       )}
 
       {/* Additional Progress Indicator (if both are enabled) */}
-      {enableProgressTracking && showProgress && (
+      {enableProgressTracking && showProgress && false && (
         <BulkActionProgress
           isVisible={showProgress}
           action={processingStatus.action}
@@ -1065,26 +1082,46 @@ const ActionCategoryDropdown = ({
 
   // Handle clicks outside to close dropdown
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event) => {
-      if (
-        isOpen &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target)
-      ) {
-        // Check if clicked element is inside the dropdown
-        const dropdown = document.querySelector(".fixed.z-\\[9999\\]");
-        if (!dropdown || !dropdown.contains(event.target)) {
-          setIsOpen(false);
+      // Check if the click is on the main category button - don't close in that case
+      if (buttonRef.current && buttonRef.current.contains(event.target)) {
+        console.log("Click was on category button, keeping dropdown open");
+        return;
+      }
+
+      // Check if clicked element is inside the dropdown by looking for data attribute
+      let element = event.target;
+      let isInsideDropdown = false;
+
+      while (element && element !== document.body) {
+        if (
+          element.getAttribute &&
+          element.getAttribute("data-dropdown-container") === "true"
+        ) {
+          isInsideDropdown = true;
+          console.log("Click was inside dropdown, keeping open");
+          break;
         }
+        element = element.parentElement;
+      }
+
+      if (!isInsideDropdown) {
+        console.log("Closing dropdown due to outside click");
+        setIsOpen(false);
       }
     };
 
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
-    }
+    // Use a longer delay to avoid interference with button clicks
+    const timeoutId = setTimeout(() => {
+      document.addEventListener("click", handleClickOutside, false);
+    }, 300);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener("click", handleClickOutside, false);
+    };
   }, [isOpen]);
 
   return (
@@ -1093,6 +1130,7 @@ const ActionCategoryDropdown = ({
         <button
           ref={buttonRef}
           onClick={() => {
+            console.log("Main category button clicked for:", categoryKey);
             if (!isOpen) {
               // Recalculate position immediately when opening
               setTimeout(() => {
@@ -1121,10 +1159,17 @@ const ActionCategoryDropdown = ({
           <>
             <div
               className="fixed inset-0 z-[9998]"
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                console.log("Backdrop clicked, closing dropdown");
+                setIsOpen(false);
+              }}
+              onMouseDown={() => {
+                console.log("Backdrop mousedown");
+              }}
             />
             <div
               className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-xl min-w-[250px] max-w-sm z-[9999]"
+              data-dropdown-container="true"
               style={{
                 position: "fixed",
                 top: `${dropdownPosition.top + 4}px`,
@@ -1141,9 +1186,23 @@ const ActionCategoryDropdown = ({
                   return (
                     <button
                       key={actionKey}
-                      onClick={() => {
+                      onClick={(e) => {
+                        console.log("ActionCategoryDropdown button clicked:", {
+                          actionKey,
+                          categoryKey,
+                        });
+                        // Don't prevent default or stop propagation - let the click bubble
                         onAction(actionKey);
                         setIsOpen(false);
+                      }}
+                      onMouseDown={(e) => {
+                        console.log(
+                          "ActionCategoryDropdown button mousedown:",
+                          {
+                            actionKey,
+                            categoryKey,
+                          }
+                        );
                       }}
                       className={`
                       w-full px-4 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700

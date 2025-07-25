@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 /**
  * OrderProductLinks - Enhanced product linking component
  * Shows order items with images, links to product details and platform sources

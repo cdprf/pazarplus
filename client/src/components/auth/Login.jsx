@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "../../i18n/hooks/useTranslation";
 import {
   Container,
   Row,
@@ -14,6 +15,7 @@ import {
 import useAuth from "../../hooks/useAuth";
 
 const Login = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const [formData, setFormData] = useState({
     email: "",
@@ -71,12 +73,15 @@ const Login = () => {
             <Card.Body className="p-4">
               <div className="text-center mb-4">
                 <h2 className="fw-bold text-primary">Pazar+</h2>
-                <p className="text-muted">Sign in to your account</p>
+                <p className="text-muted">
+                  {t("auth.signInToAccount", {}, "Hesabınıza giriş yapın")}
+                </p>
               </div>
 
               {welcomeMessage && (
                 <Alert variant="success" className="text-center">
-                  <strong>Welcome!</strong> {welcomeMessage}
+                  <strong>{t("auth.welcome", {}, "Hoş geldiniz!")} </strong>{" "}
+                  {welcomeMessage}
                 </Alert>
               )}
 
@@ -84,27 +89,35 @@ const Login = () => {
 
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
-                  <Form.Label htmlFor="email">Email Address</Form.Label>
+                  <Form.Label htmlFor="email">
+                    {t("auth.emailAddress", {}, "E-posta Adresi")}
+                  </Form.Label>
                   <Form.Control
                     type="email"
                     id="email"
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="Enter your email"
+                    placeholder={t(
+                      "auth.enterEmail",
+                      {},
+                      "E-posta adresinizi girin"
+                    )}
                     required
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label htmlFor="password">Password</Form.Label>
+                  <Form.Label htmlFor="password">
+                    {t("auth.password", {}, "Şifre")}
+                  </Form.Label>
                   <Form.Control
                     type="password"
                     id="password"
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    placeholder="Enter your password"
+                    placeholder={t("auth.enterPassword", {}, "Şifrenizi girin")}
                     required
                   />
                 </Form.Group>
@@ -116,7 +129,9 @@ const Login = () => {
                     size="lg"
                     disabled={loading}
                   >
-                    {loading ? "Signing in..." : "Sign In"}
+                    {loading
+                      ? t("auth.signingIn", {}, "Giriş yapılıyor...")
+                      : t("auth.signIn", {}, "Giriş Yap")}
                   </Button>
                 </div>
 
@@ -126,16 +141,18 @@ const Login = () => {
                       to="/forgot-password"
                       className="text-decoration-none"
                     >
-                      Forgot your password?
+                      {t("auth.forgotPassword", {}, "Şifrenizi mi unuttunuz?")}
                     </Link>
                   </div>
                   <div>
-                    <span className="text-muted">Don't have an account? </span>
+                    <span className="text-muted">
+                      {t("auth.noAccount", {}, "Hesabınız yok mu?")}{" "}
+                    </span>
                     <Link
                       to="/register"
                       className="text-decoration-none fw-bold"
                     >
-                      Create Account
+                      {t("auth.createAccount", {}, "Hesap Oluştur")}
                     </Link>
                   </div>
                 </div>

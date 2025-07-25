@@ -664,7 +664,7 @@ body {
 
 /* Bootstrap link overrides */
 a {
-  color: var(--primary-500) !important;
+  color: var(--primary-500);
 }
 
 a:hover,
@@ -958,7 +958,7 @@ a:focus {
 
 /* Enhanced links for auth pages */
 .auth-container a {
-  color: var(--primary-500) !important;
+  color: var(--primary-500);
   text-decoration: none !important;
   transition: color 0.3s ease !important;
 }

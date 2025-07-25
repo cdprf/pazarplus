@@ -1,4 +1,4 @@
-import logger from "../../../../utils/logger";
+import logger from "../../../../utils/logger.js";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { elementDefaults, ELEMENT_TYPES } from "../constants/index.js";
 import { generateId } from "../utils/designerUtils.js";

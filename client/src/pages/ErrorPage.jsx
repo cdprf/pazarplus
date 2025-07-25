@@ -1,5 +1,6 @@
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "../i18n/hooks/useTranslation";
 import ErrorState from "../components/common/ErrorState";
 
 /**
@@ -11,6 +12,7 @@ const ErrorPage = ({
   message,
   showNavigation = true,
 }) => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -38,31 +40,47 @@ const ErrorPage = ({
     if (path.includes("/404") || errorType === "notFound") {
       return {
         type: "notFound",
-        title: title || "404 - Page Not Found",
-        message: message || `The page "${path}" could not be found.`,
+        title: title || t("errors.pageNotFound", {}, "404 - Sayfa Bulunamadı"),
+        message:
+          message ||
+          t(
+            "errors.pageNotFoundMessage",
+            { path },
+            `"${path}" sayfası bulunamadı.`
+          ),
       };
     }
 
     if (path.includes("/500") || errorType === "server") {
       return {
         type: "server",
-        title: title || "500 - Server Error",
-        message: message || "Internal server error occurred.",
+        title: title || t("errors.serverError", {}, "500 - Sunucu Hatası"),
+        message:
+          message ||
+          t("errors.serverErrorMessage", {}, "Sunucu içi hata oluştu."),
       };
     }
 
     if (path.includes("/unauthorized") || errorType === "unauthorized") {
       return {
         type: "unauthorized",
-        title: title || "403 - Unauthorized",
-        message: message || "You are not authorized to access this page.",
+        title: title || t("errors.unauthorized", {}, "403 - Yetkisiz"),
+        message:
+          message ||
+          t(
+            "errors.unauthorizedMessage",
+            {},
+            "Bu sayfaya erişim yetkiniz bulunmuyor."
+          ),
       };
     }
 
     return {
       type: errorType,
-      title: title || "Error",
-      message: message || "An error occurred while loading this page.",
+      title: title || t("errors.error", {}, "Hata"),
+      message:
+        message ||
+        t("errors.errorMessage", {}, "Bu sayfa yüklenirken bir hata oluştu."),
     };
   };
 

@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * Enhanced PDF Service with network-aware functionality
  * Handles PDF generation and access across different devices

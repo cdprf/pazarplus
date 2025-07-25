@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 // Part 1: Enhanced Hooks and Utilities for Sidebar
 // Add these hooks to your Sidebar component file
 

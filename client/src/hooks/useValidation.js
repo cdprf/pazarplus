@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * useValidation - Centralized validation hook
  * Provides real-time validation with debouncing and error management

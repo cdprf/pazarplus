@@ -480,6 +480,9 @@ class N11QuestionService {
       customer_email: null, // Available only in question detail
       show_customer_name: false,
       question_text: questionText,
+      question_date: question.questionDate
+        ? this.parseN11Date(question.questionDate)
+        : new Date(), // Set question_date to match creation_date
       status: this.mapN11Status(answerText ? "answered" : "waiting"),
       product_name: question.productTitle || "",
       product_id: question.productId?.toString(),

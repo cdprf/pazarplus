@@ -15,7 +15,7 @@ import {
 import { usePlatforms } from "../../hooks/usePlatforms";
 import { useAlert } from "../../contexts/AlertContext";
 import api from "../../services/api";
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import { Button, Card, CardContent, Badge, Modal } from "../ui";
 
 const PlatformConnections = () => {

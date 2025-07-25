@@ -1,8 +1,9 @@
-import logger from "../../utils/logger";
+import logger from "../../utils/logger.js";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useTranslation } from "../../i18n/hooks/useTranslation";
 import { cn } from "../../utils/cn";
 import "../../styles/sidebar.css"; // Import sidebar CSS for enhanced styling
 import {
@@ -26,6 +27,7 @@ const AdvancedSidebar = ({ isOpen, onToggle, className, ...props }) => {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useTranslation();
 
   // Enhanced state management
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -42,10 +44,10 @@ const AdvancedSidebar = ({ isOpen, onToggle, className, ...props }) => {
     refetch,
   } = useOrderCounts();
 
-  // Create navigation sections with order counts
+  // Create navigation sections with order counts and translation function
   const navigationSections = useMemo(
-    () => createNavigationSections(orderCounts),
-    [orderCounts]
+    () => createNavigationSections(orderCounts, [], t),
+    [orderCounts, t]
   );
 
   // Enhanced mobile detection with proper SSR handling and debouncing
@@ -262,7 +264,7 @@ const AdvancedSidebar = ({ isOpen, onToggle, className, ...props }) => {
                 >
                   <div className="relative">
                     {isCollapsed ? (
-                      <ChevronRightIcon className="h-5 w-5 text-gray-600 dark:text-gray-400 transition-transform duration-200 group-hover:text-primary-600 dark:group-hover:text-primary-400" />
+                      <ChevronRightIcon className="h-5 w-5 text-white text-center dark:text-gray-400 transition-transform duration-200 group-hover:text-primary-600 dark:group-hover:text-primary-400" />
                     ) : (
                       <ChevronLeftIcon className="h-5 w-5 text-gray-600 dark:text-gray-400 transition-transform duration-200 group-hover:text-primary-600 dark:group-hover:text-primary-400" />
                     )}

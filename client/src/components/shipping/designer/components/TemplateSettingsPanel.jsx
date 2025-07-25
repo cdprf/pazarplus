@@ -1,4 +1,4 @@
-import logger from "../../../../utils/logger";
+import logger from "../../../../utils/logger.js";
 import React, { useState, useRef } from "react";
 import { Save, Download, Upload, FolderOpen } from "lucide-react";
 import { PAPER_SIZE_PRESETS } from "../constants/paperSizes.js";

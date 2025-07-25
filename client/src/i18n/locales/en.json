@@ -34,6 +34,52 @@
     "analytics": "Analytics",
     "reports": "Reports"
   },
+  "dashboard": {
+    "title": "Dashboard",
+    "overview": "Overview",
+    "refreshSuccess": "Dashboard data refreshed successfully",
+    "refreshError": "Failed to refresh dashboard data"
+  },
+  "config": {
+    "title": "Configuration",
+    "subtitle": "Manage application settings and preferences",
+    "settingsUpdated": "Settings updated successfully",
+    "settingsUpdateError": "Error updating settings",
+    "saveSettings": "Save Settings",
+    "appearance": {
+      "title": "Appearance",
+      "theme": "Theme",
+      "lightTheme": "Light",
+      "darkTheme": "Dark",
+      "autoTheme": "Auto (System)",
+      "themeDescription": "Choose your preferred theme for the application",
+      "visualSettings": "Visual Settings",
+      "compactMode": "Compact Mode",
+      "compactModeDescription": "Denser layout with less spacing",
+      "animations": "Animations",
+      "animationsDescription": "Enable interface animations"
+    },
+    "localization": {
+      "title": "Localization",
+      "language": "Language",
+      "languageDescription": "Interface language (requires refresh to apply)",
+      "currency": "Currency",
+      "currencyDescription": "Default currency for displaying prices",
+      "timezone": "Timezone",
+      "timezoneDescription": "Timezone for displaying dates and times"
+    },
+    "behavior": {
+      "title": "Behavior",
+      "systemBehavior": "System Behavior",
+      "autoSync": "Auto Synchronization",
+      "autoSyncDescription": "Automatically synchronize platform data"
+    },
+    "advanced": {
+      "title": "Advanced",
+      "developerMode": "Developer Mode",
+      "developerModeDescription": "Enable advanced features and debugging tools"
+    }
+  },
   "compliance": {
     "title": "Turkish Market Compliance",
     "subtitle": "KVKK, E-Invoice and E-Archive Management",
@@ -191,6 +237,16 @@
   },
   "settings": {
     "title": "Settings",
+    "subtitle": "Manage your account and application preferences",
+    "tabs": {
+      "overview": "Overview",
+      "profile": "Profile",
+      "security": "Security",
+      "notifications": "Notifications",
+      "invoices": "Invoices",
+      "translations": "Translations",
+      "developer": "Developer"
+    },
     "general": "General",
     "profile": "Profile",
     "security": "Security",

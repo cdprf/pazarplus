@@ -1,4 +1,4 @@
-import logger from "../utils/logger";
+import logger from "../utils/logger.js";
 /**
  * Network initialization for PDF printing
  * Detects server IP and sets up network configuration
