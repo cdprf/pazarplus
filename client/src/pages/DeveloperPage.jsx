@@ -34,7 +34,7 @@ const DeveloperPage = () => {
             className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             <ArrowLeftIcon className="h-4 w-4 mr-2" />
-            Go Back
+            {t("common.goBack", {}, "Geri Dön")}
           </button>
         </div>
       </div>
@@ -50,7 +50,7 @@ const DeveloperPage = () => {
             <button
               onClick={() => navigate(-1)}
               className="page-header-icon p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:text-gray-500 dark:hover:text-gray-300 dark:hover:bg-gray-800"
-              aria-label="Go back"
+              aria-label={t("common.goBack", {}, "Geri dön")}
             >
               <ArrowLeftIcon className="h-5 w-5" />
             </button>
@@ -78,7 +78,7 @@ const DeveloperPage = () => {
           <div className="flex items-center">
             <Cog6ToothIcon className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
             <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-              Development Configuration
+              {t("developer.configuration", {}, "Geliştirme Yapılandırması")}
             </h2>
           </div>
         </div>
@@ -90,12 +90,12 @@ const DeveloperPage = () => {
       {/* Additional Development Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 dark:bg-blue-900/20 dark:border-blue-800">
         <h3 className="text-lg font-medium text-blue-900 dark:text-blue-100 mb-3">
-          Development Information
+          {t("developer.information", {}, "Geliştirme Bilgileri")}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
             <strong className="text-blue-800 dark:text-blue-200">
-              Environment:
+              {t("developer.environment", {}, "Ortam")}:
             </strong>
             <span className="ml-2 text-blue-700 dark:text-blue-300">
               {process.env.NODE_ENV}
@@ -103,7 +103,7 @@ const DeveloperPage = () => {
           </div>
           <div>
             <strong className="text-blue-800 dark:text-blue-200">
-              React Version:
+              {t("developer.reactVersion", {}, "React Sürümü")}:
             </strong>
             <span className="ml-2 text-blue-700 dark:text-blue-300">
               {React.version}
@@ -111,7 +111,7 @@ const DeveloperPage = () => {
           </div>
           <div>
             <strong className="text-blue-800 dark:text-blue-200">
-              User Agent:
+              {t("developer.userAgent", {}, "Kullanıcı Aracısı")}:
             </strong>
             <span className="ml-2 text-blue-700 dark:text-blue-300 break-all">
               {navigator.userAgent.substring(0, 80)}...
@@ -119,10 +119,12 @@ const DeveloperPage = () => {
           </div>
           <div>
             <strong className="text-blue-800 dark:text-blue-200">
-              LocalStorage Available:
+              {t("developer.localStorageAvailable", {}, "LocalStorage Mevcut")}:
             </strong>
             <span className="ml-2 text-blue-700 dark:text-blue-300">
-              {typeof Storage !== "undefined" ? "Yes" : "No"}
+              {typeof Storage !== "undefined"
+                ? t("common.yes", {}, "Evet")
+                : t("common.no", {}, "Hayır")}
             </span>
           </div>
         </div>

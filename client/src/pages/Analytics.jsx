@@ -266,7 +266,14 @@ const Analytics = () => {
         {/* Enhanced Navigation Tabs */}
         <div className="analytics-tab-nav">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <nav className="flex space-x-1" aria-label="Analytics sections">
+            <nav
+              className="flex space-x-1"
+              aria-label={t(
+                "analytics.navigation.label",
+                {},
+                "Analitik bölümleri"
+              )}
+            >
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;

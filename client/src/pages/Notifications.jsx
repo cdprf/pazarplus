@@ -183,7 +183,9 @@ const Notifications = () => {
                   )}
                 />
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {wsConnected ? "Connected" : "Disconnected"}
+                  {wsConnected
+                    ? t("notifications.connected", {}, "Bağlı")
+                    : t("notifications.disconnected", {}, "Bağlantı Kesildi")}
                 </span>
                 {!wsConnected && connectionError && (
                   <Button
@@ -192,7 +194,7 @@ const Notifications = () => {
                     onClick={retryConnection}
                     className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-xs"
                   >
-                    Retry
+                    {t("notifications.retry", {}, "Tekrar Dene")}
                   </Button>
                 )}
               </div>
@@ -206,7 +208,7 @@ const Notifications = () => {
                 {notifications.length}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                Total Notifications
+                {t("notifications.stats.total", {}, "Toplam Bildirim")}
               </div>
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
@@ -214,7 +216,7 @@ const Notifications = () => {
                 {unreadCount}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                Unread
+                {t("notifications.stats.unread", {}, "Okunmamış")}
               </div>
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
@@ -222,7 +224,7 @@ const Notifications = () => {
                 {highPriorityCount}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                High Priority
+                {t("notifications.stats.highPriority", {}, "Yüksek Öncelik")}
               </div>
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
@@ -230,7 +232,11 @@ const Notifications = () => {
                 {notifications.filter((n) => n.type === "order").length}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                Order Updates
+                {t(
+                  "notifications.stats.orderUpdates",
+                  {},
+                  "Sipariş Güncellemeleri"
+                )}
               </div>
             </div>
           </div>
@@ -277,9 +283,15 @@ const Notifications = () => {
                 onChange={(e) => setSortBy(e.target.value)}
                 className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
               >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="priority">Priority</option>
+                <option value="newest">
+                  {t("notifications.sort.newest", {}, "En Yeni Önce")}
+                </option>
+                <option value="oldest">
+                  {t("notifications.sort.oldest", {}, "En Eski Önce")}
+                </option>
+                <option value="priority">
+                  {t("notifications.sort.priority", {}, "Öncelik")}
+                </option>
               </select>
 
               {unreadCount > 0 && (
@@ -320,7 +332,7 @@ const Notifications = () => {
               );
               const timeAgo = notification.createdAt
                 ? new Date(notification.createdAt).toLocaleString()
-                : "Recently";
+                : t("notifications.recently", {}, "Son zamanlarda");
 
               return (
                 <div

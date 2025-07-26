@@ -132,22 +132,54 @@ const ProductLinkingDashboard = () => {
       );
       setShowLinkModal(false);
       loadData(); // Reload data
-      alert("Product linked successfully!");
+      alert(
+        t(
+          "admin.productLinking.productLinkedSuccessfully",
+          {},
+          "Ürün başarıyla bağlandı!"
+        )
+      );
     } catch (error) {
       logger.error("Error linking product:", error);
-      alert("Error linking product. Check console for details.");
+      alert(
+        t(
+          "admin.productLinking.errorLinkingProduct",
+          {},
+          "Ürün bağlanırken hata oluştu. Detaylar için konsolu kontrol edin."
+        )
+      );
     }
   };
 
   const handleUnlink = async (itemId) => {
-    if (window.confirm("Are you sure you want to unlink this item?")) {
+    if (
+      window.confirm(
+        t(
+          "admin.productLinking.confirmUnlink",
+          {},
+          "Bu öğenin bağlantısını kaldırmak istediğinizden emin misiniz?"
+        )
+      )
+    ) {
       try {
         await api.delete(`/order-management/product-linking/unlink/${itemId}`);
         loadData(); // Reload data
-        alert("Product unlinked successfully!");
+        alert(
+          t(
+            "admin.productLinking.productUnlinkedSuccessfully",
+            {},
+            "Ürün bağlantısı başarıyla kaldırıldı!"
+          )
+        );
       } catch (error) {
         logger.error("Error unlinking product:", error);
-        alert("Error unlinking product. Check console for details.");
+        alert(
+          t(
+            "admin.productLinking.errorUnlinkingProduct",
+            {},
+            "Ürün bağlantısı kaldırılırken hata oluştu. Detaylar için konsolu kontrol edin."
+          )
+        );
       }
     }
   };
@@ -200,7 +232,7 @@ const ProductLinkingDashboard = () => {
             {processLoading ? (
               <>
                 <Spinner size="sm" className="me-2" />
-                Processing...
+                {t("common.processing", {}, "İşleniyor...")}
               </>
             ) : (
               <>
@@ -297,14 +329,17 @@ const ProductLinkingDashboard = () => {
                     </div>
                     <div>
                       <span className="text-success">{platform.linked}</span>{" "}
-                      linked
+                      {t("admin.productLinking.linked", {}, "bağlı")}
                     </div>
                     <div>
                       <span className="text-danger">{platform.unlinked}</span>{" "}
-                      unlinked
+                      {t("admin.productLinking.unlinked", {}, "bağlanmamış")}
                     </div>
                     <div>
-                      <small>{platform.linkingRate}% rate</small>
+                      <small>
+                        {platform.linkingRate}%{" "}
+                        {t("admin.productLinking.rate", {}, "oran")}
+                      </small>
                     </div>
                   </div>
                 </Col>
@@ -318,7 +353,7 @@ const ProductLinkingDashboard = () => {
       <Card className="mb-4">
         <Card.Header>
           <FiFilter className="me-2" />
-          Filters
+          {t("common.filters", {}, "Filtreler")}
         </Card.Header>
         <Card.Body>
           <Row>
@@ -345,10 +380,14 @@ const ProductLinkingDashboard = () => {
             </Col>
             <Col md={3}>
               <Form.Group>
-                <Form.Label>Search</Form.Label>
+                <Form.Label>{t("common.search", {}, "Arama")}</Form.Label>
                 <Form.Control
                   type="text"
-                  placeholder="Search by title, SKU, barcode..."
+                  placeholder={t(
+                    "admin.productLinking.searchPlaceholder",
+                    {},
+                    "Başlık, SKU, barkod ile ara..."
+                  )}
                   value={filters.search}
                   onChange={(e) => handleFilterChange("search", e.target.value)}
                 />
@@ -356,7 +395,9 @@ const ProductLinkingDashboard = () => {
             </Col>
             <Col md={3}>
               <Form.Group>
-                <Form.Label>Start Date</Form.Label>
+                <Form.Label>
+                  {t("common.startDate", {}, "Başlangıç Tarihi")}
+                </Form.Label>
                 <Form.Control
                   type="date"
                   value={filters.startDate}
@@ -368,7 +409,9 @@ const ProductLinkingDashboard = () => {
             </Col>
             <Col md={3}>
               <Form.Group>
-                <Form.Label>End Date</Form.Label>
+                <Form.Label>
+                  {t("common.endDate", {}, "Bitiş Tarihi")}
+                </Form.Label>
                 <Form.Control
                   type="date"
                   value={filters.endDate}
@@ -384,17 +427,24 @@ const ProductLinkingDashboard = () => {
 
       {/* Unlinked Items Table */}
       <Card>
-        <Card.Header>Unlinked Order Items ({unlinkedItems.length})</Card.Header>
+        <Card.Header>
+          {t(
+            "admin.productLinking.unlinkedOrderItems",
+            {},
+            "Bağlanmamış Sipariş Ürünleri"
+          )}{" "}
+          ({unlinkedItems.length})
+        </Card.Header>
         <Card.Body>
           <Table responsive>
             <thead>
               <tr>
-                <th>Order</th>
-                <th>Platform</th>
-                <th>Title</th>
-                <th>SKU</th>
-                <th>Barcode</th>
-                <th>Actions</th>
+                <th>{t("common.order", {}, "Sipariş")}</th>
+                <th>{t("common.platform", {}, "Platform")}</th>
+                <th>{t("common.title", {}, "Başlık")}</th>
+                <th>{t("common.sku", {}, "SKU")}</th>
+                <th>{t("common.barcode", {}, "Barkod")}</th>
+                <th>{t("common.actions", {}, "İşlemler")}</th>
               </tr>
             </thead>
             <tbody>
@@ -429,7 +479,7 @@ const ProductLinkingDashboard = () => {
                       className="me-2"
                       onClick={() => handleShowSuggestions(item)}
                     >
-                      <FiLink /> Link
+                      <FiLink /> {t("admin.productLinking.link", {}, "Bağla")}
                     </Button>
                     {item.productId && (
                       <Button
@@ -437,7 +487,12 @@ const ProductLinkingDashboard = () => {
                         size="sm"
                         onClick={() => handleUnlink(item.id)}
                       >
-                        <FiX /> Unlink
+                        <FiX />{" "}
+                        {t(
+                          "admin.productLinking.unlink",
+                          {},
+                          "Bağlantıyı Kaldır"
+                        )}
                       </Button>
                     )}
                   </td>
@@ -486,17 +541,32 @@ const ProductLinkingDashboard = () => {
         size="lg"
       >
         <Modal.Header closeButton>
-          <Modal.Title>Link Product to Order Item</Modal.Title>
+          <Modal.Title>
+            {t(
+              "admin.productLinking.linkProductToOrderItem",
+              {},
+              "Ürünü Sipariş Kalemiyle Bağla"
+            )}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {selectedItem && (
             <div className="mb-3">
-              <h6>Order Item Details:</h6>
+              <h6>
+                {t(
+                  "admin.productLinking.orderItemDetails",
+                  {},
+                  "Sipariş Kalemi Detayları"
+                )}
+                :
+              </h6>
               <p>
-                <strong>Title:</strong> {selectedItem.title}
+                <strong>{t("common.title", {}, "Başlık")}:</strong>{" "}
+                {selectedItem.title}
               </p>
               <p>
-                <strong>SKU:</strong> {selectedItem.sku || "N/A"}
+                <strong>{t("common.sku", {}, "SKU")}:</strong>{" "}
+                {selectedItem.sku || "N/A"}
               </p>
               <p>
                 <strong>Barcode:</strong> {selectedItem.barcode || "N/A"}

@@ -326,16 +326,16 @@ const TaskDetails = () => {
                   className="flex items-center space-x-2"
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  <span>Back</span>
+                  <span>{t("common.back", {}, "Geri")}</span>
                 </Button>
                 <Package className="h-8 w-8 icon-contrast-primary" />
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    Task Details
+                    {t("tasks.taskDetails", {}, "Görev Detayları")}
                   </h1>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {task.taskType?.replace(/_/g, " ").toUpperCase() ||
-                      "Unknown Task"}{" "}
+                      t("tasks.unknownTask", {}, "Bilinmeyen Görev")}{" "}
                     - {task.id}
                   </p>
                 </div>
@@ -351,7 +351,7 @@ const TaskDetails = () => {
                       className="flex items-center space-x-2"
                     >
                       <Play className="h-4 w-4" />
-                      <span>Start</span>
+                      <span>{t("tasks.start", {}, "Başlat")}</span>
                     </Button>
                     <Button
                       onClick={cancelTask}
@@ -360,7 +360,7 @@ const TaskDetails = () => {
                       className="flex items-center space-x-2"
                     >
                       <X className="h-4 w-4" />
-                      <span>Cancel</span>
+                      <span>{t("tasks.cancel", {}, "İptal")}</span>
                     </Button>
                   </>
                 )}
@@ -374,7 +374,7 @@ const TaskDetails = () => {
                       className="flex items-center space-x-2"
                     >
                       <Square className="h-4 w-4" />
-                      <span>Pause</span>
+                      <span>{t("tasks.pause", {}, "Duraklat")}</span>
                     </Button>
                     <Button
                       onClick={stopTask}
@@ -383,7 +383,7 @@ const TaskDetails = () => {
                       className="flex items-center space-x-2"
                     >
                       <Square className="h-4 w-4" />
-                      <span>Stop</span>
+                      <span>{t("tasks.stop", {}, "Durdur")}</span>
                     </Button>
                   </>
                 )}
@@ -396,7 +396,7 @@ const TaskDetails = () => {
                       className="flex items-center space-x-2"
                     >
                       <Play className="h-4 w-4" />
-                      <span>Resume</span>
+                      <span>{t("tasks.resume", {}, "Devam Et")}</span>
                     </Button>
                     <Button
                       onClick={cancelTask}
@@ -405,7 +405,7 @@ const TaskDetails = () => {
                       className="flex items-center space-x-2"
                     >
                       <X className="h-4 w-4" />
-                      <span>Cancel</span>
+                      <span>{t("tasks.cancel", {}, "İptal")}</span>
                     </Button>
                   </>
                 )}
@@ -433,7 +433,7 @@ const TaskDetails = () => {
                   <RefreshCw
                     className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
                   />
-                  <span>Refresh</span>
+                  <span>{t("common.refresh", {}, "Yenile")}</span>
                 </Button>
               </div>
             </div>
@@ -575,7 +575,7 @@ const TaskDetails = () => {
                   <RefreshCw
                     className={`h-3 w-3 ${loading ? "animate-spin" : ""}`}
                   />
-                  <span>Refresh</span>
+                  <span>{t("common.refresh", {}, "Yenile")}</span>
                 </Button>
               </div>
             </div>
@@ -583,7 +583,11 @@ const TaskDetails = () => {
             <div className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm max-h-96 overflow-y-auto">
               {taskLogs.length === 0 ? (
                 <div className="text-gray-500 text-center py-8">
-                  No logs available for this task
+                  {t(
+                    "tasks.noLogsAvailable",
+                    {},
+                    "Bu görev için mevcut log yok"
+                  )}
                 </div>
               ) : (
                 <div className="space-y-1">

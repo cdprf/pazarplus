@@ -16,19 +16,26 @@ export const useWebSocketQuery = (queryKey, events, options = {}) => {
 
   useEffect(() => {
     // Implement WebSocket connection
-    // Connect directly to backend server in all environments
+    // Use environment variables to determine the correct WebSocket URL
     const isDevelopment = process.env.NODE_ENV === "development";
-    const wsUrl = isDevelopment
-      ? `ws://localhost:5001/ws/notifications` // Connect directly to backend in development
-      : (() => {
-          const serverUrl =
-            process.env.REACT_APP_SERVER_URL || "https://yarukai.com/api";
-          const protocol = serverUrl.startsWith("https") ? "wss:" : "ws:";
-          const host = serverUrl
-            .replace(/^https?:\/\//, "")
-            .replace(/:\d+$/, "");
-          return `${protocol}//${host}/ws/notifications`;
-        })(); // Production backend server
+
+    let wsUrl;
+    if (isDevelopment) {
+      // In development, use the proxy setup or direct connection
+      const serverHost = process.env.REACT_APP_SERVER_HOST || "localhost";
+      const serverPort = process.env.REACT_APP_SERVER_PORT || "5001";
+      wsUrl = `ws://${serverHost}:${serverPort}/ws/notifications`;
+    } else {
+      // In production, use the server URL from environment variables
+      const serverUrl =
+        process.env.REACT_APP_SERVER_URL ||
+        process.env.REACT_APP_API_URL ||
+        "http://localhost:5001";
+      const baseUrl = serverUrl.replace("/api", ""); // Remove /api suffix if present
+      const protocol = baseUrl.startsWith("https") ? "wss:" : "ws:";
+      const host = baseUrl.replace(/^https?:\/\//, "");
+      wsUrl = `${protocol}//${host}/ws/notifications`;
+    }
 
     let ws = null;
     let reconnectTimer = null;

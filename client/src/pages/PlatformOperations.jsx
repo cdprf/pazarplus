@@ -698,7 +698,11 @@ const PlatformOperations = () => {
                   <RefreshCw
                     className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
                   />
-                  <span>{refreshing ? "Refreshing..." : "Refresh"}</span>
+                  <span>
+                    {refreshing
+                      ? t("platformOperations.refreshing", {}, "Yenileniyor...")
+                      : t("platformOperations.refresh", {}, "Yenile")}
+                  </span>
                 </Button>
               </div>
             </div>
@@ -1475,7 +1479,11 @@ const PlatformOperations = () => {
                 {createTaskLoading && (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 )}
-                <span>{createTaskLoading ? "Creating..." : "Create Task"}</span>
+                <span>
+                  {createTaskLoading
+                    ? t("platformOperations.creating", {}, "Oluşturuluyor...")
+                    : t("platformOperations.createTask", {}, "Görev Oluştur")}
+                </span>
               </Button>
             </div>
           </div>
