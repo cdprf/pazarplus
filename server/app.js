@@ -410,6 +410,56 @@ try {
   throw error;
 }
 
+// === HIGH PRIORITY SHIPPING ROUTE ===
+// This MUST come before any static file serving to work correctly
+logger.info("Setting up HIGH PRIORITY shipping route");
+
+const shippingPath = path.join(__dirname, "public", "shipping");
+
+// Ensure shipping directory exists
+if (!fs.existsSync(shippingPath)) {
+  fs.mkdirSync(shippingPath, { recursive: true });
+  logger.info("Created shipping directory:", shippingPath);
+}
+
+// HIGH PRIORITY shipping route - this will override React app routing
+app.use("/shipping", (req, res, next) => {
+  logger.info(`HIGH PRIORITY: Shipping request for ${req.path}`);
+
+  if (req.path.endsWith(".pdf")) {
+    // Set proper PDF headers
+    res.setHeader("Content-Type", "application/pdf; charset=utf-8");
+    res.setHeader("Content-Disposition", "inline");
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "SAMEORIGIN");
+
+    // Try to serve the file directly
+    const filePath = path.join(shippingPath, req.path.substring(1)); // Remove leading slash
+    logger.info(`HIGH PRIORITY: Attempting to serve file: ${filePath}`);
+
+    if (fs.existsSync(filePath)) {
+      logger.info(`HIGH PRIORITY: File exists, serving: ${filePath}`);
+      return res.sendFile(filePath);
+    } else {
+      logger.error(`HIGH PRIORITY: File not found: ${filePath}`);
+      return res.status(404).json({
+        error: "PDF not found",
+        path: filePath,
+        exists: false,
+      });
+    }
+  }
+
+  next();
+});
+
+// Also add static serving as fallback
+app.use("/shipping", express.static(shippingPath));
+logger.info(`HIGH PRIORITY shipping route configured for: ${shippingPath}`);
+// === END HIGH PRIORITY SHIPPING ROUTE ===
+
 logger.info("Setting up static file serving", {
   operation: "app_initialization",
   step: "static_files",

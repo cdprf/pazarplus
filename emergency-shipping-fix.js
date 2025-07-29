@@ -31,28 +31,11 @@ if (serverContent.includes('app.use("/shipping"')) {
 
 // Find the best insertion point (after app import)
 const appImportMatch = serverContent.match(
-  /const\s*{\s*app.*?}\s*=\s*require\(['"]\.\/app['"]\);/
+  /const\\s*{\\s*app.*?}\\s*=\\s*require\\(['"]\.\/app['"]\\);/
 );
 
 if (!appImportMatch) {
   console.log("❌ Could not find app import in server.js");
-  console.log("Looking for alternative patterns...");
-  
-  // Try alternative patterns
-  const altPattern1 = serverContent.match(/const\s*{\s*app[^}]*}\s*=\s*require\([^)]*app[^)]*\)/);
-  const altPattern2 = serverContent.match(/require\(['"]\.\/app['"]\)/);
-  
-  if (altPattern1) {
-    console.log("✅ Found alternative app import pattern");
-    console.log("Match:", altPattern1[0]);
-  } else if (altPattern2) {
-    console.log("✅ Found app require pattern");
-    console.log("Match:", altPattern2[0]);
-  } else {
-    console.log("Available content preview:");
-    console.log(serverContent.substring(0, 500));
-  }
-  
   process.exit(1);
 }
 
@@ -63,10 +46,11 @@ const shippingRouteCode = `
 
 // Emergency shipping route fix - serve PDFs statically
 const path = require('path');
-const fs = require('fs');
+const express = require('express');
 
 // Ensure shipping directory exists
 const shippingPath = path.join(__dirname, 'public', 'shipping');
+const fs = require('fs');
 if (!fs.existsSync(shippingPath)) {
   fs.mkdirSync(shippingPath, { recursive: true });
   console.log('Created shipping directory:', shippingPath);
@@ -85,7 +69,7 @@ app.use('/shipping', (req, res, next) => {
   next();
 });
 
-app.use('/shipping', require('express').static(shippingPath));
+app.use('/shipping', express.static(shippingPath));
 console.log('🚀 Emergency shipping route configured:', shippingPath);
 `;
 
