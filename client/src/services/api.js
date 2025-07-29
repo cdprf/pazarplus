@@ -1216,6 +1216,19 @@ const shippingAPI = {
       );
       logger.info("✅ API: PDF generation response:", response.data);
 
+      // LOG THE RAW RESPONSE TO DEBUG URL ISSUES
+      if (response.data?.data?.labelUrl) {
+        logger.info("🔍 API: Raw labelUrl from server:", {
+          labelUrl: response.data.data.labelUrl,
+          labelUrlType: typeof response.data.data.labelUrl,
+          labelUrlLength: response.data.data.labelUrl.length,
+          startsWithHttp: response.data.data.labelUrl.startsWith("http"),
+          startsWithSlash: response.data.data.labelUrl.startsWith("/"),
+          containsComHttps: response.data.data.labelUrl.includes("comhttps"),
+          containsComHttp: response.data.data.labelUrl.includes("comhttp"),
+        });
+      }
+
       // Validate the response contains a valid labelUrl
       if (response.data.success && response.data.data?.labelUrl) {
         const labelUrl = response.data.data.labelUrl;
@@ -1272,14 +1285,27 @@ const shippingAPI = {
           // Check for malformed URLs (double protocol issue)
           if (
             labelUrl.includes("comhttps") ||
+            labelUrl.includes("comhttp") ||
             (labelUrl.includes("://") &&
-              labelUrl.lastIndexOf("://") > labelUrl.indexOf("://"))
+              labelUrl.lastIndexOf("://") > labelUrl.indexOf("://")) ||
+            labelUrl.match(/https:\/\/[^/]+https?:\/\//) || // Pattern: https://domain.comhttps://
+            labelUrl.match(/https:\/\/[^/]+https\/\//) // Pattern: https://domain.comhttps//
           ) {
             logger.warn(
               `⚠️ API: Malformed URL detected, attempting to fix: ${labelUrl}`
             );
             // Extract the path part and reconstruct
-            const pathMatch = labelUrl.match(/\/shipping\/.*$/);
+            let pathMatch = labelUrl.match(/\/shipping\/.*$/);
+
+            // If we can't find /shipping/, try other patterns
+            if (!pathMatch) {
+              // Look for shipping_slip pattern
+              pathMatch = labelUrl.match(/(shipping_slip_[^/]*\.pdf)$/);
+              if (pathMatch) {
+                pathMatch[0] = `/shipping/${pathMatch[1]}`;
+              }
+            }
+
             if (pathMatch) {
               const cleanPath = pathMatch[0];
               const currentHost = window.location.hostname;
@@ -1289,6 +1315,10 @@ const shippingAPI = {
                 : `http://${currentHost}:5001${cleanPath}`;
               logger.info(`🔧 API: Corrected URL: ${correctedUrl}`);
               response.data.data.labelUrl = correctedUrl;
+            } else {
+              logger.error(
+                `❌ API: Could not extract shipping path from malformed URL: ${labelUrl}`
+              );
             }
           }
         }

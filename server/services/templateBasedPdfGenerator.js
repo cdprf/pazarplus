@@ -285,11 +285,14 @@ class TemplateBasedPDFGenerator {
           if (isProduction || isSameDomain) {
             publicUrl = `/shipping/${fileName}`;
             console.log("✅ Using relative URL for same-domain deployment");
+            console.log(`✅ Generated relative URL: ${publicUrl}`);
             logger.info("Using relative URL for PDF", { publicUrl });
           } else {
             // Development with separate domains - use absolute URL
             publicUrl = `${process.env.SERVER_BASE_URL}/shipping/${fileName}`;
             console.log("🔗 Using absolute URL for separate-domain deployment");
+            console.log(`🔗 Generated absolute URL: ${publicUrl}`);
+            console.log(`🔗 SERVER_BASE_URL: ${process.env.SERVER_BASE_URL}`);
             logger.info("Using absolute URL for PDF", { publicUrl });
           }
 
