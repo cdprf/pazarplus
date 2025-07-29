@@ -228,7 +228,13 @@ class TemplateBasedPDFGenerator {
       // Wait for the PDF to be fully written
       return new Promise((resolve, reject) => {
         stream.on("finish", () => {
-          const publicUrl = `/shipping/${fileName}`;
+          // Construct absolute URL for VPS deployment
+          const baseUrl =
+            process.env.SERVER_BASE_URL ||
+            `${process.env.NODE_ENV === "production" ? "https" : "http"}://${
+              process.env.HOST || "localhost"
+            }:${process.env.PORT || 5001}`;
+          const publicUrl = `${baseUrl}/shipping/${fileName}`;
 
           resolve({
             success: true,
