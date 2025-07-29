@@ -495,22 +495,29 @@ const login = async (req, res) => {
       });
 
       // Check if there are any users with similar email (for debugging purposes)
-      const similarEmails = await User.findAll({
-        where: {
-          email: {
-            [require("sequelize").Op.iLike]: `%${email.split('@')[1]}%`
-          }
-        },
-        attributes: ['email'],
-        limit: 3
-      });
+      try {
+        const similarEmails = await User.findAll({
+          where: {
+            email: {
+              [require("sequelize").Op.like]: `%${email.split('@')[1]}%`
+            }
+          },
+          attributes: ['email'],
+          limit: 3
+        });
 
-      logger.info("Similar email domains found", {
-        loginAttemptId,
-        attemptedEmail: email,
-        similarEmailsCount: similarEmails.length,
-        similarDomains: similarEmails.map(u => u.email.split('@')[1]),
-      });
+        logger.info("Similar email domains found", {
+          loginAttemptId,
+          attemptedEmail: email,
+          similarEmailsCount: similarEmails.length,
+          similarDomains: similarEmails.map(u => u.email.split('@')[1]),
+        });
+      } catch (similarEmailError) {
+        logger.warn("Could not check for similar emails", {
+          loginAttemptId,
+          error: similarEmailError.message,
+        });
+      }
 
       return res.status(401).json({
         success: false,
