@@ -941,7 +941,7 @@ async function main() {
     }
   } catch (error) {
     console.error(
-      `${colors.red}❌ Script failed: ${error.message}${colors.reset}`
+      `${colors.red}❌ Script has failed: ${error.message}${colors.reset}`
     );
     process.exit(1);
   } finally {
