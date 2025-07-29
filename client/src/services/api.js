@@ -1230,13 +1230,22 @@ const shippingAPI = {
           !window.location.hostname.includes("localhost") &&
           !window.location.hostname.includes("127.0.0.1")
         ) {
-          // Try to construct a network-accessible URL
+          // For production deployment, use HTTPS and same domain (no port)
           const currentHost = window.location.hostname;
-          const serverPort = 5001; // Default server port
-          const fullUrl = `http://${currentHost}:${serverPort}${labelUrl}`;
+          const isProduction = window.location.protocol === "https:";
+
+          let fullUrl;
+          if (isProduction) {
+            // Production: use HTTPS and same domain without port
+            fullUrl = `https://${currentHost}${labelUrl}`;
+          } else {
+            // Development: use HTTP with port
+            const serverPort = 5001;
+            fullUrl = `http://${currentHost}:${serverPort}${labelUrl}`;
+          }
 
           logger.info(
-            `🌐 API: Network access detected, trying full URL: ${fullUrl}`
+            `🌐 API: Network access detected, trying full URL: ${fullUrl} (production: ${isProduction})`
           );
 
           // Test if the full URL is accessible

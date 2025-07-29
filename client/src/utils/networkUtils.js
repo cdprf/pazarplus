@@ -19,7 +19,13 @@ export function getNetworkAccessibleBaseURL() {
 
   // If already accessing via IP address, use that
   if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-    return `${window.location.protocol}//${hostname}:5001`;
+    // For production deployment (HTTPS), don't include port
+    const isProduction = window.location.protocol === "https:";
+    if (isProduction) {
+      return `${window.location.protocol}//${hostname}`;
+    } else {
+      return `${window.location.protocol}//${hostname}:5001`;
+    }
   }
 
   // Check if we have a SERVER_HOST environment variable
