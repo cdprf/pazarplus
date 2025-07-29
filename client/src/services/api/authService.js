@@ -86,47 +86,61 @@ const authService = {
       // Enhanced error handling with specific feedback
       if (error.response) {
         const { status, data } = error.response;
-        
+
         // Map server error codes to user-friendly messages
         switch (status) {
           case 400:
-            if (data.details?.code === 'MISSING_CREDENTIALS') {
+            if (data.details?.code === "MISSING_CREDENTIALS") {
               const missingFields = data.details.missingFields || [];
-              const fieldNames = missingFields.join(' and ');
+              const fieldNames = missingFields.join(" and ");
               throw new Error(`Please enter your ${fieldNames}`);
-            } else if (data.details?.code === 'INVALID_EMAIL_FORMAT') {
-              throw new Error('Please enter a valid email address');
+            } else if (data.details?.code === "INVALID_EMAIL_FORMAT") {
+              throw new Error("Please enter a valid email address");
             }
-            throw new Error(data.message || 'Please check your input and try again');
-            
+            throw new Error(
+              data.message || "Please check your input and try again"
+            );
+
           case 401:
-            if (data.details?.code === 'INVALID_CREDENTIALS') {
-              if (data.details?.hint?.includes('email')) {
-                throw new Error('Email address not found. Please check your email or create a new account.');
-              } else if (data.details?.hint?.includes('password')) {
-                throw new Error('Incorrect password. Please try again or reset your password.');
+            if (data.details?.code === "INVALID_CREDENTIALS") {
+              if (data.details?.hint?.includes("email")) {
+                throw new Error(
+                  "Email address not found. Please check your email or create a new account."
+                );
+              } else if (data.details?.hint?.includes("password")) {
+                throw new Error(
+                  "Incorrect password. Please try again or reset your password."
+                );
               }
-              throw new Error('Invalid email or password. Please check your credentials and try again.');
-            } else if (data.details?.code === 'ACCOUNT_DEACTIVATED') {
-              throw new Error('Your account has been deactivated. Please contact support for assistance.');
+              throw new Error(
+                "Invalid email or password. Please check your credentials and try again."
+              );
+            } else if (data.details?.code === "ACCOUNT_DEACTIVATED") {
+              throw new Error(
+                "Your account has been deactivated. Please contact support for assistance."
+              );
             }
-            throw new Error(data.message || 'Invalid credentials');
-            
+            throw new Error(data.message || "Invalid credentials");
+
           case 429:
-            throw new Error('Too many login attempts. Please wait a few minutes before trying again.');
-            
+            throw new Error(
+              "Too many login attempts. Please wait a few minutes before trying again."
+            );
+
           case 500:
-            throw new Error('Server error. Please try again in a few moments.');
-            
+            throw new Error("Server error. Please try again in a few moments.");
+
           default:
-            throw new Error(data.message || 'Login failed. Please try again.');
+            throw new Error(data.message || "Login failed. Please try again.");
         }
       } else if (error.request) {
         // Network error
-        throw new Error('Unable to connect to the server. Please check your internet connection and try again.');
+        throw new Error(
+          "Unable to connect to the server. Please check your internet connection and try again."
+        );
       } else {
         // Other error
-        throw new Error('An unexpected error occurred. Please try again.');
+        throw new Error("An unexpected error occurred. Please try again.");
       }
     }
   },

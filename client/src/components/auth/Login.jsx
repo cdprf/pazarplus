@@ -92,20 +92,20 @@ const Login = () => {
                     <div>
                       <strong>Login Failed</strong>
                       <div className="mt-1">{error}</div>
-                      {error.includes('password') && (
+                      {error.includes("password") && (
                         <div className="mt-2">
-                          <Link 
-                            to="/forgot-password" 
+                          <Link
+                            to="/forgot-password"
                             className="btn btn-sm btn-outline-primary"
                           >
                             Reset Password
                           </Link>
                         </div>
                       )}
-                      {error.includes('Email address not found') && (
+                      {error.includes("Email address not found") && (
                         <div className="mt-2">
-                          <Link 
-                            to="/register" 
+                          <Link
+                            to="/register"
                             className="btn btn-sm btn-outline-success"
                           >
                             Create Account

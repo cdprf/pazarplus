@@ -51,58 +51,65 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       // Enhanced error handling with specific feedback
       let errorMessage = "Login failed";
-      
+
       if (err.response) {
         const { status, data } = err.response;
-        
+
         switch (status) {
           case 400:
-            if (data.details?.code === 'MISSING_CREDENTIALS') {
+            if (data.details?.code === "MISSING_CREDENTIALS") {
               const missingFields = data.details.missingFields || [];
-              const fieldNames = missingFields.join(' and ');
+              const fieldNames = missingFields.join(" and ");
               errorMessage = `Please enter your ${fieldNames}`;
-            } else if (data.details?.code === 'INVALID_EMAIL_FORMAT') {
-              errorMessage = 'Please enter a valid email address';
+            } else if (data.details?.code === "INVALID_EMAIL_FORMAT") {
+              errorMessage = "Please enter a valid email address";
             } else {
-              errorMessage = data.message || 'Please check your input and try again';
+              errorMessage =
+                data.message || "Please check your input and try again";
             }
             break;
-            
+
           case 401:
-            if (data.details?.code === 'INVALID_CREDENTIALS') {
-              if (data.details?.hint?.includes('email')) {
-                errorMessage = 'Email address not found. Please check your email or create a new account.';
-              } else if (data.details?.hint?.includes('password')) {
-                errorMessage = 'Incorrect password. Please try again or reset your password.';
+            if (data.details?.code === "INVALID_CREDENTIALS") {
+              if (data.details?.hint?.includes("email")) {
+                errorMessage =
+                  "Email address not found. Please check your email or create a new account.";
+              } else if (data.details?.hint?.includes("password")) {
+                errorMessage =
+                  "Incorrect password. Please try again or reset your password.";
               } else {
-                errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+                errorMessage =
+                  "Invalid email or password. Please check your credentials and try again.";
               }
-            } else if (data.details?.code === 'ACCOUNT_DEACTIVATED') {
-              errorMessage = 'Your account has been deactivated. Please contact support for assistance.';
+            } else if (data.details?.code === "ACCOUNT_DEACTIVATED") {
+              errorMessage =
+                "Your account has been deactivated. Please contact support for assistance.";
             } else {
-              errorMessage = data.message || 'Invalid credentials';
+              errorMessage = data.message || "Invalid credentials";
             }
             break;
-            
+
           case 429:
-            errorMessage = 'Too many login attempts. Please wait a few minutes before trying again.';
+            errorMessage =
+              "Too many login attempts. Please wait a few minutes before trying again.";
             break;
-            
+
           case 500:
-            errorMessage = 'Server error. Please try again in a few moments.';
+            errorMessage = "Server error. Please try again in a few moments.";
             break;
-            
+
           default:
-            errorMessage = data.message || 'Login failed. Please try again.';
+            errorMessage = data.message || "Login failed. Please try again.";
         }
       } else if (err.request) {
-        errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+        errorMessage =
+          "Unable to connect to the server. Please check your internet connection and try again.";
       } else {
-        errorMessage = 'An unexpected error occurred. Please try again.';
+        errorMessage = "An unexpected error occurred. Please try again.";
       }
-      
+
       setError(errorMessage);
-      
+
       // Create a new error with the enhanced message
       const enhancedError = new Error(errorMessage);
       enhancedError.originalError = err;

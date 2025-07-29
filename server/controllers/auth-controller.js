@@ -402,7 +402,7 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   const loginStartTime = Date.now();
   const loginAttemptId = crypto.randomBytes(4).toString("hex");
-  
+
   try {
     const { email, password } = req.body;
 
@@ -422,9 +422,9 @@ const login = async (req, res) => {
     // Validate email and password with detailed feedback
     if (!email || !password) {
       const missingFields = [];
-      if (!email) missingFields.push('email');
-      if (!password) missingFields.push('password');
-      
+      if (!email) missingFields.push("email");
+      if (!password) missingFields.push("password");
+
       logger.warn("Login failed - missing credentials", {
         operation: "user_login_failed",
         reason: "missing_credentials",
@@ -435,14 +435,14 @@ const login = async (req, res) => {
         userAgent: req.get("User-Agent"),
         duration: Date.now() - loginStartTime,
       });
-      
+
       return res.status(400).json({
         success: false,
         message: "Email and password are required",
         details: {
           missingFields,
-          code: "MISSING_CREDENTIALS"
-        }
+          code: "MISSING_CREDENTIALS",
+        },
       });
     }
 
@@ -458,13 +458,13 @@ const login = async (req, res) => {
         userAgent: req.get("User-Agent"),
         duration: Date.now() - loginStartTime,
       });
-      
+
       return res.status(400).json({
         success: false,
         message: "Please provide a valid email address",
         details: {
-          code: "INVALID_EMAIL_FORMAT"
-        }
+          code: "INVALID_EMAIL_FORMAT",
+        },
       });
     }
 
@@ -490,7 +490,7 @@ const login = async (req, res) => {
         userAgent: req.get("User-Agent"),
         duration: Date.now() - loginStartTime,
         // Security note: email domain for pattern analysis
-        emailDomain: email.split('@')[1],
+        emailDomain: email.split("@")[1],
         timestamp: new Date().toISOString(),
       });
 
@@ -499,18 +499,18 @@ const login = async (req, res) => {
         const similarEmails = await User.findAll({
           where: {
             email: {
-              [require("sequelize").Op.like]: `%${email.split('@')[1]}%`
-            }
+              [require("sequelize").Op.like]: `%${email.split("@")[1]}%`,
+            },
           },
-          attributes: ['email'],
-          limit: 3
+          attributes: ["email"],
+          limit: 3,
         });
 
         logger.info("Similar email domains found", {
           loginAttemptId,
           attemptedEmail: email,
           similarEmailsCount: similarEmails.length,
-          similarDomains: similarEmails.map(u => u.email.split('@')[1]),
+          similarDomains: similarEmails.map((u) => u.email.split("@")[1]),
         });
       } catch (similarEmailError) {
         logger.warn("Could not check for similar emails", {
@@ -524,8 +524,8 @@ const login = async (req, res) => {
         message: "Invalid email or password",
         details: {
           code: "INVALID_CREDENTIALS",
-          hint: "Please check your email address and password"
-        }
+          hint: "Please check your email address and password",
+        },
       });
     }
 
@@ -578,8 +578,8 @@ const login = async (req, res) => {
         message: "Invalid email or password",
         details: {
           code: "INVALID_CREDENTIALS",
-          hint: "Please check your password"
-        }
+          hint: "Please check your password",
+        },
       });
     }
 
@@ -602,14 +602,14 @@ const login = async (req, res) => {
         duration: Date.now() - loginStartTime,
         deactivatedAt: user.updatedAt,
       });
-      
+
       return res.status(401).json({
         success: false,
         message: "Account is deactivated. Please contact support.",
         details: {
           code: "ACCOUNT_DEACTIVATED",
-          supportEmail: "support@pazarplus.com"
-        }
+          supportEmail: "support@pazarplus.com",
+        },
       });
     }
 
@@ -682,7 +682,7 @@ const login = async (req, res) => {
         passwordCheckDuration,
         tokenDuration,
         updateDuration,
-      }
+      },
     });
 
     res.json({
@@ -699,7 +699,7 @@ const login = async (req, res) => {
     });
   } catch (error) {
     const totalDuration = Date.now() - loginStartTime;
-    
+
     // Enhanced error logging with comprehensive context
     logger.error("Login error occurred", {
       operation: "user_login_error",
@@ -728,8 +728,8 @@ const login = async (req, res) => {
       message: "Server error during login",
       details: {
         code: "SERVER_ERROR",
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   }
 };
