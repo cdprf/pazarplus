@@ -952,7 +952,7 @@ async function main() {
 // Handle graceful shutdown
 process.on("SIGINT", () => {
   console.log(
-    `\n${colors.yellow}🛑 Script interrupted by user. Exiting safely...${colors.reset}`
+    `\n${colors.yellow}🛑 Script was interrupted by user. Exiting safely...${colors.reset}`
   );
   rl.close();
   process.exit(0);
