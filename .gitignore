@@ -64,6 +64,9 @@ test*
 *fixed*
 fix*
 debug-*
+!*route*
+!cleanup*
+
 
 # Coverage directory
 coverage/

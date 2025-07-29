@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-
+"use strict";
 /**
  * 🧹 Advanced Log Cleanup Script
  *

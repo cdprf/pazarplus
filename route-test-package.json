@@ -1,0 +1,9 @@
+{
+  "name": "route-loading-test",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Test route loading for Pazar+",
+  "dependencies": {
+    "chalk": "^5.4.1"
+  }
+}
