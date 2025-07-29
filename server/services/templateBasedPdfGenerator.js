@@ -228,18 +228,30 @@ class TemplateBasedPDFGenerator {
       // Wait for the PDF to be fully written
       return new Promise((resolve, reject) => {
         stream.on("finish", () => {
+          // For VPS deployment on yarukai.com - always use relative URL for same-domain
+          // Log environment variables for debugging
+          logger.info("PDF URL generation debug", {
+            NODE_ENV: process.env.NODE_ENV,
+            CLIENT_URL: process.env.CLIENT_URL,
+            SERVER_BASE_URL: process.env.SERVER_BASE_URL,
+            fileName: fileName,
+          });
+
           // For same-domain deployment (client + API on same domain), use relative URL
           // For separate domain deployment, use absolute URL
           const useAbsoluteUrl =
             process.env.SERVER_BASE_URL &&
-            process.env.SERVER_BASE_URL !== process.env.CLIENT_URL;
+            process.env.SERVER_BASE_URL !== process.env.CLIENT_URL &&
+            process.env.NODE_ENV !== "production"; // Force relative URLs in production
 
           let publicUrl;
           if (useAbsoluteUrl) {
             publicUrl = `${process.env.SERVER_BASE_URL}/shipping/${fileName}`;
+            logger.info("Using absolute URL for PDF", { publicUrl });
           } else {
             // Same domain deployment - use relative URL
             publicUrl = `/shipping/${fileName}`;
+            logger.info("Using relative URL for PDF", { publicUrl });
           }
 
           resolve({
