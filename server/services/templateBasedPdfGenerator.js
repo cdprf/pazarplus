@@ -84,12 +84,33 @@ const ELEMENT_TYPES = {
 
 class TemplateBasedPDFGenerator {
   constructor() {
-    this.outputDir = path.join(__dirname, "../public/shipping");
+    // For VPS deployment, ensure we use the correct path regardless of working directory
+    const possibleOutputDirs = [
+      path.join(__dirname, "../public/shipping"), // Standard relative path
+      path.join(process.cwd(), "server/public/shipping"), // VPS working directory
+      path.join(__dirname, "../../public/shipping"), // Alternative structure
+    ];
+
+    let outputDir = null;
+
+    // Find the first existing parent directory or create the standard one
+    for (const dir of possibleOutputDirs) {
+      const parentDir = path.dirname(dir);
+      if (fs.existsSync(parentDir)) {
+        outputDir = dir;
+        break;
+      }
+    }
+
+    // Fallback to standard path if none found
+    this.outputDir = outputDir || possibleOutputDirs[0];
 
     // Create output directory if it doesn't exist
     if (!fs.existsSync(this.outputDir)) {
       fs.mkdirSync(this.outputDir, { recursive: true });
     }
+
+    console.log(`📁 PDF output directory: ${this.outputDir}`);
 
     // Initialize FontManager for better font handling
     this.fontManager = new FontManager();
@@ -228,13 +249,20 @@ class TemplateBasedPDFGenerator {
       // Wait for the PDF to be fully written
       return new Promise((resolve, reject) => {
         stream.on("finish", () => {
-          // For VPS deployment on yarukai.com - always use relative URL for same-domain
-          // Log environment variables for debugging
-          logger.info("PDF URL generation debug", {
+          // Enhanced debugging for VPS deployment
+          const fileExists = fs.existsSync(filePath);
+          const fileStats = fileExists ? fs.statSync(filePath) : null;
+
+          logger.info("PDF file creation complete", {
+            fileName: fileName,
+            filePath: filePath,
+            fileExists: fileExists,
+            fileSize: fileStats ? fileStats.size : 0,
+            outputDir: this.outputDir,
+            workingDirectory: process.cwd(),
             NODE_ENV: process.env.NODE_ENV,
             CLIENT_URL: process.env.CLIENT_URL,
             SERVER_BASE_URL: process.env.SERVER_BASE_URL,
-            fileName: fileName,
           });
 
           // For same-domain deployment (client + API on same domain), use relative URL
