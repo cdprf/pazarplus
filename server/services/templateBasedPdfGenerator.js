@@ -228,13 +228,19 @@ class TemplateBasedPDFGenerator {
       // Wait for the PDF to be fully written
       return new Promise((resolve, reject) => {
         stream.on("finish", () => {
-          // Construct absolute URL for VPS deployment
-          const baseUrl =
-            process.env.SERVER_BASE_URL ||
-            `${process.env.NODE_ENV === "production" ? "https" : "http"}://${
-              process.env.HOST || "localhost"
-            }:${process.env.PORT || 5001}`;
-          const publicUrl = `${baseUrl}/shipping/${fileName}`;
+          // For same-domain deployment (client + API on same domain), use relative URL
+          // For separate domain deployment, use absolute URL
+          const useAbsoluteUrl =
+            process.env.SERVER_BASE_URL &&
+            process.env.SERVER_BASE_URL !== process.env.CLIENT_URL;
+
+          let publicUrl;
+          if (useAbsoluteUrl) {
+            publicUrl = `${process.env.SERVER_BASE_URL}/shipping/${fileName}`;
+          } else {
+            // Same domain deployment - use relative URL
+            publicUrl = `/shipping/${fileName}`;
+          }
 
           resolve({
             success: true,
