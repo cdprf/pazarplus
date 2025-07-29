@@ -62,7 +62,7 @@ test*
 *.ipynb
 *test*
 *fixed*
-*fix*
+fix*
 debug-*
 
 # Coverage directory
