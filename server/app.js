@@ -412,44 +412,123 @@ try {
 
 // === HIGH PRIORITY SHIPPING ROUTE ===
 // This MUST come before any static file serving to work correctly
+console.log("🔧 SETTING UP HIGH PRIORITY SHIPPING ROUTE");
 logger.info("Setting up HIGH PRIORITY shipping route");
 
 const shippingPath = path.join(__dirname, "public", "shipping");
+console.log(`📂 Shipping path configured: ${shippingPath}`);
 
 // Ensure shipping directory exists
 if (!fs.existsSync(shippingPath)) {
   fs.mkdirSync(shippingPath, { recursive: true });
+  console.log("📁 Created shipping directory:", shippingPath);
   logger.info("Created shipping directory:", shippingPath);
+} else {
+  console.log("✅ Shipping directory already exists");
+  try {
+    const files = fs.readdirSync(shippingPath);
+    console.log(`📊 Shipping directory contains ${files.length} files`);
+    if (files.length > 0) {
+      console.log("📄 Files in shipping directory:");
+      files.forEach((file, index) => {
+        console.log(`  ${index + 1}. ${file}`);
+      });
+    }
+  } catch (err) {
+    console.log(`⚠️  Could not read shipping directory: ${err.message}`);
+  }
 }
 
 // HIGH PRIORITY shipping route - this will override React app routing
 app.use("/shipping", (req, res, next) => {
+  // === COMPREHENSIVE CONSOLE LOGGING ===
+  console.log("=".repeat(80));
+  console.log("🚀 SHIPPING REQUEST STARTED");
+  console.log("=".repeat(80));
+  console.log(`📥 Request URL: ${req.originalUrl}`);
+  console.log(`📁 Request path: ${req.path}`);
+  console.log(`🌐 Method: ${req.method}`);
+  console.log(
+    `🔗 Full URL: ${req.protocol}://${req.get("host")}${req.originalUrl}`
+  );
+  console.log(`📍 IP Address: ${req.ip}`);
+  console.log(`🕒 Timestamp: ${new Date().toISOString()}`);
+  console.log(`👤 User Agent: ${req.get("User-Agent")}`);
+  console.log("=".repeat(80));
+
   logger.info(`HIGH PRIORITY: Shipping request for ${req.path}`);
 
   if (req.path.endsWith(".pdf")) {
+    console.log("📄 PDF REQUEST DETECTED");
+    console.log(`📄 PDF filename: ${req.path}`);
+
     // Set proper PDF headers
+    console.log("🔧 Setting PDF headers...");
     res.setHeader("Content-Type", "application/pdf; charset=utf-8");
     res.setHeader("Content-Disposition", "inline");
     res.setHeader("Accept-Ranges", "bytes");
     res.setHeader("Cache-Control", "public, max-age=3600");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "SAMEORIGIN");
+    console.log("✅ PDF headers set successfully");
 
     // Try to serve the file directly
     const filePath = path.join(shippingPath, req.path.substring(1)); // Remove leading slash
+    console.log(`🔍 Looking for file at: ${filePath}`);
+    console.log(`📂 Shipping directory: ${shippingPath}`);
+
     logger.info(`HIGH PRIORITY: Attempting to serve file: ${filePath}`);
 
     if (fs.existsSync(filePath)) {
+      console.log("✅ FILE FOUND!");
+      const stats = fs.statSync(filePath);
+      console.log(`📊 File size: ${stats.size} bytes`);
+      console.log(`📅 File modified: ${stats.mtime}`);
+      console.log("🚀 SERVING PDF FILE...");
+
       logger.info(`HIGH PRIORITY: File exists, serving: ${filePath}`);
-      return res.sendFile(filePath);
+
+      // Add success callback to sendFile
+      return res.sendFile(filePath, (err) => {
+        if (err) {
+          console.log("❌ ERROR SERVING PDF:");
+          console.error(err);
+        } else {
+          console.log("✅ PDF SERVED SUCCESSFULLY!");
+          console.log("🎉 REQUEST COMPLETED");
+          console.log("=".repeat(80));
+        }
+      });
     } else {
+      console.log("❌ FILE NOT FOUND!");
+      console.log("🔍 Checking directory contents...");
+
+      try {
+        const dirContents = fs.readdirSync(shippingPath);
+        console.log(`📁 Directory contains ${dirContents.length} files:`);
+        dirContents.forEach((file, index) => {
+          console.log(`  ${index + 1}. ${file}`);
+        });
+      } catch (dirErr) {
+        console.log(`❌ Cannot read directory: ${dirErr.message}`);
+      }
+
       logger.error(`HIGH PRIORITY: File not found: ${filePath}`);
+      console.log("❌ RETURNING 404 ERROR");
+      console.log("=".repeat(80));
+
       return res.status(404).json({
         error: "PDF not found",
         path: filePath,
         exists: false,
+        directoryContents: fs.existsSync(shippingPath)
+          ? fs.readdirSync(shippingPath)
+          : [],
       });
     }
+  } else {
+    console.log("ℹ️  Non-PDF request, passing to next middleware");
+    console.log("=".repeat(80));
   }
 
   next();
@@ -457,6 +536,10 @@ app.use("/shipping", (req, res, next) => {
 
 // Also add static serving as fallback
 app.use("/shipping", express.static(shippingPath));
+console.log("🎯 HIGH PRIORITY shipping route configured successfully!");
+console.log(`✅ Route active for: ${shippingPath}`);
+console.log("🔥 Ready to serve PDF requests!");
+console.log("=".repeat(60));
 logger.info(`HIGH PRIORITY shipping route configured for: ${shippingPath}`);
 // === END HIGH PRIORITY SHIPPING ROUTE ===
 
