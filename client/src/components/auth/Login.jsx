@@ -85,7 +85,37 @@ const Login = () => {
                 </Alert>
               )}
 
-              {error && <Alert variant="danger">{error}</Alert>}
+              {error && (
+                <Alert variant="danger" className="mb-3">
+                  <div className="d-flex align-items-start">
+                    <i className="bi bi-exclamation-triangle-fill me-2 mt-1 text-danger"></i>
+                    <div>
+                      <strong>Login Failed</strong>
+                      <div className="mt-1">{error}</div>
+                      {error.includes('password') && (
+                        <div className="mt-2">
+                          <Link 
+                            to="/forgot-password" 
+                            className="btn btn-sm btn-outline-primary"
+                          >
+                            Reset Password
+                          </Link>
+                        </div>
+                      )}
+                      {error.includes('Email address not found') && (
+                        <div className="mt-2">
+                          <Link 
+                            to="/register" 
+                            className="btn btn-sm btn-outline-success"
+                          >
+                            Create Account
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Alert>
+              )}
 
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
@@ -103,6 +133,7 @@ const Login = () => {
                       {},
                       "E-posta adresinizi girin"
                     )}
+                    autoComplete="email"
                     required
                   />
                 </Form.Group>
@@ -118,6 +149,7 @@ const Login = () => {
                     value={formData.password}
                     onChange={handleChange}
                     placeholder={t("auth.enterPassword", {}, "Şifrenizi girin")}
+                    autoComplete="current-password"
                     required
                   />
                 </Form.Group>

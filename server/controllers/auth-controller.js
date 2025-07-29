@@ -398,109 +398,284 @@ const register = async (req, res) => {
   }
 };
 
-// Login user with enhanced multi-tenant support
+// Login user with enhanced multi-tenant support and detailed error logging
 const login = async (req, res) => {
+  const loginStartTime = Date.now();
+  const loginAttemptId = crypto.randomBytes(4).toString("hex");
+  
   try {
     const { email, password } = req.body;
 
+    // Enhanced login attempt logging with unique attempt ID
     logger.logOperation("User login attempt", {
       operation: "user_login",
+      loginAttemptId,
       email,
+      emailProvided: !!email,
+      passwordProvided: !!password,
+      passwordLength: password ? password.length : 0,
       ip: req.ip,
       userAgent: req.get("User-Agent"),
+      timestamp: new Date().toISOString(),
     });
 
-    // Validate email and password
+    // Validate email and password with detailed feedback
     if (!email || !password) {
+      const missingFields = [];
+      if (!email) missingFields.push('email');
+      if (!password) missingFields.push('password');
+      
       logger.warn("Login failed - missing credentials", {
         operation: "user_login_failed",
         reason: "missing_credentials",
+        loginAttemptId,
+        missingFields,
         email: email || "not_provided",
         ip: req.ip,
+        userAgent: req.get("User-Agent"),
+        duration: Date.now() - loginStartTime,
       });
+      
       return res.status(400).json({
         success: false,
         message: "Email and password are required",
+        details: {
+          missingFields,
+          code: "MISSING_CREDENTIALS"
+        }
+      });
+    }
+
+    // Enhanced email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      logger.warn("Login failed - invalid email format", {
+        operation: "user_login_failed",
+        reason: "invalid_email_format",
+        loginAttemptId,
+        email,
+        ip: req.ip,
+        userAgent: req.get("User-Agent"),
+        duration: Date.now() - loginStartTime,
+      });
+      
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid email address",
+        details: {
+          code: "INVALID_EMAIL_FORMAT"
+        }
       });
     }
 
     // Find user with password (using scope to include password field)
+    logger.info("Searching for user in database", {
+      loginAttemptId,
+      email,
+      searchStartTime: new Date().toISOString(),
+    });
+
     const user = await User.scope("withPassword").findOne({
       where: { email },
     });
 
+    // Enhanced user not found logging with security considerations
     if (!user) {
       logger.warn("Login failed - user not found", {
         operation: "user_login_failed",
         reason: "user_not_found",
+        loginAttemptId,
         email,
         ip: req.ip,
+        userAgent: req.get("User-Agent"),
+        duration: Date.now() - loginStartTime,
+        // Security note: email domain for pattern analysis
+        emailDomain: email.split('@')[1],
+        timestamp: new Date().toISOString(),
       });
+
+      // Check if there are any users with similar email (for debugging purposes)
+      const similarEmails = await User.findAll({
+        where: {
+          email: {
+            [require("sequelize").Op.iLike]: `%${email.split('@')[1]}%`
+          }
+        },
+        attributes: ['email'],
+        limit: 3
+      });
+
+      logger.info("Similar email domains found", {
+        loginAttemptId,
+        attemptedEmail: email,
+        similarEmailsCount: similarEmails.length,
+        similarDomains: similarEmails.map(u => u.email.split('@')[1]),
+      });
+
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
+        details: {
+          code: "INVALID_CREDENTIALS",
+          hint: "Please check your email address and password"
+        }
       });
     }
 
-    // Check if password matches
+    logger.info("User found, verifying password", {
+      loginAttemptId,
+      userId: user.id,
+      email: user.email,
+      userCreatedAt: user.createdAt,
+      lastLogin: user.lastLogin,
+      isActive: user.isActive,
+      emailVerified: user.emailVerified,
+    });
+
+    // Check if password matches with enhanced logging
+    const passwordCheckStart = Date.now();
     const isMatch = await bcrypt.compare(password, user.password);
+    const passwordCheckDuration = Date.now() - passwordCheckStart;
+
     if (!isMatch) {
       logger.warn("Login failed - invalid password", {
         operation: "user_login_failed",
         reason: "invalid_password",
+        loginAttemptId,
         email,
         userId: user.id,
         ip: req.ip,
+        userAgent: req.get("User-Agent"),
+        passwordCheckDuration,
+        duration: Date.now() - loginStartTime,
+        lastSuccessfulLogin: user.lastLogin,
+        accountCreated: user.createdAt,
+        timestamp: new Date().toISOString(),
       });
+
+      // Additional security logging for repeated failed attempts
+      logger.error("Password mismatch detected", {
+        operation: "security_event",
+        event: "password_mismatch",
+        loginAttemptId,
+        userId: user.id,
+        email: user.email,
+        ip: req.ip,
+        userAgent: req.get("User-Agent"),
+        providedPasswordLength: password.length,
+        storedPasswordHashLength: user.password.length,
+      });
+
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
+        details: {
+          code: "INVALID_CREDENTIALS",
+          hint: "Please check your password"
+        }
       });
     }
+
+    logger.info("Password verification successful", {
+      loginAttemptId,
+      userId: user.id,
+      passwordCheckDuration,
+    });
 
     // Check if user is active
     if (!user.isActive) {
       logger.warn("Login failed - account deactivated", {
         operation: "user_login_failed",
         reason: "account_deactivated",
+        loginAttemptId,
         email,
         userId: user.id,
         ip: req.ip,
+        userAgent: req.get("User-Agent"),
+        duration: Date.now() - loginStartTime,
+        deactivatedAt: user.updatedAt,
       });
+      
       return res.status(401).json({
         success: false,
         message: "Account is deactivated. Please contact support.",
+        details: {
+          code: "ACCOUNT_DEACTIVATED",
+          supportEmail: "support@pazarplus.com"
+        }
+      });
+    }
+
+    // Check email verification status
+    if (!user.emailVerified) {
+      logger.warn("Login attempt with unverified email", {
+        operation: "user_login_warning",
+        reason: "email_not_verified",
+        loginAttemptId,
+        userId: user.id,
+        email: user.email,
+        ip: req.ip,
       });
     }
 
     // Update last login time and activity
+    const updateStart = Date.now();
     await user.update({
       lastLogin: new Date(),
       lastActivityAt: new Date(),
     });
+    const updateDuration = Date.now() - updateStart;
+
+    logger.info("User record updated with login time", {
+      loginAttemptId,
+      userId: user.id,
+      updateDuration,
+    });
 
     // Generate tenant-aware token
+    const tokenStart = Date.now();
     const token = generateToken(user);
+    const tokenDuration = Date.now() - tokenStart;
+
+    logger.info("Authentication token generated", {
+      loginAttemptId,
+      userId: user.id,
+      tokenDuration,
+      tokenLength: token.length,
+    });
+
+    const totalLoginDuration = Date.now() - loginStartTime;
 
     logger.info("User login successful", {
       operation: "user_login_success",
+      loginAttemptId,
       email,
       userId: user.id,
       ip: req.ip,
       userAgent: req.get("User-Agent"),
+      totalDuration: totalLoginDuration,
+      timestamp: new Date().toISOString(),
     });
 
     // Remove password from response
     const userResponse = { ...user.toJSON() };
     delete userResponse.password;
 
-    // Log successful login
+    // Log successful login with comprehensive details
     logger.info("User logged in successfully", {
       userId: user.id,
       email: user.email,
       subscriptionPlan: user.subscriptionPlan,
       tenantId: user.tenantId,
       lastLogin: user.lastLogin,
+      loginAttemptId,
+      sessionStartTime: new Date().toISOString(),
+      performanceMetrics: {
+        totalDuration: totalLoginDuration,
+        passwordCheckDuration,
+        tokenDuration,
+        updateDuration,
+      }
     });
 
     res.json({
@@ -516,10 +691,38 @@ const login = async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error(`Login error: ${error.message}`, { error });
+    const totalDuration = Date.now() - loginStartTime;
+    
+    // Enhanced error logging with comprehensive context
+    logger.error("Login error occurred", {
+      operation: "user_login_error",
+      loginAttemptId,
+      error: {
+        message: error.message,
+        name: error.name,
+        code: error.code,
+        stack: error.stack,
+      },
+      requestContext: {
+        email: req.body.email,
+        ip: req.ip,
+        userAgent: req.get("User-Agent"),
+        method: req.method,
+        url: req.originalUrl,
+      },
+      timing: {
+        totalDuration,
+        timestamp: new Date().toISOString(),
+      },
+    });
+
     res.status(500).json({
       success: false,
       message: "Server error during login",
+      details: {
+        code: "SERVER_ERROR",
+        timestamp: new Date().toISOString()
+      }
     });
   }
 };

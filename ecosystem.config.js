@@ -7,12 +7,12 @@ module.exports = {
       exec_mode: "fork",
       env: {
         NODE_ENV: "production",
-        PORT: 3000,
+        PORT: 5001,
         HOST: "0.0.0.0",
       },
       env_production: {
         NODE_ENV: "production",
-        PORT: 3000,
+        PORT: 5001,
         HOST: "0.0.0.0",
       },
       // Restart options
