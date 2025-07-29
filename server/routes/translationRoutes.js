@@ -4,8 +4,8 @@ const router = express.Router();
 const fs = require("fs").promises;
 const path = require("path");
 
-// TODO: Add super admin authentication middleware
-// const { requireSuperAdmin } = require('../middleware/auth');
+// Apply admin authentication middleware for translation management
+const { adminAuth } = require("../middleware/auth");
 
 // Translation file paths
 const TRANSLATION_DIR = path.join(__dirname, "../../client/src/i18n/locales");
@@ -47,9 +47,9 @@ router.get("/:language", async (req, res) => {
 
 /**
  * Update translations for a specific language
- * TODO: Restrict to super admin only
+ * Restricted to admin only
  */
-router.put("/:language", async (req, res) => {
+router.put("/:language", adminAuth, async (req, res) => {
   try {
     const { language } = req.params;
     const { translations } = req.body;
@@ -146,9 +146,9 @@ router.get("/", async (req, res) => {
 
 /**
  * Add a new translation key-value pair
- * TODO: Restrict to super admin only
+ * Restricted to admin only
  */
-router.post("/:language/keys", async (req, res) => {
+router.post("/:language/keys", adminAuth, async (req, res) => {
   try {
     const { language } = req.params;
     const { key, value } = req.body;
@@ -197,9 +197,9 @@ router.post("/:language/keys", async (req, res) => {
 
 /**
  * Delete a translation key
- * TODO: Restrict to super admin only
+ * Restricted to admin only
  */
-router.delete("/:language/keys/:key", async (req, res) => {
+router.delete("/:language/keys/:key", adminAuth, async (req, res) => {
   try {
     const { language, key } = req.params;
 

@@ -1254,12 +1254,42 @@ const shippingAPI = {
             if (testResponse.ok) {
               logger.info(`✅ API: Full URL is accessible, updating response`);
               response.data.data.labelUrl = fullUrl;
+            } else {
+              logger.warn(
+                `⚠️ API: Full URL test failed with status ${testResponse.status}, keeping original URL`
+              );
             }
           } catch (testError) {
             logger.warn(
               `⚠️ API: Full URL test failed, keeping original URL:`,
               testError.message
             );
+          }
+        } else if (labelUrl.startsWith("http")) {
+          // URL is already absolute, validate it's correctly formatted
+          logger.info(`🔗 API: URL is already absolute: ${labelUrl}`);
+
+          // Check for malformed URLs (double protocol issue)
+          if (
+            labelUrl.includes("comhttps") ||
+            (labelUrl.includes("://") &&
+              labelUrl.lastIndexOf("://") > labelUrl.indexOf("://"))
+          ) {
+            logger.warn(
+              `⚠️ API: Malformed URL detected, attempting to fix: ${labelUrl}`
+            );
+            // Extract the path part and reconstruct
+            const pathMatch = labelUrl.match(/\/shipping\/.*$/);
+            if (pathMatch) {
+              const cleanPath = pathMatch[0];
+              const currentHost = window.location.hostname;
+              const isProduction = window.location.protocol === "https:";
+              const correctedUrl = isProduction
+                ? `https://${currentHost}${cleanPath}`
+                : `http://${currentHost}:5001${cleanPath}`;
+              logger.info(`🔧 API: Corrected URL: ${correctedUrl}`);
+              response.data.data.labelUrl = correctedUrl;
+            }
           }
         }
       }
