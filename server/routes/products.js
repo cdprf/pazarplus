@@ -30,6 +30,44 @@ router.get("/", auth, productController.getProducts);
  */
 router.get("/stats", auth, productController.getProductStats);
 
+/**
+ * @swagger
+ * /api/products/import/options:
+ *   get:
+ *     summary: Get import options and configuration
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Import options retrieved successfully
+ */
+router.get("/import/options", auth, productController.getImportOptions);
+
+/**
+ * @swagger
+ * /api/products/import:
+ *   post:
+ *     summary: Import products from file
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               options:
+ *                 type: string
+ *                 description: JSON string with import options
+ *     responses:
+ *       200:
+ *         description: Products imported successfully
+ */
+router.post("/import", auth, productController.importProducts);
+
 // Background Variant Detection Routes
 /**
  * @swagger

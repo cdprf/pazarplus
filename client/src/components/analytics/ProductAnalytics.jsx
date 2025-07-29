@@ -6,6 +6,7 @@ import {
   ChartContainer,
 } from "./OptimizedCharts";
 import analyticsService from "../../services/analyticsService";
+import { useTranslation } from "../../i18n/hooks/useTranslation";
 import {
   formatCurrency,
   safeInteger,
@@ -23,6 +24,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
+  const { t } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -377,7 +379,12 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-3 text-gray-600">Loading product analytics...</span>
+        <span className="ml-3 text-gray-600">
+          {t(
+            "analytics.ui.loadingProductAnalytics",
+            "Loading product analytics..."
+          )}
+        </span>
       </div>
     );
   }
@@ -401,7 +408,10 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
           </div>
           <div className="ml-3">
             <h3 className="text-sm font-medium text-red-800">
-              Error Loading Product Analytics
+              {t(
+                "analytics.ui.errorLoadingAnalytics",
+                "Error Loading Product Analytics"
+              )}
             </h3>
             <div className="mt-2 text-sm text-red-700">{error}</div>
             <div className="mt-3">
@@ -467,10 +477,13 @@ const ProductAnalytics = ({ timeframe = "30d", filters = {} }) => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            Product Analytics
+            {t("analytics.ui.productAnalytics", "Product Analytics")}
           </h2>
           <p className="text-gray-600">
-            Product performance, inventory insights, and recommendations
+            {t(
+              "analytics.ui.productPerformanceDescription",
+              "Product performance, inventory insights, and recommendations"
+            )}
           </p>
         </div>
         <ExportButton type="products" timeframe={timeframe} />

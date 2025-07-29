@@ -10,11 +10,14 @@ import {
   ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import analyticsService from "../../services/analyticsService";
+// import { useTranslation } from "../../i18n/hooks/useTranslation"; // TODO: Add translations for OperationalAnalytics
 import KPICard from "./KPICard";
 import ExportButton from "./ExportButton";
 import ChartPlaceholder from "./ChartPlaceholder";
 
 const OperationalAnalytics = ({ timeframe = "30d" }) => {
+  // const { t } = useTranslation(); // TODO: Add translations for OperationalAnalytics
+  // const [data, setData] = useState(null); // TODO: Remove if not used
   const [realTimeData, setRealTimeData] = useState(null);
   const [performanceData, setPerformanceData] = useState(null);
   const [anomalies, setAnomalies] = useState(null);

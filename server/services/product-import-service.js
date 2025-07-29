@@ -113,7 +113,20 @@ class ProductImportService {
 
     return new Promise((resolve, reject) => {
       const results = [];
-      const stream = fs.createReadStream(file.path || file.buffer);
+
+      // Create stream from buffer for memory storage or from file path for disk storage
+      let stream;
+      if (file.buffer) {
+        // Using memory storage - create stream from buffer
+        const { Readable } = require("stream");
+        stream = Readable.from(file.buffer.toString());
+      } else if (file.path) {
+        // Using disk storage - create stream from file path
+        stream = fs.createReadStream(file.path);
+      } else {
+        reject(new Error("File has no buffer or path - invalid file object"));
+        return;
+      }
 
       stream
         .pipe(csvParser())
@@ -152,7 +165,17 @@ class ProductImportService {
 
     try {
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.readFile(file.path);
+
+      // Handle memory storage (buffer) or disk storage (file path)
+      if (file.buffer) {
+        // Using memory storage - read from buffer
+        await workbook.xlsx.load(file.buffer);
+      } else if (file.path) {
+        // Using disk storage - read from file path
+        await workbook.xlsx.readFile(file.path);
+      } else {
+        throw new Error("File has no buffer or path - invalid file object");
+      }
 
       // Use the first worksheet
       const worksheet = workbook.worksheets[0];
@@ -237,6 +260,14 @@ class ProductImportService {
       weight: /^(weight|ağırlık|kg)$/i,
       dimensions: /^(dimensions|boyut|size|ebat)$/i,
       status: /^(status|durum|aktif|active)$/i,
+      // New main/variant fields
+      isMainProduct: /^(is.*main|main.*product|ana.*ürün|main|asıl.*ürün)$/i,
+      isVariant: /^(is.*variant|variant|varyant|çeşit)$/i,
+      variantType: /^(variant.*type|varyant.*tipi|çeşit.*tipi|type|tip)$/i,
+      variantValue:
+        /^(variant.*value|varyant.*değeri|çeşit.*değeri|value|değer)$/i,
+      parentSku: /^(parent.*sku|ana.*sku|main.*sku|bağlı.*sku)$/i,
+      productType: /^(product.*type|ürün.*tipi|type|classification|sınıf)$/i,
     };
 
     // Map headers to fields
@@ -511,6 +542,54 @@ class ProductImportService {
    * @returns {Object} Classification result
    */
   async classifyProduct(productData, mode, mainProductMapping, grouping) {
+    // First check explicit main/variant fields from Excel columns
+    if (
+      productData.isMainProduct === true ||
+      productData.isMainProduct === "true" ||
+      productData.productType === "main" ||
+      productData.productType === "ana"
+    ) {
+      return { type: "main" };
+    }
+
+    if (
+      productData.isVariant === true ||
+      productData.isVariant === "true" ||
+      productData.productType === "variant" ||
+      productData.productType === "varyant"
+    ) {
+      // If parent SKU is provided, try to find the main product
+      if (productData.parentSku) {
+        const mainProduct = await MainProduct.findOne({
+          where: { baseSku: productData.parentSku },
+        });
+
+        if (mainProduct) {
+          return {
+            type: "variant",
+            mainProductId: mainProduct.id,
+          };
+        } else {
+          logger.warn(
+            `Main product with SKU ${productData.parentSku} not found for variant ${productData.name}`
+          );
+          // Create as main product if parent not found
+          return { type: "main" };
+        }
+      } else {
+        // Try to find or create main product using grouping
+        const mainProduct = await this.findOrCreateMainProduct(
+          productData,
+          grouping
+        );
+        return {
+          type: "variant",
+          mainProductId: mainProduct.id,
+        };
+      }
+    }
+
+    // If no explicit classification, fall back to mode-based logic
     switch (mode) {
       case "all_main":
         return { type: "main" };
@@ -695,6 +774,7 @@ class ProductImportService {
       userId,
       importedAt: new Date(),
       importSource: "csv_excel_import",
+      creationSource: "excel_import", // Track how this product was created
     };
 
     // Handle dimensions if provided
@@ -730,7 +810,16 @@ class ProductImportService {
       syncStatus: "pending",
       attributes: this.extractVariantAttributes(productData),
       userId,
+      creationSource: "excel_import", // Track how this variant was created
     };
+
+    // Add variant type and value if provided
+    if (productData.variantType) {
+      variantData.variantType = productData.variantType;
+    }
+    if (productData.variantValue) {
+      variantData.variantValue = productData.variantValue;
+    }
 
     return await PlatformVariant.create(variantData, { transaction });
   }
@@ -741,6 +830,11 @@ class ProductImportService {
    * @returns {string} Variant suffix
    */
   extractVariantSuffix(productData) {
+    // First check if explicit variant value is provided
+    if (productData.variantValue) {
+      return productData.variantValue;
+    }
+
     const { name, sku } = productData;
 
     // Try to extract suffix from SKU
@@ -776,6 +870,11 @@ class ProductImportService {
    */
   extractVariantAttributes(productData) {
     const attributes = {};
+
+    // Add explicit variant type and value if provided
+    if (productData.variantType && productData.variantValue) {
+      attributes[productData.variantType] = productData.variantValue;
+    }
 
     // Extract size
     if (productData.size) {

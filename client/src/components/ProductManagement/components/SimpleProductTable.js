@@ -205,6 +205,9 @@ const SimpleProductTable = ({
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
               Kategori
             </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              Tedarik
+            </th>
             <th
               className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
               onClick={() => handleSort("questionsCount")}
@@ -437,6 +440,26 @@ const SimpleProductTable = ({
                 <td className="px-6 py-4 whitespace-normal">
                   <Badge variant="secondary" className="capitalize">
                     {product.category || "Belirtilmemiş"}
+                  </Badge>
+                </td>
+
+                {/* Sourcing */}
+                <td className="px-6 py-4 whitespace-normal">
+                  <Badge
+                    variant={
+                      product.sourcing === "local"
+                        ? "success"
+                        : product.sourcing === "outsource"
+                        ? "warning"
+                        : "secondary"
+                    }
+                    className="capitalize"
+                  >
+                    {product.sourcing === "local"
+                      ? "Yerel"
+                      : product.sourcing === "outsource"
+                      ? "Dış Kaynak"
+                      : "Belirtilmemiş"}
                   </Badge>
                 </td>
 

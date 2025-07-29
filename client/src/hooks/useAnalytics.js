@@ -1,6 +1,6 @@
 import logger from "../utils/logger.js";
 import { useState, useEffect, useCallback } from "react";
-import analyticsAPI from "../services/analyticsAPI";
+import analyticsService from "../services/analyticsService";
 
 export const useAnalytics = (timeframe = "30d", options = {}) => {
   const { autoRefresh = false, refreshInterval = 300000 } = options; // 5 minutes default
@@ -14,7 +14,7 @@ export const useAnalytics = (timeframe = "30d", options = {}) => {
     setError(null);
 
     try {
-      const analytics = await analyticsAPI.getDashboardAnalytics(timeframe);
+      const analytics = await analyticsService.getDashboardAnalytics(timeframe);
       setData(analytics);
       setLastUpdated(new Date());
     } catch (err) {
@@ -55,7 +55,7 @@ export const useBusinessIntelligence = (timeframe = "30d") => {
     setError(null);
 
     try {
-      const intelligence = await analyticsAPI.getBusinessIntelligence(
+      const intelligence = await analyticsService.getBusinessIntelligence(
         timeframe
       );
       setData(intelligence);
@@ -89,7 +89,7 @@ export const useRevenueAnalytics = (timeframe = "30d", breakdown = "daily") => {
     setError(null);
 
     try {
-      const revenue = await analyticsAPI.getRevenueAnalytics(
+      const revenue = await analyticsService.getRevenueAnalytics(
         timeframe,
         breakdown
       );
@@ -124,7 +124,9 @@ export const usePlatformPerformance = (timeframe = "30d") => {
     setError(null);
 
     try {
-      const performance = await analyticsAPI.getPlatformPerformance(timeframe);
+      const performance = await analyticsService.getPlatformPerformance(
+        timeframe
+      );
       setData(performance);
     } catch (err) {
       logger.error("Error fetching platform performance:", err);
@@ -156,7 +158,7 @@ export const useInventoryInsights = (timeframe = "30d") => {
     setError(null);
 
     try {
-      const insights = await analyticsAPI.getInventoryInsights(timeframe);
+      const insights = await analyticsService.getInventoryInsights(timeframe);
       setData(insights);
     } catch (err) {
       logger.error("Error fetching inventory insights:", err);
@@ -190,7 +192,7 @@ export const useRealTimeMetrics = (enabled = true) => {
     setError(null);
 
     try {
-      const metrics = await analyticsAPI.getRealTimeMetrics();
+      const metrics = await analyticsService.getRealTimeMetrics();
       setData(metrics);
     } catch (err) {
       logger.error("Error fetching real-time metrics:", err);
@@ -227,7 +229,7 @@ export const useAnalyticsAlerts = () => {
     setError(null);
 
     try {
-      const alerts = await analyticsAPI.getAnalyticsAlerts();
+      const alerts = await analyticsService.getAnalyticsAlerts();
       setData(alerts || []);
     } catch (err) {
       logger.error("Error fetching analytics alerts:", err);
@@ -259,7 +261,9 @@ export const usePredictiveAnalytics = (timeframe = "30d") => {
     setError(null);
 
     try {
-      const predictions = await analyticsAPI.getPredictiveAnalytics(timeframe);
+      const predictions = await analyticsService.getPredictiveAnalytics(
+        timeframe
+      );
       setData(predictions);
     } catch (err) {
       logger.error("Error fetching predictive analytics:", err);
@@ -292,7 +296,7 @@ export const useAnalyticsExport = () => {
       setError(null);
 
       try {
-        const blob = await analyticsAPI.exportAnalytics(
+        const blob = await analyticsService.exportAnalytics(
           format,
           timeframe,
           metrics

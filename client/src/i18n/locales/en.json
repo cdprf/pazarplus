@@ -22,7 +22,13 @@
     "next": "Next",
     "previous": "Previous",
     "submit": "Submit",
-    "reset": "Reset"
+    "reset": "Reset",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "saving": "Saving...",
+    "characters": "characters",
+    "required": "Required",
+    "selectOption": "Select an option"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -250,7 +256,6 @@
     "general": "General",
     "profile": "Profile",
     "security": "Security",
-    "notifications": "Notifications",
     "invoices": "Invoices",
     "preferences": "Preferences",
     "translations": "Translations",
@@ -260,6 +265,10 @@
       "current": "Current Language",
       "select": "Select Language",
       "changed": "Language changed successfully"
+    },
+    "notifications": {
+      "enabled": "Enabled",
+      "disabled": "Disabled"
     }
   },
   "translationManager": {

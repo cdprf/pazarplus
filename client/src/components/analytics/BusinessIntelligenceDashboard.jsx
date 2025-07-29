@@ -58,38 +58,47 @@ const BusinessIntelligenceDashboard = () => {
 
   // Fetch dashboard analytics
   const fetchAnalytics = useCallback(async () => {
+    // Quick auth check to fail fast
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("Authentication required. Please log in to view analytics.");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
       logger.info("🔍 Fetching dashboard analytics for timeframe:", timeframe);
 
-      // Use multiple analytics service calls for comprehensive data
+      // Add timeout wrapper for the entire operation
+      const analyticsPromise = Promise.all([
+        analyticsService.getDashboardAnalytics(timeframe).catch((err) => {
+          logger.warn("Dashboard analytics failed:", err.message);
+          return null;
+        }),
+        analyticsService.getCustomerAnalytics(timeframe).catch((err) => {
+          logger.warn("Customer analytics failed:", err.message);
+          return null;
+        }),
+        analyticsService.getProductAnalytics(timeframe).catch((err) => {
+          logger.warn("Product analytics failed:", err.message);
+          return null;
+        }),
+        analyticsService.getFinancialAnalytics(timeframe).catch((err) => {
+          logger.warn("Financial analytics failed:", err.message);
+          return null;
+        }),
+      ]);
+
+      // Add a global timeout for the entire analytics fetch
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Analytics fetch timeout")), 8000)
+      );
+
       const [dashboardData, customerData, productData, financialData] =
-        await Promise.all([
-          analyticsService.getDashboardAnalytics(timeframe).catch((err) => {
-            logger.warn(
-              "Dashboard analytics failed, continuing with other data"
-            );
-            return null;
-          }),
-          analyticsService.getCustomerAnalytics(timeframe).catch((err) => {
-            logger.warn(
-              "Customer analytics failed, continuing with other data"
-            );
-            return null;
-          }),
-          analyticsService.getProductAnalytics(timeframe).catch((err) => {
-            logger.warn("Product analytics failed, continuing with other data");
-            return null;
-          }),
-          analyticsService.getFinancialAnalytics(timeframe).catch((err) => {
-            logger.warn(
-              "Financial analytics failed, continuing with other data"
-            );
-            return null;
-          }),
-        ]);
+        await Promise.race([analyticsPromise, timeoutPromise]);
 
       logger.info("📊 Analytics data received:", {
         hasDashboard: !!dashboardData?.data,
@@ -388,9 +397,14 @@ const BusinessIntelligenceDashboard = () => {
       const isAuthError =
         err.response?.status === 401 ||
         err.response?.data?.message?.includes("Access denied") ||
-        err.response?.data?.message?.includes("No token provided");
+        err.response?.data?.message?.includes("No token provided") ||
+        err.message?.includes("Authentication required");
 
-      const isTimeoutError = err.message === "Request timeout";
+      const isTimeoutError =
+        err.message === "Request timeout" ||
+        err.message === "Analytics fetch timeout" ||
+        err.message?.includes("timeout") ||
+        err.code === "ECONNABORTED";
 
       let errorMessage = err.message || "Failed to load analytics data";
 
@@ -399,7 +413,7 @@ const BusinessIntelligenceDashboard = () => {
           "Authentication required. Please log in to view analytics.";
       } else if (isTimeoutError) {
         errorMessage =
-          "Analytics service is taking too long to respond. Please try again.";
+          "Analytics service is taking too long to respond. The server may be busy - please try again in a moment.";
       }
 
       setError(errorMessage);

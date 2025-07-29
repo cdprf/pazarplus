@@ -41,12 +41,66 @@ class PlatformSyncService {
         }
       );
 
+      // Check if this product should be synced based on its creation source
+      if (product.creationSource === "platform_sync") {
+        logger.warn(
+          `Skipping sync for platform-synced product ${
+            product.id || product.name
+          }. Platform-synced products cannot be synced back to prevent loops.`,
+          {
+            productId: product.id,
+            productName: product.name,
+            creationSource: product.creationSource,
+            operation,
+            userId,
+          }
+        );
+        return [
+          {
+            status: "skipped",
+            reason: "platform_sync_product",
+            message:
+              "Platform-synced products cannot be synced back to platforms",
+            timestamp: new Date().toISOString(),
+          },
+        ];
+      }
+
+      // If product ID is provided, fetch full product data to check creation source
+      if (product.id && !product.creationSource) {
+        const fullProduct = await MainProduct.findByPk(product.id, {
+          attributes: ["id", "name", "creationSource"],
+        });
+
+        if (fullProduct && fullProduct.creationSource === "platform_sync") {
+          logger.warn(
+            `Skipping sync for platform-synced product ${fullProduct.id}. Platform-synced products cannot be synced back to prevent loops.`,
+            {
+              productId: fullProduct.id,
+              productName: fullProduct.name,
+              creationSource: fullProduct.creationSource,
+              operation,
+              userId,
+            }
+          );
+          return [
+            {
+              status: "skipped",
+              reason: "platform_sync_product",
+              message:
+                "Platform-synced products cannot be synced back to platforms",
+              timestamp: new Date().toISOString(),
+            },
+          ];
+        }
+      }
+
       // Get all active platform connections for this user from database
       const connections = await PlatformConnection.findAll({
         where: {
           userId,
           isActive: true,
-          status: "connected",
+          status: "active",
         },
       });
 
@@ -161,18 +215,72 @@ class PlatformSyncService {
       }
 
       // Get the main product and its variants from database
-      const mainProduct = await MainProduct.findByPk(productId, {
+      let mainProduct = await MainProduct.findByPk(productId, {
         include: [
           {
             model: PlatformVariant,
+            as: "platformVariants",
             where: { platform: platformType },
             required: false,
           },
         ],
       });
 
+      // If not found in MainProduct table, check if it's in the legacy Product table
       if (!mainProduct) {
+        const { Product } = require("../models");
+        const legacyProduct = await Product.findByPk(productId);
+
+        if (legacyProduct) {
+          // Check if this is a platform-synced product that shouldn't be synced back
+          if (legacyProduct.creationSource === "platform_sync") {
+            logger.warn(
+              `Product ${productId} is platform-synced and cannot be synced back to platforms. This would create a loop.`,
+              {
+                productId,
+                legacyProductName: legacyProduct.name,
+                creationSource: legacyProduct.creationSource,
+                platform: platformType,
+                operation,
+              }
+            );
+            throw new Error(
+              `Product ${productId} was created from platform sync and cannot be synced back. Only user-created products can be synced to platforms.`
+            );
+          }
+
+          logger.warn(
+            `Product ${productId} found in legacy Product table, but platform sync requires MainProduct. Skipping sync.`,
+            {
+              productId,
+              legacyProductName: legacyProduct.name,
+              platform: platformType,
+              operation,
+            }
+          );
+          throw new Error(
+            `Product ${productId} is in legacy format and cannot be synced. Please migrate to MainProduct table.`
+          );
+        }
+
         throw new Error(`Product ${productId} not found`);
+      }
+
+      // Check if this is a platform-synced main product that shouldn't be synced back
+      if (mainProduct.creationSource === "platform_sync") {
+        logger.warn(
+          `MainProduct ${productId} is platform-synced and cannot be synced back to platforms. This would create a loop.`,
+          {
+            productId,
+            productName: mainProduct.name,
+            creationSource: mainProduct.creationSource,
+            platform: platformType,
+            operation,
+          }
+        );
+        throw new Error(
+          `Product ${productId} was created from platform sync and cannot be synced back. Only user-created products can be synced to platforms.`
+        );
       }
 
       // Map product data for the specific platform
@@ -251,16 +359,31 @@ class PlatformSyncService {
         productId,
         platformType,
         "error",
-        { error: error.message }
+        error.message
       );
 
       logger.error(
         `❌ Failed to sync product ${productId} to ${platformType}`,
         {
           error: error.message,
+          errorType: error.name || "Unknown",
           platform,
           operation,
           connectionId: connection?.id,
+          userId,
+          productId,
+          platformType,
+          stack: error.stack,
+          timestamp: new Date().toISOString(),
+          changes: Object.keys(changes),
+          retryCount: options.retryCount || 0,
+          connectionStatus: connection?.status,
+          connectionIsActive: connection?.isActive,
+          httpStatus: error.status || error.statusCode,
+          platformResponse: error.response?.data || error.response,
+          requestDuration: options.startTime
+            ? Date.now() - options.startTime
+            : undefined,
         }
       );
 
@@ -273,11 +396,23 @@ class PlatformSyncService {
    */
   async updatePlatformVariantSyncStatus(productId, platform, status, result) {
     try {
+      // Convert error result to string if it's an object
+      let syncError = null;
+      if (status === "error") {
+        if (typeof result === "string") {
+          syncError = result;
+        } else if (result && typeof result === "object") {
+          syncError = result.error || result.message || JSON.stringify(result);
+        } else {
+          syncError = String(result);
+        }
+      }
+
       await PlatformVariant.update(
         {
           syncStatus: status,
           lastSyncAt: new Date(),
-          syncError: status === "error" ? result : null,
+          syncError: syncError,
         },
         {
           where: {

@@ -253,6 +253,10 @@ async function getAllOrders(req, res) {
             model: Product,
             as: "product",
             required: false,
+            // Include all product fields including creationSource
+            attributes: {
+              exclude: [], // Don't exclude any fields - creationSource should be available after DB fix
+            },
           },
         ],
         required: false, // Make items optional in case of association issues

@@ -72,7 +72,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Parse JSON and URL-encoded data with enhanced limits
+// Parse JSON and URL-encoded data with enhanced limits (excluding multipart for multer)
 app.use(
   express.json({
     limit: "10mb",
@@ -85,6 +85,10 @@ app.use(
     extended: true,
     limit: "10mb",
     parameterLimit: 50000,
+    type: function (req) {
+      // Only parse if NOT multipart form data (let multer handle those)
+      return !req.is("multipart/form-data");
+    },
   })
 );
 

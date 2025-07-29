@@ -29,6 +29,12 @@
     "finish": "Bitir",
     "refresh": "Yenile",
     "reload": "Yeniden Yükle",
+    "enabled": "Etkin",
+    "disabled": "Devre Dışı",
+    "saving": "Kaydediliyor...",
+    "characters": "karakter",
+    "required": "Gerekli",
+    "selectOption": "Bir seçenek seçin",
     "retry": "Tekrar Dene",
     "download": "İndir",
     "upload": "Yükle",
@@ -126,18 +132,141 @@
   "analytics": {
     "overview": "Genel Bakış",
     "overviewDesc": "Kapsamlı iş zekası dashboard",
-    "sales": "Satışlar",
+    "sales": {
+      "performanceOverTime": "Zaman içinde satış performansı",
+      "productName": "Ürün Adı",
+      "revenue": "Gelir",
+      "unitsSold": "Satılan Birim",
+      "avgPrice": "Ortalama Fiyat",
+      "performance": "Performans"
+    },
     "salesDesc": "Satış performansı ve gelir trendleri",
-    "products": "Ürünler",
+    "products": {
+      "conversionRate": "Dönüşüm Oranı",
+      "product": "Ürün",
+      "quantitySold": "Satılan Miktar",
+      "orders": "Siparişler",
+      "stockStatus": "Stok Durumu",
+      "category": "Kategori",
+      "noProductData": "Ürün verisi mevcut değil"
+    },
     "productsDesc": "Ürün performansı ve stok analizi",
     "platforms": "Platformlar",
     "platformsDesc": "Çok platformlu karşılaştırma ve analiz",
-    "customers": "Müşteriler",
+    "customers": {
+      "champions": "Şampiyonlar",
+      "loyalCustomers": "Sadık Müşteriler",
+      "newCustomers": "Yeni Müşteriler",
+      "atRisk": "Risk Altında"
+    },
     "customersDesc": "Müşteri analizi ve segmentasyon",
-    "financial": "Finansal",
+    "financial": {
+      "vsPreviousPeriod": "önceki döneme göre"
+    },
     "financialDesc": "Finansal KPI'lar ve karlılık analizi",
-    "operational": "Operasyonel",
-    "operationalDesc": "Operasyonel metrikler ve verimlilik"
+    "operational": {
+      "apiResponseTime": "API Yanıt Süresi",
+      "databasePerformance": "Veritabanı Performansı",
+      "memoryUsage": "Bellek Kullanımı",
+      "cpuUsage": "CPU Kullanımı",
+      "uptime": "Çalışma Süresi"
+    },
+    "operationalDesc": "Operasyonel metrikler ve verimlilik",
+    "timeframe": {
+      "last7days": "Son 7 Gün",
+      "last30days": "Son 30 Gün",
+      "last3months": "Son 3 Ay",
+      "lastYear": "Son Yıl"
+    },
+    "dashboard": {
+      "title": "İş Zekası Dashboard"
+    },
+    "lastUpdated": "Son Güncelleme",
+    "liveData": "Canlı Veri",
+    "export": "Dışa Aktar",
+    "retry": "Tekrar Dene",
+    "navigation": {
+      "label": "Analitik"
+    },
+    "businessIntelligenceDashboard": "İş Zekası Dashboard",
+    "aiPoweredInsights": "AI Destekli İçgörüler",
+    "businessIntelligence": {
+      "title": "İş Zekası"
+    },
+    "noInsights": {
+      "title": "Görüş Oluşturulmadı"
+    },
+    "generateInsights": "Görüş Oluştur",
+    "kpi": {
+      "totalRevenue": "Toplam Gelir",
+      "currentPeriodRevenue": "Mevcut Dönem Geliri",
+      "totalOrders": "Toplam Sipariş",
+      "average": "Ortalama",
+      "activePlatforms": "Aktif Platformlar",
+      "connectedSyncing": "Bağlı ve Senkronize",
+      "noPlatforms": "Platform yok",
+      "live": "Canlı",
+      "setup": "Kurulum",
+      "aiInsights": "AI İçgörüleri",
+      "actionableRecommendations": "Eylem Gerektiren Öneriler",
+      "actionRequired": "Eylem Gerekli",
+      "upToDate": "Güncel",
+      "averageOrderValue": "Ortalama Sipariş Değeri",
+      "conversionRate": "Dönüşüm Oranı"
+    },
+    "recommendations": {
+      "title": "Öneriler"
+    },
+    "priority": {
+      "high": "Yüksek",
+      "medium": "Orta",
+      "label": "Öncelik"
+    },
+    "category": {
+      "revenue": "Gelir",
+      "inventory": "Envanter"
+    },
+    "recommendation": {
+      "viewDetails": "Detayları Görüntüle",
+      "default": "Öneri"
+    },
+    "charts": {
+      "revenueTrends": "Gelir Trendleri",
+      "revenueTrendsTitle": "Gelir Trendleri",
+      "platformPerformance": "Platform Performansı",
+      "platformPerformanceSubtitle": "Platform bazında performans karşılaştırması",
+      "topPerformingProducts": "En İyi Performans Gösteren Ürünler",
+      "sold": "satıldı",
+      "orderStatusBreakdown": "Sipariş Durum Dağılımı",
+      "topSellingProducts": "En Çok Satan Ürünler",
+      "productPerformanceDetails": "Ürün Performans Detayları"
+    },
+    "financialKPIs": {
+      "title": "Finansal KPI'lar",
+      "revenueGrowth": "Gelir Büyümesi",
+      "avgOrderValue": "Ortalama Sipariş Değeri",
+      "customerLTV": "Müşteri Yaşam Boyu Değeri",
+      "grossMargin": "Brüt Kar Marjı"
+    },
+    "salesTab": "Satışlar",
+    "productsTab": "Ürünler",
+    "customersTab": "Müşteriler",
+    "financialTab": "Finansal",
+    "operationalTab": "Operasyonel",
+    "ui": {
+      "loadingSalesAnalytics": "Satış analitiği yükleniyor...",
+      "loadingProductAnalytics": "Ürün analitiği yükleniyor...",
+      "loadingCustomerAnalytics": "Müşteri analitiği yükleniyor...",
+      "loadingFinancialAnalytics": "Finansal analitik yükleniyor...",
+      "loadingOperationalAnalytics": "Operasyonel analitik yükleniyor...",
+      "revenueTrendsDescription": "Gelir trendleri ve satış performansı içgörüleri",
+      "bestPerformingProducts": "Gelire göre en iyi performans gösteren ürünler",
+      "detailedStatistics": "Her ürün için detaylı istatistikler",
+      "systemHealth": "Sistem Sağlığı",
+      "errorLoadingAnalytics": "Analitik Yükleme Hatası",
+      "productAnalytics": "Ürün Analitiği",
+      "productPerformanceDescription": "Ürün performansı, envanter içgörüleri ve öneriler"
+    }
   },
   "dashboard": {
     "title": "Ana Sayfa",
@@ -277,7 +406,9 @@
       "orderUpdates": "Sipariş durumu güncellemeleri",
       "systemAlerts": "Sistem uyarıları",
       "updateSuccess": "Bildirim ayarları güncellendi",
-      "updateError": "Bildirim ayarları güncellenirken hata oluştu"
+      "updateError": "Bildirim ayarları güncellenirken hata oluştu",
+      "enabled": "Etkin",
+      "disabled": "Devre Dışı"
     }
   },
   "compliance": {

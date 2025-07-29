@@ -73,72 +73,79 @@ const getWorkingTabsOnly = (statusCounts) => {
 };
 
 // Main Product Display Component
-const ProductDisplay = ({
-  products = [],
-  loading = false,
-  viewMode = "table",
-  selectedProducts = [],
-  onSelectProduct,
-  onSelectAll,
-  onView,
-  onEdit,
-  onDelete,
-  onImageClick,
-  onProductNameClick,
-  onCreateVariant,
-  onAddProduct,
-  onImportProducts,
-  onSync,
-  onInlineUpdate,
-  // Sorting
-  sortField,
-  sortOrder,
-  onSort,
-  // Pagination
-  currentPage = 1,
-  totalPages = 1,
-  totalItems = 0,
-  itemsPerPage = 20,
-  onPageChange,
-  onPageSizeChange,
-  // Trendyol-like features
-  statusCounts = { all: 0, active: 0, pending: 0, inactive: 0, outOfStock: 0 },
-  filters = {},
-  onFilterChange,
-  onClearFilters,
-  activeTab = "all",
-  onTabChange,
-  categories = [],
-  brands = [],
-  onBulkEdit,
-  onBulkDelete,
-  onBulkStatusChange,
-  onBulkExport,
-  onInlineEdit,
-  onViewModeChange,
-  // Variant management props
-  enableVariantManagement = true,
-  onCreateVariantGroup,
-  onUpdateVariantGroup,
-  onDeleteVariantGroup,
-  onAcceptVariantSuggestion,
-  onRejectVariantSuggestion,
-  // Enhanced product management props
-  enhancedMode = false,
-  showVariantCount = false,
-  // Variant Detection props
-  onRemoveVariantStatus,
-  onClassifyVariantStatus,
-  onBatchVariantDetection,
-  showPublishedPlatforms = false,
-  onCreateVariants,
-  onBulkMarkAsMain,
-  onFieldMapping,
-  className = "",
-  // Error handling props
-  error = null,
-  onRetry,
-}) => {
+const ProductDisplay = (allProps) => {
+  // Destructure all the props
+  const {
+    products = [],
+    loading = false,
+    viewMode = "table",
+    selectedProducts = [],
+    onSelectProduct,
+    onSelectAll,
+    onView,
+    onEdit,
+    onDelete,
+    onImageClick,
+    onProductNameClick,
+    onCreateVariant,
+    onAddProduct,
+    onSync,
+    onInlineUpdate,
+    // Sorting
+    sortField,
+    sortOrder,
+    onSort,
+    // Pagination
+    currentPage = 1,
+    totalPages = 1,
+    totalItems = 0,
+    itemsPerPage = 20,
+    onPageChange,
+    onPageSizeChange,
+    // Trendyol-like features
+    statusCounts = {
+      all: 0,
+      active: 0,
+      pending: 0,
+      inactive: 0,
+      outOfStock: 0,
+    },
+    filters = {},
+    onFilterChange,
+    onClearFilters,
+    activeTab = "all",
+    onTabChange,
+    categories = [],
+    brands = [],
+    onBulkEdit,
+    onBulkDelete,
+    onBulkStatusChange,
+    onBulkExport,
+    onInlineEdit,
+    onViewModeChange,
+    // Variant management props
+    enableVariantManagement = true,
+    onCreateVariantGroup,
+    onUpdateVariantGroup,
+    onDeleteVariantGroup,
+    onAcceptVariantSuggestion,
+    onRejectVariantSuggestion,
+    // Enhanced product management props
+    showVariantCount = false,
+    // Variant Detection props
+    onRemoveVariantStatus,
+    onClassifyVariantStatus,
+    onBatchVariantDetection,
+    showPublishedPlatforms = false,
+    onCreateVariants,
+    onBulkMarkAsMain,
+    onFieldMapping,
+    className = "",
+    // Error handling props
+    error = null,
+    onRetry,
+  } = allProps;
+
   const [showTableSettings, setShowTableSettings] = useState(false);
 
   const [tableSettings, setTableSettings] = useState({
@@ -342,7 +349,10 @@ const ProductDisplay = ({
     <div className={`page-content ${className}`}>
       <div className="data-table">
         {/* Toolbar */}
-        <div className="table-toolbar">
+        <div
+          className="table-toolbar"
+          style={{ position: "relative", zIndex: 10 }}
+        >
           <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
             <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
               <h2 className="section-title">{TRANSLATIONS.products}</h2>
@@ -356,8 +366,9 @@ const ProductDisplay = ({
                 >
                   {TRANSLATIONS.addProduct}
                 </Button>
+
                 <Button
-                  onClick={() => onImportProducts?.()}
+                  onClick={() => allProps.onImport?.()}
                   variant="outline"
                   size="sm"
                   aria-label={TRANSLATIONS.importProducts}
@@ -479,19 +490,8 @@ const ProductDisplay = ({
                 variant="primary"
                 aria-label={TRANSLATIONS.addProduct}
               >
-                {enhancedMode
-                  ? TRANSLATIONS.addNewProduct
-                  : TRANSLATIONS.addProduct}
+                {TRANSLATIONS.addProduct}
               </Button>
-              {enhancedMode && (
-                <Button
-                  onClick={() => onImportProducts?.()}
-                  variant="outline"
-                  aria-label={TRANSLATIONS.importProducts}
-                >
-                  {TRANSLATIONS.importProducts}
-                </Button>
-              )}
             </div>
           </div>
         ) : products.length === 0 && Object.keys(filters).length > 0 ? (

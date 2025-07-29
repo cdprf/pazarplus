@@ -29,6 +29,7 @@ import BulkEditModal from "./components/BulkEditModal";
 import SearchPanel from "./components/SearchPanel";
 import PlatformVariantModal from "./components/PlatformVariantModal";
 import ExportModal from "./components/ExportModal";
+import ProductImportModal from "./components/ProductImportModal";
 import ProductManagementErrorBoundary, {
   ErrorDisplay,
   useErrorHandler,
@@ -1316,7 +1317,7 @@ const ProductManagement = () => {
               onBulkExport={handleBulkExport}
               onBulkEdit={() => actions.setModals({ showBulkEditModal: true })}
               // Import/Export
-              onImport={handleImport}
+              onImport={() => actions.setModals({ showImportModal: true })}
               onExportAll={handleExportAll}
               // Loading states
               importing={state.importing}
@@ -1618,6 +1619,27 @@ const ProductManagement = () => {
           onClose={() => actions.updateState({ showExportModal: false })}
           onExport={handleExportWithOptions}
           isExporting={state.exporting}
+        />
+
+        {/* Import Modal */}
+        <ProductImportModal
+          show={state.showImportModal}
+          onHide={() => actions.setModals({ showImportModal: false })}
+          onSuccess={(importResults) => {
+            console.log("Product import completed:", importResults);
+            if (importResults) {
+              showAlert("Products imported successfully!", "success");
+              fetchProducts(); // Reload products
+              fetchProductStats().then((stats) =>
+                actions.setProductStats(stats)
+              ); // Reload stats
+            } else {
+              showAlert("Products imported successfully", "success");
+              fetchProducts();
+            }
+            actions.setModals({ showImportModal: false });
+          }}
+          showAlert={showAlert}
         />
       </div>
     </ProductManagementErrorBoundary>

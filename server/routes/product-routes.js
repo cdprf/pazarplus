@@ -4,8 +4,136 @@ const ProductController = require("../controllers/product-controller");
 const { auth: authMiddleware } = require("../middleware/auth");
 const { body, param, query } = require("express-validator");
 const validationMiddleware = require("../middleware/validation-middleware");
+const multer = require("multer");
+const logger = require("../utils/logger");
 
-// Apply authentication middleware to all routes
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fieldSize: 2 * 1024 * 1024, // 2MB field size limit
+    fields: 10, // Max 10 fields
+    files: 1, // Max 1 file
+  },
+  fileFilter: (req, file, cb) => {
+    logger.info("🔍 Multer file filter check", {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+    });
+
+    const allowedTypes = [
+      "text/csv",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/csv",
+      "text/plain",
+    ];
+    const allowedExtensions = [".csv", ".xls", ".xlsx"];
+    const fileExtension = file.originalname
+      .toLowerCase()
+      .slice(file.originalname.lastIndexOf("."));
+
+    logger.info("🔍 File validation", {
+      mimetype: file.mimetype,
+      extension: fileExtension,
+      allowedTypes,
+      allowedExtensions,
+      mimetypeAllowed: allowedTypes.includes(file.mimetype),
+      extensionAllowed: allowedExtensions.includes(fileExtension),
+    });
+
+    if (
+      allowedTypes.includes(file.mimetype) ||
+      allowedExtensions.includes(fileExtension)
+    ) {
+      cb(null, true);
+    } else {
+      cb(
+        new Error("Invalid file type. Only CSV and Excel files are allowed."),
+        false
+      );
+    }
+  },
+});
+
+// Test route for multer debugging (before auth middleware)
+router.post("/test-multer", (req, res, next) => {
+  logger.info("🧪 Testing multer without auth", {
+    contentType: req.headers["content-type"],
+    contentLength: req.headers["content-length"],
+  });
+
+  upload.single("file")(req, res, (err) => {
+    if (err) {
+      logger.error("🧪 Multer test error:", err.message);
+      return res.json({ success: false, error: err.message, code: err.code });
+    }
+
+    logger.info("🧪 Multer test success:", {
+      hasFile: !!req.file,
+      fileName: req.file?.originalname,
+      size: req.file?.size,
+    });
+
+    res.json({
+      success: true,
+      message: "Multer working correctly!",
+      hasFile: !!req.file,
+      fileName: req.file?.originalname,
+      size: req.file?.size,
+    });
+  });
+});
+
+// Special route for file upload that handles auth after multer parsing
+router.post("/import/preview", (req, res, next) => {
+  logger.info("🔍 Import preview request received (before auth)", {
+    contentType: req.headers["content-type"],
+    contentLength: req.headers["content-length"],
+  });
+
+  // Apply multer first
+  upload.single("file")(req, res, (err) => {
+    if (err) {
+      logger.error("❌ Multer file upload error:", {
+        error: err.message,
+        code: err.code,
+        type: err.name,
+      });
+      return res.status(400).json({
+        success: false,
+        message: "File upload error: " + err.message,
+      });
+    }
+
+    logger.info("✅ File upload successful, now applying auth", {
+      hasFile: !!req.file,
+      fileName: req.file?.originalname,
+      size: req.file?.size,
+    });
+
+    // Now apply authentication
+    authMiddleware(req, res, (authErr) => {
+      if (authErr) {
+        logger.error(
+          "❌ Authentication failed after file upload:",
+          authErr.message
+        );
+        return res.status(401).json({
+          success: false,
+          message: "Authentication failed",
+        });
+      }
+
+      // Authentication successful, call the controller
+      ProductController.previewImportFile(req, res, next);
+    });
+  });
+});
+
+// Apply authentication middleware to all other routes
 router.use(authMiddleware);
 
 /**
@@ -327,6 +455,242 @@ router.get("/sync-status", ProductController.getSyncStatus);
  *         description: Product statistics
  */
 router.get("/stats", ProductController.getProductStats);
+
+/**
+ * @swagger
+ * /api/products/import/options:
+ *   get:
+ *     summary: Get import options and configuration
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Import options retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     platforms:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           enabled:
+ *                             type: boolean
+ *                     fileTypes:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     maxFileSize:
+ *                       type: integer
+ *                     supportedFields:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     validationRules:
+ *                       type: object
+ */
+router.get("/import/options", ProductController.getImportOptions);
+
+/**
+ * @swagger
+ * /api/products/import:
+ *   post:
+ *     summary: Import products from file
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: CSV or Excel file containing product data
+ *               platform:
+ *                 type: string
+ *                 enum: [trendyol, hepsiburada, n11, generic]
+ *                 description: Target platform for import
+ *               mapping:
+ *                 type: object
+ *                 description: Field mapping configuration
+ *               options:
+ *                 type: object
+ *                 properties:
+ *                   updateExisting:
+ *                     type: boolean
+ *                     default: false
+ *                   dryRun:
+ *                     type: boolean
+ *                     default: false
+ *     responses:
+ *       200:
+ *         description: Products imported successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     imported:
+ *                       type: integer
+ *                     updated:
+ *                       type: integer
+ *                     errors:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ */
+router.post("/import", ProductController.importProducts);
+
+/**
+ * @swagger
+ * /api/products/import/preview:
+ *   post:
+ *     summary: Preview import file and get field mapping suggestions
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: CSV or Excel file to preview
+ *     responses:
+ *       200:
+ *         description: File preview generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     fileName:
+ *                       type: string
+ *                     fileSize:
+ *                       type: integer
+ *                     fileType:
+ *                       type: string
+ *                     headers:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     preview:
+ *                       type: object
+ *                       properties:
+ *                         rows:
+ *                           type: array
+ *                         totalRows:
+ *                           type: integer
+ *                         previewRows:
+ *                           type: integer
+ *                     mappingSuggestions:
+ *                       type: object
+ *                       properties:
+ *                         mappings:
+ *                           type: object
+ *                         supportedFields:
+ *                           type: array
+ *       400:
+ *         description: Invalid file or missing file
+ *       500:
+ *         description: Server error
+ */
+// Test route for debugging multer
+router.post("/import/test", (req, res) => {
+  logger.info("🧪 Test route hit", {
+    contentType: req.headers["content-type"],
+    contentLength: req.headers["content-length"],
+  });
+
+  const simpleUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+  });
+
+  simpleUpload.single("file")(req, res, (err) => {
+    if (err) {
+      logger.error("🧪 Test upload error:", err.message);
+      return res.json({ success: false, error: err.message });
+    }
+
+    logger.info("🧪 Test upload success:", {
+      hasFile: !!req.file,
+      fileName: req.file?.originalname,
+      size: req.file?.size,
+    });
+
+    res.json({
+      success: true,
+      hasFile: !!req.file,
+      fileName: req.file?.originalname,
+      size: req.file?.size,
+    });
+  });
+});
+
+/**
+ * @swagger
+ * /api/products/import/template:
+ *   get:
+ *     summary: Download import template file
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: platform
+ *         schema:
+ *           type: string
+ *           enum: [trendyol, hepsiburada, n11, generic]
+ *         description: Platform for template
+ *       - in: query
+ *         name: format
+ *         schema:
+ *           type: string
+ *           enum: [csv, xlsx]
+ *           default: csv
+ *         description: Template file format
+ *     responses:
+ *       200:
+ *         description: Template file downloaded successfully
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ */
+router.get("/import/template", ProductController.downloadImportTemplate);
 
 // Background Variant Detection Routes
 /**

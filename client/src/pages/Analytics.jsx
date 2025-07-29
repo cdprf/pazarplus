@@ -43,7 +43,7 @@ const Analytics = () => {
       },
       {
         id: "sales",
-        label: t("analytics.sales", {}, "Satışlar"),
+        label: t("analytics.salesTab", {}, "Satışlar"),
         icon: BanknotesIcon,
         description: t(
           "analytics.salesDesc",
@@ -54,7 +54,7 @@ const Analytics = () => {
       },
       {
         id: "products",
-        label: t("analytics.products", {}, "Ürünler"),
+        label: t("analytics.productsTab", {}, "Ürünler"),
         icon: CubeIcon,
         description: t(
           "analytics.productsDesc",
@@ -76,7 +76,7 @@ const Analytics = () => {
       },
       {
         id: "customers",
-        label: t("analytics.customers", {}, "Müşteriler"),
+        label: t("analytics.customersTab", {}, "Müşteriler"),
         icon: UserGroupIcon,
         description: t(
           "analytics.customersDesc",
@@ -87,7 +87,7 @@ const Analytics = () => {
       },
       {
         id: "financial",
-        label: t("analytics.financial", {}, "Finansal"),
+        label: t("analytics.financialTab", {}, "Finansal"),
         icon: PresentationChartLineIcon,
         description: t(
           "analytics.financialDesc",
@@ -98,7 +98,7 @@ const Analytics = () => {
       },
       {
         id: "operational",
-        label: t("analytics.operational", {}, "Operasyonel"),
+        label: t("analytics.operationalTab", {}, "Operasyonel"),
         icon: CogIcon,
         description: t(
           "analytics.operationalDesc",

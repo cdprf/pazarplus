@@ -1,5 +1,5 @@
-const { DataTypes, Model } = require('sequelize');
-const sequelize = require('../config/database');
+const { DataTypes, Model } = require("sequelize");
+const sequelize = require("../config/database");
 
 class Product extends Model {}
 
@@ -8,247 +8,265 @@ Product.init(
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
-      primaryKey: true
+      primaryKey: true,
     },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
         notEmpty: true,
-        len: [1, 255]
-      }
+        len: [1, 255],
+      },
     },
     sku: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
         notEmpty: true,
-        len: [1, 100]
-      }
+        len: [1, 100],
+      },
     },
     barcode: {
       type: DataTypes.STRING(100),
       allowNull: true,
-      comment: 'Product barcode for identification'
+      comment: "Product barcode for identification",
     },
     description: {
       type: DataTypes.TEXT,
-      allowNull: true
+      allowNull: true,
     },
     category: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
-        notEmpty: true
-      }
+        notEmpty: true,
+      },
     },
     price: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       validate: {
-        min: 0
-      }
+        min: 0,
+      },
     },
     costPrice: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
       validate: {
-        min: 0
-      }
+        min: 0,
+      },
     },
     stockQuantity: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
       validate: {
-        min: 0
-      }
+        min: 0,
+      },
     },
     minStockLevel: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
       validate: {
-        min: 0
-      }
+        min: 0,
+      },
     },
     weight: {
       type: DataTypes.DECIMAL(8, 3),
       allowNull: true,
       validate: {
-        min: 0
-      }
+        min: 0,
+      },
     },
     dimensions: {
       type: DataTypes.JSON,
       allowNull: true,
-      defaultValue: null
+      defaultValue: null,
     },
     images: {
       type: DataTypes.JSON,
       allowNull: true,
-      defaultValue: []
+      defaultValue: [],
     },
     status: {
-      type: DataTypes.ENUM('active', 'inactive', 'draft'),
+      type: DataTypes.ENUM("active", "inactive", "draft"),
       allowNull: false,
-      defaultValue: 'active'
+      defaultValue: "active",
+    },
+    creationSource: {
+      type: DataTypes.ENUM(
+        "user",
+        "platform_sync",
+        "excel_import",
+        "api_import"
+      ),
+      allowNull: false,
+      defaultValue: "user",
+      comment: "How this product was created",
+    },
+
+    // Product Sourcing
+    sourcing: {
+      type: DataTypes.ENUM("local", "outsource"),
+      allowNull: true,
+      comment: "Whether the product is sourced locally or outsourced",
     },
     platforms: {
       type: DataTypes.JSON,
       allowNull: true,
-      defaultValue: {}
+      defaultValue: {},
     },
     attributes: {
       type: DataTypes.JSON,
       allowNull: true,
-      defaultValue: {}
+      defaultValue: {},
     },
     tags: {
       type: DataTypes.JSON,
       allowNull: true,
-      defaultValue: []
+      defaultValue: [],
     },
     userId: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: 'users',
-        key: 'id'
+        model: "users",
+        key: "id",
       },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE'
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     },
     templateId: {
       type: DataTypes.UUID,
       allowNull: true,
       references: {
-        model: 'product_templates',
-        key: 'id'
+        model: "product_templates",
+        key: "id",
       },
-      onUpdate: 'CASCADE',
-      onDelete: 'SET NULL',
-      comment: 'Template used for this product'
+      onUpdate: "CASCADE",
+      onDelete: "SET NULL",
+      comment: "Template used for this product",
     },
     lastSyncedAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: 'Last time this product was synced from platforms'
+      comment: "Last time this product was synced from platforms",
     },
     hasVariants: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-      comment: 'Whether this product has variants'
+      comment: "Whether this product has variants",
     },
     variantAttributes: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: [],
-      comment: 'Variant attribute definitions (color, size, etc.)'
+      comment: "Variant attribute definitions (color, size, etc.)",
     },
     sourcePlatform: {
       type: DataTypes.STRING(50),
       allowNull: true,
-      comment: 'Original platform this product was imported from'
+      comment: "Original platform this product was imported from",
     },
     // Variant Detection Fields
     isVariant: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-      comment: 'Whether this product is a variant of another product'
+      comment: "Whether this product is a variant of another product",
     },
     isMainProduct: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-      comment: 'Whether this product is a main product with variants'
+      comment: "Whether this product is a main product with variants",
     },
     variantGroupId: {
       type: DataTypes.UUID,
       allowNull: true,
-      comment: 'ID linking variants to their group'
+      comment: "ID linking variants to their group",
     },
     variantType: {
       type: DataTypes.STRING(100),
       allowNull: true,
-      comment: 'Type of variant (color, size, style, etc.)'
+      comment: "Type of variant (color, size, style, etc.)",
     },
     variantValue: {
       type: DataTypes.STRING(255),
       allowNull: true,
-      comment: 'Value of the variant (red, large, premium, etc.)'
+      comment: "Value of the variant (red, large, premium, etc.)",
     },
     parentProductId: {
       type: DataTypes.UUID,
       allowNull: true,
       references: {
-        model: 'products',
-        key: 'id'
+        model: "products",
+        key: "id",
       },
-      comment: 'Parent product ID if this is a variant'
+      comment: "Parent product ID if this is a variant",
     },
     variantDetectionConfidence: {
       type: DataTypes.DECIMAL(3, 2),
       allowNull: true,
-      comment: 'Confidence score for variant detection (0.00-1.00)'
+      comment: "Confidence score for variant detection (0.00-1.00)",
     },
     variantDetectionSource: {
       type: DataTypes.ENUM(
-        'auto',
-        'manual',
-        'platform',
-        'sku_analysis',
-        'text_analysis'
+        "auto",
+        "manual",
+        "platform",
+        "sku_analysis",
+        "text_analysis"
       ),
       allowNull: true,
-      comment: 'Source of variant detection'
+      comment: "Source of variant detection",
     },
     lastVariantDetectionAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      comment: 'Last time variant detection was run on this product'
-    }
+      comment: "Last time variant detection was run on this product",
+    },
   },
   {
     sequelize,
-    modelName: 'Product',
-    tableName: 'products',
+    modelName: "Product",
+    tableName: "products",
     timestamps: true,
     indexes: [
       {
         unique: true,
-        fields: ['sku', 'userId']
+        fields: ["sku", "userId"],
       },
       {
-        fields: ['userId']
+        fields: ["userId"],
       },
       {
-        fields: ['category']
+        fields: ["category"],
       },
       {
-        fields: ['status']
+        fields: ["status"],
       },
       {
-        fields: ['stockQuantity']
+        fields: ["stockQuantity"],
       },
       {
-        fields: ['barcode']
+        fields: ["barcode"],
       },
       {
-        fields: ['isVariant']
+        fields: ["isVariant"],
       },
       {
-        fields: ['isMainProduct']
+        fields: ["isMainProduct"],
       },
       {
-        fields: ['variantGroupId']
+        fields: ["variantGroupId"],
       },
       {
-        fields: ['parentProductId']
-      }
-    ]
+        fields: ["parentProductId"],
+      },
+    ],
     // hooks: {
     //   afterCreate: async (product) => {
     //     // If product doesn't have variants, create a default variant
@@ -279,63 +297,63 @@ Product.init(
 // Product associations
 Product.associate = function (models) {
   Product.belongsTo(models.User, {
-    foreignKey: 'userId',
-    as: 'user'
+    foreignKey: "userId",
+    as: "user",
   });
 
   // Also define the reverse association
   models.User.hasMany(Product, {
-    foreignKey: 'userId',
-    as: 'products',
-    onDelete: 'CASCADE',
-    hooks: true
+    foreignKey: "userId",
+    as: "products",
+    onDelete: "CASCADE",
+    hooks: true,
   });
 
   Product.hasMany(models.ProductVariant, {
-    foreignKey: 'productId',
-    as: 'variants',
-    onDelete: 'CASCADE',
-    hooks: true
+    foreignKey: "productId",
+    as: "variants",
+    onDelete: "CASCADE",
+    hooks: true,
   });
 
   Product.hasMany(models.InventoryMovement, {
-    foreignKey: 'productId',
-    as: 'inventoryMovements'
+    foreignKey: "productId",
+    as: "inventoryMovements",
   });
 
   Product.hasMany(models.StockReservation, {
-    foreignKey: 'productId',
-    as: 'stockReservations'
+    foreignKey: "productId",
+    as: "stockReservations",
   });
 
   Product.hasMany(models.PlatformData, {
-    foreignKey: 'entityId',
+    foreignKey: "entityId",
     constraints: false,
     scope: {
-      entityType: 'product'
+      entityType: "product",
     },
-    as: 'platformData'
+    as: "platformData",
   });
 
   // Define the reverse association
   models.PlatformData.belongsTo(Product, {
-    foreignKey: 'entityId',
+    foreignKey: "entityId",
     constraints: false,
-    as: 'product'
+    as: "product",
   });
 
   Product.hasMany(models.PlatformVariant, {
-    foreignKey: 'productId',
-    as: 'platformVariants',
-    onDelete: 'SET NULL'
+    foreignKey: "productId",
+    as: "platformVariants",
+    onDelete: "SET NULL",
   });
 
   // Customer Questions association
   Product.hasMany(models.CustomerQuestion, {
-    foreignKey: 'product_main_id',
-    sourceKey: 'sku', // Link from Product.sku to CustomerQuestion.product_main_id
-    as: 'customerQuestions',
-    constraints: false
+    foreignKey: "product_main_id",
+    sourceKey: "sku", // Link from Product.sku to CustomerQuestion.product_main_id
+    as: "customerQuestions",
+    constraints: false,
   });
 };
 

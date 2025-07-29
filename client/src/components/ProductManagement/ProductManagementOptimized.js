@@ -26,6 +26,7 @@ import { ImagePreviewModal } from "./components/ProductModals";
 import ProductAnalytics from "./components/ProductAnalytics";
 import BulkEditModal from "./components/BulkEditModal";
 import SearchPanel from "./components/SearchPanel";
+import ProductImportModal from "./components/ProductImportModal";
 import ProductManagementErrorBoundary, {
   ErrorDisplay,
   useErrorHandler,
@@ -911,48 +912,26 @@ const ProductManagement = () => {
   }, [state.selectedProducts, exportProducts, actions, handleError]);
 
   // Import/Export handlers
-  const handleImport = useCallback(
-    async (file) => {
-      // Validate file type
-      const allowedTypes = [
-        "text/csv",
-        "application/vnd.ms-excel",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      ];
+  const handleImportProducts = useCallback(() => {
+    actions.setModals({ showImportModal: true });
+  }, [actions]);
 
-      if (!allowedTypes.includes(file.type)) {
-        showAlert("Sadece CSV ve Excel dosyaları desteklenmektedir", "error");
-        return;
-      }
-
-      // Validate file size (max 10MB)
-      const maxSize = 10 * 1024 * 1024;
-      if (file.size > maxSize) {
-        showAlert("Dosya boyutu 10MB'dan büyük olamaz", "error");
-        return;
-      }
-
+  const handleImportSuccess = useCallback(
+    async (importResult) => {
       try {
-        actions.setBulkState({ importing: true });
-        await importProducts(file);
         await fetchProducts();
         await fetchProductStats().then((stats) =>
           actions.setProductStats(stats)
         );
+        showAlert(
+          `Import completed! Created ${importResult.created} products.`,
+          "success"
+        );
       } catch (error) {
-        handleError(error, " - Import");
-      } finally {
-        actions.setBulkState({ importing: false });
+        handleError(error, " - Post import refresh");
       }
     },
-    [
-      importProducts,
-      actions,
-      fetchProducts,
-      fetchProductStats,
-      showAlert,
-      handleError,
-    ]
+    [fetchProducts, fetchProductStats, actions, showAlert, handleError]
   );
 
   const handleExportAll = useCallback(async () => {
@@ -1012,18 +991,6 @@ const ProductManagement = () => {
     [state.filters, batchUpdate]
   );
 
-  // File input handler
-  const handleFileImport = useCallback(
-    (event) => {
-      const file = event.target.files[0];
-      if (file) {
-        handleImport(file);
-        event.target.value = ""; // Reset input
-      }
-    },
-    [handleImport]
-  );
-
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
@@ -1040,7 +1007,7 @@ const ProductManagement = () => {
   return (
     <ProductManagementErrorBoundary>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        {/* Header Section */}
+        /* Header Section */
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
             <div className="py-6">
@@ -1090,26 +1057,15 @@ const ProductManagement = () => {
                     </span>
                   </Button>
 
-                  <div className="relative">
-                    <input
-                      type="file"
-                      accept=".csv,.xlsx,.xls"
-                      onChange={handleFileImport}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      disabled={state.importing}
-                      aria-label="Ürün dosyası seç"
-                    />
-                    <Button
-                      variant="outline"
-                      disabled={state.importing}
-                      className="flex items-center space-x-2"
-                    >
-                      <Upload className="h-4 w-4" />
-                      <span>
-                        {state.importing ? "İçe Aktarılıyor..." : "İçe Aktar"}
-                      </span>
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={handleImportProducts}
+                    variant="outline"
+                    className="flex items-center space-x-2"
+                    aria-label="Ürün içe aktar"
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span>İçe Aktar</span>
+                  </Button>
 
                   <Button
                     onClick={handleAddProduct}
@@ -1125,7 +1081,6 @@ const ProductManagement = () => {
             </div>
           </div>
         </div>
-
         {/* Stats Cards Section */}
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -1295,7 +1250,7 @@ const ProductManagement = () => {
               onBulkExport={handleBulkExport}
               onBulkEdit={() => actions.setModals({ showBulkEditModal: true })}
               // Import/Export
-              onImport={handleImport}
+              onImport={handleImportProducts}
               onExportAll={handleExportAll}
               // Loading states
               importing={state.importing}
@@ -1307,7 +1262,6 @@ const ProductManagement = () => {
             />
           </div>
         </div>
-
         {/* Modals */}
         {/* Product Form Modal */}
         <Modal
@@ -1333,7 +1287,6 @@ const ProductManagement = () => {
             }
           />
         </Modal>
-
         {/* Product Details Modal */}
         <Modal
           isOpen={state.detailsModal.open}
@@ -1422,7 +1375,6 @@ const ProductManagement = () => {
             </div>
           )}
         </Modal>
-
         {/* Image Preview Modal */}
         <ImagePreviewModal
           isOpen={state.imageModal.open}
@@ -1442,7 +1394,6 @@ const ProductManagement = () => {
           images={state.imageModal.images}
           currentIndex={state.imageModal.currentIndex}
         />
-
         {/* Bulk Edit Modal */}
         <BulkEditModal
           isOpen={state.showBulkEditModal}
@@ -1562,7 +1513,6 @@ const ProductManagement = () => {
             }
           }}
         />
-
         {/* Enhanced Product Analytics */}
         <ProductAnalytics
           isOpen={state.showAnalytics}
@@ -1572,6 +1522,13 @@ const ProductManagement = () => {
             actions.updateMultiple({ analyticsTimeRange: range })
           }
           productId={state.detailsModal.product?.id}
+        />
+        {/* Product Import Modal */}
+        <ProductImportModal
+          show={state.showImportModal}
+          onHide={() => actions.setModals({ showImportModal: false })}
+          onSuccess={handleImportSuccess}
+          showAlert={showAlert}
         />
       </div>
     </ProductManagementErrorBoundary>

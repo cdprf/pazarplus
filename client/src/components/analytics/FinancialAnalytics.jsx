@@ -7,6 +7,7 @@ import {
   ChartContainer,
 } from "./OptimizedCharts";
 import analyticsService from "../../services/analyticsService";
+// import { useTranslation } from "../../i18n/hooks/useTranslation"; // TODO: Add translations for FinancialAnalytics
 import {
   formatCurrency,
   formatNumber,
@@ -24,6 +25,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 const FinancialAnalytics = ({ timeframe = "30d", filters = {} }) => {
+  // const { t } = useTranslation(); // TODO: Add translations for FinancialAnalytics
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

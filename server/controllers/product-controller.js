@@ -23,6 +23,9 @@ const VariantDetector = require("../services/variant-detector");
 const backgroundVariantDetectionService = require("../services/background-variant-detection-service");
 const PlatformSyncService = require("../services/platform-sync-service");
 // const SKUSystemManager = require("../../sku-system-manager"); // TEMPORARILY COMMENTED OUT - MODULE MISSING
+const multer = require("multer");
+const XLSX = require("xlsx");
+const csv = require("csv-parser");
 const {
   ProductVariant,
   InventoryMovement,
@@ -102,6 +105,11 @@ class ProductController {
       // Add category filter
       if (category && category.trim() !== "") {
         whereClause.category = { [Op.iLike]: `%${category}%` };
+      }
+
+      // Add sourcing filter
+      if (req.query.sourcing && req.query.sourcing.trim() !== "") {
+        whereClause.sourcing = req.query.sourcing;
       }
 
       // Add platform filter
@@ -880,9 +888,35 @@ class ProductController {
         images = [],
         status = "active",
         tags = [],
+        sourcing, // Add sourcing field
+        // New fields for main/variant classification
+        isMainProduct = false,
+        isVariant = false,
+        hasVariants = false,
+        parentProductId = null,
+        variantType = null,
+        variantValue = null,
+        variantGroupId = null,
       } = req.body;
 
       const userId = req.user.id;
+
+      // Validation: Cannot be both main and variant
+      if (isMainProduct && isVariant) {
+        return res.status(400).json({
+          success: false,
+          message: "Product cannot be both main product and variant",
+        });
+      }
+
+      // Validation: If variant, must have parent or group
+      if (isVariant && !parentProductId && !variantGroupId) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Variant products must have a parent product or variant group",
+        });
+      }
 
       // Check if SKU already exists for this user
       const existingProduct = await Product.findOne({
@@ -916,6 +950,17 @@ class ProductController {
         images,
         status,
         tags,
+        sourcing, // Add sourcing field
+        // Main/variant classification
+        isMainProduct,
+        isVariant,
+        hasVariants,
+        parentProductId,
+        variantType,
+        variantValue,
+        variantGroupId,
+        // Mark as user-created
+        creationSource: "user",
         sourcePlatform: "manual", // Mark as manually created
         lastSyncedAt: new Date(),
       });
@@ -1468,6 +1513,1186 @@ class ProductController {
           details: error.message,
           errorType: "DATABASE_ERROR",
         },
+      });
+    }
+  }
+
+  /**
+   * Get import options and configuration
+   */
+  async getImportOptions(req, res) {
+    try {
+      const importOptions = {
+        platforms: [
+          { id: "trendyol", name: "Trendyol", enabled: true },
+          { id: "hepsiburada", name: "Hepsiburada", enabled: true },
+          { id: "n11", name: "N11", enabled: true },
+        ],
+        fileTypes: ["csv", "xlsx", "xls"],
+        maxFileSize: 10485760, // 10MB
+        supportedFields: [
+          { id: "name", label: "Ürün Adı", required: true, type: "text" },
+          {
+            id: "description",
+            label: "Açıklama",
+            required: false,
+            type: "text",
+          },
+          { id: "price", label: "Fiyat", required: true, type: "number" },
+          {
+            id: "costPrice",
+            label: "Maliyet Fiyatı",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "discountedPrice",
+            label: "İndirimli Fiyat",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "stockQuantity",
+            label: "Stok Miktarı",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "minStockLevel",
+            label: "Minimum Stok Seviyesi",
+            required: false,
+            type: "number",
+          },
+          { id: "category", label: "Kategori", required: false, type: "text" },
+          {
+            id: "subCategory",
+            label: "Alt Kategori",
+            required: false,
+            type: "text",
+          },
+          { id: "brand", label: "Marka", required: false, type: "text" },
+          { id: "model", label: "Model", required: false, type: "text" },
+          { id: "sku", label: "SKU", required: false, type: "text" },
+          { id: "barcode", label: "Barkod", required: false, type: "text" },
+          { id: "mpn", label: "MPN", required: false, type: "text" },
+          { id: "gtin", label: "GTIN", required: false, type: "text" },
+          {
+            id: "weight",
+            label: "Ağırlık (kg)",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "length",
+            label: "Uzunluk (cm)",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "width",
+            label: "Genişlik (cm)",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "height",
+            label: "Yükseklik (cm)",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "volume",
+            label: "Hacim (cm³)",
+            required: false,
+            type: "number",
+          },
+          { id: "material", label: "Malzeme", required: false, type: "text" },
+          { id: "color", label: "Renk", required: false, type: "text" },
+          { id: "size", label: "Beden/Boyut", required: false, type: "text" },
+          { id: "warranty", label: "Garanti", required: false, type: "text" },
+          { id: "origin", label: "Menşei", required: false, type: "text" },
+          { id: "tags", label: "Etiketler", required: false, type: "text" },
+          { id: "status", label: "Durum", required: false, type: "text" },
+          {
+            id: "vatRate",
+            label: "KDV Oranı",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "cargoCompany",
+            label: "Kargo Firması",
+            required: false,
+            type: "text",
+          },
+          { id: "image1", label: "Ana Görsel", required: false, type: "url" },
+          { id: "image2", label: "Görsel 2", required: false, type: "url" },
+          { id: "image3", label: "Görsel 3", required: false, type: "url" },
+          { id: "image4", label: "Görsel 4", required: false, type: "url" },
+          { id: "image5", label: "Görsel 5", required: false, type: "url" },
+          { id: "image6", label: "Görsel 6", required: false, type: "url" },
+          { id: "image7", label: "Görsel 7", required: false, type: "url" },
+          { id: "image8", label: "Görsel 8", required: false, type: "url" },
+          { id: "image9", label: "Görsel 9", required: false, type: "url" },
+          { id: "image10", label: "Görsel 10", required: false, type: "url" },
+          {
+            id: "thumbnailImage",
+            label: "Küçük Görsel",
+            required: false,
+            type: "url",
+          },
+          {
+            id: "mainImage",
+            label: "Ana Kapak Görseli",
+            required: false,
+            type: "url",
+          },
+        ],
+        validationRules: {
+          required: ["name", "price"],
+          numeric: [
+            "price",
+            "costPrice",
+            "discountedPrice",
+            "stockQuantity",
+            "minStockLevel",
+            "weight",
+            "length",
+            "width",
+            "height",
+            "volume",
+            "vatRate",
+          ],
+          text: [
+            "name",
+            "description",
+            "category",
+            "subCategory",
+            "brand",
+            "model",
+            "sku",
+            "barcode",
+            "mpn",
+            "gtin",
+            "material",
+            "color",
+            "size",
+            "warranty",
+            "origin",
+            "tags",
+            "status",
+            "cargoCompany",
+          ],
+          url: [
+            "image1",
+            "image2",
+            "image3",
+            "image4",
+            "image5",
+            "image6",
+            "image7",
+            "image8",
+            "image9",
+            "image10",
+            "thumbnailImage",
+            "mainImage",
+          ],
+        },
+        templates: [
+          {
+            id: "basic",
+            name: "Temel Ürün Şablonu",
+            description:
+              "Temel ürün bilgileri ve 4 görsel ile hızlı içe aktarma",
+            fields: [
+              "name",
+              "description",
+              "price",
+              "stockQuantity",
+              "category",
+              "brand",
+              "sku",
+              "image1",
+              "image2",
+              "image3",
+              "image4",
+            ],
+          },
+          {
+            id: "advanced",
+            name: "Gelişmiş Ürün Şablonu",
+            description:
+              "Tüm ürün bilgileri, boyutlar, malzeme bilgileri ve 8+ görsel desteği",
+            fields: [
+              "name",
+              "description",
+              "price",
+              "costPrice",
+              "discountedPrice",
+              "stockQuantity",
+              "minStockLevel",
+              "category",
+              "subCategory",
+              "brand",
+              "model",
+              "sku",
+              "barcode",
+              "mpn",
+              "gtin",
+              "weight",
+              "length",
+              "width",
+              "height",
+              "volume",
+              "material",
+              "color",
+              "size",
+              "warranty",
+              "origin",
+              "tags",
+              "status",
+              "vatRate",
+              "cargoCompany",
+              "image1",
+              "image2",
+              "image3",
+              "image4",
+              "image5",
+              "image6",
+              "image7",
+              "image8",
+              "image9",
+              "image10",
+              "thumbnailImage",
+              "mainImage",
+            ],
+          },
+          {
+            id: "e-commerce",
+            name: "E-Ticaret Özel Şablonu",
+            description:
+              "E-ticaret platformları için optimized şablon - Kapsamlı görsel ve detay desteği",
+            fields: [
+              "name",
+              "description",
+              "price",
+              "discountedPrice",
+              "stockQuantity",
+              "category",
+              "brand",
+              "model",
+              "sku",
+              "barcode",
+              "color",
+              "size",
+              "warranty",
+              "tags",
+              "image1",
+              "image2",
+              "image3",
+              "image4",
+              "image5",
+              "image6",
+              "image7",
+              "image8",
+              "mainImage",
+              "thumbnailImage",
+            ],
+          },
+          {
+            id: "marketplace",
+            name: "Marketplace Şablonu",
+            description:
+              "Trendyol, Hepsiburada, N11 gibi marketplace platformları için özel şablon",
+            fields: [
+              "name",
+              "description",
+              "price",
+              "costPrice",
+              "stockQuantity",
+              "category",
+              "brand",
+              "sku",
+              "barcode",
+              "weight",
+              "length",
+              "width",
+              "height",
+              "image1",
+              "image2",
+              "image3",
+              "image4",
+              "image5",
+              "image6",
+              "image7",
+              "image8",
+              "image9",
+              "image10",
+            ],
+          },
+        ],
+      };
+
+      res.json({
+        success: true,
+        data: importOptions,
+      });
+    } catch (error) {
+      logger.error("Error getting import options:", error);
+      res.status(500).json({
+        success: false,
+        error: {
+          message: "Failed to get import options",
+          details: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * Preview uploaded import file and suggest field mappings
+   */
+  async previewImportFile(req, res) {
+    try {
+      logger.info("🔍 Import preview attempt started", {
+        userId: req.user?.id,
+        hasFile: !!req.file,
+        headers: Object.keys(req.headers),
+        contentType: req.headers["content-type"],
+      });
+
+      const userId = req.user.id;
+
+      if (!req.file) {
+        logger.warn("❌ No file uploaded in preview request", { userId });
+        return res.status(400).json({
+          success: false,
+          message: "No file uploaded",
+        });
+      }
+
+      const file = req.file;
+      logger.info("📁 File received", {
+        userId,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        bufferLength: file.buffer?.length,
+      });
+
+      const fileExtension = file.originalname.split(".").pop().toLowerCase();
+      logger.info("🔧 Processing file extension", { userId, fileExtension });
+
+      let previewData = [];
+      let headers = [];
+
+      // Parse file based on extension
+      logger.info("📊 Starting file parsing", { userId, fileExtension });
+
+      if (fileExtension === "csv") {
+        logger.info("🗂️ Processing CSV file", { userId });
+        try {
+          const csvData = file.buffer.toString("utf8");
+          logger.info("📄 CSV data extracted", {
+            userId,
+            csvLength: csvData.length,
+            firstChars: csvData.substring(0, 100),
+          });
+
+          const lines = csvData.split("\n").filter((line) => line.trim());
+          logger.info("📋 CSV lines processed", {
+            userId,
+            lineCount: lines.length,
+          });
+
+          if (lines.length > 0) {
+            headers = lines[0]
+              .split(",")
+              .map((h) => h.trim().replace(/"/g, ""));
+            logger.info("📝 CSV headers extracted", { userId, headers });
+
+            previewData = lines
+              .slice(1, Math.min(6, lines.length))
+              .map((line) => {
+                const values = line
+                  .split(",")
+                  .map((v) => v.trim().replace(/"/g, ""));
+                return headers.reduce((obj, header, index) => {
+                  obj[header] = values[index] || "";
+                  return obj;
+                }, {});
+              });
+            logger.info("🔍 CSV preview data created", {
+              userId,
+              previewRowCount: previewData.length,
+            });
+          }
+        } catch (csvError) {
+          logger.error("❌ CSV parsing error", {
+            userId,
+            error: csvError.message,
+            stack: csvError.stack,
+          });
+          throw csvError;
+        }
+      } else if (["xlsx", "xls"].includes(fileExtension)) {
+        logger.info("📊 Processing Excel file", { userId, fileExtension });
+        try {
+          const workbook = XLSX.read(file.buffer, { type: "buffer" });
+          logger.info("📈 Excel workbook loaded", {
+            userId,
+            sheetNames: workbook.SheetNames,
+            sheetCount: workbook.SheetNames.length,
+          });
+
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          logger.info("📋 Excel worksheet selected", { userId, sheetName });
+
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          logger.info("🔄 Excel data converted to JSON", {
+            userId,
+            rowCount: jsonData.length,
+          });
+
+          if (jsonData.length > 0) {
+            headers = jsonData[0].map((h) => String(h || "").trim());
+            logger.info("📝 Excel headers extracted", { userId, headers });
+
+            previewData = jsonData
+              .slice(1, Math.min(6, jsonData.length))
+              .map((row) => {
+                return headers.reduce((obj, header, index) => {
+                  obj[header] = String(row[index] || "").trim();
+                  return obj;
+                }, {});
+              });
+            logger.info("🔍 Excel preview data created", {
+              userId,
+              previewRowCount: previewData.length,
+            });
+          }
+        } catch (excelError) {
+          logger.error("❌ Excel parsing error", {
+            userId,
+            error: excelError.message,
+            stack: excelError.stack,
+          });
+          throw excelError;
+        }
+      } else {
+        logger.warn("❌ Unsupported file format", { userId, fileExtension });
+        return res.status(400).json({
+          success: false,
+          message: "Unsupported file format. Please use CSV or Excel files.",
+        });
+      }
+
+      // Get supported fields from import options
+      const importOptions = {
+        supportedFields: [
+          { id: "name", label: "Ürün Adı", required: true, type: "text" },
+          {
+            id: "description",
+            label: "Açıklama",
+            required: false,
+            type: "text",
+          },
+          { id: "price", label: "Fiyat", required: true, type: "number" },
+          {
+            id: "costPrice",
+            label: "Maliyet Fiyatı",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "discountedPrice",
+            label: "İndirimli Fiyat",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "stockQuantity",
+            label: "Stok Miktarı",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "minStockLevel",
+            label: "Minimum Stok Seviyesi",
+            required: false,
+            type: "number",
+          },
+          { id: "category", label: "Kategori", required: false, type: "text" },
+          {
+            id: "subCategory",
+            label: "Alt Kategori",
+            required: false,
+            type: "text",
+          },
+          { id: "brand", label: "Marka", required: false, type: "text" },
+          { id: "model", label: "Model", required: false, type: "text" },
+          { id: "sku", label: "SKU", required: false, type: "text" },
+          { id: "barcode", label: "Barkod", required: false, type: "text" },
+          { id: "mpn", label: "MPN", required: false, type: "text" },
+          { id: "gtin", label: "GTIN", required: false, type: "text" },
+          {
+            id: "weight",
+            label: "Ağırlık (kg)",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "length",
+            label: "Uzunluk (cm)",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "width",
+            label: "Genişlik (cm)",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "height",
+            label: "Yükseklik (cm)",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "volume",
+            label: "Hacim (cm³)",
+            required: false,
+            type: "number",
+          },
+          { id: "material", label: "Malzeme", required: false, type: "text" },
+          { id: "color", label: "Renk", required: false, type: "text" },
+          { id: "size", label: "Beden/Boyut", required: false, type: "text" },
+          { id: "warranty", label: "Garanti", required: false, type: "text" },
+          { id: "origin", label: "Menşei", required: false, type: "text" },
+          { id: "tags", label: "Etiketler", required: false, type: "text" },
+          { id: "status", label: "Durum", required: false, type: "text" },
+          {
+            id: "vatRate",
+            label: "KDV Oranı",
+            required: false,
+            type: "number",
+          },
+          {
+            id: "cargoCompany",
+            label: "Kargo Firması",
+            required: false,
+            type: "text",
+          },
+          { id: "image1", label: "Ana Görsel", required: false, type: "url" },
+          { id: "image2", label: "Görsel 2", required: false, type: "url" },
+          { id: "image3", label: "Görsel 3", required: false, type: "url" },
+          { id: "image4", label: "Görsel 4", required: false, type: "url" },
+          { id: "image5", label: "Görsel 5", required: false, type: "url" },
+          { id: "image6", label: "Görsel 6", required: false, type: "url" },
+          { id: "image7", label: "Görsel 7", required: false, type: "url" },
+          { id: "image8", label: "Görsel 8", required: false, type: "url" },
+          { id: "image9", label: "Görsel 9", required: false, type: "url" },
+          { id: "image10", label: "Görsel 10", required: false, type: "url" },
+          {
+            id: "thumbnailImage",
+            label: "Küçük Görsel",
+            required: false,
+            type: "url",
+          },
+          {
+            id: "mainImage",
+            label: "Ana Kapak Görseli",
+            required: false,
+            type: "url",
+          },
+        ],
+      };
+
+      // Generate field mapping suggestions
+      logger.info("🎯 Generating field mapping suggestions", {
+        userId,
+        headersCount: headers.length,
+      });
+      let mappingSuggestions;
+      try {
+        mappingSuggestions = generateFieldMappingSuggestions(
+          headers,
+          importOptions.supportedFields
+        );
+        logger.info("✅ Field mapping suggestions generated", {
+          userId,
+          suggestionsCount: Object.keys(mappingSuggestions).length,
+          suggestions: mappingSuggestions,
+        });
+      } catch (mappingError) {
+        logger.error("❌ Field mapping error", {
+          userId,
+          error: mappingError.message,
+          stack: mappingError.stack,
+        });
+        throw mappingError;
+      }
+
+      // Calculate total rows in original file (approximation)
+      let totalRows = 0;
+      if (fileExtension === "csv") {
+        const csvData = file.buffer.toString("utf8");
+        totalRows =
+          csvData.split("\n").filter((line) => line.trim()).length - 1; // Subtract header row
+      } else if (["xlsx", "xls"].includes(fileExtension)) {
+        const workbook = XLSX.read(file.buffer, { type: "buffer" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        totalRows = jsonData.length - 1; // Subtract header row
+      }
+
+      logger.info(
+        `File preview generated for user ${userId}: ${file.originalname}, ${totalRows} rows`
+      );
+
+      res.json({
+        success: true,
+        data: {
+          fileName: file.originalname,
+          fileSize: file.size,
+          fileType: fileExtension,
+          headers: headers,
+          preview: {
+            rows: previewData,
+            totalRows: Math.max(0, totalRows),
+            previewRows: previewData.length,
+          },
+          mappingSuggestions: {
+            mappings: mappingSuggestions,
+            supportedFields: importOptions.supportedFields,
+          },
+        },
+      });
+    } catch (error) {
+      logger.error("Error previewing import file:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to preview import file",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Import products from uploaded file
+   */
+  async importProducts(req, res) {
+    try {
+      const userId = req.user.id;
+
+      // For now, return a mock successful response
+      // In a real implementation, you would:
+      // 1. Parse the uploaded file (CSV/Excel)
+      // 2. Validate the data
+      // 3. Create products in the database
+      // 4. Return import results
+
+      logger.info(`Product import requested by user ${userId}`);
+
+      // Mock response simulating successful import
+      const importResults = {
+        total: 0,
+        successful: 0,
+        failed: 0,
+        errors: [],
+        created: 0,
+        updated: 0,
+      };
+
+      res.json({
+        success: true,
+        data: importResults,
+        message:
+          "Import functionality is ready - file processing not yet implemented",
+      });
+    } catch (error) {
+      logger.error("Error importing products:", error);
+      res.status(500).json({
+        success: false,
+        error: {
+          message: "Failed to import products",
+          details: error.message,
+        },
+      });
+    }
+  }
+
+  /**
+   * Download import template file
+   */
+  async downloadImportTemplate(req, res) {
+    try {
+      const { platform = "generic", format = "csv" } = req.query;
+
+      // Define comprehensive template headers and examples based on platform with extended fields
+      const templateData = {
+        generic: {
+          headers: [
+            "name",
+            "description",
+            "price",
+            "costPrice",
+            "discountedPrice",
+            "stockQuantity",
+            "minStockLevel",
+            "category",
+            "subCategory",
+            "brand",
+            "model",
+            "sku",
+            "barcode",
+            "mpn",
+            "gtin",
+            "weight",
+            "length",
+            "width",
+            "height",
+            "volume",
+            "material",
+            "color",
+            "size",
+            "warranty",
+            "origin",
+            "tags",
+            "status",
+            "vatRate",
+            "cargoCompany",
+            "image1",
+            "image2",
+            "image3",
+            "image4",
+            "image5",
+            "image6",
+            "image7",
+            "image8",
+            "image9",
+            "image10",
+            "thumbnailImage",
+            "mainImage",
+          ],
+          example: [
+            "Premium Bluetooth Kulaklık",
+            "Kablosuz Bluetooth 5.0 teknolojisi ile yüksek kaliteli ses deneyimi",
+            "299.99",
+            "150.00",
+            "249.99",
+            "100",
+            "10",
+            "Elektronik",
+            "Ses & Görüntü",
+            "TechBrand",
+            "TB-BT500",
+            "SKU123456",
+            "1234567890123",
+            "MPN789",
+            "GTIN012",
+            "0.25",
+            "18",
+            "15",
+            "6",
+            "1620",
+            "ABS Plastik",
+            "Siyah",
+            "Standart",
+            "24 Ay",
+            "Türkiye",
+            "bluetooth,kulaklık,kablosuz,müzik",
+            "active",
+            "18",
+            "Yurtiçi Kargo",
+            "https://example.com/images/product1-main.jpg",
+            "https://example.com/images/product1-side.jpg",
+            "https://example.com/images/product1-back.jpg",
+            "https://example.com/images/product1-box.jpg",
+            "https://example.com/images/product1-details.jpg",
+            "https://example.com/images/product1-usage.jpg",
+            "https://example.com/images/product1-colors.jpg",
+            "https://example.com/images/product1-accessories.jpg",
+            "https://example.com/images/product1-lifestyle.jpg",
+            "https://example.com/images/product1-comparison.jpg",
+            "https://example.com/images/product1-thumb.jpg",
+            "https://example.com/images/product1-main.jpg",
+          ],
+          description:
+            "Kapsamlı genel ürün içe aktarma şablonu - Tüm platform desteği ile",
+        },
+        trendyol: {
+          headers: [
+            "name",
+            "description",
+            "price",
+            "costPrice",
+            "discountedPrice",
+            "stockQuantity",
+            "minStockLevel",
+            "category",
+            "subCategory",
+            "brand",
+            "model",
+            "sku",
+            "barcode",
+            "mpn",
+            "gtin",
+            "weight",
+            "length",
+            "width",
+            "height",
+            "volume",
+            "material",
+            "color",
+            "size",
+            "warranty",
+            "origin",
+            "tags",
+            "status",
+            "vatRate",
+            "cargoCompany",
+            "image1",
+            "image2",
+            "image3",
+            "image4",
+            "image5",
+            "image6",
+            "image7",
+            "image8",
+            "image9",
+            "image10",
+            "thumbnailImage",
+            "mainImage",
+            "productMainId",
+            "trendyolCategory",
+            "shipmentTemplate",
+            "deliveryDuration",
+          ],
+          example: [
+            "iPhone 14 Pro Max Kılıf Şeffaf",
+            "Darbe emici köşeli tasarım ile iPhone 14 Pro Max için şeffaf koruyucu kılıf",
+            "89.99",
+            "35.00",
+            "69.99",
+            "250",
+            "25",
+            "Cep Telefonu & Aksesuar",
+            "Telefon Kılıfı",
+            "CaseMaster",
+            "CM-IP14PM-CLR",
+            "TY-CM789",
+            "8681234567890",
+            "CM789IP14",
+            "GTIN8681234567890",
+            "0.05",
+            "16",
+            "8",
+            "1",
+            "128",
+            "TPU Silikon",
+            "Şeffaf",
+            "iPhone 14 Pro Max",
+            "12 Ay",
+            "Türkiye",
+            "iphone,kılıf,şeffaf,koruma,silikon",
+            "active",
+            "18",
+            "Trendyol Express",
+            "https://cdn.trendyol.com/product/main1.jpg",
+            "https://cdn.trendyol.com/product/angle1.jpg",
+            "https://cdn.trendyol.com/product/back1.jpg",
+            "https://cdn.trendyol.com/product/side1.jpg",
+            "https://cdn.trendyol.com/product/detail1.jpg",
+            "https://cdn.trendyol.com/product/usage1.jpg",
+            "https://cdn.trendyol.com/product/colors1.jpg",
+            "https://cdn.trendyol.com/product/pack1.jpg",
+            "https://cdn.trendyol.com/product/lifestyle1.jpg",
+            "https://cdn.trendyol.com/product/size1.jpg",
+            "https://cdn.trendyol.com/product/thumb1.jpg",
+            "https://cdn.trendyol.com/product/main1.jpg",
+            "TYMAIN123456",
+            "1190",
+            "standard-shipment",
+            "1-3",
+          ],
+          description:
+            "Trendyol platformu için kapsamlı ürün içe aktarma şablonu - Tüm alanlar dahil",
+        },
+        hepsiburada: {
+          headers: [
+            "name",
+            "description",
+            "price",
+            "costPrice",
+            "discountedPrice",
+            "stockQuantity",
+            "minStockLevel",
+            "category",
+            "subCategory",
+            "brand",
+            "model",
+            "sku",
+            "barcode",
+            "mpn",
+            "gtin",
+            "weight",
+            "length",
+            "width",
+            "height",
+            "volume",
+            "material",
+            "color",
+            "size",
+            "warranty",
+            "origin",
+            "tags",
+            "status",
+            "vatRate",
+            "cargoCompany",
+            "image1",
+            "image2",
+            "image3",
+            "image4",
+            "image5",
+            "image6",
+            "image7",
+            "image8",
+            "image9",
+            "image10",
+            "thumbnailImage",
+            "mainImage",
+            "merchantSku",
+            "hepsiburadaCategory",
+            "packageWidth",
+            "packageHeight",
+            "packageLength",
+          ],
+          example: [
+            "Samsung Galaxy S23 Ultra Wireless Şarj Cihazı",
+            "Hızlı kablosuz şarj özellikli 15W güçlü şarj istasyonu",
+            "399.99",
+            "180.00",
+            "349.99",
+            "150",
+            "15",
+            "Elektronik",
+            "Şarj Cihazları",
+            "Samsung",
+            "EP-P4300",
+            "HB-SAM-WC15",
+            "8806094123456",
+            "EP4300SAM",
+            "GTIN8806094123456",
+            "0.45",
+            "10",
+            "10",
+            "2",
+            "200",
+            "Alüminyum",
+            "Beyaz",
+            "Universal",
+            "24 Ay",
+            "Güney Kore",
+            "samsung,kablosuz,şarj,wireless,15w",
+            "active",
+            "18",
+            "Hepsijet",
+            "https://productimages.hepsiburada.net/main1.jpg",
+            "https://productimages.hepsiburada.net/side1.jpg",
+            "https://productimages.hepsiburada.net/back1.jpg",
+            "https://productimages.hepsiburada.net/top1.jpg",
+            "https://productimages.hepsiburada.net/detail1.jpg",
+            "https://productimages.hepsiburada.net/usage1.jpg",
+            "https://productimages.hepsiburada.net/led1.jpg",
+            "https://productimages.hepsiburada.net/package1.jpg",
+            "https://productimages.hepsiburada.net/lifestyle1.jpg",
+            "https://productimages.hepsiburada.net/tech1.jpg",
+            "https://productimages.hepsiburada.net/thumb1.jpg",
+            "https://productimages.hepsiburada.net/main1.jpg",
+            "MERCHANT-SAM-WC789",
+            "18002000",
+            "12",
+            "12",
+            "3",
+          ],
+          description:
+            "Hepsiburada platformu için kapsamlı ürün içe aktarma şablonu - Detaylı alan desteği",
+        },
+        n11: {
+          headers: [
+            "name",
+            "description",
+            "price",
+            "costPrice",
+            "discountedPrice",
+            "stockQuantity",
+            "minStockLevel",
+            "category",
+            "subCategory",
+            "brand",
+            "model",
+            "sku",
+            "barcode",
+            "mpn",
+            "gtin",
+            "weight",
+            "length",
+            "width",
+            "height",
+            "volume",
+            "material",
+            "color",
+            "size",
+            "warranty",
+            "origin",
+            "tags",
+            "status",
+            "vatRate",
+            "cargoCompany",
+            "image1",
+            "image2",
+            "image3",
+            "image4",
+            "image5",
+            "image6",
+            "image7",
+            "image8",
+            "image9",
+            "image10",
+            "thumbnailImage",
+            "mainImage",
+            "productSellerCode",
+            "n11Category",
+            "preparationDays",
+            "shipmentTemplate",
+            "returnable",
+          ],
+          example: [
+            "Xiaomi Mi Band 7 Akıllı Bileklik",
+            "AMOLED ekran ve 14 gün pil ömrü ile gelişmiş fitness takibi",
+            "249.99",
+            "120.00",
+            "199.99",
+            "180",
+            "20",
+            "Teknoloji",
+            "Giyilebilir Teknoloji",
+            "Xiaomi",
+            "Mi Band 7",
+            "N11-XM-MB7",
+            "6934177123456",
+            "MIBAND7XM",
+            "GTIN6934177123456",
+            "0.025",
+            "4.65",
+            "2.09",
+            "1.28",
+            "12.5",
+            "Plastik",
+            "Siyah",
+            "Universal",
+            "12 Ay",
+            "Çin",
+            "xiaomi,akıllı,bileklik,fitness,spor",
+            "active",
+            "18",
+            "N11 Express",
+            "https://n11scdn.akamaized.net/product1-main.jpg",
+            "https://n11scdn.akamaized.net/product1-side.jpg",
+            "https://n11scdn.akamaized.net/product1-back.jpg",
+            "https://n11scdn.akamaized.net/product1-screen.jpg",
+            "https://n11scdn.akamaized.net/product1-band.jpg",
+            "https://n11scdn.akamaized.net/product1-features.jpg",
+            "https://n11scdn.akamaized.net/product1-sports.jpg",
+            "https://n11scdn.akamaized.net/product1-package.jpg",
+            "https://n11scdn.akamaized.net/product1-lifestyle.jpg",
+            "https://n11scdn.akamaized.net/product1-comparison.jpg",
+            "https://n11scdn.akamaized.net/product1-thumb.jpg",
+            "https://n11scdn.akamaized.net/product1-main.jpg",
+            "SELLER-XM-MB7-001",
+            "1002002",
+            "1",
+            "fast-delivery",
+            "true",
+          ],
+          description:
+            "N11 platformu için kapsamlı ürün içe aktarma şablonu - Geniş alan desteği",
+        },
+      };
+
+      const template = templateData[platform] || templateData.generic;
+      const { headers, example, description } = template;
+
+      if (format === "csv") {
+        // Generate CSV template with headers and example row
+        let csvContent = headers.join(",") + "\n";
+        csvContent += example.join(",") + "\n";
+        csvContent += "# " + description + "\n";
+        csvContent +=
+          "# İlk satır sütun başlıkları, ikinci satır örnek veri içerir\n";
+        csvContent +=
+          "# Bu satırları silip kendi verilerinizi ekleyebilirsiniz\n";
+
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="import-template-${platform}.csv"`
+        );
+        res.send("\ufeff" + csvContent); // Add BOM for proper UTF-8 encoding
+      } else if (format === "xlsx") {
+        // Generate Excel template using xlsx library
+        const XLSX = require("xlsx");
+
+        // Create workbook and worksheet
+        const wb = XLSX.utils.book_new();
+
+        // Create data array with headers and example
+        const wsData = [
+          headers,
+          example,
+          [], // Empty row
+          ["# " + description],
+          ["# İlk satır sütun başlıkları, ikinci satır örnek veri içerir"],
+          ["# Bu satırları silip kendi verilerinizi ekleyebilirsiniz"],
+        ];
+
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+        // Set column widths for better readability
+        const colWidths = headers.map(() => ({ wch: 15 }));
+        ws["!cols"] = colWidths;
+
+        // Add worksheet to workbook
+        XLSX.utils.book_append_sheet(wb, ws, "Import Template");
+
+        // Generate buffer
+        const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="import-template-${platform}.xlsx"`
+        );
+        res.send(buffer);
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Unsupported format. Use csv or xlsx.",
+        });
+      }
+    } catch (error) {
+      logger.error("Error generating import template:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to generate import template",
+        error: error.message,
       });
     }
   }
@@ -3271,6 +4496,7 @@ class ProductController {
         brand: productData.brand || "",
         weight: parseFloat(productData.weight) || 0,
         status: productData.status || "active",
+        sourcing: productData.sourcing, // Add sourcing field
         userId,
         sourcePlatform: "manual", // Mark as manually created
         // Add enhanced fields
@@ -6130,9 +7356,22 @@ class ProductController {
       });
 
       if (!product) {
-        product = await PlatformVariant.findOne({
-          where: { id, userId },
+        // Check if it's a platform variant by finding the variant and checking the main product's userId
+        const variant = await PlatformVariant.findOne({
+          where: { id },
+          include: [
+            {
+              model: MainProduct,
+              as: "mainProduct",
+              where: { userId },
+              required: true,
+            },
+          ],
         });
+
+        if (variant) {
+          product = variant;
+        }
       }
 
       if (!product) {
@@ -6243,6 +7482,110 @@ class ProductController {
       });
     }
   }
+}
+
+// Helper function for field mapping suggestions
+function generateFieldMappingSuggestions(fileHeaders, supportedFields) {
+  const mappings = {};
+
+  // Create a lookup for easier matching
+  const fieldLookup = supportedFields.reduce((acc, field) => {
+    acc[field.id.toLowerCase()] = field.id;
+    acc[field.label.toLowerCase()] = field.id;
+    return acc;
+  }, {});
+
+  // Common field name variations
+  const fieldVariations = {
+    name: [
+      "name",
+      "ürün adı",
+      "urun adi",
+      "product name",
+      "title",
+      "başlık",
+      "baslik",
+    ],
+    description: [
+      "description",
+      "açıklama",
+      "aciklama",
+      "desc",
+      "detail",
+      "detay",
+    ],
+    price: ["price", "fiyat", "amount", "miktar", "tutar"],
+    costPrice: [
+      "cost price",
+      "maliyet",
+      "cost",
+      "maliyet fiyatı",
+      "maliyet fiyati",
+    ],
+    discountedPrice: [
+      "discounted price",
+      "indirimli fiyat",
+      "indirimli",
+      "discount",
+    ],
+    stockQuantity: [
+      "stock",
+      "stok",
+      "quantity",
+      "miktar",
+      "adet",
+      "stock quantity",
+    ],
+    category: ["category", "kategori", "cat"],
+    brand: ["brand", "marka"],
+    sku: ["sku", "stock code", "stok kodu"],
+    barcode: ["barcode", "barkod"],
+    weight: ["weight", "ağırlık", "agirlik"],
+    image1: [
+      "image",
+      "görsel",
+      "gorsel",
+      "resim",
+      "photo",
+      "main image",
+      "ana görsel",
+    ],
+    image2: ["image2", "görsel2", "gorsel2", "resim2", "photo2"],
+    image3: ["image3", "görsel3", "gorsel3", "resim3", "photo3"],
+    image4: ["image4", "görsel4", "gorsel4", "resim4", "photo4"],
+    image5: ["image5", "görsel5", "gorsel5", "resim5", "photo5"],
+    image6: ["image6", "görsel6", "gorsel6", "resim6", "photo6"],
+    image7: ["image7", "görsel7", "gorsel7", "resim7", "photo7"],
+    image8: ["image8", "görsel8", "gorsel8", "resim8", "photo8"],
+    color: ["color", "renk"],
+    size: ["size", "beden", "boyut"],
+    material: ["material", "malzeme"],
+  };
+
+  // Try to match file headers to supported fields
+  fileHeaders.forEach((header) => {
+    const cleanHeader = header.toLowerCase().trim();
+
+    // Direct match first
+    if (fieldLookup[cleanHeader]) {
+      mappings[fieldLookup[cleanHeader]] = header;
+      return;
+    }
+
+    // Try variation matching
+    for (const [fieldId, variations] of Object.entries(fieldVariations)) {
+      if (
+        variations.some((variation) =>
+          cleanHeader.includes(variation.toLowerCase())
+        )
+      ) {
+        mappings[fieldId] = header;
+        break;
+      }
+    }
+  });
+
+  return mappings;
 }
 
 module.exports = new ProductController();

@@ -8,6 +8,7 @@ import {
 } from "./OptimizedCharts";
 import { UserGroupIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 import analyticsService from "../../services/analyticsService";
+// import { useTranslation } from "../../i18n/hooks/useTranslation"; // TODO: Add translations for CustomerAnalytics
 import {
   formatCurrency,
   formatNumber,
@@ -16,6 +17,7 @@ import {
 import ExportButton from "./ExportButton";
 
 const CustomerAnalytics = ({ timeframe = "30d" }) => {
+  // const { t } = useTranslation(); // TODO: Add translations for CustomerAnalytics
   const [data, setData] = useState(null);
   const [cohortData, setCohortData] = useState(null);
   const [loading, setLoading] = useState(true);

@@ -17,7 +17,7 @@ class AnalyticsService {
   constructor() {
     this.cache = new Map();
     this.cacheTimeout = 5 * 60 * 1000; // 5 minutes cache
-    this.requestTimeout = 30000; // 30 seconds timeout
+    this.requestTimeout = 10000; // Reduced from 30s to 10s for faster failure detection
     this.maxCacheSize = 50; // Prevent memory bloat
   }
 

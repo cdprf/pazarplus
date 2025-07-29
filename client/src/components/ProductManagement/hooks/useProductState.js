@@ -85,6 +85,7 @@ const initialState = {
   },
   showBulkEditModal: false,
   showExportModal: false,
+  showImportModal: false,
 
   // Other
   recentSearches: [],

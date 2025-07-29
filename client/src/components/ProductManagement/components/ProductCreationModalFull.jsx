@@ -26,6 +26,7 @@ const ProductCreationModalFull = ({ show, onHide, onSuccess }) => {
     minStockLevel: 5,
     weight: "",
     status: "active",
+    sourcing: "", // Add sourcing field
   });
 
   // Import data state
@@ -54,6 +55,7 @@ const ProductCreationModalFull = ({ show, onHide, onSuccess }) => {
       minStockLevel: 5,
       weight: "",
       status: "active",
+      sourcing: "", // Add sourcing field
     });
     setErrors({});
     setImportPreview(null);
@@ -638,6 +640,36 @@ const ProductCreationModalFull = ({ show, onHide, onSuccess }) => {
                         fontSize: "1rem",
                       }}
                     />
+                  </div>
+
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        marginBottom: "0.5rem",
+                        fontWeight: 500,
+                      }}
+                    >
+                      Sourcing
+                    </label>
+                    <select
+                      value={formData.sourcing}
+                      onChange={(e) =>
+                        handleInputChange("sourcing", e.target.value)
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "0.5rem",
+                        border: "1px solid #ddd",
+                        borderRadius: "4px",
+                        fontSize: "1rem",
+                        backgroundColor: "white",
+                      }}
+                    >
+                      <option value="">Select sourcing</option>
+                      <option value="local">Local</option>
+                      <option value="outsource">Outsource</option>
+                    </select>
                   </div>
                 </div>
 

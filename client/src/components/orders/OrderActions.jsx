@@ -4,7 +4,7 @@ import logger from "../../utils/logger.js";
  * Follows Pazar+ Design System patterns for buttons and actions
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 
 import {
   CheckCircle,
@@ -36,99 +36,122 @@ const OrderActions = ({
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isPrintingShippingSlip, setIsPrintingShippingSlip] = useState(false);
   const [isPrintingInvoice, setIsPrintingInvoice] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Error boundary for component
+  useEffect(() => {
+    if (!order || !order.id) {
+      logger.warn("OrderActions: Invalid order data received", order);
+      showAlert?.("Sipariş verileri eksik veya hatalı", "warning");
+    }
+  }, [order, showAlert]);
+
+  // Safe execution wrapper
+  const safeExecute = useCallback(
+    async (operation, errorMessage) => {
+      try {
+        setIsLoading(true);
+        await operation();
+      } catch (error) {
+        logger.error(`OrderActions error: ${errorMessage}`, error);
+        showAlert?.(`${errorMessage}: ${error.message}`, "error");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [showAlert]
+  );
 
   // Enhanced print shipping slip using new service
   const handlePrintShippingSlip = useCallback(
     async (orderId) => {
-      logger.info(
-        "🚀 Enhanced handlePrintShippingSlip called with orderId:",
-        orderId
-      );
-
-      if (isPrintingShippingSlip) {
-        logger.info("⚠️ Already printing, ignoring request");
-        return;
-      }
-
-      if (!orderId) {
-        logger.info("❌ No orderId provided");
-        showAlert("Sipariş kimliği eksik", "error");
-        return;
-      }
-
-      setIsPrintingShippingSlip(true);
-
-      try {
-        // Get default template ID
-        let defaultTemplateId = null;
-        try {
-          const defaultTemplateResponse =
-            await api.shipping.getDefaultTemplate();
-          if (defaultTemplateResponse.success && defaultTemplateResponse.data) {
-            defaultTemplateId = defaultTemplateResponse.data.defaultTemplateId;
-
-            // If no default template but templates exist, use first one
-            if (
-              !defaultTemplateId &&
-              defaultTemplateResponse.data.availableTemplates?.length > 0
-            ) {
-              defaultTemplateId =
-                defaultTemplateResponse.data.availableTemplates[0].id;
-            }
-          }
-        } catch (templateError) {
-          logger.warn(
-            "Template detection failed, proceeding without template:",
-            templateError
-          );
-        }
-
+      await safeExecute(async () => {
         logger.info(
-          "🔍 Template check - defaultTemplateId:",
-          defaultTemplateId
+          "🚀 Enhanced handlePrintShippingSlip called with orderId:",
+          orderId
         );
 
-        // Check if a template is available before proceeding
-        if (!defaultTemplateId) {
-          logger.info("❌ No shipping template available - showing alert");
-          showAlert(
-            "No shipping template found. Please create or link a shipping template to this order before printing.",
-            "warning"
-          );
-          setIsPrintingShippingSlip(false);
+        if (isPrintingShippingSlip) {
+          logger.info("⚠️ Already printing, ignoring request");
           return;
         }
 
-        logger.info("✅ Template found, proceeding with PDF generation");
+        if (!orderId) {
+          logger.info("❌ No orderId provided");
+          throw new Error("Sipariş kimliği eksik");
+        }
 
-        // Use enhanced PDF service
-        const result = await enhancedPDFService.generateAndOpenShippingSlip(
-          orderId,
-          defaultTemplateId
-        );
+        setIsPrintingShippingSlip(true);
 
-        if (result.success) {
-          showAlert("Gönderi belgesi hazırlandı ve açıldı", "success");
-          if (!result.accessible) {
-            showAlert(
-              "Gönderi belgesi oluşturuldu ancak ağ erişimi sınırlı olabilir. PDF dosyası indirilen dosyalarınızda.",
-              "warning"
+        try {
+          // Get default template ID
+          let defaultTemplateId = null;
+          try {
+            const defaultTemplateResponse =
+              await api.shipping.getDefaultTemplate();
+            if (
+              defaultTemplateResponse.success &&
+              defaultTemplateResponse.data
+            ) {
+              defaultTemplateId =
+                defaultTemplateResponse.data.defaultTemplateId;
+
+              // If no default template but templates exist, use first one
+              if (
+                !defaultTemplateId &&
+                defaultTemplateResponse.data.availableTemplates?.length > 0
+              ) {
+                defaultTemplateId =
+                  defaultTemplateResponse.data.availableTemplates[0].id;
+              }
+            }
+          } catch (templateError) {
+            logger.warn(
+              "Template detection failed, proceeding without template:",
+              templateError
             );
           }
-        } else {
-          throw new Error(result.message || result.error);
+
+          logger.info(
+            "🔍 Template check - defaultTemplateId:",
+            defaultTemplateId
+          );
+
+          // Check if a template is available before proceeding
+          if (!defaultTemplateId) {
+            logger.info("❌ No shipping template available - showing alert");
+            showAlert(
+              "No shipping template found. Please create or link a shipping template to this order before printing.",
+              "warning"
+            );
+            return;
+          }
+
+          logger.info("✅ Template found, proceeding with PDF generation");
+
+          // Use enhanced PDF service
+          const result = await enhancedPDFService.generateAndOpenShippingSlip(
+            orderId,
+            defaultTemplateId
+          );
+
+          if (result.success) {
+            showAlert("Gönderi belgesi hazırlandı ve açıldı", "success");
+            if (!result.accessible) {
+              showAlert(
+                "Gönderi belgesi oluşturuldu ancak ağ erişimi sınırlı olabilir. PDF dosyası indirilen dosyalarınızda.",
+                "warning"
+              );
+            }
+          } else {
+            throw new Error(result.message || result.error);
+          }
+        } finally {
+          setIsPrintingShippingSlip(false);
         }
-      } catch (error) {
-        logger.error("❌ Error printing shipping slip:", error);
-        showAlert(
-          `Gönderi belgesi yazdırılırken hata oluştu: ${error.message}`,
-          "error"
-        );
-      } finally {
-        setIsPrintingShippingSlip(false);
-      }
+      }, "Gönderi belgesi yazdırılırken hata oluştu");
     },
-    [showAlert, isPrintingShippingSlip]
+    [safeExecute, showAlert, isPrintingShippingSlip]
   );
 
   // Enhanced print invoice using new service
@@ -242,55 +265,69 @@ const OrderActions = ({
     [onCancel]
   );
 
+  // Check if any operation is in progress
+  const isAnyOperationInProgress =
+    isLoading || isPrintingShippingSlip || isPrintingInvoice;
+
+  // Validate order data
+  if (!order || !order.id) {
+    return (
+      <div className="flex items-center space-x-2">
+        <span className="text-danger-600 text-sm">Invalid order data</span>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="flex items-center space-x-2">
         {/* Accept Order Button - only show for new/pending orders */}
         {(order.orderStatus === "new" || order.orderStatus === "pending") && (
           <button
-            onClick={() => onAccept(order.id)}
-            className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1 text-success-600 hover:text-success-700"
+            onClick={() => onAccept?.(order.id)}
+            className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1 text-success-600 hover:text-success-700 disabled:opacity-50"
             title="Siparişi Onayla"
             aria-label="Siparişi Onayla"
+            disabled={isAnyOperationInProgress || !onAccept}
           >
             <CheckCircle className="h-4 w-4 icon-contrast-success" />
           </button>
         )}
 
         <button
-          onClick={() => onView && onView(order)}
-          className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1"
+          onClick={() => onView?.(order)}
+          className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1 disabled:opacity-50"
           title="Görüntüle"
           aria-label="Siparişi Görüntüle"
-          disabled={!onView}
+          disabled={!onView || isAnyOperationInProgress}
         >
           <Eye className="h-4 w-4 icon-contrast-primary" />
         </button>
 
         <button
-          onClick={() => onEdit && onEdit(order)}
-          className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1"
+          onClick={() => onEdit?.(order)}
+          className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1 disabled:opacity-50"
           title="Düzenle"
           aria-label="Siparişi Düzenle"
-          disabled={!onEdit}
+          disabled={!onEdit || isAnyOperationInProgress}
         >
           <Edit className="h-4 w-4 icon-contrast-secondary" />
         </button>
 
         <button
-          onClick={() => onViewDetail && onViewDetail(order.id)}
-          className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1"
+          onClick={() => onViewDetail?.(order.id)}
+          className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1 disabled:opacity-50"
           title="Detaylar"
           aria-label="Sipariş Detayları"
-          disabled={!onViewDetail}
+          disabled={!onViewDetail || isAnyOperationInProgress}
         >
           <MoreHorizontal className="h-4 w-4 icon-contrast-secondary" />
         </button>
 
         <button
           onClick={() => handlePrintShippingSlip(order.id)}
-          className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1"
-          disabled={isPrintingShippingSlip}
+          className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1 disabled:opacity-50"
+          disabled={isPrintingShippingSlip || isAnyOperationInProgress}
           title={
             isPrintingShippingSlip
               ? "Gönderi belgesi hazırlanıyor..."
@@ -309,8 +346,8 @@ const OrderActions = ({
         <DropdownMenu
           trigger={
             <button
-              className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1 flex items-center gap-1"
-              disabled={isPrintingInvoice}
+              className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1 flex items-center gap-1 disabled:opacity-50"
+              disabled={isPrintingInvoice || isAnyOperationInProgress}
               title={
                 isPrintingInvoice
                   ? "Fatura hazırlanıyor..."
@@ -328,40 +365,42 @@ const OrderActions = ({
             {
               label: "Standart Fatura",
               onClick: () => handlePrintInvoice(order.id),
-              disabled: isPrintingInvoice,
+              disabled: isPrintingInvoice || isAnyOperationInProgress,
             },
             {
               label: "QNB Finans (Otomatik)",
               onClick: () => handleQNBFinansInvoice(order.id, "auto"),
-              disabled: isPrintingInvoice,
+              disabled: isPrintingInvoice || isAnyOperationInProgress,
             },
             {
               label: "QNB E-Fatura",
               onClick: () => handleQNBFinansInvoice(order.id, "einvoice"),
-              disabled: isPrintingInvoice,
+              disabled: isPrintingInvoice || isAnyOperationInProgress,
             },
             {
               label: "QNB E-Arşiv",
               onClick: () => handleQNBFinansInvoice(order.id, "earsiv"),
-              disabled: isPrintingInvoice,
+              disabled: isPrintingInvoice || isAnyOperationInProgress,
             },
           ]}
         />
 
         <button
           onClick={() => setShowCancelDialog(true)}
-          className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1 text-danger-600 hover:text-danger-700"
+          className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1 text-danger-600 hover:text-danger-700 disabled:opacity-50"
           title="Siparişi İptal Et"
           aria-label="Siparişi İptal Et"
+          disabled={isAnyOperationInProgress}
         >
           <Ban className="h-4 w-4" />
         </button>
 
         <button
-          onClick={() => onDelete(order.id)}
-          className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1 text-danger-600 hover:text-danger-700"
+          onClick={() => onDelete?.(order.id)}
+          className="pazar-btn pazar-btn-ghost pazar-btn-sm p-1 text-danger-600 hover:text-danger-700 disabled:opacity-50"
           title="Siparişi Sil"
           aria-label="Siparişi Sil"
+          disabled={isAnyOperationInProgress || !onDelete}
         >
           <Trash2 className="h-4 w-4" />
         </button>

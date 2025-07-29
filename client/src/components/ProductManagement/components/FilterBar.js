@@ -23,6 +23,7 @@ import {
   STOCK_STATUS_OPTIONS,
   PRODUCT_TYPE_OPTIONS,
   PLATFORM_FILTER_OPTIONS,
+  SOURCING_OPTIONS,
 } from "../utils/constants";
 
 // Search Input Component
@@ -284,6 +285,26 @@ const FilterPanel = ({
                     {PLATFORM_FILTER_OPTIONS.map((platform) => (
                       <option key={platform.value} value={platform.value}>
                         {platform.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Sourcing Filter */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Tedarik Türü
+                  </label>
+                  <select
+                    value={filters.sourcing || ""}
+                    onChange={(e) =>
+                      handleFilterChange("sourcing", e.target.value)
+                    }
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {SOURCING_OPTIONS.map((sourcing) => (
+                      <option key={sourcing.value} value={sourcing.value}>
+                        {sourcing.label}
                       </option>
                     ))}
                   </select>

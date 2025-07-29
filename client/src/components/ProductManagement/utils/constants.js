@@ -27,6 +27,12 @@ export const PLATFORMS = [
   { value: "local", label: "Yerel" },
 ];
 
+export const SOURCING_OPTIONS = [
+  { value: "", label: "Tüm Tedarik" },
+  { value: "local", label: "Yerel" },
+  { value: "outsource", label: "Dış Kaynak" },
+];
+
 export const SORT_OPTIONS = [
   { value: "updatedAt-desc", label: "Son Güncelleme" },
   { value: "name-asc", label: "İsim (A-Z)" },

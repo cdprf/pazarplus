@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Package } from "lucide-react";
 
 const SafeImage = ({
@@ -11,23 +11,62 @@ const SafeImage = ({
 }) => {
   const [imageError, setImageError] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [currentSrc, setCurrentSrc] = useState(src);
 
-  const handleError = () => {
-    // First, try using the image proxy for SSL issues
+  // Determine the best initial URL to try
+  const getInitialUrl = (originalSrc) => {
+    if (!originalSrc || typeof originalSrc !== "string") return null;
+
+    const knownProblematicDomains = [
+      "salmanbilgisayar.sentos.com.tr",
+      "n11scdn3.akamaized.net",
+      "productimages.hepsiburada.net",
+    ];
+
+    // If it's from a known problematic domain, use proxy directly
     if (
-      currentSrc === src &&
-      src &&
-      typeof src === "string" &&
-      (src.startsWith("https://") || src.includes("ssl"))
+      knownProblematicDomains.some((domain) => originalSrc.includes(domain))
     ) {
-      const proxyUrl = `/api/image/proxy?url=${encodeURIComponent(src)}`;
-      setCurrentSrc(proxyUrl);
-      setLoading(true);
-      return;
+      return `/api/image/proxy?url=${encodeURIComponent(originalSrc)}`;
     }
 
-    // If proxy fails, try HTTP version if HTTPS fails
+    return originalSrc;
+  };
+
+  const [currentSrc, setCurrentSrc] = useState(getInitialUrl(src));
+
+  // Reset state when src prop changes
+  useEffect(() => {
+    setImageError(false);
+    setLoading(true);
+    setCurrentSrc(getInitialUrl(src));
+  }, [src]);
+
+  const handleError = () => {
+    // If we started with the proxy and it failed, try the original URL
+    if (currentSrc && currentSrc.includes("/api/image/proxy")) {
+      const originalUrl = new URLSearchParams(currentSrc.split("?")[1]).get(
+        "url"
+      );
+      if (originalUrl && originalUrl !== src) {
+        setCurrentSrc(originalUrl);
+        setLoading(true);
+        return;
+      }
+    }
+
+    // If this is the original source, try proxy
+    if (currentSrc === src && src && typeof src === "string") {
+      const shouldUseProxy = src.startsWith("https://");
+
+      if (shouldUseProxy && !currentSrc.includes("/api/image/proxy")) {
+        const proxyUrl = `/api/image/proxy?url=${encodeURIComponent(src)}`;
+        setCurrentSrc(proxyUrl);
+        setLoading(true);
+        return;
+      }
+    }
+
+    // Try HTTP version as last resort
     if (
       currentSrc &&
       typeof currentSrc === "string" &&

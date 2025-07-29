@@ -820,33 +820,53 @@ const ProductManagement = () => {
       </div>
 
       {/* Product Display */}
-      <ProductDisplay
-        products={displayProducts}
-        loading={loading}
-        viewMode={viewMode}
-        selectedProducts={selectedProducts}
-        onSelectProduct={handleSelectProduct}
-        onSelectAll={handleSelectAll}
-        onView={handleViewProduct}
-        onEdit={handleViewProduct}
-        onDelete={() => {}} // TODO: Implement main product deletion
-        onAddProduct={() => handleCreateMainProduct({})}
-        onImportProducts={() => {
+      {(() => {
+        const importHandler = () => {
+          console.log("🎯 Import Products button clicked!");
           logger.info("🎯 Import Products button clicked!");
+          console.log(
+            "🔍 Current showProductImportModal state:",
+            showProductImportModal
+          );
+          alert("Import button was clicked successfully!");
           setShowProductImportModal(true);
-        }}
-        onSync={loadMainProducts}
-        onViewModeChange={setViewMode}
-        enableVariantManagement={true}
-        // Advanced product display features
-        advancedMode={true}
-        showVariantCount={true}
-        showPublishedPlatforms={true}
-        // New advanced features
-        onCreateVariants={handleCreateVariantsForProduct}
-        onBulkMarkAsMain={handleBulkMarkAsMainProducts}
-        onFieldMapping={handleOpenFieldMapping}
-      />
+          console.log("🔍 Setting showProductImportModal to true");
+          // Force a re-render check with a small delay
+          setTimeout(() => {
+            console.log(
+              "🔍 After timeout, showProductImportModal state:",
+              showProductImportModal
+            );
+          }, 100);
+        };
+
+        return (
+          <ProductDisplay
+            products={displayProducts}
+            loading={loading}
+            viewMode={viewMode}
+            selectedProducts={selectedProducts}
+            onSelectProduct={handleSelectProduct}
+            onSelectAll={handleSelectAll}
+            onView={handleViewProduct}
+            onEdit={handleViewProduct}
+            onDelete={() => {}} // TODO: Implement main product deletion
+            onAddProduct={() => handleCreateMainProduct({})}
+            onImport={importHandler}
+            onSync={loadMainProducts}
+            onViewModeChange={setViewMode}
+            enableVariantManagement={true}
+            // Advanced product display features
+            advancedMode={true}
+            showVariantCount={true}
+            showPublishedPlatforms={true}
+            // New advanced features
+            onCreateVariants={handleCreateVariantsForProduct}
+            onBulkMarkAsMain={handleBulkMarkAsMainProducts}
+            onFieldMapping={handleOpenFieldMapping}
+          />
+        );
+      })()}
 
       {/* Advanced Product Creation Modal */}
       <ProductCreationModal

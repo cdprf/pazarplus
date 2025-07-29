@@ -1,5 +1,5 @@
 const logger = require("../utils/logger");
-"use strict";
+("use strict");
 
 /**
  * Complete Database Schema Migration for Pazar+ Platform
@@ -595,6 +595,18 @@ module.exports = {
         type: Sequelize.UUID,
         allowNull: true,
         // Foreign key will be added after product_templates table is created
+      },
+      creationSource: {
+        type: Sequelize.ENUM("manual", "csv_import", "platform_sync", "api"),
+        allowNull: false,
+        defaultValue: "manual",
+        comment:
+          "Source of product creation (manual, csv_import, platform_sync, api)",
+      },
+      sourcing: {
+        type: Sequelize.ENUM("local", "outsource"),
+        allowNull: true,
+        comment: "Whether the product is sourced locally or outsourced",
       },
       createdAt: {
         type: Sequelize.DATE,
@@ -4665,6 +4677,21 @@ module.exports = {
       importedAt: {
         type: Sequelize.DATE,
         allowNull: true,
+      },
+      creationSource: {
+        type: Sequelize.ENUM(
+          "user",
+          "platform_sync",
+          "excel_import",
+          "api_import"
+        ),
+        allowNull: true,
+        defaultValue: "user",
+      },
+      sourcing: {
+        type: Sequelize.ENUM("local", "outsource"),
+        allowNull: true,
+        comment: "Whether the product is sourced locally or outsourced",
       },
     });
 

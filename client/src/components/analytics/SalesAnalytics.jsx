@@ -7,6 +7,7 @@ import {
   ChartContainer,
 } from "./OptimizedCharts";
 import analyticsService from "../../services/analyticsService";
+import { useTranslation } from "../../i18n/hooks/useTranslation";
 import {
   formatCurrency,
   formatNumber,
@@ -22,6 +23,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
+  const { t } = useTranslation();
   const [chartType, setChartType] = useState("line");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -150,7 +152,12 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
         <div className="flex items-center justify-center min-h-96">
           <div className="flex items-center gap-3">
             <div className="loading-spinner"></div>
-            <span className="text-secondary">Loading sales analytics...</span>
+            <span className="text-secondary">
+              {t(
+                "analytics.ui.loadingSalesAnalytics",
+                "Loading sales analytics..."
+              )}
+            </span>
           </div>
         </div>
       </div>
@@ -209,7 +216,7 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
   // Sales KPIs - Pass raw numeric values to KPICard
   const salesKPIs = [
     {
-      title: "Total Revenue",
+      title: t("analytics.kpi.totalRevenue", "Total Revenue"),
       value: orderSummary.totalRevenue || 0,
       change: orderSummary.growth || 0,
       icon: CurrencyDollarIcon,
@@ -217,7 +224,7 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
       format: "currency",
     },
     {
-      title: "Total Orders",
+      title: t("analytics.kpi.totalOrders", "Total Orders"),
       value: orderSummary.totalOrders || 0,
       change: orderSummary.orderGrowth || 0,
       icon: ShoppingBagIcon,
@@ -225,7 +232,7 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
       format: "number",
     },
     {
-      title: "Average Order Value",
+      title: t("analytics.kpi.averageOrderValue", "Average Order Value"),
       value: orderSummary.averageOrderValue || 0,
       change: orderSummary.aovGrowth || 0,
       icon: ChartBarIcon,
@@ -233,7 +240,7 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
       format: "currency",
     },
     {
-      title: "Conversion Rate",
+      title: t("analytics.kpi.conversionRate", "Conversion Rate"),
       value: orderSummary.conversionRate || 0,
       change: orderSummary.conversionGrowth || 0,
       icon: ArrowTrendingUpIcon,
@@ -279,7 +286,10 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
               Sales Analytics
             </h2>
             <p className="text-white/80 mt-1">
-              Revenue trends and sales performance insights
+              {t(
+                "analytics.ui.revenueTrendsDescription",
+                "Revenue trends and sales performance insights"
+              )}
             </p>
           </div>
           <div className="flex items-center space-x-3">
@@ -345,7 +355,7 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
           <div className="analytics-chart-header">
             <h3 className="flex items-center gap-2">
               <ChartBarIcon className="h-5 w-5" />
-              Revenue Trends
+              {t("analytics.charts.revenueTrends", "Revenue Trends")}
             </h3>
             <p className="text-secondary mt-1">Sales performance over time</p>
           </div>
@@ -393,10 +403,13 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
           <div className="analytics-chart-header">
             <h3 className="flex items-center gap-2">
               <ShoppingBagIcon className="h-5 w-5" />
-              Top Selling Products
+              {t("analytics.charts.topSellingProducts", "Top Selling Products")}
             </h3>
             <p className="text-secondary mt-1">
-              Best performing products by revenue
+              {t(
+                "analytics.ui.bestPerformingProducts",
+                "Best performing products by revenue"
+              )}
             </p>
           </div>
           <div className="analytics-chart-body">
@@ -426,10 +439,16 @@ const SalesAnalytics = ({ timeframe = "30d", filters = {} }) => {
           <div className="card-header">
             <h3 className="card-title flex items-center gap-2">
               <ChartBarIcon className="h-5 w-5" />
-              Product Performance Details
+              {t(
+                "analytics.charts.productPerformanceDetails",
+                "Product Performance Details"
+              )}
             </h3>
             <p className="text-secondary">
-              Detailed statistics for each product
+              {t(
+                "analytics.ui.detailedStatistics",
+                "Detailed statistics for each product"
+              )}
             </p>
           </div>
           <div className="card-body">
