@@ -9,11 +9,13 @@ module.exports = {
         NODE_ENV: "production",
         PORT: 5001,
         HOST: "0.0.0.0",
+        DATABASE_URL: "postgresql://pazar_user:pazar_plus@localhost:5432/pazar_plus_prod?sslmode=disable",
       },
       env_production: {
         NODE_ENV: "production",
         PORT: 5001,
         HOST: "0.0.0.0",
+        DATABASE_URL: "postgresql://pazar_user:pazar_plus@localhost:5432/pazar_plus_prod?sslmode=disable",
       },
       // Restart options
       watch: false,
