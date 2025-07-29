@@ -267,19 +267,30 @@ class TemplateBasedPDFGenerator {
 
           // For same-domain deployment (client + API on same domain), use relative URL
           // For separate domain deployment, use absolute URL
-          const useAbsoluteUrl =
-            process.env.SERVER_BASE_URL &&
-            process.env.SERVER_BASE_URL !== process.env.CLIENT_URL &&
-            process.env.NODE_ENV !== "production"; // Force relative URLs in production
+          // In production on yarukai.com, always use relative URLs for same-domain serving
+          const isProduction = process.env.NODE_ENV === "production";
+          const isSameDomain =
+            process.env.SERVER_BASE_URL === process.env.CLIENT_URL;
+
+          console.log("🔧 PDF URL Generation Logic:");
+          console.log(`📊 NODE_ENV: ${process.env.NODE_ENV}`);
+          console.log(`🌐 SERVER_BASE_URL: ${process.env.SERVER_BASE_URL}`);
+          console.log(`👥 CLIENT_URL: ${process.env.CLIENT_URL}`);
+          console.log(`🏠 Same domain: ${isSameDomain}`);
+          console.log(`🚀 Is production: ${isProduction}`);
 
           let publicUrl;
-          if (useAbsoluteUrl) {
-            publicUrl = `${process.env.SERVER_BASE_URL}/shipping/${fileName}`;
-            logger.info("Using absolute URL for PDF", { publicUrl });
-          } else {
-            // Same domain deployment - use relative URL
+
+          // For yarukai.com production deployment, always use relative URLs
+          if (isProduction || isSameDomain) {
             publicUrl = `/shipping/${fileName}`;
+            console.log("✅ Using relative URL for same-domain deployment");
             logger.info("Using relative URL for PDF", { publicUrl });
+          } else {
+            // Development with separate domains - use absolute URL
+            publicUrl = `${process.env.SERVER_BASE_URL}/shipping/${fileName}`;
+            console.log("🔗 Using absolute URL for separate-domain deployment");
+            logger.info("Using absolute URL for PDF", { publicUrl });
           }
 
           resolve({

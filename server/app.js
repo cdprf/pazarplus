@@ -413,6 +413,14 @@ try {
 // === HIGH PRIORITY SHIPPING ROUTE ===
 // This MUST come before any static file serving to work correctly
 console.log("🔧 SETTING UP HIGH PRIORITY SHIPPING ROUTE");
+console.log("🌍 Environment Variables:");
+console.log(`  NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`  CLIENT_URL: ${process.env.CLIENT_URL}`);
+console.log(`  SERVER_BASE_URL: ${process.env.SERVER_BASE_URL || "undefined"}`);
+console.log(
+  `  REACT_APP_API_URL: ${process.env.REACT_APP_API_URL || "undefined"}`
+);
+console.log(`  PORT: ${process.env.PORT}`);
 logger.info("Setting up HIGH PRIORITY shipping route");
 
 const shippingPath = path.join(__dirname, "public", "shipping");
