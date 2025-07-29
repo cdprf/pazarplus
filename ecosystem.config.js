@@ -9,13 +9,19 @@ module.exports = {
         NODE_ENV: "production",
         PORT: 5001,
         HOST: "0.0.0.0",
-        DATABASE_URL: "postgresql://pazar_user:pazar_plus@localhost:5432/pazar_plus_prod?sslmode=disable",
+        DATABASE_URL:
+          "postgresql://pazar_user:pazar_plus@localhost:5432/pazar_plus_prod?sslmode=disable",
+        CLIENT_URL: "https://yarukai.com",
+        SERVER_BASE_URL: "https://yarukai.com",
       },
       env_production: {
         NODE_ENV: "production",
         PORT: 5001,
         HOST: "0.0.0.0",
-        DATABASE_URL: "postgresql://pazar_user:pazar_plus@localhost:5432/pazar_plus_prod?sslmode=disable",
+        DATABASE_URL:
+          "postgresql://pazar_user:pazar_plus@localhost:5432/pazar_plus_prod?sslmode=disable",
+        CLIENT_URL: "https://yarukai.com",
+        SERVER_BASE_URL: "https://yarukai.com",
       },
       // Restart options
       watch: false,
