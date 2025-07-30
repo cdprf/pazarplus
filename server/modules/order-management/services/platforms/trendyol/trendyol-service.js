@@ -115,17 +115,36 @@ class TrendyolService extends BasePlatformService {
         headers: {
           Authorization: `Basic ${authString}`,
           "User-Agent": `${supplierId} - SelfIntegration`, // Fixed: Use exact working format with capital U
+          Connection: "keep-alive",
+          "Accept-Encoding": "gzip, deflate",
         },
-        timeout: 90000,
+        timeout: 120000, // Increased timeout to 2 minutes
+        maxRedirects: 5,
+        // Add connection pool settings for better reliability
+        httpAgent: new (require("http").Agent)({
+          keepAlive: true,
+          maxSockets: 10,
+          timeout: 120000,
+        }),
+        httpsAgent: new (require("https").Agent)({
+          keepAlive: true,
+          maxSockets: 10,
+          timeout: 120000,
+          rejectUnauthorized: false, // More lenient SSL handling
+        }),
+        // Retry configuration
+        validateStatus: (status) => status < 500, // Don't throw for 4xx errors
       });
 
       this.logger.info("Trendyol Axios instance setup completed successfully", {
         baseURL: TRENDYOL_API.BASE_URL, // Log the correct base URL
-        timeout: 90000,
+        timeout: 120000,
         supplierId: supplierId
           ? `${supplierId}`.substring(0, 4) + "****"
           : "N/A",
         userAgent: `${supplierId} - SelfIntegration`,
+        keepAlive: true,
+        maxSockets: 10,
       });
 
       return true;
@@ -1740,32 +1759,73 @@ class TrendyolService extends BasePlatformService {
           `Fetching Trendyol products page ${currentPage + 1}...`
         );
 
-        const result = await this.fetchSingleProductPage(pageParams);
+        try {
+          const result = await this.fetchSingleProductPage(pageParams);
 
-        if (!result.success) {
+          if (!result.success) {
+            this.logger.error(
+              `Failed to fetch page ${currentPage + 1}: ${result.message}`
+            );
+
+            // If this is the first page, break entirely
+            if (currentPage === 0) {
+              this.logger.error("First page failed, aborting product fetch");
+              break;
+            }
+
+            // For subsequent pages, try to continue with next page
+            this.logger.warn(
+              `Skipping page ${currentPage + 1}, continuing with next page`
+            );
+            currentPage++;
+            continue;
+          }
+
+          // Add products from this page
+          allProducts.push(...result.data);
+
+          // Update pagination info
+          if (result.pagination) {
+            totalPages = result.pagination.totalPages;
+            currentPage = result.pagination.page + 1;
+            hasMorePages = currentPage < totalPages;
+
+            this.logger.info(
+              `Completed page ${
+                result.pagination.page + 1
+              }/${totalPages}, retrieved ${result.data.length} products`
+            );
+          } else {
+            // No pagination info, assume this is the only page
+            hasMorePages = false;
+          }
+        } catch (error) {
           this.logger.error(
-            `Failed to fetch page ${currentPage + 1}: ${result.message}`
+            `Exception while fetching page ${currentPage + 1}: ${
+              error.message
+            }`,
+            {
+              error: error.message,
+              errorCode: error.code,
+              page: currentPage + 1,
+              totalPages,
+            }
           );
-          break;
-        }
 
-        // Add products from this page
-        allProducts.push(...result.data);
+          // If this is the first page, break entirely
+          if (currentPage === 0) {
+            this.logger.error(
+              "First page failed with exception, aborting product fetch"
+            );
+            break;
+          }
 
-        // Update pagination info
-        if (result.pagination) {
-          totalPages = result.pagination.totalPages;
-          currentPage = result.pagination.page + 1;
-          hasMorePages = currentPage < totalPages;
-
-          this.logger.info(
-            `Completed page ${
-              result.pagination.page + 1
-            }/${totalPages}, retrieved ${result.data.length} products`
+          // For subsequent pages, try to continue
+          this.logger.warn(
+            `Exception on page ${currentPage + 1}, trying next page`
           );
-        } else {
-          // No pagination info, assume this is the only page
-          hasMorePages = false;
+          currentPage++;
+          continue;
         }
 
         // Safety check to prevent infinite loops
@@ -1863,10 +1923,16 @@ class TrendyolService extends BasePlatformService {
         "{supplierId}",
         supplierId
       );
-      const response = await this.retryRequest(() =>
-        this.axiosInstance.get(productsEndpoint, {
-          params: queryParams,
-        })
+
+      // Increased retries and delay for better network resilience
+      const response = await this.retryRequest(
+        () =>
+          this.axiosInstance.get(productsEndpoint, {
+            params: queryParams,
+            timeout: 120000, // 2 minute timeout per request
+          }),
+        5, // Max 5 retries
+        2000 // Start with 2 second delay
       );
 
       if (!response.data) {

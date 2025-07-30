@@ -539,24 +539,31 @@ class BasePlatformService {
       } catch (error) {
         lastError = error;
 
-        // Check if error is retryable - generally 429 (rate limit) or 5xx (server errors)
-        if (
-          error.response &&
-          (error.response.status === 429 || error.response.status >= 500)
-        ) {
+        // Check if error is retryable
+        const isRetryableError = this.isRetryableError(error);
+
+        if (isRetryableError && retries < maxRetries) {
           retries++;
+          const backoffDelay = delay * Math.pow(2, retries - 1);
+
           logger.warn(
             `Retrying API request for ${this.getPlatformType()} (${retries}/${maxRetries}) after error: ${
               error.message
-            }`
+            }. Waiting ${backoffDelay}ms...`,
+            {
+              errorCode: error.code,
+              errorType: error.name,
+              hasResponse: !!error.response,
+              statusCode: error.response?.status,
+              connectionId: this.connectionId,
+              platformType: this.getPlatformType(),
+            }
           );
 
           // Wait before retrying with exponential backoff
-          await new Promise((resolve) =>
-            setTimeout(resolve, delay * Math.pow(2, retries - 1))
-          );
+          await new Promise((resolve) => setTimeout(resolve, backoffDelay));
         } else {
-          // Non-retryable error
+          // Non-retryable error or max retries exceeded
           logger.error(
             `Non-retryable error in API request for ${this.getPlatformType()}: ${
               error.message
@@ -565,6 +572,9 @@ class BasePlatformService {
               error,
               connectionId: this.connectionId,
               platformType: this.getPlatformType(),
+              isRetryable: isRetryableError,
+              retriesAttempted: retries,
+              maxRetries,
             }
           );
           throw error;
@@ -574,6 +584,41 @@ class BasePlatformService {
 
     // If we've exhausted retries
     throw lastError;
+  }
+
+  /**
+   * Check if an error is retryable
+   * @param {Error} error - The error to check
+   * @returns {boolean} - Whether the error should be retried
+   */
+  isRetryableError(error) {
+    // Network errors (no response)
+    if (!error.response) {
+      const networkErrors = [
+        "ECONNRESET",
+        "ECONNREFUSED",
+        "ENOTFOUND",
+        "ETIMEDOUT",
+        "ECONNABORTED",
+        "ENETDOWN",
+        "ENETUNREACH",
+        "EHOSTDOWN",
+        "EHOSTUNREACH",
+      ];
+
+      return (
+        networkErrors.includes(error.code) ||
+        error.message.includes("timeout") ||
+        error.message.includes("aborted") ||
+        error.message.includes("network")
+      );
+    }
+
+    // HTTP errors with response
+    const status = error.response.status;
+
+    // Retry on rate limiting and server errors
+    return status === 429 || status >= 500;
   }
 
   /**
