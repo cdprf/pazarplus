@@ -125,3 +125,5 @@ TicimaxExport.json
 bin/xlsx
 process-products.js
 investigate-trendyol.js
+create-correct-dev-token.js
+create-dev-token.js

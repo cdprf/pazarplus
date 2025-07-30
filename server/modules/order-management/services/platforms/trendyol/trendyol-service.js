@@ -211,18 +211,19 @@ class TrendyolService extends BasePlatformService {
 
         this.logger.info(`Using timestamp range: ${startDate} to ${endDate}`);
 
-        // Test the connection with timestamp formatting
-        const response = await this.axiosInstance.get(
-          `/suppliers/${supplierId}/orders`,
-          {
-            params: {
-              startDate,
-              endDate,
-              page: 0,
-              size: 1,
-            },
-          }
+        // Test the connection with correct API endpoint format
+        const endpoint = TRENDYOL_API.ENDPOINTS.ORDERS.replace(
+          "{sellerId}",
+          supplierId
         );
+        const response = await this.axiosInstance.get(endpoint, {
+          params: {
+            startDate,
+            endDate,
+            page: 0,
+            size: 1,
+          },
+        });
 
         this.logger.info(`Connection test successful`);
 
@@ -1858,8 +1859,12 @@ class TrendyolService extends BasePlatformService {
       );
 
       // Use correct endpoint for products
+      const productsEndpoint = TRENDYOL_API.ENDPOINTS.PRODUCTS.replace(
+        "{supplierId}",
+        supplierId
+      );
       const response = await this.retryRequest(() =>
-        this.axiosInstance.get(`/suppliers/${supplierId}/products`, {
+        this.axiosInstance.get(productsEndpoint, {
           params: queryParams,
         })
       );
@@ -2534,14 +2539,16 @@ class TrendyolService extends BasePlatformService {
    * Get platform categories
    * @returns {Promise<Array>} List of categories
    */
-  
+
   async getCategories() {
     const maxRetries = 3;
     const retryDelay = 5000;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        this.logger.info(`🔍 Fetching categories from Trendyol API (attempt ${attempt}/${maxRetries})`);
+        this.logger.info(
+          `🔍 Fetching categories from Trendyol API (attempt ${attempt}/${maxRetries})`
+        );
 
         // Ensure connection is established
         if (!this.connection) {
@@ -2554,7 +2561,7 @@ class TrendyolService extends BasePlatformService {
         this.logger.info("Making request to categories endpoint", {
           endpoint,
           attempt,
-          timeout: 90000
+          timeout: 90000,
         });
 
         const response = await this.axiosInstance.get(endpoint);
@@ -2565,7 +2572,7 @@ class TrendyolService extends BasePlatformService {
             response: typeof categoriesData,
             hasData: !!categoriesData,
             hasCategories: !!categoriesData?.categories,
-            attempt
+            attempt,
           });
           return [];
         }
@@ -2580,7 +2587,6 @@ class TrendyolService extends BasePlatformService {
           `✅ Retrieved ${categories.length} categories from Trendyol (attempt ${attempt})`
         );
         return categories;
-        
       } catch (error) {
         // Safely serialize error to avoid circular structure issues
         const errorInfo = {
@@ -2590,7 +2596,8 @@ class TrendyolService extends BasePlatformService {
           statusText: error.response?.statusText,
           url: error.config?.url,
           attempt,
-          isTimeout: error.code === 'ECONNABORTED' || error.message.includes('timeout')
+          isTimeout:
+            error.code === "ECONNABORTED" || error.message.includes("timeout"),
         };
 
         this.logger.error(
@@ -2599,13 +2606,16 @@ class TrendyolService extends BasePlatformService {
         );
 
         // If this is the last attempt or it's not a timeout/network error, throw
-        if (attempt === maxRetries || (!errorInfo.isTimeout && error.response?.status < 500)) {
+        if (
+          attempt === maxRetries ||
+          (!errorInfo.isTimeout && error.response?.status < 500)
+        ) {
           throw error;
         }
 
         // Wait before retrying
-        this.logger.info(`⏳ Waiting ${retryDelay/1000}s before retry...`);
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        this.logger.info(`⏳ Waiting ${retryDelay / 1000}s before retry...`);
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
       }
     }
   }
