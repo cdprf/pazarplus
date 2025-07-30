@@ -1233,51 +1233,31 @@ const shippingAPI = {
       if (response.data.success && response.data.data?.labelUrl) {
         const labelUrl = response.data.data.labelUrl;
 
+        // Check for malformed URLs and fix them
+        if (labelUrl.includes("comhttps") || labelUrl.includes("comhttp")) {
+          logger.warn(
+            "🚨 API: Detected malformed URL, attempting to fix:",
+            labelUrl
+          );
+          const shippingMatch = labelUrl.match(/\/shipping\/[^/]+\.pdf/);
+          if (shippingMatch) {
+            const fixedUrl = shippingMatch[0];
+            logger.info("🔧 API: Fixed URL:", fixedUrl);
+            response.data.data.labelUrl = fixedUrl;
+            return response.data;
+          }
+        }
+
         // Check if the URL is accessible from this device
         logger.info(`🔍 API: Generated PDF URL: ${labelUrl}`);
 
-        // If the URL starts with /shipping/ and we're not on localhost,
-        // we might need to construct the full URL
-        if (
-          labelUrl.startsWith("/shipping/") &&
-          !window.location.hostname.includes("localhost") &&
-          !window.location.hostname.includes("127.0.0.1")
-        ) {
-          // For production deployment, use HTTPS and same domain (no port)
-          const currentHost = window.location.hostname;
-          const isProduction = window.location.protocol === "https:";
-
-          let fullUrl;
-          if (isProduction) {
-            // Production: use HTTPS and same domain without port
-            fullUrl = `https://${currentHost}${labelUrl}`;
-          } else {
-            // Development: use HTTP with port
-            const serverPort = 5001;
-            fullUrl = `http://${currentHost}:${serverPort}${labelUrl}`;
-          }
-
+        // For relative URLs starting with /shipping/, keep them relative
+        // The browser will resolve them correctly against the current domain
+        if (labelUrl.startsWith("/shipping/")) {
           logger.info(
-            `🌐 API: Network access detected, trying full URL: ${fullUrl} (production: ${isProduction})`
+            `🔗 API: Keeping relative URL for browser resolution: ${labelUrl}`
           );
-
-          // Test if the full URL is accessible
-          try {
-            const testResponse = await fetch(fullUrl, { method: "HEAD" });
-            if (testResponse.ok) {
-              logger.info(`✅ API: Full URL is accessible, updating response`);
-              response.data.data.labelUrl = fullUrl;
-            } else {
-              logger.warn(
-                `⚠️ API: Full URL test failed with status ${testResponse.status}, keeping original URL`
-              );
-            }
-          } catch (testError) {
-            logger.warn(
-              `⚠️ API: Full URL test failed, keeping original URL:`,
-              testError.message
-            );
-          }
+          // Don't modify relative URLs - let the browser handle them
         } else if (labelUrl.startsWith("http")) {
           // URL is already absolute, validate it's correctly formatted
           logger.info(`🔗 API: URL is already absolute: ${labelUrl}`);

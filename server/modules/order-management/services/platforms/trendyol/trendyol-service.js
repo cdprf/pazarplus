@@ -116,12 +116,12 @@ class TrendyolService extends BasePlatformService {
           Authorization: `Basic ${authString}`,
           "User-Agent": `${supplierId} - SelfIntegration`, // Fixed: Use exact working format with capital U
         },
-        timeout: 30000,
+        timeout: 90000,
       });
 
       this.logger.info("Trendyol Axios instance setup completed successfully", {
         baseURL: TRENDYOL_API.BASE_URL, // Log the correct base URL
-        timeout: 30000,
+        timeout: 90000,
         supplierId: supplierId
           ? `${supplierId}`.substring(0, 4) + "****"
           : "N/A",
@@ -2534,75 +2534,79 @@ class TrendyolService extends BasePlatformService {
    * Get platform categories
    * @returns {Promise<Array>} List of categories
    */
+  
   async getCategories() {
-    try {
-      this.logger.info("🔍 Fetching categories from Trendyol API");
+    const maxRetries = 3;
+    const retryDelay = 5000;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        this.logger.info(`🔍 Fetching categories from Trendyol API (attempt ${attempt}/${maxRetries})`);
 
-      // Ensure connection is established
-      if (!this.connection) {
-        await this.initialize();
-      }
+        // Ensure connection is established
+        if (!this.connection) {
+          await this.initialize();
+        }
 
-      // Use the correct working endpoint
-      const endpoint = "/product-categories";
+        // Use the correct working endpoint
+        const endpoint = "/product-categories";
 
-      this.logger.info("Making request to categories endpoint", {
-        endpoint,
-      });
-
-      const response = await this.axiosInstance.get(endpoint);
-      const categoriesData = response.data;
-
-      if (!categoriesData || !categoriesData.categories) {
-        this.logger.warn("Invalid categories response from Trendyol", {
-          response: typeof categoriesData,
-          hasData: !!categoriesData,
-          hasCategories: !!categoriesData?.categories,
+        this.logger.info("Making request to categories endpoint", {
+          endpoint,
+          attempt,
+          timeout: 90000
         });
-        return [];
-      }
 
-      // Extract categories from the nested structure
-      const rawCategories = categoriesData.categories;
+        const response = await this.axiosInstance.get(endpoint);
+        const categoriesData = response.data;
 
-      // Flatten the hierarchical structure and transform to standard format
-      const categories = this.flattenCategories(rawCategories);
+        if (!categoriesData || !categoriesData.categories) {
+          this.logger.warn("Invalid categories response from Trendyol", {
+            response: typeof categoriesData,
+            hasData: !!categoriesData,
+            hasCategories: !!categoriesData?.categories,
+            attempt
+          });
+          return [];
+        }
 
-      this.logger.info(
-        `✅ Retrieved ${categories.length} categories from Trendyol`
-      );
-      return categories;
-    } catch (error) {
-      // Safely serialize error to avoid circular structure issues
-      const errorInfo = {
-        message: error.message,
-        stack: error.stack,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        url: error.config?.url,
-      };
+        // Extract categories from the nested structure
+        const rawCategories = categoriesData.categories;
 
-      this.logger.error(
-        "❌ Error fetching categories from Trendyol:",
-        errorInfo
-      );
+        // Flatten the hierarchical structure and transform to standard format
+        const categories = this.flattenCategories(rawCategories);
 
-      // Return empty array instead of throwing to prevent breaking the app
-      if (
-        error.message.includes("404") ||
-        error.message.includes("not found")
-      ) {
-        this.logger.warn(
-          "Categories endpoint not found, returning empty array"
+        this.logger.info(
+          `✅ Retrieved ${categories.length} categories from Trendyol (attempt ${attempt})`
         );
-        return [];
-      }
+        return categories;
+        
+      } catch (error) {
+        // Safely serialize error to avoid circular structure issues
+        const errorInfo = {
+          message: error.message,
+          stack: error.stack,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          url: error.config?.url,
+          attempt,
+          isTimeout: error.code === 'ECONNABORTED' || error.message.includes('timeout')
+        };
 
-      // Create a clean error object without circular references
-      const cleanError = new Error(error.message);
-      cleanError.status = error.response?.status;
-      cleanError.statusText = error.response?.statusText;
-      throw cleanError;
+        this.logger.error(
+          `❌ Error fetching categories from Trendyol (attempt ${attempt}/${maxRetries}):`,
+          errorInfo
+        );
+
+        // If this is the last attempt or it's not a timeout/network error, throw
+        if (attempt === maxRetries || (!errorInfo.isTimeout && error.response?.status < 500)) {
+          throw error;
+        }
+
+        // Wait before retrying
+        this.logger.info(`⏳ Waiting ${retryDelay/1000}s before retry...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
     }
   }
 

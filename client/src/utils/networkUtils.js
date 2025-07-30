@@ -104,12 +104,33 @@ export async function detectAndSaveServerIP() {
 export function constructPDFURL(pdfPath) {
   if (!pdfPath) return null;
 
+  // Check for malformed URLs like "https://yarukai.comhttps//yarukai.com/shipping/..."
+  if (pdfPath.includes("comhttps") || pdfPath.includes("comhttp")) {
+    // Extract the correct shipping path from the malformed URL
+    const shippingMatch = pdfPath.match(/\/shipping\/[^/]+\.pdf/);
+    if (shippingMatch) {
+      const correctPath = shippingMatch[0];
+      logger.warn(
+        `🔧 Fixed malformed PDF URL. Original: ${pdfPath}, Fixed: ${correctPath}`
+      );
+      // Return the relative path - browser will resolve it correctly
+      return correctPath;
+    }
+  }
+
   // If it's already a full URL, return as-is
   if (pdfPath.startsWith("http")) {
     return pdfPath;
   }
 
-  // Get the network-accessible base URL
+  // If it's a relative path starting with /shipping/, keep it relative
+  // This allows the browser to resolve it against the current domain
+  if (pdfPath.startsWith("/shipping/")) {
+    logger.info(`🔗 Using relative URL for PDF: ${pdfPath}`);
+    return pdfPath;
+  }
+
+  // For other relative paths, construct full URL
   const baseURL = getNetworkAccessibleBaseURL();
 
   // Ensure path starts with /

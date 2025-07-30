@@ -148,7 +148,15 @@ class CategorySyncService {
       );
 
       // Fetch categories from platform API
-      const platformCategories = await service.getCategories();
+      // Fetch categories from platform API with timeout handling
+      this.logger.info(`Starting category fetch for ${sanitizedPlatform} with 90s timeout`);
+      
+      const platformCategories = await Promise.race([
+        service.getCategories(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error(`Category sync timeout after 90s`)), 90000)
+        )
+      ]);
 
       if (!platformCategories || platformCategories.length === 0) {
         throw new Error(`No categories received from ${sanitizedPlatform} API`);
