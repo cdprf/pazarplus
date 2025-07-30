@@ -46,7 +46,7 @@ const getApiBaseUrl = () => {
 // Create axios instance with proper configuration
 const api = axios.create({
   baseURL: getApiBaseUrl(),
-  timeout: 10000, // Reduced from 30s to 10s for faster failure detection
+  timeout: 12000000, // Increased for long-running operations like product sync
   headers: {
     "Content-Type": "application/json",
   },
@@ -1744,6 +1744,32 @@ const productAPI = {
       throw error;
     }
   },
+
+  // Sync products from platforms with extended timeout
+  syncProducts: async (options = {}) => {
+    try {
+      const config = {
+        timeout: 300000, // 5 minutes for product sync
+        ...options,
+      };
+
+      const payload = {
+        forceSync: true,
+        ...options,
+      };
+
+      const response = await api.post("/products/sync", payload, config);
+      return response.data;
+    } catch (error) {
+      logger.error("❌ Product sync error:", {
+        status: error.response?.status,
+        message: error.message,
+        timeout:
+          error.code === "ECONNABORTED" ? "Request timed out" : "Other error",
+      });
+      throw error;
+    }
+  },
 };
 
 // Font Management API
@@ -1806,6 +1832,9 @@ api.updateOrder = orderService.updateOrder;
 api.updateOrderStatus = orderService.updateOrderStatus;
 api.acceptOrder = orderService.acceptOrder;
 api.syncOrders = orderService.syncOrders;
+
+// Add product sync method
+api.syncProducts = productAPI.syncProducts;
 
 // Add new methods for reports
 api.getConnections = platformAPI.getConnections;
