@@ -5,7 +5,11 @@ module.exports = {
     try {
       console.log("🔄 Updating creation_source_enum to include new values...");
 
-      // Add new enum values to existing enum
+      // Add new enum values to existing enum (including platform_sync first!)
+      await queryInterface.sequelize.query(`
+        ALTER TYPE creation_source_enum ADD VALUE IF NOT EXISTS 'platform_sync';
+      `);
+
       await queryInterface.sequelize.query(`
         ALTER TYPE creation_source_enum ADD VALUE IF NOT EXISTS 'platform';
       `);

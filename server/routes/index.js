@@ -10,7 +10,7 @@ try {
   // Import centralized route modules
   const authRoutes = require("./auth");
   const platformRoutes = require("./platformRoutes");
-  const productRoutes = require("./product-routes");
+  const productRoutes = require("./products");
   const settingsRoutes = require("./settingsRoutes");
   const complianceRoutes = require("./complianceRoutes");
   const paymentRoutes = require("./paymentRoutes");
