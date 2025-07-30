@@ -14,6 +14,7 @@ const platformServiceManager = require("./platform-service-manager");
 class PlatformSyncService {
   constructor() {
     this.platformServiceManager = platformServiceManager;
+    this.encryptionService = require("../utils/encryption"); // Add encryption service
     this.syncQueue = new Map(); // Store pending sync operations
     this.isProcessing = false;
   }
@@ -41,57 +42,46 @@ class PlatformSyncService {
         }
       );
 
-      // Check if this product should be synced based on its creation source
-      if (product.creationSource === "platform_sync") {
-        logger.warn(
-          `Skipping sync for platform-synced product ${
-            product.id || product.name
-          }. Platform-synced products cannot be synced back to prevent loops.`,
-          {
-            productId: product.id,
-            productName: product.name,
-            creationSource: product.creationSource,
-            operation,
-            userId,
-          }
+      // Handle platform-synced products differently
+      // Support both old "platform_sync" and new "platform" enum values during transition
+      if (
+        product.creationSource === "platform" ||
+        product.creationSource === "platform_sync"
+      ) {
+        // For platform-synced products, only sync back to the original platform
+        return await this.syncPlatformProductBackToOrigin(
+          userId,
+          product,
+          operation,
+          changes
         );
-        return [
-          {
-            status: "skipped",
-            reason: "platform_sync_product",
-            message:
-              "Platform-synced products cannot be synced back to platforms",
-            timestamp: new Date().toISOString(),
-          },
-        ];
       }
 
-      // If product ID is provided, fetch full product data to check creation source
+      // If product ID is provided, fetch full product data to check creation source and origin
+      let fullProduct = null;
       if (product.id && !product.creationSource) {
-        const fullProduct = await MainProduct.findByPk(product.id, {
-          attributes: ["id", "name", "creationSource"],
+        fullProduct = await MainProduct.findByPk(product.id, {
+          attributes: [
+            "id",
+            "name",
+            "creationSource",
+            "scrapedFrom",
+            "importedFrom",
+          ],
         });
 
-        if (fullProduct && fullProduct.creationSource === "platform_sync") {
-          logger.warn(
-            `Skipping sync for platform-synced product ${fullProduct.id}. Platform-synced products cannot be synced back to prevent loops.`,
-            {
-              productId: fullProduct.id,
-              productName: fullProduct.name,
-              creationSource: fullProduct.creationSource,
-              operation,
-              userId,
-            }
+        if (
+          fullProduct &&
+          (fullProduct.creationSource === "platform" ||
+            fullProduct.creationSource === "platform_sync")
+        ) {
+          // For platform-synced products, only sync back to the original platform
+          return await this.syncPlatformProductBackToOrigin(
+            userId,
+            fullProduct,
+            operation,
+            changes
           );
-          return [
-            {
-              status: "skipped",
-              reason: "platform_sync_product",
-              message:
-                "Platform-synced products cannot be synced back to platforms",
-              timestamp: new Date().toISOString(),
-            },
-          ];
         }
       }
 
@@ -179,6 +169,182 @@ class PlatformSyncService {
   }
 
   /**
+   * Sync platform-originated product back to its original platform only
+   * @param {string} userId - User ID
+   * @param {Object} product - Platform-synced product data
+   * @param {string} operation - 'create', 'update', 'delete'
+   * @param {Object} changes - Specific changes made
+   */
+  async syncPlatformProductBackToOrigin(
+    userId,
+    product,
+    operation = "update",
+    changes = {}
+  ) {
+    try {
+      logger.info(
+        `🔄 Syncing platform-originated product ${
+          product.id || product.name
+        } back to origin`,
+        {
+          operation,
+          userId,
+          changes: Object.keys(changes),
+          creationSource: product.creationSource,
+          scrapedFrom: product.scrapedFrom,
+          importedFrom: product.importedFrom,
+        }
+      );
+
+      // Determine the original platform
+      let originPlatform = null;
+
+      // Check scrapedFrom field first (more specific)
+      if (product.scrapedFrom) {
+        originPlatform = product.scrapedFrom.toLowerCase();
+      }
+      // Fallback to importedFrom if available
+      else if (product.importedFrom) {
+        originPlatform = product.importedFrom.toLowerCase();
+      }
+      // Try to extract from platform variants
+      else if (product.id) {
+        const platformVariants = await PlatformVariant.findAll({
+          where: { mainProductId: product.id },
+          attributes: ["platform", "externalId"],
+        });
+
+        // Find the variant with an external ID (indicates it came from that platform)
+        const originVariant = platformVariants.find((v) => v.externalId);
+        if (originVariant) {
+          originPlatform = originVariant.platform.toLowerCase();
+        }
+      }
+
+      if (!originPlatform) {
+        logger.warn(
+          `Cannot determine origin platform for product ${
+            product.id || product.name
+          }`,
+          {
+            productId: product.id,
+            scrapedFrom: product.scrapedFrom,
+            importedFrom: product.importedFrom,
+          }
+        );
+        return [
+          {
+            status: "skipped",
+            reason: "unknown_origin_platform",
+            message: "Cannot determine original platform for sync",
+            timestamp: new Date().toISOString(),
+          },
+        ];
+      }
+
+      // Find the connection for the origin platform
+      const originConnection = await PlatformConnection.findOne({
+        where: {
+          userId,
+          platformType: originPlatform,
+          isActive: true,
+          status: "active",
+        },
+      });
+
+      if (!originConnection) {
+        logger.warn(
+          `No active connection found for origin platform ${originPlatform}`,
+          {
+            userId,
+            productId: product.id,
+            originPlatform,
+          }
+        );
+        return [
+          {
+            status: "skipped",
+            reason: "no_origin_connection",
+            message: `No active connection for origin platform ${originPlatform}`,
+            timestamp: new Date().toISOString(),
+          },
+        ];
+      }
+
+      logger.info(`Found origin platform connection: ${originPlatform}`, {
+        connectionId: originConnection.id,
+        platformType: originConnection.platformType,
+      });
+
+      // Sync only to the origin platform
+      try {
+        const result = await this.syncToSinglePlatform(
+          product.id || product,
+          originConnection.platformType,
+          changes,
+          {
+            userId,
+            operation,
+            connection: originConnection,
+            isOriginSync: true, // Flag to indicate this is syncing back to origin
+          }
+        );
+
+        // Update sync status in database
+        if (product.id) {
+          await this.updateSyncStatus(product.id, [result], userId);
+        }
+
+        logger.info(
+          `✅ Successfully synced platform-originated product ${
+            product.id || product.name
+          } back to ${originPlatform}`,
+          {
+            platform: originPlatform,
+            operation,
+            result,
+          }
+        );
+
+        return [result];
+      } catch (error) {
+        logger.error(
+          `Failed to sync platform-originated product to origin ${originPlatform}`,
+          {
+            error: error.message,
+            platform: originPlatform,
+            connectionId: originConnection.id,
+            productId: product.id,
+          }
+        );
+
+        const errorResult = {
+          platform: originConnection.platformType,
+          connectionId: originConnection.id,
+          status: "error",
+          error: error.message,
+          timestamp: new Date().toISOString(),
+        };
+
+        // Update sync status in database
+        if (product.id) {
+          await this.updateSyncStatus(product.id, [errorResult], userId);
+        }
+
+        return [errorResult];
+      }
+    } catch (error) {
+      logger.error("Platform origin sync failed:", {
+        error: error.message,
+        userId,
+        productId: product.id || product.name,
+        stack: error.stack,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Sync product to a single platform using database authentication
    * @param {string} productId - Product ID
    * @param {string} platformType - Platform type (trendyol, hepsiburada, n11)
@@ -191,19 +357,325 @@ class PlatformSyncService {
     changes = {},
     options = {}
   ) {
-    const { userId, operation = "update", connection } = options;
-    const platform = platformType.toLowerCase();
+    const {
+      userId,
+      operation = "update",
+      connection,
+      isOriginSync = false,
+    } = options;
 
     try {
-      logger.info(`🔄 Syncing product ${productId} to ${platformType}`, {
-        platform,
-        operation,
-        changes: Object.keys(changes),
-        connectionId: connection?.id,
+      logger.info(
+        `🔄 Syncing product ${productId} to single platform: ${platformType}`,
+        {
+          productId,
+          platformType,
+          operation,
+          isOriginSync,
+          changes: Object.keys(changes),
+        }
+      );
+
+      // Validate platform type
+      const validPlatforms = ["trendyol", "hepsiburada", "n11"];
+      if (!validPlatforms.includes(platformType.toLowerCase())) {
+        throw new Error(`Unsupported platform type: ${platformType}`);
+      }
+
+      // Use provided connection or find it
+      let platformConnection = connection;
+      if (!platformConnection) {
+        platformConnection = await PlatformConnection.findOne({
+          where: {
+            userId,
+            platformType: platformType.toLowerCase(),
+            isActive: true,
+            status: "active",
+          },
+        });
+
+        if (!platformConnection) {
+          throw new Error(
+            `No active connection found for platform ${platformType}`
+          );
+        }
+      }
+
+      // Get product data from database
+      const product = await MainProduct.findByPk(productId, {
+        include: [
+          {
+            model: PlatformVariant,
+            as: "platformVariants",
+            where: { platform: platformType.toLowerCase() },
+            required: false,
+          },
+        ],
       });
 
-      // Get platform service using the database connection
-      // This will automatically use the credentials stored in connection.credentials
+      if (!product) {
+        throw new Error(`Product ${productId} not found`);
+      }
+
+      // Get platform service
+      const platformService = this.platformServiceManager.getService(
+        platformType.toLowerCase()
+      );
+
+      if (!platformService) {
+        throw new Error(`No service available for platform ${platformType}`);
+      }
+
+      // Decrypt credentials
+      const credentials = JSON.parse(
+        this.encryptionService.decrypt(platformConnection.credentials)
+      );
+
+      // Transform product data for the platform
+      const transformedProduct = await this.transformProductForPlatform(
+        product,
+        platformType.toLowerCase(),
+        changes
+      );
+
+      // Determine sync operation
+      const platformVariant = product.platformVariants?.[0];
+      let syncResult;
+
+      if (operation === "delete") {
+        // Delete product from platform
+        if (platformVariant?.externalId) {
+          syncResult = await platformService.deleteProduct(
+            platformVariant.externalId,
+            credentials
+          );
+        } else {
+          syncResult = {
+            status: "skipped",
+            reason: "no_external_id",
+            message: "Product not found on platform",
+          };
+        }
+      } else if (platformVariant?.externalId) {
+        // Update existing product
+        syncResult = await platformService.updateProduct(
+          platformVariant.externalId,
+          transformedProduct,
+          credentials
+        );
+      } else {
+        // Create new product
+        syncResult = await platformService.createProduct(
+          transformedProduct,
+          credentials
+        );
+
+        // If successful, store external ID
+        if (syncResult.status === "success" && syncResult.externalId) {
+          await this.updatePlatformVariantExternalId(
+            productId,
+            platformType.toLowerCase(),
+            syncResult.externalId
+          );
+        }
+      }
+
+      // Update platform variant sync status
+      await this.updatePlatformVariantSyncStatus(
+        productId,
+        platformType.toLowerCase(),
+        syncResult.status === "success" ? "synced" : "error",
+        syncResult.status === "error"
+          ? syncResult.error || syncResult.message
+          : null
+      );
+
+      logger.info(`✅ Single platform sync completed for ${platformType}`, {
+        productId,
+        platformType,
+        operation,
+        status: syncResult.status,
+        isOriginSync,
+      });
+
+      return {
+        platform: platformType.toLowerCase(),
+        connectionId: platformConnection.id,
+        status: syncResult.status,
+        externalId: syncResult.externalId,
+        message: syncResult.message,
+        error: syncResult.error,
+        timestamp: new Date().toISOString(),
+        isOriginSync,
+      };
+    } catch (error) {
+      logger.error(`Single platform sync failed for ${platformType}:`, {
+        error: error.message,
+        productId,
+        platformType,
+        operation,
+        isOriginSync,
+        stack: error.stack,
+      });
+
+      return {
+        platform: platformType.toLowerCase(),
+        connectionId: connection?.id,
+        status: "error",
+        error: error.message,
+        timestamp: new Date().toISOString(),
+        isOriginSync,
+      };
+    }
+  }
+
+  /**
+   * Update platform variant external ID after successful product creation
+   * @param {string} productId - Main product ID
+   * @param {string} platform - Platform name
+   * @param {string} externalId - External ID assigned by platform
+   */
+  async updatePlatformVariantExternalId(productId, platform, externalId) {
+    try {
+      const [platformVariant, created] = await PlatformVariant.findOrCreate({
+        where: {
+          mainProductId: productId,
+          platform: platform.toLowerCase(),
+        },
+        defaults: {
+          mainProductId: productId,
+          platform: platform.toLowerCase(),
+          externalId,
+          status: "synced",
+          lastSyncAt: new Date(),
+        },
+      });
+
+      if (!created) {
+        await platformVariant.update({
+          externalId,
+          status: "synced",
+          lastSyncAt: new Date(),
+        });
+      }
+
+      logger.info(
+        `Updated platform variant external ID for ${platform}: ${externalId}`,
+        {
+          productId,
+          platform,
+          externalId,
+          created,
+        }
+      );
+
+      return platformVariant;
+    } catch (error) {
+      logger.error("Failed to update platform variant external ID:", {
+        error: error.message,
+        productId,
+        platform,
+        externalId,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Transform product data for a specific platform
+   * @param {Object} product - Main product data
+   * @param {string} platform - Platform name
+   * @param {Object} changes - Specific changes to apply
+   */
+  async transformProductForPlatform(product, platform, changes = {}) {
+    try {
+      // Base product data
+      const transformedData = {
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        discountedPrice: product.discountedPrice,
+        stockQuantity: product.stockQuantity,
+        sku: product.sku,
+        barcode: product.barcode,
+        categoryId: product.categoryId,
+        brand: product.brand,
+        weight: product.weight,
+        dimensions: product.dimensions,
+        images: product.images,
+        attributes: product.attributes,
+        tags: product.tags,
+        isActive: product.isActive,
+        ...changes, // Apply any specific changes
+      };
+
+      // Platform-specific transformations
+      switch (platform.toLowerCase()) {
+        case "trendyol":
+          return this.transformForTrendyol(transformedData, product);
+        case "hepsiburada":
+          return this.transformForHepsiburada(transformedData, product);
+        case "n11":
+          return this.transformForN11(transformedData, product);
+        default:
+          logger.warn(`No specific transformation for platform: ${platform}`);
+          return transformedData;
+      }
+    } catch (error) {
+      logger.error("Product transformation failed:", {
+        error: error.message,
+        platform,
+        productId: product.id,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Transform product data for Trendyol platform
+   */
+  transformForTrendyol(productData, originalProduct) {
+    return {
+      ...productData,
+      categoryId: productData.categoryId || originalProduct.trendyolCategoryId,
+      brand: productData.brand || "Generic",
+      stockQuantity: Math.max(0, productData.stockQuantity || 0),
+      // Trendyol-specific fields
+      shipmentAddressId: originalProduct.shipmentAddressId,
+      returningAddressId: originalProduct.returningAddressId,
+    };
+  }
+
+  /**
+   * Transform product data for Hepsiburada platform
+   */
+  transformForHepsiburada(productData, originalProduct) {
+    return {
+      ...productData,
+      categoryId:
+        productData.categoryId || originalProduct.hepsiburadaCategoryId,
+      brand: productData.brand || "Generic",
+      stockQuantity: Math.max(0, productData.stockQuantity || 0),
+      // Hepsiburada-specific fields
+      merchantId: originalProduct.merchantId,
+    };
+  }
+
+  /**
+   * Transform product data for N11 platform
+   */
+  transformForN11(productData, originalProduct) {
+    return {
+      ...productData,
+      categoryId: productData.categoryId || originalProduct.n11CategoryId,
+      brand: productData.brand || "Generic",
+      stockQuantity: Math.max(0, productData.stockQuantity || 0),
+      // N11-specific fields
+      productSellingType: originalProduct.productSellingType || "NEW",
+    };
+  }
+
+  /**
       const platformService = this.platformServiceManager.getService(
         platform,
         connection.id, // Connection ID for database auth
@@ -233,7 +705,8 @@ class PlatformSyncService {
 
         if (legacyProduct) {
           // Check if this is a platform-synced product that shouldn't be synced back
-          if (legacyProduct.creationSource === "platform_sync") {
+          // Support both old "platform_sync" and new "platform" enum values
+          if (legacyProduct.creationSource === "platform_sync" || legacyProduct.creationSource === "platform") {
             logger.warn(
               `Product ${productId} is platform-synced and cannot be synced back to platforms. This would create a loop.`,
               {
@@ -267,7 +740,8 @@ class PlatformSyncService {
       }
 
       // Check if this is a platform-synced main product that shouldn't be synced back
-      if (mainProduct.creationSource === "platform_sync") {
+      // Support both old "platform_sync" and new "platform" enum values
+      if (mainProduct.creationSource === "platform_sync" || mainProduct.creationSource === "platform") {
         logger.warn(
           `MainProduct ${productId} is platform-synced and cannot be synced back to platforms. This would create a loop.`,
           {
@@ -384,6 +858,14 @@ class PlatformSyncService {
           requestDuration: options.startTime
             ? Date.now() - options.startTime
             : undefined,
+          isCreationSourceError: error.message?.includes("creationSource"),
+          errorCategory:
+            error.message?.includes("column") &&
+            error.message?.includes("does not exist")
+              ? "database_schema"
+              : error.message?.includes("JSON")
+              ? "json_parsing"
+              : "general",
         }
       );
 
@@ -396,7 +878,7 @@ class PlatformSyncService {
    */
   async updatePlatformVariantSyncStatus(productId, platform, status, result) {
     try {
-      // Convert error result to string if it's an object
+      // Convert error result to clean text string
       let syncError = null;
       if (status === "error") {
         if (typeof result === "string") {
@@ -405,6 +887,20 @@ class PlatformSyncService {
           syncError = result.error || result.message || JSON.stringify(result);
         } else {
           syncError = String(result);
+        }
+
+        // Clean the error message to prevent database issues
+        if (syncError) {
+          // Remove any problematic characters and ensure it's plain text
+          syncError = syncError
+            .replace(/[\u0000-\u001F\u007F-\u009F]/g, "") // Remove control characters
+            .replace(/\\/g, "\\\\") // Escape backslashes
+            .trim();
+
+          // Ensure the error message is not too long for database storage
+          if (syncError.length > 1000) {
+            syncError = syncError.substring(0, 997) + "...";
+          }
         }
       }
 
@@ -421,8 +917,30 @@ class PlatformSyncService {
           },
         }
       );
+
+      logger.debug(
+        `Updated sync status for product ${productId} on ${platform}`,
+        {
+          productId,
+          platform,
+          status,
+          hasError: !!syncError,
+        }
+      );
     } catch (error) {
-      logger.error("Failed to update sync status:", error);
+      logger.error("Failed to update sync status:", {
+        error: error.message,
+        productId,
+        platform,
+        status,
+        originalResult:
+          typeof result === "string"
+            ? result.substring(0, 200)
+            : JSON.stringify(result).substring(0, 200),
+        stack: error.stack,
+        sqlState: error.original?.code,
+        sqlDetail: error.original?.detail,
+      });
     }
   }
 
