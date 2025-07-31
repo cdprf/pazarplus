@@ -2,9 +2,9 @@ let cron;
 let cronEnabled = true;
 
 try {
-  cron = require('node-cron');
+  cron = require("node-cron");
 } catch (error) {
-  logger.warn('Cron job dependencies not available:', error.message);
+  logger.warn("Cron job dependencies not available:", error.message);
   cronEnabled = false;
 
   // Create fallback cron implementation
@@ -12,16 +12,16 @@ try {
     schedule: () => ({
       start: () => {},
       stop: () => {},
-      destroy: () => {}
+      destroy: () => {},
     }),
-    validate: () => true
+    validate: () => true,
   };
 }
 
-const logger = require('../utils/logger');
-const CustomerQuestionService = require('./CustomerQuestionService');
-const PlatformConnection = require('../models/PlatformConnection');
-const { Op } = require('sequelize');
+const logger = require("../utils/logger");
+const CustomerQuestionService = require("./CustomerQuestionService");
+const PlatformConnection = require("../models/PlatformConnection");
+const { Op } = require("sequelize");
 
 class CustomerQuestionSyncJobService {
   constructor() {
@@ -36,53 +36,53 @@ class CustomerQuestionSyncJobService {
    */
   start() {
     if (!cronEnabled) {
-      logger.warn('Cron jobs disabled - dependencies not available');
+      logger.warn("Cron jobs disabled - dependencies not available");
       return;
     }
 
-    logger.info('Starting Customer Question Sync Background Jobs');
+    logger.info("Starting Customer Question Sync Background Jobs");
 
     // Run every 15 minutes during business hours (9 AM - 6 PM)
     const frequentSyncJob = cron.schedule(
-      '*/15 9-18 * * *',
+      "*/15 9-18 * * *",
       async () => {
         await this.runFrequentSync();
       },
       {
         scheduled: false,
-        timezone: 'Europe/Istanbul'
+        timezone: "Europe/Istanbul",
       }
     );
 
     // Run every hour outside business hours
     const hourlyNightSyncJob = cron.schedule(
-      '0 0-8,19-23 * * *',
+      "0 0-8,19-23 * * *",
       async () => {
         await this.runHourlySync();
       },
       {
         scheduled: false,
-        timezone: 'Europe/Istanbul'
+        timezone: "Europe/Istanbul",
       }
     );
 
     // Run comprehensive sync daily at 3 AM
     const dailySyncJob = cron.schedule(
-      '0 3 * * *',
+      "0 3 * * *",
       async () => {
         await this.runDailySync();
       },
       {
         scheduled: false,
-        timezone: 'Europe/Istanbul'
+        timezone: "Europe/Istanbul",
       }
     );
 
     // Store job references
     this.schedules = [
-      { name: 'frequent-question-sync', job: frequentSyncJob, enabled: true },
-      { name: 'hourly-night-sync', job: hourlyNightSyncJob, enabled: true },
-      { name: 'daily-comprehensive-sync', job: dailySyncJob, enabled: true }
+      { name: "frequent-question-sync", job: frequentSyncJob, enabled: true },
+      { name: "hourly-night-sync", job: hourlyNightSyncJob, enabled: true },
+      { name: "daily-comprehensive-sync", job: dailySyncJob, enabled: true },
     ];
 
     // Start all jobs
@@ -94,7 +94,7 @@ class CustomerQuestionSyncJobService {
     });
 
     logger.info(
-      'All Customer Question Sync Background Jobs started successfully'
+      "All Customer Question Sync Background Jobs started successfully"
     );
   }
 
@@ -102,7 +102,7 @@ class CustomerQuestionSyncJobService {
    * Stop all scheduled jobs
    */
   stop() {
-    logger.info('Stopping Customer Question Sync Background Jobs');
+    logger.info("Stopping Customer Question Sync Background Jobs");
     this.schedules.forEach((schedule) => {
       schedule.job.stop();
       logger.info(`Stopped job: ${schedule.name}`);
@@ -115,7 +115,7 @@ class CustomerQuestionSyncJobService {
    */
   async runFrequentSync() {
     if (this.isRunning) {
-      logger.warn('Question sync job already running, skipping...');
+      logger.warn("Question sync job already running, skipping...");
       return;
     }
 
@@ -123,7 +123,7 @@ class CustomerQuestionSyncJobService {
     const startTime = Date.now();
 
     try {
-      logger.info('Starting frequent customer question sync job');
+      logger.info("Starting frequent customer question sync job");
 
       // Get questions from last 2 hours
       const last2Hours = new Date();
@@ -131,19 +131,19 @@ class CustomerQuestionSyncJobService {
 
       await this.syncQuestionsFromAllPlatforms({
         startDate: last2Hours,
-        scope: 'frequent'
+        scope: "frequent",
       });
 
       // Also check status updates for existing unanswered questions
       await this.syncExistingQuestionStatuses();
 
       const duration = Date.now() - startTime;
-      logger.info('Frequent question sync completed', {
+      logger.info("Frequent question sync completed", {
         duration: `${duration}ms`,
-        scope: 'frequent'
+        scope: "frequent",
       });
     } catch (error) {
-      logger.error('Error in frequent question sync job:', error);
+      logger.error("Error in frequent question sync job:", error);
     } finally {
       this.isRunning = false;
     }
@@ -155,7 +155,7 @@ class CustomerQuestionSyncJobService {
    */
   async runHourlySync() {
     if (this.isRunning) {
-      logger.warn('Question sync job already running, skipping...');
+      logger.warn("Question sync job already running, skipping...");
       return;
     }
 
@@ -163,7 +163,7 @@ class CustomerQuestionSyncJobService {
     const startTime = Date.now();
 
     try {
-      logger.info('Starting hourly customer question sync job');
+      logger.info("Starting hourly customer question sync job");
 
       // Get questions from last 4 hours
       const last4Hours = new Date();
@@ -171,16 +171,16 @@ class CustomerQuestionSyncJobService {
 
       await this.syncQuestionsFromAllPlatforms({
         startDate: last4Hours,
-        scope: 'hourly'
+        scope: "hourly",
       });
 
       const duration = Date.now() - startTime;
-      logger.info('Hourly question sync completed', {
+      logger.info("Hourly question sync completed", {
         duration: `${duration}ms`,
-        scope: 'hourly'
+        scope: "hourly",
       });
     } catch (error) {
-      logger.error('Error in hourly question sync job:', error);
+      logger.error("Error in hourly question sync job:", error);
     } finally {
       this.isRunning = false;
     }
@@ -192,7 +192,7 @@ class CustomerQuestionSyncJobService {
    */
   async runDailySync() {
     if (this.isRunning) {
-      logger.warn('Question sync job already running, skipping...');
+      logger.warn("Question sync job already running, skipping...");
       return;
     }
 
@@ -200,7 +200,7 @@ class CustomerQuestionSyncJobService {
     const startTime = Date.now();
 
     try {
-      logger.info('Starting daily comprehensive customer question sync job');
+      logger.info("Starting daily comprehensive customer question sync job");
 
       // Get questions from last 7 days
       const last7Days = new Date();
@@ -208,17 +208,17 @@ class CustomerQuestionSyncJobService {
 
       await this.syncQuestionsFromAllPlatforms({
         startDate: last7Days,
-        scope: 'daily',
-        comprehensive: true
+        scope: "daily",
+        comprehensive: true,
       });
 
       const duration = Date.now() - startTime;
-      logger.info('Daily comprehensive question sync completed', {
+      logger.info("Daily comprehensive question sync completed", {
         duration: `${duration}ms`,
-        scope: 'daily'
+        scope: "daily",
       });
     } catch (error) {
-      logger.error('Error in daily question sync job:', error);
+      logger.error("Error in daily question sync job:", error);
     } finally {
       this.isRunning = false;
     }
@@ -229,25 +229,25 @@ class CustomerQuestionSyncJobService {
    */
   async syncQuestionsFromAllPlatforms(options = {}) {
     try {
-      const { startDate, scope = 'manual', comprehensive = false } = options;
+      const { startDate, scope = "manual", comprehensive = false } = options;
 
       // Get active platform connections
       const connections = await PlatformConnection.findAll({
         where: {
-          status: 'active',
+          status: "active",
           isActive: true,
           platformType: {
-            [Op.in]: ['trendyol', 'hepsiburada', 'n11']
-          }
+            [Op.in]: ["trendyol", "hepsiburada", "n11"],
+          },
         },
         order: [
-          ['isDefault', 'DESC'],
-          ['createdAt', 'DESC']
-        ]
+          ["isDefault", "DESC"],
+          ["createdAt", "DESC"],
+        ],
       });
 
       if (connections.length === 0) {
-        logger.warn('No active platform connections found for question sync');
+        logger.warn("No active platform connections found for question sync");
         return { synced: 0, platforms: {} };
       }
 
@@ -261,8 +261,8 @@ class CustomerQuestionSyncJobService {
           if (!platformConfigs[platformType]) {
             platformConfigs[platformType] = {
               enabled: true,
-              isTest: connection.environment !== 'production',
-              ...connection.credentials
+              isTest: connection.environment !== "production",
+              ...connection.credentials,
             };
           }
         }
@@ -273,7 +273,7 @@ class CustomerQuestionSyncJobService {
       const syncResults = {
         totalSynced: 0,
         platforms: {},
-        errors: []
+        errors: [],
       };
 
       // Sync from each platform
@@ -285,7 +285,7 @@ class CustomerQuestionSyncJobService {
         try {
           logger.info(`Syncing questions from ${platform}`, {
             scope,
-            startDate
+            startDate,
           });
 
           const lastSyncTime = this.lastSyncTimes.get(platform) || startDate;
@@ -294,13 +294,13 @@ class CustomerQuestionSyncJobService {
             platform,
             {
               startDate: comprehensive ? startDate : lastSyncTime,
-              endDate: new Date()
+              endDate: new Date(),
             }
           );
 
           syncResults.platforms[platform] = {
             synced: result.synced || 0,
-            lastSync: new Date()
+            lastSync: new Date(),
           };
 
           syncResults.totalSynced += result.synced || 0;
@@ -310,7 +310,7 @@ class CustomerQuestionSyncJobService {
             `Synced ${result.synced || 0} questions from ${platform}`,
             {
               scope,
-              platform
+              platform,
             }
           );
 
@@ -320,26 +320,26 @@ class CustomerQuestionSyncJobService {
           logger.error(`Error syncing questions from ${platform}:`, {
             error: platformError.message,
             scope,
-            platform
+            platform,
           });
 
           syncResults.errors.push({
             platform,
-            error: platformError.message
+            error: platformError.message,
           });
         }
       }
 
-      logger.info('Question sync completed', {
+      logger.info("Question sync completed", {
         scope,
         totalSynced: syncResults.totalSynced,
         platforms: Object.keys(syncResults.platforms),
-        errors: syncResults.errors.length
+        errors: syncResults.errors.length,
       });
 
       return syncResults;
     } catch (error) {
-      logger.error('Error in syncQuestionsFromAllPlatforms:', error);
+      logger.error("Error in syncQuestionsFromAllPlatforms:", error);
       throw error;
     }
   }
@@ -351,44 +351,44 @@ class CustomerQuestionSyncJobService {
     try {
       const sinceDate = since || new Date(Date.now() - 24 * 60 * 60 * 1000); // Last 24 hours
 
-      const { CustomerQuestion } = require('../models');
+      const { CustomerQuestion } = require("../models");
 
       const stats = await CustomerQuestion.findAll({
         attributes: [
-          'platform',
-          'status',
+          "platform",
+          "status",
           [
             CustomerQuestion.sequelize.fn(
-              'COUNT',
-              CustomerQuestion.sequelize.col('id')
+              "COUNT",
+              CustomerQuestion.sequelize.col("id")
             ),
-            'count'
+            "count",
           ],
           [
             CustomerQuestion.sequelize.fn(
-              'MAX',
-              CustomerQuestion.sequelize.col('creation_date')
+              "MAX",
+              CustomerQuestion.sequelize.col("creation_date")
             ),
-            'latest_question'
-          ]
+            "latest_question",
+          ],
         ],
         where: {
           creation_date: {
-            [Op.gte]: sinceDate
-          }
+            [Op.gte]: sinceDate,
+          },
         },
-        group: ['platform', 'status'],
-        raw: true
+        group: ["platform", "status"],
+        raw: true,
       });
 
       return {
         period: `Since ${sinceDate.toISOString()}`,
         lastSyncTimes: Object.fromEntries(this.lastSyncTimes),
         stats,
-        isRunning: this.isRunning
+        isRunning: this.isRunning,
       };
     } catch (error) {
-      logger.error('Error generating sync report:', error);
+      logger.error("Error generating sync report:", error);
       throw error;
     }
   }
@@ -401,10 +401,10 @@ class CustomerQuestionSyncJobService {
       isRunning: this.isRunning,
       scheduledJobs: this.schedules.map((s) => ({
         name: s.name,
-        enabled: s.enabled
+        enabled: s.enabled,
       })),
       lastSyncTimes: Object.fromEntries(this.lastSyncTimes),
-      initialized: this.questionService.initialized
+      initialized: this.questionService.initialized,
     };
   }
 
@@ -412,12 +412,12 @@ class CustomerQuestionSyncJobService {
    * Force sync now (manual trigger)
    */
   async forceSyncNow(options = {}) {
-    logger.info('Force sync triggered', options);
+    logger.info("Force sync triggered", options);
 
     return await this.syncQuestionsFromAllPlatforms({
       startDate: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
-      scope: 'manual',
-      ...options
+      scope: "manual",
+      ...options,
     });
   }
 
@@ -427,22 +427,22 @@ class CustomerQuestionSyncJobService {
    */
   async syncExistingQuestionStatuses() {
     try {
-      logger.info('Starting status sync for existing unanswered questions');
+      logger.info("Starting status sync for existing unanswered questions");
 
       // Get all unanswered questions from the last 30 days
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const CustomerQuestion = require('../models/CustomerQuestion');
+      const CustomerQuestion = require("../models/CustomerQuestion");
 
       const unansweredQuestions = await CustomerQuestion.findAll({
         where: {
-          status: 'WAITING_FOR_ANSWER',
+          status: "WAITING_FOR_ANSWER",
           creation_date: {
-            [Op.gte]: thirtyDaysAgo
-          }
+            [Op.gte]: thirtyDaysAgo,
+          },
         },
-        order: [['creation_date', 'DESC']]
+        order: [["creation_date", "DESC"]],
       });
 
       logger.info(
@@ -453,9 +453,12 @@ class CustomerQuestionSyncJobService {
       let processedQuestions = 0;
       const maxQuestionsPerBatch = 20; // Limit to avoid overwhelming APIs
 
-      for (const question of unansweredQuestions.slice(0, maxQuestionsPerBatch)) {
+      for (const question of unansweredQuestions.slice(
+        0,
+        maxQuestionsPerBatch
+      )) {
         processedQuestions++;
-        
+
         try {
           const platform = question.platform;
           const platformQuestionId = question.platform_question_id;
@@ -466,19 +469,29 @@ class CustomerQuestionSyncJobService {
 
           // Add delay between API calls to respect rate limits
           if (processedQuestions > 1) {
-            await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+            await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
           }
 
           // Get the current status from the platform
           const platformService =
             this.questionService.platformServices[platform];
-          
+
           // Different platforms use different method names
           let updatedQuestion;
-          if (platform === 'hepsiburada' && platformService.getQuestionByNumber) {
-            updatedQuestion = await platformService.getQuestionByNumber(platformQuestionId);
-          } else if ((platform === 'n11' || platform === 'trendyol') && platformService.getQuestionById) {
-            updatedQuestion = await platformService.getQuestionById(platformQuestionId);
+          if (
+            platform === "hepsiburada" &&
+            platformService.getQuestionByNumber
+          ) {
+            updatedQuestion = await platformService.getQuestionByNumber(
+              platformQuestionId
+            );
+          } else if (
+            (platform === "n11" || platform === "trendyol") &&
+            platformService.getQuestionById
+          ) {
+            updatedQuestion = await platformService.getQuestionById(
+              platformQuestionId
+            );
           } else {
             logger.warn(`No suitable method found for platform ${platform}`);
             continue;
@@ -489,7 +502,7 @@ class CustomerQuestionSyncJobService {
             await question.update({
               status: updatedQuestion.status,
               answered_date: updatedQuestion.answered_date,
-              last_modified_at: updatedQuestion.last_modified_at || new Date()
+              last_modified_at: updatedQuestion.last_modified_at || new Date(),
             });
 
             statusUpdates++;
@@ -497,23 +510,26 @@ class CustomerQuestionSyncJobService {
               `Updated question ${question.id} status from ${question.status} to ${updatedQuestion.status}`,
               {
                 platform,
-                platformQuestionId
+                platformQuestionId,
               }
             );
           }
         } catch (error) {
           // Enhanced error handling with specific error type detection
-          const errorMessage = error.message || 'Unknown error';
-          const isNotFoundError = errorMessage.includes('404') || 
-                                 errorMessage.includes('not found') ||
-                                 errorMessage.includes('NotFound');
-          const isAuthError = errorMessage.includes('401') || 
-                             errorMessage.includes('403') || 
-                             errorMessage.includes('unauthorized') ||
-                             errorMessage.includes('forbidden');
-          const isTimeoutError = errorMessage.includes('timeout') || 
-                                errorMessage.includes('ECONNRESET') ||
-                                errorMessage.includes('ETIMEDOUT');
+          const errorMessage = error.message || "Unknown error";
+          const isNotFoundError =
+            errorMessage.includes("404") ||
+            errorMessage.includes("not found") ||
+            errorMessage.includes("NotFound");
+          const isAuthError =
+            errorMessage.includes("401") ||
+            errorMessage.includes("403") ||
+            errorMessage.includes("unauthorized") ||
+            errorMessage.includes("forbidden");
+          const isTimeoutError =
+            errorMessage.includes("timeout") ||
+            errorMessage.includes("ECONNRESET") ||
+            errorMessage.includes("ETIMEDOUT");
 
           if (isNotFoundError) {
             // Question might have been deleted from platform, update status
@@ -521,41 +537,45 @@ class CustomerQuestionSyncJobService {
               `Question ${question.id} not found on platform ${question.platform}, marking as resolved`,
               { platformQuestionId: question.platform_question_id }
             );
-            
+
             // Optionally mark as resolved if question was deleted from platform
             // await question.update({
             //   status: 'RESOLVED',
             //   last_modified_at: new Date(),
             //   internal_notes: (question.internal_notes || '') + '\n[Auto] Question not found on platform - possibly deleted'
             // });
-            
           } else if (isAuthError) {
             logger.error(
               `Authentication error for platform ${question.platform}`,
-              { error: errorMessage, platformQuestionId: question.platform_question_id }
+              {
+                error: errorMessage,
+                platformQuestionId: question.platform_question_id,
+              }
             );
           } else if (isTimeoutError) {
             logger.warn(
               `Timeout checking question ${question.id} on platform ${question.platform}`,
-              { error: errorMessage, platformQuestionId: question.platform_question_id }
-            );
-          } else {
-            logger.warn(
-              `Failed to check status for question ${question.id}:`,
-              { 
+              {
                 error: errorMessage,
-                platform: question.platform,
-                platformQuestionId: question.platform_question_id
+                platformQuestionId: question.platform_question_id,
               }
             );
+          } else {
+            logger.warn(`Failed to check status for question ${question.id}:`, {
+              error: errorMessage,
+              platform: question.platform,
+              platformQuestionId: question.platform_question_id,
+            });
           }
         }
       }
 
-      logger.info(`Status sync completed: ${statusUpdates} questions updated (processed ${processedQuestions} questions)`);
+      logger.info(
+        `Status sync completed: ${statusUpdates} questions updated (processed ${processedQuestions} questions)`
+      );
       return statusUpdates;
     } catch (error) {
-      logger.error('Error in status sync for existing questions:', error);
+      logger.error("Error in status sync for existing questions:", error);
       return 0;
     }
   }
