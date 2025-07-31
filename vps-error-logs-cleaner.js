@@ -688,72 +688,6 @@ function generateReport() {
   }
 }
 
-function selfDestruct() {
-  if (options.keepScript) {
-    logMessage(
-      "INFO",
-      `Script preservation requested - keeping ${SCRIPT_CONFIG.scriptFile}`
-    );
-    return;
-  }
-
-  if (options.dryRun) {
-    logMessage("INFO", "Dry run mode - script will not self-destruct");
-    return;
-  }
-
-  logMessage("WARNING", "Self-destructing in 5 seconds... (Ctrl+C to cancel)");
-
-  let countdown = 5;
-  const countdownInterval = setInterval(() => {
-    process.stdout.write(`${colors.red}${countdown}... ${colors.reset}`);
-    countdown--;
-
-    if (countdown < 0) {
-      clearInterval(countdownInterval);
-      console.log("");
-
-      logMessage("INFO", "Initiating self-destruct sequence...");
-
-      // Copy log to permanent location
-      const finalLog = `/var/log/vps-cleanup-js-final-${new Date()
-        .toISOString()
-        .replace(/[:.]/g, "-")
-        .slice(0, 19)}.log`;
-      try {
-        fs.copyFileSync(SCRIPT_CONFIG.logFile, finalLog);
-        logMessage("SUCCESS", `Final log saved to: ${finalLog}`);
-      } catch (err) {
-        logMessage("WARNING", `Could not save final log: ${err.message}`);
-      }
-
-      // Remove temporary log
-      try {
-        fs.unlinkSync(SCRIPT_CONFIG.logFile);
-      } catch (err) {
-        // Ignore error
-      }
-
-      // Self-destruct
-      logMessage("SUCCESS", "Mission accomplished. Script self-destructing...");
-
-      try {
-        fs.unlinkSync(SCRIPT_CONFIG.scriptFile);
-        console.log(
-          `${colors.green}🎯 VPS cleanup completed successfully!${colors.reset}`
-        );
-        console.log(
-          `${colors.cyan}💥 Script has been automatically removed.${colors.reset}`
-        );
-      } catch (err) {
-        logMessage("ERROR", `Failed to self-destruct: ${err.message}`);
-      }
-
-      process.exit(0);
-    }
-  }, 1000);
-}
-
 // Signal handlers
 process.on("SIGINT", () => {
   console.log(
@@ -816,9 +750,6 @@ async function main() {
     generateReport();
 
     logMessage("SUCCESS", "VPS cleanup completed successfully!");
-
-    // Self-destruct sequence
-    selfDestruct();
   } catch (error) {
     logMessage("ERROR", `Script failed: ${error.message}`);
     console.error(error.stack);
