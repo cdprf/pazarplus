@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to fix N11 Sequelize warning about unknown attributes
+# Script too fix N11 Sequelize warning about unknown attributes
 # The warning occurs when totalDiscountAmount and agreedDeliveryDate 
 # are passed to the unified Order model instead of just the N11Order model
 

@@ -450,8 +450,12 @@ class CustomerQuestionSyncJobService {
       );
 
       let statusUpdates = 0;
+      let processedQuestions = 0;
+      const maxQuestionsPerBatch = 20; // Limit to avoid overwhelming APIs
 
-      for (const question of unansweredQuestions) {
+      for (const question of unansweredQuestions.slice(0, maxQuestionsPerBatch)) {
+        processedQuestions++;
+        
         try {
           const platform = question.platform;
           const platformQuestionId = question.platform_question_id;
@@ -460,12 +464,25 @@ class CustomerQuestionSyncJobService {
             continue;
           }
 
+          // Add delay between API calls to respect rate limits
+          if (processedQuestions > 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+          }
+
           // Get the current status from the platform
           const platformService =
             this.questionService.platformServices[platform];
-          const updatedQuestion = await platformService.getQuestionByNumber(
-            platformQuestionId
-          );
+          
+          // Different platforms use different method names
+          let updatedQuestion;
+          if (platform === 'hepsiburada' && platformService.getQuestionByNumber) {
+            updatedQuestion = await platformService.getQuestionByNumber(platformQuestionId);
+          } else if ((platform === 'n11' || platform === 'trendyol') && platformService.getQuestionById) {
+            updatedQuestion = await platformService.getQuestionById(platformQuestionId);
+          } else {
+            logger.warn(`No suitable method found for platform ${platform}`);
+            continue;
+          }
 
           if (updatedQuestion && updatedQuestion.status !== question.status) {
             // Status has changed on the platform, update locally
@@ -485,14 +502,57 @@ class CustomerQuestionSyncJobService {
             );
           }
         } catch (error) {
-          logger.warn(
-            `Failed to check status for question ${question.id}:`,
-            error.message
-          );
+          // Enhanced error handling with specific error type detection
+          const errorMessage = error.message || 'Unknown error';
+          const isNotFoundError = errorMessage.includes('404') || 
+                                 errorMessage.includes('not found') ||
+                                 errorMessage.includes('NotFound');
+          const isAuthError = errorMessage.includes('401') || 
+                             errorMessage.includes('403') || 
+                             errorMessage.includes('unauthorized') ||
+                             errorMessage.includes('forbidden');
+          const isTimeoutError = errorMessage.includes('timeout') || 
+                                errorMessage.includes('ECONNRESET') ||
+                                errorMessage.includes('ETIMEDOUT');
+
+          if (isNotFoundError) {
+            // Question might have been deleted from platform, update status
+            logger.info(
+              `Question ${question.id} not found on platform ${question.platform}, marking as resolved`,
+              { platformQuestionId: question.platform_question_id }
+            );
+            
+            // Optionally mark as resolved if question was deleted from platform
+            // await question.update({
+            //   status: 'RESOLVED',
+            //   last_modified_at: new Date(),
+            //   internal_notes: (question.internal_notes || '') + '\n[Auto] Question not found on platform - possibly deleted'
+            // });
+            
+          } else if (isAuthError) {
+            logger.error(
+              `Authentication error for platform ${question.platform}`,
+              { error: errorMessage, platformQuestionId: question.platform_question_id }
+            );
+          } else if (isTimeoutError) {
+            logger.warn(
+              `Timeout checking question ${question.id} on platform ${question.platform}`,
+              { error: errorMessage, platformQuestionId: question.platform_question_id }
+            );
+          } else {
+            logger.warn(
+              `Failed to check status for question ${question.id}:`,
+              { 
+                error: errorMessage,
+                platform: question.platform,
+                platformQuestionId: question.platform_question_id
+              }
+            );
+          }
         }
       }
 
-      logger.info(`Status sync completed: ${statusUpdates} questions updated`);
+      logger.info(`Status sync completed: ${statusUpdates} questions updated (processed ${processedQuestions} questions)`);
       return statusUpdates;
     } catch (error) {
       logger.error('Error in status sync for existing questions:', error);

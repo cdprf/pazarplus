@@ -18,7 +18,7 @@ diagnose*
 *summary*
 *report*
 *completion*
-
+!fix-n11*
 
 # Production build
 /client/build/
