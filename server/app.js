@@ -75,7 +75,7 @@ app.use((req, res, next) => {
 // Parse JSON and URL-encoded data with enhanced limits (excluding multipart for multer)
 app.use(
   express.json({
-    limit: "10mb",
+    limit: "100mb",
     parameterLimit: 50000,
     type: ["application/json", "text/plain"],
   })
@@ -83,7 +83,7 @@ app.use(
 app.use(
   express.urlencoded({
     extended: true,
-    limit: "10mb",
+    limit: "100mb",
     parameterLimit: 50000,
     type: function (req) {
       // Only parse if NOT multipart form data (let multer handle those)
@@ -321,19 +321,23 @@ app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
   const authHeader = req.headers.authorization;
 
-  // Enhanced request logging - Replace debug with info for important operations
-  logger.info("Incoming Request", {
-    timestamp,
-    method: req.method,
-    url: req.originalUrl,
-    apiVersion: req.apiVersion?.resolved,
-    userAgent: req.headers["user-agent"]?.substring(0, 100),
-    contentLength: req.headers["content-length"] || 0,
-    ip: req.ip,
-    authPresent: !!authHeader,
-    referer: req.get("Referer") || null,
-    queryParams: Object.keys(req.query).length > 0 ? req.query : null,
-  });
+  // Only log important requests - skip routine health checks and asset requests
+  const shouldLog =
+    !req.originalUrl.includes("/health") &&
+    !req.originalUrl.includes("/favicon") &&
+    !req.originalUrl.includes("/static") &&
+    !req.originalUrl.includes(".css") &&
+    !req.originalUrl.includes(".js") &&
+    !req.originalUrl.includes(".png") &&
+    !req.originalUrl.includes(".ico");
+
+  if (shouldLog) {
+    logger.debug("Request", {
+      method: req.method,
+      url: req.originalUrl,
+      ip: req.ip,
+    });
+  }
 
   // Response logging
   const originalSend = res.send;

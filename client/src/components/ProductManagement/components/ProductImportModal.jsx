@@ -162,9 +162,9 @@ const ProductImportModal = ({ show, onHide, onSuccess, showAlert }) => {
       return;
     }
 
-    // Validate file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
-      showAlert("File size must be less than 10MB", "error");
+    // Validate file size (100MB limit)
+    if (file.size > 100 * 1024 * 1024) {
+      showAlert("File size must be less than 100MB", "error");
       return;
     }
 

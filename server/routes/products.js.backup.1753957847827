@@ -2,9 +2,7 @@ const express = require("express");
 const { body, param, query } = require("express-validator");
 const router = express.Router();
 const productController = require("../controllers/product-controller");
-const FieldSyncController = require("../controllers/field-sync-controller");
 const { auth } = require("../middleware/auth");
-const validationMiddleware = require("../middleware/validation-middleware");
 
 /**
  * @swagger
@@ -485,16 +483,6 @@ router.post(
 router.post(
   "/import/preview",
   auth,
-  (req, res, next) => {
-    console.log("🔍 ROUTE DEBUG: Before multer", {
-      method: req.method,
-      url: req.url,
-      contentType: req.headers["content-type"],
-      contentLength: req.headers["content-length"],
-      hasAuthHeader: !!req.headers.authorization,
-    });
-    next();
-  },
   require("../middleware/upload").upload.single("file"),
   require("../middleware/upload").handleUploadErrors,
   productController.previewImportFile
@@ -705,96 +693,6 @@ router.post("/:id/media", auth, productController.uploadProductMedia);
  *         description: Variants detected successfully
  */
 router.post("/:id/variants/detect", auth, productController.autoDetectVariants);
-
-/**
- * @swagger
- * /api/products/{id}/sync-field:
- *   post:
- *     summary: Sync a specific field to platforms
- *     tags: [Products]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Product ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [field, value]
- *             properties:
- *               field:
- *                 type: string
- *                 description: Field name to update
- *                 example: "price"
- *               value:
- *                 description: New value for the field
- *                 example: 29.99
- *     responses:
- *       200:
- *         description: Field sync initiated successfully
- */
-router.post(
-  "/:id/sync-field",
-  [
-    auth,
-    param("id").isString().notEmpty().withMessage("Product ID is required"),
-    body("field").isString().notEmpty().withMessage("Field name is required"),
-    body("value").exists().withMessage("Field value is required"),
-    validationMiddleware,
-  ],
-  FieldSyncController.syncField
-);
-
-/**
- * @swagger
- * /api/products/{id}/sync-field/{taskId}/status:
- *   get:
- *     summary: Get field sync task status
- *     tags: [Products]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Product ID
- *       - in: path
- *         name: taskId
- *         required: true
- *         schema:
- *           type: string
- *         description: Task ID
- *       - in: query
- *         name: platform
- *         required: true
- *         schema:
- *           type: string
- *           enum: [trendyol, n11, hepsiburada]
- *         description: Platform name
- *     responses:
- *       200:
- *         description: Task status retrieved successfully
- */
-router.get(
-  "/:id/sync-field/:taskId/status",
-  [
-    auth,
-    param("id").isString().notEmpty().withMessage("Product ID is required"),
-    param("taskId").isString().notEmpty().withMessage("Task ID is required"),
-    query("platform").isString().notEmpty().withMessage("Platform is required"),
-    validationMiddleware,
-  ],
-  FieldSyncController.getTaskStatus
-);
 
 /**
  * @swagger

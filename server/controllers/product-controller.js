@@ -800,8 +800,26 @@ class ProductController {
       const updates = req.body;
       const userId = req.user.id;
 
+      // Use Product model to match the table where products actually exist
       const product = await Product.findOne({
         where: { id, userId },
+        include: [
+          {
+            model: PlatformVariant,
+            as: "platformVariants",
+            required: false,
+            attributes: [
+              "id",
+              "platform",
+              "platformSku",
+              "isPublished",
+              "syncStatus",
+              "externalId",
+              "externalUrl",
+              "createdAt",
+            ],
+          },
+        ],
       });
 
       if (!product) {
@@ -813,8 +831,26 @@ class ProductController {
 
       await product.update(updates);
 
-      // Get the updated product with fresh data
-      const updatedProduct = await product.reload();
+      // Get the updated product with fresh data including platform variants
+      const updatedProduct = await product.reload({
+        include: [
+          {
+            model: PlatformVariant,
+            as: "platformVariants",
+            required: false,
+            attributes: [
+              "id",
+              "platform",
+              "platformSku",
+              "isPublished",
+              "syncStatus",
+              "externalId",
+              "externalUrl",
+              "createdAt",
+            ],
+          },
+        ],
+      });
 
       // Sync changes to all connected platforms (asynchronously)
       const platformSyncPromise = PlatformSyncService.syncProductToAllPlatforms(
@@ -829,13 +865,14 @@ class ProductController {
         });
       });
 
-      // Don't wait for platform sync to complete - respond immediately
+      // Don't wait for platform sync to complete - respond immediately but include platform info
       platformSyncPromise.then((syncResult) => {
         if (syncResult) {
           logger.info("✅ Platform sync completed for product:", {
             productId: product.id,
-            synced: syncResult.synced,
-            total: syncResult.total,
+            platforms: syncResult.platforms || [],
+            syncStrategy: syncResult.syncStrategy,
+            totalPlatforms: syncResult.totalPlatforms,
           });
         }
       });
@@ -852,10 +889,26 @@ class ProductController {
           });
       }, 1000); // Delay 1 second to ensure product is fully updated
 
+      // Include platform information in response
+      const platformInfo = {
+        platforms:
+          updatedProduct.platformVariants?.map((pv) => ({
+            platform: pv.platform,
+            isPublished: pv.isPublished,
+            syncStatus: pv.syncStatus,
+            externalId: pv.externalId,
+            platformSku: pv.platformSku,
+          })) || [],
+        totalPlatforms: updatedProduct.platformVariants?.length || 0,
+        hasMultiplePlatforms:
+          (updatedProduct.platformVariants?.length || 0) > 1,
+      };
+
       res.json({
         success: true,
         message: "Product updated successfully",
         data: updatedProduct,
+        platformInfo,
         syncInProgress: true, // Indicate that platform sync is happening
       });
     } catch (error) {
@@ -1012,6 +1065,21 @@ class ProductController {
             model: PlatformData,
             as: "platformData",
             required: false,
+          },
+          {
+            model: PlatformVariant,
+            as: "platformVariants",
+            required: false,
+            attributes: [
+              "id",
+              "platform",
+              "platformSku",
+              "isPublished",
+              "syncStatus",
+              "externalId",
+              "externalUrl",
+              "createdAt",
+            ],
           },
         ],
       });
@@ -1853,6 +1921,22 @@ class ProductController {
    * Preview uploaded import file and suggest field mappings
    */
   async previewImportFile(req, res) {
+    console.log("🔍 CONTROLLER DEBUG: previewImportFile called", {
+      hasFile: !!req.file,
+      fileDetails: req.file
+        ? {
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size,
+            fieldname: req.file.fieldname,
+          }
+        : "NO FILE",
+      bodyKeys: Object.keys(req.body || {}),
+      headers: {
+        contentType: req.headers["content-type"],
+        contentLength: req.headers["content-length"],
+      },
+    });
     try {
       logger.info("🔍 Import preview attempt started", {
         userId: req.user?.id,
@@ -4499,6 +4583,7 @@ class ProductController {
         sourcing: productData.sourcing, // Add sourcing field
         userId,
         sourcePlatform: "manual", // Mark as manually created
+        creationSource: "user", // Mark as user-created
         // Add enhanced fields
         productType: productData.productType || "simple",
         minStockLevel: parseInt(productData.minStockLevel) || 5,
@@ -5331,7 +5416,8 @@ class ProductController {
       const mainProduct = await ProductModel.create({
         ...mappedData,
         userId,
-        importedFrom: productData.platform || "unknown",
+        creationSource: "platform_sync", // Set as platform-sourced
+        importedFrom: productData.sourcePlatform || "unknown",
         importedAt: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -7350,28 +7436,50 @@ class ProductController {
       const userId = req.user.id;
       const { platforms, operation = "update" } = req.body;
 
-      // Find the product (main or variant)
-      let product = await MainProduct.findOne({
+      // Find the product using the Product model (consistent with other controller methods)
+      let product = await Product.findOne({
         where: { id, userId },
+        include: [
+          {
+            model: PlatformVariant,
+            as: "platformVariants",
+            required: false,
+            attributes: [
+              "id",
+              "platform",
+              "platformSku",
+              "isPublished",
+              "syncStatus",
+              "externalId",
+              "externalUrl",
+              "createdAt",
+            ],
+          },
+        ],
       });
 
+      // If not found in Product table, check MainProduct table as fallback
       if (!product) {
-        // Check if it's a platform variant by finding the variant and checking the main product's userId
-        const variant = await PlatformVariant.findOne({
-          where: { id },
+        product = await MainProduct.findOne({
+          where: { id, userId },
           include: [
             {
-              model: MainProduct,
-              as: "mainProduct",
-              where: { userId },
-              required: true,
+              model: PlatformVariant,
+              as: "platformVariants",
+              required: false,
+              attributes: [
+                "id",
+                "platform",
+                "platformSku",
+                "isPublished",
+                "syncStatus",
+                "externalId",
+                "externalUrl",
+                "createdAt",
+              ],
             },
           ],
         });
-
-        if (variant) {
-          product = variant;
-        }
       }
 
       if (!product) {
@@ -7381,25 +7489,57 @@ class ProductController {
         });
       }
 
-      // Sync to all platforms or specific platforms
+      // Sync to all platforms or specific platforms using the intelligent sync system
       const syncResult = await PlatformSyncService.syncProductToAllPlatforms(
         userId,
         product,
         operation,
-        product.toJSON()
+        req.body.changes || {}
       );
+
+      // Include platform information in response
+      const platformInfo = {
+        platforms:
+          product.platformVariants?.map((pv) => ({
+            platform: pv.platform,
+            isPublished: pv.isPublished,
+            syncStatus: pv.syncStatus,
+            externalId: pv.externalId,
+            platformSku: pv.platformSku,
+          })) || [],
+        totalPlatforms: product.platformVariants?.length || 0,
+        hasMultiplePlatforms: (product.platformVariants?.length || 0) > 1,
+      };
 
       res.json({
         success: true,
-        message: "Platform sync completed",
+        message: "Platform sync completed successfully",
         data: syncResult,
+        platformInfo,
+        productInfo: {
+          id: product.id,
+          name: product.name,
+          creationSource: product.creationSource,
+          syncStrategy: syncResult.syncStrategy,
+        },
       });
     } catch (error) {
-      logger.error("Manual platform sync failed:", error);
+      logger.error("Manual platform sync failed:", {
+        error: error.message,
+        productId: req.params.id,
+        userId: req.user.id,
+        operation: req.body.operation,
+        errorStack: error.stack,
+      });
+
       res.status(500).json({
         success: false,
         message: "Platform sync failed",
         error: error.message,
+        details:
+          error.name === "SequelizeConnectionError"
+            ? "Database connection issue. Please try again."
+            : "Platform sync service error.",
       });
     }
   }
@@ -7412,14 +7552,39 @@ class ProductController {
       const { id } = req.params;
       const userId = req.user.id;
 
+      // First verify the product exists and belongs to the user
+      const product =
+        (await Product.findOne({
+          where: { id, userId },
+        })) ||
+        (await MainProduct.findOne({
+          where: { id, userId },
+        }));
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
       const syncStatus = await PlatformSyncService.getSyncStatus(id);
 
       res.json({
         success: true,
         data: syncStatus,
+        productInfo: {
+          id: product.id,
+          name: product.name,
+          creationSource: product.creationSource,
+        },
       });
     } catch (error) {
-      logger.error("Failed to get sync status:", error);
+      logger.error("Failed to get sync status:", {
+        error: error.message,
+        productId: req.params.id,
+        userId: req.user.id,
+      });
       res.status(500).json({
         success: false,
         message: "Failed to get sync status",
@@ -7444,14 +7609,49 @@ class ProductController {
         });
       }
 
-      // Find the product
-      let product = await MainProduct.findOne({
+      // Find the product using consistent model approach
+      let product = await Product.findOne({
         where: { id, userId },
+        include: [
+          {
+            model: PlatformVariant,
+            as: "platformVariants",
+            required: false,
+            attributes: [
+              "id",
+              "platform",
+              "platformSku",
+              "isPublished",
+              "syncStatus",
+              "externalId",
+              "externalUrl",
+              "createdAt",
+            ],
+          },
+        ],
       });
 
+      // Fallback to MainProduct if not found in Product table
       if (!product) {
-        product = await PlatformVariant.findOne({
+        product = await MainProduct.findOne({
           where: { id, userId },
+          include: [
+            {
+              model: PlatformVariant,
+              as: "platformVariants",
+              required: false,
+              attributes: [
+                "id",
+                "platform",
+                "platformSku",
+                "isPublished",
+                "syncStatus",
+                "externalId",
+                "externalUrl",
+                "createdAt",
+              ],
+            },
+          ],
         });
       }
 

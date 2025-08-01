@@ -3340,6 +3340,229 @@ class N11Service extends BasePlatformService {
   }
 
   /**
+   * Poll N11 task status by task ID
+   * @param {number} taskId - The task ID returned by N11 API
+   * @param {number} maxAttempts - Maximum polling attempts (default: 30)
+   * @param {number} intervalMs - Polling interval in milliseconds (default: 5000)
+   * @returns {Promise<Object>} - Task details and results
+   */
+  async pollTaskStatus(taskId, maxAttempts = 30, intervalMs = 5000) {
+    try {
+      await this.initialize();
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        this.logger.info(
+          `Polling N11 task status (attempt ${attempt}/${maxAttempts})`,
+          {
+            taskId,
+            connectionId: this.connectionId,
+          }
+        );
+
+        try {
+          const response = await this.axiosInstance.post(
+            "/ms/product/task-details/page-query",
+            {
+              taskId: taskId,
+              pageable: {
+                page: 0,
+                size: 1000,
+              },
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          const taskData = response.data;
+
+          this.logger.info("N11 task status response", {
+            taskId,
+            status: taskData.status,
+            totalElements: taskData.totalElements,
+            hasContent: !!taskData.content,
+          });
+
+          // Check if task is completed
+          if (taskData.status === "PROCESSED") {
+            this.logger.info("N11 task completed successfully", {
+              taskId,
+              totalElements: taskData.totalElements,
+              results: taskData.content?.length || 0,
+            });
+
+            return {
+              success: true,
+              status: "PROCESSED",
+              taskId,
+              results: taskData.content || [],
+              totalElements: taskData.totalElements || 0,
+              completedAt: new Date().toISOString(),
+              attempts: attempt,
+            };
+          } else if (taskData.status === "REJECT") {
+            this.logger.warn("N11 task was rejected", {
+              taskId,
+              status: taskData.status,
+              reason: taskData.reason || "Unknown reason",
+            });
+
+            return {
+              success: false,
+              status: "REJECT",
+              taskId,
+              error: taskData.reason || "Task was rejected by N11",
+              completedAt: new Date().toISOString(),
+              attempts: attempt,
+            };
+          } else if (taskData.status === "IN_QUEUE") {
+            // Task is still processing, continue polling
+            this.logger.debug("N11 task still in queue, continuing to poll", {
+              taskId,
+              attempt,
+              nextAttemptIn: intervalMs / 1000 + " seconds",
+            });
+
+            if (attempt < maxAttempts) {
+              await new Promise((resolve) => setTimeout(resolve, intervalMs));
+              continue;
+            }
+          }
+        } catch (pollError) {
+          this.logger.error("Error polling N11 task status", {
+            taskId,
+            attempt,
+            error: pollError.message,
+            status: pollError.response?.status,
+            apiError: pollError.response?.data,
+          });
+
+          if (attempt === maxAttempts) {
+            return {
+              success: false,
+              status: "POLL_ERROR",
+              taskId,
+              error: `Failed to poll task status after ${maxAttempts} attempts: ${pollError.message}`,
+              attempts: attempt,
+            };
+          }
+
+          // Wait before retrying
+          await new Promise((resolve) => setTimeout(resolve, intervalMs));
+        }
+      }
+
+      // Max attempts reached without completion
+      this.logger.warn("N11 task polling timeout", {
+        taskId,
+        maxAttempts,
+        timeoutMinutes: (maxAttempts * intervalMs) / 60000,
+      });
+
+      return {
+        success: false,
+        status: "TIMEOUT",
+        taskId,
+        error: `Task polling timeout after ${maxAttempts} attempts (${
+          (maxAttempts * intervalMs) / 60000
+        } minutes)`,
+        attempts: maxAttempts,
+      };
+    } catch (error) {
+      this.logger.error("N11 task polling failed", {
+        taskId,
+        error: error.message,
+        stack: error.stack,
+      });
+
+      return {
+        success: false,
+        status: "ERROR",
+        taskId,
+        error: error.message,
+        attempts: 0,
+      };
+    }
+  }
+
+  /**
+   * Update product with enhanced feedback - returns task ID for polling
+   * @param {Object} productData - Product data to update
+   * @param {boolean} waitForCompletion - Whether to wait for task completion (default: false)
+   * @returns {Promise<Object>} - Update result with task information
+   */
+  async updateProductWithTracking(productData, waitForCompletion = false) {
+    try {
+      // Use the existing updateProduct method to get task ID
+      const updateResult = await this.updateProduct(productData);
+
+      if (!updateResult || updateResult.length === 0) {
+        return {
+          success: false,
+          error: "No update results returned",
+          status: "ERROR",
+        };
+      }
+
+      // Extract task IDs from results
+      const taskIds = updateResult
+        .filter((result) => result.success && result.taskId)
+        .map((result) => result.taskId);
+
+      if (taskIds.length === 0) {
+        return {
+          success: false,
+          error: "No task IDs returned from update",
+          status: "ERROR",
+          updateResults: updateResult,
+        };
+      }
+
+      const response = {
+        success: true,
+        status: "IN_QUEUE",
+        taskIds: taskIds,
+        updateResults: updateResult,
+        message: `${taskIds.length} update task(s) queued successfully`,
+      };
+
+      // If waiting for completion, poll all tasks
+      if (waitForCompletion) {
+        const pollResults = [];
+
+        for (const taskId of taskIds) {
+          const pollResult = await this.pollTaskStatus(taskId);
+          pollResults.push(pollResult);
+        }
+
+        response.status = pollResults.every((r) => r.success)
+          ? "COMPLETED"
+          : "PARTIAL_SUCCESS";
+        response.pollResults = pollResults;
+        response.completedTasks = pollResults.filter((r) => r.success).length;
+        response.failedTasks = pollResults.filter((r) => !r.success).length;
+      }
+
+      return response;
+    } catch (error) {
+      this.logger.error("N11 product update with tracking failed", {
+        error: error.message,
+        productData: productData
+          ? JSON.stringify(productData).substring(0, 200)
+          : "null",
+      });
+
+      return {
+        success: false,
+        status: "ERROR",
+        error: error.message,
+      };
+    }
+  }
+
+  /**
    * Get N11-specific product fields
    */
   async getProductFields(categoryId = null) {

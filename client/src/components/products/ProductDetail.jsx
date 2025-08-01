@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import api from "../../services/api";
 import { useAlert } from "../../contexts/AlertContext";
+import { InputFieldWithSync } from "../FieldSyncFeedback";
 import ProductTimeline from "./ProductTimeline";
 import ProductPlatformLinks from "./ProductPlatformLinks";
 import ProductVariants from "./ProductVariants";
@@ -359,17 +360,30 @@ const ProductDetail = () => {
                         Price
                       </label>
                       {editing ? (
-                        <input
-                          type="number"
-                          value={editedProduct.price || ""}
-                          onChange={(e) =>
-                            setEditedProduct({
-                              ...editedProduct,
-                              price: parseFloat(e.target.value),
-                            })
-                          }
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        />
+                        <div className="relative">
+                          <InputFieldWithSync
+                            productId={product.id}
+                            field="price"
+                            type="number"
+                            value={editedProduct.price || ""}
+                            onChange={(value) =>
+                              setEditedProduct({
+                                ...editedProduct,
+                                price: parseFloat(value) || 0,
+                              })
+                            }
+                            onSyncComplete={(result) => {
+                              showNotification(
+                                "Price synced to platforms successfully",
+                                "success"
+                              );
+                              logger.info("Price sync completed:", result);
+                            }}
+                            placeholder="Enter price"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8"
+                            debounceMs={1500}
+                          />
+                        </div>
                       ) : (
                         <p className="mt-1 text-2xl font-bold text-green-600">
                           {formatCurrency(product.price)}
@@ -382,22 +396,35 @@ const ProductDetail = () => {
                         Stock Quantity
                       </label>
                       {editing ? (
-                        <input
-                          type="number"
-                          value={
-                            editedProduct.stockQuantity ||
-                            editedProduct.stock ||
-                            ""
-                          }
-                          onChange={(e) =>
-                            setEditedProduct({
-                              ...editedProduct,
-                              stockQuantity: parseInt(e.target.value),
-                              stock: parseInt(e.target.value),
-                            })
-                          }
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        />
+                        <div className="relative">
+                          <InputFieldWithSync
+                            productId={product.id}
+                            field="stockQuantity"
+                            type="number"
+                            value={
+                              editedProduct.stockQuantity ||
+                              editedProduct.stock ||
+                              ""
+                            }
+                            onChange={(value) =>
+                              setEditedProduct({
+                                ...editedProduct,
+                                stockQuantity: parseInt(value) || 0,
+                                stock: parseInt(value) || 0,
+                              })
+                            }
+                            onSyncComplete={(result) => {
+                              showNotification(
+                                "Stock quantity synced to platforms successfully",
+                                "success"
+                              );
+                              logger.info("Stock sync completed:", result);
+                            }}
+                            placeholder="Enter stock quantity"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-8"
+                            debounceMs={1500}
+                          />
+                        </div>
                       ) : (
                         <p className="mt-1 text-gray-900 dark:text-gray-100">
                           {product.stockQuantity || product.stock || 0} units

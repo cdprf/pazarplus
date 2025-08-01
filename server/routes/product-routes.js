@@ -11,7 +11,7 @@ const logger = require("../utils/logger");
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 100 * 1024 * 1024, // 100MB limit
     fieldSize: 2 * 1024 * 1024, // 2MB field size limit
     fields: 10, // Max 10 fields
     files: 1, // Max 1 file

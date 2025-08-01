@@ -59,7 +59,8 @@ const createRequestLogger = () => {
       } else if (responseTime > 1000) {
         logger.warn("Slow HTTP Response", responseContext);
       } else {
-        logger.info("HTTP Response", responseContext);
+        // Only log successful responses at debug level to reduce noise
+        logger.debug("HTTP Response", responseContext);
       }
 
       // Call original end

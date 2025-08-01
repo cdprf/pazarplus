@@ -15,8 +15,8 @@ const dbConfig = {
   username: process.env.DB_USER || process.env.USER || "ahmedabaas",
   password: process.env.DB_PASSWORD || "",
   logging:
-    process.env.NODE_ENV === "development"
-      ? (msg) => logger.info("DB Query:", { query: msg })
+    process.env.NODE_ENV === "development" && process.env.DEBUG_DB === "true"
+      ? (msg) => logger.debug("DB Query:", { query: msg })
       : false,
   dialectOptions: {
     ssl:

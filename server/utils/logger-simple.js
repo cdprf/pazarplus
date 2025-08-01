@@ -1,14 +1,14 @@
-const winston = require('winston');
-const path = require('path');
+const winston = require("winston");
+const path = require("path");
 
 // Simple console-only logger for production environments like Render
 const createProductionLogger = () => {
   return winston.createLogger({
-    level: process.env.LOG_LEVEL || 'info',
+    level: process.env.LOG_LEVEL || "info",
     defaultMeta: {
-      service: 'pazar-plus',
-      environment: process.env.NODE_ENV || 'development',
-      version: '1.0.0'
+      service: "pazar-plus",
+      environment: process.env.NODE_ENV || "development",
+      version: "1.0.0",
     },
     transports: [
       new winston.transports.Console({
@@ -17,11 +17,11 @@ const createProductionLogger = () => {
           winston.format.errors({ stack: true }),
           winston.format.json()
         ),
-        level: 'info',
+        level: "info",
         handleExceptions: true,
-        handleRejections: true
-      })
-    ]
+        handleRejections: true,
+      }),
+    ],
   });
 };
 
@@ -35,15 +35,16 @@ logger.logRequest = (req, res, responseTime) => {
     url: req.originalUrl,
     statusCode: res.statusCode,
     responseTime: `${responseTime}ms`,
-    userAgent: req.get('User-Agent'),
+    userAgent: req.get("User-Agent"),
     ip: req.ip || req.connection.remoteAddress,
-    userId: req.user?.id || null
+    userId: req.user?.id || null,
   };
 
   if (res.statusCode >= 400) {
-    logger.warn('HTTP Request Error', logData);
+    logger.warn("HTTP Request Error", logData);
   } else {
-    logger.info('HTTP Request', logData);
+    // Only log successful requests at debug level to reduce noise
+    logger.debug("HTTP Request", logData);
   }
 };
 
@@ -53,25 +54,25 @@ logger.logError = (error, context = {}) => {
       name: error.name,
       message: error.message,
       stack: error.stack,
-      code: error.code
+      code: error.code,
     },
-    context
+    context,
   });
 };
 
 logger.logBusinessEvent = (event, data = {}) => {
   logger.info(`Business Event: ${event}`, {
-    eventType: 'business',
+    eventType: "business",
     event,
-    ...data
+    ...data,
   });
 };
 
 module.exports = logger;
 
 // Add initialization log
-module.exports.info('Simple production logger initialized', {
-  service: 'pazar-plus',
-  logLevel: process.env.LOG_LEVEL || 'info',
-  environment: process.env.NODE_ENV || 'development'
+module.exports.info("Simple production logger initialized", {
+  service: "pazar-plus",
+  logLevel: process.env.LOG_LEVEL || "info",
+  environment: process.env.NODE_ENV || "development",
 });

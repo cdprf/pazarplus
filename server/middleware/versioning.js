@@ -78,16 +78,17 @@ const apiVersioning = (req, res, next) => {
   res.set("X-API-Version", req.apiVersion.resolved);
   res.set("X-Supported-Versions", supportedVersions.join(", "));
 
-  // Log version usage for analytics
-  logger.info("API Version Request", {
-    operation: "api_versioning",
-    requested: req.apiVersion?.requested || null,
-    resolved: req.apiVersion?.resolved || "v1",
-    path: req.path,
-    method: req.method,
-    ip: req.ip,
-    userAgent: req.get("User-Agent"),
-  });
+  // Only log API version requests in debug mode
+  if (process.env.DEBUG_API_VERSIONING === "true") {
+    logger.debug("API Version Request", {
+      operation: "api_versioning",
+      requested: req.apiVersion?.requested || null,
+      resolved: req.apiVersion?.resolved || "v1",
+      path: req.path,
+      method: req.method,
+      ip: req.ip,
+    });
+  }
   next();
 };
 

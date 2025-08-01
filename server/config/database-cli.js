@@ -9,7 +9,7 @@ module.exports = {
     host: process.env.DB_HOST || "localhost",
     port: process.env.DB_PORT || 5432,
     dialect: "postgresql",
-    logging: (msg) => logger.info("DB Query:", { query: msg }),
+    logging: false, // Disable DB query logging to reduce verbose logs
     define: {
       underscored: true,
       timestamps: true,

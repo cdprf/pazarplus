@@ -1,9 +1,10 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { auth } = require('../middleware/auth');
-const ProductController = require('../controllers/product-controller');
-const { body, param, query } = require('express-validator');
-const validationMiddleware = require('../middleware/validation-middleware');
+const { auth } = require("../middleware/auth");
+const ProductController = require("../controllers/product-controller");
+const FieldSyncController = require("../controllers/field-sync-controller");
+const { body, param, query } = require("express-validator");
+const validationMiddleware = require("../middleware/validation-middleware");
 
 // Apply authentication to all routes
 router.use(auth);
@@ -56,7 +57,7 @@ router.use(auth);
  *       200:
  *         description: Successfully retrieved products
  */
-router.get('/', ProductController.getProducts);
+router.get("/", ProductController.getProducts);
 
 /**
  * @swagger
@@ -92,11 +93,11 @@ router.get('/', ProductController.getProducts);
  *         description: Successfully synced products
  */
 router.post(
-  '/sync',
+  "/sync",
   [
-    body('platforms').optional().isArray(),
-    body('platforms.*').optional().isIn(['trendyol', 'n11', 'hepsiburada']),
-    validationMiddleware
+    body("platforms").optional().isArray(),
+    body("platforms.*").optional().isIn(["trendyol", "n11", "hepsiburada"]),
+    validationMiddleware,
   ],
   ProductController.syncProducts
 );
@@ -136,13 +137,13 @@ router.post(
  *         description: Successfully tested product fetching
  */
 router.get(
-  '/test/:platformType/:connectionId',
+  "/test/:platformType/:connectionId",
   [
-    param('platformType').isIn(['trendyol', 'n11', 'hepsiburada']),
-    param('connectionId').isUUID(),
-    query('page').optional().isInt({ min: 0 }),
-    query('size').optional().isInt({ min: 1, max: 100 }),
-    validationMiddleware
+    param("platformType").isIn(["trendyol", "n11", "hepsiburada"]),
+    param("connectionId").isUUID(),
+    query("page").optional().isInt({ min: 0 }),
+    query("size").optional().isInt({ min: 1, max: 100 }),
+    validationMiddleware,
   ],
   ProductController.testPlatformProducts
 );
@@ -177,12 +178,12 @@ router.get(
  *         description: Successfully retrieved platform products
  */
 router.get(
-  '/platform/:platformType',
+  "/platform/:platformType",
   [
-    param('platformType').isIn(['trendyol', 'n11', 'hepsiburada']),
-    query('page').optional().isInt({ min: 0 }),
-    query('limit').optional().isInt({ min: 1, max: 100 }),
-    validationMiddleware
+    param("platformType").isIn(["trendyol", "n11", "hepsiburada"]),
+    query("page").optional().isInt({ min: 0 }),
+    query("limit").optional().isInt({ min: 1, max: 100 }),
+    validationMiddleware,
   ],
   ProductController.getPlatformProducts
 );
@@ -199,7 +200,95 @@ router.get(
  *       200:
  *         description: Successfully retrieved sync status
  */
-router.get('/sync-status', ProductController.getSyncStatus);
+router.get("/sync-status", ProductController.getSyncStatus);
+
+/**
+ * @swagger
+ * /api/products/{id}/sync-field:
+ *   post:
+ *     summary: Sync a specific field to platforms
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Product ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [field, value]
+ *             properties:
+ *               field:
+ *                 type: string
+ *                 description: Field name to update
+ *                 example: "price"
+ *               value:
+ *                 description: New value for the field
+ *                 example: 29.99
+ *     responses:
+ *       200:
+ *         description: Field sync initiated successfully
+ */
+router.post(
+  "/:id/sync-field",
+  [
+    param("id").isString().notEmpty().withMessage("Product ID is required"),
+    body("field").isString().notEmpty().withMessage("Field name is required"),
+    body("value").exists().withMessage("Field value is required"),
+    validationMiddleware,
+  ],
+  FieldSyncController.syncField
+);
+
+/**
+ * @swagger
+ * /api/products/{id}/sync-field/{taskId}/status:
+ *   get:
+ *     summary: Get field sync task status
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Product ID
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Task ID
+ *       - in: query
+ *         name: platform
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [trendyol, n11, hepsiburada]
+ *         description: Platform name
+ *     responses:
+ *       200:
+ *         description: Task status retrieved successfully
+ */
+router.get(
+  "/:id/sync-field/:taskId/status",
+  [
+    param("id").isString().notEmpty().withMessage("Product ID is required"),
+    param("taskId").isString().notEmpty().withMessage("Task ID is required"),
+    query("platform").isString().notEmpty().withMessage("Platform is required"),
+    validationMiddleware,
+  ],
+  FieldSyncController.getTaskStatus
+);
 
 /**
  * @swagger
@@ -213,7 +302,7 @@ router.get('/sync-status', ProductController.getSyncStatus);
  *       200:
  *         description: Product statistics retrieved successfully
  */
-router.get('/stats', ProductController.getProductStats);
+router.get("/stats", ProductController.getProductStats);
 
 /**
  * @swagger
@@ -253,16 +342,16 @@ router.get('/stats', ProductController.getProductStats);
  *         description: Successfully updated product
  */
 router.put(
-  '/:id',
+  "/:id",
   [
-    param('id').isUUID(),
-    body('name').optional().isString().isLength({ min: 1, max: 255 }),
-    body('description').optional().isString(),
-    body('price').optional().isNumeric(),
-    body('stockQuantity').optional().isInt({ min: 0 }),
-    body('category').optional().isString(),
-    body('status').optional().isIn(['active', 'inactive']),
-    validationMiddleware
+    param("id").isUUID(),
+    body("name").optional().isString().isLength({ min: 1, max: 255 }),
+    body("description").optional().isString(),
+    body("price").optional().isNumeric(),
+    body("stockQuantity").optional().isInt({ min: 0 }),
+    body("category").optional().isString(),
+    body("status").optional().isIn(["active", "inactive"]),
+    validationMiddleware,
   ],
   ProductController.updateProduct
 );
@@ -342,57 +431,57 @@ router.put(
  *         description: SKU already exists for this user
  */
 router.post(
-  '/',
+  "/",
   [
-    body('name')
+    body("name")
       .notEmpty()
       .isLength({ min: 1, max: 255 })
-      .withMessage('Name is required and must be 1-255 characters'),
-    body('sku')
+      .withMessage("Name is required and must be 1-255 characters"),
+    body("sku")
       .notEmpty()
       .isLength({ min: 1, max: 100 })
-      .withMessage('SKU is required and must be 1-100 characters'),
-    body('barcode')
+      .withMessage("SKU is required and must be 1-100 characters"),
+    body("barcode")
       .optional()
       .isLength({ max: 100 })
-      .withMessage('Barcode must not exceed 100 characters'),
-    body('description').optional().isString(),
-    body('category').notEmpty().withMessage('Category is required'),
-    body('price')
+      .withMessage("Barcode must not exceed 100 characters"),
+    body("description").optional().isString(),
+    body("category").notEmpty().withMessage("Category is required"),
+    body("price")
       .isNumeric()
       .isFloat({ min: 0 })
-      .withMessage('Price must be a positive number'),
-    body('costPrice')
+      .withMessage("Price must be a positive number"),
+    body("costPrice")
       .optional()
       .isNumeric()
       .isFloat({ min: 0 })
-      .withMessage('Cost price must be a positive number'),
-    body('stockQuantity')
+      .withMessage("Cost price must be a positive number"),
+    body("stockQuantity")
       .optional()
       .isInt({ min: 0 })
-      .withMessage('Stock quantity must be a non-negative integer'),
-    body('minStockLevel')
+      .withMessage("Stock quantity must be a non-negative integer"),
+    body("minStockLevel")
       .optional()
       .isInt({ min: 0 })
-      .withMessage('Minimum stock level must be a non-negative integer'),
-    body('weight')
+      .withMessage("Minimum stock level must be a non-negative integer"),
+    body("weight")
       .optional()
       .isNumeric()
       .isFloat({ min: 0 })
-      .withMessage('Weight must be a positive number'),
-    body('dimensions').optional().isObject(),
-    body('images').optional().isArray(),
-    body('images.*')
+      .withMessage("Weight must be a positive number"),
+    body("dimensions").optional().isObject(),
+    body("images").optional().isArray(),
+    body("images.*")
       .optional()
       .isURL()
-      .withMessage('Each image must be a valid URL'),
-    body('status')
+      .withMessage("Each image must be a valid URL"),
+    body("status")
       .optional()
-      .isIn(['active', 'inactive', 'draft'])
-      .withMessage('Status must be active, inactive, or draft'),
-    body('tags').optional().isArray(),
-    body('tags.*').optional().isString(),
-    validationMiddleware
+      .isIn(["active", "inactive", "draft"])
+      .withMessage("Status must be active, inactive, or draft"),
+    body("tags").optional().isArray(),
+    body("tags.*").optional().isString(),
+    validationMiddleware,
   ],
   ProductController.createProduct
 );
@@ -440,88 +529,96 @@ router.post(
  *         description: List of main products with pagination
  */
 router.get(
-  '/main-products',
+  "/main-products",
   [
-    query('page').optional().isInt({ min: 1 }),
-    query('limit').optional().isInt({ min: 1, max: 100 }),
-    query('search').optional().isString(),
-    query('category').optional().isString(),
-    query('status')
+    query("page").optional().isInt({ min: 1 }),
+    query("limit").optional().isInt({ min: 1, max: 100 }),
+    query("search").optional().isString(),
+    query("category").optional().isString(),
+    query("status")
       .optional()
       .custom((value) => {
         // Allow empty string or valid status values
-        if (value === '' || value === null || value === undefined) {
+        if (value === "" || value === null || value === undefined) {
           return true;
         }
-        if (['active', 'inactive', 'draft', 'archived'].includes(value)) {
+        if (["active", "inactive", "draft", "archived"].includes(value)) {
           return true;
         }
         throw new Error(
-          'Status must be one of: active, inactive, draft, archived'
+          "Status must be one of: active, inactive, draft, archived"
         );
       }),
-    query('hasVariants').optional().isBoolean(),
-    query('sortBy')
+    query("hasVariants").optional().isBoolean(),
+    query("sortBy")
       .optional()
       .isIn([
-        'name',
-        'sku',
-        'category',
-        'price',
-        'stock',
-        'createdAt',
-        'updatedAt'
+        "name",
+        "sku",
+        "category",
+        "price",
+        "stock",
+        "createdAt",
+        "updatedAt",
       ]),
-    query('sortField')
+    query("sortField")
       .optional()
       .isIn([
-        'name',
-        'sku',
-        'category',
-        'price',
-        'stock',
-        'createdAt',
-        'updatedAt'
+        "name",
+        "sku",
+        "category",
+        "price",
+        "stock",
+        "createdAt",
+        "updatedAt",
       ]),
-    query('sortOrder')
+    query("sortOrder")
       .optional()
       .custom((value) => {
         // Allow empty string or valid sort order values (case insensitive)
-        if (value === '' || value === null || value === undefined) {
+        if (value === "" || value === null || value === undefined) {
           return true;
         }
-        if (['ASC', 'DESC', 'asc', 'desc'].includes(value)) {
+        if (["ASC", "DESC", "asc", "desc"].includes(value)) {
           return true;
         }
-        throw new Error('Sort order must be ASC or DESC');
+        throw new Error("Sort order must be ASC or DESC");
       }),
-    query('stockStatus').optional().isString(),
-    query('minPrice')
+    query("stockStatus").optional().isString(),
+    query("minPrice")
       .optional()
       .custom((value) => {
-        if (value === '' || value === null || value === undefined) {return true;}
+        if (value === "" || value === null || value === undefined) {
+          return true;
+        }
         return !isNaN(parseFloat(value)) && isFinite(value);
       }),
-    query('maxPrice')
+    query("maxPrice")
       .optional()
       .custom((value) => {
-        if (value === '' || value === null || value === undefined) {return true;}
+        if (value === "" || value === null || value === undefined) {
+          return true;
+        }
         return !isNaN(parseFloat(value)) && isFinite(value);
       }),
-    query('minStock')
+    query("minStock")
       .optional()
       .custom((value) => {
-        if (value === '' || value === null || value === undefined) {return true;}
+        if (value === "" || value === null || value === undefined) {
+          return true;
+        }
         return Number.isInteger(Number(value)) && Number(value) >= 0;
       }),
-    query('maxStock')
+    query("maxStock")
       .optional()
       .custom((value) => {
-        if (value === '' || value === null || value === undefined) {return true;}
+        if (value === "" || value === null || value === undefined) {
+          return true;
+        }
         return Number.isInteger(Number(value)) && Number(value) >= 0;
       }),
-    query('platform').optional().isString(),
-    validationMiddleware
+    query("platform").optional().isString(),
+    validationMiddleware,
   ],
   ProductController.getMainProducts
 );
@@ -549,10 +646,10 @@ router.get(
  *         description: Product not found
  */
 router.get(
-  '/:id',
+  "/:id",
   [
-    param('id').isUUID().withMessage('Product ID must be a valid UUID'),
-    validationMiddleware
+    param("id").isUUID().withMessage("Product ID must be a valid UUID"),
+    validationMiddleware,
   ],
   ProductController.getProductById
 );
@@ -580,10 +677,10 @@ router.get(
  *         description: Product not found
  */
 router.delete(
-  '/:id',
+  "/:id",
   [
-    param('id').isUUID().withMessage('Product ID must be a valid UUID'),
-    validationMiddleware
+    param("id").isUUID().withMessage("Product ID must be a valid UUID"),
+    validationMiddleware,
   ],
   ProductController.deleteProduct
 );
@@ -617,15 +714,15 @@ router.delete(
  *         description: Products deleted successfully
  */
 router.post(
-  '/bulk/delete',
+  "/bulk/delete",
   [
-    body('productIds')
+    body("productIds")
       .isArray({ min: 1, max: 100 })
-      .withMessage('Product IDs must be an array with 1-100 items'),
-    body('productIds.*')
+      .withMessage("Product IDs must be an array with 1-100 items"),
+    body("productIds.*")
       .isUUID()
-      .withMessage('Each product ID must be a valid UUID'),
-    validationMiddleware
+      .withMessage("Each product ID must be a valid UUID"),
+    validationMiddleware,
   ],
   ProductController.bulkDeleteProducts
 );
@@ -663,18 +760,18 @@ router.post(
  *         description: Product statuses updated successfully
  */
 router.put(
-  '/bulk/status',
+  "/bulk/status",
   [
-    body('productIds')
+    body("productIds")
       .isArray({ min: 1, max: 100 })
-      .withMessage('Product IDs must be an array with 1-100 items'),
-    body('productIds.*')
+      .withMessage("Product IDs must be an array with 1-100 items"),
+    body("productIds.*")
       .isUUID()
-      .withMessage('Each product ID must be a valid UUID'),
-    body('status')
-      .isIn(['active', 'inactive', 'draft'])
-      .withMessage('Status must be active, inactive, or draft'),
-    validationMiddleware
+      .withMessage("Each product ID must be a valid UUID"),
+    body("status")
+      .isIn(["active", "inactive", "draft"])
+      .withMessage("Status must be active, inactive, or draft"),
+    validationMiddleware,
   ],
   ProductController.bulkUpdateStatus
 );
@@ -717,18 +814,18 @@ router.put(
  *         description: Product stock updated successfully
  */
 router.put(
-  '/bulk/stock',
+  "/bulk/stock",
   [
-    body('updates')
+    body("updates")
       .isArray({ min: 1, max: 100 })
-      .withMessage('Updates must be an array with 1-100 items'),
-    body('updates.*.productId')
+      .withMessage("Updates must be an array with 1-100 items"),
+    body("updates.*.productId")
       .isUUID()
-      .withMessage('Each product ID must be a valid UUID'),
-    body('updates.*.stockQuantity')
+      .withMessage("Each product ID must be a valid UUID"),
+    body("updates.*.stockQuantity")
       .isInt({ min: 0 })
-      .withMessage('Stock quantity must be a non-negative integer'),
-    validationMiddleware
+      .withMessage("Stock quantity must be a non-negative integer"),
+    validationMiddleware,
   ],
   ProductController.bulkUpdateStock
 );
@@ -753,13 +850,13 @@ router.put(
  *         description: Low stock products retrieved successfully
  */
 router.get(
-  '/low-stock',
+  "/low-stock",
   [
-    query('threshold')
+    query("threshold")
       .optional()
       .isInt({ min: 0 })
-      .withMessage('Threshold must be a non-negative integer'),
-    validationMiddleware
+      .withMessage("Threshold must be a non-negative integer"),
+    validationMiddleware,
   ],
   ProductController.getLowStockProducts
 );
@@ -785,10 +882,10 @@ router.get(
  *         description: Product variants retrieved successfully
  */
 router.get(
-  '/:id/variants',
+  "/:id/variants",
   [
-    param('id').isUUID().withMessage('Product ID must be a valid UUID'),
-    validationMiddleware
+    param("id").isUUID().withMessage("Product ID must be a valid UUID"),
+    validationMiddleware,
   ],
   ProductController.getProductVariants
 );
@@ -852,33 +949,33 @@ router.get(
  *         description: Variant created successfully
  */
 router.post(
-  '/:id/variants',
+  "/:id/variants",
   [
-    param('id').isUUID().withMessage('Product ID must be a valid UUID'),
-    body('name').notEmpty().withMessage('Variant name is required'),
-    body('sku').notEmpty().withMessage('Variant SKU is required'),
-    body('attributes').isObject().withMessage('Attributes must be an object'),
-    body('price').optional().isNumeric().withMessage('Price must be a number'),
-    body('costPrice')
+    param("id").isUUID().withMessage("Product ID must be a valid UUID"),
+    body("name").notEmpty().withMessage("Variant name is required"),
+    body("sku").notEmpty().withMessage("Variant SKU is required"),
+    body("attributes").isObject().withMessage("Attributes must be an object"),
+    body("price").optional().isNumeric().withMessage("Price must be a number"),
+    body("costPrice")
       .optional()
       .isNumeric()
-      .withMessage('Cost price must be a number'),
-    body('stockQuantity')
+      .withMessage("Cost price must be a number"),
+    body("stockQuantity")
       .optional()
       .isInt({ min: 0 })
-      .withMessage('Stock quantity must be a non-negative integer'),
-    body('minStockLevel')
+      .withMessage("Stock quantity must be a non-negative integer"),
+    body("minStockLevel")
       .optional()
       .isInt({ min: 0 })
-      .withMessage('Minimum stock level must be a non-negative integer'),
-    body('weight')
+      .withMessage("Minimum stock level must be a non-negative integer"),
+    body("weight")
       .optional()
       .isNumeric()
-      .withMessage('Weight must be a number'),
-    body('dimensions').optional().isObject(),
-    body('images').optional().isArray(),
-    body('status').optional().isIn(['active', 'inactive', 'discontinued']),
-    validationMiddleware
+      .withMessage("Weight must be a number"),
+    body("dimensions").optional().isObject(),
+    body("images").optional().isArray(),
+    body("status").optional().isIn(["active", "inactive", "discontinued"]),
+    validationMiddleware,
   ],
   ProductController.createProductVariant
 );
@@ -909,11 +1006,11 @@ router.post(
  *         description: Variant updated successfully
  */
 router.put(
-  '/:id/variants/:variantId',
+  "/:id/variants/:variantId",
   [
-    param('id').isUUID().withMessage('Product ID must be a valid UUID'),
-    param('variantId').isUUID().withMessage('Variant ID must be a valid UUID'),
-    validationMiddleware
+    param("id").isUUID().withMessage("Product ID must be a valid UUID"),
+    param("variantId").isUUID().withMessage("Variant ID must be a valid UUID"),
+    validationMiddleware,
   ],
   ProductController.updateProductVariant
 );
@@ -944,11 +1041,11 @@ router.put(
  *         description: Variant deleted successfully
  */
 router.delete(
-  '/:id/variants/:variantId',
+  "/:id/variants/:variantId",
   [
-    param('id').isUUID().withMessage('Product ID must be a valid UUID'),
-    param('variantId').isUUID().withMessage('Variant ID must be a valid UUID'),
-    validationMiddleware
+    param("id").isUUID().withMessage("Product ID must be a valid UUID"),
+    param("variantId").isUUID().withMessage("Variant ID must be a valid UUID"),
+    validationMiddleware,
   ],
   ProductController.deleteProductVariant
 );
@@ -992,12 +1089,12 @@ router.delete(
  *         description: Variant group created successfully
  */
 router.post(
-  '/variants/groups',
+  "/variants/groups",
   [
-    body('groupName').notEmpty().withMessage('Group name is required'),
-    body('baseProduct').isObject().withMessage('Base product is required'),
-    body('variants').isArray().withMessage('Variants must be an array'),
-    validationMiddleware
+    body("groupName").notEmpty().withMessage("Group name is required"),
+    body("baseProduct").isObject().withMessage("Base product is required"),
+    body("variants").isArray().withMessage("Variants must be an array"),
+    validationMiddleware,
   ],
   ProductController.createVariantGroup
 );
@@ -1034,10 +1131,10 @@ router.post(
  *         description: Variant group updated successfully
  */
 router.put(
-  '/variants/groups/:groupId',
+  "/variants/groups/:groupId",
   [
-    param('groupId').isUUID().withMessage('Group ID must be a valid UUID'),
-    validationMiddleware
+    param("groupId").isUUID().withMessage("Group ID must be a valid UUID"),
+    validationMiddleware,
   ],
   ProductController.updateVariantGroup
 );
@@ -1063,10 +1160,10 @@ router.put(
  *         description: Variant group deleted successfully
  */
 router.delete(
-  '/variants/groups/:groupId',
+  "/variants/groups/:groupId",
   [
-    param('groupId').isUUID().withMessage('Group ID must be a valid UUID'),
-    validationMiddleware
+    param("groupId").isUUID().withMessage("Group ID must be a valid UUID"),
+    validationMiddleware,
   ],
   ProductController.deleteVariantGroup
 );
@@ -1110,27 +1207,27 @@ router.delete(
  *         description: Inventory movements retrieved successfully
  */
 router.get(
-  '/inventory/movements',
+  "/inventory/movements",
   [
-    query('productId').optional().isUUID(),
-    query('variantId').optional().isUUID(),
-    query('movementType')
+    query("productId").optional().isUUID(),
+    query("variantId").optional().isUUID(),
+    query("movementType")
       .optional()
       .isIn([
-        'IN_STOCK',
-        'PURCHASE',
-        'SALE',
-        'ADJUSTMENT',
-        'RETURN',
-        'DAMAGE',
-        'TRANSFER',
-        'SYNC_UPDATE',
-        'RESERVATION',
-        'RELEASE'
+        "IN_STOCK",
+        "PURCHASE",
+        "SALE",
+        "ADJUSTMENT",
+        "RETURN",
+        "DAMAGE",
+        "TRANSFER",
+        "SYNC_UPDATE",
+        "RESERVATION",
+        "RELEASE",
       ]),
-    query('page').optional().isInt({ min: 0 }),
-    query('limit').optional().isInt({ min: 1, max: 100 }),
-    validationMiddleware
+    query("page").optional().isInt({ min: 0 }),
+    query("limit").optional().isInt({ min: 1, max: 100 }),
+    validationMiddleware,
   ],
   ProductController.getInventoryMovements
 );
@@ -1172,14 +1269,14 @@ router.get(
  *         description: Stock adjusted successfully
  */
 router.post(
-  '/inventory/adjust',
+  "/inventory/adjust",
   [
-    body('sku').notEmpty().withMessage('SKU is required'),
-    body('adjustment').isInt().withMessage('Adjustment must be an integer'),
-    body('reason').notEmpty().withMessage('Reason is required'),
-    body('productId').optional().isUUID(),
-    body('variantId').optional().isUUID(),
-    validationMiddleware
+    body("sku").notEmpty().withMessage("SKU is required"),
+    body("adjustment").isInt().withMessage("Adjustment must be an integer"),
+    body("reason").notEmpty().withMessage("Reason is required"),
+    body("productId").optional().isUUID(),
+    body("variantId").optional().isUUID(),
+    validationMiddleware,
   ],
   ProductController.adjustStock
 );
@@ -1223,16 +1320,16 @@ router.post(
  *         description: Stock reservations retrieved successfully
  */
 router.get(
-  '/inventory/reservations',
+  "/inventory/reservations",
   [
-    query('status')
+    query("status")
       .optional()
-      .isIn(['active', 'confirmed', 'released', 'expired']),
-    query('productId').optional().isUUID(),
-    query('variantId').optional().isUUID(),
-    query('page').optional().isInt({ min: 0 }),
-    query('limit').optional().isInt({ min: 1, max: 100 }),
-    validationMiddleware
+      .isIn(["active", "confirmed", "released", "expired"]),
+    query("productId").optional().isUUID(),
+    query("variantId").optional().isUUID(),
+    query("page").optional().isInt({ min: 0 }),
+    query("limit").optional().isInt({ min: 1, max: 100 }),
+    validationMiddleware,
   ],
   ProductController.getStockReservations
 );
@@ -1284,20 +1381,20 @@ router.get(
  *         description: Stock reserved successfully
  */
 router.post(
-  '/inventory/reservations',
+  "/inventory/reservations",
   [
-    body('sku').notEmpty().withMessage('SKU is required'),
-    body('quantity')
+    body("sku").notEmpty().withMessage("SKU is required"),
+    body("quantity")
       .isInt({ min: 1 })
-      .withMessage('Quantity must be a positive integer'),
-    body('orderNumber').notEmpty().withMessage('Order number is required'),
-    body('productId').optional().isUUID(),
-    body('variantId').optional().isUUID(),
-    body('orderId').optional().isUUID(),
-    body('platformType').optional().isString(),
-    body('expiresAt').optional().isISO8601(),
-    body('reason').optional().isString(),
-    validationMiddleware
+      .withMessage("Quantity must be a positive integer"),
+    body("orderNumber").notEmpty().withMessage("Order number is required"),
+    body("productId").optional().isUUID(),
+    body("variantId").optional().isUUID(),
+    body("orderId").optional().isUUID(),
+    body("platformType").optional().isString(),
+    body("expiresAt").optional().isISO8601(),
+    body("reason").optional().isString(),
+    validationMiddleware,
   ],
   ProductController.reserveStock
 );
@@ -1322,12 +1419,12 @@ router.post(
  *         description: Stock reservation released successfully
  */
 router.post(
-  '/inventory/reservations/:reservationId/release',
+  "/inventory/reservations/:reservationId/release",
   [
-    param('reservationId')
+    param("reservationId")
       .isUUID()
-      .withMessage('Reservation ID must be a valid UUID'),
-    validationMiddleware
+      .withMessage("Reservation ID must be a valid UUID"),
+    validationMiddleware,
   ],
   ProductController.releaseStockReservation
 );
@@ -1352,12 +1449,12 @@ router.post(
  *         description: Stock reservation confirmed successfully
  */
 router.post(
-  '/inventory/reservations/:reservationId/confirm',
+  "/inventory/reservations/:reservationId/confirm",
   [
-    param('reservationId')
+    param("reservationId")
       .isUUID()
-      .withMessage('Reservation ID must be a valid UUID'),
-    validationMiddleware
+      .withMessage("Reservation ID must be a valid UUID"),
+    validationMiddleware,
   ],
   ProductController.confirmStockReservation
 );

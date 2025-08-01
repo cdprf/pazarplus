@@ -368,6 +368,8 @@ class ProductManagementService {
         stockQuantity: parseInt(syncedProduct.stockQuantity) || 0,
         media: this.extractMediaFromSync(syncedProduct),
         attributes: syncedProduct.attributes || {},
+        creationSource: "platform_sync", // Mark as platform-sourced
+        importedFrom: platformInfo.platform || "unknown",
         learnedFields: {
           [platformInfo.platform]: syncedProduct,
         },

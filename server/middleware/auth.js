@@ -10,15 +10,16 @@ const auth = async (req, res, next) => {
   try {
     const authHeader = req.header("Authorization");
 
-    // Enhanced debugging for token extraction
-    logger.info("Auth middleware called", {
-      operation: "authentication",
-      path: req.path,
-      method: req.method,
-      ip: req.ip,
-      userAgent: req.get("User-Agent"),
-      hasAuthHeader: !!req.headers.authorization,
-    });
+    // Only log auth attempts for debugging if needed
+    if (process.env.DEBUG_AUTH === "true") {
+      logger.debug("Auth middleware called", {
+        operation: "authentication",
+        path: req.path,
+        method: req.method,
+        ip: req.ip,
+        hasAuthHeader: !!req.headers.authorization,
+      });
+    }
     const token = authHeader?.replace("Bearer ", "");
 
     if (!token) {
@@ -32,22 +33,26 @@ const auth = async (req, res, next) => {
       });
     }
 
-    // Enhanced token validation with detailed logging
-    logger.info("Attempting token verification", {
-      operation: "token_verification",
-      path: req.path,
-      ip: req.ip,
-      tokenType: token ? "Bearer" : "none",
-    }); // Verify token using centralized config
+    // Only log token verification attempts in debug mode
+    if (process.env.DEBUG_AUTH === "true") {
+      logger.debug("Attempting token verification", {
+        operation: "token_verification",
+        path: req.path,
+        ip: req.ip,
+        tokenType: token ? "Bearer" : "none",
+      });
+    } // Verify token using centralized config
     const decoded = jwt.verify(token, config.jwt.secret);
 
-    logger.info("Token decoded successfully", {
-      operation: "token_verification",
-      userId: decoded.id,
-      email: decoded.email,
-      path: req.path,
-      ip: req.ip,
-    }); // Find user with subscription information
+    if (process.env.DEBUG_AUTH === "true") {
+      logger.debug("Token decoded successfully", {
+        operation: "token_verification",
+        userId: decoded.id,
+        email: decoded.email,
+        path: req.path,
+        ip: req.ip,
+      });
+    } // Find user with subscription information
     const user = await User.findByPk(decoded.id, {
       include: [
         {

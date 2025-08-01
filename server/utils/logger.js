@@ -198,7 +198,8 @@ logger.logRequest = (req, res, responseTime) => {
   if (res.statusCode >= 400) {
     logger.warn("HTTP Request Error", logData);
   } else {
-    logger.info("HTTP Request", logData);
+    // Only log successful requests at debug level to reduce noise
+    logger.debug("HTTP Request", logData);
   }
 };
 
