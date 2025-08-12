@@ -1,6 +1,0 @@
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjhiZDczN2FiLThhM2YtNGY1MC1hYjJjLWQzMTBkNDNlODY3YSIsImlhdCI6MTc1Mzg2Mzg3MywidGVuYW50SWQiOm51bGwsInN1YnNjcmlwdGlvblBsYW4iOiJlbnRlcnByaXNlIiwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzUzODY3NDczLCJhdWQiOiJwYXphci1wbHVzLWNsaWVudCIsImlzcyI6InBhemFyLXBsdXMifQ.MzHiLtqas3gjlS98A_3klrH710YBPjBKIil0hvMiog0",
-  "generated": "2025-07-30T08:24:33.175Z",
-  "expires": "Check JWT payload for expiration",
-  "usage": "curl -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjhiZDczN2FiLThhM2YtNGY1MC1hYjJjLWQzMTBkNDNlODY3YSIsImlhdCI6MTc1Mzg2Mzg3MywidGVuYW50SWQiOm51bGwsInN1YnNjcmlwdGlvblBsYW4iOiJlbnRlcnByaXNlIiwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzUzODY3NDczLCJhdWQiOiJwYXphci1wbHVzLWNsaWVudCIsImlzcyI6InBhemFyLXBsdXMifQ.MzHiLtqas3gjlS98A_3klrH710YBPjBKIil0hvMiog0\" http://localhost:5002/api/auth/me"
-}

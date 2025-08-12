@@ -185,9 +185,30 @@ const Footer = () => {
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             {/* Copyright and version */}
             <div
-              className={`flex items-center space-x-4 text-sm ${themeClasses.textMuted}`}
+              className={`flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4 text-sm ${themeClasses.textMuted}`}
             >
-              <span>&copy; {currentYear} Pazar+ Order Management System</span>
+              <span>&copy; {currentYear} Pazar+ by{" "}
+                <a
+                  href="https://github.com/Great0S"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                >
+                  Great0S
+                </a>
+                . All rights reserved.
+              </span>
+              <span className="hidden md:inline">•</span>
+              <span>All work is property of{" "}
+                <a
+                  href="https://github.com/Great0S"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                >
+                  Great0S
+                </a>
+              </span>
               <span className="hidden md:inline">•</span>
               <span className="flex items-center space-x-1">
                 <span>Version 1.0.0</span>

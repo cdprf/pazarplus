@@ -410,6 +410,36 @@ const Register = () => {
               </div>
             </Card.Body>
           </Card>
+
+          {/* Copyright Footer */}
+          <div className="text-center mt-4">
+            <div className="text-muted small">
+              <p className="mb-1">
+                © {new Date().getFullYear()} Pazar+ by{" "}
+                <a
+                  href="https://github.com/Great0S"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-decoration-none fw-bold text-primary"
+                >
+                  Great0S
+                </a>
+                . All rights reserved.
+              </p>
+              <p className="mb-0">
+                All work is property of{" "}
+                <a
+                  href="https://github.com/Great0S"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-decoration-none fw-bold text-primary"
+                >
+                  Great0S
+                </a>
+                . Licensed under MIT License.
+              </p>
+            </div>
+          </div>
         </Col>
       </Row>
     </Container>

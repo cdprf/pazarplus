@@ -20,6 +20,47 @@ diagnose*
 *completion*
 !fix-n11*
 
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+.env.unified
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+server/logs/
+
+# Development files
+test-*.js
+debug-*.js
+check-*.js
+fix-*.js
+*-summary.md
+*-report.md
+dev-token.json
+fresh-dev-token.json
+
+# Dependencies
+node_modules/
+.npm
+
+# Build outputs
+dist/
+build/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
 # Production build
 /client/build/
 
