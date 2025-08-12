@@ -1,0 +1,44 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Server",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/server/server.js",
+            "cwd": "${workspaceFolder}/server",
+            "console": "integratedTerminal",
+            "sourceMaps": true,
+            "runtimeArgs": [
+                "--preserve-symlinks"
+            ]
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Client",
+            "url": "http://localhost:3000",
+            "webRoot": "${workspaceFolder}/client/src",
+            "sourceMap": true
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Attach to Server",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "port": 9229,
+            "cwd": "${workspaceFolder}/server"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Full Stack",
+            "configurations": ["Server", "Client"]
+        }
+    ]
+}
