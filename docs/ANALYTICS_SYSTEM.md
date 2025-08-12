@@ -1,5 +1,9 @@
 # Analytics System Documentation
 
+![Analytics](https://img.shields.io/badge/analytics-business%20intelligence-blue.svg)
+![Real-time](https://img.shields.io/badge/real--time-metrics-success.svg)
+![Insights](https://img.shields.io/badge/insights-predictive-orange.svg)
+
 ## Overview
 The analytics system provides comprehensive business intelligence, real-time metrics, and predictive insights for the e-commerce platform.
 

@@ -1,5 +1,9 @@
 # Authentication Enhancement Strategy
 
+![Security](https://img.shields.io/badge/security-enterprise%20grade-red.svg)
+![JWT](https://img.shields.io/badge/JWT-token%20based-blue.svg)
+![MFA](https://img.shields.io/badge/MFA-planned-orange.svg)
+
 ## Current Implementation
 
 - Basic JWT authentication

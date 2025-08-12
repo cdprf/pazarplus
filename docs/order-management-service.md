@@ -1,5 +1,9 @@
 # Order Management Service
 
+![Service](https://img.shields.io/badge/service-order%20management-blue.svg)
+![Workflow](https://img.shields.io/badge/workflow-automated-success.svg)
+![Integration](https://img.shields.io/badge/integration-multi--platform-orange.svg)
+
 ## Overview
 
 The Order Management Service is the core component of the Pazar Platform, responsible for:

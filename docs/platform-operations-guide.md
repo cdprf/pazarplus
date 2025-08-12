@@ -1,24 +1,28 @@
 # Platform Operations
 
+![Operations](https://img.shields.io/badge/operations-automated-blue.svg)
+![Monitoring](https://img.shields.io/badge/monitoring-real--time-success.svg)
+![Tasks](https://img.shields.io/badge/tasks-background-orange.svg)
+
 The Platform Operations page provides a comprehensive interface for managing background tasks and automated order fetching from e-commerce platforms.
 
 ## Features
 
-### 🚀 Background Order Fetching
+### **Background Order Fetching**
 
 - **Auto Mode**: Automatically fetches orders until reaching the first orders listed on the platform
 - **Duration Mode**: Fetches orders for a specific number of days (1-365 days)
 - **Smart Stopping**: Option to stop when reaching first orders on platform
 - **Rate Limiting**: Built-in delays to respect platform API limits
 
-### 📊 Real-time Monitoring
+### **Real-time Monitoring**
 
 - Live task progress tracking
 - Order processing statistics
 - Error reporting and handling
 - Platform connection status
 
-### 🎛️ Task Management
+### **Task Management**
 
 - Start/stop background tasks
 - View task history and status

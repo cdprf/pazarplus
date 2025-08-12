@@ -1,5 +1,9 @@
 # Turkish Shipping Carriers Integration
 
+![Shipping](https://img.shields.io/badge/shipping-Turkish%20carriers-blue.svg)
+![Carriers](https://img.shields.io/badge/carriers-3%2B-success.svg)
+![Tracking](https://img.shields.io/badge/tracking-real--time-orange.svg)
+
 This document provides comprehensive information about the Turkish shipping carriers integration for the Pazar+ e-commerce platform.
 
 ## Overview
@@ -11,13 +15,13 @@ The shipping module provides seamless integration with major Turkish shipping ca
 
 ## Features
 
-✅ **Rate Comparison** - Compare shipping rates across multiple carriers simultaneously
-✅ **Label Generation** - Create shipping labels with tracking numbers
-✅ **Package Tracking** - Real-time tracking across all carriers
-✅ **Delivery Availability** - Check service availability by address
-✅ **COD Support** - Cash on Delivery for all carriers
-✅ **Turkish Address Validation** - Postal code and phone number validation
-✅ **Multi-Service Support** - Standard, Express, Economy delivery options
+![Rate Comparison](https://img.shields.io/badge/-Rate%20Comparison-success) **Rate Comparison** - Compare shipping rates across multiple carriers simultaneously
+![Label Generation](https://img.shields.io/badge/-Label%20Generation-success) **Label Generation** - Create shipping labels with tracking numbers
+![Package Tracking](https://img.shields.io/badge/-Package%20Tracking-success) **Package Tracking** - Real-time tracking across all carriers
+![Delivery Availability](https://img.shields.io/badge/-Delivery%20Availability-success) **Delivery Availability** - Check service availability by address
+![COD Support](https://img.shields.io/badge/-COD%20Support-success) **COD Support** - Cash on Delivery for all carriers
+![Address Validation](https://img.shields.io/badge/-Address%20Validation-success) **Turkish Address Validation** - Postal code and phone number validation
+![Multi-Service](https://img.shields.io/badge/-Multi--Service%20Support-success) **Multi-Service Support** - Standard, Express, Economy delivery options
 
 ## API Endpoints
 

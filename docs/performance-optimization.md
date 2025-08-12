@@ -1,5 +1,9 @@
 # Performance Optimization Strategy
 
+![Performance](https://img.shields.io/badge/performance-optimized-success.svg)
+![Caching](https://img.shields.io/badge/caching-Redis-red.svg)
+![Database](https://img.shields.io/badge/database-PostgreSQL-blue.svg)
+
 ## Current State Analysis
 - Express server with basic configuration
 - SQLite database for development

@@ -135,3 +135,10 @@ dev-token.json
 dev-token.json
 dev-token.json
 fresh-dev-token.json
+cleanup-error-files.js
+deploy-n11-fix-to-vps.sh
+fix-n11-sequelize-warning.sh
+quick-vps-setup-almalinux.sh
+run-route-tests.sh
+vps-error-logs-cleaner.js
+server/validate-env.js
