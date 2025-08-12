@@ -8,24 +8,11 @@ check.js
 check.ts
 diagnose*
 *.sh
-!quick-*.sh
-!render*.sh
-!client-render-build.sh
-!client-build.sh
-!deploy-vps.sh
-!quick-vps-setup.sh
 *.pdf
 *summary*
 *report*
 *completion*
-!fix-n11*
 
-# Environment files
-.env
-.env.local
-.env.development
-.env.production
-.env.unified
 
 # Logs
 logs/
@@ -71,10 +58,9 @@ Thumbs.db
 .env.test
 .env.production
 .env.vps
+.env.unified
 # Keep example files for templates
 !.env.example
-!.env.*.example
-!.env.vps.example
 
 # Client environment variables
 /client/.env
@@ -84,7 +70,6 @@ Thumbs.db
 /client/.env.production
 # Keep client example files for templates
 !/client/.env.example
-!/client/.env.*.example
 
 # Logs
 logs/
@@ -105,7 +90,6 @@ test*
 *fixed*
 fix*
 debug-*
-!*route*
 
 
 # Coverage directory
@@ -149,7 +133,6 @@ UNIFIED_INTELLIGENCE_INTEGRATION_COMPLETE.md
 VARIANT_MANAGEMENT_API_INTEGRATION_COMPLETE.md
 
 # Allow cleanup scripts
-!cleanup*
 NETWORK_ACCESS.md
 TRENDYOL_IMPROVEMENTS.md
 server/migrations/20250624-add-shipping-invoice-status.js
@@ -182,3 +165,4 @@ quick-vps-setup-almalinux.sh
 run-route-tests.sh
 vps-error-logs-cleaner.js
 server/validate-env.js
+.env.unifies
