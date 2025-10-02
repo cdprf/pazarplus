@@ -271,6 +271,48 @@ router.get("/:id", auth, productController.getProductById);
 
 /**
  * @swagger
+ * /api/products/by-oem/{oem}:
+ *   get:
+ *     summary: Get a single product by OEM code
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: oem
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: A single product
+ *       404:
+ *         description: Product not found
+ */
+router.get("/by-oem/:oem", auth, productController.getProductByOem);
+
+/**
+ * @swagger
+ * /api/products/{id}/compatibility:
+ *   get:
+ *     summary: Get compatible vehicles for a product
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: A list of compatible vehicles
+ *       404:
+ *         description: Product not found
+ */
+router.get("/:id/compatibility", auth, productController.getProductCompatibility);
+
+/**
+ * @swagger
  * /api/products:
  *   post:
  *     summary: Create a new product

@@ -7682,6 +7682,85 @@ class ProductController {
       });
     }
   }
+
+  /**
+   * Get product by OEM code
+   */
+  async getProductByOem(req, res) {
+    try {
+      const { oem } = req.params;
+      const userId = req.user.id;
+
+      const product = await Product.findOne({
+        where: {
+          oemCode: { [Op.iLike]: oem },
+          userId,
+        },
+        include: [
+          {
+            model: PlatformData,
+            as: "platformData",
+            required: false,
+          },
+        ],
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product with specified OEM code not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: product,
+      });
+    } catch (error) {
+      logger.error("Error getting product by OEM:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get product by OEM",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get compatible vehicles for a product
+   */
+  async getProductCompatibility(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+
+      const product = await Product.findOne({
+        where: { id, userId },
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      // This assumes the association is correctly set up in the models
+      const compatibleVehicles = await product.getCompatibleVehicles();
+
+      res.json({
+        success: true,
+        data: compatibleVehicles,
+      });
+    } catch (error) {
+      logger.error("Error getting product compatibility:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get product compatibility",
+        error: error.message,
+      });
+    }
+  }
 }
 
 // Helper function for field mapping suggestions

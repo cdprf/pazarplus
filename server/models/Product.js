@@ -31,6 +31,16 @@ Product.init(
       allowNull: true,
       comment: "Product barcode for identification",
     },
+    tecdocId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "TecDoc ID for the spare part",
+    },
+    oemCode: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "OEM code for the spare part",
+    },
     description: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -354,6 +364,19 @@ Product.associate = function (models) {
     sourceKey: "sku", // Link from Product.sku to CustomerQuestion.product_main_id
     as: "customerQuestions",
     constraints: false,
+  });
+
+  // Associations for Spare Parts
+  Product.belongsToMany(models.Vehicle, {
+    through: "part_compatibilities",
+    foreignKey: "productId",
+    otherKey: "vehicleId",
+    as: "compatibleVehicles",
+  });
+
+  Product.hasMany(models.SupplierPrice, {
+    foreignKey: "productId",
+    as: "supplierPrices",
   });
 };
 

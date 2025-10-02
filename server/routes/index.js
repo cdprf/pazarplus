@@ -70,6 +70,10 @@ try {
   // Unified Product Intelligence routes
   const unifiedIntelligenceRoutes = require("./unified-product-intelligence");
 
+  // Spare Parts routes
+  const vehicleRoutes = require("./vehicles");
+  const chatRoutes = require("./chat");
+
   // Mount centralized routes
   logger.info("Mounting auth routes at /auth...");
   router.use("/auth", authRoutes);
@@ -157,6 +161,10 @@ try {
 
   // Unified Product Intelligence routes
   router.use("/product-intelligence", unifiedIntelligenceRoutes);
+
+  // Spare Parts routes
+  router.use("/vehicles", vehicleRoutes);
+  router.use("/chat", chatRoutes);
 
   logger.info("✅ Main routes loaded");
 } catch (error) {
