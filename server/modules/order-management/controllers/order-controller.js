@@ -9,6 +9,8 @@ const {
   TrendyolOrder,
   HepsiburadaOrder,
   N11Order,
+  Cart,
+  CartItem,
 } = require("../../../models");
 const PlatformServiceFactory = require("../services/platforms/platformServiceFactory");
 const logger = require("../../../utils/logger");
@@ -482,39 +484,82 @@ async function getAllOrders(req, res) {
 }
 
 async function createOrder(req, res) {
+  const transaction = await sequelize.transaction();
   try {
-    // Validate and sanitize order data, especially enum fields
-    const orderData = { ...req.body };
+    const userId = req.user ? req.user.id : null;
+    const { customerInfo, shippingAddress, sessionId } = req.body;
 
-    // Ensure orderStatus is valid
-    if (orderData.orderStatus) {
-      orderData.orderStatus = mapOrderStatus(orderData.orderStatus);
+    let cart;
+
+    // Find the cart by userId for authenticated users, or by sessionId for guests
+    const whereClause = userId ? { userId } : { sessionId };
+
+    if (!userId && !sessionId) {
+      await transaction.rollback();
+      return res.status(400).json({ success: false, message: "A cart session is required to place an order." });
     }
 
-    // Sanitize any platform-related fields
-    if (orderData.platformType) {
-      orderData.platformType = sanitizePlatformType(orderData.platformType);
-      if (!orderData.platformType) {
-        delete orderData.platformType; // Remove invalid platform types
-      }
-    }
-
-    const order = await Order.create(orderData);
-
-    // Notify connected clients about the new order (if websocket service exists)
-    // if (wsService && wsService.notifyNewOrder) {
-    //   wsService.notifyNewOrder(order);
-    // }
-
-    return res.status(201).json({
-      success: true,
-      data: order,
+    cart = await Cart.findOne({
+      where: whereClause,
+      include: [{ model: CartItem, as: "items" }],
+      transaction,
     });
+
+    if (!cart || !cart.items || cart.items.length === 0) {
+      await transaction.rollback();
+      return res.status(400).json({ success: false, message: "Your cart is empty." });
+    }
+
+    // Calculate total amount
+    const totalAmount = cartItems.reduce((total, item) => {
+      return total + item.price * item.quantity;
+    }, 0);
+
+    // Create the order
+    const order = await Order.create(
+      {
+        userId: userId,
+        customerInfo: userId ? null : customerInfo,
+        shippingAddress: shippingAddress,
+        totalAmount,
+        currency: "TRY",
+        orderStatus: "new",
+        orderNumber: `PZR-${Date.now()}`, // Simple order number generation
+        externalOrderId: `PZR-${Date.now()}`,
+      },
+      { transaction }
+    );
+
+    // Create order items from cart items
+    const orderItems = cartItems.map((item) => ({
+      orderId: order.id,
+      productId: item.productId,
+      supplierId: item.supplierId,
+      quantity: item.quantity,
+      price: item.price,
+      totalPrice: item.price * item.quantity,
+    }));
+
+    await OrderItem.bulkCreate(orderItems, { transaction });
+
+    // If the user is authenticated, clear their cart
+    if (userId && cart) {
+      await CartItem.destroy({ where: { cartId: cart.id }, transaction });
+    }
+
+    await transaction.commit();
+
+    const finalOrder = await Order.findByPk(order.id, {
+      include: [{ model: OrderItem, as: "items" }],
+    });
+
+    res.status(201).json({ success: true, data: finalOrder });
   } catch (error) {
-    logger.error("Error creating order:", error);
-    return res.status(500).json({
+    await transaction.rollback();
+    logger.error("Failed to create order:", error);
+    res.status(500).json({
       success: false,
-      message: "Error creating order",
+      message: "Failed to create order.",
       error: error.message,
     });
   }

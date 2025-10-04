@@ -74,6 +74,15 @@ try {
   const vehicleRoutes = require("./vehicles");
   const chatRoutes = require("./chat");
 
+  // Cart routes
+  const cartRoutes = require("./cart");
+
+  // Price routes
+  const priceRoutes = require("./prices");
+
+  // Marketplace routes
+  const marketplaceRoutes = require("./marketplaces");
+
   // Mount centralized routes
   logger.info("Mounting auth routes at /auth...");
   router.use("/auth", authRoutes);
@@ -165,6 +174,15 @@ try {
   // Spare Parts routes
   router.use("/vehicles", vehicleRoutes);
   router.use("/chat", chatRoutes);
+
+  // Cart routes
+  router.use("/cart", cartRoutes);
+
+  // Price routes
+  router.use("/prices", priceRoutes);
+
+  // Marketplace routes
+  router.use("/marketplaces", marketplaceRoutes);
 
   logger.info("✅ Main routes loaded");
 } catch (error) {

@@ -23,6 +23,8 @@ const Supplier = require("./Supplier");
 const PartCompatibility = require("./PartCompatibility");
 const SupplierPrice = require("./SupplierPrice");
 const AIChatLog = require("./AIChatLog");
+const Cart = require("./Cart");
+const CartItem = require("./CartItem");
 
 // === PLATFORM-SPECIFIC PRODUCT MODELS ===
 const TrendyolProduct = require("./TrendyolProduct");
@@ -90,6 +92,8 @@ const models = {
   PartCompatibility: PartCompatibility,
   SupplierPrice: SupplierPrice,
   AIChatLog: AIChatLog,
+  Cart: Cart,
+  CartItem: CartItem,
 
   // === PLATFORM-SPECIFIC PRODUCT MODELS ===
   TrendyolProduct: TrendyolProduct,
@@ -851,6 +855,12 @@ if (models.SupplierPrice.associate) {
 }
 if (models.AIChatLog.associate) {
   models.AIChatLog.associate(models);
+}
+if (models.Cart.associate) {
+  models.Cart.associate(models);
+}
+if (models.CartItem.associate) {
+  models.CartItem.associate(models);
 }
 
 if (models.MainProduct.associate) {

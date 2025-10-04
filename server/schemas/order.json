@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Order",
+  "description": "Schema for a customer order.",
+  "type": "object",
+  "properties": {
+    "kullanici_id": {
+      "description": "The unique identifier for the user placing the order.",
+      "type": "string"
+    },
+    "urun_id": {
+      "description": "The unique identifier for the product being ordered.",
+      "type": "string"
+    },
+    "tedarikci_id": {
+      "description": "The unique identifier for the supplier fulfilling the order.",
+      "type": "string"
+    },
+    "siparis_tarihi": {
+      "description": "The date and time when the order was placed.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "durum": {
+      "description": "The current status of the order.",
+      "type": "string",
+      "enum": ["new", "processing", "shipped", "delivered", "cancelled"]
+    }
+  },
+  "required": ["kullanici_id", "urun_id", "tedarikci_id", "siparis_tarihi", "durum"],
+  "examples": [
+    {
+      "kullanici_id": "user-123",
+      "urun_id": "34567",
+      "tedarikci_id": "supplier-abc",
+      "siparis_tarihi": "2025-10-02T12:30:00Z",
+      "durum": "processing"
+    }
+  ]
+}

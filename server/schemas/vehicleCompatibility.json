@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Vehicle Compatibility",
+  "description": "Schema for defining vehicle compatibility for spare parts.",
+  "type": "object",
+  "properties": {
+    "brand": {
+      "description": "The brand of the vehicle (e.g., BMW, Mercedes).",
+      "type": "string"
+    },
+    "model": {
+      "description": "The model of the vehicle (e.g., 3 Series, C-180).",
+      "type": "string"
+    },
+    "yearRange": {
+      "description": "The manufacturing year range of the vehicle (e.g., 2020-2023).",
+      "type": "string"
+    },
+    "engine": {
+      "description": "The engine type and size (e.g., 1.6 TDI, 2.0 Petrol).",
+      "type": "string"
+    },
+    "transmission": {
+      "description": "The transmission type of the vehicle.",
+      "type": "string",
+      "enum": ["Manual", "Automatic"]
+    },
+    "fuel": {
+      "description": "The fuel type of the vehicle.",
+      "type": "string",
+      "enum": ["Petrol", "Diesel", "Hybrid", "Electric"]
+    },
+    "vin": {
+      "description": "Vehicle Identification Number (optional).",
+      "type": "string"
+    },
+    "oemCodes": {
+      "description": "A list of OEM codes associated with this vehicle model.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["brand", "model", "yearRange", "engine"],
+  "examples": [
+    {
+      "brand": "BMW",
+      "model": "3 Series",
+      "yearRange": "2020-2023",
+      "engine": "2.0 Petrol",
+      "transmission": "Automatic",
+      "fuel": "Petrol",
+      "vin": "WBA1234567890ABCD",
+      "oemCodes": ["11127552281", "13717597586"]
+    }
+  ]
+}

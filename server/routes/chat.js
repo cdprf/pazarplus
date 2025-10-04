@@ -1,11 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const chatController = require("../controllers/chatController");
-const { isAuthenticated } = require("../middleware/auth");
+const optionalAuth = require("../middleware/optionalAuth");
 
 // @route   POST /api/chat
 // @desc    Handle an incoming chat message
-// @access  Private
-router.post("/", isAuthenticated, chatController.handleChatMessage);
+// @access  Public/Private
+router.post("/", optionalAuth, chatController.handleChatMessage);
 
 module.exports = router;

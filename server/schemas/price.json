@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Price",
+  "description": "Schema for the price of a spare part from a specific supplier.",
+  "type": "object",
+  "properties": {
+    "urun_id": {
+      "description": "The unique identifier for the product.",
+      "type": "string"
+    },
+    "tedarikci_id": {
+      "description": "The unique identifier for the supplier.",
+      "type": "string"
+    },
+    "fiyat_tl": {
+      "description": "Price in Turkish Lira (TL).",
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "fiyat_usd": {
+      "description": "Price in US Dollars (USD).",
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "gecerli_para_birimi": {
+      "description": "The active currency for the price.",
+      "type": "string",
+      "enum": ["TL", "USD"]
+    },
+    "guncelleme_tarihi": {
+      "description": "The date when the price was last updated.",
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": ["urun_id", "tedarikci_id", "fiyat_tl", "gecerli_para_birimi", "guncelleme_tarihi"],
+  "examples": [
+    {
+      "urun_id": "34567",
+      "tedarikci_id": "supplier-abc",
+      "fiyat_tl": 450.75,
+      "fiyat_usd": 25.50,
+      "gecerli_para_birimi": "TL",
+      "guncelleme_tarihi": "2025-10-02T10:00:00Z"
+    }
+  ]
+}

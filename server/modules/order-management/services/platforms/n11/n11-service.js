@@ -3601,4 +3601,49 @@ class N11Service extends BasePlatformService {
   }
 }
 
+  /**
+   * Publishes a list of products to N11.
+   * This is a simulation and does not make real API calls.
+   * @param {Array<Object>} products - An array of products to be published.
+   * @returns {Promise<Object>} A summary of the publishing operation.
+   */
+  async publishProducts(products) {
+    await this.initialize();
+    const credentials = this.decryptCredentials(this.connection.credentials);
+    const { appKey } = credentials;
+
+    this.logger.info(`Simulating product publishing to N11 with appKey: ${appKey}.`);
+    this.logger.info(`Received ${products.length} products to publish.`);
+
+    let createdCount = 0;
+    let updatedCount = 0;
+    const failedProducts = [];
+
+    for (const product of products) {
+      // Simulate checking if the product exists on N11
+      const productExists = Math.random() > 0.5;
+
+      if (productExists) {
+        this.logger.info(`Simulating update for product SKU: ${product.sku} on N11.`);
+        updatedCount++;
+      } else {
+        this.logger.info(`Simulating creation for product SKU: ${product.sku} on N11.`);
+        createdCount++;
+      }
+    }
+
+    return {
+      success: true,
+      message: `Successfully simulated publishing for ${products.length} products to N11.`,
+      data: {
+        total: products.length,
+        created: createdCount,
+        updated: updatedCount,
+        failed: failedProducts.length,
+        failedProducts: failedProducts,
+      },
+    };
+  }
+}
+
 module.exports = N11Service;

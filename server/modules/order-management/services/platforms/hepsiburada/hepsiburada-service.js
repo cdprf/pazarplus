@@ -5193,4 +5193,46 @@ class HepsiburadaService extends BasePlatformService {
   }
 }
 
+  /**
+   * Publishes a list of products to Hepsiburada.
+   * This is a simulation and does not make real API calls.
+   * @param {Array<Object>} products - An array of products to be published.
+   * @returns {Promise<Object>} A summary of the publishing operation.
+   */
+  async publishProducts(products) {
+    await this.initialize();
+    this.logger.info(`Simulating product publishing to Hepsiburada for merchant ${this.merchantId}.`);
+    this.logger.info(`Received ${products.length} products to publish.`);
+
+    let createdCount = 0;
+    let updatedCount = 0;
+    const failedProducts = [];
+
+    for (const product of products) {
+      // Simulate checking if the product exists on Hepsiburada
+      const productExists = Math.random() > 0.5;
+
+      if (productExists) {
+        this.logger.info(`Simulating update for product SKU: ${product.sku} on Hepsiburada.`);
+        updatedCount++;
+      } else {
+        this.logger.info(`Simulating creation for product SKU: ${product.sku} on Hepsiburada.`);
+        createdCount++;
+      }
+    }
+
+    return {
+      success: true,
+      message: `Successfully simulated publishing for ${products.length} products to Hepsiburada.`,
+      data: {
+        total: products.length,
+        created: createdCount,
+        updated: updatedCount,
+        failed: failedProducts.length,
+        failedProducts: failedProducts,
+      },
+    };
+  }
+}
+
 module.exports = HepsiburadaService;
