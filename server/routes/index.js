@@ -83,6 +83,9 @@ try {
   // Marketplace routes
   const marketplaceRoutes = require("./marketplaces");
 
+  // WhatsApp routes
+  const whatsappRoutes = require("./whatsapp");
+
   // Mount centralized routes
   logger.info("Mounting auth routes at /auth...");
   router.use("/auth", authRoutes);
@@ -183,6 +186,9 @@ try {
 
   // Marketplace routes
   router.use("/marketplaces", marketplaceRoutes);
+
+  // WhatsApp routes
+  router.use("/whatsapp", whatsappRoutes);
 
   logger.info("✅ Main routes loaded");
 } catch (error) {
