@@ -7761,6 +7761,49 @@ class ProductController {
       });
     }
   }
+
+  /**
+   * Get product by TecDoc ID
+   */
+  async getProductByTecdocId(req, res) {
+    try {
+      const { tecdocId } = req.params;
+      const userId = req.user.id;
+
+      const product = await Product.findOne({
+        where: {
+          tecdocId: tecdocId,
+          userId,
+        },
+        include: [
+          {
+            model: PlatformData,
+            as: "platformData",
+            required: false,
+          },
+        ],
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product with specified TecDoc ID not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: product,
+      });
+    } catch (error) {
+      logger.error("Error getting product by TecDoc ID:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get product by TecDoc ID",
+        error: error.message,
+      });
+    }
+  }
 }
 
 // Helper function for field mapping suggestions

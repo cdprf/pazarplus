@@ -2730,9 +2730,9 @@ class TrendyolService extends BasePlatformService {
 }
 
   /**
-   * Publishes a list of products to Trendyol.
-   * This is a simulation and does not make real API calls.
-   * @param {Array<Object>} products - An array of products to be published.
+   * Publishes a list of products to Trendyol by transforming them into the required API format.
+   * This method prepares the payload for the API but does not make a real API call.
+   * @param {Array<Object>} products - An array of products from our database.
    * @returns {Promise<Object>} A summary of the publishing operation.
    */
   async publishProducts(products) {
@@ -2740,38 +2740,48 @@ class TrendyolService extends BasePlatformService {
     const credentials = this.decryptCredentials(this.connection.credentials);
     const { supplierId } = credentials;
 
-    this.logger.info(`Simulating product publishing to Trendyol for supplier ${supplierId}.`);
-    this.logger.info(`Received ${products.length} products to publish.`);
+    this.logger.info(`Preparing to publish ${products.length} products to Trendyol for supplier ${supplierId}.`);
 
-    let createdCount = 0;
-    let updatedCount = 0;
-    const failedProducts = [];
+    const trendyolItems = products.map(product => {
+      // Map our product model to the format Trendyol expects.
+      // This is a simplified mapping. A real implementation would require more complex logic,
+      // especially for brandId, categoryId, and attributes.
+      return {
+        barcode: product.barcode || product.sku,
+        title: product.name,
+        productMainId: product.sku, // Using SKU as the main identifier
+        brandId: 1, // Placeholder - In a real app, this would be looked up or mapped.
+        categoryId: 1, // Placeholder - This needs to be a valid Trendyol category ID.
+        stockCode: product.sku,
+        dimensionalWeight: product.weight || 1,
+        description: product.description || product.name,
+        vatRate: 18, // Assuming a default VAT rate
+        listPrice: parseFloat(product.price), // The "regular" price
+        salePrice: parseFloat(product.price), // The actual selling price
+        currencyType: "TRY",
+        quantity: parseInt(product.stockQuantity, 10) || 0,
+        images: (product.images || []).map(imgUrl => ({ url: imgUrl })),
+        attributes: [], // Placeholder - Attributes are category-specific and complex.
+      };
+    });
 
-    for (const product of products) {
-      // Simulate checking if the product exists on Trendyol
-      // In a real scenario, you might query an internal mapping table or the platform API
-      const productExists = Math.random() > 0.5; // 50% chance of existing
+    // In a real implementation, you would make the API call here:
+    // const response = await this.axiosInstance.put(`/integration/product/sellers/${supplierId}/products`, { items: trendyolItems });
 
-      if (productExists) {
-        // Simulate updating the product
-        this.logger.info(`Simulating update for product SKU: ${product.sku} on Trendyol.`);
-        updatedCount++;
-      } else {
-        // Simulate creating the product
-        this.logger.info(`Simulating creation for product SKU: ${product.sku} on Trendyol.`);
-        createdCount++;
-      }
-    }
+    this.logger.info("Successfully prepared the payload for Trendyol product sync.");
+    this.logger.info("Payload to be sent:", JSON.stringify({ items: trendyolItems }, null, 2));
 
     return {
       success: true,
-      message: `Successfully simulated publishing for ${products.length} products.`,
+      message: `Successfully prepared ${trendyolItems.length} products for publishing to Trendyol.`,
       data: {
-        total: products.length,
-        created: createdCount,
-        updated: updatedCount,
-        failed: failedProducts.length,
-        failedProducts: failedProducts,
+        total: trendyolItems.length,
+        // The 'created' and 'updated' counts are simulated here.
+        // A real implementation would get this info from the API response.
+        created: trendyolItems.length,
+        updated: 0,
+        failed: 0,
+        payload: trendyolItems, // Returning the payload for verification
       },
     };
   }
