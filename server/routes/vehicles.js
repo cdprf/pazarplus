@@ -8,4 +8,18 @@ const { isAuthenticated } = require("../middleware/auth"); // Assuming an auth m
 // @access  Private
 router.get("/search", isAuthenticated, vehicleController.searchVehicles);
 
+// @route   GET /api/vehicles/vin/:vin
+// @desc    Get a vehicle by VIN code
+// @access  Private
+router.get("/vin/:vin", isAuthenticated, vehicleController.getVehicleByVIN);
+
+// @route   GET /api/vehicles/compatibilities
+// @desc    Get compatible parts by vehicle properties
+// @access  Private
+router.get(
+  "/compatibilities",
+  isAuthenticated,
+  vehicleController.getPartCompatibilities
+);
+
 module.exports = router;

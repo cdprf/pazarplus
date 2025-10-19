@@ -62,6 +62,12 @@ Vehicle.associate = function (models) {
     otherKey: "productId",
     as: "compatibleParts",
   });
+
+  // Association for direct compatibility lookups
+  Vehicle.hasMany(models.PartCompatibility, {
+    foreignKey: "vehicleId",
+    as: "partCompatibilities",
+  });
 };
 
 module.exports = Vehicle;

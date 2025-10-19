@@ -378,6 +378,12 @@ Product.associate = function (models) {
     foreignKey: "productId",
     as: "supplierPrices",
   });
+
+  // Association for direct compatibility lookups
+  Product.hasMany(models.PartCompatibility, {
+    foreignKey: "productId",
+    as: "partCompatibilities",
+  });
 };
 
 module.exports = Product;

@@ -1,7 +1,18 @@
 const { DataTypes, Model } = require("sequelize");
 const sequelize = require("../config/database");
 
-class PartCompatibility extends Model {}
+class PartCompatibility extends Model {
+  static associate(models) {
+    this.belongsTo(models.Product, {
+      foreignKey: "productId",
+      as: "product",
+    });
+    this.belongsTo(models.Vehicle, {
+      foreignKey: "vehicleId",
+      as: "vehicle",
+    });
+  }
+}
 
 PartCompatibility.init(
   {
