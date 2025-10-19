@@ -3602,9 +3602,9 @@ class N11Service extends BasePlatformService {
 }
 
   /**
-   * Publishes a list of products to N11.
-   * This is a simulation and does not make real API calls.
-   * @param {Array<Object>} products - An array of products to be published.
+   * Publishes a list of products to N11 by transforming them into the required API format.
+   * This method prepares the payload for the API but does not make a real API call.
+   * @param {Array<Object>} products - An array of products from our database.
    * @returns {Promise<Object>} A summary of the publishing operation.
    */
   async publishProducts(products) {
@@ -3612,35 +3612,52 @@ class N11Service extends BasePlatformService {
     const credentials = this.decryptCredentials(this.connection.credentials);
     const { appKey } = credentials;
 
-    this.logger.info(`Simulating product publishing to N11 with appKey: ${appKey}.`);
-    this.logger.info(`Received ${products.length} products to publish.`);
+    this.logger.info(`Preparing to publish ${products.length} products to N11 with appKey: ${appKey}.`);
 
-    let createdCount = 0;
-    let updatedCount = 0;
-    const failedProducts = [];
+    const n11Items = products.map(product => {
+      // Map our product model to the format N11 expects.
+      // This is a simplified mapping.
+      return {
+        productSellerCode: product.sku,
+        title: product.name,
+        description: product.description || product.name,
+        category: {
+          id: 1000038 // Placeholder - Needs to be a valid N11 category ID
+        },
+        price: parseFloat(product.price),
+        currencyType: "TL",
+        images: {
+          image: (product.images || []).map((imgUrl, index) => ({
+            url: imgUrl,
+            order: index + 1,
+          })).slice(0, 8), // N11 has a limit of 8 images
+        },
+        stockItems: {
+          stockItem: [{
+            quantity: parseInt(product.stockQuantity, 10) || 0,
+            sellerStockCode: product.sku,
+          }]
+        },
+        shipmentTemplate: "default", // Placeholder
+        preparingDay: "3", // Placeholder
+      };
+    });
 
-    for (const product of products) {
-      // Simulate checking if the product exists on N11
-      const productExists = Math.random() > 0.5;
+    // In a real implementation, you would make the API call here.
+    // const response = await this.axiosInstance.post('/rest/product/v1/create', { products: n11Items });
 
-      if (productExists) {
-        this.logger.info(`Simulating update for product SKU: ${product.sku} on N11.`);
-        updatedCount++;
-      } else {
-        this.logger.info(`Simulating creation for product SKU: ${product.sku} on N11.`);
-        createdCount++;
-      }
-    }
+    this.logger.info("Successfully prepared the payload for N11 product sync.");
+    this.logger.info("Payload to be sent:", JSON.stringify({ products: n11Items }, null, 2));
 
     return {
       success: true,
-      message: `Successfully simulated publishing for ${products.length} products to N11.`,
+      message: `Successfully prepared ${n11Items.length} products for publishing to N11.`,
       data: {
-        total: products.length,
-        created: createdCount,
-        updated: updatedCount,
-        failed: failedProducts.length,
-        failedProducts: failedProducts,
+        total: n11Items.length,
+        created: n11Items.length, // Simulated
+        updated: 0,
+        failed: 0,
+        payload: n11Items,
       },
     };
   }

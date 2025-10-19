@@ -856,6 +856,9 @@ if (models.SupplierPrice.associate) {
 if (models.AIChatLog.associate) {
   models.AIChatLog.associate(models);
 }
+if (models.PartCompatibility.associate) {
+  models.PartCompatibility.associate(models);
+}
 if (models.Cart.associate) {
   models.Cart.associate(models);
 }

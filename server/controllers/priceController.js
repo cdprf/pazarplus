@@ -4,7 +4,7 @@ const { Op } = require("sequelize");
 
 class PriceController {
   /**
-   * Simulate updating prices and stock from a specific supplier's API.
+   * Simulate updating prices and stock from a specific supplier's API with more realistic data.
    */
   async updatePrices(req, res) {
     try {
@@ -25,48 +25,55 @@ class PriceController {
         });
       }
 
-      // Simulate fetching data from the supplier's API.
-      // In a real scenario, this would be an actual API call.
-      logger.info(`Simulating price update from supplier: ${supplier.name}`);
+      logger.info(`Simulating realistic price update from supplier: ${supplier.name}`);
 
-      // Get a few products to update as a sample.
-      const productsToUpdate = await Product.findAll({
-        limit: 5,
-        order: [["createdAt", "DESC"]],
+      // Find all products currently offered by this supplier
+      const supplierProducts = await SupplierPrice.findAll({
+        where: { supplierId },
+        include: [{ model: Product, as: 'product' }]
       });
 
-      if (productsToUpdate.length === 0) {
+      if (supplierProducts.length === 0) {
         return res.json({
           success: true,
-          message: "No products found to update.",
+          message: "No products found for this supplier to update.",
           data: { updatedCount: 0 },
         });
       }
 
-      const updatePromises = productsToUpdate.map((product) => {
-        // Simulate new price and stock
-        const newPrice = (Math.random() * 500 + 50).toFixed(2); // Random price between 50 and 550
-        const newStock = Math.floor(Math.random() * 100); // Random stock between 0 and 99
+      const updatePromises = supplierProducts.map(item => {
+        // Simulate a more realistic price/stock change (e.g., +/- 5-10%)
+        const currentPrice = parseFloat(item.priceTl);
+        const priceChangePercentage = (Math.random() * 0.10) - 0.05; // -5% to +5%
+        const newPrice = (currentPrice * (1 + priceChangePercentage)).toFixed(2);
 
-        return SupplierPrice.upsert({
-          productId: product.id,
-          supplierId: supplierId,
+        const currentStock = item.stockStatus;
+        const stockChange = Math.floor(Math.random() * 10) - 5; // -5 to +4
+        const newStock = Math.max(0, currentStock + stockChange); // Ensure stock doesn't go below 0
+
+        logger.info(`Updating product SKU ${item.product.sku}: Price ${currentPrice} -> ${newPrice}, Stock ${currentStock} -> ${newStock}`);
+
+        return SupplierPrice.update({
           priceTl: newPrice,
           stockStatus: newStock,
           lastUpdated: new Date(),
+        }, {
+          where: {
+            id: item.id
+          }
         });
       });
 
       await Promise.all(updatePromises);
 
-      logger.info(`Successfully updated/created ${productsToUpdate.length} price records for supplier: ${supplier.name}`);
+      logger.info(`Successfully updated ${supplierProducts.length} price records for supplier: ${supplier.name}`);
 
       res.json({
         success: true,
-        message: `Simulated price update complete for supplier ${supplier.name}.`,
+        message: `Simulated realistic price update complete for supplier ${supplier.name}.`,
         data: {
-          updatedCount: productsToUpdate.length,
-          updatedProductIds: productsToUpdate.map(p => p.id),
+          updatedCount: supplierProducts.length,
+          updatedProductIds: supplierProducts.map(p => p.productId),
         },
       });
     } catch (error) {

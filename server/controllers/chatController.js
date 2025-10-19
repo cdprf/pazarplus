@@ -17,25 +17,38 @@ class ChatController {
         });
       }
 
-      // TODO: Replace this with a real AI service call.
-      // This is a mock response for development and testing purposes.
-      const mockResponse = {
-        intent: "part_inquiry",
-        entities: {
-          part_name: "brake pads",
-          vehicle_model: "BMW 3 Series",
-        },
-        responseText: `I understand you're looking for brake pads for a BMW 3 Series. I can help with that. What year is your vehicle?`,
-      };
+      // Enhanced simulation logic based on keywords
+      let intent = 'unknown';
+      let entities = {};
+      let responseText = "Size nasıl yardımcı olabilirim? 'Sipariş durumumu öğrenmek istiyorum', 'iade politikası nedir?' veya 'kargo seçenekleri nelerdir?' gibi sorular sorabilirsiniz.";
 
-      // Log the chat message and the mocked response
+      const lowerCaseMessage = message.toLowerCase();
+
+      if (lowerCaseMessage.includes('sipariş') || lowerCaseMessage.includes('order')) {
+        intent = 'order_status_inquiry';
+        const orderNumberMatch = lowerCaseMessage.match(/#?(\d+)/);
+        if (orderNumberMatch) {
+          entities.orderNumber = orderNumberMatch[1];
+          responseText = `Sipariş #${entities.orderNumber} için durumu kontrol ediyorum. Lütfen bir saniye bekleyin.`;
+        } else {
+          responseText = "Sipariş durumunu öğrenmek için lütfen sipariş numaranızı belirtin (örn: #12345).";
+        }
+      } else if (lowerCaseMessage.includes('iade') || lowerCaseMessage.includes('return')) {
+        intent = 'return_policy_inquiry';
+        responseText = "İade politikamıza göre, ürünleri teslim aldıktan sonra 14 gün içinde iade edebilirsiniz. Daha fazla bilgi için web sitemizdeki iade politikasını inceleyebilirsiniz.";
+      } else if (lowerCaseMessage.includes('kargo') || lowerCaseMessage.includes('shipping')) {
+        intent = 'shipping_info_inquiry';
+        responseText = "Standart kargo seçeneğimiz 3-5 iş günü içinde teslimat sağlar. Ayrıca, ek ücret karşılığında ekspres kargo seçeneğimiz de mevcuttur.";
+      }
+
+      // Log the chat message and the simulated response
       await AIChatLog.create({
         userId,
         sessionId,
         message,
-        response: mockResponse.responseText,
-        intent: mockResponse.intent,
-        entities: mockResponse.entities,
+        response: responseText,
+        intent: intent,
+        entities: entities,
       });
 
       logger.info(`Chat message logged for session: ${sessionId}`);

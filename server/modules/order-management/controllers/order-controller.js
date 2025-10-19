@@ -510,6 +510,8 @@ async function createOrder(req, res) {
       return res.status(400).json({ success: false, message: "Your cart is empty." });
     }
 
+    const cartItems = cart.items;
+
     // Calculate total amount
     const totalAmount = cartItems.reduce((total, item) => {
       return total + item.price * item.quantity;
@@ -542,8 +544,8 @@ async function createOrder(req, res) {
 
     await OrderItem.bulkCreate(orderItems, { transaction });
 
-    // If the user is authenticated, clear their cart
-    if (userId && cart) {
+    // If the user is authenticated or it's a guest cart, clear the cart
+    if (cart) {
       await CartItem.destroy({ where: { cartId: cart.id }, transaction });
     }
 

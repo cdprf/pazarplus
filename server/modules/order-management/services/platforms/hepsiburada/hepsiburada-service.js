@@ -5194,42 +5194,50 @@ class HepsiburadaService extends BasePlatformService {
 }
 
   /**
-   * Publishes a list of products to Hepsiburada.
-   * This is a simulation and does not make real API calls.
-   * @param {Array<Object>} products - An array of products to be published.
+   * Publishes a list of products to Hepsiburada by transforming them into the required API format.
+   * This method prepares the payload for the API but does not make a real API call.
+   * @param {Array<Object>} products - An array of products from our database.
    * @returns {Promise<Object>} A summary of the publishing operation.
    */
   async publishProducts(products) {
     await this.initialize();
-    this.logger.info(`Simulating product publishing to Hepsiburada for merchant ${this.merchantId}.`);
-    this.logger.info(`Received ${products.length} products to publish.`);
+    this.logger.info(`Preparing to publish ${products.length} products to Hepsiburada for merchant ${this.merchantId}.`);
 
-    let createdCount = 0;
-    let updatedCount = 0;
-    const failedProducts = [];
+    const hepsiburadaItems = products.map(product => {
+      // Map our product model to the format Hepsiburada expects.
+      // This is a simplified mapping. A real implementation would need more detail.
+      return {
+        merchantSku: product.sku,
+        barcode: product.barcode || product.sku,
+        productName: product.name,
+        brand: product.brand || "Markasız",
+        categoryId: "1", // Placeholder - This needs to be a valid Hepsiburada category ID.
+        description: product.description || product.name,
+        price: parseFloat(product.price),
+        tax: 18, // Assuming a default VAT rate
+        stock: parseInt(product.stockQuantity, 10) || 0,
+        images: (product.images || []).slice(0, 5), // Hepsiburada has a limit on images
+        productAttributes: [], // Placeholder
+        variantGroupId: product.variantGroupId || null,
+        status: product.status === 'active' ? 'active' : 'inactive',
+      };
+    });
 
-    for (const product of products) {
-      // Simulate checking if the product exists on Hepsiburada
-      const productExists = Math.random() > 0.5;
+    // In a real implementation, you would make the API call here.
+    // const response = await productsAxios.post('/products', hepsiburadaItems);
 
-      if (productExists) {
-        this.logger.info(`Simulating update for product SKU: ${product.sku} on Hepsiburada.`);
-        updatedCount++;
-      } else {
-        this.logger.info(`Simulating creation for product SKU: ${product.sku} on Hepsiburada.`);
-        createdCount++;
-      }
-    }
+    this.logger.info("Successfully prepared the payload for Hepsiburada product sync.");
+    this.logger.info("Payload to be sent:", JSON.stringify(hepsiburadaItems, null, 2));
 
     return {
       success: true,
-      message: `Successfully simulated publishing for ${products.length} products to Hepsiburada.`,
+      message: `Successfully prepared ${hepsiburadaItems.length} products for publishing to Hepsiburada.`,
       data: {
-        total: products.length,
-        created: createdCount,
-        updated: updatedCount,
-        failed: failedProducts.length,
-        failedProducts: failedProducts,
+        total: hepsiburadaItems.length,
+        created: hepsiburadaItems.length, // Simulated
+        updated: 0,
+        failed: 0,
+        payload: hepsiburadaItems,
       },
     };
   }
