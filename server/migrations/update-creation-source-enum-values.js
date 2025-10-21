@@ -2,6 +2,12 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const dialect = queryInterface.sequelize.getDialect();
+    if (dialect === 'sqlite') {
+      console.log('Skipping ENUM migration for SQLite.');
+      return;
+    }
+
     try {
       console.log("🔄 Updating creation_source_enum to include new values...");
 
@@ -58,6 +64,12 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
+    const dialect = queryInterface.sequelize.getDialect();
+    if (dialect === 'sqlite') {
+      console.log('Skipping ENUM migration for SQLite.');
+      return;
+    }
+
     try {
       console.log("🔄 Reverting creation_source_enum changes...");
 

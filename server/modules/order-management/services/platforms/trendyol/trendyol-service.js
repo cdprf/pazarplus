@@ -2729,4 +2729,62 @@ class TrendyolService extends BasePlatformService {
   }
 }
 
+  /**
+   * Publishes a list of products to Trendyol by transforming them into the required API format.
+   * This method prepares the payload for the API but does not make a real API call.
+   * @param {Array<Object>} products - An array of products from our database.
+   * @returns {Promise<Object>} A summary of the publishing operation.
+   */
+  async publishProducts(products) {
+    await this.initialize();
+    const credentials = this.decryptCredentials(this.connection.credentials);
+    const { supplierId } = credentials;
+
+    this.logger.info(`Preparing to publish ${products.length} products to Trendyol for supplier ${supplierId}.`);
+
+    const trendyolItems = products.map(product => {
+      // Map our product model to the format Trendyol expects.
+      // This is a simplified mapping. A real implementation would require more complex logic,
+      // especially for brandId, categoryId, and attributes.
+      return {
+        barcode: product.barcode || product.sku,
+        title: product.name,
+        productMainId: product.sku, // Using SKU as the main identifier
+        brandId: 1, // Placeholder - In a real app, this would be looked up or mapped.
+        categoryId: 1, // Placeholder - This needs to be a valid Trendyol category ID.
+        stockCode: product.sku,
+        dimensionalWeight: product.weight || 1,
+        description: product.description || product.name,
+        vatRate: 18, // Assuming a default VAT rate
+        listPrice: parseFloat(product.price), // The "regular" price
+        salePrice: parseFloat(product.price), // The actual selling price
+        currencyType: "TRY",
+        quantity: parseInt(product.stockQuantity, 10) || 0,
+        images: (product.images || []).map(imgUrl => ({ url: imgUrl })),
+        attributes: [], // Placeholder - Attributes are category-specific and complex.
+      };
+    });
+
+    // In a real implementation, you would make the API call here:
+    // const response = await this.axiosInstance.put(`/integration/product/sellers/${supplierId}/products`, { items: trendyolItems });
+
+    this.logger.info("Successfully prepared the payload for Trendyol product sync.");
+    this.logger.info("Payload to be sent:", JSON.stringify({ items: trendyolItems }, null, 2));
+
+    return {
+      success: true,
+      message: `Successfully prepared ${trendyolItems.length} products for publishing to Trendyol.`,
+      data: {
+        total: trendyolItems.length,
+        // The 'created' and 'updated' counts are simulated here.
+        // A real implementation would get this info from the API response.
+        created: trendyolItems.length,
+        updated: 0,
+        failed: 0,
+        payload: trendyolItems, // Returning the payload for verification
+      },
+    };
+  }
+}
+
 module.exports = TrendyolService;

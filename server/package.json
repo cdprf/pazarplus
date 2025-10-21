@@ -72,6 +72,7 @@
     "sequelize-pool": "^8.0.1",
     "sharp": "^0.34.2",
     "speakeasy": "^2.0.0",
+    "sqlite3": "^5.1.7",
     "uuid": "^10.0.0",
     "winston": "^3.13.0",
     "winston-daily-rotate-file": "^5.0.0",

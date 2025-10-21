@@ -3,13 +3,9 @@ const logger = require("../utils/logger");
 
 module.exports = {
   development: {
-    username: process.env.DB_USER || "postgres",
-    password: process.env.DB_PASSWORD || "",
-    database: process.env.DB_NAME || "pazar_plus",
-    host: process.env.DB_HOST || "localhost",
-    port: process.env.DB_PORT || 5432,
-    dialect: "postgresql",
-    logging: false, // Disable DB query logging to reduce verbose logs
+    dialect: "sqlite",
+    storage: "../database.sqlite",
+    logging: false,
     define: {
       underscored: true,
       timestamps: true,

@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Product",
+  "description": "Schema for a spare part product.",
+  "type": "object",
+  "properties": {
+    "tecdoc_id": {
+      "description": "The TecDoc ID for the spare part.",
+      "type": "string"
+    },
+    "oem_kodlari": {
+      "description": "A list of OEM codes for the part.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "aciklama": {
+      "description": "A detailed description of the spare part.",
+      "type": "string"
+    },
+    "resim": {
+      "description": "URL to an image of the spare part.",
+      "type": "string",
+      "format": "uri"
+    },
+    "kategori": {
+      "description": "The category of the spare part (e.g., Brake System).",
+      "type": "string"
+    },
+    "uretici": {
+      "description": "The manufacturer of the spare part (e.g., Bosch, Valeo).",
+      "type": "string"
+    },
+    "uyumlu_araclar": {
+      "description": "An array of vehicle objects compatible with this part.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/vehicle"
+      }
+    }
+  },
+  "required": ["tecdoc_id", "oem_kodlari", "aciklama", "kategori", "uretici"],
+  "definitions": {
+    "vehicle": {
+      "type": "object",
+      "properties": {
+        "brand": { "type": "string" },
+        "model": { "type": "string" },
+        "yearRange": { "type": "string" }
+      },
+      "required": ["brand", "model"]
+    }
+  },
+  "examples": [
+    {
+      "tecdoc_id": "34567",
+      "oem_kodlari": ["04465-35290", "04465-YZZD1"],
+      "aciklama": "Front Brake Pad Set for Toyota Hilux",
+      "resim": "https://example.com/images/brake_pad_34567.jpg",
+      "kategori": "Brake System",
+      "uretici": "Bosch",
+      "uyumlu_araclar": [
+        {
+          "brand": "Toyota",
+          "model": "Hilux",
+          "yearRange": "2015-2020"
+        }
+      ]
+    }
+  ]
+}

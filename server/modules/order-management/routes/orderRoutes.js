@@ -3,7 +3,41 @@ const logger = require("../../../utils/logger");
 const router = express.Router();
 const orderController = require("../controllers/order-controller");
 const { auth } = require("../../../middleware/auth");
+const optionalAuth = require("../../../middleware/optionalAuth");
 const { Order, OrderItem } = require("../../../models");
+
+/**
+ * @swagger
+ * /api/order-management/orders:
+ *   post:
+ *     summary: Create a new order (for both guests and authenticated users)
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               customerInfo:
+ *                 type: object
+ *                 description: Required for guest orders.
+ *               shippingAddress:
+ *                 type: object
+ *                 description: Required for guest orders.
+ *               items:
+ *                 type: array
+ *                 description: Required for guest orders.
+ *     responses:
+ *       201:
+ *         description: Order created successfully
+ *       400:
+ *         description: Bad request (e.g., empty cart, missing guest info)
+ */
+router.post("/", optionalAuth, orderController.createOrder);
+
 
 // Special route for sample data (no auth required)
 router.get("/sample", async (req, res) => {

@@ -21,7 +21,7 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "install:all": "npm install && cd client && npm install",
     "build": "cd client && npm run build",
-    "test": "jest --testPathPattern=server",
+    "test": "jest",
     "test:client": "cd client && npm test",
     "test:all": "npm run test && npm run test:client",
     "lint": "eslint server/ --ext .js",
