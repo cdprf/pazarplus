@@ -24,28 +24,31 @@ class WhatsAppController {
 
       // 1. Parse the message to find an order number.
       // We'll look for a pattern like #... or just a sequence of numbers.
-      const orderNumberMatch = userMessage.match(/#?(\d+)/);
-      if (!orderNumberMatch) {
-        logger.info(`No order number found in message from ${from}.`);
-        // In a real app, you might send a default response asking for the order number.
-        return res.status(200).json({ success: true, message: "No order number found." });
-      }
-
-      const orderNumber = orderNumberMatch[1];
-      logger.info(`Parsed order number ${orderNumber} from message.`);
-
-      // 2. Find the order in the database.
-      // We'll search by orderNumber or externalOrderId for flexibility.
-      const order = await Order.findOne({
-        where: { orderNumber: `PZR-${orderNumber}` }, // Assuming our internal format is like this
-      });
-
       let responseMessage;
-      if (order) {
-        // 3. Prepare a response with the order status.
-        responseMessage = `Merhaba! #${orderNumber} numaralı siparişinizin durumu: ${order.orderStatus}.`;
+      const lowerCaseMessage = userMessage.toLowerCase();
+
+      if (lowerCaseMessage.includes('iade') || lowerCaseMessage.includes('return')) {
+        responseMessage = "İade politikamıza göre, ürünleri teslim aldıktan sonra 14 gün içinde iade edebilirsiniz. Detaylı bilgi için web sitemizi ziyaret edebilirsiniz.";
+      } else if (lowerCaseMessage.includes('kargo') || lowerCaseMessage.includes('shipping')) {
+        responseMessage = "Standart kargo seçeneğimiz 3-5 iş günü içinde teslimat sağlar. Ekspres kargo seçeneğimiz de mevcuttur.";
       } else {
-        responseMessage = `Merhaba! #${orderNumber} numaralı siparişinizi bulamadık. Lütfen numarayı kontrol edip tekrar deneyin.`;
+        const orderNumberMatch = userMessage.match(/#?(\d+)/);
+        if (orderNumberMatch) {
+          const orderNumber = orderNumberMatch[1];
+          logger.info(`Parsed order number ${orderNumber} from message.`);
+
+          const order = await Order.findOne({
+            where: { orderNumber: `PZR-${orderNumber}` },
+          });
+
+          if (order) {
+            responseMessage = `Merhaba! #${orderNumber} numaralı siparişinizin durumu: ${order.orderStatus}.`;
+          } else {
+            responseMessage = `Merhaba! #${orderNumber} numaralı siparişinizi bulamadık. Lütfen numarayı kontrol edip tekrar deneyin.`;
+          }
+        } else {
+          responseMessage = "Merhaba! Sipariş durumunuzu öğrenmek için lütfen sipariş numaranızı yazın (örn: #12345). İade veya kargo hakkında bilgi almak için 'iade' veya 'kargo' yazabilirsiniz.";
+        }
       }
 
       // 4. Log the response that would be sent back.

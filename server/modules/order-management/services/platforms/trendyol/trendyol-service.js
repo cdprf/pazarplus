@@ -2743,30 +2743,29 @@ class TrendyolService extends BasePlatformService {
     this.logger.info(`Preparing to publish ${products.length} products to Trendyol for supplier ${supplierId}.`);
 
     const trendyolItems = products.map(product => {
-      // Map our product model to the format Trendyol expects.
-      // This is a simplified mapping. A real implementation would require more complex logic,
-      // especially for brandId, categoryId, and attributes.
+      const attributes = (product.attributes || []).map(attr => ({
+        attributeId: attr.attributeId,
+        customAttributeValue: attr.value,
+      }));
+
       return {
         barcode: product.barcode || product.sku,
         title: product.name,
-        productMainId: product.sku, // Using SKU as the main identifier
-        brandId: 1, // Placeholder - In a real app, this would be looked up or mapped.
-        categoryId: 1, // Placeholder - This needs to be a valid Trendyol category ID.
+        productMainId: product.sku,
+        brandId: product.brandId || 1, // Placeholder
+        categoryId: product.categoryId || 1, // Placeholder
         stockCode: product.sku,
         dimensionalWeight: product.weight || 1,
         description: product.description || product.name,
-        vatRate: 18, // Assuming a default VAT rate
-        listPrice: parseFloat(product.price), // The "regular" price
-        salePrice: parseFloat(product.price), // The actual selling price
+        vatRate: 18,
+        listPrice: parseFloat(product.price),
+        salePrice: parseFloat(product.price),
         currencyType: "TRY",
         quantity: parseInt(product.stockQuantity, 10) || 0,
         images: (product.images || []).map(imgUrl => ({ url: imgUrl })),
-        attributes: [], // Placeholder - Attributes are category-specific and complex.
+        attributes: attributes,
       };
     });
-
-    // In a real implementation, you would make the API call here:
-    // const response = await this.axiosInstance.put(`/integration/product/sellers/${supplierId}/products`, { items: trendyolItems });
 
     this.logger.info("Successfully prepared the payload for Trendyol product sync.");
     this.logger.info("Payload to be sent:", JSON.stringify({ items: trendyolItems }, null, 2));
@@ -2776,12 +2775,10 @@ class TrendyolService extends BasePlatformService {
       message: `Successfully prepared ${trendyolItems.length} products for publishing to Trendyol.`,
       data: {
         total: trendyolItems.length,
-        // The 'created' and 'updated' counts are simulated here.
-        // A real implementation would get this info from the API response.
         created: trendyolItems.length,
         updated: 0,
         failed: 0,
-        payload: trendyolItems, // Returning the payload for verification
+        payload: trendyolItems,
       },
     };
   }

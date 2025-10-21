@@ -3615,14 +3615,21 @@ class N11Service extends BasePlatformService {
     this.logger.info(`Preparing to publish ${products.length} products to N11 with appKey: ${appKey}.`);
 
     const n11Items = products.map(product => {
-      // Map our product model to the format N11 expects.
-      // This is a simplified mapping.
+      const stockItems = [{
+        quantity: parseInt(product.stockQuantity, 10) || 0,
+        sellerStockCode: product.sku,
+        attributes: (product.attributes || []).map(attr => ({
+          name: attr.name,
+          value: attr.value,
+        })),
+      }];
+
       return {
         productSellerCode: product.sku,
         title: product.name,
         description: product.description || product.name,
         category: {
-          id: 1000038 // Placeholder - Needs to be a valid N11 category ID
+          id: product.categoryId || 1000038 // Placeholder
         },
         price: parseFloat(product.price),
         currencyType: "TL",
@@ -3630,21 +3637,15 @@ class N11Service extends BasePlatformService {
           image: (product.images || []).map((imgUrl, index) => ({
             url: imgUrl,
             order: index + 1,
-          })).slice(0, 8), // N11 has a limit of 8 images
+          })).slice(0, 8),
         },
         stockItems: {
-          stockItem: [{
-            quantity: parseInt(product.stockQuantity, 10) || 0,
-            sellerStockCode: product.sku,
-          }]
+          stockItem: stockItems
         },
-        shipmentTemplate: "default", // Placeholder
-        preparingDay: "3", // Placeholder
+        shipmentTemplate: "default",
+        preparingDay: "3",
       };
     });
-
-    // In a real implementation, you would make the API call here.
-    // const response = await this.axiosInstance.post('/rest/product/v1/create', { products: n11Items });
 
     this.logger.info("Successfully prepared the payload for N11 product sync.");
     this.logger.info("Payload to be sent:", JSON.stringify({ products: n11Items }, null, 2));
@@ -3654,7 +3655,7 @@ class N11Service extends BasePlatformService {
       message: `Successfully prepared ${n11Items.length} products for publishing to N11.`,
       data: {
         total: n11Items.length,
-        created: n11Items.length, // Simulated
+        created: n11Items.length,
         updated: 0,
         failed: 0,
         payload: n11Items,

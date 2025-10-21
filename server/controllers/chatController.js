@@ -56,9 +56,9 @@ class ChatController {
       res.json({
         success: true,
         data: {
-          response: mockResponse.responseText,
-          intent: mockResponse.intent,
-          entities: mockResponse.entities,
+          response: responseText,
+          intent: intent,
+          entities: entities,
         },
       });
     } catch (error) {

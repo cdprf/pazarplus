@@ -33,11 +33,32 @@ class PriceController {
         include: [{ model: Product, as: 'product' }]
       });
 
-      if (supplierProducts.length === 0) {
+      let newProductAdded = false;
+      // Occasionally, add a new product to the supplier's list
+      if (Math.random() < 0.2) { // 20% chance to add a new product
+        const allProductIds = (await Product.findAll({ attributes: ['id'] })).map(p => p.id);
+        const supplierProductIds = supplierProducts.map(p => p.productId);
+        const newProductIds = allProductIds.filter(id => !supplierProductIds.includes(id));
+
+        if (newProductIds.length > 0) {
+          const randomProductId = newProductIds[Math.floor(Math.random() * newProductIds.length)];
+          await SupplierPrice.create({
+            supplierId,
+            productId: randomProductId,
+            priceTl: (Math.random() * 100 + 10).toFixed(2), // Random price between 10-110
+            stockStatus: Math.floor(Math.random() * 100),
+            lastUpdated: new Date(),
+          });
+          newProductAdded = true;
+          logger.info(`Supplier ${supplier.name} added a new product (ID: ${randomProductId}) to their list.`);
+        }
+      }
+
+      if (supplierProducts.length === 0 && !newProductAdded) {
         return res.json({
           success: true,
-          message: "No products found for this supplier to update.",
-          data: { updatedCount: 0 },
+          message: "No products found for this supplier to update or add.",
+          data: { updatedCount: 0, newProductAdded: false },
         });
       }
 
@@ -70,9 +91,10 @@ class PriceController {
 
       res.json({
         success: true,
-        message: `Simulated realistic price update complete for supplier ${supplier.name}.`,
+        message: `Simulated realistic price update complete for supplier ${supplier.name}.${newProductAdded ? ' A new product was also added.' : ''}`,
         data: {
           updatedCount: supplierProducts.length,
+          newProductAdded,
           updatedProductIds: supplierProducts.map(p => p.productId),
         },
       });

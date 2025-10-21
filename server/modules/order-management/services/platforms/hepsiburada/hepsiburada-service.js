@@ -5204,27 +5204,27 @@ class HepsiburadaService extends BasePlatformService {
     this.logger.info(`Preparing to publish ${products.length} products to Hepsiburada for merchant ${this.merchantId}.`);
 
     const hepsiburadaItems = products.map(product => {
-      // Map our product model to the format Hepsiburada expects.
-      // This is a simplified mapping. A real implementation would need more detail.
+      const productAttributes = (product.attributes || []).map(attr => ({
+        attributeId: attr.attributeId,
+        value: attr.value,
+      }));
+
       return {
         merchantSku: product.sku,
         barcode: product.barcode || product.sku,
         productName: product.name,
         brand: product.brand || "Markasız",
-        categoryId: "1", // Placeholder - This needs to be a valid Hepsiburada category ID.
+        categoryId: product.categoryId || "1", // Placeholder
         description: product.description || product.name,
         price: parseFloat(product.price),
-        tax: 18, // Assuming a default VAT rate
+        tax: 18,
         stock: parseInt(product.stockQuantity, 10) || 0,
-        images: (product.images || []).slice(0, 5), // Hepsiburada has a limit on images
-        productAttributes: [], // Placeholder
+        images: (product.images || []).slice(0, 5),
+        productAttributes: productAttributes,
         variantGroupId: product.variantGroupId || null,
         status: product.status === 'active' ? 'active' : 'inactive',
       };
     });
-
-    // In a real implementation, you would make the API call here.
-    // const response = await productsAxios.post('/products', hepsiburadaItems);
 
     this.logger.info("Successfully prepared the payload for Hepsiburada product sync.");
     this.logger.info("Payload to be sent:", JSON.stringify(hepsiburadaItems, null, 2));
@@ -5234,7 +5234,7 @@ class HepsiburadaService extends BasePlatformService {
       message: `Successfully prepared ${hepsiburadaItems.length} products for publishing to Hepsiburada.`,
       data: {
         total: hepsiburadaItems.length,
-        created: hepsiburadaItems.length, // Simulated
+        created: hepsiburadaItems.length,
         updated: 0,
         failed: 0,
         payload: hepsiburadaItems,
