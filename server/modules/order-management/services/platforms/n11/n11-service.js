@@ -3601,4 +3601,67 @@ class N11Service extends BasePlatformService {
   }
 }
 
+  /**
+   * Publishes a list of products to N11 by transforming them into the required API format.
+   * This method prepares the payload for the API but does not make a real API call.
+   * @param {Array<Object>} products - An array of products from our database.
+   * @returns {Promise<Object>} A summary of the publishing operation.
+   */
+  async publishProducts(products) {
+    await this.initialize();
+    const credentials = this.decryptCredentials(this.connection.credentials);
+    const { appKey } = credentials;
+
+    this.logger.info(`Preparing to publish ${products.length} products to N11 with appKey: ${appKey}.`);
+
+    const n11Items = products.map(product => {
+      const stockItems = [{
+        quantity: parseInt(product.stockQuantity, 10) || 0,
+        sellerStockCode: product.sku,
+        attributes: (product.attributes || []).map(attr => ({
+          name: attr.name,
+          value: attr.value,
+        })),
+      }];
+
+      return {
+        productSellerCode: product.sku,
+        title: product.name,
+        description: product.description || product.name,
+        category: {
+          id: product.categoryId || 1000038 // Placeholder
+        },
+        price: parseFloat(product.price),
+        currencyType: "TL",
+        images: {
+          image: (product.images || []).map((imgUrl, index) => ({
+            url: imgUrl,
+            order: index + 1,
+          })).slice(0, 8),
+        },
+        stockItems: {
+          stockItem: stockItems
+        },
+        shipmentTemplate: "default",
+        preparingDay: "3",
+      };
+    });
+
+    this.logger.info("Successfully prepared the payload for N11 product sync.");
+    this.logger.info("Payload to be sent:", JSON.stringify({ products: n11Items }, null, 2));
+
+    return {
+      success: true,
+      message: `Successfully prepared ${n11Items.length} products for publishing to N11.`,
+      data: {
+        total: n11Items.length,
+        created: n11Items.length,
+        updated: 0,
+        failed: 0,
+        payload: n11Items,
+      },
+    };
+  }
+}
+
 module.exports = N11Service;

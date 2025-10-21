@@ -271,6 +271,69 @@ router.get("/:id", auth, productController.getProductById);
 
 /**
  * @swagger
+ * /api/products/by-oem/{oem}:
+ *   get:
+ *     summary: Get a single product by OEM code
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: oem
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: A single product
+ *       404:
+ *         description: Product not found
+ */
+router.get("/by-oem/:oem", auth, productController.getProductByOem);
+
+/**
+ * @swagger
+ * /api/products/by-tecdoc/{tecdocId}:
+ *   get:
+ *     summary: Get a single product by TecDoc ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: tecdocId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: A single product
+ *       404:
+ *         description: Product not found
+ */
+router.get("/by-tecdoc/:tecdocId", auth, productController.getProductByTecdocId);
+
+/**
+ * @swagger
+ * /api/products/{id}/compatibility:
+ *   get:
+ *     summary: Get compatible vehicles for a product
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: A list of compatible vehicles
+ *       404:
+ *         description: Product not found
+ */
+router.get("/:id/compatibility", auth, productController.getProductCompatibility);
+
+/**
+ * @swagger
  * /api/products:
  *   post:
  *     summary: Create a new product
@@ -1584,5 +1647,26 @@ router.post(
   auth,
   productController.syncSpecificFields
 );
+
+/**
+ * @swagger
+ * /api/products/{id}/prices:
+ *   get:
+ *     summary: Get all supplier prices for a product
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: A list of supplier prices
+ *       404:
+ *         description: No prices found for this product
+ */
+router.get("/:id/prices", auth, productController.getProductPrices);
 
 module.exports = router;

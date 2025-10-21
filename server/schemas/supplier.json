@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Supplier",
+  "description": "Schema for a spare parts supplier.",
+  "type": "object",
+  "properties": {
+    "isim": {
+      "description": "The name of the supplier.",
+      "type": "string"
+    },
+    "api_url": {
+      "description": "The API endpoint URL for the supplier.",
+      "type": "string",
+      "format": "uri"
+    },
+    "oncelik": {
+      "description": "Priority level for the supplier (lower is higher).",
+      "type": "integer",
+      "minimum": 0
+    },
+    "stok_durumu": {
+      "description": "Current stock status from the supplier.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "teslimat_suresi": {
+      "description": "Estimated delivery time from the supplier (e.g., '1-3 days').",
+      "type": "string"
+    }
+  },
+  "required": ["isim", "api_url", "oncelik", "stok_durumu", "teslimat_suresi"],
+  "examples": [
+    {
+      "isim": "Oto Parça A.Ş.",
+      "api_url": "https://api.otoparca.com/v1/query",
+      "oncelik": 1,
+      "stok_durumu": 150,
+      "teslimat_suresi": "1-2 days"
+    }
+  ]
+}

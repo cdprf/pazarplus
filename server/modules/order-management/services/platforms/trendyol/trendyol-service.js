@@ -2729,4 +2729,59 @@ class TrendyolService extends BasePlatformService {
   }
 }
 
+  /**
+   * Publishes a list of products to Trendyol by transforming them into the required API format.
+   * This method prepares the payload for the API but does not make a real API call.
+   * @param {Array<Object>} products - An array of products from our database.
+   * @returns {Promise<Object>} A summary of the publishing operation.
+   */
+  async publishProducts(products) {
+    await this.initialize();
+    const credentials = this.decryptCredentials(this.connection.credentials);
+    const { supplierId } = credentials;
+
+    this.logger.info(`Preparing to publish ${products.length} products to Trendyol for supplier ${supplierId}.`);
+
+    const trendyolItems = products.map(product => {
+      const attributes = (product.attributes || []).map(attr => ({
+        attributeId: attr.attributeId,
+        customAttributeValue: attr.value,
+      }));
+
+      return {
+        barcode: product.barcode || product.sku,
+        title: product.name,
+        productMainId: product.sku,
+        brandId: product.brandId || 1, // Placeholder
+        categoryId: product.categoryId || 1, // Placeholder
+        stockCode: product.sku,
+        dimensionalWeight: product.weight || 1,
+        description: product.description || product.name,
+        vatRate: 18,
+        listPrice: parseFloat(product.price),
+        salePrice: parseFloat(product.price),
+        currencyType: "TRY",
+        quantity: parseInt(product.stockQuantity, 10) || 0,
+        images: (product.images || []).map(imgUrl => ({ url: imgUrl })),
+        attributes: attributes,
+      };
+    });
+
+    this.logger.info("Successfully prepared the payload for Trendyol product sync.");
+    this.logger.info("Payload to be sent:", JSON.stringify({ items: trendyolItems }, null, 2));
+
+    return {
+      success: true,
+      message: `Successfully prepared ${trendyolItems.length} products for publishing to Trendyol.`,
+      data: {
+        total: trendyolItems.length,
+        created: trendyolItems.length,
+        updated: 0,
+        failed: 0,
+        payload: trendyolItems,
+      },
+    };
+  }
+}
+
 module.exports = TrendyolService;

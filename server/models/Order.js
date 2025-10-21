@@ -12,7 +12,7 @@ Order.init(
     },
     userId: {
       type: DataTypes.UUID,
-      allowNull: false,
+      allowNull: true, // Allow null for guest checkouts
       references: {
         model: 'users',
         key: 'id'

@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AI Chat Log",
+  "description": "Schema for logging an interaction with the AI chat.",
+  "type": "object",
+  "properties": {
+    "kullanici_id": {
+      "description": "The unique identifier for the user.",
+      "type": "string"
+    },
+    "mesaj": {
+      "description": "The message sent by the user.",
+      "type": "string"
+    },
+    "niyet": {
+      "description": "The intent extracted from the user's message (e.g., 'find_part', 'check_compatibility').",
+      "type": "string"
+    },
+    "varliklar": {
+      "description": "Entities extracted from the message (e.g., vehicle model, part name).",
+      "type": "object"
+    },
+    "zaman_damgasi": {
+      "description": "The timestamp of the log entry.",
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": ["kullanici_id", "mesaj", "zaman_damgasi"],
+  "examples": [
+    {
+      "kullanici_id": "user-123",
+      "mesaj": "2022 model BMW 3 serisi için fren balatası var mı?",
+      "niyet": "find_part_for_vehicle",
+      "varliklar": {
+        "part_name": "fren balatası",
+        "vehicle_model": "BMW 3 serisi",
+        "year": "2022"
+      },
+      "zaman_damgasi": "2025-10-02T14:00:00Z"
+    }
+  ]
+}

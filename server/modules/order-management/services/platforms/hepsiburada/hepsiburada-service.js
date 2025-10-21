@@ -5193,4 +5193,54 @@ class HepsiburadaService extends BasePlatformService {
   }
 }
 
+  /**
+   * Publishes a list of products to Hepsiburada by transforming them into the required API format.
+   * This method prepares the payload for the API but does not make a real API call.
+   * @param {Array<Object>} products - An array of products from our database.
+   * @returns {Promise<Object>} A summary of the publishing operation.
+   */
+  async publishProducts(products) {
+    await this.initialize();
+    this.logger.info(`Preparing to publish ${products.length} products to Hepsiburada for merchant ${this.merchantId}.`);
+
+    const hepsiburadaItems = products.map(product => {
+      const productAttributes = (product.attributes || []).map(attr => ({
+        attributeId: attr.attributeId,
+        value: attr.value,
+      }));
+
+      return {
+        merchantSku: product.sku,
+        barcode: product.barcode || product.sku,
+        productName: product.name,
+        brand: product.brand || "Markasız",
+        categoryId: product.categoryId || "1", // Placeholder
+        description: product.description || product.name,
+        price: parseFloat(product.price),
+        tax: 18,
+        stock: parseInt(product.stockQuantity, 10) || 0,
+        images: (product.images || []).slice(0, 5),
+        productAttributes: productAttributes,
+        variantGroupId: product.variantGroupId || null,
+        status: product.status === 'active' ? 'active' : 'inactive',
+      };
+    });
+
+    this.logger.info("Successfully prepared the payload for Hepsiburada product sync.");
+    this.logger.info("Payload to be sent:", JSON.stringify(hepsiburadaItems, null, 2));
+
+    return {
+      success: true,
+      message: `Successfully prepared ${hepsiburadaItems.length} products for publishing to Hepsiburada.`,
+      data: {
+        total: hepsiburadaItems.length,
+        created: hepsiburadaItems.length,
+        updated: 0,
+        failed: 0,
+        payload: hepsiburadaItems,
+      },
+    };
+  }
+}
+
 module.exports = HepsiburadaService;

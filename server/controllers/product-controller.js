@@ -8,6 +8,8 @@ const {
   CustomerQuestion,
   User,
   sequelize,
+  SupplierPrice,
+  Supplier,
 } = require("../models");
 const logger = require("../utils/logger");
 const ProductMergeService = require("../services/product-merge-service");
@@ -7678,6 +7680,168 @@ class ProductController {
       res.status(500).json({
         success: false,
         message: "Field sync failed",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get product by OEM code
+   */
+  async getProductByOem(req, res) {
+    try {
+      const { oem } = req.params;
+      const userId = req.user.id;
+
+      const product = await Product.findOne({
+        where: {
+          oemCode: { [Op.iLike]: oem },
+          userId,
+        },
+        include: [
+          {
+            model: PlatformData,
+            as: "platformData",
+            required: false,
+          },
+        ],
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product with specified OEM code not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: product,
+      });
+    } catch (error) {
+      logger.error("Error getting product by OEM:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get product by OEM",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get compatible vehicles for a product
+   */
+  async getProductCompatibility(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+
+      const product = await Product.findOne({
+        where: { id, userId },
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      // This assumes the association is correctly set up in the models
+      const compatibleVehicles = await product.getCompatibleVehicles();
+
+      res.json({
+        success: true,
+        data: compatibleVehicles,
+      });
+    } catch (error) {
+      logger.error("Error getting product compatibility:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get product compatibility",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get product by TecDoc ID
+   */
+  async getProductByTecdocId(req, res) {
+    try {
+      const { tecdocId } = req.params;
+      const userId = req.user.id;
+
+      const product = await Product.findOne({
+        where: {
+          tecdocId: tecdocId,
+          userId,
+        },
+        include: [
+          {
+            model: PlatformData,
+            as: "platformData",
+            required: false,
+          },
+        ],
+      });
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product with specified TecDoc ID not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: product,
+      });
+    } catch (error) {
+      logger.error("Error getting product by TecDoc ID:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get product by TecDoc ID",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get all supplier prices for a product
+   */
+  async getProductPrices(req, res) {
+    try {
+      const { id } = req.params;
+
+      const prices = await SupplierPrice.findAll({
+        where: { productId: id },
+        include: [
+          {
+            model: Supplier,
+            as: 'supplier',
+            attributes: ['id', 'name', 'priority'],
+          },
+        ],
+        order: [['priceTl', 'ASC']],
+      });
+
+      if (!prices || prices.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'No supplier prices found for this product.',
+        });
+      }
+
+      res.json({
+        success: true,
+        data: prices,
+      });
+    } catch (error) {
+      logger.error('Error getting supplier prices:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get supplier prices.',
         error: error.message,
       });
     }

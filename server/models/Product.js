@@ -31,6 +31,16 @@ Product.init(
       allowNull: true,
       comment: "Product barcode for identification",
     },
+    tecdocId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "TecDoc ID for the spare part",
+    },
+    oemCode: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "OEM code for the spare part",
+    },
     description: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -228,6 +238,16 @@ Product.init(
       allowNull: true,
       comment: "Last time variant detection was run on this product",
     },
+    mountingGroupId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "mounting_groups",
+        key: "id",
+      },
+      onUpdate: "CASCADE",
+      onDelete: "SET NULL",
+    },
   },
   {
     sequelize,
@@ -354,6 +374,30 @@ Product.associate = function (models) {
     sourceKey: "sku", // Link from Product.sku to CustomerQuestion.product_main_id
     as: "customerQuestions",
     constraints: false,
+  });
+
+  // Associations for Spare Parts
+  Product.belongsToMany(models.Vehicle, {
+    through: "part_compatibilities",
+    foreignKey: "productId",
+    otherKey: "vehicleId",
+    as: "compatibleVehicles",
+  });
+
+  Product.hasMany(models.SupplierPrice, {
+    foreignKey: "productId",
+    as: "supplierPrices",
+  });
+
+  // Association for direct compatibility lookups
+  Product.hasMany(models.PartCompatibility, {
+    foreignKey: "productId",
+    as: "partCompatibilities",
+  });
+
+  Product.belongsTo(models.MountingGroup, {
+    foreignKey: "mountingGroupId",
+    as: "mountingGroup",
   });
 };
 
